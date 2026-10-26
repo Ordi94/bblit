@@ -723,9 +723,9 @@ void func_80040D98(RECT* a0, s16* a1);
  * graficos_y_gte_10.c (y graficos_y_gte_12.c para D_800694A8) los direccionan con $gp en funciones
  * que ya coinciden, asi que cada uno los define. Declararlos extern en una cabecera sube
  * func_80040DDC de 5 a 110, func_80040E30 de 15 a 330, func_8004443C de 15 a 330 y func_80044588
- * de 5 a 110. El enlazador funde las definiciones tentativas en un solo simbolo; D_80069488 lleva
- * volatile en el cargador, que lo escribe desde el retorno de llamada de lectura, y no en la
- * presentacion de cuadros, que solo lo lee entre llamadas.
+ * de 5 a 110. El enlazador funde las definiciones tentativas en un solo simbolo; D_80069488 es
+ * volatile en los dos archivos: el cargador lo escribe desde el retorno de llamada de lectura y la
+ * presentacion de cuadros lo lee; sin volatile en el cargador func_8004109C pasa de 105 a 705.
  */
 
 /* D_800693F0: accesos del ensamblador: sw(gp) x3, lw(gp) x1, sw x1 */

@@ -30,11 +30,17 @@ extern void GsSwapDispBuff(void);
 extern void func_8003F528(s32 buffer);
 extern void func_80040B8C(void);
 
-/* Datos pequenos direccionados con $gp (0x80069320 + desplazamiento). */
+/*
+ * Datos pequenos direccionados con $gp (0x80069320 + desplazamiento). D_80069488 lleva volatile
+ * igual que en cargador_de_niveles_y_cd.c, que es quien lo escribe: la definicion tentativa debe
+ * tener el mismo calificador en los dos archivos, y la medicion de ambos con y sin volatile
+ * deja las funciones en C del par con la misma puntuacion con volatile y empeora func_8004109C
+ * (105 a 705) sin el.
+ */
 s8 D_80069338;
 u8 D_800694A8;
 s32 D_800694A4;
-s32 D_80069488;
+volatile s32 D_80069488;
 
 /*
  * Retorno de llamada de DrawSync: si hay un cuadro por presentar (cuenta de cuadros
