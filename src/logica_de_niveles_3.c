@@ -1,5 +1,6 @@
 #include "common.h"
 #include "globales.h"
+#include "gte.h"
 #include "objetos.h"
 #include "niveles.h"
 
@@ -7,9 +8,408 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_80026298);
 
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_80026FEC);
 
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002BA80);
+void func_8002BA80(Objeto* o)
+{
+    TrabajoZona* t;
+    NodoDisparador* n;
+    Objeto* h;
+    void* area;
+    u32 azar;
+    u16 salto;
+    NodoDisparador* m;
+    NodoDisparador* nx;
+    s32 sj;
 
+    t = TRABAJO_ZONA;
+    area = (void*)0x1F800038;
+    if (o->flags0C & 0x14) {
+        if (o->flags0C & 0x10) {
+            D_8006D9B8[0] = o;
+        } else {
+            t->vx = D_80069698->param.trans.vx - o->param.trans.vx;
+            t->vy = 0;
+            t->vz = D_80069698->param.trans.vz - o->param.trans.vz;
+            if ((s32)func_80044940((s32*)0x1F800024) < 0x7D0) {
+                D_8006D9B8[0] = o;
+            }
+        }
+    }
+    t->nodo = (NodoDisparador*)o->apoyos;
+    if (t->nodo == 0) {
+        return;
+    }
+    do {
+        t->flags = t->nodo->flags;
+        if (t->flags & 2) {
+            n = t->nodo;
+            azar = BugsRand() & 0xFFFF;
+            if (!((u16)n->p1C < azar)) {
+                goto siguiente;
+            }
+        } else if (t->flags & 0x20000) {
+            n = t->nodo;
+            azar = BugsRand() & 0xFFFF;
+            if (!((u16)n->p20 < azar)) {
+                goto siguiente;
+            }
+        }
+        if (t->nodo->cond != 0 && TestLogicCond(o, &t->nodo->cond) == 0) {
+            salto = t->nodo->desplazamiento;
+            if (salto == 0) {
+                goto siguiente;
+            }
+            t->salto = salto;
+            sj = (s16)salto;
+            m = t->nodo;
+            if (sj != m->id) {
+                do {
+                    t->previo = m;
+                    nx = t->nodo->sig;
+                    t->nodo = nx;
+                    m = nx;
+                } while ((s16)salto != nx->id);
+            }
+            t->nodo = t->previo;
+            goto siguiente;
+        }
+        if (t->flags & 0x18400000) {
+            if (t->flags & 0x400000) {
+                for (t->objeto = D_80069518; t->objeto != 0; t->objeto = t->objeto->siguiente) {
+                    if (t->objeto->w1C == t->nodo->p20 && !(t->objeto->flags14 & 0x100)) {
+                        break;
+                    }
+                }
+                if (t->objeto == 0) {
+                    goto siguiente;
+                }
+                func_8001CD84(t->objeto, t->nodo->p1C, area);
+            } else {
+                if (t->flags & 0x10000000) {
+                    for (t->objeto = D_80069518; t->objeto != 0; t->objeto = t->objeto->siguiente) {
+                        if (t->objeto->w1C == t->nodo->p20 && !(t->objeto->flags14 & 0x100)) {
+                            break;
+                        }
+                    }
+                    if (t->objeto == 0) {
+                        goto siguiente;
+                    }
+                    t->dx = t->objeto->param.trans.vx - o->param.trans.vx;
+                    t->dz = t->objeto->param.trans.vz - o->param.trans.vz;
+                    if (t->flags & 1) {
+                        t->dy = t->objeto->param.trans.vy - o->param.trans.vy;
+                    } else {
+                        t->dy = 0;
+                    }
+                } else {
+                    t->dx = D_80069640[0] - o->param.trans.vx;
+                    t->dz = D_80069640[2] - o->param.trans.vz;
+                    if (t->flags & 1) {
+                        t->dy = D_80069640[1] - o->param.trans.vy;
+                    } else {
+                        t->dy = 0;
+                    }
+                }
+                gte_ldlvl(&t->dx);
+                gte_sqr0();
+                gte_stlvnl(&t->dx);
+                t->distancia = SquareRoot0(t->dx + t->dy + t->dz);
+                if (t->flags & 0x200000) {
+                    if ((u32)t->distancia < t->nodo->p1C) {
+                        goto siguiente;
+                    }
+                } else {
+                    if (t->nodo->p1C < (u32)t->distancia) {
+                        goto siguiente;
+                    }
+                }
+            }
+        }
+        if (t->nodo->accion != 0) {
+            RunLogicAction(o, &t->nodo->cond);
+        }
+        if (t->flags & 0x600) {
+            if (t->flags & 0x200) {
+                func_8003F06C(o, t->nodo->p1C, 1, D_8006967C);
+            }
+            if (t->flags & 0x400) {
+                func_8003F06C(o, t->nodo->p1C, 2, D_8006967C);
+            }
+        }
+        if (t->flags & 0x40100) {
+            t->objeto = func_80036734((s16)t->nodo->p20, (s32*)&o->param.trans.vx, &o->param.giro.u.x);
+            h = t->objeto;
+            if (h == 0) {
+                goto siguiente;
+            }
+            h->w26 = o->w26;
+            if (t->flags & 0x1000) {
+                ZONA_PONER_CERO_3W(&t->objeto->i134);
+                ZONA_PONER_CERO_WH(&t->objeto->w12C);
+                ZONA_RELLENAR_1000(t->objeto->escala_rel);
+                t->objeto->coord.super = &D_80069698->coord;
+                t->objeto->w26 = D_80069698->w26;
+                t->objeto->p70 = D_80069698;
+                t->objeto->coord.param = (GsCOORD2PARAM*)t->objeto->escala_rel;
+                t->objeto->w26 = o->w26;
+                func_8001CFCC(&t->objeto->coord);
+            }
+            if (t->flags & 0x40000) {
+                azar = BugsRand();
+                t->objeto->param.giro.u.y = azar & 0xFFF;
+            }
+            if (t->flags & 0x1000000) {
+                t->objeto->s1E = o->s1E;
+            }
+        }
+        if (t->flags & 0x84890800) {
+            if (t->flags & 0x04000000) {
+                for (t->objeto = D_80069518; t->objeto != 0; t->objeto = t->objeto->siguiente) {
+                    if (t->objeto->w1C == t->nodo->p20 && !(t->objeto->flags14 & 0x100)) {
+                        break;
+                    }
+                }
+                if (t->objeto == 0) {
+                    goto siguiente;
+                }
+                t->objeto->flags14 |= 0x100;
+            }
+            if (t->flags & 0x800) {
+                D_80069698->param.giro.u.y = o->param.giro.u.y;
+                func_8001D31C(o->param.trans.vx, o->param.trans.vy, o->param.trans.vz);
+                D_80069698->flags14 |= 0x80000000;
+            }
+            if (t->flags < 0) {
+                func_8001D0FC(o, t->nodo->p20, area);
+            }
+            if (t->flags & 0x80000) {
+                D_80069662 = 1;
+                D_80010000 = t->nodo->p1C;
+            }
+            if (t->flags & 0x10000) {
+                o->flags14 |= 0x100;
+                return;
+            }
+        }
+        if (!(t->flags & 0x8000)) {
+            return;
+        }
+siguiente:
+        t->nodo = t->nodo->sig;
+    } while (t->nodo != 0);
+}
+
+#ifdef NON_MATCHING
+/* Pendiente: puntuacion 3551 con la configuracion versionada (g = 8 del archivo). Reparto de registros y orden de las cargas: el original conserva en s5 la parte alta de D_8006D928 y en s3 la matriz del scratchpad derivada de la misma base, relee las banderas del nodo de memoria tras cada almacen y planifica las cargas del giro del origen de otro modo. */
+void func_8002C1DC(Objeto* o)
+{
+    TrabajoCamara* t;
+    EstadoCamara* c;
+    MATRIX* m;
+    s32 paso;
+
+    t = TRABAJO_CAMARA;
+    c = &D_8006D928;
+    m = (MATRIX*)0x1F800050;
+    t->nodo = (NodoDisparador*)o->apoyos;
+    if (t->nodo == 0) {
+        return;
+    }
+    do {
+        t->flags = t->nodo->flags;
+        if (t->nodo->cond != 0 && TestLogicCond(o, &t->nodo->cond) == 0) {
+            goto siguiente;
+        }
+        if (t->flags & 0x4000) {
+            c->flags80 |= 8;
+        }
+        if (t->flags & 0x8010) {
+            if (t->flags & 0x20) {
+                t->origen = D_80069698;
+            } else if (t->flags & 0x40) {
+                for (t->origen = D_80069518; t->origen != 0; t->origen = t->origen->siguiente) {
+                    if (t->origen->w1C == t->nodo->p20 && !(t->origen->flags14 & 0x100)) {
+                        break;
+                    }
+                }
+            }
+            if (t->origen == 0) {
+                goto siguiente;
+            }
+            t->dx = t->origen->param.trans.vx - o->param.trans.vx;
+            t->dz = t->origen->param.trans.vz - o->param.trans.vz;
+            if (t->flags & 0x100) {
+                t->dy = t->origen->param.trans.vy - o->param.trans.vy;
+            } else {
+                t->dy = 0;
+            }
+            gte_ldlvl(&t->dx);
+            gte_sqr0();
+            gte_stlvnl(&t->dx);
+            t->modulo = SquareRoot0(t->dx + t->dy + t->dz);
+            if (t->flags & 0x10) {
+                if ((u32)t->modulo < t->nodo->p1C) {
+                    goto siguiente;
+                }
+            } else {
+                if (t->nodo->p1C < (u32)t->modulo) {
+                    goto siguiente;
+                }
+            }
+        }
+        if (t->nodo->accion != 0) {
+            RunLogicAction(o, &t->nodo->cond);
+        }
+        if (t->flags & 1) {
+            t->origen = 0;
+            if ((t->flags & 0x42) == 0x40) {
+                for (t->origen = D_80069518; t->origen != 0; t->origen = t->origen->siguiente) {
+                    if (t->origen->w1C == t->nodo->p20 && !(t->origen->flags14 & 0x100)) {
+                        break;
+                    }
+                }
+            } else if (t->flags & 0x80) {
+                t->origen = o;
+            }
+            if (t->origen != 0) {
+                if (t->flags & 0x20000) {
+                    t->vx = D_80069698->param.trans.vx - t->origen->param.trans.vx;
+                    t->vy = 0;
+                    t->vz = D_80069698->param.trans.vz - t->origen->param.trans.vz;
+                    t->gz = 0;
+                    t->gx = 0;
+                    t->escala.vz = 0;
+                    t->escala.vy = 0x1000;
+                    t->escala.vx = 0x1000;
+                    t->gy = 0x1000 - t->origen->param.giro.u.y;
+                    RotMatrix((SVECTOR*)&t->gx, m);
+                    ApplyMatrixSV(m, (SVECTOR*)&t->vx, (SVECTOR*)&t->vx);
+                    RotMatrix(&t->origen->param.giro.rotate, m);
+                    ScaleMatrix(m, &t->escala);
+                    ApplyMatrixSV(m, (SVECTOR*)&t->vx, (SVECTOR*)&t->vx);
+                    c->dvx = t->origen->param.trans.vx + (s16)t->vx;
+                    c->dvy = t->origen->param.trans.vy + (s16)t->vy;
+                    c->dvz = t->origen->param.trans.vz + (s16)t->vz;
+                } else {
+                    c->dvx = t->origen->param.trans.vx;
+                    c->dvy = t->origen->param.trans.vy;
+                    c->dvz = t->origen->param.trans.vz;
+                }
+            } else if (t->flags & 0x80000) {
+                t->vx = 0;
+                t->vy = -(u16)t->nodo->p20;
+                t->vz = (u16)t->nodo->p1C;
+                GEO_IDENTIDAD(m);
+                RotMatrixY(D_80069698->param.giro.rotate.vy + 0x800, m);
+                ApplyMatrix(m, (SVECTOR*)&t->vx, &t->r);
+                c->dvx += ((D_80069698->param.trans.vx + t->r.vx) - c->dvx) >> 2;
+                c->dvy += ((D_80069698->param.trans.vy + t->r.vy) - c->dvy) >> 2;
+                c->dvz += ((D_80069698->param.trans.vz + t->r.vz) - c->dvz) >> 2;
+                c->dmx += (D_80069698->param.trans.vx - c->dmx) >> 2;
+                c->dmy += (D_80069698->param.trans.vy - c->dmy) >> 2;
+                c->dmz += (D_80069698->param.trans.vz - c->dmz) >> 2;
+            } else if (t->flags & 0x100000) {
+                c->dvx = D_8006D928.vpx;
+                c->dvy = c->vpy;
+                c->dvz = c->vpz;
+            } else {
+                c->dvx = t->nodo->p1C;
+                c->dvy = t->nodo->p20;
+                c->dvz = t->nodo->desplazamiento;
+            }
+            if (t->flags & 0x40000) {
+                t->ex = D_8006D928.vpx - c->dvx;
+                t->ey = c->vpy - c->dvy;
+                t->ez = c->vpz - c->dvz;
+                GEO_CARGAR_W(&t->ex);
+                GEO_GUARDAR_W_T1(&t->r);
+                gte_ldlvl(&t->r);
+                gte_sqr0();
+                gte_stlvnl(&t->r);
+                t->modulo = SquareRoot0(t->r.vx + t->r.vy + t->r.vz) | 1;
+                t->r.vx = (t->ex << 12) / t->modulo;
+                t->r.vy = (t->ey << 12) / t->modulo;
+                t->r.vz = (t->ez << 12) / t->modulo;
+                paso = t->modulo - 0x1F4;
+                if (paso < 0x1F4) {
+                    t->modulo = t->modulo >> 3;
+                } else {
+                    t->modulo = paso;
+                }
+                if (t->modulo > 0) {
+                    c->dvx += (t->r.vx * t->modulo) >> 12;
+                    c->dvy += (t->r.vy * t->modulo) >> 12;
+                    c->dvz += (t->r.vz * t->modulo) >> 12;
+                }
+            }
+            c->flags80 |= 0x400;
+        } else if (t->flags & 4) {
+            c->flags80 &= 0xBBFF;
+        }
+        if (t->flags & 2) {
+            if (t->flags & 0x40) {
+                for (t->origen = D_80069518; t->origen != 0; t->origen = t->origen->siguiente) {
+                    if (t->origen->w1C == t->nodo->p20 && !(t->origen->flags14 & 0x100)) {
+                        break;
+                    }
+                }
+                if (t->origen != 0) {
+                    c->dmx = t->origen->param.trans.vx;
+                    c->dmy = t->origen->param.trans.vy;
+                    c->dmz = t->origen->param.trans.vz;
+                }
+            } else if (t->flags & 0x80) {
+                c->dmx = o->param.trans.vx;
+                c->dmy = o->param.trans.vy;
+                c->dmz = o->param.trans.vz;
+            } else if (t->flags & 0x100000) {
+                c->dmx = c->x;
+                c->dmy = c->y;
+                c->dmz = c->z;
+            } else {
+                c->dmx = t->nodo->p1C;
+                c->dmy = t->nodo->p20;
+                c->dmz = t->nodo->desplazamiento;
+            }
+            c->flags80 |= 0x800;
+        } else if (t->flags & 8) {
+            c->flags80 &= 0xB7FF;
+        }
+        if (t->flags & 0x400) {
+            c->flags80 |= 0x1000;
+            c->zoom = t->nodo->p1C;
+        } else if (t->flags & 0x800) {
+            c->flags80 &= 0xEFFF;
+        }
+        if (t->flags & 0x10000) {
+            c->c68 = D_8006D928.vpx;
+            c->c94 = D_8006D928.vpx;
+            c->cB4 = D_8006D928.vpx;
+            c->c6C = c->vpy;
+            c->c98 = c->vpy;
+            c->cB8 = c->vpy;
+            c->c70 = c->vpz;
+            c->c9C = c->vpz;
+            c->cBC = c->vpz;
+            c->cA4 = c->x;
+            c->cA8 = c->y;
+            c->cAC = c->z;
+            c->flags80 |= 0x4000;
+            return;
+        }
+        if (t->flags & 0x200) {
+            o->flags14 |= 0x100;
+            return;
+        }
+        if (!(t->flags & 0x1000)) {
+            return;
+        }
+siguiente:
+        t->nodo = t->nodo->sig;
+    } while (t->nodo != 0);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002C1DC);
+#endif
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 510 con la configuracion versionada (g = 8 del archivo). Difiere el orden de las instrucciones del avance de cuadro: el original carga el intervalo (b05) antes de incrementar el cuadro y lo guarda en el hueco del salto tras comparar con el ultimo cuadro. */
@@ -413,7 +813,65 @@ void func_8002F614(Objeto* o)
     func_8001CF50(o);
 }
 
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F6B4);
+void func_8002F6B4(Objeto* o)
+{
+    TrabajoSonda* t;
+    u16 x;
+    u16 y;
+    u16 z;
+    u16 bits;
+    s32 a;
+    void* area;
+
+    area = (void*)0x1F800044;
+    t = TRABAJO_SONDA;
+    if (o->u78.p == 0) {
+        func_8001F268(o, &o->trabajo, 5, 2, area);
+    }
+    x = (u16)D_8006D928.x - (u16)D_8006D928.vpx;
+    t->cx = x;
+    y = (u16)D_8006D928.y - (u16)D_8006D928.vpy;
+    z = (u16)D_8006D928.z - (u16)D_8006D928.vpz;
+    t->cy = y;
+    t->cz = z;
+    bits = o->w196;
+    D_800695EC = o;
+    if (bits & 1) {
+        t->cy = -y;
+        t->cz = -z;
+    } else if (bits & 2) {
+        t->cx = -x;
+        t->cz = -z;
+    } else {
+        t->cx = -x;
+        t->cy = -y;
+    }
+    GEO_COMPLEMENTO(&o->param.giro.rotate);
+    ZONA_GUARDAR_H_T1(t);
+    ZONA_CARGAR_H(&t->cx);
+    ZONA_SUMAR_H(t);
+    GEO_IDENTIDAD(&t->m);
+    RotMatrixX(t->gx, &t->m);
+    RotMatrixY((s16)t->gy, &t->m);
+    RotMatrixZ((s16)t->gz, &t->m);
+    t->actual = D_80069630;
+    if (t->actual != 0) {
+        do {
+            GEO_CARGAR_W(&t->actual->param.trans);
+            GEO_RESTAR_W(&o->param.trans);
+            GEO_GUARDAR_H_T4(&t->px);
+            ApplyMatrixSV(&t->m, (SVECTOR*)&t->px, (SVECTOR*)&t->qx);
+            a = (s16)t->qx;
+            if (o->min.vx < a && a < o->max.vx) {
+                a = (s16)t->qz;
+                if (o->min.vz < a && a < o->max.vz) {
+                    t->actual->flags18 |= 8;
+                }
+            }
+            t->actual = t->actual->sig10;
+        } while (t->actual != 0);
+    }
+}
 
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F968);
 

@@ -190,8 +190,20 @@ typedef struct Objeto {
     s16 h112;               /* func_8001C6CC: solo sh $zero, 0x112($s1) en 0x8001C86C y 0x8001C8AC; sin lectura que fije el signo */
     u8 pad114[0x116 - 0x114];
     s16 h116;               /* func_8001C424: lh 0x116($s0) en 0x8001C558, sh en 0x8001C4E0 y 0x8001C604 */
-    u8 pad118[0x13C - 0x118];
-    s32 i13C;               /* func_80020A90: sw */
+    u8 pad118[4];
+    /*
+     * +0x11C: transformacion relativa que func_8002BA80 reinicia en el hijo que cuelga del jugador
+     * (escala 0x1000 en las tres palabras: sw 0x8002BF84, 0x8002BF88 y 0x8002BF8C); el nodo
+     * coord.param del hijo apunta aqui (sw 0x8002BFCC).
+     */
+    s32 escala_rel[3];
+    u8 pad128[4];
+    s32 w12C;               /* func_8002BA80: sw zero, 0x8002BF5C */
+    s16 h130;               /* func_8002BA80: sh zero, 0x8002BF60 */
+    u8 pad132[2];
+    s32 i134;               /* func_8002BA80: sw zero, 0x8002BF40; desplazamiento respecto al portador */
+    s32 i138;               /* func_8002BA80: sw zero, 0x8002BF44 */
+    s32 i13C;               /* func_80020A90: sw; func_8002BA80: sw zero, 0x8002BF48 */
     u8 pad140[0x144 - 0x140];
     BloqueTrabajo trabajo;  /* +0x144, ver BloqueTrabajo */
     struct TablaFotogramas* tabla;      /* func_80044EA8: sw de la tabla activa */
@@ -257,6 +269,22 @@ typedef struct EstadoCamara {
     s32 cB4;                /* func_8001CC68: sw, copia del punto de vista */
     s32 cB8;
     s32 cBC;
+    u8 padC0[4];
+    /*
+     * Punto de vista deseado (+0xC4) y punto de mira deseado (+0xD4) que fijan los directores de
+     * camara, y distancia de acercamiento (+0xE4). Los escribe func_8002C1DC con sw: 0x8002C574,
+     * 0x8002C590 y 0x8002C5D0 (vista), 0x8002C6E0, 0x8002C6FC y 0x8002C71C (mira), 0x8002CAA4
+     * (distancia); los lee con lw en 0x8002C670, 0x8002C690 y 0x8002C6B0.
+     */
+    s32 dvx;
+    s32 dvy;
+    s32 dvz;
+    u8 padD0[4];
+    s32 dmx;
+    s32 dmy;
+    s32 dmz;
+    u8 padE0[4];
+    s32 zoom;
 } EstadoCamara;
 
 /*
@@ -815,6 +843,12 @@ extern u8* D_80069550;
 extern u32* D_80069598;
 extern s16* D_800695AC;
 extern s16* D_800695FC;
+
+/*
+ * D_8006D9B8: objeto activo cercano al jugador. Lo escriben con sw las zonas de eventos
+ * (func_8002BA80: sw 0x8002BAC8 y 0x8002BB24) y el personaje animado.
+ */
+extern Objeto* D_8006D9B8[];
 
 /*
  * Llamadas al sistema del kernel (syscall 0 con a0 = 1 y 2, 16 bytes escritos a mano cada una en
