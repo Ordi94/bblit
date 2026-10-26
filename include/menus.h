@@ -232,6 +232,58 @@ typedef struct EntradaCola {
     u32 color3;
 } EntradaCola;
 
+/* Cuadrilatero de color por vertice (POLY_G4, 0x24 bytes). */
+typedef struct PoligonoG4 {
+    u32 tag;
+    u32 c0;
+    u32 xy0;
+    u32 c1;
+    u32 xy1;
+    u32 c2;
+    u32 xy2;
+    u32 c3;
+    u32 xy3;
+} PoligonoG4;
+
+/* Cuadrilatero con textura y color plano (POLY_FT4, 0x28 bytes). */
+typedef struct PoligonoFT4 {
+    u32 tag;
+    u32 c0;
+    u32 xy0;
+    u16 uv0;
+    u16 clut;
+    u32 xy1;
+    u16 uv1;
+    u16 tpage;
+    u32 xy2;
+    u16 uv2;
+    u16 pad1E;
+    u32 xy3;
+    u16 uv3;
+    u16 pad26;
+} PoligonoFT4;
+
+/* Cuadrilatero con textura y color por vertice (POLY_GT4, 0x34 bytes). */
+typedef struct PoligonoGT4 {
+    u32 tag;
+    u32 c0;
+    u32 xy0;
+    u16 uv0;
+    u16 clut;
+    u32 c1;
+    u32 xy1;
+    u16 uv1;
+    u16 tpage;
+    u32 c2;
+    u32 xy2;
+    u16 uv2;
+    u16 pad26;
+    u32 c3;
+    u32 xy3;
+    u16 uv3;
+    u16 pad32;
+} PoligonoGT4;
+
 /*
  * Escena en curso (segundo argumento de las rutinas de modelos): +4..+6 son los bytes de estado
  * que se pasan al dibujador de modelos (func_8003B26C, func_8003B354); +8 la profundidad del
@@ -262,7 +314,7 @@ typedef struct EscenaDibujo {
  * textura y color plano, 24 y 28 con textura y color por vertice); +0x10: registro de banderas del
  * GTE (negativo si el poligono se descarta); +0x18: cursor de la primitiva siguiente; +0x1C,
  * +0x20 y +0x24: bases de las tres listas de ordenacion, de resolucion decreciente; +0x28:
- * entrada elegida; +0x2C: plantilla de poligono con textura y color por vertice (POLY_GT3) donde
+ * entrada elegida; +0x2C: plantilla de poligono con textura y color por vertice (POLY_GT4, 0x34 bytes) donde
  * func_8003CA5C deja las coordenadas proyectadas y de la que copia los tres formatos de
  * primitiva; su clut (+0x3A) y su pagina de textura (+0x46) los fija func_8003DA4C; +0x60: cuatro
  * vertices de trabajo.
@@ -278,14 +330,13 @@ typedef struct VistaDibujo {
     u8 pad0A[2];
     s32 indice;
     s32 bandera;
-    u8 pad14[4];
+    s32 bandera2;
     s32 cursor;
     u32* ot0;
     u32* ot1;
     u32* ot2;
     u32* destino;
-    PoligonoGT3 plantilla;
-    u8 pad54[0x60 - 0x54];
+    PoligonoGT4 plantilla;
     Vertice12 trabajo[4];
 } VistaDibujo;
 

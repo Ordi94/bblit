@@ -42,6 +42,8 @@ extern s32 D_80069680;
 extern void func_8003DF10(s32 cursor);
 extern s32 func_8003D7C4(void);
 extern void func_8003D880(VistaDibujo* ctx);
+extern s32 func_8003D814(void);
+extern void func_8003D0D4(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
 
 extern ModeloDibujo* D_8006B568[];
 extern u16 D_8006969C;
@@ -69,7 +71,6 @@ extern void func_8003D904(Vertice12* dest, Vertice12* a, Vertice12* b);
 extern void func_8003D988(Vertice12* dest, Vertice12* a, Vertice12* b);
 extern void func_8003DA4C(Vertice12* a, Vertice12* b, Vertice12* c, VistaDibujo* ctx);
 extern s32 func_8003DD70(VerticeCaja* v, LimitesPantalla* lim);
-extern void func_8003D0D4(VistaDibujo* vista, s32 cero, Vertice12* trabajo);
 
 
 void func_8003AA38(void)
@@ -612,7 +613,7 @@ void func_8003CA5C(VistaDibujo* ctx, s8 nivel, Vertice12* base)
 {
     Vertice12* v;
     Vertice12* t;
-    PoligonoGT3* pl;
+    PoligonoGT4* pl;
 
     v = base;
     base = (Vertice12*)((u8*)base + 0x30);
@@ -626,7 +627,7 @@ void func_8003CA5C(VistaDibujo* ctx, s8 nivel, Vertice12* base)
         pl->uv2 = VERT_UV(&v[2]);
         gte_stflg(&ctx->bandera);
         gte_stsxy3_gt3(pl);
-        *(u32*)((u8*)pl + 0x2C) = pl->xy2;
+        pl->xy3 = pl->xy2;
         if (func_8003DD70((VerticeCaja*)pl, (LimitesPantalla*)ctx) == 0) {
             if (ctx->bandera >= 0 || ctx->b1 == nivel) {
                 ctx->indice = func_8003D7C4();
@@ -723,7 +724,128 @@ void func_8003CA5C(VistaDibujo* ctx, s8 nivel, Vertice12* base)
     func_8003CA5C(ctx, nivel, (Vertice12*)base);
 }
 
-INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003D0D4);
+void func_8003D0D4(VistaDibujo* ctx, s8 nivel, Vertice12* base)
+{
+    Vertice12* v;
+    Vertice12* t;
+    PoligonoGT4* pl;
+
+    v = base;
+    base = (Vertice12*)((u8*)base + 0x30);
+    t = base;
+    if (nivel != 0) {
+        gte_ldv3(&v[0], &v[1], &v[2]);
+        gte_rtpt();
+        pl = &ctx->plantilla;
+        pl->uv0 = VERT_UV(&v[0]);
+        pl->uv1 = VERT_UV(&v[1]);
+        pl->uv2 = VERT_UV(&v[2]);
+        pl->uv3 = VERT_UV(&v[3]);
+        gte_stflg(&ctx->bandera);
+        gte_stsxy3_gt3(pl);
+        gte_ldv0(&v[3]);
+        gte_rtps();
+        gte_stflg(&ctx->bandera2);
+        ctx->bandera = ctx->bandera | ctx->bandera2;
+        gte_stsxy(&pl->xy3);
+        if (func_8003DD70((VerticeCaja*)pl, (LimitesPantalla*)ctx) == 0) {
+            if (ctx->bandera >= 0 || ctx->b1 == nivel) {
+                ctx->indice = func_8003D814();
+                func_8003D880(ctx);
+                func_8003DF10(ctx->cursor);
+                v[0].codigo = (u8)ctx->b2;
+                if (ctx->tipo == 0xC) {
+                    PRIM(PoligonoG4)->tag = pl->tag;
+                    PRIM(PoligonoG4)->c0 = VERT_COLOR(&v[0]);
+                    PRIM(PoligonoG4)->xy0 = pl->xy0;
+                    PRIM(PoligonoG4)->c1 = VERT_COLOR(&v[1]);
+                    PRIM(PoligonoG4)->xy1 = pl->xy1;
+                    PRIM(PoligonoG4)->c2 = VERT_COLOR(&v[2]);
+                    PRIM(PoligonoG4)->xy2 = pl->xy2;
+                    PRIM(PoligonoG4)->c3 = VERT_COLOR(&v[3]);
+                    PRIM(PoligonoG4)->xy3 = pl->xy3;
+                    PRIM(PoligonoG4)->tag = (*ctx->destino & 0xFFFFFF) | 0x08000000;
+                    *ctx->destino = (u32)ctx->cursor & 0xFFFFFF;
+                    ctx->cursor = ctx->cursor + 0x24;
+                } else if (ctx->tipo == 0x14) {
+                    PRIM(PoligonoFT4)->tag = pl->tag;
+                    PRIM(PoligonoFT4)->c0 = VERT_COLOR(&v[0]);
+                    PRIM(PoligonoFT4)->xy0 = pl->xy0;
+                    PALABRA(PRIM(PoligonoFT4)->uv0) = PALABRA(pl->uv0);
+                    PRIM(PoligonoFT4)->xy1 = pl->xy1;
+                    PALABRA(PRIM(PoligonoFT4)->uv1) = PALABRA(pl->uv1);
+                    PRIM(PoligonoFT4)->xy2 = pl->xy2;
+                    PALABRA(PRIM(PoligonoFT4)->uv2) = PALABRA(pl->uv2);
+                    PRIM(PoligonoFT4)->xy3 = pl->xy3;
+                    PALABRA(PRIM(PoligonoFT4)->uv3) = PALABRA(pl->uv3);
+                    PRIM(PoligonoFT4)->tag = (*ctx->destino & 0xFFFFFF) | 0x09000000;
+                    *ctx->destino = (u32)ctx->cursor & 0xFFFFFF;
+                    ctx->cursor = ctx->cursor + 0x28;
+                } else {
+                    PRIM(PoligonoGT4)->tag = pl->tag;
+                    PRIM(PoligonoGT4)->c0 = VERT_COLOR(&v[0]);
+                    PRIM(PoligonoGT4)->xy0 = pl->xy0;
+                    PALABRA(PRIM(PoligonoGT4)->uv0) = PALABRA(pl->uv0);
+                    PRIM(PoligonoGT4)->c1 = VERT_COLOR(&v[1]);
+                    PRIM(PoligonoGT4)->xy1 = pl->xy1;
+                    PALABRA(PRIM(PoligonoGT4)->uv1) = PALABRA(pl->uv1);
+                    PRIM(PoligonoGT4)->c2 = VERT_COLOR(&v[2]);
+                    PRIM(PoligonoGT4)->xy2 = pl->xy2;
+                    PALABRA(PRIM(PoligonoGT4)->uv2) = PALABRA(pl->uv2);
+                    PRIM(PoligonoGT4)->c3 = VERT_COLOR(&v[3]);
+                    PRIM(PoligonoGT4)->xy3 = pl->xy3;
+                    PALABRA(PRIM(PoligonoGT4)->uv3) = PALABRA(pl->uv3);
+                    PRIM(PoligonoGT4)->tag = (*ctx->destino & 0xFFFFFF) | 0x0C000000;
+                    *ctx->destino = (u32)ctx->cursor & 0xFFFFFF;
+                    ctx->cursor = ctx->cursor + 0x34;
+                }
+                if (CURSOR_RELEIDO(ctx) > D_8006958C) {
+                    *(s32*)&ctx->cursor = D_80069680;
+                }
+                return;
+            }
+        } else {
+            return;
+        }
+    }
+    *(Copia12*)&t[0] = *(Copia12*)&v[0];
+    nivel = nivel + 1;
+    if (ctx->tipo == 0x14) {
+        func_8003D904(&t[1], &v[0], &v[1]);
+        func_8003D904(&t[2], &v[0], &v[2]);
+        func_8003D904(&t[3], &v[0], &v[3]);
+    } else {
+        func_8003D988(&t[1], &v[0], &v[1]);
+        func_8003D988(&t[2], &v[0], &v[2]);
+        func_8003D988(&t[3], &v[0], &v[3]);
+    }
+    func_8003D0D4(ctx, nivel, (Vertice12*)base);
+    func_8003DA4C(&v[0], &v[1], &t[1], ctx);
+    *(Copia12*)&t[0] = *(Copia12*)&v[1];
+    if (ctx->tipo == 0x14) {
+        func_8003D904(&t[2], &v[1], &v[3]);
+    } else {
+        func_8003D988(&t[2], &v[1], &v[3]);
+    }
+    func_8003D0D4(ctx, nivel, (Vertice12*)base);
+    func_8003DA4C(&v[1], &v[3], &t[2], ctx);
+    *(Copia12*)&t[0] = *(Copia12*)&v[3];
+    if (ctx->tipo == 0x14) {
+        func_8003D904(&t[1], &v[3], &v[2]);
+    } else {
+        func_8003D988(&t[1], &v[3], &v[2]);
+    }
+    func_8003D0D4(ctx, nivel, (Vertice12*)base);
+    func_8003DA4C(&v[3], &v[2], &t[1], ctx);
+    *(Copia12*)&t[0] = *(Copia12*)&v[2];
+    if (ctx->tipo == 0x14) {
+        func_8003D904(&t[2], &v[0], &v[2]);
+    } else {
+        func_8003D988(&t[2], &v[0], &v[2]);
+    }
+    func_8003D0D4(ctx, nivel, (Vertice12*)base);
+    func_8003DA4C(&v[2], &v[0], &t[2], ctx);
+}
 
 s32 func_8003D7C4(void)
 {
