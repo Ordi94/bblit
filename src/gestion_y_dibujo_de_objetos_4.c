@@ -351,16 +351,20 @@ typedef struct CuerpoSombra {
     GsCOORDINATE2 coord;
 } CuerpoSombra;
 
+/* Numero de objetos con sombra (lh y lhu en func_8003A5C8). menus_e_interfaz.c la declara tambien; la declaracion compartida pertenece a globales.h. */
 extern s16 D_80069532;
+/* Bandera del fondo: func_8003A5C8 la carga con lb (menus_e_interfaz.c solo la escribe y la declara u8). */
 extern s8 D_80069600;
 extern void func_8003753C(void* m);
 extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 930 con la configuracion versionada (g = 8 del archivo). Difiere el reparto de registros del prologo, el cierre del bucle de nodos (el original conserva el salto condicional hacia atras) y la direccion de la caja de relleno, que el original deriva de la base del scratchpad. */
-void func_8003A5C8(Objeto** objetos)
+/* El parametro es el arreglo de punteros a objetos con sombra; se recibe como void* porque el llamador (arranque_y_bucle_principal_2.c) lo declara asi. */
+void func_8003A5C8(void* a0)
 {
     ContextoSombras* c;
+    Objeto** objetos = (Objeto**)a0;
     Sonda* area;
     MATRIX* mat;
     Ayuda* mod;
