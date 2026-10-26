@@ -31,7 +31,7 @@ def construir_parser() -> argparse.ArgumentParser:
 
     Returns:
         argparse.ArgumentParser: Analizador con las ordenes ``split``, ``build``, ``verify``,
-        ``clean``, ``diff``, ``probar`` y ``progreso``.
+        ``clean``, ``diff``, ``probar``, ``progreso`` y ``verificar-config``.
 
     Ejemplo:
         args = construir_parser().parse_args(["clean"])
@@ -56,6 +56,10 @@ def construir_parser() -> argparse.ArgumentParser:
         "carpeta", type=Path, help="carpeta con una variante completa de la funcion por archivo .c"
     )
     sub.add_parser("progreso", help="mide la descompilacion y escribe docs/PROGRESO.md y build/progreso.json")
+    sub.add_parser(
+        "verificar-config",
+        help="avisa de las claves de [datos_pequenos] que config/symbols.txt ya declara (solo informa)",
+    )
     return parser
 
 
@@ -75,6 +79,33 @@ def _ejecutar_verificacion(raiz: Path, rutas: Rutas, referencia: EjecutableRefer
     coincide, mensaje = infra.verificar(raiz, original, referencia)
     print(mensaje)
     return 0 if coincide else 1
+
+
+def _imprimir_avisos(avisos: Sequence[str]) -> None:
+    """Imprime cada aviso de configuracion por la salida de errores."""
+    for aviso in avisos:
+        print(f"aviso: {aviso}", file=sys.stderr)
+
+
+def _avisar_configuracion(raiz: Path) -> None:
+    """Avisa de la configuracion repetida al terminar ``split`` sin tumbarlo.
+
+    Es una comprobacion informativa: si no se puede hacer, se dice y se sigue.
+    """
+    try:
+        avisos = infra.verificar_configuracion(raiz)
+    except (ValueError, FileNotFoundError, OSError) as error:
+        print(f"aviso: no se pudo verificar la configuracion: {error}", file=sys.stderr)
+        return
+    _imprimir_avisos(avisos)
+
+
+def _ejecutar_verificacion_configuracion(raiz: Path) -> int:
+    """Implementa ``verificar-config``; solo informa, asi que devuelve 0 aunque haya avisos."""
+    avisos = infra.verificar_configuracion(raiz)
+    _imprimir_avisos(avisos)
+    print(f"verificar-config: {len(avisos)} avisos")
+    return 0
 
 
 def _ejecutar_progreso(raiz: Path) -> int:
@@ -165,6 +196,7 @@ def _ejecutar_construccion(
     if original is not None:
         infra.dividir(raiz, original, referencia, herramientas, ejecutar)
         print("split completado: asm/ y script del enlazador generados")
+        _avisar_configuracion(raiz)
         return 0
     destino = compilacion.construir_mixto(
         raiz,
@@ -224,6 +256,8 @@ def main(
     try:
         if args.orden == "progreso":
             return _ejecutar_progreso(raiz)
+        if args.orden == "verificar-config":
+            return _ejecutar_verificacion_configuracion(raiz)
         referencia = infra.leer_referencia(raiz / RUTA_REFERENCIA)
         if args.orden == "clean":
             return _ejecutar_clean(raiz, referencia)

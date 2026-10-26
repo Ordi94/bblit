@@ -532,7 +532,8 @@ una decisión del desarrollador, así el progreso solo cuenta lo que alguien esc
 | `verify` | Compara el SHA-256 con el del original. Imprime `OK` o `FAIL` con el desplazamiento de la primera diferencia; si no existe el ejecutable reconstruido imprime `FAIL ... no existe` y devuelve 1. |
 | `diff <función>` | Compila el `.c` que contiene la función con `NON_MATCHING`, ensambla el original y ejecuta `asm-differ`. Código 0 si la puntuación informada es 0: instrucciones iguales o bytes enlazados iguales (en ese caso informa 0 y añade una nota con las referencias en forma numérica y la puntuación de `asm-differ`). Una función que sigue solo en `INCLUDE_ASM` se rechaza: compararla consigo misma daría 0 sin significar nada. |
 | `probar <función> <carpeta>` | Compila y puntúa cada variante `.c` de la carpeta contra el original y muestra la tabla ordenada. Código 0 si la mejor coincide (puntuación 0 o bytes iguales). |
-| `progreso` | Escribe `docs/PROGRESO.md` y `build/progreso.json`. No necesita el disco ni el toolchain. |
+| `progreso` | Escribe `docs/PROGRESO.md` y `build/progreso.json`. No necesita el disco ni el toolchain. Termina con error si algún bloque `NON_MATCHING` no lleva la línea `Pendiente: puntuacion N`. |
+| `verificar-config` | Avisa de las claves de `[datos_pequenos]` (`config/opciones_compilacion.toml`) cuya dirección ya declara `config/symbols.txt` (mismo nombre, otro nombre u otro tipo). Solo informa; `split` imprime los mismos avisos al terminar. No necesita el disco ni el toolchain. |
 | `clean` | Elimina `asm/`, `expected/` y los artefactos propios de `build/`. Conserva `asm/overlay/`, `expected/overlay/`, `build/overlay/`, `build/emulador/` y `build/bblit_prueba.*`, que son de otras herramientas. |
 
 Los objetos intermedios (`.i`, `.s` y `.o` de cada compilación) quedan en `build/src/` y los de

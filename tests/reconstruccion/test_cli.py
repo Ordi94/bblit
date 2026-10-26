@@ -108,6 +108,35 @@ def test_split_con_herramientas_sin_instalar(entorno_repo: Any, capsys: pytest.C
     assert "'ld' no esta instalado" in capsys.readouterr().err
 
 
+def test_split_avisa_de_los_datos_pequenos_repetidos_sin_cambiar_su_resultado(
+    entorno_repo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+    (raiz / "config" / "symbols.txt").write_text(
+        "D_80069330 = 0x80069330; // type:u8 size:0x8\n", encoding="utf-8"
+    )
+    (raiz / "config" / "opciones_compilacion.toml").write_text(
+        "[datos_pequenos]\nD_80069330 = 0x80069330\n", encoding="utf-8"
+    )
+    assert ejecutar_cli(raiz, variables, "split") == 0
+    salida = capsys.readouterr()
+    assert salida.out == "split completado: asm/ y script del enlazador generados\n"
+    assert salida.err == (
+        "aviso: [datos_pequenos] D_80069330 = 0x80069330: "
+        "mismo nombre: ya figura en config/symbols.txt, la clave puede retirarse\n"
+    )
+
+
+def test_split_no_falla_si_no_puede_verificar_la_configuracion(
+    entorno_repo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+    assert ejecutar_cli(raiz, variables, "split") == 0
+    salida = capsys.readouterr()
+    assert salida.out == "split completado: asm/ y script del enlazador generados\n"
+    assert salida.err == "aviso: no se pudo verificar la configuracion: falta config/symbols.txt\n"
+
+
 def test_build_sin_split_previo(entorno_repo: Any, capsys: pytest.CaptureFixture[str]) -> None:
     raiz, variables = entorno_repo
     assert ejecutar_cli(raiz, variables, "build") == 1
