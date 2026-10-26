@@ -18,7 +18,7 @@ typedef struct EscritorioDibujo {
     GsOT_TAG* ot1;
     GsOT_TAG* ot2;
     u8 pad24[0x34 - 0x24];
-    ObjetoEscena* actual;
+    Objeto* actual;
 } EscritorioDibujo;
 
 /* Entrada de la tabla D_8006B668 que lee el codigo superpuesto: dos medias palabras y un valor. */
@@ -40,7 +40,7 @@ extern EntradaPunto D_8006B668[];
  * que escribe sus primitivas en el buffer D_80076188. Las listas de ordenacion del buffer
  * activo se dejan en el scratchpad.
  */
-void func_800399C8(ObjetoEscena* lista)
+void func_800399C8(Objeto* lista)
 {
     EscritorioDibujo* sp;
     Ayuda* a;
@@ -67,8 +67,8 @@ void func_800399C8(ObjetoEscena* lista)
     __asm__ volatile ("ctc2 $0, $6");
     if (lista != 0) {
         do {
-            if (!(sp->actual->cab.libre & 2)) {
-                sp->actual = (ObjetoEscena*)sp->actual->cab.siguiente;
+            if (!(sp->actual->flags04 & 2)) {
+                sp->actual = sp->actual->siguiente;
             } else {
                 hay = 0;
                 if (sp->actual->w1C == 0x1ED) {
@@ -76,7 +76,7 @@ void func_800399C8(ObjetoEscena* lista)
                 } else {
                     sp->s0A = 0x118;
                 }
-                for (a = sp->actual->ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
+                for (a = sp->actual->u78.ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
                     if (a->flags8 & 6) {
                         hay = 1;
                         if (sp->actual->w1C == 0x1EC) {
@@ -96,13 +96,13 @@ void func_800399C8(ObjetoEscena* lista)
                     }
                 }
                 if (hay != 0) {
-                    for (a = sp->actual->ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
+                    for (a = sp->actual->u78.ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
                         if (a->flags8 & 6) {
                             D_80076188 = func_80010258(a, D_80076188, sp->area1, area2);
                         }
                     }
                 }
-                sp->actual = (ObjetoEscena*)sp->actual->cab.siguiente;
+                sp->actual = sp->actual->siguiente;
             }
         } while (sp->actual != 0);
     }

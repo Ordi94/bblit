@@ -24,8 +24,8 @@ extern s16 D_800694E6;
 extern EntradaId* D_800695D4;
 extern s16 D_80069660;
 extern Ayuda* D_8006964C;
-extern ObjetoEscena* D_800694DC;
-extern ObjetoEscena* D_800694B4;
+extern Objeto* D_800694DC;
+extern Objeto* D_800694B4;
 extern void* D_80069508;
 
 #ifdef NON_MATCHING
@@ -248,7 +248,7 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_800363D4);
  * juego en un bucle infinito si el pozo de ayudantes esta agotado (el original no tiene salida
  * de error).
  */
-Ayuda* func_80036474(ObjetoEscena* o, s32 clave)
+Ayuda* func_80036474(Objeto* o, s32 clave)
 {
     Ayuda* a;
 
@@ -257,23 +257,23 @@ Ayuda* func_80036474(ObjetoEscena* o, s32 clave)
         for (;;) {
         }
     }
-    o->ayudas = (Ayuda*)AppendListNode((NodoLista*)o->ayudas, (NodoLista*)a);
+    o->u78.ayudas = (Ayuda*)AppendListNode((NodoLista*)o->u78.ayudas, (NodoLista*)a);
     a->flags8 = 0x8008;
     a->clave = clave;
     return a;
 }
 
 /* Quita de la lista de 'o' el ayudante de la clave dada; detiene el juego si no existe. */
-void func_800364E0(ObjetoEscena* o, s32 clave)
+void func_800364E0(Objeto* o, s32 clave)
 {
     NodoClave* e;
 
-    e = func_800361CC((NodoClave*)o->ayudas, clave);
+    e = func_800361CC((NodoClave*)o->u78.ayudas, clave);
     if (e == 0) {
         for (;;) {
         }
     }
-    o->ayudas = (Ayuda*)RemoveListNode((NodoLista*)o->ayudas, (NodoLista*)e);
+    o->u78.ayudas = (Ayuda*)RemoveListNode((NodoLista*)o->u78.ayudas, (NodoLista*)e);
 }
 
 /*
@@ -282,9 +282,9 @@ void func_800364E0(ObjetoEscena* o, s32 clave)
  */
 void func_8003652C(void)
 {
-    ObjetoEscena* o;
+    Objeto* o;
 
-    D_800694DC = (ObjetoEscena*)AllocListNode((u8*)D_8006968C, 0x1F4, D_8006955C * 0x1F4);
+    D_800694DC = (Objeto*)AllocListNode((u8*)D_8006968C, 0x1F4, D_8006955C * 0x1F4);
     if (D_800694DC == 0) {
         for (;;) {
         }
@@ -293,8 +293,8 @@ void func_8003652C(void)
     o = D_800694DC;
     o->w1C = 5;
     o->s2A = 0;
-    o->s2C = 7;
-    o->cab.libre |= 2;
+    o->w2C = 7;
+    o->flags04 |= 2;
 }
 
 /*
@@ -305,10 +305,10 @@ void func_8003652C(void)
  */
 void func_800365D0(void)
 {
-    ObjetoEscena* o;
+    Objeto* o;
     s32 i;
 
-    D_800694B4 = (ObjetoEscena*)AllocListNode(D_8006968C, 0x1F4, D_8006955C * 0x1F4);
+    D_800694B4 = (Objeto*)AllocListNode(D_8006968C, 0x1F4, D_8006955C * 0x1F4);
     if (D_800694B4 == 0) {
         for (;;) {
         }
@@ -316,24 +316,25 @@ void func_800365D0(void)
     D_80069518 = (Objeto*)AppendListNode((NodoLista*)D_80069518, (NodoLista*)D_800694B4);
     o = D_800694B4;
     o->w1C = 0;
-    o->w8 = 0;
-    o->wC = 0;
+    o->flags08 = 0;
+    o->flags0C = 0;
     o->s2A = 5;
-    o->s2C = 6;
-    o->s3C = 0x40;
+    o->w2C = 6;
+    o->w3C = 0x40;
     D_80069508 = 0;
-    o->ayudas = 0;
-    o->cab.libre |= 2;
+    o->u78.ayudas = 0;
+    o->flags04 |= 2;
     for (i = 0; i < 47; i++) {
-        D_8006AB70[i] = (ObjetoEscena*)AllocListNode(D_8006968C, 0x1F4, D_8006955C * 0x1F4);
+        D_8006AB70[i] = (Objeto*)AllocListNode(D_8006968C, 0x1F4, D_8006955C * 0x1F4);
         if (D_8006AB70[i] == 0) {
             for (;;) {
             }
         }
         D_80069508 = AppendListNode((NodoLista*)D_80069508, (NodoLista*)D_8006AB70[i]);
-        D_8006AB70[i]->s3C = 1;
-        D_8006AB70[i]->s26 = -1;
-        D_8006AB70[i]->ayudas = 0;
+        D_8006AB70[i]->w3C = 1;
+        /* El original guarda la constante con signo (li v0,-1 ; sh v0,0x26): con el tipo u16 del campo saldria li v0,0xffff. */
+        *(s16*)&D_8006AB70[i]->w26 = -1;
+        D_8006AB70[i]->u78.ayudas = 0;
     }
 }
 
@@ -343,38 +344,38 @@ void func_800365D0(void)
  * posicion 'pos' y los angulos 'ang' si se dan. Devuelve NULL si 'id' no es positivo, no hay
  * plantilla o el pozo esta agotado.
  */
-ObjetoEscena* func_80036734(s16 id, s32* pos, u16* ang)
+Objeto* func_80036734(s16 id, s32* pos, u16* ang)
 {
-    ObjetoEscena* t;
-    ObjetoEscena* n;
-    ObjetoEscena* l;
+    Objeto* t;
+    Objeto* n;
+    Objeto* l;
     u16 i;
 
     if (id > 0) {
-        for (t = D_80069504; t != 0; t = (ObjetoEscena*)t->cab.siguiente) {
+        for (t = D_80069504; t != 0; t = t->siguiente) {
             if (t->w1C == id) {
-                n = (ObjetoEscena*)AllocListNode((u8*)D_8006968C, 0x1F4, D_8006955C * 0x1F4);
+                n = (Objeto*)AllocListNode((u8*)D_8006968C, 0x1F4, D_8006955C * 0x1F4);
                 if (n == 0) {
                     return 0;
                 }
                 for (i = 0; i < 0x7D; i++) {
                     ((s32*)n)[(s16)i] = ((s32*)t)[(s16)i];
                 }
-                n->cab.siguiente = 0;
+                n->siguiente = 0;
                 D_80069518 = (Objeto*)AppendListNode((NodoLista*)D_80069518, (NodoLista*)n);
-                n->coord.param = &n->param;
-                n->cab.libre |= 2;
+                n->coord.param = PARAMETROS_SDK(n);
+                n->flags04 |= 2;
                 if (pos != 0) {
                     n->param.trans.vx = pos[0];
                     n->param.trans.vy = pos[1];
                     n->param.trans.vz = pos[2];
                 }
                 if (ang != 0) {
-                    n->param.rotate.vx = ang[0];
-                    n->param.rotate.vy = ang[1];
-                    n->param.rotate.vz = ang[2];
+                    n->param.giro.rotate.vx = ang[0];
+                    n->param.giro.rotate.vy = ang[1];
+                    n->param.giro.rotate.vz = ang[2];
                 }
-                l = (ObjetoEscena*)D_80069630;
+                l = (Objeto*)D_80069630;
                 if (l != 0) {
                     t = l;
                     while (t->sig10 != 0) {
