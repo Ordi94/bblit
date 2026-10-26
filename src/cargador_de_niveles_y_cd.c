@@ -353,6 +353,7 @@ extern void func_800443CC(void);
 extern u16 D_800695B4;
 extern void* D_80069648;
 extern u8 D_80010050;
+extern u8 D_8001004F;
 extern u32 D_80067E98[];
 extern u32 D_8006959C;
 extern s32 D_80069678;

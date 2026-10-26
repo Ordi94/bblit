@@ -123,6 +123,23 @@ typedef struct ScratchJugador {
     AcumuladorNodos acum;
 } ScratchJugador;
 
+/*
+ * Vista del estado principal (0x80010000) con los campos que lee la logica del jugador: botones
+ * de los dos mandos, ejes del analogico y la bandera de demostracion. El original los direcciona
+ * con un solo lui y desplazamientos, lo que reproduce un puntero a la direccion constante.
+ */
+typedef struct EstadoMando {
+    u8 pad00[0x0A];
+    u16 botones_a;
+    u16 botones_c;
+    u8 pad0E[4];
+    u16 eje_x;
+    u16 eje_y;
+    u8 pad16[0x4F - 0x16];
+    u8 demo;
+} EstadoMando;
+#define MANDO ((EstadoMando*)0x80010000)
+
 /* Transformacion del jugador relativa al apoyo (+0x18C) y la del objeto portado (+0x11C). */
 #define APOYO(o) ((ParametrosObjeto*)((u8*)(o) + 0x18C))
 #define PORTADO(o) ((ParametrosObjeto*)((u8*)(o) + 0x11C))

@@ -633,8 +633,6 @@ extern s16 D_80069668;
 /* D_80069690: accesos del ensamblador: lw x5, sw x8 */
 extern s32 D_80069690;
 
-/* D_8001004F: bandera de demostracion del estado principal; lbu en func_80020B90 (0x80020C08) y sb en func_800415A0 */
-extern u8 D_8001004F;
 
 /* D_80069608: indicadores del cuadro; lw en func_80020B90 (0x80020C7C, 0x80023444) y or en movimiento_y_objetos_de_escena_2.c */
 extern u32 D_80069608;

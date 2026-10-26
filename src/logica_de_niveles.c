@@ -10,7 +10,7 @@
  */
 extern void func_80020210(Objeto* o, s32 paso, s32 amplitud);
 extern void func_80020240(Objeto* o);
-extern u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo);
+extern s32 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo);
 extern ApoyoHallado* func_80020354(Objeto* o, VECTOR* pos, void* trabajo, u32 mascara);
 extern Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o);
 extern Objeto* func_80017478(Objeto* a, SVECTOR* v, void* w, u32 mascara);
@@ -33,13 +33,9 @@ extern void RunLogicAction(void* o, void* item);
  * Estado compartido con el resto de la logica: botones y ejes del mando, rumbo de la camara,
  * inercia, esquinas de la caja del objeto y bloques de contacto del cuadro.
  */
-extern u16 D_8001000C;
-extern u16 D_80010012;
-extern u16 D_80010014;
 extern s16 D_800694F4;
 extern s32 D_80069D30[3];
 extern s32 D_80069D40[3];
-extern s32 D_80069D48;
 extern SVECTOR D_80069D60[4];
 extern s32 D_80069D80[3];
 extern s32 D_8006AC30[3];
@@ -78,62 +74,50 @@ void func_80020B90(Objeto* o)
     ScratchJugador* sc;
     void* w;
     s32* p;
-    u16 i;
-    s16 k;
-    s16 vel;
-    s16 pasos;
-    s16 ang2;
+    s16 a;
+    u32 fl;
+    s16 b;
+    s32 c;
     s16 tilt16;
     s32 ang;
+    s32 lo;
     s32 d;
     s32 tilt;
     s32 dd;
     s16 d16;
-    s32 omitir;
-    s32 y32;
-    u16 y16;
     s32 pj;
     s16 vj;
-    s16 ok;
     s16 dd16;
     Objeto* pp;
-    s32 ex;
-    s32 mx;
-    s32 ez;
     s32 mz;
     s16* ptr16;
-    u16 u5;
-    s16 u6;
-    s32 k0;
-    s32 k1;
-    s16 delta;
     s32 vs;
     u16 hw;
     s32 sum;
-    s32 cuad;
-    s16 rr;
-    s32 ss;
     VECTOR* pos;
+    u8 reserva[8];
 
     sc = (ScratchJugador*)0x1F800000;
     w = (void*)0x1F800148;
     p = (s32*)0x1F800000;
-    i = 0;
+    a = 0;
     do {
         *p = 0;
-        i++;
+        a++;
         p++;
-    } while (i < 0x52);
-    D_800693D4 = o->flags14;
-    o->flags14 &= 0xFFF9BFFF;
-    if (D_8001004F == 0 && ((D_8006D9A8[0] & 0x100) || (s32)o->flags14 < 0)) {
+    } while ((u16)a < 0x52);
+    fl = o->flags14;
+    D_800693D4 = fl;
+    fl &= 0xFFF9BFFF;
+    o->flags14 = fl;
+    if (MANDO->demo == 0 && ((D_8006D9A8[0] & 0x100) || (s32)fl < 0)) {
         D_80069D30[2] = 0;
         D_80069D30[0] = 0;
         D_80069D40[2] = 0;
         D_80069398 = 0x800;
         D_80069D40[0] = 0;
         if (!(D_8006D9A8[0] & 0x200)) {
-            D_8001000A &= 0x800;
+            MANDO->botones_a &= 0x800;
         }
     }
     if (D_80069608 & 2) {
@@ -163,8 +147,8 @@ void func_80020B90(Objeto* o)
                 }
             }
         }
-        o->w17E = 0;
         o->p180 = sc->sec;
+        o->w17E = 0;
         sc->paso_vigente = sc->sec->desplazamiento;
         sc->reg = (RegistroEstado*)o->bloque;
         while (sc->reg != NULL && sc->reg->id != sc->paso_vigente) {
@@ -199,14 +183,15 @@ void func_80020B90(Objeto* o)
     while (sc->sec != NULL && sc->sec->id != o->w17C) {
         sc->sec = sc->sec->sig;
     }
-    sc->paso_vigente = ((u16*)&sc->sec->desplazamiento)[o->w17E];
+    sc->paso_vigente = *(u16*)((u8*)sc->sec + (o->w17E << 1) + 6);
     o->p180 = sc->sec;
     if (sc->paso_vigente == 0xFFF0 || o->w17E >= 5) {
-        o->w17C = 1;
+        a = 1;
         sc->sec = o->secuencias;
         while (sc->sec != NULL && sc->sec->id != 1) {
             sc->sec = sc->sec->sig;
         }
+        o->w17C = a;
         o->flags14 &= 0xFDFFFFDF;
         o->w17E = 0;
         o->p180 = sc->sec;
@@ -259,35 +244,35 @@ void func_80020B90(Objeto* o)
         o->flags18 &= ~4;
     }
     if (sc->reg->flags10 >= 0) {
-        if (!(o->flags14 & 0x80000000) || D_8001004F != 0) {
-            if ((sc->reg->flags0C & 2) && (!(o->flags14 & 0x80000000) || D_8001004F != 0)) {
+        if (!(o->flags14 & 0x80000000) || MANDO->demo != 0) {
+            if ((sc->reg->flags0C & 2) && (!(o->flags14 & 0x80000000) || MANDO->demo != 0)) {
                 if ((o->flags14 & 0x209) == 0) {
                     D_800694F4 = ratan2(D_8006D928.x - D_8006D928.vpx, D_8006D928.z - D_8006D928.vpz);
                 }
-                if ((s16)D_80010012 != 0 || D_80010014 != 0) {
-                    vel = ((s16)SquareRoot0((s16)D_80010012 * (s16)D_80010012 + (s16)D_80010014 * (s16)D_80010014) - D_8006952C) * (0x80 / D_8006952C);
-                    if (vel > 0x80) {
-                        vel = 0x80;
+                if ((s16)MANDO->eje_x != 0 || MANDO->eje_y != 0) {
+                    a = ((s16)SquareRoot0((s16)MANDO->eje_x * (s16)MANDO->eje_x + (s16)MANDO->eje_y * (s16)MANDO->eje_y) - D_8006952C) * (0x80 / D_8006952C);
+                    if (a > 0x80) {
+                        a = 0x80;
                     }
                     if (sc->reg->flags10 & 0x04000000) {
-                        if (vel < 0x78) {
+                        if (a < 0x78) {
                             o->w17E = 0;
                         } else {
                             o->w17E = 1;
                         }
                     }
                     if (sc->reg->flags10 & 0x08000000) {
-                        pasos = vel;
-                        if ((sc->reg->flags10 & 0x04000000) && pasos < 0x78) {
-                            pasos = pasos * 0x1111 >> 12;
+                        c = a;
+                        if ((sc->reg->flags10 & 0x04000000) && c < 0x78) {
+                            c = c * 0x1111 >> 12;
                         }
-                        D_800693AC += pasos;
+                        D_800693AC += c;
                         o->trabajo.b05 = 5 - D_800693AC / 32;
                         D_800693AC = D_800693AC % 32;
                     }
-                    vel = (u32)(sc->reg->s14 * D_80069694 * vel) >> 7;
-                    if (vel == 0) {
-                        vel = 1;
+                    a = (u32)(sc->reg->s14 * D_80069694 * a) >> 7;
+                    if (a == 0) {
+                        a = 1;
                     }
                     if (o->coord.super != NULL) {
                         sc->tmp_sv.vz = 0x3E8;
@@ -301,7 +286,7 @@ void func_80020B90(Objeto* o)
                         }
                         sc->tmp = ratan2((s16)sc->tmp_sv.vx, (s16)sc->tmp_sv.vz);
                         o->param.giro.u.y = sc->tmp;
-                        ang = D_800694F4 + ratan2((s16)D_80010012, (s16)D_80010014);
+                        ang = D_800694F4 + ratan2((s16)MANDO->eje_x, (s16)MANDO->eje_y);
                         sc->tmp = sc->tmp - ang % 0x1000;
                         if (sc->tmp > 0x800) {
                             sc->tmp -= 0x1000;
@@ -314,18 +299,18 @@ void func_80020B90(Objeto* o)
                             sc->tmp = -sc->tmp;
                         }
                         sc->tmp = 0x800 - sc->tmp;
-                        d = sc->tmp * vel;
+                        lo = sc->tmp * a;
                     } else {
-                        sc->tmp = vel;
-                        ang2 = ratan2((s16)D_80010012, (s16)D_80010014);
+                        sc->tmp = a;
+                        a = ratan2((s16)MANDO->eje_x, (s16)MANDO->eje_y);
                         if (!(sc->reg->flags0C & 0x8000)) {
-                            ang2 = (u16)D_800694F4 + ang2;
+                            a = (u16)D_800694F4 + a;
                         }
-                        if (ang2 > 0x800) {
-                            ang2 -= 0x1000;
+                        if (a > 0x800) {
+                            a -= 0x1000;
                         }
-                        if (ang2 < -0x800) {
-                            ang2 += 0x1000;
+                        if (a < -0x800) {
+                            a += 0x1000;
                         }
                         if ((s16)o->param.giro.u.y > 0x800) {
                             o->param.giro.u.y -= 0x1000;
@@ -333,21 +318,21 @@ void func_80020B90(Objeto* o)
                         if ((s16)o->param.giro.u.y < -0x800) {
                             o->param.giro.u.y += 0x1000;
                         }
-                        ang2 = ang2 - o->param.giro.u.y;
-                        if (ang2 > 0x800) {
-                            ang2 -= 0x1000;
+                        a = a - o->param.giro.u.y;
+                        if (a > 0x800) {
+                            a -= 0x1000;
                         }
-                        if (ang2 < -0x800) {
-                            ang2 += 0x1000;
+                        if (a < -0x800) {
+                            a += 0x1000;
                         }
-                        o->param.giro.u.z = ang2 >> 3;
-                        D_800693B8 = ang2;
-                        if (ang2 < 0) {
-                            ang2 = -ang2;
+                        o->param.giro.u.z = a >> 3;
+                        D_800693B8 = a;
+                        if (a < 0) {
+                            a = -a;
                         }
-                        d = sc->tmp * (s16)(0x800 - ang2);
+                        lo = sc->tmp * (s16)(0x800 - a);
                     }
-                    sc->vel.z = sc->vel.z + (d >> 11);
+                    sc->vel.z = sc->vel.z + (lo >> 11);
                 }
                 if (sc->reg->flags0C & 0x100000) {
                     sc->vel.z += sc->reg->s14 * D_80069694;
@@ -367,13 +352,13 @@ void func_80020B90(Objeto* o)
             if ((s16)D_800693B8 != -1) {
                 tilt = (s16)D_800693B8 >> 2;
                 if (tilt != 0) {
-                    vel = tilt;
+                    a = tilt;
                     D_800693B8 = D_800693B8 - tilt;
                 } else {
-                    vel = D_800693B8;
+                    a = D_800693B8;
                     D_800693B8 = -1;
                 }
-                ((ParametrosObjeto*)o->coord.param)->giro.u.y += vel;
+                ((ParametrosObjeto*)o->coord.param)->giro.u.y += a;
             }
         }
         if (sc->reg->flags10 & 0x10) {
@@ -398,20 +383,22 @@ void func_80020B90(Objeto* o)
         if (!(o->flags14 & 2)) {
             o->param.giro.u.z = 0;
         }
-        if ((sc->reg->flags0C & 0x10) && !(sc->reg->flags10 & 0x40000000) && !(D_8001000C & 0x40) && !(o->flags14 & 8)) {
-            if (o->h108 > 0x600 && o->h108 < 0x800) {
-                o->h108 = 0x800;
+        if ((sc->reg->flags0C & 0x10) && !(sc->reg->flags10 & 0x40000000) && !(MANDO->botones_c & 0x40) && !(o->flags14 & 8)) {
+            if (o->h108 > 0x600) {
+                if (o->h108 < 0x800) {
+                    o->h108 = 0x800;
+                }
             }
         }
-        if ((sc->reg->flags0C & 0xC00) && ((s16)D_80010012 != 0 || D_80010014 != 0)) {
-            vel = SquareRoot0((s16)D_80010012 * (s16)D_80010012 + (s16)D_80010014 * (s16)D_80010014);
-            if (vel > 0x7F) {
-                vel = 0x7F;
+        if ((sc->reg->flags0C & 0xC00) && ((s16)MANDO->eje_x != 0 || MANDO->eje_y != 0)) {
+            a = SquareRoot0((s16)MANDO->eje_x * (s16)MANDO->eje_x + (s16)MANDO->eje_y * (s16)MANDO->eje_y);
+            if (a > 0x7F) {
+                a = 0x7F;
             }
             if (sc->reg->flags0C & 0x400) {
-                vel = -vel;
+                a = -a;
             }
-            sc->vel.y = sc->vel.y + ((u32)(sc->reg->s14 * D_80069694 * vel) >> 7);
+            sc->vel.y = sc->vel.y + ((u32)(sc->reg->s14 * D_80069694 * a) >> 7);
         }
         if (sc->reg->flags0C & 0x200) {
             if (o->p70 != NULL) {
@@ -449,7 +436,7 @@ void func_80020B90(Objeto* o)
         sc->resp.x = sc->desp.x;
         sc->resp.y = sc->desp.y;
         sc->resp.z = sc->desp.z;
-        if ((s32)o->flags14 >= 0 || D_8001004F != 0) {
+        if ((s32)o->flags14 >= 0 || MANDO->demo != 0) {
             if (o->flags14 & 2) {
                 sc->tmp_v.vz = 0;
                 sc->tmp_v.vy = 0;
@@ -460,68 +447,83 @@ void func_80020B90(Objeto* o)
                 sc->res.grupo = o->w26;
                 func_8001C134((s32*)&sc->punto, &sc->res, w);
                 if (sc->res.flags & 0x20) {
-                    omitir = 0;
+                    c = 0;
                     if (!(o->flags14 & 0x10000000)) {
                         D_80069D30[0] = sc->desp.x >> 2;
                         D_80069D30[2] = sc->desp.z >> 2;
                         o->flags14 |= 0x10000000;
                     }
                     sc->punto.vx = o->param.trans.vx + 0xA0;
-                    y32 = o->param.trans.vy;
-                    sc->punto.vy = y32;
-                    sc->res.grupo = -1;
+                    d = o->param.trans.vy;
+                    sc->punto.vy = d;
                     sc->punto.vz = o->param.trans.vz;
+                    sc->res.grupo = -1;
                     func_8001C134((s32*)&sc->punto, &sc->res, w);
-                    if (!(sc->res.flags & 0xC) && (sc->res.flags & 0x20)) {
-                        sc->tmp = sc->res.suelo - o->param.trans.vy;
-                        if (sc->tmp >= -0x64 && sc->tmp < 0xC8) {
-                            sc->tmp_v.vx += ((sc->res.suelo - (s16)y32) * 3000) >> 12;
+                    a = d;
+                    if (!(sc->res.flags & 0xC)) {
+                        if (sc->res.flags & 0x20) {
+                            sc->tmp = sc->res.suelo - o->param.trans.vy;
+                            if (sc->tmp >= -0x64) {
+                                if (sc->tmp < 0xC8) {
+                                    sc->tmp_v.vx += ((sc->res.suelo - (s16)d) * 3000) >> 12;
+                                }
+                            }
                         }
                     }
                     sc->punto.vx = o->param.trans.vx - 0xA0;
                     sc->punto.vy = o->param.trans.vy;
-                    sc->res.grupo = -1;
                     sc->punto.vz = o->param.trans.vz;
+                    sc->res.grupo = -1;
                     func_8001C134((s32*)&sc->punto, &sc->res, w);
-                    if (!(sc->res.flags & 0xC) && (sc->res.flags & 0x20)) {
-                        sc->tmp = sc->res.suelo - o->param.trans.vy;
-                        if (sc->tmp >= -0x64 && sc->tmp < 0xC8) {
-                            sc->tmp_v.vx += (((s16)y32 - sc->res.suelo) * 3000) >> 12;
+                    if (!(sc->res.flags & 0xC)) {
+                        if (sc->res.flags & 0x20) {
+                            sc->tmp = sc->res.suelo - o->param.trans.vy;
+                            if (sc->tmp >= -0x64) {
+                                if (sc->tmp < 0xC8) {
+                                    sc->tmp_v.vx += (((s16)a - sc->res.suelo) * 3000) >> 12;
+                                }
+                            }
                         }
                     }
                     sc->punto.vx = o->param.trans.vx;
                     sc->punto.vy = o->param.trans.vy;
-                    sc->res.grupo = -1;
                     sc->punto.vz = o->param.trans.vz + 0xA0;
+                    sc->res.grupo = -1;
                     func_8001C134((s32*)&sc->punto, &sc->res, w);
-                    if (!(sc->res.flags & 0xC) && (sc->res.flags & 0x20)) {
-                        sc->tmp = sc->res.suelo - o->param.trans.vy;
-                        if (sc->tmp >= -0x64 && sc->tmp < 0xC8) {
-                            sc->tmp_v.vz += ((sc->res.suelo - (s16)y32) * 3000) >> 12;
+                    if (!(sc->res.flags & 0xC)) {
+                        if (sc->res.flags & 0x20) {
+                            sc->tmp = sc->res.suelo - o->param.trans.vy;
+                            if (sc->tmp >= -0x64) {
+                                if (sc->tmp < 0xC8) {
+                                    sc->tmp_v.vz += ((sc->res.suelo - (s16)a) * 3000) >> 12;
+                                }
+                            }
                         }
                     }
                     sc->punto.vx = o->param.trans.vx;
                     sc->punto.vy = o->param.trans.vy;
-                    sc->res.grupo = -1;
                     sc->punto.vz = o->param.trans.vz - 0xA0;
+                    sc->res.grupo = -1;
                     func_8001C134((s32*)&sc->punto, &sc->res, w);
-                    if (!(sc->res.flags & 0xC) && (sc->res.flags & 0x20)) {
-                        sc->tmp = sc->res.suelo - o->param.trans.vy;
-                        if (sc->tmp >= -0x64 && sc->tmp < 0xC8) {
-                            sc->tmp_v.vz += (((s16)y32 - sc->res.suelo) * 3000) >> 12;
+                    if (!(sc->res.flags & 0xC)) {
+                        if (sc->res.flags & 0x20) {
+                            sc->tmp = sc->res.suelo - o->param.trans.vy;
+                            if (sc->tmp >= -0x64) {
+                                if (sc->tmp < 0xC8) {
+                                    sc->tmp_v.vz += (((s16)a - sc->res.suelo) * 3000) >> 12;
+                                }
+                            }
                         }
                     }
-                    dd = (sc->tmp_v.vx - D_80069D40[0]) << 12 >> 16;
-                    if (dd != 0 && omitir == 0) {
-                        D_80069D40[0] += dd;
+                    if ((((sc->tmp_v.vx - D_80069D40[0]) << 12) >> 16) != 0 && c == 0) {
+                        D_80069D40[0] += ((sc->tmp_v.vx - D_80069D40[0]) << 12) >> 16;
                     } else {
                         D_80069D40[0] = sc->tmp_v.vx;
                     }
-                    dd = (sc->tmp_v.vz - D_80069D40[2]) << 12 >> 16;
-                    if (dd != 0 && omitir == 0) {
-                        D_80069D40[2] += dd;
+                    if ((((sc->tmp_v.vz - D_80069D40[2]) << 12) >> 16) != 0 && c == 0) {
+                        D_80069D40[2] += ((sc->tmp_v.vz - D_80069D40[2]) << 12) >> 16;
                     } else {
-                        D_80069D48 = sc->tmp_v.vz;
+                        D_80069D40[2] = sc->tmp_v.vz;
                     }
                 } else if (o->flags14 & 0x10000000) {
                     o->flags14 &= 0xEFFFFFFF;
@@ -534,25 +536,25 @@ void func_80020B90(Objeto* o)
                     }
                     o->flags14 |= 0x10000000;
                 }
-                y16 = o->param.trans.vy;
+                a = (u16)o->param.trans.vy;
                 ((ParametrosObjeto*)o->coord.param)->trans.vx += 0xA0;
                 sc->acum.nodo = &o->coord;
                 func_8001CE64(&sc->acum);
-                sc->tmp_v.vx += ((sc->acum.acc.vy - (s16)y16) * 3000) >> 12;
+                sc->tmp_v.vx += ((sc->acum.acc.vy - (s16)a) * 3000) >> 12;
                 ((ParametrosObjeto*)o->coord.param)->trans.vx -= 0x140;
                 sc->acum.nodo = &o->coord;
                 func_8001CE64(&sc->acum);
                 ((ParametrosObjeto*)o->coord.param)->trans.vx += 0xA0;
-                sc->tmp_v.vx += (((s16)y16 - sc->acum.acc.vy) * 3000) >> 12;
+                sc->tmp_v.vx += (((s16)a - sc->acum.acc.vy) * 3000) >> 12;
                 ((ParametrosObjeto*)o->coord.param)->trans.vz += 0xA0;
                 sc->acum.nodo = &o->coord;
                 func_8001CE64(&sc->acum);
-                sc->tmp_v.vz += ((sc->acum.acc.vy - (s16)y16) * 3000) >> 12;
+                sc->tmp_v.vz += ((sc->acum.acc.vy - (s16)a) * 3000) >> 12;
                 ((ParametrosObjeto*)o->coord.param)->trans.vz -= 0x140;
                 sc->acum.nodo = &o->coord;
                 func_8001CE64(&sc->acum);
                 ((ParametrosObjeto*)o->coord.param)->trans.vz += 0xA0;
-                sc->tmp_v.vz += (((s16)y16 - sc->acum.acc.vy) * 3000) >> 12;
+                sc->tmp_v.vz += (((s16)a - sc->acum.acc.vy) * 3000) >> 12;
                 if (((sc->tmp_v.vx - D_80069D40[0]) << 12 >> 16) != 0) {
                     D_80069D40[0] += (sc->tmp_v.vx - D_80069D40[0]) << 12 >> 16;
                 } else {
@@ -580,35 +582,32 @@ void func_80020B90(Objeto* o)
                 d16 = (u16)sc->desp.z - (u16)D_80069D30[2];
                 if (d16 != 0) {
                     if (d16 < 0) {
-                        D_80069D30[2] = D_80069D30[2] - 1;
+                        lo = D_80069D30[2] - 1;
                     } else {
-                        D_80069D30[2] = D_80069D30[2] + 1;
+                        lo = D_80069D30[2] + 1;
                     }
                 } else {
-                    D_80069D30[2] = sc->desp.z;
+                    lo = sc->desp.z;
                 }
+                D_80069D30[2] = lo;
             } else {
-                dd = D_80069D40[0] << 14 >> 16;
-                if (dd != 0) {
-                    D_80069D40[0] -= dd;
+                if (((D_80069D40[0] << 14) >> 16) != 0) {
+                    D_80069D40[0] -= (D_80069D40[0] << 14) >> 16;
                 } else {
                     D_80069D40[0] = 0;
                 }
-                dd = D_80069D40[2] << 14 >> 16;
-                if (dd != 0) {
-                    D_80069D40[2] -= dd;
+                if (((D_80069D40[2] << 14) >> 16) != 0) {
+                    D_80069D40[2] -= (D_80069D40[2] << 14) >> 16;
                 } else {
                     D_80069D40[2] = 0;
                 }
-                dd = (sc->desp.x - D_80069D30[0]) * D_80069398 * 16 >> 16;
-                if (dd != 0 || D_80069398 != 0x800) {
-                    D_80069D30[0] += dd;
+                if ((((sc->desp.x - D_80069D30[0]) * D_80069398 * 16) >> 16) != 0 || D_80069398 != 0x800) {
+                    D_80069D30[0] += ((sc->desp.x - D_80069D30[0]) * D_80069398 * 16) >> 16;
                 } else {
                     D_80069D30[0] = sc->desp.x;
                 }
-                dd = (sc->desp.z - D_80069D30[2]) * D_80069398 * 16 >> 16;
-                if (dd != 0 || D_80069398 != 0x800) {
-                    D_80069D30[2] += dd;
+                if ((((sc->desp.z - D_80069D30[2]) * D_80069398 * 16) >> 16) != 0 || D_80069398 != 0x800) {
+                    D_80069D30[2] += ((sc->desp.z - D_80069D30[2]) * D_80069398 * 16) >> 16;
                 } else {
                     D_80069D30[2] = sc->desp.z;
                 }
@@ -686,7 +685,7 @@ llamar_salto:
                 func_80020210(o, pj, sc->reg->s16);
             }
         }
-        if ((o->flags14 & 1) && (o->flags14 & 0x600) != 0x200 && ((s32)o->flags14 >= 0 || D_8001004F != 0)) {
+        if ((o->flags14 & 1) && (o->flags14 & 0x600) != 0x200 && ((s32)o->flags14 >= 0 || MANDO->demo != 0)) {
             func_80020240(o);
         }
         if (sc->reg->flags0C & 0x810000) {
@@ -697,13 +696,13 @@ llamar_salto:
         if (sc->reg->flags0C & 0x800000) {
             sc->tocado = func_80016C0C(o, 0x80, (ConsultaVolumen*)w);
             if (sc->tocado != NULL) {
-                ok = 1;
+                a = 1;
                 if (sc->tocado->w2C == 0xE) {
                     if (sc->tocado->registro184 == NULL || !(((RegistroEstado*)sc->tocado->registro184)->flags0C & 0x4000)) {
-                        ok = 0;
+                        a = 0;
                     }
                 }
-                if (ok != 0) {
+                if (a != 0) {
                     sc->tocado->flags14 |= 0x04000000;
                     sc->tocado->w38 = 1;
                     sc->tocado->i34 = 1;
@@ -714,13 +713,13 @@ llamar_salto:
         if ((sc->reg->flags0C & 0x10000) && o->i68 != 0) {
             sc->tocado = func_800171E4(o, &o->objetivo, 0x80, 0, (ConsultaVolumen*)w);
             if (sc->tocado != NULL) {
-                ok = 1;
+                a = 1;
                 if (sc->tocado->w2C == 0xE) {
                     if (sc->tocado->registro184 == NULL || !(((RegistroEstado*)sc->tocado->registro184)->flags0C & 0x4000)) {
-                        ok = 0;
+                        a = 0;
                     }
                 }
-                if (ok != 0) {
+                if (a != 0) {
                     if (o->p6C != NULL) {
                         sc->tocado->flags14 |= 0x06000000;
                         if (o->p6C->registro184 != NULL) {
@@ -781,7 +780,7 @@ llamar_salto:
             o->w2E = 0x50;
             o->alcance2 = 0x1900;
         }
-        if ((sc->reg->flags0C & 0x200) && (D_8001000A & 8)) {
+        if ((sc->reg->flags0C & 0x200) && (MANDO->botones_a & 8)) {
             if (o->p70 != NULL && !(o->p70->flags08 & 0x400000)) {
                 *(s32*)&o->p70->trabajo = *(s32*)&o->p70->trabajo + 4;
             }
@@ -829,9 +828,9 @@ llamar_salto:
                     APOYO(o)->trans.vy = o->p70->max.vy + 4;
                 }
             }
-            sc->tmp_sv.vz = 0;
-            sc->tmp_sv.vy = 0;
             sc->tmp_sv.vx = 0;
+            sc->tmp_sv.vy = 0;
+            sc->tmp_sv.vz = 0;
             sc->paso_x = 0;
             sc->paso_y = 0;
             sc->paso_z = 0x1000;
@@ -882,35 +881,35 @@ llamar_salto:
                     D_80069D60[3].vz = o->min.vz;
                     D_80069D60[2].vz = o->min.vz;
                     gte_SetRotMatrix(&sc->m);
-                    k = 0;
+                    a = 0;
                     D_800693DC = (s16*)D_80069D60;
                     do {
                         gte_ldv0(D_800693DC);
                         gte_rtv0();
                         gte_stsv(D_800693DC);
-                        k++;
+                        a++;
                         D_800693DC += 4;
-                    } while (k < 4);
-                    mx = 0;
-                    ex = 0;
-                    ez = 0;
+                    } while (a < 4);
+                    b = 0;
+                    c = 0;
+                    d = 0;
                     mz = 0;
-                    k = 0;
+                    a = 0;
                     D_800693DC = (s16*)D_80069D60;
                     do {
-                        if (D_800693DC[0] < ex) {
-                            ex = D_800693DC[0];
-                        } else if (mx < D_800693DC[0]) {
-                            mx = D_800693DC[0];
+                        if (D_800693DC[0] < c) {
+                            c = D_800693DC[0];
+                        } else if (b < D_800693DC[0]) {
+                            b = D_800693DC[0];
                         }
-                        if (D_800693DC[2] < ez) {
-                            ez = D_800693DC[2];
+                        if (D_800693DC[2] < d) {
+                            d = D_800693DC[2];
                         } else if (mz < D_800693DC[2]) {
                             mz = D_800693DC[2];
                         }
-                        k++;
+                        a++;
                         D_800693DC += 4;
-                    } while (k < 4);
+                    } while (a < 4);
                     D_80069D60[3].vz = 0;
                     D_80069D60[2].vz = 0;
                     D_80069D60[1].vz = 0;
@@ -919,12 +918,12 @@ llamar_salto:
                     D_80069D60[2].vy = 0;
                     D_80069D60[1].vy = 0;
                     D_80069D60[0].vy = 0;
-                    D_80069D60[0].vx = (u16)sc->desp.x + ex;
-                    D_80069D60[1].vx = (u16)sc->desp.x + mx;
-                    D_80069D60[2].vz = (u16)sc->desp.z + ez;
+                    D_80069D60[0].vx = (u16)sc->desp.x + c;
+                    D_80069D60[1].vx = (u16)sc->desp.x + b;
+                    D_80069D60[2].vz = (u16)sc->desp.z + d;
                     D_80069D60[3].vz = (u16)sc->desp.z + mz;
                     sc->punto.vx = o->param.trans.vx;
-                    k = 0;
+                    a = 0;
                     D_800693DC = (s16*)D_80069D60;
                     sc->punto.vy = o->param.trans.vy - 0x64;
                     sc->punto.vz = o->param.trans.vz;
@@ -935,14 +934,14 @@ llamar_salto:
                         sc->res.grupo = o->w26;
                         sc->punto.vy = o->param.trans.vy - 0x64;
                         func_80019474(&sc->punto, &sc->tmp_v, &sc->res, w);
-                        k++;
+                        a++;
                         ptr16 = D_800693DC;
                         D_800693DC += 4;
                         sc->desp.x += sc->tmp_v.vx - ptr16[0];
                         sc->desp.z += sc->tmp_v.vz - ptr16[2];
                         sc->resp.x += sc->tmp_v.vx - ptr16[0];
                         sc->resp.z += sc->tmp_v.vz - ptr16[2];
-                    } while (k < 4);
+                    } while (a < 4);
                 }
             }
         }
@@ -955,7 +954,7 @@ llamar_salto:
         sc->punto.vz = o->param.trans.vz;
         sc->res.grupo = o->w26;
         func_80019474(&sc->punto, &sc->tmp_v, &sc->res, w);
-        u5 = sc->tmp_v.vx;
+        a = sc->tmp_v.vx;
         sc->punto.vx = o->param.trans.vx;
         sc->punto.vy = o->param.trans.vy;
         sc->tmp_v.vy = 0;
@@ -964,9 +963,9 @@ llamar_salto:
         sc->punto.vz = o->param.trans.vz;
         sc->res.grupo = o->w26;
         func_80019474(&sc->punto, &sc->tmp_v, &sc->res, w);
-        sc->desp.x = (s16)u5;
+        sc->desp.x = a;
         sc->desp.z = sc->tmp_v.vz;
-        if (!(o->flags14 & 0x81000000) || D_8001004F != 0 || (D_80069608 & 2)) {
+        if (!(o->flags14 & 0x81000000) || MANDO->demo != 0 || (D_80069608 & 2)) {
             func_8001CBB8(o, (Movimiento*)&sc->desp, &sc->res, w);
         }
         if (sc->tmp != sc->desp.x + sc->desp.z) {
@@ -981,7 +980,7 @@ llamar_salto:
                     o->coord.param = (GsCOORD2PARAM*)&o->param;
                     o->p70->p6C = NULL;
                     o->p70 = NULL;
-                    o->flags14 = (o->flags14 & ~0x17) | 0x200;
+                    o->flags14 = (o->flags14 & ~0x16) | 0x200;
                 }
             }
         }
@@ -1004,7 +1003,7 @@ llamar_salto:
             sc->punto.vz = o->param.trans.vz;
             sc->res.grupo = o->w26;
             func_80019474(&sc->punto, &sc->tmp_v, &sc->res, w);
-            u5 = sc->tmp_v.vx;
+            a = sc->tmp_v.vx;
             sc->punto.vx = o->param.trans.vx;
             sc->punto.vy = o->param.trans.vy;
             sc->tmp_v.vy = 0;
@@ -1013,7 +1012,7 @@ llamar_salto:
             sc->punto.vz = o->param.trans.vz;
             sc->res.grupo = o->w26;
             func_80019474(&sc->punto, &sc->tmp_v, &sc->res, w);
-            sc->paso_x = u5;
+            sc->paso_x = a;
             sc->paso_z = sc->tmp_v.vz;
             if (sc->tocado->flags08 & 8) {
                 if (!(o->flags14 & 0x1000010) && (!(o->flags14 & 1) || (o->flags14 & 8)) && (s16)sc->paso_y >= -0x63) {
@@ -1175,13 +1174,13 @@ fin_choque:
                 sc->tmp_sv.vy = (u16)o->param.trans.vy - (u16)sc->tocado->param.trans.vy;
                 sc->tmp_sv.vz = (u16)o->param.trans.vz - (u16)sc->tocado->param.trans.vz;
                 if (sc->tocado->flags08 & 0x100000) {
-                    u5 = SquareRoot0((s16)sc->tmp_sv.vx * (s16)sc->tmp_sv.vx + (s16)sc->tmp_sv.vz * (s16)sc->tmp_sv.vz);
-                    u6 = (s16)u5;
+                    a = SquareRoot0((s16)sc->tmp_sv.vx * (s16)sc->tmp_sv.vx + (s16)sc->tmp_sv.vz * (s16)sc->tmp_sv.vz);
+                    b = a;
                 } else if (sc->tocado->flags08 & 0x800000) {
-                    u5 = 0;
-                    u6 = 0;
+                    a = 0;
+                    b = 0;
                 }
-                if (sc->tocado->w2E >= (s16)u5) {
+                if (sc->tocado->w2E >= a) {
                     if (!(o->flags14 & 0x400)) {
                         D_800693C4 = (BugsRand() & 7) + 7;
                         D_8006938C = 0;
@@ -1216,17 +1215,17 @@ fin_choque:
                         } else if (sc->tocado->flags08 & 0x800000) {
                             sc->tmp = 0x78;
                         }
-                        k1 = (u6 << 12) / sc->tocado->w2E;
-                        k0 = -((s16)(u16)sc->tmp_sv.vy << 12) / -sc->tocado->max.vy + k1;
-                        k0 = -(((sc->tmp - (k0 * sc->tmp >> 12)) * rsin(D_800693CC)) >> 12);
-                        delta = k0;
+                        c = (b << 12) / sc->tocado->w2E;
+                        d = -((s16)(u16)sc->tmp_sv.vy << 12) / -sc->tocado->max.vy + c;
+                        d = -(((sc->tmp - (d * sc->tmp >> 12)) * rsin(D_800693CC)) >> 12);
+                        a = d;
                         if (D_800693CC < 0x400) {
                             D_800693CC += 0x40;
                         } else {
-                            delta = k0 + (D_800693C4 * rsin(D_8006938C) >> 12);
+                            a = d + (D_800693C4 * rsin(D_8006938C) >> 12);
                         }
-                        if (sc->tocado->max.vy + 0xA < (s16)(u16)sc->tmp_sv.vy + delta) {
-                            sc->desp.y += delta;
+                        if (sc->tocado->max.vy + 0xA < (s16)(u16)sc->tmp_sv.vy + a) {
+                            sc->desp.y += a;
                         }
                         D_8006938C += 0x64;
                         if (D_8006938C > 0x1000) {
@@ -1379,7 +1378,7 @@ sin_rebote:
                             continue;
                         }
                     }
-                    if ((sc->cand->w8 == 0 || (sc->cand->w8 & D_8001000A)) && ((sc->cand->w6 == (D_8001000A & sc->cand->w6)) || sc->cand->w6 == 0xFFF1) && TestLogicCond(o, sc->cand->item)) {
+                    if ((sc->cand->w8 == 0 || (sc->cand->w8 & MANDO->botones_a)) && ((sc->cand->w6 == (MANDO->botones_a & sc->cand->w6)) || sc->cand->w6 == 0xFFF1) && TestLogicCond(o, sc->cand->item)) {
                         RunLogicAction(o, sc->cand->item);
                         if (sc->cand->wA != 0xFFF3) {
                             sc->estado_sig = sc->cand->wA;
@@ -1548,14 +1547,14 @@ sin_rebote:
                 o->min.vz = -0x28;
                 sum = (u16)sc->tocado->max.vz + ((u16)sc->tocado->s20 + 0x5A);
                 o->max.vz = sum;
-                cuad = o->min.vx * o->min.vx + o->min.vz * o->min.vz;
-                rr = 0x46 * 0x46 + sum * sum;
-                if (rr < cuad) {
-                    rr = cuad;
+                c = o->min.vx * o->min.vx + o->min.vz * o->min.vz;
+                a = 0x46 * 0x46 + sum * sum;
+                if (a < c) {
+                    a = c;
                 }
-                ss = rr;
-                o->w2E = SquareRoot0(ss);
-                o->alcance2 = ss;
+                d = a;
+                o->w2E = SquareRoot0(d);
+                o->alcance2 = d;
             } else {
                 goto caja_defecto;
             }
@@ -1610,9 +1609,10 @@ caja_defecto:
     if (!(o->flags14 & 0x01000000)) {
         func_8001E1A4(o, (ConsultaPlano*)w);
     }
-    o->w1B4 = sc->desp.x | sc->desp.y | sc->desp.z;
+    lo = sc->desp.x | sc->desp.y | sc->desp.z;
+    o->w1B4 = lo;
     if (o->p70 != NULL && !(o->p70->flags08 & 8)) {
-        o->w1B4 = (sc->desp.x | sc->desp.y | sc->desp.z) + 1;
+        o->w1B4 = lo + 1;
     }
     if (o->p6C != NULL && D_80069558 != NULL) {
         o->p6C->w26 = *D_80069558;
