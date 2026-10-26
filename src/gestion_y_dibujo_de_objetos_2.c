@@ -20,6 +20,23 @@ extern s32 func_800375F8[];
 extern s16 D_8005E830[];
 extern s16 D_8005E81C[];
 extern s16 D_8005E86C[][2];
+extern s16 D_8005E928[][2];
+extern s16 D_8005E938[][2];
+extern s16 D_8005E8BC[][2];
+extern s16 D_8005E8E0[][2];
+extern s16 D_8005E8F8[][2];
+extern s16 D_8005E910[][2];
+extern u8 D_80010043;
+extern u8 D_80010044;
+extern u8 D_80010045;
+extern u8 D_800100F7;
+extern u8 D_800100F9;
+extern u8 D_800100FA;
+
+/* Estado principal del juego en 0x80010000: se accede con un puntero constante (un solo lui). */
+#define EST ((u8*)0x80010000)
+extern s32 func_80038C2C(s32 idx, s32 valor, s32 modo);
+extern void func_80038884(s32 idx, s32 modo);
 extern u8 D_800695F6;
 extern u8 D_80010042;
 extern u8 D_80069524;
@@ -263,11 +280,11 @@ void func_80037580(s32* m)
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037580);
 #endif
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 20 con la configuracion versionada (g = 8 del archivo). Copia cinco
- * palabras del bloque de datos que hay en 0x800375F8 usando $a1 como origen y $t0..$t4 como
- * temporales, como una rutina escrita a mano. Variantes probadas: 3.
+ * Copia cinco palabras del bloque de datos que hay en 0x800375F8 (la matriz inicial de un
+ * ayudante) usando $a1 como origen y $t0..$t4 como temporales, como la rutina manuscrita
+ * original. La sentencia vacia con restriccion "+r" mantiene la direccion completa en $a1: sin
+ * ella el compilador pliega el desplazamiento bajo en la primera carga.
  */
 void func_800375C4(s32* destino)
 {
@@ -279,6 +296,7 @@ void func_800375C4(s32* destino)
     register s32 t4 __asm__("$12");
 
     origen = func_800375F8;
+    __asm__ volatile ("" : "+r"(origen));
     t0 = origen[0];
     t1 = origen[1];
     t2 = origen[2];
@@ -290,9 +308,6 @@ void func_800375C4(s32* destino)
     destino[3] = t3;
     destino[4] = t4;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375C4);
-#endif
 
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375F8);
 
@@ -436,7 +451,144 @@ void func_80037FB8(NodoLista* n)
     }
 }
 
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 3403 con la configuracion versionada (g = 8 del archivo). La estructura
+ * de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada
+ * grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la
+ * llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de
+ * otra forma. Variantes probadas: 6.
+ */
+/*
+ * Crea los objetos de los indicadores de la interfaz al entrar en un nivel: reinicia los
+ * grupos de tres y cuatro digitos a partir de los contadores del estado principal (cada
+ * valor se convierte a BCD con func_80037D3C y cada digito elige su plantilla en D_8005E81C)
+ * y, para los contadores opcionales, fija el parametro de profundidad de cada ayudante a 0x5DC.
+ */
+void func_80037FE8(void)
+{
+    s32 ids[6];
+    s32* pid;
+    s16 (*pos)[2];
+    s32 i;
+    s32 bcd;
+    s32 pct;
+    ObjetoEscena* o;
+    s16 (*tpos)[2];
+    u8* e;
+
+    func_80038C2C(0, D_80010043, 1);
+    func_80038884(0xE, 1);
+
+    e = EST;
+    bcd = ((DigitosSinConversion)func_80037D3C)((e[0x13C] << 8) | e[0x47]);
+    ids[0] = D_8005E830[3];
+    ids[1] = D_8005E81C[(bcd & 0xF00) >> 8];
+    ids[2] = D_8005E81C[(bcd & 0xF0) >> 4];
+    ids[3] = D_8005E81C[bcd & 0xF];
+    pos = D_8005E928;
+    for (i = 0; i < 4; i++) {
+        ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[3 + i], ids[i], pos[i], 1);
+    }
+
+    i = 0;
+    bcd = ((DigitosSinConversion)func_80037D3C)(D_80010045);
+    ids[0] = D_8005E830[7];
+    ids[1] = D_8005E81C[(bcd & 0xF00) >> 8];
+    ids[2] = D_8005E81C[(bcd & 0xF0) >> 4];
+    ids[3] = D_8005E81C[bcd & 0xF];
+    pos = D_8005E938;
+    for (; i < 4; i++) {
+        ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[7 + i], ids[i], pos[i], 1);
+    }
+
+    i = 0;
+    e = EST;
+    pct = ((e[0x13C] << 8) + e[0x47] + e[0x45]) * 100 / 457;
+    bcd = ((DigitosSinConversion)func_80037D3C)(pct);
+    ids[0] = D_8005E81C[(bcd & 0xF00) >> 8];
+    ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
+    ids[3] = D_8005E830[0x14];
+    ids[2] = D_8005E81C[bcd & 0xF];
+    pos = D_8005E8BC;
+    for (; i < 4; i++) {
+        if (i == 0) {
+            if (ids[0] == 0x1D8) {
+                continue;
+            }
+        } else if (i == 1) {
+            if (ids[0] == 0x1D8 && ids[1] == ids[0]) {
+                continue;
+            }
+        }
+        ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[20 + i], ids[i], pos[i], 1);
+    }
+
+    if (D_800100F7 != 0) {
+        e = EST;
+        bcd = ((DigitosSinConversion)func_80037D3C)(e[0x40 + e[0xF6]]);
+        ids[0] = D_8005E830[3];
+        ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
+        ids[2] = D_8005E81C[bcd & 0xF];
+        i = 0;
+        bcd = ((DigitosSinConversion)func_80037D3C)(e[0xF7]);
+        ids[3] = D_8005E830[0x19];
+        ids[4] = D_8005E81C[(bcd & 0xF0) >> 4];
+        ids[5] = D_8005E81C[bcd & 0xF];
+        pos = D_8005E8E0;
+        for (; i < 6; i++) {
+            o = D_8006AB70[29 + i];
+            ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], pos[i], 1);
+            o->ayudas->m94.t[2] = 0x5DC;
+        }
+    }
+
+    if (D_800100F9 != 0) {
+        e = EST;
+        bcd = ((DigitosSinConversion)func_80037D3C)(e[0x40 + e[0xF8]]);
+        ids[0] = D_8005E830[7];
+        ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
+        ids[2] = D_8005E81C[bcd & 0xF];
+        i = 0;
+        bcd = ((DigitosSinConversion)func_80037D3C)(e[0xF9]);
+        ids[3] = D_8005E830[0x19];
+        ids[4] = D_8005E81C[(bcd & 0xF0) >> 4];
+        ids[5] = D_8005E81C[bcd & 0xF];
+        pos = D_8005E8F8;
+        tpos = D_8005E8F8 - 6;
+        for (; i < 6; i++) {
+            o = D_8006AB70[35 + i];
+            if (D_800100F7 != 0) {
+                ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], pos[i], 1);
+            } else {
+                ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], tpos[i], 1);
+            }
+            o->ayudas->m94.t[2] = 0x5DC;
+        }
+    }
+
+    if (D_800100FA != 0) {
+        e = EST;
+        bcd = ((DigitosSinConversion)func_80037D3C)(e[0x44]);
+        ids[0] = D_8005E830[0x18];
+        ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
+        ids[2] = D_8005E81C[bcd & 0xF];
+        i = 0;
+        bcd = ((DigitosSinConversion)func_80037D3C)(e[0xFA]);
+        ids[3] = D_8005E830[0x19];
+        ids[4] = D_8005E81C[(bcd & 0xF0) >> 4];
+        ids[5] = D_8005E81C[bcd & 0xF];
+        pos = D_8005E910;
+        for (; i < 6; i++) {
+            o = D_8006AB70[41 + i];
+            ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], pos[i], 1);
+            o->ayudas->m94.t[2] = 0x5DC;
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037FE8);
+#endif
 
 /*
  * Actualiza el grupo de tres objetos 'idx'..'idx + 2' de la tabla D_8006AB70 segun el nivel de
