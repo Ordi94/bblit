@@ -135,6 +135,8 @@ class Progreso:
             a mano, con su tamano en bytes.
         sin_comentario: ``(archivo, funcion)`` de los ``INCLUDE_ASM`` sin comentario encima, en
             archivos que ya tienen funciones en C.
+        no_coincidentes_juego: Funciones del codigo del juego con intento sin coincidir y sus bytes.
+        manuscritas_juego: Funciones manuscritas del codigo del juego y sus bytes.
     """
 
     arranque: ResumenZona
@@ -151,6 +153,8 @@ class Progreso:
     glabel_en_asm: int | None
     manuscritas: tuple[tuple[str, int], ...] = ()
     sin_comentario: tuple[tuple[str, str], ...] = ()
+    no_coincidentes_juego: ResumenZona = ResumenZona(0, 0)
+    manuscritas_juego: ResumenZona = ResumenZona(0, 0)
 
     @property
     def funciones_totales(self) -> int:
@@ -308,6 +312,11 @@ def _resumir(funciones: Sequence[FuncionSimbolo]) -> ResumenZona:
     return ResumenZona(len(funciones), sum(f.tamano for f in funciones))
 
 
+def _del_juego(funciones: Sequence[FuncionSimbolo]) -> list[FuncionSimbolo]:
+    """Filtra las funciones que estan en la zona del codigo del juego."""
+    return [f for f in funciones if zona_de(f.direccion) == "juego"]
+
+
 def calcular_progreso(
     simbolos: Sequence[FuncionSimbolo],
     estados: Mapping[str, Mapping[str, EstadoFuncion]],
@@ -342,6 +351,8 @@ def calcular_progreso(
     sin_simbolo: list[str] = []
     archivos: list[ArchivoProgreso] = []
     manuscritas: list[tuple[str, int]] = []
+    funciones_manuscritas: list[FuncionSimbolo] = []
+    funciones_no_coincidentes: list[FuncionSimbolo] = []
     sin_comentario: list[tuple[str, str]] = []
     for archivo in sorted(estados):
         contadores = {estado: 0 for estado in EstadoFuncion}
@@ -356,6 +367,7 @@ def calcular_progreso(
             marca = (marcas or {}).get(archivo, {}).get(nombre)
             if estado is EstadoFuncion.ENSAMBLADOR and marca is MarcaAsm.MANUSCRITA:
                 manuscritas.append((nombre, funcion.tamano))
+                funciones_manuscritas.append(funcion)
             elif estado is EstadoFuncion.ENSAMBLADOR and marca is MarcaAsm.SIN_COMENTARIO:
                 sin_comentario.append((archivo, nombre))
             if estado is EstadoFuncion.C:
@@ -363,6 +375,7 @@ def calcular_progreso(
                 bytes_c += funcion.tamano
             elif estado is EstadoFuncion.NO_COINCIDENTE:
                 no_coincidentes.append(nombre)
+                funciones_no_coincidentes.append(funcion)
         if not any(estado is EstadoFuncion.C for estado in estados[archivo].values()):
             sin_comentario = [par for par in sin_comentario if par[0] != archivo]
         archivos.append(
@@ -390,6 +403,8 @@ def calcular_progreso(
         glabel_en_asm=glabel_en_asm,
         manuscritas=tuple(sorted(manuscritas)),
         sin_comentario=tuple(sorted(sin_comentario)),
+        no_coincidentes_juego=_resumir(_del_juego(funciones_no_coincidentes)),
+        manuscritas_juego=_resumir(_del_juego(funciones_manuscritas)),
     )
 
 
