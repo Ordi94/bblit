@@ -13,7 +13,7 @@ ejecutan de forma nativa en Windows de 64 bits:
 | Compilador | Procede de | Versión interna | ASPSX asociado |
 |---|---|---|---|
 | GCC 2.7.2 | `psyq-4.1` (diciembre de 1997) | `cygnus-2.7.2-970404 SN32.3.7.0004` | 2.67 |
-| GCC 2.8.1 | `psyq-4.4` (octubre de 1998) | `2.8.1 SN32 BUILD 4.0.0010` | 2.79 |
+| GCC 2.8.1 | `psyq-4.4` (octubre de 1998) | `2.8.1 SN32 BUILD 4.0.0010` | 2.79 (binario del SDK); el proyecto emula la 2.80 con `maspsx` |
 
 Los paquetes 4.6 y 4.7 traen GCC 2.95.2 (octubre de 1999) y quedan fuera: son posteriores a la
 fecha del juego (mayo de 1999).
@@ -40,7 +40,7 @@ fecha del juego (mayo de 1999).
 
 `maspsx` recibe la versión de ASPSX del SDK al que corresponde cada compilador. En la función
 que coincide se comprobó que el resultado no depende de esa versión (2.67, 2.79 y 2.86 dan la
-misma puntuación).
+misma puntuación); ver «Versión de ASPSX» para la que se fija y por qué.
 
 Las rutas de los componentes salen de `python -m tools.toolchain ruta <componente> <alias>`
 (por ejemplo `ruta psyq-4.4 cc1psx`).
@@ -142,8 +142,7 @@ versión que el compilador identificado; las del SDK 4.7 solo sirven de consulta
 
 El proyecto compila con **GCC 2.8.1 de Psy-Q (`CC1PSX.EXE` build 4.0.0010, el de Psy-Q 4.4)**
 con las opciones **`-O2` y el `-G` original de cada archivo (8 donde el codigo usa datos
-pequenos; `-G0` solo donde se ha demostrado necesario)**. Para el ensamblador se usa `maspsx --aspsx-version=2.79`, la
-versión de ASPSX de ese SDK; la coincidencia observada no depende de ese valor. Es la única
+pequenos; `-G0` solo donde se ha demostrado necesario)**. Para el ensamblador se usa `maspsx --aspsx-version=2.80` (ver «Versión de ASPSX»). Es la única
 combinación que reproduce exactamente una función no trivial del juego: GCC 2.7.2 no lo logra
 con ninguna de las formulaciones probadas, y `-O1` no coincide en ninguna de las funciones
 evaluadas (puntuaciones de 10 a 1095).
@@ -154,3 +153,17 @@ comprobación con funciones de otros subsistemas en cuanto haya más C escrito. 
 símbolos de datos de la salida de `splat` (`D_8001013C`, `D_80010047`) provienen de
 direcciones sueltas; mientras no se agrupen en estructuras, algunas diferencias de
 `asm-differ` en símbolos y en la parte alta de las direcciones no son errores del C.
+
+## Versión de ASPSX
+
+`ASPSX.EXE` del SDK 4.4 es la 2.79 (`SDevTC ASPSX version 2.79` en el propio ejecutable) y no existe un binario 2.80 en la
+cadena de construcción: el proyecto no ejecuta `ASPSX.EXE`, sino `maspsx`, y `--aspsx-version` solo selecciona el
+comportamiento que `maspsx` imita. Desde la 2.80 el ensamblador reescribe `addiu rX,$gp,desplazamiento` (`gp_allow_la`);
+la 2.79 deja `lui` + `addiu`. El original usa esa forma, así que la versión que lo reproduce es la 2.80.
+
+- **Fijada:** `VERSION_ASPSX = "2.80"` en `tools/reconstruccion/compilacion.py`. Cambiarla no exige tocar
+  `config/toolchain.lock.json` (el hash de `maspsx` no cambia). Para volver a evaluarla se edita la constante y se
+  ejecuta `clean`, `split`, `build`, `verify`, comparando la puntuación de `diff` de todas las funciones en C.
+- **Medida (2026-10-26, 370 funciones definidas en C):** `verify` sigue dando el SHA-256 original con 2.79 y con 2.80;
+  solo cambia `func_80040240` (puntuación 130 a 25, coincide en bytes). Ninguna otra función cambia de puntuación,
+  porque `gp_allow_la` solo actúa donde el C declara el dato pequeño en el propio archivo.

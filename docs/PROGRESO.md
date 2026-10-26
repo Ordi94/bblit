@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 313 | 41320 |
+| Código del juego | 450 | 201416 | 314 | 41816 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 41320 de 201416 (20.51 %).
-Funciones marcadas `NON_MATCHING`: 57.
-Coherencia con el ensamblador: correcta (789 `glabel` en `asm/` + 313 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 41816 de 201416 (20.76 %).
+Funciones marcadas `NON_MATCHING`: 56.
+Coherencia con el ensamblador: correcta (788 `glabel` en `asm/` + 314 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -25,7 +25,7 @@ Coherencia con el ensamblador: correcta (789 `glabel` en `asm/` + 313 en C = 110
 | camara_y_bucle_logico | 1 | 7 | 3 | 1 | 2348 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 6 | 5 | 0 | 804 | 14264 |
 | colision_y_terreno | 1 | 2 | 1 | 1 | 680 | 12480 |
-| entrada_de_mando | 1 | 4 | 2 | 0 | 764 | 2784 |
+| entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
 | gestion_y_dibujo_de_objetos | 4 | 23 | 7 | 12 | 5772 | 18624 |
 | graficos_y_gte | 3 | 16 | 3 | 0 | 5024 | 11812 |
 | inicializacion_de_motor | 1 | 6 | 8 | 2 | 1028 | 5276 |
@@ -46,7 +46,7 @@ Coherencia con el ensamblador: correcta (789 `glabel` en `asm/` + 313 en C = 110
 | `src/cargador_de_niveles_y_cd.c` | 6 | 3 | 0 | 804 | 13592 |
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 2 | 0 | 0 | 672 |
 | `src/colision_y_terreno.c` | 2 | 1 | 1 | 680 | 12480 |
-| `src/entrada_de_mando.c` | 4 | 2 | 0 | 764 | 2784 |
+| `src/entrada_de_mando.c` | 5 | 1 | 0 | 1260 | 2784 |
 | `src/gestion_y_dibujo_de_objetos.c` | 12 | 2 | 1 | 1696 | 3812 |
 | `src/gestion_y_dibujo_de_objetos_2.c` | 7 | 4 | 9 | 3184 | 10604 |
 | `src/gestion_y_dibujo_de_objetos_3.c` | 1 | 0 | 0 | 564 | 564 |
@@ -68,9 +68,9 @@ Coherencia con el ensamblador: correcta (789 `glabel` en `asm/` + 313 en C = 110
 
 ## Funciones `NON_MATCHING`
 
-- `func_80014AC4`: Pendiente: puntuacion 895 con la configuracion versionada (g = 8 del archivo). El original direcciona la tabla de cuentas con `addiu v0,gp,0x38`, que maspsx solo emite desde ASPSX 2.80 (hoy 2.79), y calcula la base del nombre una sola vez antes del bucle. Variantes probadas: 8 (bucles por indice y por puntero). Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18 caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
+- `func_80014AC4`: Pendiente: puntuacion 895 con la configuracion versionada (g = 8 del archivo). El original direcciona la tabla de cuentas con `addiu v0,gp,0x38`, que maspsx emite desde ASPSX 2.80 (la version fijada), y calcula la base del nombre una sola vez antes del bucle. Variantes probadas: 8 (bucles por indice y por puntero). Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18 caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
 - `func_800151FC`: Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). Variantes probadas: 1. No se reprodujo la disposicion de los bloques locales de la pila ni las copias de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento. Da formato al archivo de partida: arma en la pila un bloque de 0x200 bytes con la cabecera de la tarjeta ("SC", bandera de icono, un bloque, titulo, paleta e imagenes), lo copia con la cabecera de D_8006D060 y su suma de control al buffer D_80069520 + 0x2000 y escribe 0x400 bytes con open/write (hasta cinco intentos), comprobando
-- `func_80015E94`: Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). El original calcula las dos direcciones de $gp con `addiu a1,gp,0x40` y `addiu a2,gp,0x48` (ASPSX 2.80) y coloca el almacen del byte antes de cargar el modo; con 2.79 la forma no se emite. Variantes probadas: 3. Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
+- `func_80015E94`: Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). El original calcula las dos direcciones de $gp con `addiu a1,gp,0x40` y `addiu a2,gp,0x48` (ASPSX 2.80, la version fijada) y coloca el almacen del byte antes de cargar el modo. Variantes probadas: 3. Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
 - `func_800171E4`: Pendiente: puntuacion 103 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Variantes probadas: 8.
 - `func_80017478`: Pendiente: puntuacion 10573 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las comparaciones de las regiones no se han ajustado al original. Variantes probadas: 1. Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la pared que cruzan y, si ninguno la cruza, usa la arista mas cercana. Devuelve el candidato elegido (el de menor distancia, con prefe
 - `func_80018664`: Pendiente: puntuacion 2420 con la configuracion versionada (g = 8 del archivo). Reparto de registros del prologo (el original usa a0 como copia de la posicion de a) y cadena de comparaciones de las esquinas que el original comparte entre regiones. Variantes probadas: 3. Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
@@ -109,7 +109,6 @@ Coherencia con el ensamblador: correcta (789 `glabel` en `asm/` + 313 en C = 110
 - `func_8003AF8C`: Pendiente: puntuacion 1680 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el desplazamiento de la textura cae en a0 y la plantilla en v1, en lugar de a2 y a0) y la posicion del almacen de la profundidad, que el original deja justo antes de indexar la lista de ordenacion. Variantes probadas: 160 (forma de la plantilla, orden de declaracion de los locales, acumulacion del color).
 - `func_8003B354`: Pendiente: puntuacion 485 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; solo difiere el reparto de v0/v1/a0 en la comparacion del numero de salas (la constante 0x10000 se carga antes del almacen de la profundidad) y en el puntero de la entrada visible. Variantes probadas: 60 (forma de la comparacion con shifts, orden de las escrituras previas al bucle, indexado frente a aritmetica de punteros, orden del cierre de la lista).
 - `func_8003B5AC`: Pendiente: puntuacion 1518 con la configuracion versionada (-G0 salvo g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el registro de la carga del desplazamiento geometrico (gte_SetGeomOffset usa t4/t5 y el original t2/t3), el reparto v0/v1 del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado, y el almacen de D_800694E2 se coloca antes que la relectura), el orden de las cargas de los limites del buffer en el prologo y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (900 permuta
-- `func_80040240`: Pendiente: puntuacion 130 con la configuracion versionada (g = 8 del archivo). El original calcula la direccion del bloque de alineacion con `addiu a1,gp,0x10`; maspsx solo la reescribe a $gp desde la version 2.80 de ASPSX (gp_allow_la) y la configuracion versionada fija 2.79, de modo que sale `lui` + `addiu`. Con 2.80 la funcion coincide en bytes (puntuacion 25 por la forma simbolica de 0x800100E7 y de D_80069330) y el ejecutable completo sigue verificando. Variantes: base_gp + 0x10, variable intermedia al principio y al final, conversion a u32, definicion tentativa del dato pequeno. Vibracio
 - `func_8004048C`: Pendiente: puntuacion 7254 con la configuracion versionada (g = 8 del archivo). El marco de pila del original es 8 bytes mayor, el reparto de registros de la rama de grabacion es otro y GCC fusiona el xor de (D_8006CFF2 ^ 0xFF) << 8 con el desplazamiento. Variantes probadas: 14 (switch con goto, if/else, copias). Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS (D_8006CFF1..7: id, boton
 - `func_80040F78`: Pendiente: puntuacion 390 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones que el original; solo difiere el reparto de registros de la ultima etapa (el original deja el puntero del bucle en a2 y la constante 4 en a3, el indice en t0 en todas las etapas). Variantes probadas: mas de 10 (orden de declaracion, puntero propio por etapa, bucles rotados, parametro de relleno). Recorre la cabecera de secciones de un contenedor (n entradas de tipo, tamano y tamano alineado) y calcula la posicion, en bytes desde el inicio del archivo, de los datos del banco que se pide: devuelve
 - `func_80041298`: Pendiente: puntuacion 1115 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y mismo flujo que el original; difiere el reparto de registros (el original deja el puntero de la lista A en v1 y el de busqueda en a1, aqui salen a2 y v1) y un nop de retardo que el original rellena. Variantes probadas: 14 (indice o puntero en el bucle de cinco, tipo del contador, temporales para el reparto, orden de declaracion). Convierte, en un contenedor ya cargado, las referencias entre registros por identificador en desplazamientos dentro de cada lista, para que el codigo que las usa no 

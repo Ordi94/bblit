@@ -117,7 +117,7 @@ python tools/build.py clean               # elimina asm/, expected/ y los artefa
 - `build` empieza eliminando el ejecutable, el binario plano, el ELF y el mapa de la construcción
   anterior, de modo que una construcción fallida no deja nada que `verify` pueda aprobar.
 - `build` recorre los objetos que referencia el script del enlazador: ensambla cada `.s` y
-  compila cada `src/*.c` (preprocesador `CPPPSX.EXE`, `CC1PSX.EXE -O2 -G<g>`, `maspsx` con ASPSX 2.79 y
+  compila cada `src/*.c` (preprocesador `CPPPSX.EXE`, `CC1PSX.EXE -O2 -G<g>`, `maspsx` con ASPSX 2.80 y
   `as`; ver `docs/DESCOMPILACION.md`). Después enlaza con `mipsel-none-elf-ld` y extrae la imagen
   plana con `objcopy`. La cabecera PS-X EXE de 0x800 bytes se regenera desde
   `config/ejecutable.json` (no se copia del original). El orden de enlace lo fija el script, así que

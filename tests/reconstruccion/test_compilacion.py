@@ -82,11 +82,11 @@ def test_comando_compilar_fija_las_opciones_del_compilador_original() -> None:
     ]
 
 
-def test_comando_maspsx_usa_aspsx_279_y_el_ensamblador_por_ruta() -> None:
+def test_comando_maspsx_usa_aspsx_280_porque_el_original_usa_gp_allow_la_y_el_ensamblador_por_ruta() -> None:
     assert comp.comando_maspsx(herramientas_compilacion(), "a.s", "a.o", "asm/include") == [
         "py",
         "maspsx.py",
-        "--aspsx-version=2.79",
+        "--aspsx-version=2.80",
         "--use-comm-section",
         "--run-assembler",
         "--gnu-as-path=as.exe",
@@ -126,6 +126,17 @@ def test_verificar_solo_texto_acepta_codigo_y_secciones_de_control() -> None:
 def test_verificar_solo_texto_rechaza_datos_con_el_nombre_de_la_seccion(seccion: Any) -> None:
     with pytest.raises(ValueError, match=f"a.o: genera 4 bytes en la seccion inesperada '{seccion}'"):
         comp.verificar_solo_texto("a.o", {".text": 8, seccion: 4})
+
+
+def test_verificar_solo_texto_acepta_datos_cuando_la_seccion_esta_declarada() -> None:
+    """Una seccion de datos con contenido se acepta si el subsegmento del archivo la declara."""
+    comp.verificar_solo_texto("a.o", {".text": 8, ".rodata": 4}, {".rodata"})
+
+
+def test_verificar_solo_texto_rechaza_datos_si_solo_se_declara_otra_seccion() -> None:
+    """Declarar una seccion no exime a las demas: .rodata con contenido sigue siendo un error."""
+    with pytest.raises(ValueError, match=r"seccion inesperada '.rodata'"):
+        comp.verificar_solo_texto("a.o", {".text": 8, ".rodata": 4}, {".data"})
 
 
 def test_rutas_intermedias_junto_al_objeto() -> None:
@@ -189,6 +200,20 @@ def test_compilar_fuente_con_datos_falla_y_sin_exigencia_lo_permite(repo: Any) -
     )
     assert [Path(c[0]).name for c in ejecutor.comandos] == ["CPPPSX.EXE", "CC1PSX.EXE", "py"]
     assert "-DNON_MATCHING" in ejecutor.comandos[0]
+
+
+def test_compilar_fuente_acepta_datos_de_una_seccion_declarada_por_el_subsegmento(repo: Any) -> None:
+    """Con .rodata declarada, un objeto que la llena compila y se verifica sin error."""
+    ejecutor = EjecutorC(secciones=SALIDA_OBJDUMP)
+    comp.compilar_fuente(
+        repo,
+        "src/a.c",
+        "build/src/a.c.o",
+        herramientas_compilacion(),
+        ejecutor,
+        secciones_declaradas={".rodata"},
+    )
+    assert [Path(c[0]).name for c in ejecutor.comandos][-1] == "objdump.exe"
 
 
 def test_compilar_fuente_sin_archivo_o_con_rutas_invalidas(repo: Any) -> None:
@@ -287,6 +312,36 @@ def test_construir_mixto_respeta_el_orden_del_script_y_compila_los_c(tmp_path: P
     nombres = [Path(c[0]).name for c in ejecutor.comandos]
     assert nombres == ["as.exe", "CPPPSX.EXE", "CC1PSX.EXE", "py", "objdump.exe", "ld.exe", "objcopy.exe"]
     assert peticiones == [1], "las herramientas de compilacion se resuelven una sola vez"
+
+
+def test_construir_mixto_acepta_datos_declarados_por_la_particion_del_archivo(tmp_path: Path) -> None:
+    """La seccion declarada para a.c se acepta aunque el objeto la llene."""
+    preparar_construccion(tmp_path, SCRIPT_MIXTO)
+    ejecutor = EjecutorC(secciones=SALIDA_OBJDUMP)
+    destino = comp.construir_mixto(
+        tmp_path,
+        REFERENCIA,
+        herramientas_base(),
+        herramientas_compilacion,
+        ejecutor,
+        declaradas={"a": {".rodata"}},
+    )
+    assert destino.read_bytes() == EJECUTABLE
+
+
+def test_construir_mixto_rechaza_datos_no_declarados_con_otro_archivo_declarado(tmp_path: Path) -> None:
+    """Las secciones declaradas de otro archivo no eximen a a.c de declarar las suyas."""
+    preparar_construccion(tmp_path, SCRIPT_MIXTO)
+    ejecutor = EjecutorC(secciones=SALIDA_OBJDUMP)
+    with pytest.raises(ValueError, match=r"seccion inesperada '.rodata'"):
+        comp.construir_mixto(
+            tmp_path,
+            REFERENCIA,
+            herramientas_base(),
+            herramientas_compilacion,
+            ejecutor,
+            declaradas={"b": {".rodata"}},
+        )
 
 
 def test_construir_mixto_sin_archivos_c_no_pide_el_sdk(tmp_path: Path) -> None:

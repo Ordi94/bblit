@@ -2,7 +2,7 @@
 
 Cada archivo pasa por la misma cadena que uso el estudio: preprocesador del SDK
 (``CPPPSX.EXE``), compilador ``CC1PSX.EXE`` (GCC 2.8.1) con ``-O2 -G0``, ``maspsx`` que imita al
-ensamblador ``ASPSX`` 2.79 y GNU ``as``. El compilador propio no preprocesa, por eso el paso
+ensamblador ``ASPSX`` 2.80 y GNU ``as``. El compilador propio no preprocesa, por eso el paso
 previo es obligatorio: sin el, ``#include`` y las macros llegan intactas al compilador y falla.
 
 La capa pura (comandos y lectura de la lista de secciones) no toca disco; ``compilar_fuente``
@@ -27,7 +27,7 @@ from tools.reconstruccion.infraestructura import (
 from tools.toolchain.dominio import Componente
 from tools.toolchain.instalacion import resolver_herramienta
 
-VERSION_ASPSX = "2.79"
+VERSION_ASPSX = "2.80"
 OPCIONES_COMPILADOR = ("-quiet", "-O2")
 CARPETA_INCLUDE = "include"
 CARPETA_MACROS = "asm/include"
