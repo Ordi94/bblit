@@ -321,7 +321,10 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * No coincide: puntuacion 7264 (el archivo se compila con g = 8).
+ * Pendiente: puntuacion 7264 con la configuracion versionada (g = 8 del archivo). El marco de pila del original
+ * es 8 bytes mayor, el reparto de registros de la rama de grabacion es otro y GCC fusiona el xor de
+ * (D_8006CFF2 ^ 0xFF) << 8 con el desplazamiento. Variantes probadas: 14 (switch con goto, if/else, copias).
+ *
  * Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o
  * entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma
  * los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS
