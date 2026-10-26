@@ -67,6 +67,9 @@ gp = 0x80069320
 # que los usa los declara como definicion tentativa (sin extern) y maspsx los reescribe a $gp; el
 # enlace les da esta direccion (los fija junto a _gp). Se retiran cuando config/symbols.txt los declare.
 [datos_pequenos]
+D_8006935C = 0x8006935C
+D_80069360 = 0x80069360
+D_80069368 = 0x80069368
 D_80069330 = 0x80069330
 D_80069338 = 0x80069338
 D_80069380 = 0x80069380
