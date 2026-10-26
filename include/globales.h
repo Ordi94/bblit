@@ -217,7 +217,7 @@ typedef struct Objeto {
  * Estado de la camara y de la escena en 0x8006D928. Los primeros 0x20 bytes son un GsRVIEW2 del
  * SDK (punto de vista, punto de mira, rz y coordenada padre): GsSetRefView2L recibe la
  * direccion de la estructura entera. Detras vienen los indicadores y los parametros de
- * seguimiento que mueven los eventos de camara. func_8001CC68 escribe el punto de vista en
+ * seguimiento que mueven los eventos de camara y la sacudida (s86 a h8E). func_8001CC68 escribe el punto de vista en
  * cuatro copias (+0x0, +0x68, +0x94 y +0xB4) y el punto de mira en dos (+0xC y +0xA4).
  */
 typedef struct EstadoCamara {
@@ -241,7 +241,7 @@ typedef struct EstadoCamara {
     s16 s8A;
     s16 h8C;                /* func_8001D588: sh zero */
     s16 h8E;                /* func_8001D588: sh zero */
-    u8 pad90[0x94 - 0x90];
+    s32 i90;                /* func_80032894: sw zero */
     s32 c94;                /* func_8001CC68: sw, copia del punto de vista */
     s32 c98;
     s32 c9C;

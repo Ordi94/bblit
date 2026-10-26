@@ -5,38 +5,6 @@
 #include "arranque.h"
 #include "objetos.h"
 
-/*
- * Vista del estado de la camara con los campos que EstadoCamara (globales.h) todavia no declara:
- * las copias del punto de vista y de la mira que los eventos de camara reparten (0x68, 0x94, 0xB4
- * y 0xA4) y los parametros de la sacudida (0x86 a 0x90). Es la misma memoria que D_8006D928.
- */
-typedef struct VistaCamara {
-    s32 vpx;
-    s32 vpy;
-    s32 vpz;
-    s32 mx;
-    s32 my;
-    s32 mz;
-    u8 pad18[0x68 - 0x18];
-    s32 vp68[3];
-    u8 pad74[0x80 - 0x74];
-    u16 flags80;
-    u8 pad82[0x86 - 0x82];
-    s16 s86;
-    s16 s88;
-    s16 s8A;
-    s16 s8C;
-    s16 s8E;
-    s32 i90;
-    s32 vp94[3];
-    u8 padA0[0xA4 - 0xA0];
-    s32 m4[3];
-    u8 padB0[0xB4 - 0xB0];
-    s32 vpB4[3];
-} VistaCamara;
-
-#define CAMARA ((VistaCamara*)&D_8006D928)
-
 typedef struct Vec3 {
     s32 x;
     s32 y;
@@ -182,41 +150,41 @@ void func_80032894(void)
     Vec3 vp;
     Vec3 mira;
 
-    GEO_CARGAR_W(&CAMARA->vpx);
+    GEO_CARGAR_W(&D_8006D928.vpx);
     GEO_GUARDAR_W_T1(&vp);
-    GEO_CARGAR_W(&CAMARA->mx);
+    GEO_CARGAR_W(&D_8006D928.x);
     GEO_GUARDAR_W_T1(&mira);
     D_80069414 = 0;
     func_8001CC68(&D_80069698->param.trans.vx);
     if (mira.x != 0) {
-        CAMARA->mx = mira.x;
-        CAMARA->m4[0] = mira.x;
-        CAMARA->my = mira.y;
-        CAMARA->m4[1] = mira.y;
-        CAMARA->mz = mira.z;
-        CAMARA->m4[2] = mira.z;
+        D_8006D928.x = mira.x;
+        D_8006D928.cA4 = mira.x;
+        D_8006D928.y = mira.y;
+        D_8006D928.cA8 = mira.y;
+        D_8006D928.z = mira.z;
+        D_8006D928.cAC = mira.z;
     }
     if (vp.x != 0) {
-        CAMARA->vpx = vp.x;
-        CAMARA->vp68[0] = vp.x;
-        CAMARA->vp94[0] = vp.x;
-        CAMARA->vpB4[0] = vp.x;
-        CAMARA->vpy = vp.y;
-        CAMARA->vp68[1] = vp.y;
-        CAMARA->vp94[1] = vp.y;
-        CAMARA->vpB4[1] = vp.y;
-        CAMARA->vpz = vp.z;
-        CAMARA->vp68[2] = vp.z;
-        CAMARA->vp94[2] = vp.z;
-        CAMARA->vpB4[2] = vp.z;
+        D_8006D928.vpx = vp.x;
+        D_8006D928.c68 = vp.x;
+        D_8006D928.c94 = vp.x;
+        D_8006D928.cB4 = vp.x;
+        D_8006D928.vpy = vp.y;
+        D_8006D928.c6C = vp.y;
+        D_8006D928.c98 = vp.y;
+        D_8006D928.cB8 = vp.y;
+        D_8006D928.vpz = vp.z;
+        D_8006D928.c70 = vp.z;
+        D_8006D928.c9C = vp.z;
+        D_8006D928.cBC = vp.z;
     }
     if (D_80069698 != NULL) {
         D_80069DC0.x = D_80069698->param.trans.vx;
         D_80069DC0.y = D_80069698->param.trans.vy;
         D_80069DC0.z = D_80069698->param.trans.vz;
     }
-    CAMARA->i90 = 0;
-    CAMARA->flags80 = 0x40;
+    D_8006D928.i90 = 0;
+    D_8006D928.flags80 = 0x40;
     D_80069624 = -200;
     D_80069618 = 600;
     D_800693F6 = 0;
@@ -235,31 +203,31 @@ void func_80032A24(void)
     s32 r;
     s16 a;
 
-    if (CAMARA->s88 != 0) {
-        CAMARA->s8C = (rsin(CAMARA->s8A) * CAMARA->s88) >> 11;
-        r = rcos(CAMARA->s8A) * CAMARA->s88;
-        CAMARA->mx = CAMARA->mx + CAMARA->s8C;
-        CAMARA->s8A = CAMARA->s8A + CAMARA->s86;
-        CAMARA->s8E = r >> 12;
-        CAMARA->my = CAMARA->my + CAMARA->s8E;
-        a = CAMARA->s8A;
+    if (D_8006D928.s88 != 0) {
+        D_8006D928.h8C = (rsin(D_8006D928.s8A) * D_8006D928.s88) >> 11;
+        r = rcos(D_8006D928.s8A) * D_8006D928.s88;
+        D_8006D928.x = D_8006D928.x + D_8006D928.h8C;
+        D_8006D928.s8A = D_8006D928.s8A + D_8006D928.s86;
+        D_8006D928.h8E = r >> 12;
+        D_8006D928.y = D_8006D928.y + D_8006D928.h8E;
+        a = D_8006D928.s8A;
         if (a >= 0x800) {
-            if (CAMARA->s88 >= 4) {
-                CAMARA->s88 = CAMARA->s88 - 3;
+            if (D_8006D928.s88 >= 4) {
+                D_8006D928.s88 = D_8006D928.s88 - 3;
             } else {
-                CAMARA->s88 = 0;
+                D_8006D928.s88 = 0;
             }
         } else if (a >= 0x1000) {
-            CAMARA->s8A = a - 0x1000;
-            if (CAMARA->s88 >= 4) {
-                CAMARA->s88 = CAMARA->s88 - 3;
+            D_8006D928.s8A = a - 0x1000;
+            if (D_8006D928.s88 >= 4) {
+                D_8006D928.s88 = D_8006D928.s88 - 3;
             } else {
-                CAMARA->s88 = 0;
+                D_8006D928.s88 = 0;
             }
         }
     } else {
-        CAMARA->s8C = 0;
-        CAMARA->s8E = 0;
+        D_8006D928.h8C = 0;
+        D_8006D928.h8E = 0;
     }
 }
 
@@ -667,19 +635,19 @@ void func_800353B0(Objeto* a0)
         }
     }
     func_80035244();
-    sc->m18 = CAMARA->mx - CAMARA->vpx;
-    sc->m20 = CAMARA->mz - CAMARA->vpz;
+    sc->m18 = D_8006D928.x - D_8006D928.vpx;
+    sc->m20 = D_8006D928.z - D_8006D928.vpz;
     sc->r74 = ratan2(sc->m18, sc->m20);
     gte_SetRotMatrix(&D_80076130);
     gte_SetTransVector(&D_80076144);
-    if (D_80069698 != NULL && (CAMARA->vpx + CAMARA->vpy + CAMARA->vpz) == 0) {
+    if (D_80069698 != NULL && (D_8006D928.vpx + D_8006D928.vpy + D_8006D928.vpz) == 0) {
         sc->m18 = D_80069698->param.trans.vx;
         sc->m1C = D_80069698->param.trans.vy;
         sc->m20 = D_80069698->param.trans.vz;
     } else {
-        sc->m18 = CAMARA->vpx;
-        sc->m1C = CAMARA->vpy;
-        sc->m20 = CAMARA->vpz;
+        sc->m18 = D_8006D928.vpx;
+        sc->m1C = D_8006D928.vpy;
+        sc->m20 = D_8006D928.vpz;
     }
     sc->l30 = NULL;
     sc->l34 = NULL;
@@ -897,7 +865,7 @@ fin:
                 if ((s0->flags14 & 0x100) == 0) {
                     D_8005E35C[s0->w2C](s0);
                 }
-                if ((*(u32*)&CAMARA->flags80 & 0x300) != 0x100 || s0->w2C == 0x20 || (s0->flags18 & 0x1000) != 0) {
+                if ((*(u32*)&D_8006D928.flags80 & 0x300) != 0x100 || s0->w2C == 0x20 || (s0->flags18 & 0x1000) != 0) {
                     s0->w22++;
                     o = s0;
                 }

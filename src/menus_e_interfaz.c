@@ -102,7 +102,6 @@ extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* es
 
 /* Estado principal (solo el telon de pantalla) y copias de la camara que deja el dibujo por cuadro. */
 #define PANT ESTADO_PRINCIPAL
-#define COPIAS ((CopiasCamara*)&D_8006D928)
 
 void func_8003AA38(void)
 {
@@ -608,18 +607,18 @@ void func_8003B5AC(Objeto* lista)
                                 qx = D_8006D928.x;
                                 qy = D_8006D928.y;
                                 qz = D_8006D928.z;
-                                COPIAS->c68 = px;
-                                COPIAS->c94 = px;
-                                COPIAS->cB4 = px;
-                                COPIAS->c6C = py;
-                                COPIAS->c98 = py;
-                                COPIAS->cB8 = py;
-                                COPIAS->c70 = pz;
-                                COPIAS->c9C = pz;
-                                COPIAS->cBC = pz;
-                                COPIAS->cA4 = qx;
-                                COPIAS->cA8 = qy;
-                                COPIAS->cAC = qz;
+                                D_8006D928.c68 = px;
+                                D_8006D928.c94 = px;
+                                D_8006D928.cB4 = px;
+                                D_8006D928.c6C = py;
+                                D_8006D928.c98 = py;
+                                D_8006D928.cB8 = py;
+                                D_8006D928.c70 = pz;
+                                D_8006D928.c9C = pz;
+                                D_8006D928.cBC = pz;
+                                D_8006D928.cA4 = qx;
+                                D_8006D928.cA8 = qy;
+                                D_8006D928.cAC = qz;
                             }
                         }
                     }

@@ -254,30 +254,6 @@ typedef struct PoligonoGT4 {
 } PoligonoGT4;
 
 /*
- * Vista de EstadoCamara.pad20 (D_8006D928), pendiente de fundir con esa estructura: func_8003B5AC deja aqui tres copias
- * de la posicion del punto de vista (+0x68, +0x94, +0xB4) y de su punto de mira (+0x6C.., +0xA4..)
- * cuando el objeto en curso lo pide.
- */
-typedef struct CopiasCamara {
-    u8 pad00[0x68];
-    s32 c68;
-    s32 c6C;
-    s32 c70;
-    u8 pad74[0x94 - 0x74];
-    s32 c94;
-    s32 c98;
-    s32 c9C;
-    u8 padA0[4];
-    s32 cA4;
-    s32 cA8;
-    s32 cAC;
-    u8 padB0[4];
-    s32 cB4;
-    s32 cB8;
-    s32 cBC;
-} CopiasCamara;
-
-/*
  * Estado que se pasa al dibujador de modelos del overlay (func_80010204/func_80010258): los
  * primeros bytes de la escena. +0..+2: bytes de estado (func_8003B26C y func_8003B354);
  * +4 (s4): profundidad del objeto (func_8003AF8C) y, en func_8003C014, desplazamiento de la
