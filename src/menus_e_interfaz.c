@@ -443,7 +443,7 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B354);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 875 con la configuracion versionada (g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el orden de las cargas de los limites del buffer en el prologo (el original carga D_80069680 antes que D_8006958C y guarda el limite primero), el reparto v0/v1 del calculo del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado) y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (900 permutaciones de las escrituras del prologo, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). */
+/* Pendiente: puntuacion 160 con la configuracion versionada (g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el reparto v0/v1 del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado) y el orden de dos movimientos de argumentos antes de func_8003AE08. El almacen volatil de D_800694E2 y el campo w8 volatil del estado reproducen las cargas y almacenes del original. Variantes probadas: 80 (900 permutaciones de las escrituras del prologo, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). */
 void func_8003B5AC(ObjetoEscena* lista)
 {
     EscenaDibujo* esc;
@@ -517,7 +517,7 @@ void func_8003B5AC(ObjetoEscena* lista)
             nivel = D_80069668;
         }
         esc->estado.w8 = nivel;
-        D_800694E2 = nivel;
+        *(volatile u16*)&D_800694E2 = nivel;
         k = (s16)esc->estado.w8 / 16 - 1;
         if (k < 0) {
             color = 0;

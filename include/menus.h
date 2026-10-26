@@ -352,7 +352,7 @@ typedef struct EstadoDibujo {
     u8 pad03;
     s16 s4;
     s16 s6;
-    u16 w8;
+    volatile u16 w8;
     u8 pad0A[2];
     u16 w0C;
     u16 w0E;
