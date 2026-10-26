@@ -39,14 +39,14 @@ extern void func_8003DFE4(void);
 /* Tablas de posiciones de las pistas XA (sectores) y direcciones de pista en el disco. */
 extern u16 D_8005E968[];
 extern u16 D_8005E974[];
-extern CdlLOC D_8005F8FC;
+extern CdlLOC D_8005F8FC[];
 /* Parametro de CdlSetmode (modo 0xCA: velocidad doble, XA-ADPCM, sector completo, filtro). */
 extern u8 D_800694D0;
 extern void func_8003E034(s32 a0);
 extern void func_8003E88C(void);
 extern u16 D_8005E9B8[];
 extern u16 D_8005EA38[];
-extern CdlLOC D_8005F90C;
+extern CdlLOC D_8005F90C[];
 extern u8 D_8006AA87[];
 extern u8 D_80069501;
 extern s16 D_800694C8;
@@ -248,8 +248,6 @@ void func_8003E120(void)
     func_8003DFE4();
 }
 
-/* Pendiente: puntuacion 90 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
-#ifdef NON_MATCHING
 void func_8003E16C(u8 track)
 {
     s32 i;
@@ -265,7 +263,7 @@ void func_8003E16C(u8 track)
             acc += D_8005E968[i];
         }
         acc = D_8005E974[track] << 3;
-        pos = CdPosToInt(&D_8005F8FC);
+        pos = CdPosToInt(D_8005F8FC);
         D_80069450 = D_80069450 + pos;
         D_80069440 = D_80069450 + acc - 0x20;
         CdIntToPos(D_80069450, &D_80069444);
@@ -278,9 +276,6 @@ void func_8003E16C(u8 track)
         func_8003E88C();
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003E16C);
-#endif
 
 /* Pendiente: puntuacion 130 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
 #ifdef NON_MATCHING
@@ -290,7 +285,6 @@ void func_8003E298(s32 a0)
     s32 i;
     s32 n;
     s32 acc;
-    s32 off;
     s32 pos;
     u8 vol;
 
@@ -303,9 +297,9 @@ void func_8003E298(s32 a0)
             acc += D_8005E9B8[i];
         }
     }
+    acc = *(u16*)((u8*)D_8005EA38 + ((EstadoAudio*)0x80010000)->idioma * 2 + n * 16) << 3;
     g = (EstadoAudio*)0x80010000;
-    acc = *(u16*)((u8*)D_8005EA38 + g->idioma * 2 + n * 16) << 3;
-    pos = CdPosToInt(&D_8005F90C);
+    pos = CdPosToInt(D_8005F90C);
     D_80069450 = D_80069450 + pos;
     D_80069440 = D_80069450 + acc - 0x40;
     CdIntToPos(D_80069450, &D_80069444);
@@ -329,12 +323,10 @@ INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003E3C0);
 
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003E680);
 
-/* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
-#ifdef NON_MATCHING
 void func_8003E88C(void)
 {
     CdlLOC loc;
-    s32 v;
+    u8 v;
 
     if (D_8006955E == 0) {
         do {
@@ -342,7 +334,7 @@ void func_8003E88C(void)
             CdControlB(9, 0, 0);
             CdControlB(1, 0, 0);
         } while (CdStatus() != 2);
-        v = D_8006AA7C;
+        v = D_8006AA70[0xC];
         if (v == 1) {
             D_8006955E = v;
             CdControlB(0x10, &D_800694D0, &D_80069540);
@@ -353,9 +345,6 @@ void func_8003E88C(void)
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003E88C);
-#endif
 
 void func_8003E948(void)
 {
