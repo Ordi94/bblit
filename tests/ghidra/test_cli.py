@@ -180,7 +180,11 @@ def test_simbolos_escribe_la_tabla_exacta(
         )
         == 0
     )
-    esperado = "5 simbolos escritos (0 fragmentos fusionados, 0 descartados, 0 huecos de codigo anadidos)\n"
+    esperado = (
+        "5 simbolos escritos (0 fragmentos fusionados, 0 descartados, 0 huecos de codigo anadidos)\n"
+        "tablas: 0 (0 de punteros a funcion, 0 de switch); 0 funciones nuevas, "
+        "0 continuaciones fusionadas, 0 destinos no aplicados\n"
+    )
     assert capsys.readouterr().out == esperado
     assert destino.read_text(encoding="utf-8") == (
         "__main = 0x80014A00; // type:func size:0x8\n"

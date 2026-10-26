@@ -23,7 +23,6 @@ options:
   # existir todavia; el segundo lo genera 'split' con la funcion de entrada.
   symbol_addrs_path:
     - config/symbols.txt
-    - config/simbolos_adicionales.txt
     - build/simbolos_entrada.txt
   find_file_boundaries: false
   # Cada objeto C aporta su propio .text; con el relleno a 16 bytes por defecto el enlazador
@@ -54,24 +53,60 @@ segments:
       # en 0x8005DE84, seguida de un ultimo gancho de la BIOS (salto a la tabla B0) y de un
       # 'nop' de relleno hasta la alineacion de 16 bytes; a partir de ahi solo hay tablas y cadenas.
       - [0x800, asm, boot]
-      - [0x8C4, c, code_80014AC4]
-      - [0x7D9C, c, code_8001BF9C]
-      - [0x11738, c, code_80025938]
-      - [0x17880, c, code_8002BA80]
-      - [0x1E674, c, code_80032874]
-      - [0x24684, c, code_80038884]
-      - [0x2A480, c, code_8003E680]
-      - [0x30388, c, code_80044588]
+      - [0x8C4, c, tarjeta_de_memoria]  # 0x80014AC4
+      - [0x1CC0, c, arranque_y_bucle_principal_2]  # 0x80015EC0
+      - [0x2A0C, c, graficos_y_gte]  # 0x80016C0C
+      - [0x5164, c, colision_y_terreno]  # 0x80019364
+      - [0x8224, c, movimiento_y_objetos_de_escena]  # 0x8001C424
+      - [0x8A68, c, movimiento_y_objetos_de_escena_2]  # 0x8001CC68
+      - [0xA328, c, movimiento_y_objetos_de_escena_3]  # 0x8001E528
+      - [0xC990, c, logica_de_niveles]  # 0x80020B90
+      - [0x11738, c, logica_de_niveles_2]  # 0x80025938
+      - [0x11F18, c, manejadores_por_tabla]  # 0x80026118
+      - [0x12098, c, logica_de_niveles_3]  # 0x80026298
+      - [0x1B7F8, c, interprete_de_eventos]  # 0x8002F9F8
+      - [0x1E674, c, camara_y_bucle_logico]  # 0x80032874
+      - [0x21F64, c, gestion_y_dibujo_de_objetos]  # 0x80036164
+      - [0x22E48, c, gestion_y_dibujo_de_objetos_2]  # 0x80037048
+      - [0x257C8, c, gestion_y_dibujo_de_objetos_3]  # 0x800399C8
+      - [0x259FC, c, gestion_y_dibujo_de_objetos_4]  # 0x80039BFC
+      - [0x26838, c, menus_e_interfaz]  # 0x8003AA38
+      - [0x29D84, c, audio_xa_y_spu]  # 0x8003DF84
+      - [0x2BDA0, c, entrada_de_mando]  # 0x8003FFA0
+      - [0x2C880, c, graficos_y_gte_10]  # 0x80040A80
+      - [0x2CCB4, c, cargador_de_niveles_y_cd]  # 0x80040EB4
+      - [0x301CC, c, graficos_y_gte_12]  # 0x800443CC
+      - [0x30464, c, cargador_de_niveles_y_cd_2]  # 0x80044664
+      - [0x30704, c, inicializacion_de_motor]  # 0x80044904
       - [0x31BA0, asm, libs]
       # Datos inicializados. El enlazador agrupa 'data' antes que 'rodata' (orden fijo del
       # script generado), asi que la frontera se coloca donde empiezan los literales de
       # cadena propios del juego ("Error: Can't push matrix..." en 0x80067C7C). Las tablas
       # de punteros y de lookup que le anteceden son datos escritos por el programa.
-      - [0x49CA0, data, data]
+      - [0x49CA0, data, tarjeta_de_memoria_tablas]  # 0x8005DEA0
+      - [0x49E4C, .data, tarjeta_de_memoria]  # 0x8005E04C
+      - [0x49E64, data, movimiento_y_objetos_de_escena_2]  # 0x8005E064
+      - [0x49E8C, data, logica_de_niveles_2]  # 0x8005E08C
+      - [0x4A15C, data, tablas_compartidas]  # 0x8005E35C
+      - [0x4A1F0, data, interprete_de_eventos]  # 0x8005E3F0
+      - [0x4A4F8, data, camara_y_bucle_logico]  # 0x8005E6F8
+      - [0x4A61C, data, gestion_y_dibujo_de_objetos_2]  # 0x8005E81C
+      - [0x4A748, data, gestion_y_dibujo_de_objetos_3]  # 0x8005E948
+      - [0x4A768, data, audio_xa_y_spu]  # 0x8005E968
+      - [0x4AC38, data, entrada_de_mando]  # 0x8005EE38
+      - [0x4AC78, data, cargador_de_niveles_y_cd]  # 0x8005EE78
+      - [0x4AE00, data, datos_del_juego]  # 0x8005F000
       # Datos de solo lectura: literales y tablas de saltos. Las tablas de salto
       # (jumptables) aparecen a partir de 0x80067E64. La frontera es provisional y se
       # afinara cuando se identifiquen los archivos objeto originales.
-      - [0x53A70, rodata, rodata]
+      - [0x53A70, rodata, rodata]  # 0x80067C70
+      - [0x53C64, .rodata, camara_y_bucle_logico]  # 0x80067E64
+      - [0x53C80, .rodata, gestion_y_dibujo_de_objetos]  # 0x80067E80
+      - [0x53C98, rodata, rodata_constante]  # 0x80067E98
+      - [0x53C9C, .rodata, menus_e_interfaz]  # 0x80067E9C
+      - [0x53CF0, .rodata, audio_xa_y_spu]  # 0x80067EF0
+      - [0x53D18, .rodata, cargador_de_niveles_y_cd]  # 0x80067F18
+      - [0x541B8, rodata, rodata_resto]  # 0x800683B8
       # Zona de ceros posterior al segmento cargado (no ocupa bytes en el archivo).
       - { start: 0x55800, type: bss, name: bss, vram: 0x80069A00 }
   # Fin del archivo: 0x55800 = 0x800 de cabecera + 0x55000 de cuerpo.

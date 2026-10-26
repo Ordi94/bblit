@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from tools.reconstruccion.fuentes_c import EstadoFuncion, analizar_fuentes
+from tools.reconstruccion.fuentes_c import EstadoFuncion, analizar_fuentes, motivos_no_coincidentes
 from tools.reconstruccion.infraestructura import PROGRESO_JSON, SIMBOLOS_PROYECTO, listar_fuentes_c
 
 # Rangos de docs/MAPA_MEMORIA.md (limites exactos de las funciones identificadas).
@@ -32,6 +32,7 @@ CARPETAS_ASM_AJENAS = ("include", "matchings", "overlay")
 _PATRON_SIMBOLO = re.compile(r"^([A-Za-z_]\w*)\s*=\s*0x([0-9A-Fa-f]{1,8})\s*;\s*//(.*)$")
 _PATRON_TAMANO = re.compile(r"\bsize:0x([0-9A-Fa-f]+)\b")
 _PATRON_GLABEL = re.compile(r"^glabel\s+\S+", re.MULTILINE)
+_PATRON_SUFIJO_NUMERICO = re.compile(r"_\d+$")
 
 
 @dataclass(frozen=True)
@@ -84,6 +85,29 @@ class ArchivoProgreso:
 
 
 @dataclass(frozen=True)
+class SubsistemaProgreso:
+    """Suma de los archivos ``src/*.c`` que forman un subsistema.
+
+    Attributes:
+        nombre: Nombre del subsistema (nombre del archivo sin su sufijo numerico).
+        archivos: Numero de archivos ``.c`` del subsistema.
+        c: Funciones compiladas desde C.
+        no_coincidentes: Funciones con intento sin coincidir.
+        ensamblador: Funciones que siguen en ``INCLUDE_ASM``.
+        bytes_c: Bytes de las funciones en C.
+        bytes_total: Bytes de todas las funciones.
+    """
+
+    nombre: str
+    archivos: int
+    c: int
+    no_coincidentes: int
+    ensamblador: int
+    bytes_c: int
+    bytes_total: int
+
+
+@dataclass(frozen=True)
 class Progreso:
     """Resultado completo del medidor.
 
@@ -94,7 +118,9 @@ class Progreso:
         c_juego: Funciones del juego ya compiladas desde C.
         c_librerias: Funciones de librerias ya compiladas desde C.
         no_coincidentes: Nombres de las funciones con intento sin coincidir.
+        motivos: Motivo escrito junto a cada intento, por nombre de funcion.
         archivos: Estado por archivo C.
+        subsistemas: Estado por subsistema (archivos agrupados por nombre sin sufijo numerico).
         auxiliares: Funciones definidas en C que no figuran en la tabla (ayudantes locales).
         sin_simbolo: Funciones mencionadas en ``src/`` que la tabla no declara.
         glabel_en_asm: ``glabel`` del ensamblador generado, o ``None`` si no hay ``asm/``.
@@ -106,7 +132,9 @@ class Progreso:
     c_juego: ResumenZona
     c_librerias: ResumenZona
     no_coincidentes: tuple[str, ...]
+    motivos: tuple[tuple[str, str], ...]
     archivos: tuple[ArchivoProgreso, ...]
+    subsistemas: tuple[SubsistemaProgreso, ...]
     auxiliares: tuple[str, ...]
     sin_simbolo: tuple[str, ...]
     glabel_en_asm: int | None
@@ -223,6 +251,45 @@ def zona_de(direccion: int) -> str:
     return "otra"
 
 
+def subsistema_de(archivo: str) -> str:
+    """
+    Deduce el subsistema de un archivo ``src/<subsistema>[_N].c``.
+
+    Contexto:
+        Los archivos de un mismo subsistema se numeran (``gestion_y_dibujo_de_objetos_2``); el
+        medidor los suma para informar el avance por subsistema, que es la unidad de reparto.
+
+    Args:
+        archivo (str): Ruta relativa del archivo C.
+
+    Returns:
+        str: Nombre del archivo sin ``src/``, sin ``.c`` y sin sufijo ``_<numero>``.
+
+    Ejemplo:
+        nombre = subsistema_de("src/graficos_y_gte_10.c")
+    """
+    return _PATRON_SUFIJO_NUMERICO.sub("", Path(archivo).stem)
+
+
+def _agrupar(archivos: Sequence[ArchivoProgreso]) -> tuple[SubsistemaProgreso, ...]:
+    """Suma los archivos de cada subsistema, en orden alfabetico."""
+    grupos: dict[str, list[ArchivoProgreso]] = {}
+    for archivo in archivos:
+        grupos.setdefault(subsistema_de(archivo.archivo), []).append(archivo)
+    return tuple(
+        SubsistemaProgreso(
+            nombre,
+            len(miembros),
+            sum(a.c for a in miembros),
+            sum(a.no_coincidentes for a in miembros),
+            sum(a.ensamblador for a in miembros),
+            sum(a.bytes_c for a in miembros),
+            sum(a.bytes_total for a in miembros),
+        )
+        for nombre, miembros in sorted(grupos.items())
+    )
+
+
 def _resumir(funciones: Sequence[FuncionSimbolo]) -> ResumenZona:
     """Cuenta funciones y bytes de una coleccion."""
     return ResumenZona(len(funciones), sum(f.tamano for f in funciones))
@@ -232,6 +299,7 @@ def calcular_progreso(
     simbolos: Sequence[FuncionSimbolo],
     estados: Mapping[str, Mapping[str, EstadoFuncion]],
     glabel_en_asm: int | None,
+    motivos: Mapping[str, str] | None = None,
 ) -> Progreso:
     """
     Calcula el progreso a partir de la tabla de simbolos y del estado de cada funcion.
@@ -243,6 +311,7 @@ def calcular_progreso(
         simbolos (Sequence[FuncionSimbolo]): Tabla de funciones ya combinada.
         estados (Mapping[str, Mapping[str, EstadoFuncion]]): Estado por funcion y archivo C.
         glabel_en_asm (int, opcional): ``glabel`` contados en ``asm/``; ``None`` si no hay ``asm/``.
+        motivos (Mapping[str, str], opcional): Motivo de cada intento ``NON_MATCHING``.
 
     Returns:
         Progreso: Conteos por zona, por archivo y de coherencia.
@@ -288,7 +357,9 @@ def calcular_progreso(
         c_juego=_resumir([f for f in en_c if zona_de(f.direccion) == "juego"]),
         c_librerias=_resumir([f for f in en_c if zona_de(f.direccion) == "libreria"]),
         no_coincidentes=tuple(sorted(no_coincidentes)),
+        motivos=tuple(sorted((n, m) for n, m in (motivos or {}).items() if n in no_coincidentes)),
         archivos=tuple(archivos),
+        subsistemas=_agrupar(archivos),
         auxiliares=tuple(sorted(auxiliares)),
         sin_simbolo=tuple(sorted(sin_simbolo)),
         glabel_en_asm=glabel_en_asm,
@@ -329,6 +400,7 @@ def a_json(progreso: Progreso) -> dict[str, Any]:
             "porcentajeBytesJuego": progreso.porcentaje_bytes_juego,
         },
         "noCoincidentes": list(progreso.no_coincidentes),
+        "motivosNoCoincidentes": dict(progreso.motivos),
         "archivos": [
             {
                 "archivo": a.archivo,
@@ -340,6 +412,18 @@ def a_json(progreso: Progreso) -> dict[str, Any]:
             }
             for a in progreso.archivos
         ],
+        "subsistemas": [
+            {
+                "subsistema": s.nombre,
+                "archivos": s.archivos,
+                "funcionesC": s.c,
+                "noCoincidentes": s.no_coincidentes,
+                "ensamblador": s.ensamblador,
+                "bytesC": s.bytes_c,
+                "bytesTotal": s.bytes_total,
+            }
+            for s in progreso.subsistemas
+        ],
         "auxiliares": list(progreso.auxiliares),
         "sinSimbolo": list(progreso.sin_simbolo),
         "coherencia": {
@@ -349,6 +433,12 @@ def a_json(progreso: Progreso) -> dict[str, Any]:
             "coincide": progreso.coherente,
         },
     }
+
+
+def _vineta(nombre: str, motivos: Mapping[str, str]) -> str:
+    """Linea de lista de una funcion pendiente, con su motivo si lo tiene."""
+    motivo = motivos.get(nombre)
+    return f"- `{nombre}`: {motivo}" if motivo else f"- `{nombre}`"
 
 
 def a_markdown(progreso: Progreso) -> str:
@@ -400,6 +490,16 @@ def a_markdown(progreso: Progreso) -> str:
         )
     lineas += [
         "",
+        "## Por subsistema",
+        "",
+        "| Subsistema | Archivos | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+        *(
+            f"| {s.nombre} | {s.archivos} | {s.c} | {s.no_coincidentes} | {s.ensamblador} | "
+            f"{s.bytes_c} | {s.bytes_total} |"
+            for s in progreso.subsistemas
+        ),
+        "",
         "## Por archivo",
         "",
         "| Archivo | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |",
@@ -412,7 +512,7 @@ def a_markdown(progreso: Progreso) -> str:
         "",
         "## Funciones `NON_MATCHING`",
         "",
-        *(f"- `{nombre}`" for nombre in progreso.no_coincidentes),
+        *(_vineta(nombre, dict(progreso.motivos)) for nombre in progreso.no_coincidentes),
     ]
     if not progreso.no_coincidentes:
         lineas.append("Ninguna.")
@@ -490,8 +590,12 @@ def generar_progreso(raiz: Path) -> Progreso:
     simbolos = combinar_simbolos(
         _leer_tabla(raiz / SIMBOLOS_PROYECTO), _leer_tabla(raiz / SIMBOLOS_ADICIONALES)
     )
-    estados = analizar_fuentes(listar_fuentes_c(raiz))
-    progreso = calcular_progreso(simbolos, estados, contar_glabel(raiz))
+    textos = listar_fuentes_c(raiz)
+    motivos: dict[str, str] = {}
+    for texto in textos.values():
+        motivos.update(motivos_no_coincidentes(texto))
+    estados = analizar_fuentes(textos)
+    progreso = calcular_progreso(simbolos, estados, contar_glabel(raiz), motivos)
     documento = raiz / DOCUMENTO_PROGRESO
     documento.parent.mkdir(parents=True, exist_ok=True)
     documento.write_text(a_markdown(progreso), encoding="utf-8", newline="\n")

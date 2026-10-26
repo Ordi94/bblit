@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from tools.ghidra.borradores import generar_borradores, seleccionar_funciones
-from tools.ghidra.depuracion import depurar_funciones
+from tools.ghidra.depuracion import depurar_funciones, refinar_con_tablas
 from tools.ghidra.dominio import (
     DIRECCION_BASE,
     DIRECCION_ENTRADA,
@@ -26,10 +26,11 @@ from tools.ghidra.lectura import parsear_funciones_csv
 from tools.ghidra.limites import MAX_USUARIOS_DATO
 from tools.ghidra.simbolos import formatear_tabla, parsear_tabla
 from tools.ghidra.subsistemas import parsear_rangos
-from tools.ghidra.tablas import detectar_corridas
+from tools.ghidra.tablas import Corrida, clasificar_tablas, detectar_corridas
 from tools.ghidra.zonas import FIN_JUEGO, INICIO_JUEGO, clasificar_zona
 
 from tests.ghidra import escenario
+from tests.ghidra.ensamblaje import NOP, RA, T0, T1, add, addiu, jr, lui, lw, programa, retorno, sll
 from tests.ghidra.segmentos import BASE, INSTRUCCION, cierre, segmento
 from tests.ghidra.sintetica import MUESTRA, funcion
 
@@ -256,9 +257,7 @@ def test_una_funcion_cuyo_borrador_agota_el_tiempo_queda_registrada_y_la_corrida
     assert "func_80014AC4,tiempo agotado (3 s)" in registro
 
 
-def test_los_documentos_de_reparto_son_acotados_y_no_filtran_rutas_ni_vocabulario_interno() -> (
-    None
-):
+def test_los_documentos_de_reparto_son_acotados_y_no_filtran_rutas_ni_vocabulario_interno() -> None:
 
     subsistemas = (RAIZ / "docs" / "SUBSISTEMAS.md").read_text(encoding="utf-8")
     origen = (RAIZ / "docs" / "ARCHIVOS_ORIGEN.md").read_text(encoding="utf-8")
@@ -267,3 +266,91 @@ def test_los_documentos_de_reparto_son_acotados_y_no_filtran_rutas_ni_vocabulari
     for texto in (subsistemas, origen):
         assert not re.search(r"[A-Za-z]:[\/]", texto)
         assert not re.search(r"TASK_|Gate [123]|ola_0|agent_0|TAREA_|\bRA-?\d\d\b", texto)
+
+
+# --- Reglas de las tablas de punteros y de la tabla de simbolos -------------------------------
+
+_TABLA = 0x8005E000
+_HI, _LO = (_TABLA + 0x8000) >> 16, _TABLA & 0xFFFF
+_BLOQUE = 0x80020000
+
+
+def _bloque_con_despachador() -> tuple[bytes, Corrida]:
+    """Un despachador manual en ``_BLOQUE`` seguido de tres rutinas hoja que la tabla enumera."""
+    despachador = programa(
+        _BLOQUE,
+        [
+            lui(T1, _HI),
+            addiu(T1, T1, _LO),
+            sll(T0, T0, 2),
+            add(T0, T0, T1),
+            lw(T0, 0, T0),
+            NOP,
+            jr(T0),
+            NOP,
+            *retorno(),
+        ],
+    )
+    rutinas = programa(_BLOQUE + 0x28, [*retorno(), *retorno(), jr(RA), addiu(2, 0, 1)])
+    destinos = (_BLOQUE + 0x28, _BLOQUE + 0x30, _BLOQUE + 0x38)
+    return segmento(despachador | rutinas), Corrida(_TABLA, destinos)
+
+
+def test_los_destinos_de_una_tabla_de_punteros_son_funciones_y_los_de_un_switch_no() -> None:
+    datos, corrida = _bloque_con_despachador()
+    (tabla,) = clasificar_tablas(datos, BASE, [corrida], [_BLOQUE, _BLOQUE + 0x40], (BASE, 0x8005DEA0))
+    assert tabla.tipo == "puntero_a_funcion"
+    bloque = funcion(_BLOQUE, "FUN_80020000", 0x40)
+    como_punteros = refinar_con_tablas([bloque], datos, set(tabla.destinos), set())
+    assert [(f.direccion, f.tamano) for f in como_punteros.funciones] == [
+        (_BLOQUE, 0x28),
+        (_BLOQUE + 0x28, 8),
+        (_BLOQUE + 0x30, 8),
+        (_BLOQUE + 0x38, 8),
+    ]
+    como_switch = refinar_con_tablas([bloque], datos, set(), set(tabla.destinos))
+    assert [(f.direccion, f.tamano) for f in como_switch.funciones] == [(_BLOQUE, 0x40)]
+
+
+def test_el_refinamiento_no_depende_del_orden_de_entrada_y_es_determinista() -> None:
+    datos, corrida = _bloque_con_despachador()
+    funciones = [funcion(_BLOQUE, "FUN_80020000", 0x40), funcion(_BLOQUE + 0x40, "FUN_80020040", 8)]
+    destinos = set(corrida.destinos)
+    directo = refinar_con_tablas(funciones, datos, destinos, set())
+    inverso = refinar_con_tablas(list(reversed(funciones)), datos, destinos, set())
+    assert directo == inverso == refinar_con_tablas(funciones, datos, destinos, set())
+
+
+def test_la_tabla_del_repositorio_conserva_las_tres_funciones_ya_escritas_en_c() -> None:
+    simbolos = {
+        s.nombre: s for s in parsear_tabla((RAIZ / "config" / "symbols.txt").read_text(encoding="utf-8"))
+    }
+    for nombre, direccion, tamano in (
+        ("func_8002FA38", 0x8002FA38, 0x28),
+        ("func_8002FB18", 0x8002FB18, 0x20),
+        ("func_80036204", 0x80036204, 0x4C),
+    ):
+        assert (simbolos[nombre].direccion, simbolos[nombre].tamano) == (direccion, tamano)
+
+
+def _simbolos_del_repositorio() -> dict[int, Simbolo]:
+    texto = (RAIZ / "config" / "symbols.txt").read_text(encoding="utf-8")
+    return {s.direccion: s for s in parsear_tabla(texto)}
+
+
+def test_func_800415a0_es_una_sola_funcion_porque_la_siguiente_es_su_continuacion_por_ramas_cruzadas() -> (
+    None
+):
+    simbolos = _simbolos_del_repositorio()
+    assert simbolos[0x800415A0].tamano == 0x2E2C
+    assert 0x80042BB8 not in simbolos
+
+
+def test_los_despachadores_por_tabla_miden_lo_que_su_codigo_y_sus_rutinas_estan_separadas() -> None:
+    """Las 92 rutinas de la tabla de condiciones y las 102 de la de acciones son funciones propias (194)."""
+    simbolos = _simbolos_del_repositorio()
+    assert simbolos[0x8002F9F8].tamano == 0x38
+    assert simbolos[0x80030ECC].tamano == 0x38
+    condiciones = [a for a in simbolos if 0x8002F9F8 < a < 0x80030ECC]
+    acciones = [a for a in simbolos if 0x80030ECC < a < 0x80032874]
+    assert (len(condiciones), len(acciones)) == (92, 102)

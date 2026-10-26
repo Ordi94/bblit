@@ -2,7 +2,8 @@
 
 Propuesta de limites entre las unidades de compilacion originales dentro del codigo del juego, en un
 formato que se puede trasladar a subsegmentos de `config/splat.yaml`. Es una hipotesis con evidencia
-medida, no una particion aplicada: la particion actual sigue siendo la de `src/code_<direccion>.c`.
+medida, no una verdad: `config/splat.yaml` aplica 25 de estos cortes como archivos `src/<nombre>.c` (los
+descartados y su razon estan en `docs/DESCOMPILACION.md`).
 
 ## Lo que se midio
 
@@ -85,5 +86,6 @@ Para `splat.yaml`, cada fila equivale a un subsegmento `- [offset, c, nombre]`; 
 - Dentro de `gestion_y_dibujo_de_objetos` los cortes de `0x80037048`, `0x800399C8` y `0x80039BFC` son de
   confianza alta, pero el rango entre `0x80036164` y `0x80037048` agrupa utilidades de lista que usan
   muchos subsistemas y que pudieron estar en un archivo de utilidades.
-- Las funciones fundidas en `func_8002F9F8`, `func_80030ECC` y `func_800415A0`/`func_80042BB8` tendran
-  que separarse antes de poder asignarles archivo.
+- Las funciones fundidas en `func_8002F9F8`, `func_80030ECC` y `func_800415A0`/`func_80042BB8` ya se
+  separaron o fusionaron en `config/symbols.txt` (1101 simbolos; ver `docs/GHIDRA.md`); las cifras de este
+  documento se calcularon con la tabla anterior de 908.

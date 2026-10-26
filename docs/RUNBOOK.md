@@ -44,8 +44,9 @@ Con el ejecutable sin modificar: `0 de 249595 sectores modificados` y SHA-1
 ```
 
 `<funciones.csv>` es el que produce `python -m tools.ghidra exportar` (carpeta de exportacion de Ghidra,
-fuera del repositorio). Con `BBLIT_DISC` definida (cualquiera de las cinco formas: .bin, .cue, carpeta del .bin, carpeta superior o carpeta con fs/) o con `--exe`. Genera 908 simbolos;
-el resultado debe ser identico a `config/symbols.txt`.
+fuera del repositorio). Con `BBLIT_DISC` definida (cualquiera de las cinco formas: .bin, .cue, carpeta del .bin, carpeta superior o carpeta con fs/) o con `--exe`. Genera 1101 simbolos
+(908 de la depuracion mas 194 rutinas separadas por tablas de punteros, menos una fusion; ver
+`docs/GHIDRA.md`); el resultado debe ser identico a `config/symbols.txt`.
 
 ## 5. Arranque en emulador
 
@@ -113,4 +114,5 @@ fuera del repositorio:
 ```
 
 Resultado esperado: 1596 aristas y 262 de 262 llamadores coincidentes; 15 subsistemas; 256 funciones del
-juego con borrador, 0 fallidas (unos 70 s).
+juego con borrador, 0 fallidas (unos 70 s). Cifras calculadas con la tabla anterior de 908 simbolos; con la
+actual el rango del juego tiene 449 funciones.

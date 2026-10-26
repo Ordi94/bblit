@@ -6,6 +6,7 @@ simbolos hace que el desensamblador deje de tratar como codigo la region que sig
 filtran aqui, con reglas puras sobre las palabras del segmento.
 """
 
+from collections.abc import Collection
 from dataclasses import dataclass, replace
 
 from tools.ghidra.dominio import (
@@ -19,6 +20,7 @@ from tools.ghidra.dominio import (
     asignar_nombres,
 )
 from tools.ghidra.ejecutable import instruccion_valida, palabra_en
+from tools.ghidra.zonas import FIN_JUEGO, INICIO_JUEGO
 
 
 @dataclass(frozen=True, slots=True)
@@ -275,3 +277,170 @@ def depurar_funciones(funciones: list[Funcion], segmento: bytes) -> Depuracion:
         rescatadas,
         huerfanos,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class Refinamiento:
+    """Resultado de aplicar a las funciones depuradas lo que revelan las tablas de punteros.
+
+    Contexto:
+        Lo produce ``refinar_con_tablas`` y lo consumen el comando ``simbolos`` (para escribir la
+        tabla) y el informe de funciones nuevas.
+
+    Attributes:
+        funciones (list[Funcion]): Funciones tras partir los bloques madre y fusionar las continuaciones.
+        nuevas (list[tuple[int, int]]): Pares ``(direccion, madre)`` de cada funcion creada al partir.
+        fusionadas (list[tuple[int, int]]): Pares ``(absorbida, principal)`` de continuaciones fundidas.
+        conflictos (list[tuple[int, str]]): Destinos que no se aplicaron y la razon.
+    """
+
+    funciones: list[Funcion]
+    nuevas: list[tuple[int, int]]
+    fusionadas: list[tuple[int, int]]
+    conflictos: list[tuple[int, str]]
+
+
+def _destinos_de_llamada(segmento: bytes) -> set[int]:
+    """Destinos de todos los ``jal`` del codigo: direcciones que alguien llama como funcion."""
+    destinos: set[int] = set()
+    for direccion in range(DIRECCION_BASE, FIN_CODIGO, ALINEACION_FUNCION):
+        palabra = palabra_en(segmento, direccion)
+        if palabra >> 26 == 3:
+            destinos.add((direccion & 0xF0000000) | ((palabra & 0x03FFFFFF) << 2))
+    return destinos
+
+
+def _salta_dentro(segmento: bytes, origen: Funcion, destino: Funcion) -> bool:
+    """Indica si el cuerpo de ``origen`` bifurca a una direccion interior de ``destino``.
+
+    Una rama condicional que sale de la funcion, o un ``j`` hacia el interior de otra (no a su
+    inicio, que seria una llamada de cola), solo los emite un compilador dentro de una funcion.
+    """
+    fin = destino.direccion + destino.tamano
+    for direccion in range(origen.direccion, origen.direccion + origen.tamano, ALINEACION_FUNCION):
+        palabra = palabra_en(segmento, direccion)
+        operacion = palabra >> 26
+        if operacion in (1, 4, 5, 6, 7, 0x14, 0x15, 0x16, 0x17):
+            inmediato = palabra & 0xFFFF
+            con_signo = inmediato - 0x10000 if inmediato & 0x8000 else inmediato
+            objetivo = direccion + 4 + 4 * con_signo
+        elif operacion == 2:
+            objetivo = (direccion & 0xF0000000) | ((palabra & 0x03FFFFFF) << 2)
+            if objetivo == destino.direccion:
+                continue
+        else:
+            continue
+        if destino.direccion <= objetivo < fin:
+            return True
+    return False
+
+
+def refinar_con_tablas(
+    funciones: list[Funcion],
+    segmento: bytes,
+    destinos_de_puntero: Collection[int],
+    destinos_de_salto: Collection[int],
+) -> Refinamiento:
+    """
+    Parte los bloques que contienen rutinas de tablas de punteros y une las continuaciones.
+
+    Contexto:
+        Las rutinas hoja a las que se llega por una tabla de punteros a funcion no tienen prologo ni
+        ningun ``jal`` que las delate, y la depuracion las deja fundidas en la funcion anterior. Todo
+        destino de esas tablas dentro del rango del juego es inicio de funcion. En sentido contrario,
+        una funcion que solo existe porque un ``switch`` de la anterior cae justo en su primera
+        instruccion, o a la que la anterior bifurca con ramas condicionales, es una continuacion:
+        nadie la llama (ni ``jal`` ni tabla de punteros) y se funde.
+
+    Args:
+        funciones (list[Funcion]): Funciones depuradas (``Depuracion.funciones``).
+        segmento (bytes): Segmento cargado, de ``leer_segmento``.
+        destinos_de_puntero (Collection[int]): Destinos de las tablas de punteros a funcion.
+        destinos_de_salto (Collection[int]): Destinos de las tablas de ``switch``.
+
+    Returns:
+        Refinamiento: Funciones resultantes, las creadas, las fusionadas y los destinos rechazados
+        (fuera del rango del juego, desalineados, sin funcion que los contenga o cuya pieza
+        anterior no cierra como una funcion completa).
+
+    Raises:
+        ValueError: Si el segmento no tiene el tamano esperado.
+
+    Ejemplo:
+        refinado = refinar_con_tablas(depuracion.funciones, segmento, destinos, saltos)
+    """
+    ordenadas = sorted(funciones, key=lambda f: f.direccion)
+    conflictos: list[tuple[int, str]] = []
+    puntos: dict[int, list[int]] = {}
+    inicios = {f.direccion for f in ordenadas}
+    for destino in sorted(set(destinos_de_puntero)):
+        if destino % ALINEACION_FUNCION:
+            conflictos.append((destino, "destino desalineado"))
+        elif not INICIO_JUEGO <= destino < FIN_JUEGO:
+            conflictos.append((destino, "fuera del rango del juego"))
+        elif destino not in inicios:
+            madre = next((f for f in ordenadas if f.direccion < destino < f.direccion + f.tamano), None)
+            if madre is None:
+                conflictos.append((destino, "ninguna funcion lo contiene"))
+            else:
+                puntos.setdefault(madre.direccion, []).append(destino)
+    resultado: list[Funcion] = []
+    nuevas: list[tuple[int, int]] = []
+    for funcion in ordenadas:
+        resultado.extend(_partir(segmento, funcion, puntos.get(funcion.direccion, []), nuevas, conflictos))
+    resultado, fusionadas = _fusionar_continuaciones(
+        segmento, resultado, _destinos_de_llamada(segmento) | set(destinos_de_puntero), set(destinos_de_salto)
+    )
+    return Refinamiento(resultado, nuevas, fusionadas, sorted(conflictos))
+
+
+def _partir(
+    segmento: bytes,
+    funcion: Funcion,
+    puntos: list[int],
+    nuevas: list[tuple[int, int]],
+    conflictos: list[tuple[int, str]],
+) -> list[Funcion]:
+    """Parte una funcion en los puntos dados, siempre que cada pieza cierre como funcion completa."""
+    fin = funcion.direccion + funcion.tamano
+    inicio = funcion.direccion
+    piezas: list[Funcion] = []
+    aceptados: list[int] = []
+    for punto in sorted(puntos):
+        if _cierra(segmento, inicio, punto) and _cierra(segmento, punto, fin):
+            if piezas:
+                piezas.append(_funcion_nueva(inicio, punto - inicio))
+            else:
+                piezas.append(replace(funcion, tamano=punto - inicio))
+            inicio = punto
+            aceptados.append(punto)
+        else:
+            conflictos.append((punto, "la pieza anterior o la siguiente no cierra como funcion"))
+    if not aceptados:
+        return [funcion]
+    piezas.append(_funcion_nueva(inicio, fin - inicio))
+    nuevas.extend((p, funcion.direccion) for p in aceptados)
+    return piezas
+
+
+def _fusionar_continuaciones(
+    segmento: bytes, funciones: list[Funcion], llamadas: set[int], saltos: set[int]
+) -> tuple[list[Funcion], list[tuple[int, int]]]:
+    """Une cada funcion del juego que es continuacion de la anterior (ver ``refinar_con_tablas``)."""
+    resultado: list[Funcion] = []
+    fusionadas: list[tuple[int, int]] = []
+    for funcion in funciones:
+        previa = resultado[-1] if resultado else None
+        es_continuacion = (
+            previa is not None
+            and INICIO_JUEGO <= funcion.direccion < FIN_JUEGO
+            and previa.direccion + previa.tamano == funcion.direccion
+            and funcion.direccion not in llamadas
+            and (funcion.direccion in saltos or _salta_dentro(segmento, previa, funcion))
+        )
+        if es_continuacion and previa is not None:
+            resultado[-1] = replace(previa, tamano=previa.tamano + funcion.tamano)
+            fusionadas.append((funcion.direccion, previa.direccion))
+        else:
+            resultado.append(funcion)
+    return resultado, fusionadas

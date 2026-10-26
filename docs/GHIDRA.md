@@ -182,7 +182,8 @@ subsegmentos por archivo bajo `asm/nonmatchings/`, ver `docs/DESCOMPILACION.md`)
   hexadecimal mayuscula, orden ascendente por direccion, una linea por simbolo.
 - Funcion de libreria con nombre exportado por el SDK (identificada por firma): ese nombre
   (`DrawSync`, `CdReadSync`, `VSync`, ...).
-- La tabla definitiva tiene 908 simbolos tras la depuracion anterior.
+- La depuracion anterior dejo 908 simbolos; la separacion de rutinas por tablas de punteros (ver
+  abajo) la lleva a 1101, que es la tabla definitiva actual.
 - Rutina interna de un objeto de libreria sin nombre exportado (Ghidra la llama
   `LIBPRESS_OBJ_188`: objeto y desplazamiento): `func_80XXXXXX`. El origen consta en la columna
   `libreria_origen` de `funciones.csv`, no en el nombre.
@@ -225,16 +226,89 @@ merecen cautela:
 - Los grandes bloques de codigo (`0x80020B90`, `0x80026FEC`, `0x80019474`) son funciones de
   decenas de kilobytes; el decompilador las produce, pero requieren partirse a mano.
 
-## Simbolos adicionales
+## Tablas de punteros a codigo y rutinas sin prologo
 
-`config/simbolos_adicionales.txt` se lee despues de `config/symbols.txt` y aisla como simbolos propios rutinas
-que la tabla principal tiene fundidas dentro de otra, para poder pasar a C las que ya coinciden. Hoy reduce
-`func_8002F9F8` a los `0x40` bytes que le corresponden (el despachador por codigo de operacion). La tabla
-principal no se modifica en esa tarea, de modo que las dos tablas suman 914 simbolos de funcion (908 mas 6).
+Algunas "funciones" de la depuracion anterior eran bloques de decenas de rutinas hoja a las que el juego llega
+por una tabla de punteros: no tienen prologo de pila ni ningun `jal` que las delate, asi que nada las separaba.
+Hay tablas de punteros a codigo en dos usos distintos y la tabla de simbolos solo debe cambiar por uno de ellos.
 
-Pendiente: los tramos `func_8002FA60`, `func_8002FB38` y `func_80030DA4` siguen fundidos (cada uno agrupa varias
-rutinas hoja alcanzadas solo por la tabla de saltos de `0x8005E3F0`) a la espera de separarse en la tabla
-principal. `func_80030ECC` tiene la misma forma con su tabla de `0x8005E560`.
+**Clasificacion de una tabla** (`tools/ghidra/tablas.py`, `clasificar_tablas`). Se buscan en el codigo las
+instrucciones que forman o leen una direccion dentro de cada corrida de punteros (`lui` mas `addiu`/`ori`, una
+suma con un indice, un `lw`), se sigue el valor leido hasta el `jr` o `jalr` que lo usa y se decide:
+
+- `jalr` sobre el valor leido: tabla de punteros a funcion (se llama a cada destino).
+- `lw` mas `jr` sin enlace: puede ser un `switch` o un despachador por salto directo. Los destinos ordenados
+  parten el codigo en tramos; si cada tramo termina en una transferencia incondicional y no se bifurca a otro
+  tramo, son rutinas independientes. Eso solo basta para decidir "puntero a funcion" si ademas la direccion del
+  elemento se calcula con `add` (suma con desbordamiento), que el compilador no emite para indexar y delata un
+  despachador escrito a mano. Un `switch` del compilador con casos que retornan por separado tambien tiene
+  tramos independientes, pero indexa con `addu` y va precedido de una comparacion de rango: queda como `salto`.
+- sin consumo visible (la tabla se copia a una estructura): puntero a funcion si los tramos son independientes o
+  si todos los destinos ya son inicio de funcion; en otro caso, `salto`.
+
+La ventana de seguimiento de registros es de 100 instrucciones. Se calibro sobre las tablas con consumidor
+de la poblacion completa (23 consumos con `jr` o `jalr`): con 24 instrucciones se encuentran 21, con 48 se encuentran 22 y desde 64 se
+encuentran las 23 (300 no cambia nada).
+
+**Regla de la tabla de simbolos** (`tools/ghidra/depuracion.py`, `refinar_con_tablas`). Todo destino de una tabla
+de punteros a funcion dentro del rango del juego (`0x80014AC4..0x80045DA0`) es inicio de funcion aunque no tenga
+prologo. La funcion que lo contenia se parte en ese punto si el tramo anterior cierra como una funcion completa
+(termina en una transferencia incondicional y contiene un `jr` o `j`); si no cierra se informa como conflicto y no se
+parte. Los destinos de las tablas de `switch` no generan funciones: son etiquetas dentro de una funcion. Los
+destinos fuera del rango del juego (las tablas de punteros de las librerias) se informan sin aplicar. En sentido
+contrario, una funcion del juego se une a la anterior, que ocupa justo antes, si nadie la llama (ni `jal` ni
+tabla de punteros) y la anterior cae en ella con una rama condicional o con un `j` al interior, o su primera
+instruccion es destino de un `switch` consumido por la anterior.
+
+**Resultado sobre este ejecutable** (`python -m tools.ghidra simbolos ... --tablas ... --nuevas ...`):
+
+| Cifra | Valor |
+|---|---|
+| Tablas de punteros a codigo | 24 (6 de punteros a funcion, 18 de `switch`) |
+| Tablas de punteros a funcion en el juego | `0x8005E35C` (37 entradas, `jalr` en `0x8003607C`, consumida por `func_800353B0`; 31 destinos distintos, todos ya eran funcion), `0x8005E3F0` (92 entradas, `lw`+`jr` en `0x8002FA20`) y `0x8005E560` (102 entradas, `lw`+`jr` en `0x80030EF4`) |
+| Tablas de punteros a funcion en librerias | `0x800619AC`, `0x80067848`, `0x80067D9C` (sus destinos ya eran funciones de libreria) |
+| Tablas de `switch` | las 18 restantes, entre ellas las 5 de `func_800415A0` y las de `func_80035244`, `func_8003690C` y `func_8003C1C8` |
+| Simbolos de funcion | 908 antes, 1101 despues (908 - 1 + 194) |
+| Funciones nuevas | 194, de 8 a 424 bytes cada una (6 de 8 bytes): 92 salen de `func_8002F9F8` y 102 de `func_80030ECC` |
+| Bloques madre tras partir | `func_8002F9F8` y `func_80030ECC` quedan de `0x38` bytes (el despachador y los `jr ra` de las rutas por defecto) |
+| Funciones del juego en el rango | 449 (antes 256 con `symbols.txt` y 262 con el parche) |
+| Destinos no aplicados | 23, todos en el codigo de librerias (fuera del rango del juego); ninguno en el juego |
+
+`func_8002FA60`, `func_8002FB38` y `func_80030DA4`, que seguian fundidas con el parche, ya no lo estan: son
+funciones de `0x30`, `0x20` y `0x7C` bytes entre otras rutinas de la tabla de condiciones. `func_8002FA38`
+(`0x28`), `func_8002FB18` (`0x20`) y `func_80036204` (`0x4C`) conservan nombre y tamano, que es lo que necesitan
+las tres funciones ya escritas en C. El orden de las rutinas coincide con el de las direcciones, no con el del
+indice de la tabla, y hay destinos repetidos en `0x8005E35C` (varias entradas apuntan a las mismas rutinas
+vacias de 8 bytes).
+
+**`func_800415A0` y `func_80042BB8` son una sola funcion** de `0x2E2C` bytes. Evidencia: la primera cierra con
+`j` en `0x80042BB0`, pero el cuerpo de `func_800415A0` bifurca 13 veces con ramas condicionales y 9 con `j` al
+interior de la segunda y la segunda bifurca 2 veces con ramas condicionales de vuelta a la primera; el epilogo
+compartido esta en `0x8004439C`, dentro de la segunda; la segunda empieza con `lbu v0, 0(s2)` usando un registro
+guardado por el prologo de la primera y sin prologo propio; ningun `jal` ni tabla de punteros la nombra, y su
+direccion solo aparece como destino exacto de un `switch` de la primera. El borrador de `m2c` solo se obtiene si se
+fusionan. La regla de fusion arriba la aplica automaticamente y es la unica fusion del rango del juego.
+
+**Efecto en el consumidor** (medido en una copia aislada del repositorio, con `config/splat.yaml` sin cambios en
+la copia salvo lo que se indica):
+
+- Con `config/simbolos_adicionales.txt` presente (ya retirado), `split` funcionaba pero `build` fallaba: el parche redefinia despues
+  de `symbols.txt` los tamanos de `func_8002FA60` (`0xB8`), `func_8002FB38` (`0x1228`) y `func_80030DA4` (`0x128`)
+  y esos rangos solapaban las funciones nuevas, de modo que `splat` no generaba su ensamblador.
+- Cada `src/*.c` lleva una linea `INCLUDE_ASM` por funcion y `split` no los regenera: con la tabla nueva
+  hacian falta 188 lineas nuevas (los otros 6 nombres de las 194 ya tenian linea) y quitar la de `func_80042BB8`;
+  sin ellas el codigo de las funciones nuevas desaparece del ejecutable. Se resolvio regenerando `src/` con la
+  particion por subsistema (`docs/DESCOMPILACION.md`).
+- Con el parche retirado (archivo y linea de `symbol_addrs_path`) y las lineas de `src/` adaptadas:
+  `python tools/build.py clean && split && build && verify` da OK (SHA-256 `0fad70d9...c87df0`). Estado actual
+  con 5 funciones en C: `asm/` tiene 1096 `glabel` (2 de `boot`, 650 de `libs`, 444 de `nonmatchings`) y hay 5
+  funciones en C, es decir 1101, que es el total de la tabla; el texto desensamblado conserva las 13 palabras
+  `.word`; `progreso` informa 5 funciones en C de 449 (452 de 201416 bytes).
+
+**Hecho.** `config/simbolos_adicionales.txt` y su linea en `config/splat.yaml` se retiraron, las lineas
+`INCLUDE_ASM` de `src/` se regeneraron con la particion por subsistema y la comprobacion de reparto del archivo
+retirado se elimino. Las cifras de `docs/SUBSISTEMAS.md` y `docs/ARCHIVOS_ORIGEN.md` y los borradores se calcularon
+con la tabla de 908 simbolos; la fuente de las cifras actuales por subsistema es `docs/PROGRESO.md`.
 
 ## Analisis derivado de la exportacion
 
@@ -242,5 +316,5 @@ Los comandos `borradores`, `grafo`, `subsistemas` y `limites` de `python -m tool
 repositorio, borradores en C con `m2c` (con un contexto de tipos que sale de las firmas de Ghidra y de los
 tamanos de `xrefs_datos.csv`), el grafo de llamadas y de datos compartidos y la caracterizacion de subsistemas.
 Trabajan sobre una copia propia del desensamblado generada con `splat` a partir de `config/symbols.txt`, no
-sobre `asm/`; por eso no ven `config/simbolos_adicionales.txt` (la copia propia trata `func_8002F9F8` completa).
+sobre `asm/`. Sus resultados publicados se calcularon con la tabla de 908 simbolos.
 Los resultados y su lectura estan en `docs/SUBSISTEMAS.md` y `docs/ARCHIVOS_ORIGEN.md`.

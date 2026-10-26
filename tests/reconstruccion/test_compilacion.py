@@ -123,7 +123,7 @@ def test_verificar_solo_texto_acepta_codigo_y_secciones_de_control() -> None:
     "seccion", [".data", ".rodata", ".rdata", ".bss", ".sdata", ".sbss", ".lit8", ".scommon"]
 )
 def test_verificar_solo_texto_rechaza_datos_con_el_nombre_de_la_seccion(seccion: Any) -> None:
-    with pytest.raises(ValueError, match=f"a.o: genera 4 bytes en la seccion '{seccion}'"):
+    with pytest.raises(ValueError, match=f"a.o: genera 4 bytes en la seccion inesperada '{seccion}'"):
         comp.verificar_solo_texto("a.o", {".text": 8, seccion: 4})
 
 
@@ -174,7 +174,7 @@ def test_compilar_fuente_encadena_preprocesador_compilador_ensamblador_y_comprue
 
 def test_compilar_fuente_con_datos_falla_y_sin_exigencia_lo_permite(repo: Any) -> None:
     ejecutor = EjecutorC(secciones=SALIDA_OBJDUMP)
-    with pytest.raises(ValueError, match=r"genera 29 bytes en la seccion '.rodata'"):
+    with pytest.raises(ValueError, match=r"genera 29 bytes en la seccion inesperada '.rodata'"):
         comp.compilar_fuente(repo, "src/a.c", "build/src/a.c.o", herramientas_compilacion(), ejecutor)
     ejecutor = EjecutorC(secciones=SALIDA_OBJDUMP)
     comp.compilar_fuente(
@@ -321,4 +321,9 @@ def test_construir_mixto_valida_la_longitud_del_cuerpo(tmp_path: Path) -> None:
 
 def test_el_ejecutor_por_defecto_de_construir_mixto_es_ejecutar_proceso() -> None:
     assert comp.construir_mixto.__defaults__ == (infra.ejecutar_proceso,)
-    assert comp.compilar_fuente.__kwdefaults__ == {"definiciones": (), "exigir_solo_texto": True}
+    assert comp.compilar_fuente.__kwdefaults__ == {
+        "definiciones": (),
+        "exigir_solo_texto": True,
+        "secciones_declaradas": (),
+        "valor_g": 0,
+    }

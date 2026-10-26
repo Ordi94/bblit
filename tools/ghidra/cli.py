@@ -22,7 +22,7 @@ from tools.ghidra.borradores import (
     generar_borradores,
     seleccionar_funciones,
 )
-from tools.ghidra.depuracion import depurar_funciones
+from tools.ghidra.depuracion import depurar_funciones, refinar_con_tablas
 from tools.ghidra.dominio import (
     DIRECCION_BASE,
     DIRECCION_FIN,
@@ -60,7 +60,7 @@ from tools.ghidra.grafo import (
 )
 from tools.ghidra.lectura import leer_funciones_csv
 from tools.ghidra.limites import VENTANAS, calcular_limites, formatear_archivos_csv, proponer_archivos
-from tools.ghidra.simbolos import formatear_tabla, parsear_tabla
+from tools.ghidra.simbolos import escribir_atomico, formatear_nuevas_csv, formatear_tabla, parsear_tabla
 from tools.ghidra.subsistemas import (
     caracterizar,
     formatear_subsistemas_csv,
@@ -68,7 +68,7 @@ from tools.ghidra.subsistemas import (
     proponer_rangos,
     resumir_por_nombre,
 )
-from tools.ghidra.tablas import detectar_corridas
+from tools.ghidra.tablas import clasificar_tablas, detectar_corridas, formatear_tablas_csv
 from tools.ghidra.zonas import FIN_JUEGO, INICIO_JUEGO, clasificar_zona
 
 CARPETA_SCRIPTS = Path(__file__).resolve().parent / "scripts"
@@ -118,6 +118,8 @@ def construir_parser() -> argparse.ArgumentParser:
     simbolos.add_argument("--funciones", type=Path, required=True, help="funciones.csv exportado")
     simbolos.add_argument("--salida", type=Path, required=True, help="archivo symbols.txt a escribir")
     simbolos.add_argument("--exe", type=Path, help=f"ruta de {NOMBRE_EJECUTABLE} (o variable BBLIT_DISC)")
+    simbolos.add_argument("--tablas", type=Path, help="CSV donde escribir la clasificacion de las tablas")
+    simbolos.add_argument("--nuevas", type=Path, help="CSV donde escribir las funciones nuevas y fusionadas")
 
     informe = sub.add_parser("informe", help="imprime conteos y cobertura de funciones.csv")
     informe.add_argument("--funciones", type=Path, required=True, help="funciones.csv exportado")
@@ -209,15 +211,41 @@ def _comando_simbolos(args: argparse.Namespace, entorno: Mapping[str, str]) -> i
     """Ejecuta el subcomando ``simbolos``."""
     segmento = leer_segmento(resolver_ejecutable(args.exe, entorno))
     depuracion = depurar_funciones(leer_funciones_csv(args.funciones), segmento)
-    simbolos = construir_simbolos(depuracion.funciones)
+    inicios = [f.direccion for f in depuracion.funciones]
+    corridas = detectar_corridas(
+        segmento, DIRECCION_BASE, (FIN_CODIGO, DIRECCION_FIN), (DIRECCION_BASE, FIN_CODIGO)
+    )
+    tablas = clasificar_tablas(segmento, DIRECCION_BASE, corridas, inicios, (DIRECCION_BASE, FIN_CODIGO))
+    de_puntero = {d for t in tablas if t.tipo == "puntero_a_funcion" for d in t.destinos}
+    de_salto = {d for t in tablas if t.tipo == "salto" for d in t.destinos}
+    refinado = refinar_con_tablas(depuracion.funciones, segmento, de_puntero, de_salto)
+    simbolos = construir_simbolos(refinado.funciones)
     texto = formatear_tabla(simbolos)
     parsear_tabla(texto)
+    nombres = {s.direccion: s.nombre for s in simbolos}
+    antes = {s.direccion: s.nombre for s in construir_simbolos(depuracion.funciones)}
+    de_consumidor = {**{a: nombres[p] for a, p in refinado.fusionadas}, **nombres}
     args.salida.parent.mkdir(parents=True, exist_ok=True)
-    args.salida.write_text(texto, encoding="utf-8", newline="\n")
+    if args.tablas is not None:
+        escribir_atomico(
+            args.tablas, formatear_tablas_csv(tablas, de_consumidor, {d for d, _ in refinado.nuevas})
+        )
+    if args.nuevas is not None:
+        escribir_atomico(
+            args.nuevas, formatear_nuevas_csv(refinado.nuevas, refinado.fusionadas, simbolos, antes)
+        )
+    escribir_atomico(args.salida, texto)
     print(
         f"{len(simbolos)} simbolos escritos "
         f"({len(depuracion.fusionadas)} fragmentos fusionados, {len(depuracion.descartadas)} descartados, "
         f"{len(depuracion.rescatadas)} huecos de codigo anadidos)"
+    )
+    de_puntero_n = sum(1 for t in tablas if t.tipo == "puntero_a_funcion")
+    print(
+        f"tablas: {len(tablas)} ({de_puntero_n} de punteros a funcion, "
+        f"{len(tablas) - de_puntero_n} de switch); "
+        f"{len(refinado.nuevas)} funciones nuevas, {len(refinado.fusionadas)} continuaciones fusionadas, "
+        f"{len(refinado.conflictos)} destinos no aplicados"
     )
     return 0
 

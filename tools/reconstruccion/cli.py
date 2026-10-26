@@ -8,7 +8,7 @@ import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from tools.reconstruccion import compilacion, diff, progreso
+from tools.reconstruccion import compilacion, diff, progreso, variantes
 from tools.reconstruccion import infraestructura as infra
 from tools.reconstruccion.dominio import EjecutableReferencia
 from tools.reconstruccion.infraestructura import Ejecutor, ProcesoError
@@ -31,7 +31,7 @@ def construir_parser() -> argparse.ArgumentParser:
 
     Returns:
         argparse.ArgumentParser: Analizador con las ordenes ``split``, ``build``, ``verify``,
-        ``clean``, ``diff`` y ``progreso``.
+        ``clean``, ``diff``, ``probar`` y ``progreso``.
 
     Ejemplo:
         args = construir_parser().parse_args(["clean"])
@@ -48,6 +48,13 @@ def construir_parser() -> argparse.ArgumentParser:
     sub.add_parser("clean", help="elimina asm/, expected/ y los artefactos generados en build/")
     comparar = sub.add_parser("diff", help="compara una funcion compilada desde C con su original")
     comparar.add_argument("funcion", help="nombre de la funcion (por ejemplo func_80036204)")
+    ensayar = sub.add_parser(
+        "probar", help="compara con el original cada variante .c de una carpeta y ordena por puntuacion"
+    )
+    ensayar.add_argument("funcion", help="nombre de la funcion (por ejemplo func_80035244)")
+    ensayar.add_argument(
+        "carpeta", type=Path, help="carpeta con una variante completa de la funcion por archivo .c"
+    )
     sub.add_parser("progreso", help="mide la descompilacion y escribe docs/PROGRESO.md y build/progreso.json")
     return parser
 
@@ -57,6 +64,17 @@ def _ejecutar_clean(raiz: Path, referencia: EjecutableReferencia) -> int:
     eliminadas = infra.limpiar(raiz, referencia.nombre)
     print("eliminado: " + (", ".join(eliminadas) if eliminadas else "nada que eliminar"))
     return 0
+
+
+def _ejecutar_verificacion(raiz: Path, rutas: Rutas, referencia: EjecutableReferencia) -> int:
+    """Implementa ``verify``; un ejecutable ausente es un FAIL, no un error de uso."""
+    original = infra.obtener_original(raiz, rutas.disc, referencia)
+    if not (raiz / "build" / referencia.nombre).is_file():
+        print(f"FAIL el ejecutable reconstruido no existe: ejecute 'build' (esperado={referencia.sha256})")
+        return 1
+    coincide, mensaje = infra.verificar(raiz, original, referencia)
+    print(mensaje)
+    return 0 if coincide else 1
 
 
 def _ejecutar_progreso(raiz: Path) -> int:
@@ -88,6 +106,20 @@ def _ejecutar_comparacion(raiz: Path, rutas: Rutas, funcion: str, python: str, e
     return 0 if resultado.coincide else 1
 
 
+def _ejecutar_probar(
+    raiz: Path, rutas: Rutas, funcion: str, carpeta: Path, *, python: str, ejecutar: Ejecutor
+) -> int:
+    """Implementa ``probar``; devuelve 0 solo si alguna variante tiene puntuacion cero."""
+    lock = leer_lock(raiz / RUTA_LOCK)
+    herramientas = compilacion.resolver_herramientas_compilacion(lock, rutas.toolchain, python)
+    script = resolver_herramienta(lock, rutas.toolchain, "asm-differ", "diff")
+    resultados = variantes.probar_variantes(
+        raiz, funcion, carpeta, herramientas, script_diff=script, ejecutar=ejecutar
+    )
+    print(variantes.formatear_tabla(resultados))
+    return 0 if resultados[0].puntuacion == 0 else 1
+
+
 def _ejecutar_construccion(
     raiz: Path, rutas: Rutas, referencia: EjecutableReferencia, orden: str, ejecutar: Ejecutor
 ) -> int:
@@ -105,9 +137,25 @@ def _ejecutar_construccion(
         herramientas,
         lambda: compilacion.resolver_herramientas_compilacion(lock, rutas.toolchain, sys.executable),
         ejecutar,
+        declaradas=infra.leer_secciones_declaradas(raiz),
     )
     print(f"build completado: {destino.relative_to(raiz).as_posix()} sha256={infra.sha256_archivo(destino)}")
     return 0
+
+
+def _despachar(
+    args: argparse.Namespace, raiz: Path, rutas: Rutas, referencia: EjecutableReferencia, ejecutar: Ejecutor
+) -> int:
+    """Ejecuta las ordenes que necesitan las rutas del disco o del toolchain."""
+    if args.orden == "diff":
+        return _ejecutar_comparacion(raiz, rutas, args.funcion, sys.executable, ejecutar)
+    if args.orden == "probar":
+        return _ejecutar_probar(
+            raiz, rutas, args.funcion, args.carpeta, python=sys.executable, ejecutar=ejecutar
+        )
+    if args.orden == "verify":
+        return _ejecutar_verificacion(raiz, rutas, referencia)
+    return _ejecutar_construccion(raiz, rutas, referencia, args.orden, ejecutar)
 
 
 def main(
@@ -145,15 +193,7 @@ def main(
         if args.orden == "clean":
             return _ejecutar_clean(raiz, referencia)
         rutas = resolver_rutas(raiz, variables, leer_local_toml(raiz / RUTA_LOCAL), args.disc, args.toolchain)
-        if args.orden == "diff":
-            return _ejecutar_comparacion(raiz, rutas, args.funcion, sys.executable, ejecutar)
-        if args.orden == "verify":
-            coincide, mensaje = infra.verificar(
-                raiz, infra.obtener_original(raiz, rutas.disc, referencia), referencia
-            )
-            print(mensaje)
-            return 0 if coincide else 1
-        return _ejecutar_construccion(raiz, rutas, referencia, args.orden, ejecutar)
+        return _despachar(args, raiz, rutas, referencia, ejecutar)
     except ERRORES_CONTROLADOS as error:
         print(f"error: {error}", file=sys.stderr)
         return 1

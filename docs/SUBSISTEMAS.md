@@ -10,20 +10,23 @@ regenera con los comandos de la seccion final.
 
 **Nota sobre las cifras de funciones.** Cada numero cuenta una cosa distinta:
 
-- **914** simbolos de funcion en el ejecutable: 908 de `config/symbols.txt` mas 6 nuevos de
-  `config/simbolos_adicionales.txt` (el archivo tiene 7 lineas; una redefine `func_8002F9F8` a 0x40 bytes).
-  650 de ellos estan en la zona de librerias de Sony (`0x80045DA0..0x8005DEA0`), 2 son de arranque y el resto es
-  codigo del juego.
-- **256** simbolos en el rango de codigo del juego `0x80014AC4..0x80045DA0` segun `symbols.txt`; **262** con los
-  adicionales (256 + 6; es la cifra que usa `docs/PROGRESO.md`).
+- **1101** simbolos de funcion en el ejecutable (`config/symbols.txt`): 650 estan en la zona de librerias de
+  Sony (`0x80045DA0..0x8005DEA0`), 2 son de arranque y 449 son codigo del juego. Eran 908 al hacer este analisis
+  (256 en el rango del juego); la tabla actual separa 194 rutinas que se llaman solo por tablas de punteros
+  (908 - 1 + 194 = 1101; ver `docs/GHIDRA.md`) y `config/simbolos_adicionales.txt` ya no existe.
+- **449** simbolos en el rango de codigo del juego `0x80014AC4..0x80045DA0`; es la cifra que usa `docs/PROGRESO.md`,
+  que es la fuente de las cifras actuales por subsistema. Las 194 rutinas nuevas caen en `interprete_de_eventos`
+  (196 funciones con las dos de 0x38 bytes) y la fusion de `func_800415A0` con `func_80042BB8` deja
+  `cargador_de_niveles_y_cd` en 11. Las demas filas no cambian; las secciones de detalle de mas abajo conservan
+  los conteos de la tabla de 908 simbolos con la que se calcularon.
 - **282** funciones "del juego" segun las firmas de Ghidra (`es_libreria` en 0 en `funciones.csv`); 23 de ellas
   caen en la zona de librerias, y por eso no coincide con 256.
 - **309** rutinas en el ambito de los borradores en C (`m2c`): las 256 del rango, las 52 de la zona de librerias
-  que ninguna firma reconoce y la entrada `func_80014A08`. Los analisis de grafo y subsistemas usan
-  `symbols.txt` solo (908), de modo que ven 258 funciones del juego con `__main` y `start`.
+  que ninguna firma reconoce y la entrada `func_80014A08`. Los analisis de grafo y subsistemas se calcularon con
+  la tabla anterior de 908 simbolos, de modo que ven 258 funciones del juego con `__main` y `start`.
 
 - Desensamblado: copia propia con `splat` en una carpeta de trabajo (no se usa `asm/` del repositorio,
-  cuya forma cambia con la particion). 908 funciones, las mismas de `config/symbols.txt`.
+  cuya forma cambia con la particion). 908 funciones, las de la tabla de entonces (hoy `config/symbols.txt` tiene 1101).
 - Grafo de llamadas (`python -m tools.ghidra grafo`): 1596 aristas con destino conocido y 2631
   sitios de llamada. `jal` 1532, `j` 32, por tabla 32, llamadas indirectas 184 instrucciones (en 139
   funciones). Del codigo del juego: 525 hacia el juego, 309 hacia librerias de Sony, 8 hacia la RAM
@@ -52,13 +55,13 @@ regenera con los comandos de la seccion final.
 | movimiento_y_objetos_de_escena | `0x8001C424..0x80020B90` | 27 | 18284 | RotMatrix, ApplyMatrix, ScaleMatrix, func_8004FADC |
 | logica_de_niveles | `0x80020B90..0x80026118`, `0x80026298..0x8002F9F8` | 21 | 60648 | SquareRoot0, ApplyMatrixSV, RotMatrix, RotMatrixY |
 | manejadores_por_tabla | `0x80026118..0x80026298` | 12 | 384 | ninguna |
-| interprete_de_eventos | `0x8002F9F8..0x80032874` | 2 | 11900 | ratan2 |
+| interprete_de_eventos | `0x8002F9F8..0x80032874` | 196 (2 al calcular el analisis) | 11900 | ratan2 |
 | camara_y_bucle_logico | `0x80032874..0x80036164` | 11 | 14576 | RotMatrix, ratan2, RotMatrixY, RotMatrixZYX |
 | gestion_y_dibujo_de_objetos | `0x80036164..0x8003AA38` | 42 | 18624 | RotMatrix, RotMatrixY, RotMatrixZ, ScaleMatrix |
 | menus_e_interfaz | `0x8003AA38..0x8003DF84` | 27 | 13644 | ApplyMatrixLV, GsGetLw, GsSortBoxFill, SquareRoot0 |
 | audio_xa_y_spu | `0x8003DF84..0x8003FFA0` | 37 | 8220 | CdControlB, CdPosToInt, CdIntToPos, CdReadyCallback |
 | entrada_de_mando | `0x8003FFA0..0x80040A80` | 6 | 2784 | PadGetState, PadInfoMode, MemCardStart, PadInitDirect |
-| cargador_de_niveles_y_cd | `0x80040EB4..0x800443CC`, `0x80044664..0x80044904` | 12 | 14264 | CdControl, CdIntToPos, CdPosToInt, CdReadyCallback |
+| cargador_de_niveles_y_cd | `0x80040EB4..0x800443CC`, `0x80044664..0x80044904` | 11 (12 al calcular el analisis) | 14264 | CdControl, CdIntToPos, CdPosToInt, CdReadyCallback |
 | inicializacion_de_motor | `0x80044904..0x80045DA0` | 16 | 5276 | CdDataCallback, CdInit, CdReadCallback, CdReadyCallback |
 
 ## Subsistemas
@@ -331,9 +334,9 @@ el epilogo `0x8004439C`) y no se llama por separado.
 
 - Los nombres de subsistema son hipotesis. `menus_e_interfaz` y `gestion_y_dibujo_de_objetos` se infirieron
   de las llamadas a `GsSortBoxFill`, las listas de objetos y los datos, sin cadenas que los confirmen.
-- La tabla `config/simbolos_adicionales.txt` se lee despues de `config/symbols.txt` y aisla `func_8002F9F8`
-  (0x40 bytes); los tramos `func_8002FA60`, `func_8002FB38` y `func_80030DA4` siguen fundidos. Este analisis
-  usa solo `config/symbols.txt`, por lo que ve `func_8002F9F8` completa.
+- Este analisis se calculo con la tabla de 908 simbolos, en la que `func_8002F9F8` y `func_80030ECC` agrupaban
+  decenas de rutinas. La tabla actual (1101) las separa; las cifras de funciones de las secciones de detalle
+  no se han recalculado y la referencia vigente es `docs/PROGRESO.md`.
 
 ## Como se regenera
 

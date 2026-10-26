@@ -12,22 +12,23 @@ es la unica funcion que lanza procesos y lo hace mediante el ejecutor recibido.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.reconstruccion.dominio import EjecutableReferencia
+from tools.reconstruccion.dominio import MAX_VALOR_G, EjecutableReferencia
 from tools.reconstruccion.infraestructura import (
     Ejecutor,
     Herramientas,
     construir_con_compilador,
     ejecutar_proceso,
+    leer_valores_g,
 )
 from tools.toolchain.dominio import Componente
 from tools.toolchain.instalacion import resolver_herramienta
 
 VERSION_ASPSX = "2.79"
-OPCIONES_COMPILADOR = ("-quiet", "-O2", "-G0")
+OPCIONES_COMPILADOR = ("-quiet", "-O2")
 CARPETA_INCLUDE = "include"
 CARPETA_MACROS = "asm/include"
 CARPETA_FUENTES = "src"
@@ -136,26 +137,33 @@ def comando_preprocesar(
     ]
 
 
-def comando_compilar(compilador: Path, entrada: str, salida: str) -> list[str]:
+def comando_compilar(compilador: Path, entrada: str, salida: str, valor_g: int = 0) -> list[str]:
     """
     Devuelve los argumentos que compilan C preprocesado a ensamblador.
 
     Contexto:
-        ``-O2 -G0`` son los valores identificados del compilador original; ``-G0`` es
-        obligatorio porque la cabecera declara ``gp0 = 0`` y el codigo no usa ``$gp`` para datos.
+        ``-O2`` es el valor identificado del compilador original. ``-G0`` es el umbral de datos
+        pequenos por omision (la cabecera declara ``gp0 = 0``); los archivos cuyo original uso datos
+        pequenos declaran otro valor en ``config/opciones_compilacion.toml``.
 
     Args:
         compilador (Path): Ruta de ``CC1PSX.EXE``.
         entrada (str): Archivo preprocesado.
         salida (str): Ensamblador de salida.
+        valor_g (int, opcional): Umbral ``-G`` de datos pequenos.
 
     Returns:
         list[str]: Lista de argumentos.
 
+    Raises:
+        ValueError: Si ``valor_g`` no es un entero entre 0 y ``MAX_VALOR_G``.
+
     Ejemplo:
-        comando = comando_compilar(Path("CC1PSX.EXE"), "build/a.i", "build/a.s")
+        comando = comando_compilar(Path("CC1PSX.EXE"), "build/a.i", "build/a.s", 8)
     """
-    return [str(compilador), *OPCIONES_COMPILADOR, entrada, "-o", salida]
+    if isinstance(valor_g, bool) or not isinstance(valor_g, int) or not 0 <= valor_g <= MAX_VALOR_G:
+        raise ValueError(f"el valor de -G debe ser un entero entre 0 y {MAX_VALOR_G}")
+    return [str(compilador), *OPCIONES_COMPILADOR, f"-G{valor_g}", entrada, "-o", salida]
 
 
 def comando_maspsx(
@@ -223,33 +231,36 @@ def leer_secciones(salida_objdump: str) -> dict[str, int]:
     return {nombre: int(tamano, 16) for nombre, tamano in _PATRON_SECCION.findall(salida_objdump)}
 
 
-def verificar_solo_texto(objeto: str, secciones: Mapping[str, int]) -> None:
+def verificar_solo_texto(objeto: str, secciones: Mapping[str, int], declaradas: Collection[str] = ()) -> None:
     """
-    Rechaza un objeto que aporta datos ademas de codigo.
+    Rechaza un objeto que aporta secciones de datos que su subsegmento no declara.
 
     Contexto:
-        El script del enlazador que genera el particionador solo recoge ``.text``, ``.data``,
-        ``.rodata`` y ``.bss`` y descarta cualquier otra seccion en silencio. El compilador del
-        SDK deja las constantes en ``.rdata`` y las tablas de salto de ``switch`` tambien: el
+        El script del enlazador solo recoge de un objeto C las secciones que la particion le
+        asigna (``.text`` y, si hay un subsegmento ``.rodata`` o ``.data`` con su mismo nombre,
+        esas) y descarta el resto en silencio. El compilador del SDK deja las constantes, las
+        cadenas y las tablas de salto de un ``switch`` en ``.rdata``: sin subsegmento el
         ejecutable saldria sin ellas (y con el tamano equivocado) sin que ninguna herramienta
-        avisara de la causa. Fallar aqui, con el nombre de la seccion, ahorra esa busqueda.
+        avisara de la causa. Fallar aqui, con el archivo y la seccion, ahorra esa busqueda.
 
     Args:
-        objeto (str): Ruta del objeto (solo para el mensaje).
+        objeto (str): Ruta del objeto (para el mensaje).
         secciones (Mapping[str, int]): Tamano por seccion, de ``leer_secciones``.
+        declaradas (Collection[str], opcional): Secciones de datos que el subsegmento del archivo
+            declara (por ejemplo ``{".rodata"}``).
 
     Raises:
-        ValueError: Si alguna seccion de datos tiene contenido.
+        ValueError: Si una seccion de datos con contenido no esta declarada.
 
     Ejemplo:
-        verificar_solo_texto("build/src/a.c.o", {".text": 16, ".rdata": 0})
+        verificar_solo_texto("build/src/a.c.o", {".text": 16, ".rodata": 8}, {".rodata"})
     """
     for nombre in sorted(secciones):
-        if secciones[nombre] > 0 and nombre.startswith(PREFIJOS_DE_DATOS):
+        if secciones[nombre] > 0 and nombre.startswith(PREFIJOS_DE_DATOS) and nombre not in declaradas:
             raise ValueError(
-                f"{objeto}: genera {secciones[nombre]} bytes en la seccion '{nombre}'; "
-                "los datos y las tablas de salto no se pueden compilar todavia desde C "
-                "(ver docs/DESCOMPILACION.md, seccion de trampas conocidas)"
+                f"{objeto}: genera {secciones[nombre]} bytes en la seccion inesperada '{nombre}': "
+                f"declare en config/splat.yaml un subsegmento '{nombre}' con el nombre del archivo "
+                "(ver docs/DESCOMPILACION.md, seccion de rodata por archivo)"
             )
 
 
@@ -314,9 +325,11 @@ def compilar_fuente(
     *,
     definiciones: Sequence[str] = (),
     exigir_solo_texto: bool = True,
+    secciones_declaradas: Collection[str] = (),
+    valor_g: int = 0,
 ) -> None:
     """
-    Compila un archivo C a un objeto ELF reubicable.
+    Compila un archivo C de ``src/`` a un objeto ELF reubicable.
 
     Contexto:
         La usan ``build`` (para cada ``src/*.c`` que enlaza el script) y ``diff`` (para el
@@ -330,7 +343,10 @@ def compilar_fuente(
         herramientas (HerramientasCompilacion): Herramientas resueltas.
         ejecutar (Ejecutor): Ejecutor de procesos.
         definiciones (Sequence[str], opcional): Macros de preprocesador a definir.
-        exigir_solo_texto (bool, opcional): Si es verdadero, falla si el objeto aporta datos.
+        exigir_solo_texto (bool, opcional): Si es verdadero, falla si el objeto aporta datos no declarados.
+        secciones_declaradas (Collection[str], opcional): Secciones de datos que el subsegmento
+            del archivo declara y que, por tanto, se aceptan.
+        valor_g (int, opcional): Umbral ``-G`` de datos pequenos para este archivo.
 
     Raises:
         ValueError: Si la fuente o el objeto no son rutas validas, o el objeto aporta datos
@@ -342,6 +358,58 @@ def compilar_fuente(
         compilar_fuente(Path("."), "src/a.c", "build/src/a.c.o", herramientas, ejecutar_proceso)
     """
     validar_fuente(fuente)
+    compilar_archivo(
+        raiz,
+        fuente,
+        objeto,
+        herramientas,
+        ejecutar,
+        definiciones=definiciones,
+        exigir_solo_texto=exigir_solo_texto,
+        secciones_declaradas=secciones_declaradas,
+        valor_g=valor_g,
+    )
+
+
+def compilar_archivo(
+    raiz: Path,
+    fuente: str,
+    objeto: str,
+    herramientas: HerramientasCompilacion,
+    ejecutar: Ejecutor,
+    *,
+    definiciones: Sequence[str] = (),
+    exigir_solo_texto: bool = True,
+    secciones_declaradas: Collection[str] = (),
+    valor_g: int = 0,
+) -> None:
+    """
+    Compila un archivo C cualquiera (de ``src/`` o una variante de prueba) a un objeto ELF.
+
+    Contexto:
+        Nucleo comun de ``compilar_fuente`` (que solo admite ``src/``) y del banco de variantes
+        de ``probar`` (archivos fuera del repositorio). Ejecuta preprocesador, compilador y
+        ensamblador con el directorio de trabajo en la raiz del repositorio.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        fuente (str): Ruta del ``.c`` (relativa a la raiz o absoluta).
+        objeto (str): Ruta relativa del objeto de salida (termina en ``.c.o``).
+        herramientas (HerramientasCompilacion): Herramientas resueltas.
+        ejecutar (Ejecutor): Ejecutor de procesos.
+        definiciones (Sequence[str], opcional): Macros de preprocesador a definir.
+        exigir_solo_texto (bool, opcional): Si es verdadero, falla si el objeto aporta datos no declarados.
+        secciones_declaradas (Collection[str], opcional): Secciones de datos aceptadas.
+        valor_g (int, opcional): Umbral ``-G`` de datos pequenos.
+
+    Raises:
+        ValueError: Si el objeto no es una ruta valida o aporta datos no declarados.
+        FileNotFoundError: Si la fuente no existe.
+        ProcesoError: Si alguna herramienta falla o excede su tiempo limite.
+
+    Ejemplo:
+        compilar_archivo(Path("."), "C:/variantes/a.c", "build/diff/a.c.o", herramientas, ejecutar)
+    """
     preprocesado, ensamblador = rutas_intermedias(objeto)
     if not (raiz / fuente).is_file():
         raise FileNotFoundError(f"falta el fuente '{fuente}'")
@@ -351,7 +419,11 @@ def compilar_fuente(
         raiz,
         TIMEOUT_PREPROCESAR_S,
     )
-    ejecutar(comando_compilar(herramientas.compilador, preprocesado, ensamblador), raiz, TIMEOUT_COMPILAR_S)
+    ejecutar(
+        comando_compilar(herramientas.compilador, preprocesado, ensamblador, valor_g),
+        raiz,
+        TIMEOUT_COMPILAR_S,
+    )
     ejecutar(
         comando_maspsx(herramientas, ensamblador, objeto, CARPETA_MACROS),
         raiz,
@@ -359,7 +431,7 @@ def compilar_fuente(
     )
     if exigir_solo_texto:
         salida = ejecutar(comando_secciones(herramientas.objdump, objeto), raiz, TIMEOUT_ENSAMBLAR_S)
-        verificar_solo_texto(objeto, leer_secciones(salida))
+        verificar_solo_texto(objeto, leer_secciones(salida), secciones_declaradas)
 
 
 def construir_mixto(
@@ -368,6 +440,8 @@ def construir_mixto(
     herramientas: Herramientas,
     obtener_compilacion: Callable[[], HerramientasCompilacion],
     ejecutar: Ejecutor = ejecutar_proceso,
+    *,
+    declaradas: Mapping[str, Collection[str]] | None = None,
 ) -> Path:
     """
     Construye el ejecutable con los archivos C compilados y el resto ensamblado.
@@ -386,6 +460,8 @@ def construir_mixto(
         obtener_compilacion (Callable[[], HerramientasCompilacion]): Resuelve las herramientas
             de compilacion; puede lanzar ``FileNotFoundError`` si no estan instaladas.
         ejecutar (Ejecutor, opcional): Ejecutor de procesos, sustituible en pruebas.
+        declaradas (Mapping[str, Collection[str]], opcional): Secciones de datos que la particion
+            declara por archivo (clave: nombre sin ``src/`` ni ``.c``), de ``secciones_declaradas``.
 
     Returns:
         Path: Ruta del ejecutable generado (``build/<nombre>``).
@@ -399,10 +475,20 @@ def construir_mixto(
         destino = construir_mixto(Path("."), referencia, herramientas, lambda: compilacion)
     """
     resueltas: list[HerramientasCompilacion] = []
+    valores_g = leer_valores_g(raiz)
 
     def compilar(fuente: str, objeto: str) -> None:
         if not resueltas:
             resueltas.append(obtener_compilacion())
-        compilar_fuente(raiz, fuente, objeto, resueltas[0], ejecutar)
+        permitidas = (declaradas or {}).get(Path(fuente).stem, ())
+        compilar_fuente(
+            raiz,
+            fuente,
+            objeto,
+            resueltas[0],
+            ejecutar,
+            secciones_declaradas=permitidas,
+            valor_g=valores_g.get(Path(fuente).stem, 0),
+        )
 
     return construir_con_compilador(raiz, referencia, herramientas, compilar, ejecutar)

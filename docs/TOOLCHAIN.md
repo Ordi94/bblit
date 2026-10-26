@@ -102,6 +102,7 @@ python tools/build.py split               # particiona con splat: genera asm/, s
 python tools/build.py build               # compila los src/*.c, ensambla el resto, enlaza y genera build/SLUS_008.38
 python tools/build.py verify              # compara por SHA-256 con el original: OK o FAIL
 python tools/build.py diff <función>      # compara una función compilada desde C con su original
+python tools/build.py probar <función> <carpeta>   # puntúa variantes .c de una función contra el original
 python tools/build.py progreso            # escribe docs/PROGRESO.md y build/progreso.json
 python tools/build.py clean               # elimina asm/, expected/ y los artefactos de build/
 ```
@@ -113,6 +114,8 @@ python tools/build.py clean               # elimina asm/, expected/ y los artefa
   soportada (`config/ejecutable.json`), lo copia a `expected/` y ejecuta `splat`. Es
   idempotente: borra su salida anterior antes de generar. Con `PYTHONUTF8=1`, porque la consola
   de Windows no usa UTF-8 por defecto.
+- `build` empieza eliminando el ejecutable, el binario plano, el ELF y el mapa de la construcción
+  anterior, de modo que una construcción fallida no deja nada que `verify` pueda aprobar.
 - `build` recorre los objetos que referencia el script del enlazador: ensambla cada `.s` y
   compila cada `src/*.c` (preprocesador `CPPPSX.EXE`, `CC1PSX.EXE -O2 -G0`, `maspsx` con ASPSX 2.79 y
   `as`; ver `docs/DESCOMPILACION.md`). Después enlaza con `mipsel-none-elf-ld` y extrae la imagen
@@ -133,14 +136,15 @@ copia de `expected/`.
 
 - El cuerpo del ejecutable (`0x800..0x55800`) es un único segmento cargado en `0x80014A00`
   (`t_addr`, `t_size = 0x55000`). `config/splat.yaml` lo describe con los subsegmentos
-  `asm` (arranque y librerías), `c` (ocho archivos `src/code_*.c` para el código del juego),
-  `data`, `rodata` y `bss`. El enlazador agrupa siempre `data` antes que
+  `asm` (arranque y librerías), `c` (25 archivos `src/<subsistema>.c` para el código del juego),
+  `data`, `rodata` y `bss`, estos tres divididos en trozos con el nombre del archivo que posee
+  cada tabla (ver `docs/DESCOMPILACION.md`). El enlazador agrupa siempre `data` antes que
   `rodata`, y la frontera entre ambos es provisional: se afinará al identificar los objetos
   originales.
 - `splat` solo reconoce como función lo que es destino de un `jal` o está declarado. La
   dirección de entrada (`pc0 = 0x80014A08`) no lo es, así que `split` la declara en
   `build/simbolos_entrada.txt` (salvo que `config/symbols.txt` ya la defina). El proyecto
-  declara 914 símbolos de función (`config/symbols.txt` más `config/simbolos_adicionales.txt`);
+  declara 1101 símbolos de función en `config/symbols.txt`;
   sin tabla de símbolos, `splat` detectaría unas 978 funciones por sus `jr $ra`.
 - El ensamblador es GNU `as` con `-EL -march=r3000 -mips1 -G0`. Las instrucciones del
   coprocesador GTE se expanden con las macros que genera `splat` en `asm/include/`

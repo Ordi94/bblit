@@ -52,11 +52,14 @@ def test_splat_describe_un_ejecutable_psx_con_un_unico_segmento_cargado(configur
 def test_splat_ordena_texto_datos_rodata_y_bss_como_los_agrupa_el_enlazador(configuracion: Any) -> None:
     subsegmentos = configuracion["segments"][0]["subsegments"]
     tipos = [s[1] if isinstance(s, list) else s["type"] for s in subsegmentos]
-    assert tipos == ["asm", *["c"] * 8, "asm", "data", "rodata", "bss"]
+    assert tipos[0] == "asm" and tipos[-1] == "bss"
+    assert tipos.count("c") == 25
+    assert tipos.index("asm", 1) == 26, "el ensamblador de librerias sigue al ultimo archivo C"
+    assert {"data", "rodata", ".rodata"} <= set(tipos)
     inicios = [s[0] if isinstance(s, list) else s["start"] for s in subsegmentos]
     assert inicios == sorted(inicios)
     assert inicios[0] == 0x800
-    assert (inicios[-4] - 0x800) % 16 == 0
+    assert all(inicio % 4 == 0 for inicio in inicios)
     bss = subsegmentos[-1]
     assert bss["start"] == 0x55800
     assert bss["vram"] == 0x80014A00 + 0x55000
@@ -65,7 +68,6 @@ def test_splat_ordena_texto_datos_rodata_y_bss_como_los_agrupa_el_enlazador(conf
 def test_splat_consume_symbols_txt_del_proyecto_y_el_simbolo_de_entrada(configuracion: Any) -> None:
     assert configuracion["options"]["symbol_addrs_path"] == [
         "config/symbols.txt",
-        "config/simbolos_adicionales.txt",
         "build/simbolos_entrada.txt",
     ]
     assert configuracion["sha1"] == "3b091486c2463f4dbe82e045072c390e226caa37"
@@ -104,6 +106,7 @@ def repo_aislado(tmp_path: Path) -> Any:
     raiz = tmp_path / "repo con espacios (prueba)"
     shutil.copytree(RAIZ_REPO / "config", raiz / "config", ignore=shutil.ignore_patterns("local.toml"))
     shutil.copytree(RAIZ_REPO / "include", raiz / "include")
+    shutil.copytree(RAIZ_REPO / "src", raiz / "src")
     variables = {"BBLIT_DISC": str(rutas.disc), "BBLIT_TOOLCHAIN": str(rutas.toolchain)}
     return raiz, variables
 
@@ -125,7 +128,7 @@ def test_ciclo_real_split_build_verify_clean_reproduce_el_ejecutable_byte_a_byte
 
     primera = huella_de_asm()
     fuentes = {p.name: sha256(p) for p in (raiz / "src").glob("*.c")}
-    assert len(fuentes) == 8
+    assert len(fuentes) == 25
     assert cli.main(["split"], variables, raiz) == 0
     assert huella_de_asm() == primera, "split debe ser idempotente"
     assert {p.name: sha256(p) for p in (raiz / "src").glob("*.c")} == fuentes
@@ -146,6 +149,14 @@ def test_ciclo_real_split_build_verify_clean_reproduce_el_ejecutable_byte_a_byte
 
 def test_ciclo_real_con_symbols_txt_que_renombra_la_entrada_sigue_siendo_identico(repo_aislado: Any) -> None:
     raiz, variables = repo_aislado
+    # Con una tabla de simbolos distinta los .c se regeneran desde cero; como el esqueleto no trae
+    # la cadena que posee el subsegmento '.data', ese tramo vuelve a ser ensamblador.
+    shutil.rmtree(raiz / "src")
+    configuracion = (raiz / "config" / "splat.yaml").read_text(encoding="utf-8")
+    sin_cadena = "".join(
+        linea for linea in configuracion.splitlines(keepends=True) if ", .data, " not in linea
+    )
+    (raiz / "config" / "splat.yaml").write_text(sin_cadena, encoding="utf-8")
     (raiz / "config" / "symbols.txt").write_text(
         "inicio_del_juego = 0x80014A08; // type:func\n", encoding="utf-8"
     )

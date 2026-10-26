@@ -13,10 +13,13 @@ import os
 import shutil
 import stat
 import subprocess
+import tomllib
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from tools.reconstruccion import dominio
 from tools.reconstruccion.dominio import EjecutableReferencia
@@ -34,6 +37,7 @@ SIMBOLOS_AUTOMATICOS = ("build/undefined_funcs_auto.txt", "build/undefined_syms_
 SIMBOLOS_ENTRADA = "build/simbolos_entrada.txt"
 SIMBOLOS_PROYECTO = "config/symbols.txt"
 CONFIGURACION_SPLAT = "config/splat.yaml"
+OPCIONES_COMPILACION = "config/opciones_compilacion.toml"
 CARPETA_MACROS = "asm/include"
 ELF_SALIDA = "build/SLUS_008.elf"
 MAPA_SALIDA = "build/SLUS_008.map"
@@ -400,6 +404,70 @@ def listar_fuentes_c(raiz: Path) -> dict[str, str]:
     return textos
 
 
+def leer_secciones_declaradas(raiz: Path) -> dict[str, frozenset[str]]:
+    """
+    Lee ``config/splat.yaml`` y devuelve las secciones que cada archivo C puede generar.
+
+    Contexto:
+        La construccion compara cada objeto C contra lo que la particion le asigna; un
+        repositorio sin ``splat.yaml`` (pruebas) no declara nada y cada objeto solo puede
+        aportar codigo.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+
+    Returns:
+        dict[str, frozenset[str]]: Ver ``dominio.secciones_declaradas``; vacio si no hay archivo.
+
+    Raises:
+        ValueError: Si el archivo no es YAML valido o no tiene la forma esperada.
+
+    Ejemplo:
+        declaradas = leer_secciones_declaradas(Path("."))
+    """
+    ruta = raiz / CONFIGURACION_SPLAT
+    if not ruta.is_file():
+        return {}
+    try:
+        datos = yaml.safe_load(ruta.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        raise ValueError(f"{CONFIGURACION_SPLAT} no es YAML valido") from None
+    return dominio.secciones_declaradas(datos)
+
+
+def leer_valores_g(raiz: Path) -> dict[str, int]:
+    """
+    Lee ``config/opciones_compilacion.toml`` y devuelve el ``-G`` declarado por archivo C.
+
+    Contexto:
+        ``build`` y ``diff`` deben compilar cada archivo con las mismas opciones, asi que ambos
+        las obtienen de aqui. Un repositorio sin el archivo compila todo con ``-G0``.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+
+    Returns:
+        dict[str, int]: Valor de ``-G`` por nombre de archivo; vacio si no hay archivo.
+
+    Raises:
+        ValueError: Si el archivo excede el tamano permitido, no es TOML valido o no cumple el
+            esquema de ``dominio.valores_g_por_archivo``.
+
+    Ejemplo:
+        valores = leer_valores_g(Path("."))
+    """
+    ruta = raiz / OPCIONES_COMPILACION
+    if not ruta.is_file():
+        return {}
+    if ruta.stat().st_size > MAX_BYTES_REFERENCIA:
+        raise ValueError(f"{OPCIONES_COMPILACION} excede el tamano permitido")
+    try:
+        datos = tomllib.loads(ruta.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError:
+        raise ValueError(f"{OPCIONES_COMPILACION} no es TOML valido") from None
+    return dominio.valores_g_por_archivo(datos)
+
+
 def artefactos_de_build(nombre_ejecutable: str) -> tuple[str, ...]:
     """
     Lista las rutas dentro de ``build/`` que producen ``split`` y ``build``.
@@ -514,6 +582,48 @@ def dividir(
         raise ProcesoError("splat no genero el script del enlazador")
 
 
+def salidas_de_enlace(nombre_ejecutable: str) -> tuple[str, ...]:
+    """
+    Lista las rutas que produce el enlace y que representan el resultado de una construccion.
+
+    Contexto:
+        Son lo que ``verify`` y los consumidores del ejecutable (reempaquetado, emulador) leen.
+        Se invalidan juntas antes de construir.
+
+    Args:
+        nombre_ejecutable (str): Nombre del ejecutable reconstruido (``SLUS_008.38``).
+
+    Returns:
+        tuple[str, ...]: Rutas relativas a la raiz del repositorio.
+
+    Ejemplo:
+        rutas = salidas_de_enlace("SLUS_008.38")
+    """
+    return (f"build/{nombre_ejecutable}", BINARIO_SALIDA, ELF_SALIDA, MAPA_SALIDA)
+
+
+def invalidar_salida(raiz: Path, nombre_ejecutable: str) -> list[str]:
+    """
+    Elimina el ejecutable, el binario plano, el ELF y el mapa de una construccion anterior.
+
+    Contexto:
+        Una construccion que falla a mitad no debe dejar la salida de la anterior: ``verify``
+        la aprobaria aunque ya no corresponda al codigo fuente. Si la construccion falla, no
+        queda ningun ejecutable y ``verify`` informa que no existe.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        nombre_ejecutable (str): Nombre del ejecutable reconstruido.
+
+    Returns:
+        list[str]: Rutas relativas que existian y se eliminaron.
+
+    Ejemplo:
+        eliminadas = invalidar_salida(Path("."), "SLUS_008.38")
+    """
+    return [ruta for ruta in salidas_de_enlace(nombre_ejecutable) if _borrar_arbol(raiz / ruta)]
+
+
 def construir(
     raiz: Path,
     referencia: EjecutableReferencia,
@@ -584,6 +694,7 @@ def construir_con_compilador(
     Ejemplo:
         ejecutable = construir_con_compilador(Path("."), referencia, herramientas, compilar)
     """
+    invalidar_salida(raiz, referencia.nombre)
     script = raiz / SCRIPT_ENLAZADOR
     if not script.is_file():
         raise FileNotFoundError("falta el script del enlazador: ejecute primero 'split'")

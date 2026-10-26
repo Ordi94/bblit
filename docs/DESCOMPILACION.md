@@ -25,36 +25,71 @@ dónde difiere; no sustituye a `verify`.
 
 | Ruta | Contenido |
 |---|---|
-| `src/code_<dirección>.c` | Código del juego. Un archivo por tramo de direcciones; el nombre es la dirección de su primera función. |
+| `src/<subsistema>[_N].c` | Código del juego, un archivo por unidad de compilación propuesta (ver `docs/ARCHIVOS_ORIGEN.md`). Los archivos de un mismo subsistema se numeran. |
 | `include/common.h` | Tipos de ancho fijo y `NULL`. Todo `.c` empieza con `#include "common.h"`. |
 | `include/macro.h` | Macro `INCLUDE_ASM`. Lo incluye `common.h`. |
+| `include/gte.h` | Comandos del GTE por mnemónico (ver «Comandos del GTE»). Se incluye en lugar de `psyq/INLINE_C.H`. |
 | `asm/boot.s`, `asm/libs.s` | Ensamblador que no se descompila en esta fase: arranque del SDK y librerías Sony. |
-| `asm/nonmatchings/<archivo>/<función>.s` | Ensamblador original de cada función que sigue pendiente. Lo incluye `INCLUDE_ASM`. |
+| `asm/nonmatchings/<archivo>/<función>.s` | Ensamblador original de cada función que sigue pendiente, con el `rodata` que usa si su archivo tiene subsegmento `.rodata`. Lo incluye `INCLUDE_ASM`. |
 | `asm/matchings/<archivo>/<función>.s` | Ensamblador original de las funciones que ya están en C. Es el objetivo de `diff`. |
+| `asm/data/` | Datos, cadenas, tablas de saltos y zona de ceros (`data`, `rodata`, `bss`), en trozos con el nombre del archivo que los posee. |
 | `build/simbolos_entrada.txt` | Lo genera `split`; sale vacío mientras `config/symbols.txt` ya define la función de entrada (`func_80014A08`), y solo la declara si esa tabla no la tiene. |
-| `asm/data/` | Datos, cadenas, tablas de saltos y zona de ceros (`data`, `rodata`, `bss`). |
-| `config/simbolos_adicionales.txt` | Símbolos de función que `config/symbols.txt` tiene fundidos dentro de otra (ver trampas). |
 
 `asm/`, `build/`, `expected/` y `toolchain/` están ignorados por git; se regeneran con `split` y
 `build`. `src/` e `include/` sí se versionan.
 
-El código del juego (`0x80014AC4..0x80045DA0`) está repartido en ocho archivos por rango de
-direcciones, hasta que se identifiquen las unidades de compilación originales:
+El código del juego (`0x80014AC4..0x80045DA0`) está repartido en 25 archivos por subsistema. Cada
+corte cae en el inicio de una función y figura en `docs/ARCHIVOS_ORIGEN.md`; el nombre del
+subsistema es el del archivo sin el sufijo numérico y es la unidad de reparto de la traducción:
 
-| Archivo | Desde | Hasta (exclusivo) |
-|---|---|---|
-| `src/code_80014AC4.c` | `0x80014AC4` | `0x8001BF9C` |
-| `src/code_8001BF9C.c` | `0x8001BF9C` | `0x80025938` |
-| `src/code_80025938.c` | `0x80025938` | `0x8002BA80` |
-| `src/code_8002BA80.c` | `0x8002BA80` | `0x80032874` |
-| `src/code_80032874.c` | `0x80032874` | `0x80038884` |
-| `src/code_80038884.c` | `0x80038884` | `0x8003E680` |
-| `src/code_8003E680.c` | `0x8003E680` | `0x80044588` |
-| `src/code_80044588.c` | `0x80044588` | `0x80045DA0` |
+| Archivo | Desde | Hasta (exclusivo) | Funciones | Bytes |
+|---|---|---|---:|---:|
+| `src/tarjeta_de_memoria.c` | `0x80014AC4` | `0x80015EC0` | 10 | 5116 |
+| `src/arranque_y_bucle_principal_2.c` | `0x80015EC0` | `0x80016C0C` | 10 | 3404 |
+| `src/graficos_y_gte.c` | `0x80016C0C` | `0x80019364` | 9 | 10072 |
+| `src/colision_y_terreno.c` | `0x80019364` | `0x8001C424` | 4 | 12480 |
+| `src/movimiento_y_objetos_de_escena.c` | `0x8001C424` | `0x8001CC68` | 4 | 2116 |
+| `src/movimiento_y_objetos_de_escena_2.c` | `0x8001CC68` | `0x8001E528` | 15 | 6336 |
+| `src/movimiento_y_objetos_de_escena_3.c` | `0x8001E528` | `0x80020B90` | 8 | 9832 |
+| `src/logica_de_niveles.c` | `0x80020B90` | `0x80025938` | 1 | 19880 |
+| `src/logica_de_niveles_2.c` | `0x80025938` | `0x80026118` | 3 | 2016 |
+| `src/manejadores_por_tabla.c` | `0x80026118` | `0x80026298` | 12 | 384 |
+| `src/logica_de_niveles_3.c` | `0x80026298` | `0x8002F9F8` | 17 | 38752 |
+| `src/interprete_de_eventos.c` | `0x8002F9F8` | `0x80032874` | 196 | 11900 |
+| `src/camara_y_bucle_logico.c` | `0x80032874` | `0x80036164` | 11 | 14576 |
+| `src/gestion_y_dibujo_de_objetos.c` | `0x80036164` | `0x80037048` | 15 | 3812 |
+| `src/gestion_y_dibujo_de_objetos_2.c` | `0x80037048` | `0x800399C8` | 20 | 10604 |
+| `src/gestion_y_dibujo_de_objetos_3.c` | `0x800399C8` | `0x80039BFC` | 1 | 564 |
+| `src/gestion_y_dibujo_de_objetos_4.c` | `0x80039BFC` | `0x8003AA38` | 6 | 3644 |
+| `src/menus_e_interfaz.c` | `0x8003AA38` | `0x8003DF84` | 27 | 13644 |
+| `src/audio_xa_y_spu.c` | `0x8003DF84` | `0x8003FFA0` | 37 | 8220 |
+| `src/entrada_de_mando.c` | `0x8003FFA0` | `0x80040A80` | 6 | 2784 |
+| `src/graficos_y_gte_10.c` | `0x80040A80` | `0x80040EB4` | 6 | 1076 |
+| `src/cargador_de_niveles_y_cd.c` | `0x80040EB4` | `0x800443CC` | 9 | 13592 |
+| `src/graficos_y_gte_12.c` | `0x800443CC` | `0x80044664` | 4 | 664 |
+| `src/cargador_de_niveles_y_cd_2.c` | `0x80044664` | `0x80044904` | 2 | 672 |
+| `src/inicializacion_de_motor.c` | `0x80044904` | `0x80045DA0` | 16 | 5276 |
 
 Las fronteras están en `config/splat.yaml` como subsegmentos de tipo `c`. El orden de las
 funciones dentro de cada `.c` es el orden de direcciones: el enlazador coloca el código en el
 orden en que el compilador lo emite, así que nunca se reordenan.
+
+### Cortes de la propuesta que no se aplicaron
+
+La propuesta tiene 36 filas (23 de confianza alta y 13 media). Se aplican todas las de confianza
+alta salvo la primera, y de las medias las que dejan archivos de tamaño útil:
+
+| Corte | Confianza | Razón |
+|---|---|---|
+| `arranque_y_bucle_principal` (`0x80014A08`) | alta | Son 188 bytes de código de arranque escrito a mano (`start`) y un bloque de cuatro palabras; no es traducible a C y se queda en `asm/boot.s`. |
+| `graficos_y_gte_2` a `graficos_y_gte_9` (`0x80016ED0..0x80019180`) | media | Ocho rutinas de cálculo de matrices que no se llaman entre sí, cada una en su propio archivo de una función (304 a 4.588 bytes). Se funden con `graficos_y_gte` en un solo archivo de nueve funciones independientes, como sugiere la propia propuesta. |
+| `logica_de_niveles_4` (`0x8002F968`) | media | Dejaba un archivo de 144 bytes con tres funciones; se funde con `logica_de_niveles_3`. |
+| `graficos_y_gte_11` (`0x80040D98`) | media | Dejaba un archivo de 284 bytes; se funde con `graficos_y_gte_10`. |
+
+Los demás cortes de confianza media (`movimiento_y_objetos_de_escena_2` y `_3`,
+`logica_de_niveles_2`) se aplicaron: la compilación y `verify` no se rompen y los archivos miden
+entre 2 y 10 KB. La numeración de `graficos_y_gte_10` y `graficos_y_gte_12` conserva la de la
+propuesta para que los nombres coincidan con ella.
 
 ### Cómo se genera `src/`
 
@@ -64,7 +99,76 @@ funciones que siguen en `INCLUDE_ASM` (en `asm/nonmatchings/`) y el de las ya de
 `asm/matchings/`). Por eso `split` es idempotente y se puede repetir sin perder trabajo.
 
 Para mover una frontera entre dos archivos hay que cambiar el desplazamiento en `splat.yaml` y
-trasladar a mano las líneas de las funciones afectadas de un `.c` al otro.
+trasladar a mano las líneas de las funciones afectadas de un `.c` al otro. Cuando la partición
+cambia mucho (renombrar o repartir archivos), lo seguro es regenerar: mover `src/` aparte,
+`clean`, `split` (crea los `.c` con una línea `INCLUDE_ASM` por función con las rutas nuevas),
+reinsertar los bloques de C escritos en el lugar de su `INCLUDE_ASM` y repetir `split` para que
+las funciones ya en C pasen a `asm/matchings/`. No se editan a mano las rutas de `INCLUDE_ASM`.
+
+## Datos y rodata por archivo
+
+El script del enlazador que genera el particionador tiene el orden fijo texto, datos,
+datos de solo lectura y ceros, y coloca las secciones de cada objeto C en la posición de su
+subsegmento. Por eso un archivo posee sus datos declarando subsegmentos **con su mismo nombre**:
+
+- **`data` (ensamblador de datos).** El tramo `0x8005DEA0..0x8005F000` contiene las tablas
+  privadas de cada archivo (secuencias de teclas, tablas de punteros a rutinas, tablas de
+  sectores). Está dividido en trozos `[desplazamiento, data, <archivo>]`; cada uno genera
+  `asm/data/<archivo>.data.s` y se enlaza en su sitio. La tabla de punteros `0x8005E35C`, que
+  lee el despachador de `camara_y_bucle_logico` y varios subsistemas más, tiene su propio trozo
+  `tablas_compartidas`. Estas tablas son datos inicializados (`.data`), no rodata: el compilador
+  las emite en `.data` y el enlazador las coloca en el grupo de datos. Para que un archivo C
+  posea un tramo, se divide el trozo de ensamblador y se declara `[desplazamiento, .data, <archivo>]`
+  (con punto) con el nombre del `c`; el trozo de ensamblador anterior **debe llamarse distinto**
+  (`tarjeta_de_memoria_tablas`), porque el particionador resuelve los trozos por nombre y dos
+  entradas con el mismo nombre se pisan. Primer tramo migrado: la cadena del archivo de partida de
+  la tarjeta de memoria (`0x8005E04C`, 24 bytes), que vive en `src/tarjeta_de_memoria.c` como
+  `char D_8005E04C[] = "bu00:BASLUS-00838 BBLIT";`. El símbolo interior `D_8005E051` (otras
+  funciones leen la cadena desde su sexto byte) queda como símbolo absoluto del enlazador.
+- **`.rodata` con punto (rodata migrado).** Para las tablas de salto de un `switch` y las
+  cadenas del tramo `0x80067E64..0x800683B8`, un subsegmento `[desplazamiento, .rodata, <archivo>]`
+  hace que el particionador *migre* cada símbolo de solo lectura al `.s` de la función que lo usa
+  (sección `.rodata` dentro del propio `asm/nonmatchings/<archivo>/<función>.s`) y que el
+  enlazador recoja `build/src/<archivo>.c.o(.rodata)` en la posición correcta. Sin el punto
+  (`rodata`) el particionador genera un archivo ensamblador aparte y los símbolos se duplican.
+  Archivos con rodata migrado: `camara_y_bucle_logico` (`0x80067E64`, tabla de `func_80035244`),
+  `gestion_y_dibujo_de_objetos` (`0x80067E80`, tabla de `func_8003690C`) y `menus_e_interfaz`
+  (`0x80067E9C`, tabla de `func_8003C1C8`), `audio_xa_y_spu` (`0x80067EF0`) y
+  `cargador_de_niveles_y_cd` (`0x80067F18`). El resto del rodata sigue en trozos de
+  ensamblador (`rodata`, `rodata_constante`, `rodata_resto`).
+- **Símbolos de solo lectura sin función propia (`INCLUDE_RODATA`).** Un símbolo que ninguna
+  función del archivo referencia directamente (la ruta `\LEVEL5\MERLIN.BZZ;1` y su puntero, las
+  cadenas y punteros del cargador) no viaja dentro de un `.s` de función: el particionador lo escribe
+  en `asm/nonmatchings/<archivo>/<símbolo>.s` y lo incluye en el `.c`, en orden de direcciones, con
+  `INCLUDE_RODATA("asm/nonmatchings/<archivo>", <símbolo>);`. La macro (en `include/macro.h`) abre
+  la sección `.rodata`, incluye el `.s` y vuelve a `.text`. Para pasar uno de estos símbolos a C se
+  sustituye su línea `INCLUDE_RODATA` por la definición (`const char D_X[] = "...";`) respetando
+  el orden y el relleno originales; `verify` delata cualquier desajuste.
+
+Cada objeto C se comprueba al compilarlo: solo puede generar `.text` y las secciones que su
+nombre declara en `splat.yaml` (`.rodata` o `.data` si hay subsegmento con punto). Cualquier otra
+sección con contenido hace fallar la construcción con el archivo y la sección
+(`inicializacion_de_motor.c.o: genera 4 bytes en la seccion inesperada '.data'`).
+
+### Cómo mover una función con `switch`
+
+1. El archivo debe tener el subsegmento `.rodata` con su nombre, en el desplazamiento donde está la
+   tabla (ver arriba). Si no lo tiene, añadirlo en `splat.yaml` entre el trozo anterior y el siguiente
+   (cada trozo termina donde empieza el siguiente) y regenerar `src/`.
+2. Escribir la función con `switch` en C en su sitio. El compilador emite la tabla en `.rdata`
+   (que el ensamblador llama `.rodata`) con una entrada por caso; el relleno de casos ausentes lo
+   aporta la etiqueta del caso por omisión.
+3. `diff <función>` muestra las filas `.rodata+0x..` (una por entrada de la tabla): si todas
+   coinciden, la tabla y los destinos de los casos están en el mismo orden y distancia que el original.
+4. `build` y `verify`. Una tabla distinta en tamaño desplaza todo lo que sigue y `verify` lo delata.
+
+Resultado con `func_80035244` (siete casos): el C que escribió el desarrollador reproduce la tabla
+completa (las siete entradas coinciden en `diff`) pero la función no llega a puntuación 0
+(1.510 con `-G0`, 600 con `-G8` y la mejor variante del banco), así que queda como
+`NON_MATCHING` (ver `docs/PROGRESO.md`). Las diferencias restantes están en el texto, no en la
+sección de datos: la posición del almacén en `0x104($gp)`, las constantes `0x47` y `1`, que el
+original carga una vez antes del bucle, y el orden de los incrementos de los punteros.
+
 
 ## Tipos y macros
 
@@ -80,7 +184,7 @@ C89 estricto:
 carpeta es una cadena literal relativa a la raíz del repositorio:
 
 ```c
-INCLUDE_ASM("asm/nonmatchings/code_80014AC4", func_80014BA0);
+INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014BA0);
 ```
 
 La macro preprocesa a un `__asm__` de nivel superior que ensambla el `.s` con `.set noat` y
@@ -106,7 +210,7 @@ macros dos veces es un error del ensamblador.
        /* mejor intento */
    }
    #else
-   INCLUDE_ASM("asm/nonmatchings/code_8002BA80", func_80030D60);
+   INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030D60);
    #endif
    ```
 
@@ -157,6 +261,72 @@ extern u32 D_80069698;           /* palabra */
 - Cuando se identifique el propósito, se renombra en `config/symbols.txt` (única fuente de
   nombres) y se regenera con `split`.
 
+## Opciones de compilación por archivo
+
+`config/opciones_compilacion.toml` declara, por archivo `src/<nombre>.c`, opciones que `build`,
+`diff` y `probar` aplican por igual (una sola función las lee). Hoy solo existe `g`, el umbral de
+datos pequeños (`-G`) del compilador, entero entre 0 y 64; los archivos que no figuran usan `-G0`:
+
+```toml
+[archivos.camara_y_bucle_logico]
+g = 8
+```
+
+Con un `-G` mayor que cero el compilador emite las variables externas pequeñas en forma
+simbólica (`sh $2,D_80069662`, que el ensamblador expande con `lui $at`), como el original, en
+lugar de `lui` más desplazamiento. Efecto medido en `func_80035244` (archivo
+`camara_y_bucle_logico`): 1.510 con `-G0`, 1.025 con `-G8` y 600 con `-G8` y la mejor variante del
+banco. La coincidencia exacta requiere además las constantes cargadas antes del bucle y el almacén
+fuera del hueco de retardo; el motivo queda en `docs/PROGRESO.md`. El valor `8` se declara para este
+archivo porque sus tres funciones con `$gp` lo necesitan; otros archivos se irán añadiendo con
+la evidencia de su primera función. El acceso por `$gp` se escribe con una variable de registro
+(`register u8* base_gp __asm__("$28");` y `*(s16*)(base_gp + 0x104)`).
+
+## Banco de variantes (`probar`)
+
+`python tools/build.py probar <función> <carpeta>` compila cada `.c` de la carpeta como una
+variante completa de la función (con su `#include "common.h"`, tipos y `extern`), con las
+mismas opciones que el archivo donde vive la función, la compara con `asm-differ` contra el
+ensamblador original y muestra una tabla ordenada de menor a mayor puntuación:
+
+```text
+variante  puntuacion
+i.c       690
+d.c       1025
+rota.c    error: CC1PSX.EXE: termino con codigo 33
+```
+
+Una variante que no compila o no define la función aparece con su error y no detiene a las demás.
+El código de salida es 0 solo si la mejor tiene puntuación 0. Límites: 200 variantes por carpeta, 256
+KiB cada una, nombres simples (`[A-Za-z0-9_.-]`). Todo el trabajo queda en `build/diff/`; no escribe
+en `src/`. Se usa antes de `diff`: se prueban muchas formulaciones, se copia la mejor a `src/` bajo
+`NON_MATCHING` y se sigue con `diff`.
+
+## Invalidación de la salida
+
+Una construcción elimina antes de empezar el ejecutable (`build/SLUS_008.38`), el binario plano,
+el ELF y el mapa de la anterior. Si la construcción falla a mitad (por ejemplo por una sección no
+declarada) no queda ningún ejecutable y `verify` imprime `FAIL el ejecutable reconstruido no
+existe` con código 1. Antes de este cambio sobrevivía el ejecutable anterior y `verify` lo aprobaba
+aunque ya no correspondiera al código. `split` y `clean` también lo eliminan.
+
+## Comandos del GTE
+
+Las macros de comando de `psyq/INLINE_C.H` (`gte_rtv0`, `gte_rtpt`...) emiten `nop; nop; .word
+0x....`, donde la palabra es una ficha que el programa DMPSX del SDK sustituye por la
+instrucción real. Aquí el flujo es `cc1`, `maspsx` y `as`, sin DMPSX, y la ficha llega sin sustituir
+al objeto (`0x0000013f` en lugar de `0x4a486012`). Se evaluó integrar `DMPSX.EXE`: espera un
+objeto de ASPSX (`DMPSX object-file [-b][-o output-file]`) y rechaza el objeto ELF de GNU `as`
+(`DMPSX: Illegal input file format`), así que no es aplicable sin cambiar todo el ensamblado.
+
+Decisión: `include/gte.h` redefine los 64 comandos que tienen equivalente como
+`__asm__ volatile ("nop; nop; <mnemónico>")`, con el mnemónico de `asm/include/gte_macros.inc`
+(que `macro.h` carga), y produce la misma palabra que el ejecutable. Se incluye **en lugar de**
+`psyq/INLINE_C.H` (lo incluye él mismo, con `TYPES.H` y `LIBGTE.H`). `gte_rt` no tiene mnemónico y
+su uso es un error de compilación a propósito. Las macros de carga y lectura de registros
+(`gte_ldv0`, `gte_stlvnl`, `gte_SetRotMatrix`...) son ensamblador directo y se usan tal cual:
+`func_8001CE64` coincide con puntuación 0.
+
 ## Medir el progreso
 
 `python tools/build.py progreso` escribe `docs/PROGRESO.md` (legible) y `build/progreso.json`
@@ -166,7 +336,9 @@ extern u32 D_80069698;           /* palabra */
   `INCLUDE_ASM`.
 - Está **`NON_MATCHING`** si su definición está bajo `#ifdef NON_MATCHING` y la rama normal usa
   `INCLUDE_ASM`.
-- Los bytes salen del tamaño declarado en `config/symbols.txt` (más `simbolos_adicionales.txt`).
+- Los bytes salen del tamaño declarado en `config/symbols.txt`.
+- Intentos pendientes hoy (`docs/PROGRESO.md` los lista con su motivo): `func_8002F990` (puntuación 350) y
+  `func_80035244` (puntuación 600 con `-G8`).
 - Control de coherencia: los `glabel` de `asm/` más las funciones en C deben sumar las funciones
   de la tabla; si no, `progreso` termina con error y hay que ejecutar `split`.
 
@@ -178,9 +350,10 @@ una decisión del desarrollador, así el progreso solo cuenta lo que alguien esc
 | Orden | Efecto |
 |---|---|
 | `split` | Copia el original a `expected/`, ejecuta el particionador y genera `asm/`, `src/` (los `.c` que falten) y el script del enlazador. No toca `asm/overlay/`. |
-| `build` | Para cada objeto del script del enlazador: ensambla el `.s` o compila el `.c` (preprocesador, `CC1PSX.EXE -O2 -G0`, `maspsx --aspsx-version=2.79`, `as`). Enlaza en el orden del script y escribe `build/SLUS_008.38`. |
-| `verify` | Compara el SHA-256 con el del original. Imprime `OK` o `FAIL` con el desplazamiento de la primera diferencia. |
+| `build` | Para cada objeto del script del enlazador: ensambla el `.s` o compila el `.c` (preprocesador, `CC1PSX.EXE -O2 -G0`, `maspsx --aspsx-version=2.79`, `as`). Enlaza en el orden del script y escribe `build/SLUS_008.38`. Antes de empezar elimina la salida de la construcción anterior (ver «Invalidación de la salida»). |
+| `verify` | Compara el SHA-256 con el del original. Imprime `OK` o `FAIL` con el desplazamiento de la primera diferencia; si no existe el ejecutable reconstruido imprime `FAIL ... no existe` y devuelve 1. |
 | `diff <función>` | Compila el `.c` que contiene la función con `NON_MATCHING`, ensambla el original y ejecuta `asm-differ`. Código 0 solo si la puntuación es 0. Una función que sigue solo en `INCLUDE_ASM` se rechaza: compararla consigo misma daría 0 sin significar nada. |
+| `probar <función> <carpeta>` | Compila y puntúa cada variante `.c` de la carpeta contra el original y muestra la tabla ordenada. Código 0 solo si la mejor tiene puntuación 0. |
 | `progreso` | Escribe `docs/PROGRESO.md` y `build/progreso.json`. No necesita el disco ni el toolchain. |
 | `clean` | Elimina `asm/`, `expected/` y los artefactos propios de `build/`. Conserva `asm/overlay/`, `expected/overlay/`, `build/overlay/`, `build/emulador/` y `build/bblit_prueba.*`, que son de otras herramientas. |
 
@@ -190,22 +363,17 @@ Los objetos intermedios (`.i`, `.s` y `.o` de cada compilación) quedan en `buil
 ## Trampas conocidas
 
 - **Datos y tablas de salto que el compilador emite.** `CC1PSX.EXE` deja las constantes, las
-  cadenas y las tablas de salto de un `switch` en `.rdata`, y las variables inicializadas en
-  `.data`. El script del enlazador coloca esas secciones de cada objeto C antes que las del
-  ensamblador de datos, y el original las tiene en otra posición: el ejecutable saldría con
-  los datos movidos. La construcción lo detecta y falla con el nombre de la sección
-  (`genera N bytes en la seccion '.rodata'`). Para pasar a C una función con `switch` o con
-  cadenas hay que migrar también su zona de `rodata`: dividir el subsegmento `rodata` de
-  `splat.yaml` por archivo (`[desplazamiento, .rodata, code_XXXX]`), de modo que cada `.c`
-  posea sus constantes en el orden original, y relajar la comprobación de
-  `compilacion.verificar_solo_texto` para ese archivo. Esa migración está pendiente.
+  cadenas y las tablas de salto de un `switch` en `.rdata` (que el ensamblador llama `.rodata`)
+  y las variables inicializadas en `.data`. Solo se aceptan si el archivo declara el
+  subsegmento correspondiente (ver «Datos y rodata por archivo»); si no, la construcción falla
+  con el archivo y la sección en lugar de producir un ejecutable con los datos movidos.
 - **Datos incrustados en el código.** Hay bloques de datos entre funciones (por ejemplo
   `0x800375F8`, cinco palabras, y los cuatro de `0x80014AB4`). El particionador los emite como
   `dlabel` con `.word`; entran por `INCLUDE_ASM` como cualquier otra pieza y no cuentan como
   función en `progreso`. No se pueden pasar a C.
-- **`-G0` es obligatorio.** La cabecera declara `gp0 = 0` y el código no usa `$gp` para datos
-  pequeños; sin `-G0` el compilador emitiría accesos relativos a `$gp`. Ya está fijado en
-  `compilacion.OPCIONES_COMPILADOR`.
+- **`-G` no es igual para todos los archivos.** El valor por omisión es `-G0` (la cabecera
+  declara `gp0 = 0`), pero 46 funciones del juego usan `desplazamiento($gp)`, señal de que su
+  archivo original se compiló con datos pequeños. Ver «Opciones de compilación por archivo».
 - **`CC1PSX.EXE` no preprocesa.** Por eso `#include` y las macros pasan antes por `CPPPSX.EXE`
   con `-Iinclude`. La macro `INCLUDE_ASM` usa `#NAME` y concatenación de cadenas, que el
   preprocesador del SDK soporta.
@@ -215,12 +383,11 @@ Los objetos intermedios (`.i`, `.s` y `.o` de cada compilación) quedan en `buil
 - **Relleno entre objetos.** El enlazador alinea cada objeto a 16 bytes por omisión y el
   arranque mide 196 bytes; `splat.yaml` fija `subalign: 4` para que los objetos queden
   contiguos como en el original.
-- **Símbolos fundidos.** `config/symbols.txt` agrupa en `func_8002F9F8` (5.332 bytes) decenas de
-  rutinas hoja que solo se llaman por tabla. Mientras la tabla no las separe, las que se quieran
-  pasar a C se aíslan en `config/simbolos_adicionales.txt`, que se lee después de
-  `symbols.txt`: una línea con la misma dirección reemplaza a la anterior (así se reduce el
-  tamaño de `func_8002F9F8`) y las demás particionan el resto. Los tramos `func_8002FA60`,
-  `func_8002FB38` y `func_80030DA4` siguen siendo bloques con varias rutinas.
+- **Símbolos fundidos.** La tabla `config/symbols.txt` separa ya las rutinas hoja que antes
+  estaban fundidas en `func_8002F9F8` y `func_80030ECC` (cada una es ahora una función de 0x38
+  bytes más sus rutinas) y fusiona `func_800415A0` y `func_80042BB8` en una sola función de
+  0x2E2C bytes (evidencia en `docs/GHIDRA.md`). Ya no hace falta ningún archivo de símbolos
+  adicional.
 - **`asm-differ` y el tamaño de la función.** Con un archivo C entero como objeto, `asm-differ`
   volcaría todo lo que sigue a la función. `diff` lo corta tras tantos `jr $ra` como tiene el
   original (opción `-s` repetida), y genera `diff_settings.py` en `build/diff/` con la ruta de

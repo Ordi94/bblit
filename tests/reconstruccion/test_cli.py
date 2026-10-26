@@ -14,6 +14,7 @@ from tests.toolchain.ayudantes import bloque_componente, lock_de
 from .test_compilacion import SALIDA_OBJDUMP, EjecutorC
 from .test_diff import ASM_FUNCION, EjecutorDiff
 from .test_infraestructura import EJECUTABLE, REFERENCIA, Registro, referencia_json
+from .test_variantes import EjecutorVariantes, crear_repo, crear_variantes
 
 
 @pytest.fixture
@@ -309,3 +310,46 @@ def test_un_error_de_permisos_se_informa_sin_traza_y_devuelve_uno(
     capturado = capsys.readouterr()
     assert capturado.err == "error: acceso denegado\n"
     assert "Traceback" not in capturado.err
+
+
+def test_verify_sin_ejecutable_reconstruido_imprime_fail_y_devuelve_uno(
+    entorno_repo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+    assert ejecutar_cli(raiz, variables, "verify") == 1
+    salida = capsys.readouterr()
+    assert salida.out == (
+        f"FAIL el ejecutable reconstruido no existe: ejecute 'build' (esperado={REFERENCIA.sha256})\n"
+    )
+    assert salida.err == ""
+
+
+def test_cli_probar_imprime_la_tabla_y_el_codigo_depende_de_la_mejor_variante(
+    entorno_completo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_completo
+    crear_repo(raiz)
+    carpeta = crear_variantes(raiz.parent / "variantes", ["peor.c", "mejor.c"])
+    capsys.readouterr()
+    assert (
+        ejecutar_cli(raiz, variables, "probar", "func_80036204", str(carpeta), ejecutor=EjecutorVariantes())
+        == 0
+    )
+    assert capsys.readouterr().out.splitlines() == [
+        "variante  puntuacion",
+        "mejor.c   0",
+        "peor.c    120",
+    ]
+    (carpeta / "mejor.c").unlink()
+    assert (
+        ejecutar_cli(raiz, variables, "probar", "func_80036204", str(carpeta), ejecutor=EjecutorVariantes())
+        == 1
+    )
+    assert capsys.readouterr().out.splitlines()[1] == "peor.c    120"
+    assert (
+        ejecutar_cli(
+            raiz, variables, "probar", "func_80036204", str(carpeta / "no"), ejecutor=EjecutorVariantes()
+        )
+        == 1
+    )
+    assert capsys.readouterr().err == "error: la carpeta de variantes no existe\n"

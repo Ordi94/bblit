@@ -36,6 +36,13 @@ _DEFINICION_PARTICIONADOR = re.compile(r"^(?:static\s+)?[^\s]+\s+([^\s(]+)\(([^;
 _DEFINICION_AMPLIA = re.compile(r"\b([A-Za-z_]\w*)\s*\(([^;(){}]*)\)\s*\{")
 _INCLUDE_ASM = re.compile(r'\bINCLUDE_ASM\(\s*"[^"]*"\s*,\s*([A-Za-z_]\w*)\s*\)')
 _IDENTIFICADOR = re.compile(r"^[A-Za-z_]\w*$")
+_BLOQUE_NO_COINCIDENTE = re.compile(
+    r"#ifdef NON_MATCHING\s*\n(.*?)#else\s*\n"
+    r'INCLUDE_ASM\(\s*"[^"]*"\s*,\s*([A-Za-z_]\w*)\s*\)\s*;\s*\n#endif',
+    re.DOTALL,
+)
+_PRIMER_COMENTARIO = re.compile(r"/\*(.*?)\*/", re.DOTALL)
+MAX_CARACTERES_MOTIVO = 600
 _PALABRAS_DE_CONTROL = frozenset({"if", "while", "for", "switch", "return", "sizeof", "else", "do"})
 
 
@@ -229,3 +236,33 @@ def analizar_fuentes(textos: Mapping[str, str]) -> dict[str, dict[str, EstadoFun
         except ValueError as error:
             raise ValueError(f"{archivo}: {error}") from None
     return estados
+
+
+def motivos_no_coincidentes(texto: str) -> dict[str, str]:
+    """
+    Extrae el motivo escrito junto a cada intento ``NON_MATCHING``.
+
+    Contexto:
+        ``progreso`` lista los intentos pendientes con la explicacion que dejo quien los escribio:
+        el primer comentario de bloque dentro del ``#ifdef NON_MATCHING`` (puntuacion y
+        diferencias conocidas). Un bloque sin comentario no tiene motivo.
+
+    Args:
+        texto (str): Contenido del archivo ``.c``.
+
+    Returns:
+        dict[str, str]: Motivo por nombre de funcion, en una sola linea y acotado a
+        ``MAX_CARACTERES_MOTIVO`` caracteres.
+
+    Ejemplo:
+        motivos = motivos_no_coincidentes(texto)
+    """
+    motivos: dict[str, str] = {}
+    for bloque in _BLOQUE_NO_COINCIDENTE.finditer(texto):
+        comentario = _PRIMER_COMENTARIO.search(bloque.group(1))
+        if comentario is None:
+            continue
+        lineas = (linea.strip().lstrip("*").strip() for linea in comentario.group(1).splitlines())
+        motivo = " ".join(linea for linea in lineas if linea)
+        motivos[bloque.group(2)] = motivo[:MAX_CARACTERES_MOTIVO]
+    return motivos

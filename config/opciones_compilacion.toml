@@ -1,0 +1,9 @@
+# Opciones de compilacion por archivo C (clave: nombre del archivo sin src/ ni .c).
+#
+# g: umbral de datos pequenos (-G) del compilador. Por omision 0. Un archivo cuyo original
+# accede a variables con desplazamiento($gp) se compilo con datos pequenos; con un valor mayor
+# que cero las variables externas pequenas se emiten en forma simbolica (sh $2,D_80069662),
+# como en el original, en lugar de lui mas desplazamiento. build, diff y probar leen este archivo.
+
+[archivos.camara_y_bucle_logico]
+g = 8

@@ -30,4 +30,19 @@ __asm__(".include \"macro.inc\"\n");
         "    .set reorder\n" \
         "    .set at\n")
 
+/*
+ * INCLUDE_RODATA(carpeta, simbolo)
+ *
+ * Inserta en .rodata el dato de solo lectura (cadena, tabla de punteros o de saltos) original
+ * de un simbolo que ninguna funcion del archivo referencia directamente: los que si
+ * referencia una funcion viajan dentro del .s de esa funcion. FOLDER es la carpeta literal y
+ * NAME el nombre del simbolo; el .s ya trae su propia directiva de seccion, y al terminar se
+ * vuelve a .text, que es lo que espera la salida del compilador.
+ */
+#define INCLUDE_RODATA(FOLDER, NAME) \
+    __asm__( \
+        ".section .rodata\n" \
+        "    .include \"" FOLDER "/" #NAME ".s\"\n" \
+        ".section .text\n")
+
 #endif

@@ -5,7 +5,12 @@ Una linea por simbolo, con la sintaxis que el desensamblador lee como tabla de n
 es el unico lugar donde se conoce ese formato.
 """
 
+import csv
+import io
+import os
 import re
+from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Final, cast
 
 from tools.ghidra.dominio import Simbolo, TipoSimbolo, validar_simbolos
@@ -101,3 +106,81 @@ def parsear_tabla(texto: str) -> list[Simbolo]:
         )
     validar_simbolos(simbolos)
     return simbolos
+
+
+COLUMNAS_NUEVAS: Final[tuple[str, ...]] = (
+    "direccion",
+    "nombre",
+    "tamano",
+    "rutina_madre",
+    "nombre_madre",
+    "operacion",
+)
+
+
+def escribir_atomico(ruta: Path, texto: str) -> None:
+    """
+    Escribe un archivo de texto sin dejarlo a medias si algo falla.
+
+    Contexto:
+        La tabla de simbolos alimenta la particion y la construccion: un archivo truncado dejaria un
+        ejecutable que no se puede reconstruir sin avisar. Se escribe en un temporal vecino y se
+        reemplaza el destino en una sola operacion; si falla, el archivo anterior queda intacto.
+
+    Args:
+        ruta (Path): Archivo destino (su carpeta debe existir).
+        texto (str): Contenido en UTF-8 con saltos de linea LF.
+
+    Raises:
+        OSError: Si no se puede escribir el temporal o reemplazar el destino.
+
+    Ejemplo:
+        escribir_atomico(Path("config/symbols.txt"), texto)
+    """
+    temporal = ruta.with_name(ruta.name + ".tmp")
+    try:
+        temporal.write_text(texto, encoding="utf-8", newline="\n")
+        os.replace(temporal, ruta)
+    finally:
+        temporal.unlink(missing_ok=True)
+
+
+def formatear_nuevas_csv(
+    nuevas: Sequence[tuple[int, int]],
+    fusionadas: Sequence[tuple[int, int]],
+    simbolos: Sequence[Simbolo],
+    antes: Mapping[int, str],
+) -> str:
+    """
+    Lista las funciones que la tabla gana al partir bloques y las que pierde al fusionar.
+
+    Contexto:
+        Insumo de la particion del ejecutable: dice que simbolos son nuevos, de que rutina madre
+        salen y cuales desaparecen absorbidos por otra.
+
+    Args:
+        nuevas (Sequence[tuple[int, int]]): Pares ``(direccion, madre)`` de funciones creadas.
+        fusionadas (Sequence[tuple[int, int]]): Pares ``(absorbida, principal)``.
+        simbolos (Sequence[Simbolo]): Tabla final.
+        antes (Mapping[int, str]): Direccion a nombre en la tabla anterior (para las absorbidas).
+
+    Returns:
+        str: CSV con LF y las columnas de ``COLUMNAS_NUEVAS``; ``operacion`` es ``partida`` o ``fusionada``.
+
+    Ejemplo:
+        texto = formatear_nuevas_csv(refinado.nuevas, refinado.fusionadas, simbolos, nombres_antes)
+    """
+    por_direccion = {s.direccion: s for s in simbolos}
+    salida = io.StringIO(newline="")
+    escritor = csv.writer(salida, lineterminator="\n")
+    escritor.writerow(COLUMNAS_NUEVAS)
+    for direccion, madre in sorted(nuevas):
+        simbolo, padre = por_direccion[direccion], por_direccion[madre]
+        escritor.writerow(
+            [f"0x{direccion:08X}", simbolo.nombre, simbolo.tamano, f"0x{madre:08X}", padre.nombre, "partida"]
+        )
+    for absorbida, principal in sorted(fusionadas):
+        padre = por_direccion[principal]
+        nombre = antes.get(absorbida, "")
+        escritor.writerow([f"0x{absorbida:08X}", nombre, 0, f"0x{principal:08X}", padre.nombre, "fusionada"])
+    return salida.getvalue()

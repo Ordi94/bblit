@@ -401,6 +401,108 @@ def fuente_de_objeto(objeto: str) -> str:
     return objeto[len("build/") : -len(".o")]
 
 
+MAX_VALOR_G = 64
+_CLAVES_OPCIONES = frozenset({"g"})
+_PATRON_ARCHIVO_C = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
+
+
+def valores_g_por_archivo(datos: object) -> dict[str, int]:
+    """
+    Valida el contenido de ``config/opciones_compilacion.toml`` y devuelve el ``-G`` de cada archivo.
+
+    Contexto:
+        El umbral de datos pequenos (``-G``) del compilador cambia como se emiten las variables
+        externas pequenas (acceso simbolico en lugar de ``lui`` mas desplazamiento). Los archivos
+        originales no usaron todos el mismo valor, asi que se declara por archivo; los que no
+        figuran usan ``-G0``. Entrada no confiable: solo se admiten claves conocidas, nombres de
+        archivo simples y enteros entre 0 y ``MAX_VALOR_G``.
+
+    Args:
+        datos (object): Resultado de ``tomllib.loads``; tabla ``archivos`` con una subtabla por
+            archivo C (nombre sin ``src/`` ni ``.c``) y la clave ``g``.
+
+    Returns:
+        dict[str, int]: Valor de ``-G`` por nombre de archivo (solo los declarados).
+
+    Raises:
+        ValueError: Si la forma no es la esperada, un nombre no es valido, hay una clave
+            desconocida o ``g`` no es un entero en rango; el mensaje nombra el campo.
+
+    Ejemplo:
+        valores = valores_g_por_archivo({"archivos": {"camara_y_bucle_logico": {"g": 8}}})
+    """
+    if not isinstance(datos, dict) or set(datos) - {"archivos"}:
+        raise ValueError("opciones de compilacion: solo se admite la tabla 'archivos'")
+    tabla = datos.get("archivos", {})
+    if not isinstance(tabla, dict):
+        raise ValueError("opciones de compilacion: 'archivos' debe ser una tabla")
+    valores: dict[str, int] = {}
+    for nombre, opciones in tabla.items():
+        if not _PATRON_ARCHIVO_C.match(nombre) or not isinstance(opciones, dict):
+            raise ValueError(f"opciones de compilacion: archivo '{nombre}' no valido")
+        desconocidas = set(opciones) - _CLAVES_OPCIONES
+        if desconocidas:
+            raise ValueError(
+                f"opciones de compilacion: '{nombre}' tiene la clave desconocida '{min(desconocidas)}'"
+            )
+        valor = opciones.get("g", 0)
+        if isinstance(valor, bool) or not isinstance(valor, int) or not 0 <= valor <= MAX_VALOR_G:
+            raise ValueError(
+                f"opciones de compilacion: '{nombre}.g' debe ser un entero entre 0 y {MAX_VALOR_G}"
+            )
+        valores[nombre] = valor
+    return valores
+
+
+_SECCION_ELF_DE_TIPO = {".rodata": ".rodata", ".rdata": ".rodata", ".data": ".data"}
+
+
+def secciones_declaradas(configuracion: object) -> dict[str, frozenset[str]]:
+    """
+    Deduce que secciones puede generar el objeto de cada archivo C segun la particion.
+
+    Contexto:
+        El script del enlazador solo recoge de un objeto C las secciones que la particion le
+        asigna: ``.text`` siempre, y ``.rodata`` o ``.data`` si existe un subsegmento de ese
+        tipo (con punto: ``.rodata``) y el mismo nombre que el ``c``. Cualquier otra seccion con
+        contenido se perderia en silencio o iria a un lugar distinto del original.
+
+    Args:
+        configuracion (object): Contenido cargado de ``config/splat.yaml``.
+
+    Returns:
+        dict[str, frozenset[str]]: Nombre del archivo C (sin ``src/`` ni ``.c``) y las secciones
+        ELF permitidas (``.text`` y, si procede, ``.rodata`` y ``.data``).
+
+    Raises:
+        ValueError: Si la configuracion no tiene la forma ``segments[0].subsegments`` con
+            entradas ``[inicio, tipo, nombre]`` o con claves ``type`` y ``name``.
+
+    Ejemplo:
+        declaradas = secciones_declaradas(yaml.safe_load(texto))
+    """
+    segmentos = configuracion.get("segments") if isinstance(configuracion, dict) else None
+    principal = segmentos[0] if isinstance(segmentos, list) and segmentos else None
+    subsegmentos = principal.get("subsegments") if isinstance(principal, dict) else None
+    if not isinstance(subsegmentos, list):
+        raise ValueError("splat.yaml: falta segments[0].subsegments")
+    pares: list[tuple[str, str]] = []
+    for entrada in subsegmentos:
+        if isinstance(entrada, list) and len(entrada) >= 3:
+            tipo, nombre = entrada[1], entrada[2]
+        elif isinstance(entrada, dict):
+            tipo, nombre = entrada.get("type"), entrada.get("name")
+        else:
+            continue
+        if isinstance(tipo, str) and isinstance(nombre, str):
+            pares.append((tipo, nombre))
+    declaradas: dict[str, set[str]] = {nombre: {".text"} for tipo, nombre in pares if tipo == "c"}
+    for tipo, nombre in pares:
+        if tipo in _SECCION_ELF_DE_TIPO and nombre in declaradas:
+            declaradas[nombre].add(_SECCION_ELF_DE_TIPO[tipo])
+    return {nombre: frozenset(secciones) for nombre, secciones in declaradas.items()}
+
+
 def comando_splat(python: str, configuracion: str) -> list[str]:
     """Devuelve los argumentos que ejecutan el particionador con la configuracion dada."""
     return [python, "-X", "utf8", "-m", "splat", "split", configuracion]

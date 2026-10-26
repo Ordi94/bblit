@@ -24,7 +24,7 @@ from tools.reconstruccion.compilacion import (
     compilar_fuente,
 )
 from tools.reconstruccion.fuentes_c import EstadoFuncion
-from tools.reconstruccion.infraestructura import CARPETA_DIFF, Ejecutor, listar_fuentes_c
+from tools.reconstruccion.infraestructura import CARPETA_DIFF, Ejecutor, leer_valores_g, listar_fuentes_c
 
 TIMEOUT_DIFF_S = 120
 CARPETA_ASM_COINCIDENTE = "asm/matchings"
@@ -298,18 +298,7 @@ def comparar_funcion(
         raise FuncionSinCError(
             f"'{funcion}' sigue en INCLUDE_ASM: escriba su C (bajo NON_MATCHING si aun no coincide)"
         )
-    ruta_asm = elegir_asm_objetivo(archivo, funcion, lambda ruta: (raiz / ruta).is_file())
-    retornos = contar_retornos((raiz / ruta_asm).read_text(encoding="utf-8"))
-    carpeta = raiz / CARPETA_DIFF
-    carpeta.mkdir(parents=True, exist_ok=True)
-    envoltorio = f"{CARPETA_DIFF}/{funcion}.objetivo.s"
-    objetivo = f"{CARPETA_DIFF}/{funcion}.objetivo.o"
-    (raiz / envoltorio).write_text(envoltorio_objetivo(ruta_asm), encoding="utf-8", newline="\n")
-    ejecutar(
-        dominio.comando_ensamblar(herramientas.ensamblador, envoltorio, objetivo, CARPETA_MACROS),
-        raiz,
-        TIMEOUT_DIFF_S,
-    )
+    objetivo, retornos = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
     candidato = f"{CARPETA_DIFF}/{Path(archivo).name}.o"
     compilar_fuente(
         raiz,
@@ -319,24 +308,120 @@ def comparar_funcion(
         ejecutar,
         definiciones=(fuentes_c.MACRO_NO_COINCIDENTE,),
         exigir_solo_texto=False,
-    )
-    (carpeta / "diff_settings.py").write_text(
-        texto_diff_settings(herramientas.objdump), encoding="utf-8", newline="\n"
+        valor_g=leer_valores_g(raiz).get(Path(archivo).stem, 0),
     )
 
     def lanzar(formato: str) -> str:
-        # asm-differ se ejecuta dentro de build/diff/ porque importa diff_settings.py del cwd.
-        comando = comando_diff(
-            herramientas.python,
+        return puntuar_objeto(
+            raiz,
+            herramientas,
             script_diff,
-            Path(candidato).name,
-            Path(objetivo).name,
-            funcion,
+            ejecutar,
+            candidato=candidato,
+            objetivo=objetivo,
+            funcion=funcion,
             retornos=retornos,
             formato=formato,
         )
-        return ejecutar(comando, carpeta, TIMEOUT_DIFF_S)
 
     puntuacion = puntuacion_desde_json(lanzar("json"))
     texto = lanzar("plain")
     return ResultadoDiff(funcion, archivo, puntuacion, texto.rstrip("\n"))
+
+
+def preparar_objetivo(
+    raiz: Path, funcion: str, archivo: str, herramientas: HerramientasCompilacion, ejecutar: Ejecutor
+) -> tuple[str, int]:
+    """
+    Ensambla el asm original de una funcion como objetivo de comparacion.
+
+    Contexto:
+        Primer paso comun de ``diff`` y de ``probar``: el objetivo se genera una vez y se
+        compara contra uno o muchos candidatos.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        funcion (str): Nombre de la funcion (ya validado).
+        archivo (str): Archivo C que la contiene (``src/<segmento>.c``).
+        herramientas (HerramientasCompilacion): Herramientas de compilacion.
+        ejecutar (Ejecutor): Ejecutor de procesos.
+
+    Returns:
+        tuple[str, int]: Ruta relativa del objeto objetivo y numero de ``jr $ra`` del original.
+
+    Raises:
+        FileNotFoundError: Si falta el asm original (hay que ejecutar ``split``).
+        ProcesoError: Si el ensamblador falla.
+
+    Ejemplo:
+        objetivo, retornos = preparar_objetivo(Path("."), "func_80036204", "src/a.c", herramientas, ejecutar)
+    """
+    ruta_asm = elegir_asm_objetivo(archivo, funcion, lambda ruta: (raiz / ruta).is_file())
+    retornos = contar_retornos((raiz / ruta_asm).read_text(encoding="utf-8"))
+    (raiz / CARPETA_DIFF).mkdir(parents=True, exist_ok=True)
+    envoltorio = f"{CARPETA_DIFF}/{funcion}.objetivo.s"
+    objetivo = f"{CARPETA_DIFF}/{funcion}.objetivo.o"
+    (raiz / envoltorio).write_text(envoltorio_objetivo(ruta_asm), encoding="utf-8", newline="\n")
+    ejecutar(
+        dominio.comando_ensamblar(herramientas.ensamblador, envoltorio, objetivo, CARPETA_MACROS),
+        raiz,
+        TIMEOUT_DIFF_S,
+    )
+    return objetivo, retornos
+
+
+def puntuar_objeto(
+    raiz: Path,
+    herramientas: HerramientasCompilacion,
+    script_diff: Path,
+    ejecutar: Ejecutor,
+    *,
+    candidato: str,
+    objetivo: str,
+    funcion: str,
+    retornos: int,
+    formato: str,
+) -> str:
+    """
+    Ejecuta ``asm-differ`` sobre un objeto candidato y el objetivo.
+
+    Contexto:
+        Se ejecuta dentro de ``build/diff/`` porque ``asm-differ`` importa ``diff_settings.py``
+        del directorio de trabajo; este se genera aqui con la ruta de ``objdump`` resuelta.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        herramientas (HerramientasCompilacion): Herramientas de compilacion.
+        script_diff (Path): Ruta de ``diff.py`` de ``asm-differ``.
+        ejecutar (Ejecutor): Ejecutor de procesos.
+        candidato (str): Objeto candidato (ruta relativa a la raiz, dentro de ``build/diff/``).
+        objetivo (str): Objeto objetivo (idem).
+        funcion (str): Funcion a comparar.
+        retornos (int): Retornos tras los cuales se corta el desensamblado.
+        formato (str): ``json`` o ``plain``.
+
+    Returns:
+        str: Salida de ``asm-differ``.
+
+    Raises:
+        ValueError: Si el formato no es valido.
+        ProcesoError: Si ``asm-differ`` falla.
+
+    Ejemplo:
+        salida = puntuar_objeto(Path("."), herramientas, script, ejecutar, candidato=c, objetivo=t,
+            funcion="f", retornos=1, formato="json")
+    """
+    carpeta = raiz / CARPETA_DIFF
+    (carpeta / "diff_settings.py").write_text(
+        texto_diff_settings(herramientas.objdump), encoding="utf-8", newline="\n"
+    )
+    comando = comando_diff(
+        herramientas.python,
+        script_diff,
+        Path(candidato).name,
+        Path(objetivo).name,
+        funcion,
+        retornos=retornos,
+        formato=formato,
+    )
+    return ejecutar(comando, carpeta, TIMEOUT_DIFF_S)
