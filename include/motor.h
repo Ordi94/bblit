@@ -77,8 +77,10 @@ typedef struct RegistroAnim {
     u8 pad00[6];
     u16 w06;
     u16 w08;
-    u8 pad0A[2];
+    u16 w0A;                /* grupo de disparadores del fotograma: lhu en func_8002D03C (0x8002D24C) */
     u32 w0C;
+    u8 pad10[0x1E - 0x10];
+    u16 w1E;                /* desplazamiento del primer disparador del fotograma: lhu en func_8002D03C (0x8002D25C) */
 } RegistroAnim;
 
 /*

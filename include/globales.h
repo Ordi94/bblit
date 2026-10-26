@@ -20,12 +20,14 @@ struct ModeloDibujo;
 typedef struct Fotograma {
     u8 pad00[0x0A];
     u16 h0A;
-    u8 pad0C[4];
+    u16 w0C;                /* anchura del cuadro: lhu en func_8002CB8C (0x8002CC74) */
+    u16 w0E;                /* altura del cuadro: lhu en func_8002CB8C (0x8002CCAC) */
 } Fotograma;
 
 typedef struct TablaFotogramas {
     u8 pad00[0x10];
     Fotograma* fotogramas;
+    u16 cuenta;             /* numero de cuadros: lhu en func_8002CB8C (0x8002CC58) */
 } TablaFotogramas;
 
 /*
@@ -92,9 +94,11 @@ typedef struct ParametrosObjeto {
  * animacion elegida; func_80045498 recibe su direccion.
  */
 typedef struct BloqueTrabajo {
-    u8 pad00[2];
+    u16 h00;                /* ultimo cuadro (cuadros - 1): sh en func_8002CB8C (0x8002CC70), lhu en 0x8002CD68 */
     s16 h02;
-    u8 pad04[4];
+    u8 pad04;
+    u8 b05;                 /* cuadros de espera entre cuadros de la animacion: sb en func_8002CB8C (0x8002CC64), lbu en 0x8002CD58 */
+    u8 pad06[2];
     u8 b08;
     u8 pad09;
     s16 h0A;
@@ -103,6 +107,7 @@ typedef struct BloqueTrabajo {
     u32 flags18;
     u8 pad1C[4];
     struct Fotograma* fotogramas;
+    struct Fotograma* actual;   /* cuadro en curso: sw en func_8002CB8C (0x8002CC54 y 0x8002CD84) */
 } BloqueTrabajo;
 
 /*
@@ -189,7 +194,6 @@ typedef struct Objeto {
     s32 i13C;               /* func_80020A90: sw */
     u8 pad140[0x144 - 0x140];
     BloqueTrabajo trabajo;  /* +0x144, ver BloqueTrabajo */
-    u8 pad168[0x16C - 0x168];
     struct TablaFotogramas* tabla;      /* func_80044EA8: sw de la tabla activa */
     u8 pad170[0x17C - 0x170];
     u16 w17C;
