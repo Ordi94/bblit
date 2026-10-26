@@ -443,16 +443,16 @@ void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, VistaDibujo* vist
 /*
  * Copia al vertice de trabajo la posicion y la profundidad del vertice de la tabla del objeto
  * que indica el elemento i de la definicion. El indice se relee en cada acceso: las escrituras
- * al vertice de trabajo pueden solapar la definicion.
+ * al vertice de trabajo pueden solapar la definicion. La macro es un bloque simple: un
+ * do { } while (0) deja en el RTL una etiqueta y un salto por cada uso, parte el bloque basico y
+ * el planificador reparte distinto los movimientos de argumentos de la llamada final.
  */
 #define CARGAR_VERTICE(v, i) \
-    do { \
+    { \
         VERT_XY(v) = tabla[def->s[i]].xy; \
         (v)->z = tabla[def->s[i]].z; \
-    } while (0)
+    }
 
-/* Pendiente: puntuacion 80 con la configuracion versionada (g = 8 del archivo). El despacho por tabla, los seis casos, las cuatro colas y el bucle coinciden con el original y la tabla de saltos migrada es identica (las 21 entradas); solo difiere el orden de dos movimientos de argumentos antes de cada llamada (el original carga a2 antes que a0). Variantes probadas: 40 (orden de las asignaciones iniciales, bucle for frente a do/while, signo del codigo, forma del tercer argumento, prototipos). */
-#ifdef NON_MATCHING
 void func_8003C1C8(VistaDibujo* base)
 {
     VistaDibujo* vista;
@@ -600,9 +600,6 @@ void func_8003C1C8(VistaDibujo* base)
         D_80076188 = vista->cursor;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003C1C8);
-#endif
 
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003CA5C);
 
