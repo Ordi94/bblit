@@ -72,61 +72,22 @@ extern u8 D_80069664[];
  */
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044904);
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 1460 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: neg y add con trampa de desbordamiento, registros fijos t0 a t2 y el temporal at en slt; GCC emite negu, addu y otro reparto de registros. */
-u32 func_80044940(s32* v)
-{
-    s32 x;
-    s32 y;
-    s32 z;
-    s32 mayor;
-    s32 medio;
-    s32 menor;
-
-    x = v[0];
-    y = v[1];
-    z = v[2];
-    if (x < 0) {
-        x = -x;
-    }
-    if (y < 0) {
-        y = -y;
-    }
-    if (z < 0) {
-        z = -z;
-    }
-    mayor = x;
-    menor = y;
-    if (x < y) {
-        mayor = y;
-        menor = x;
-    }
-    medio = z;
-    if (mayor < z) {
-        medio = mayor;
-        mayor = z;
-    }
-    return (mayor + ((u32)menor >> 2) + ((u32)medio >> 2)) | 1;
-}
-#else
+/*
+ * Rutina escrita a mano en el original: sin addiu sp, con los temporales fijos t0..t2 (lw en
+ * 0x80044940..0x80044948), neg y add con trampa de desbordamiento (neg en 0x80044954, 0x80044960 y
+ * 0x8004496C; add en 0x800449A0 y 0x800449A4) y at como destino de los slt (0x80044970 y
+ * 0x80044984). Calcula la magnitud aproximada de un vector de tres componentes (mayor + menor/4 +
+ * medio/4) | 1. GCC emite negu, addu y otro reparto de registros.
+ */
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044940);
-#endif
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 960 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: registros fijos t0 y t1, nop explicito tras cada lw y el simbolo de la funcion vecina cargado con lui + lw; GCC reparte v0, v1 y a0. */
-void func_800449B0(void)
-{
-    u32* destino;
-    u32* origen;
-
-    destino = (u32*)FntLoad;
-    origen = (u32*)func_800449E0;
-    destino[9] = origen[0];
-    destino[12] = origen[1];
-}
-#else
+/*
+ * Rutina escrita a mano en el original: sin addiu sp, con los temporales fijos t0 y t1 (lui/addiu
+ * en 0x800449B0 y 0x800449B4), nop explicito tras cada lw (0x800449C0 y 0x800449D0) y el simbolo de
+ * la funcion vecina cargado con lui + lw (0x800449B8..0x800449BC y 0x800449C8..0x800449CC) para
+ * copiar sus dos primeras palabras dentro de FntLoad. GCC reparte v0, v1 y a0.
+ */
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449B0);
-#endif
 
 /*
  * Rutina escrita a mano en el original: sin marco de pila, dos ori de relleno (0x800449E0 y
