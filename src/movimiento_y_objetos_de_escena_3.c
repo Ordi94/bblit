@@ -165,7 +165,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E600);
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 570 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5; la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera), el reparto de $a0/$v1 en la lectura del estado y el orden de cuatro almacenes del bloque de parametros de agarre. */
-u32 func_8001E720(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
+u32 AvanzarAnimacionSprite(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
 {
     NodoAnimacion* n;
     Fotograma* fot;
@@ -447,11 +447,11 @@ siguiente:
     return 0x200;
 }
 #else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E720);
+INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", AvanzarAnimacionSprite);
 #endif
 
 /* Pendiente de traducir: rutina de 0xFA8 bytes (unas mil instrucciones) que llama a func_8001D028,
- * func_8001CFCC, func_80036734 y func_8003690C; no hay C escrito todavia. */
+ * func_8001CFCC, func_80036734 y AplicarCuadro; no hay C escrito todavia. */
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001F268);
 
 /*

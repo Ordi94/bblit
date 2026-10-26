@@ -5,7 +5,7 @@
 #include "objetos.h"
 #include "niveles.h"
 
-/* Identificador del sonido de arrastre del bloque empujable: sh y lh de 16 bits (func_8002D68C). */
+/* Identificador del sonido de arrastre del bloque empujable: sh y lh de 16 bits (LogicaBloqueEmpujable). */
 extern s16 D_800695DE;
 
 #ifdef NON_MATCHING
@@ -17,7 +17,7 @@ extern s16 D_800695DE;
  * recorre los disparadores y aplica dano al contacto. Los limites y el origen del recorrido
  * comparten memoria con +0x184..+0x198 del objeto (MOVIL_*).
  */
-void func_80026298(Objeto* o, u32 mascara)
+void LogicaObjetoMovil(Objeto* o, u32 mascara)
 {
     TrabajoMovil* t;
     NodoDisparador* n;
@@ -344,7 +344,7 @@ fin:
     o->flags14 &= 0xF1676F7F;
 }
 #else
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_80026298);
+INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 #endif
 
 /*
@@ -363,7 +363,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_80026FEC);
  * destruir otro objeto, cambiar de nivel, animar al jugador). Sin la bandera 0x8000 el recorrido
  * termina en el primer disparador ejecutado.
  */
-void func_8002BA80(Objeto* o)
+void LogicaZonaEventos(Objeto* o)
 {
     TrabajoZona* t;
     NodoDisparador* n;
@@ -562,7 +562,7 @@ siguiente:
  * todas sus copias. El origen del destino puede ser el jugador, otro objeto buscado por
  * identificador, este mismo objeto o constantes del disparador.
  */
-void func_8002C1DC(Objeto* o)
+void LogicaDirectorCamara(Objeto* o)
 {
     TrabajoDirectorCamara* t;
     MATRIX* m;
@@ -785,7 +785,7 @@ siguiente:
     } while (t->nodo != 0);
 }
 #else
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002C1DC);
+INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaDirectorCamara);
 #endif
 
 /*
@@ -797,7 +797,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002C1DC);
  * lo pide y la animacion llego al ultimo cuadro. Si no hay ayudante disponible el original se queda
  * en un bucle sin salida.
  */
-void func_8002CB8C(Objeto* o)
+void LogicaSpriteConCaja(Objeto* o)
 {
     BloqueTrabajo* b;
     NodoAnimacion* a;
@@ -895,7 +895,7 @@ void func_8002CB8C(Objeto* o)
  * ni caja de colision. Toma el intervalo y el cuadro inicial de la caja del objeto, anima con la
  * variante de formato escalado y en cada cuadro vuelve a pedir el dibujo del objeto.
  */
-void func_8002CEC4(Objeto* o)
+void LogicaSpriteDecorativo(Objeto* o)
 {
     BloqueTrabajo* b;
     NodoAnimacion* a;
@@ -954,7 +954,7 @@ void func_8002CEC4(Objeto* o)
  * secuencia). Las variables de trabajo viven en el scratchpad, por eso se leen de nuevo tras cada
  * escritura a traves de otro puntero.
  */
-void func_8002D03C(Objeto* o)
+void LogicaActorSecuencias(Objeto* o)
 {
     TrabajoDisparo* t;
     NodoSecuencia* n;
@@ -1106,9 +1106,9 @@ siguiente:
         }
     }
     if (o->trabajo.i14 != t->fotograma->w06) {
-        t->resultado = func_8001E720(o, &o->trabajo, t->fotograma->w06, t->fotograma->w08, area);
+        t->resultado = AvanzarAnimacionSprite(o, &o->trabajo, t->fotograma->w06, t->fotograma->w08, area);
     } else {
-        t->resultado = func_8001E720(o, &o->trabajo, 0, 0, area);
+        t->resultado = AvanzarAnimacionSprite(o, &o->trabajo, 0, 0, area);
     }
     if (t->resultado == 0x100) {
         o->trabajo.i14 = 0;
@@ -1203,7 +1203,7 @@ siguiente:
  * esquinas de la caja girada, se aplica al bloque, la parte que no pudo absorber vuelve al jugador y
  * se controla el sonido de arrastre. Termina con la gravedad del bloque.
  */
-void func_8002D68C(Objeto* o)
+void LogicaBloqueEmpujable(Objeto* o)
 {
     TrabajoBloque* t;
     NodoDisparador* n;
@@ -1499,7 +1499,7 @@ reposo:
     }
 }
 #else
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002D68C);
+INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaBloqueEmpujable);
 #endif
 
 /*
@@ -1515,7 +1515,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002EA9C);
  * la cadena de matrices con el GTE. Se destruye al terminar la animacion si el fotograma lo pide y
  * cuando pierde a su portador.
  */
-void func_8002EAA4(Objeto* o)
+void LogicaEfectoAnclado(Objeto* o)
 {
     TrabajoEfecto* t;
     GsCOORDINATE2* c;
@@ -1639,7 +1639,7 @@ void func_8002EAA4(Objeto* o)
  * alcanza al jugador le hace dano, si alcanza a otro objeto le deja el identificador del atacante;
  * al impactar o chocar con una pared crea el efecto 0x13 y se destruye.
  */
-void func_8002F018(Objeto* o)
+void LogicaProyectil(Objeto* o)
 {
     TrabajoProyectil* t;
     Ayuda* a;
@@ -1754,7 +1754,7 @@ matriz:
  * guion en curso o destruye el objeto; si no, lanza el guion que indica D_80069590 y repone la edad
  * del objeto, que la rutina del guion sobrescribe.
  */
-void func_8002F510(Objeto* o)
+void LogicaAnimacionPorGuion(Objeto* o)
 {
     s16 vida;
     s16 idx;
@@ -1805,7 +1805,7 @@ void func_8002F510(Objeto* o)
  * tiene modelo y arma su animacion; en cada cuadro copia la posicion de la camara (la altura mas el
  * desplazamiento propio) y reconstruye la matriz del nodo.
  */
-void func_8002F614(Objeto* o)
+void LogicaObjetoDeCamara(Objeto* o)
 {
     if (o->u78.p == 0) {
         if (o->lista == 0) {
@@ -1825,7 +1825,7 @@ void func_8002F614(Objeto* o)
  * y marca con el bit 8 de flags18 los objetos solidos cuyo punto, visto desde la camara, cae dentro
  * de la caja. w196 invierte el signo de los ejes del desplazamiento.
  */
-void func_8002F6B4(Objeto* o)
+void LogicaZonaSonda(Objeto* o)
 {
     TrabajoSonda* t;
     u16 x;

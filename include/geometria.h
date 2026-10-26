@@ -69,11 +69,11 @@ typedef struct Giro {
 } Giro;
 
 /*
- * Memoria de trabajo de func_80033358 en el scratchpad (0x1F800000): vector local, rotacion, vector
+ * Memoria de trabajo de ActualizarCamaraSeguimiento en el scratchpad (0x1F800000): vector local, rotacion, vector
  * (0, 0, distancia), resultados de las rotaciones, sondas, resultado de la consulta de baldosa,
  * parametros de seguimiento, matriz de rotacion y distancia. El area de 0x1C8 bytes que reciben
  * BarrerTerreno, func_8001C134 y func_80032B2C empieza en 0x1F8000F8. El scratchpad lo reparten por
- * turnos rutinas con disposiciones distintas; la de func_8002C1DC es TrabajoDirectorCamara (niveles.h).
+ * turnos rutinas con disposiciones distintas; la de LogicaDirectorCamara es TrabajoDirectorCamara (niveles.h).
  * Evidencia de los campos: sw en 0x1F8000BC (zona_ant, 0x800333B0), sw en 0x1F8000C0..C8 (p0, p4, p8,
  * 0x80033630), sw en 0x1F800030..38 (v30, 0x80033740), 0x1F800070..78 (v70, 0x80033774), 0x1F800090..98
  * (v90, 0x80033728), sh en 0x1F8000AE (res.tipo, 0x80033804).
@@ -307,9 +307,9 @@ typedef struct TrabajoRecorrido {
  * (GEO_CARGAR_H). El original las escribio con "move t0, puntero" y almacenes o cargas sobre t0
  * (func_80020B90): GEO_CERO_W en 0x80020CE4, 0x800251A4 y 0x80025690; GEO_CERO_WH en 0x80020CF8,
  * 0x80024F1C y 0x800251C0; GEO_CARGAR_H en 0x80023290. Las usa tambien la logica de niveles:
- * GEO_CERO_W en 0x8002BF3C (func_8002BA80), 0x8002EA04 (func_8002D68C) y 0x8002F134 y 0x8002F150
- * (func_8002F018); GEO_CERO_WH en 0x8002BF58, 0x8002EE3C y 0x8002F11C; GEO_CARGAR_H en 0x8002EFBC
- * (func_8002EAA4) y 0x8002F7B4 (func_8002F6B4); GEO_GUARDAR_H_T1 en 0x8002EF68 y 0x8002F7A0.
+ * GEO_CERO_W en 0x8002BF3C (LogicaZonaEventos), 0x8002EA04 (LogicaBloqueEmpujable) y 0x8002F134 y 0x8002F150
+ * (LogicaProyectil); GEO_CERO_WH en 0x8002BF58, 0x8002EE3C y 0x8002F11C; GEO_CARGAR_H en 0x8002EFBC
+ * (LogicaEfectoAnclado) y 0x8002F7B4 (LogicaZonaSonda); GEO_GUARDAR_H_T1 en 0x8002EF68 y 0x8002F7A0.
  */
 #define GEO_CERO_W(p) \
     __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsw $0, 4($8)\n\tsw $0, 8($8)" \
@@ -341,7 +341,7 @@ typedef struct TrabajoRecorrido {
 /*
  * GEO_SUMAR_H(p): las tres medias palabras de p += t1..t3, con los temporales que dejo la macro
  * anterior (GEO_CARGAR_H) y los mismos $8, $12..$14 y add con captura de desbordamiento que
- * GEO_SUMAR_W: el original la escribio en 0x8002F7C4 (func_8002F6B4, tras GEO_CARGAR_H en
+ * GEO_SUMAR_W: el original la escribio en 0x8002F7C4 (LogicaZonaSonda, tras GEO_CARGAR_H en
  * 0x8002F7B4). Lee $9..$11 sin declararlos: GCC 2.8.1 no admite fijar un registro como entrada
  * sin una variable de registro, asi que el acoplamiento con la macro previa es el mismo que el
  * de GEO_GUARDAR_W_T4 y GEO_SUMAR_W y debe conservarse el orden de las sentencias.
@@ -354,7 +354,7 @@ typedef struct TrabajoRecorrido {
 /*
  * GEO_RELLENAR_1000(p): las tres palabras de p = 0x1000 (escala unidad de un vector de tres
  * palabras). El original carga el valor en $12 (addiu $t4, zero, 0x1000), lo copia a t1..t3 y lo
- * almacena con tres sw sobre $t0, y deja esos cuatro temporales con 0x1000 (func_8002BA80,
+ * almacena con tres sw sobre $t0, y deja esos cuatro temporales con 0x1000 (LogicaZonaEventos,
  * 0x8002BF70..0x8002BF8C).
  */
 #define GEO_RELLENAR_1000(p) \

@@ -405,7 +405,7 @@ void func_800368E8(void)
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 510 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difiere el reparto de registros callee-saved: el original deja el area de trabajo en $s1 y el puntero del flujo en $s2, GCC (prioridad de global-alloc por referencias y longitud de vida) los intercambia o adelanta el area a $s0 al copiar el parametro; ademas el sumando s20 de la caja cae en $a0 en lugar de $v1. */
-void func_8003690C(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
+void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
 {
     AreaCuadro* w;
     u32* p;
@@ -605,5 +605,5 @@ void func_8003690C(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
     }
 }
 #else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_8003690C);
+INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", AplicarCuadro);
 #endif

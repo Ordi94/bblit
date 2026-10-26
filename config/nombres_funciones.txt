@@ -103,3 +103,20 @@
 0x80037184 DibujarListaReflejada  # origen: comportamiento (src/gestion_y_dibujo_de_objetos_2.c): refleja cada objeto activo respecto de D_800695EC segun s1E y lo anade a la lista de dibujo D_800694D8
 0x800156F4 SondearTarjeta  # origen: comportamiento (src/tarjeta_de_memoria.c): sondeo por cuadro con MemCardSync(1) de la operacion asincrona de la tarjeta y atencion de la orden pendiente
 0x80019474 BarrerTerreno  # origen: comportamiento (src/colision_y_terreno.c): barre un desplazamiento baldosa a baldosa y subcelda a subcelda contra las zonas de colision
+0x8001E720 AvanzarAnimacionSprite  # origen: comportamiento (src/movimiento_y_objetos_de_escena_3.c): avanza un cuadro la animacion de un objeto cuyo dibujo es un sprite y dispara sus sonidos y eventos
+0x8003690C AplicarCuadro  # origen: comportamiento (src/gestion_y_dibujo_de_objetos.c): lee del flujo de pistas del cursor las pistas del cuadro y las aplica al objeto
+0x80033358 ActualizarCamaraSeguimiento  # origen: comportamiento (src/camara_y_bucle_logico.c): camara de tercera persona por cuadro, escribe D_8006D928
+0x80039D44 OrientarSombraSobreSuperficie  # origen: comportamiento (src/gestion_y_dibujo_de_objetos_4.c): busca el solido o el terreno bajo el objeto y deduce escala y giros de su sombra
+0x8003A5C8 DibujarSombras  # origen: comportamiento (src/gestion_y_dibujo_de_objetos_4.c): dibuja con el ContextoSombras del scratchpad las sombras de la lista de objetos
+0x80026298 LogicaObjetoMovil  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de las clases 12, 13, 18, 19 y 22 a 29 de D_8005E35C, doce modos por bit de mascara
+0x8002CB8C LogicaSpriteConCaja  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de la clase 4 de D_8005E35C, sprite animado con caja de colision y disparadores
+0x8002CEC4 LogicaSpriteDecorativo  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de la clase 20 de D_8005E35C, sprite animado sin disparadores ni caja
+0x8002D03C LogicaActorSecuencias  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de la clase 2 de D_8005E35C, actor animado por secuencias sin movimiento
+0x8002D68C LogicaBloqueEmpujable  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de la clase 5 de D_8005E35C, bloque que consume el empuje del jugador por ejes permitidos en w17C
+0x8002EAA4 LogicaEfectoAnclado  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de la clase 34 de D_8005E35C, efecto anclado a un nodo de otro objeto
+0x8002F018 LogicaProyectil  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de la clase 31 de D_8005E35C, proyectil balistico con choque contra terreno y objetos
+0x8002F510 LogicaAnimacionPorGuion  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de la clase 32 de D_8005E35C, lanza el guion de animacion que indica D_80069590
+0x8002F614 LogicaObjetoDeCamara  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de la clase 9 de D_8005E35C, copia la posicion de la camara al objeto cada cuadro
+0x8002F6B4 LogicaZonaSonda  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de la clase 10 de D_8005E35C, marca con el bit 8 de flags18 los solidos dentro de la caja
+0x8002BA80 LogicaZonaEventos  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de la clase 16 de D_8005E35C, recorre disparadores y ejecuta condicion y accion
+0x8002C1DC LogicaDirectorCamara  # origen: comportamiento (src/logica_de_niveles_3.c): manejador de la clase 36 de D_8005E35C, reescribe destino de vista y mira de la camara global

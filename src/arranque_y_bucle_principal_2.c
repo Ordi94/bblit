@@ -214,7 +214,7 @@ void func_80016218(void)
     D_8006AD40[D_8006967C] = D_80076188;
     func_800399C8(D_80069508);
     func_8003B5AC(D_80069630);
-    func_8003A5C8(D_8006AD80);
+    DibujarSombras(D_8006AD80);
     func_80045150(D_800694B8);
     DibujarListaReflejada(D_80069630);
     if (D_800694D8 != 0) {

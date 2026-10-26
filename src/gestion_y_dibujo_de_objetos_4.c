@@ -23,7 +23,7 @@ typedef struct SalidaSonda {
 } SalidaSonda;
 
 /*
- * Area de trabajo de func_80039D44 (0xB4 bytes). Entre +8 y +0x77 la misma memoria tiene dos
+ * Area de trabajo de OrientarSombraSobreSuperficie (0xB4 bytes). Entre +8 y +0x77 la misma memoria tiene dos
  * disposiciones segun la fase: 's' cuando el objeto cae dentro de un solido (matriz inversa del
  * solido, vectores de 16 bits y producto escalar) y 't' cuando se muestrea el terreno (centro,
  * tres esquinas de 12 bytes y los dos vectores de plano con su producto vectorial). La consulta
@@ -111,7 +111,7 @@ void func_80039CD0(s32 limite)
  * objeto, descarta las alturas a mas de 0x23 de la de referencia, y deduce los giros X y Z de la
  * sombra con el producto vectorial de los dos lados del triangulo. Devuelve el solido o 0.
  */
-Objeto* func_80039D44(Objeto* o, ParametrosObjeto* d, u32 mascara, SondaSombra* w)
+Objeto* OrientarSombraSobreSuperficie(Objeto* o, ParametrosObjeto* d, u32 mascara, SondaSombra* w)
 {
     Objeto* cur;
     TrabajoBaldosa* tb;
@@ -315,7 +315,7 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_8003A3D0);
  * Contexto de dibujo de las sombras en el scratchpad (0x1F800000). El estado del dibujador
  * (EstadoDibujo) empieza en +8, igual que el que func_8003C014 recibe; la transformacion de la
  * sombra (param) ocupa +0x68 y es tambien la estructura de salida de func_8003A3D0 (su posicion en
- * +0x80) y el descriptor de func_80039D44. En +0x90 esta el ayudante con el que se dibuja la
+ * +0x80) y el descriptor de OrientarSombraSobreSuperficie. En +0x90 esta el ayudante con el que se dibuja la
  * sombra (0xB8 bytes) y a continuacion, en +0x148, el area de trabajo de las consultas.
  */
 typedef struct ContextoSombras {
@@ -354,7 +354,7 @@ extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* es
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 930 con la configuracion versionada (g = 8 del archivo). Difiere el reparto de registros del prologo, el cierre del bucle de nodos (el original conserva el salto condicional hacia atras) y la direccion de la caja de relleno, que el original deriva de la base del scratchpad. */
-void func_8003A5C8(Objeto** objetos)
+void DibujarSombras(Objeto** objetos)
 {
     ContextoSombras* c;
     Sonda* area;
@@ -428,7 +428,7 @@ void func_8003A5C8(Objeto** objetos)
                                             GEO_GUARDAR_WH(&c->param.giro);
                                             c->estado.s6 += c->obj->p70->w28;
                                         } else {
-                                            s = func_80039D44(c->obj, &c->param, 8, (SondaSombra*)area);
+                                            s = OrientarSombraSobreSuperficie(c->obj, &c->param, 8, (SondaSombra*)area);
                                             c->hallado = s;
                                             if (s != 0) {
                                                 c->estado.s6 += s->w28;
@@ -467,5 +467,5 @@ void func_8003A5C8(Objeto** objetos)
     }
 }
 #else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_8003A5C8);
+INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", DibujarSombras);
 #endif

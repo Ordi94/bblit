@@ -76,7 +76,7 @@ typedef struct Scratch {
     __asm__ volatile ("move $9, %0\n\tmfc2 $8, $27\n\tnop\n\tsw $8, 0($9)" : : "r"(p) : "$8", "$9", "memory")
 
 extern void (*D_8005E35C[])(Objeto*);
-extern void func_80033358(Objeto* o, u32 reiniciar);
+extern void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar);
 extern void func_80035244(void);
 extern void func_800351B4(Objeto* a0);
 extern void func_8003502C(Objeto* a0);
@@ -447,7 +447,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * solidos), la transicion guiada (banderas 0xC00) y el seguimiento libre (giro por boton, distancia, rayo
  * por tramos contra los objetos y alturas contra el terreno). `reiniciar` suprime el suavizado.
  */
-void func_80033358(Objeto* o, u32 reiniciar)
+void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
 {
     s32 i;
     s32 k;
@@ -1036,7 +1036,7 @@ aplicar_giro:
 }
 #undef ALTURA_CAMARA
 #else
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80033358);
+INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", ActualizarCamaraSeguimiento);
 #endif
 
 /* Al dar de baja un objeto, libera a los que lo tenian como padre (p70) y deshace los enlaces cruzados. */
@@ -1253,7 +1253,7 @@ void func_800353B0(Objeto* a0)
     D_800694D4 = D_800694B8;
     if (D_8006AA70[0xC] == 0) {
         if (D_80069560 != 0) {
-            func_80033358(D_80069560, D_80069698->w1B4);
+            ActualizarCamaraSeguimiento(D_80069560, D_80069698->w1B4);
         }
     }
     func_80035244();

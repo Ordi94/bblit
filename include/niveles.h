@@ -24,18 +24,18 @@
  * desplazamiento y su ancho.
  */
 typedef struct NodoDisparador {
-    struct NodoDisparador* sig;     /* func_8002D03C: lw 0x8002D568 */
-    u16 id;                         /* func_8002D03C: lhu 0x8002D27C, grupo del fotograma */
-    u16 desplazamiento;             /* func_8002D03C: lhu 0x8002D28C, posicion en la lista de secuencias */
-    u32 req14;                      /* func_80026298: lw 0x80026DF4, mascara que flags14 del objeto debe cumplir (0 = sin requisito) */
-    u32 req18;                      /* func_80026298: lw 0x80026E18, mascara que flags18 del objeto debe cumplir (0 = sin requisito) */
-    u8 cond;                        /* func_8002D03C: lbu 0x8002D368, registro de condicion */
+    struct NodoDisparador* sig;     /* LogicaActorSecuencias: lw 0x8002D568 */
+    u16 id;                         /* LogicaActorSecuencias: lhu 0x8002D27C, grupo del fotograma */
+    u16 desplazamiento;             /* LogicaActorSecuencias: lhu 0x8002D28C, posicion en la lista de secuencias */
+    u32 req14;                      /* LogicaObjetoMovil: lw 0x80026DF4, mascara que flags14 del objeto debe cumplir (0 = sin requisito) */
+    u32 req18;                      /* LogicaObjetoMovil: lw 0x80026E18, mascara que flags18 del objeto debe cumplir (0 = sin requisito) */
+    u8 cond;                        /* LogicaActorSecuencias: lbu 0x8002D368, registro de condicion */
     u8 pad11[2];
-    u8 accion;                      /* func_8002D03C: lbu 0x8002D38C, registro de accion */
+    u8 accion;                      /* LogicaActorSecuencias: lbu 0x8002D38C, registro de accion */
     u8 pad14[4];
-    s32 flags;                      /* func_8002D03C: lw 0x8002D298; el bit 31 pide animar al jugador */
-    u32 p1C;                        /* func_8002D03C: lw, umbral de azar o valor de estado */
-    s32 p20;                        /* func_8002D03C: lw, umbral de azar o identificador */
+    s32 flags;                      /* LogicaActorSecuencias: lw 0x8002D298; el bit 31 pide animar al jugador */
+    u32 p1C;                        /* LogicaActorSecuencias: lw, umbral de azar o valor de estado */
+    s32 p20;                        /* LogicaActorSecuencias: lw, umbral de azar o identificador */
 } NodoDisparador;
 
 /*
@@ -56,7 +56,7 @@ typedef struct TrabajoDisparo {
     s32 flags;                      /* +0x20 */
     s32 resultado;                  /* +0x24 */
     s32 previo;                     /* +0x28 */
-    u8 area[0x40];                  /* +0x2C: area que reciben func_8001D0FC y func_8001E720 */
+    u8 area[0x40];                  /* +0x2C: area que reciben func_8001D0FC y AvanzarAnimacionSprite */
 } TrabajoDisparo;
 
 #define TRABAJO_DISPARO ((TrabajoDisparo*)0x1F800000)
@@ -117,8 +117,8 @@ typedef struct TrabajoZona {
 #define TRABAJO_ZONA ((TrabajoZona*)0x1F800000)
 
 /*
- * Memoria de trabajo del director de camara de func_8002C1DC (scratchpad 0x1F800000; la de
- * func_80033358 es TrabajoCamara, en geometria.h): nodo en +0, objeto de origen en +4, vector de distancia en +8..+0x10, modulo en +0x18, banderas del nodo en +0x1C,
+ * Memoria de trabajo del director de camara de LogicaDirectorCamara (scratchpad 0x1F800000; la de
+ * ActualizarCamaraSeguimiento es TrabajoCamara, en geometria.h): nodo en +0, objeto de origen en +4, vector de distancia en +8..+0x10, modulo en +0x18, banderas del nodo en +0x1C,
  * vector camara - destino en +0x20..+0x28, vector de giro en +0x30 (tres u16: el original los
  * guarda con sh y los relee con lhu), angulo en +0x38, escala en +0x40, matriz en +0x50 y
  * resultado en +0x70..+0x78.

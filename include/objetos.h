@@ -149,7 +149,7 @@ void func_80037FB8(NodoLista* n);
 void func_80037FE8(void* lista);
 void func_800399C8(Objeto* lista);
 /* Recibe la tabla de punteros a los objetos con sombra (base de s5 + indice*4 en el ensamblador). */
-void func_8003A5C8(Objeto** visibles);
+void DibujarSombras(Objeto** visibles);
 
 /* Rutina del overlay que dibuja un modelo: recibe un Ayuda (escena) o un ModeloDibujo (menus). */
 s32 func_80010258(void* modelo, s32 cursor, void* estado, void* vista);
