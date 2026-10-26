@@ -235,13 +235,13 @@ s32 func_800300E4(Objeto* a0, u8* a1)
     Vec3 v;
     s32 ang;
     s32 t;
-    v.x = D_80069640[0] - a0->xE4;
-    v.z = D_80069640[2] - a0->zEC;
+    v.x = D_80069640[0] - a0->param.trans.vx;
+    v.z = D_80069640[2] - a0->param.trans.vz;
     ang = ratan2(v.x, v.z);
     if (ang < 0) {
         ang += 0x1000;
     }
-    t = (s16)(((s16)D_80069698->wDE) % 0x1000);
+    t = (s16)(((s16)D_80069698->param.giro.u.y) % 0x1000);
     if (t < 0) {
         t += 0x1000;
     }
@@ -274,13 +274,13 @@ s32 func_800301E8(Objeto* a0, u8* a1)
     Vec3 v;
     s32 ang;
     s32 t;
-    v.x = D_80069640[0] - a0->xE4;
-    v.z = D_80069640[2] - a0->zEC;
+    v.x = D_80069640[0] - a0->param.trans.vx;
+    v.z = D_80069640[2] - a0->param.trans.vz;
     ang = ratan2(v.x, v.z);
     if (ang < 0) {
         ang += 0x1000;
     }
-    t = (s16)(((s16)D_80069698->wDE) % 0x1000);
+    t = (s16)(((s16)D_80069698->param.giro.u.y) % 0x1000);
     if (t < 0) {
         t += 0x1000;
     }
@@ -313,13 +313,13 @@ s32 func_800302F8(Objeto* a0, u8* a1)
     Vec3 v;
     s32 ang;
     s32 t;
-    v.x = D_80069698->xE4 - a0->xE4;
-    v.z = D_80069698->zEC - a0->zEC;
+    v.x = D_80069698->param.trans.vx - a0->param.trans.vx;
+    v.z = D_80069698->param.trans.vz - a0->param.trans.vz;
     ang = ratan2(v.x, v.z);
     if (ang < 0) {
         ang += 0x1000;
     }
-    t = (s16)(((s16)a0->wDE) % 0x1000);
+    t = (s16)(((s16)a0->param.giro.u.y) % 0x1000);
     if (t < 0) {
         t += 0x1000;
     }
@@ -352,13 +352,13 @@ s32 func_80030404(Objeto* a0, u8* a1)
     Vec3 v;
     s32 ang;
     s32 t;
-    v.x = D_80069698->xE4 - a0->xE4;
-    v.z = D_80069698->zEC - a0->zEC;
+    v.x = D_80069698->param.trans.vx - a0->param.trans.vx;
+    v.z = D_80069698->param.trans.vz - a0->param.trans.vz;
     ang = ratan2(v.x, v.z);
     if (ang < 0) {
         ang += 0x1000;
     }
-    t = (s16)(((s16)a0->wDE) % 0x1000);
+    t = (s16)(((s16)a0->param.giro.u.y) % 0x1000);
     if (t < 0) {
         t += 0x1000;
     }
@@ -430,7 +430,7 @@ s32 CondTbuact(Objeto* a0, u8* a1) { u32 v; v = D_8001000A & 8; return v == 0; }
 s32 func_8003074C(Objeto* a0, u8* a1)
 {
     s32 a;
-    a = (s16)((s16)a0->wDE % 0x1000) >> 4;
+    a = (s16)((s16)a0->param.giro.u.y % 0x1000) >> 4;
     if (a < 0) {
         a += 0x100;
     }
@@ -598,7 +598,7 @@ s32 func_80030D60(void* a0, Rango* a1)
 {
     s32 v;
 
-    v = D_80069698->yE8 >> 8;
+    v = D_80069698->param.trans.vy >> 8;
     if (v >= a1->min && v <= a1->max) {
         return 1;
     }
@@ -776,14 +776,14 @@ void func_80031424(Objeto* a0, Accion* a1)
 void func_8003147C(Objeto* a0, Accion* a1)
 {
     Objeto* c;
-    D_80069698->wDE = a0->wDE + 0x800;
+    D_80069698->param.giro.u.y = a0->param.giro.u.y + 0x800;
     D_80069698->w17E = 0;
     D_80069698->w17C = ACC_W4(a1);
     D_80069698->flags14 |= 0x2000000;
     a0 = D_80069698->p70;
     if (a0 != 0) {
-        D_80069698->nodo.padre = NULL;
-        D_80069698->nodo.transf = (Transformacion*)((u8*)D_80069698 + 0xCC);
+        D_80069698->coord.super = NULL;
+        D_80069698->coord.param = PARAMETROS_SDK(D_80069698);
         c = a0;
         if (c->p6C == c) {
             c->p6C = 0;
@@ -807,12 +807,12 @@ void func_80031554(Objeto* a0)
     if (a0->p6C != 0) {
         a0->p6C->flags14 &= ~0x814;
         a0->p6C->flags14 |= 0x1000;
-        a0->p6C->nodo.padre = NULL;
-        a0->p6C->nodo.transf = (Transformacion*)((u8*)a0->p6C + 0xCC);
+        a0->p6C->coord.super = NULL;
+        a0->p6C->coord.param = PARAMETROS_SDK(a0->p6C);
         a0->p6C->w26 = a0->w26;
-        a0->p6C->wDC = a0->wDC;
-        a0->p6C->wDE = a0->wDE;
-        a0->p6C->wE0 = a0->wE0;
+        a0->p6C->param.giro.u.x = a0->param.giro.u.x;
+        a0->p6C->param.giro.u.y = a0->param.giro.u.y;
+        a0->p6C->param.giro.u.z = a0->param.giro.u.z;
         a0->p6C->p70 = 0;
         func_8001CFCC((u8*)a0->p6C + 0x7C);
         a0->p6C = 0;
@@ -861,8 +861,8 @@ void ActionSubgi(Objeto* a0, Accion* a1)
 /* Coincide en bytes (el diff marca 10 por direccion absoluta); el archivo se compila con -G8 */
 void func_80031794(Objeto* a0, Accion* a1)
 {
-    Transformacion* p;
-    p = a0->nodo.transf;
+    GsCOORD2PARAM* p;
+    p = a0->coord.param;
     *(u16*)((u8*)p + 0x12) += (u32)(((ACC_W4(a1) << 4) + a1->w6) * D_80069694 * (s16)ESTADO_PRINCIPAL->mando.eje_x) >> 7;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
@@ -870,26 +870,26 @@ void func_80031794(Objeto* a0, Accion* a1)
 /* Coincide en bytes (el diff marca 10 por direccion absoluta); el archivo se compila con -G8 */
 void func_800317FC(Objeto* a0, Accion* a1)
 {
-    Transformacion* p;
-    p = a0->nodo.transf;
+    GsCOORD2PARAM* p;
+    p = a0->coord.param;
     *(u16*)((u8*)p + 0x12) += (u32)((s8)D_8006AA70[a1->w6] * D_80069694 * (s16)ESTADO_PRINCIPAL->mando.eje_x) >> 7;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
 
 void func_8003186C(Objeto* a0, Accion* a1)
 {
-    Transformacion* p;
-    p = a0->nodo.transf;
+    GsCOORD2PARAM* p;
+    p = a0->coord.param;
     *(u16*)((u8*)p + 0x12) += (ACC_W4(a1) << 4) + a1->w6;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
 
 void func_800318AC(Objeto* a0, Accion* a1)
 {
-    Transformacion* p;
+    GsCOORD2PARAM* p;
     s8 v;
     v = D_8006AA70[a1->w6];
-    p = a0->nodo.transf;
+    p = a0->coord.param;
     *(u16*)((u8*)p + 0x12) += v;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
@@ -908,7 +908,7 @@ void func_8003192C(Objeto* a0, Accion* a1)
 }
 
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
-void func_80031948(Objeto* a0, Accion* a1) { D_80069698->wDE = ACC_W4(a1) << 4; }
+void func_80031948(Objeto* a0, Accion* a1) { D_80069698->param.giro.u.y = ACC_W4(a1) << 4; }
 
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031960(Objeto* a0, Accion* a1) { D_80069698->w28 = ACC_W4(a1); }
@@ -981,7 +981,7 @@ void func_80031B64(Objeto* a0, Accion* a1) { a0->trabajo.flags18 &= ~0x10; }
 void func_80031B78(Objeto* a0, Accion* a1)
 {
     u16 v;
-    v = *(u16*)&a0->yE8;
+    v = *(u16*)&a0->param.trans.vy;
     D_800693C0 = 0;
     D_800693B4 = 0;
     a0->w192 = 0;
@@ -1066,9 +1066,9 @@ void func_80031D60(Objeto* a0, Accion* a1)
 {
     s32 v[3];
     s32 d;
-    v[0] = a0->xE4 - D_8006D928.x;
-    v[1] = a0->yE8 - D_8006D928.y;
-    v[2] = a0->zEC - D_8006D928.z;
+    v[0] = a0->param.trans.vx - D_8006D928.x;
+    v[1] = a0->param.trans.vy - D_8006D928.y;
+    v[2] = a0->param.trans.vz - D_8006D928.z;
     d = func_80044940(v);
     if (d < 0x800) {
         /* 0x80031DD0, 0x80031E00 y 0x80031E10: sb a D_8006965A / D_8006965B con lui $at; el escalar u8 cambia el orden de la lectura de a1. */
@@ -1091,9 +1091,9 @@ void func_80031E24(Objeto* a0, Accion* a1)
     s32 v[3];
     s32 d;
     if (D_8006D928.s88 == 0) {
-        v[0] = a0->xE4 - D_8006D928.x;
-        v[1] = a0->yE8 - D_8006D928.y;
-        v[2] = a0->zEC - D_8006D928.z;
+        v[0] = a0->param.trans.vx - D_8006D928.x;
+        v[1] = a0->param.trans.vy - D_8006D928.y;
+        v[2] = a0->param.trans.vz - D_8006D928.z;
         d = func_80044940(v);
         if (d < 0x800) {
             d = (a1->w6 * d) / 2048;
@@ -1242,13 +1242,13 @@ void func_800323A0(Objeto* a0, Accion* a1)
     Vec3 v;
     s32 ang;
     s32 t;
-    v.x = D_80069698->xE4 - a0->xE4;
-    v.z = D_80069698->zEC - a0->zEC;
+    v.x = D_80069698->param.trans.vx - a0->param.trans.vx;
+    v.z = D_80069698->param.trans.vz - a0->param.trans.vz;
     ang = ratan2(v.x, v.z);
     if (ang < 0) {
         ang += 0x1000;
     }
-    t = (s16)(((s16)a0->wDE) % 0x1000);
+    t = (s16)(((s16)a0->param.giro.u.y) % 0x1000);
     if (t < 0) {
         t += 0x1000;
     }

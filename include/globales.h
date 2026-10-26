@@ -7,38 +7,83 @@
 #include "psyq/LIBGPU.H"
 #include "psyq/LIBGS.H"
 
-/* Tipos de datos de animacion que referencia el objeto; sus campos se definen donde se leen. */
+/* Tipos que el objeto referencia; sus campos se definen donde se leen (motor.h, objetos.h, menus.h). */
 struct NodoSecuencia;
 struct RegistroAnim;
-struct NodoAnimacion;
-struct Fotograma;
-struct TablaFotogramas;
+struct Ayuda;
+struct ModeloDibujo;
 
 /*
- * Transformacion que cada objeto o nodo referencia: escala en +0 (VECTOR), rotacion en +0x10
- * (SVECTOR) y traslacion en +0x18 (VECTOR). Alimenta ScaleMatrix, RotMatrix y TransMatrix
- * (func_8001CF50, func_8001CFCC). Cada objeto lleva una propia en +0xCC (ver Objeto) y su
- * puntero transf apunta a ella salvo cuando el objeto va en brazos de otro.
+ * Registro de dieciseis bytes de la tabla de fotogramas; solo se lee el u16 de +0xA
+ * (func_80044EA8).
  */
-typedef struct Transformacion {
+typedef struct Fotograma {
+    u8 pad00[0x0A];
+    u16 h0A;
+    u8 pad0C[4];
+} Fotograma;
+
+typedef struct TablaFotogramas {
+    u8 pad00[0x10];
+    Fotograma* fotogramas;
+} TablaFotogramas;
+
+/*
+ * Definicion de una animacion o de un modelo: la comparten el recorrido de animaciones
+ * (func_80044EA8, func_80045C4C: tipo en +0x4E y tabla de fotogramas en +0x54) y la creacion de
+ * objetos de escena (func_80037DB4: la bandera 2 de +0x0A indica que el objeto tiene jerarquia de
+ * ayudantes y la palabra de +0x54 se copia al ayudante como valor inicial).
+ */
+typedef struct DefinicionAnimacion {
+    u8 pad00[0x0A];
+    u16 wA;
+    u8 pad0C[0x4E - 0x0C];
+    u16 tipo;
+    u8 pad50[4];
+    TablaFotogramas* tabla;
+} DefinicionAnimacion;
+
+/*
+ * Nodo de la lista que el objeto lleva en +0x74: enlace al siguiente en +0 y la definicion en +8
+ * (func_80044EA8, func_80045C4C recorren la lista; func_80037DB4 solo lee la definicion del primer
+ * nodo).
+ */
+typedef struct NodoAnimacion {
+    struct NodoAnimacion* sig;
+    u8 pad04[4];
+    DefinicionAnimacion* def;
+} NodoAnimacion;
+
+/*
+ * Giro de un objeto (+0xDC). La logica de los objetos lo lee como tres angulos de 16 bits sin
+ * signo (lhu) y las rutinas del SDK y del calculo de volumen como un SVECTOR (lh): la union deja
+ * ambas lecturas sin casts sueltos y el ancho de cada acceso lo fija el ensamblador de quien lo
+ * usa.
+ */
+typedef union GiroObjeto {
+    SVECTOR rotate;
+    struct {
+        u16 x;
+        u16 y;
+        u16 z;
+        u16 pad;
+    } u;
+} GiroObjeto;
+
+/*
+ * Transformacion propia del objeto (+0xCC): escala en +0, giro en +0x10 y traslacion en +0x18.
+ * Tiene el mismo diseno que GsCOORD2PARAM del SDK, salvo el giro (ver GiroObjeto): el nodo
+ * coord.param del objeto apunta aqui, con el cast de PARAMETROS_SDK. func_8001CF50 y
+ * func_8001CFCC reconstruyen la matriz del nodo desde ella.
+ */
+typedef struct ParametrosObjeto {
     VECTOR escala;
-    SVECTOR rot;
+    GiroObjeto giro;
     VECTOR trans;
-} Transformacion;
+} ParametrosObjeto;
 
-/*
- * Nodo de matriz de un objeto (+0x7C del objeto; el modelo de un objeto lleva otro en +0x1C):
- * una palabra que las rutinas de reconstruccion ponen a cero (func_8001CF50, func_8001CFCC), la
- * matriz de transformacion en +4, la transformacion de origen en +0x44 y el nodo padre en +0x48,
- * que func_8001CE64 recorre acumulando la traslacion de cada matriz hasta la raiz.
- */
-typedef struct Nodo {
-    s32 w00;
-    MATRIX mtx;
-    u8 pad24[0x44 - 0x24];
-    Transformacion* transf;
-    struct Nodo* padre;
-} Nodo;
+/* Direccion de la transformacion propia de un objeto con el tipo del SDK, para coord.param. */
+#define PARAMETROS_SDK(o) ((GsCOORD2PARAM*)&(o)->param)
 
 /*
  * Bloque de trabajo de la animacion del objeto (+0x144 del objeto): estado del fotograma en
@@ -61,70 +106,71 @@ typedef struct BloqueTrabajo {
 } BloqueTrabajo;
 
 /*
- * Objeto de escena. Solo se declaran los campos que el codigo traducido usa; los huecos son
- * relleno. D_80069698 (el objeto controlado) y la lista de D_80069518 apuntan a esta estructura.
- * Los calculos de volumen de la colision la ven como ObjetoVolumen (geometria.h): ambas vistas
- * coinciden en los angulos de +0xDC y la posicion de +0xE4.
+ * Objeto de escena (0x1F4 bytes): D_80069698 (el objeto controlado), la lista de D_80069518 y la
+ * lista de objetos solidos de D_80069630 apuntan a esta estructura, que es la unica vista de esa
+ * memoria. El tamano sale de la reserva de ranuras: func_8003652C, func_800365D0 y func_80036734
+ * piden ranuras de paso 0x1F4 al pozo D_8006968C (AllocListNode). Los dos primeros campos son
+ * la cabecera de nodo de pozo (enlace y marca de libre).
  *
- * Cada campo cita una funcion cuyo ensamblador fija su desplazamiento y su ancho.
+ * Solo se declaran los campos que el codigo traducido usa; los huecos son relleno. Cada campo cita
+ * una funcion cuyo ensamblador fija su desplazamiento y su ancho.
  */
 typedef struct Objeto {
     struct Objeto* siguiente;
-    u32 flags04;            /* func_8001DF28: lw / sw, bit 2 = sprite visible */
-    u32 flags08;            /* func_8001CF50, func_8001D75C: lw con mascaras 0x200000 y 0x10000000 */
+    u32 flags04;            /* func_8001DF28: lw / sw, bit 2 = sprite visible; pozo: bit 0 = libre, bit 1 = en uso (func_800363D4, func_800365D0) */
+    u32 flags08;            /* func_8001CF50, func_8001D75C: lw con mascaras 0x200000 y 0x10000000; indicadores de volumen (graficos_y_gte.c) */
     u32 flags0C;            /* func_8001DF28, func_8001E1A4, func_80045C4C: lw / sw */
-    u8 pad10[0x14 - 0x10];
+    struct Objeto* sig10;   /* lista de objetos solidos que recorren las consultas de volumen (D_80069630); func_80036734 enlaza al final */
     u32 flags14;
     u32 flags18;
-    u16 w1C;
+    u16 w1C;                /* identificador de plantilla */
     /*
      * +0x1E: lectura con tres formas segun quien lo consulte. Los condicionales del interprete de
      * eventos lo comparan con lh (func_80030990) y el dano del golpe lo carga con lhu y con lbu
      * (func_8001D75C). El campo es s16; func_8001D75C usa casts locales comentados.
      */
     s16 s1E;
-    u8 pad20[2];
+    s16 s20;                /* radio del volumen: lh en las consultas de graficos_y_gte.c */
     u16 w22;
-    u8 pad24[2];
+    u16 w24;                /* func_800353B0 */
+    /*
+     * +0x26: se copia como u16 (movimiento, interprete, menus) y el calculo de volumen y la sonda de
+     * escena lo cargan con lh (etiqueta de grupo, func_8003A3D0); el campo es u16 y esas rutinas usan
+     * un cast (s16) local.
+     */
     u16 w26;
     u16 w28;
-    u8 pad2A[0x2C - 0x2A];
-    u16 w2C;
-    u8 pad2E[0x34 - 0x2E];
+    s16 s2A;                /* tipo del volumen (2 = solido): graficos_y_gte.c; func_8003652C lo pone a 0 y func_800365D0 a 5 */
+    u16 w2C;                /* las rutinas de creacion lo escriben con sh y el resto lo lee con lhu */
+    u16 w2E;                /* func_800353B0 */
+    u32 alcance2;           /* alcance al cuadrado del volumen: graficos_y_gte.c */
     s32 i34;                /* func_8001D75C: sw con w1C del atacante */
     u16 w38;                /* func_8001D75C, func_80031FE0: solo sh; sin lectura que fije el signo */
-    u8 pad3A[2];
-    u16 w3C;
-    u8 pad3E[0x48 - 0x3E];
-    s16 h48;                /* func_8001DF28: lh */
-    u8 pad4A[0x50 - 0x4A];
-    s16 h50;                /* func_8001DF28: lh */
-    s16 h52;                /* func_8001C998, func_8001DF28: lh */
-    u8 pad54[0x68 - 0x54];
+    u16 w3A;                /* menus_e_interfaz.c */
+    u16 w3C;                /* las rutinas de creacion lo escriben con sh y el resto lo lee con lhu */
+    u16 w3E;                /* func_800353B0 */
+    u8 pad40[0x48 - 0x40];
+    SVECTOR min;            /* caja del volumen (+0x48) y mitades de sprite que lee func_8001DF28 con lh */
+    SVECTOR max;            /* +0x50 */
+    u8 pad58[0x68 - 0x58];
     s32 i68;                /* func_8001D0FC: sw zero */
     struct Objeto* p6C;
     struct Objeto* p70;
-    struct NodoAnimacion* lista;   /* func_80044EA8, func_80045C4C: lw, lista de animaciones */
+    struct NodoAnimacion* lista;   /* func_80044EA8, func_80045C4C: lw, lista de animaciones; func_80037DB4 la usa como descriptor de modelo */
     /*
-     * +0x78: puntero al modelo del objeto. func_8001CF50 solo lo compara con cero, func_8001DF28
-     * suma 0xC para llegar a las coordenadas del sprite y func_80020A90 lo recorre como lista de
-     * peldanos (NodoPeldano en motor.h); void* porque cada rutina lo lee con otro tipo.
+     * +0x78: la misma palabra se lee como lista de ayudantes (objetos con jerarquia, pozo
+     * D_8006964C), como lista de modelos que dibuja func_8003B5AC y como puntero a datos del
+     * modelo: func_8001CF50 solo lo compara con cero, func_8001DF28 suma 0xC para llegar a las
+     * coordenadas del sprite y func_80020A90 lo recorre como lista de peldanos (NodoPeldano en
+     * motor.h).
      */
-    void* p78;
-    Nodo nodo;              /* +0x7C: func_8001CF50, func_8001CFCC, func_8001D0FC (lw / sw sobre +0xC0 y +0xC4) */
-    u8 padC8[0xCC - 0xC8];
-    s32 iCC;                /* escala de la transformacion propia (+0xCC): func_8001DF28 */
-    s32 iD0;                /* func_8001DF28 */
-    s32 iD4;                /* func_8001DF28: profundidad del sprite, nunca negativa */
-    u8 padD8[0xDC - 0xD8];
-    u16 wDC;                /* rotacion de la transformacion propia (+0xDC) */
-    u16 wDE;
-    u16 wE0;
-    u8 padE2[0xE4 - 0xE2];
-    s32 xE4;                /* traslacion de la transformacion propia (+0xE4) */
-    s32 yE8;
-    s32 zEC;
-    u8 padF0[0xF4 - 0xF0];
+    union {
+        struct Ayuda* ayudas;
+        struct ModeloDibujo* modelos;
+        void* p;
+    } u78;
+    GsCOORDINATE2 coord;    /* +0x7C: func_8001CF50, func_8001CFCC, func_8001D0FC; su param y su super son los lw / sw de +0xC0 y +0xC4 */
+    ParametrosObjeto param; /* +0xCC: func_8001CF50, func_8001DF28, func_8001E1A4 */
     struct NodoSecuencia* secuencias;   /* func_8001CD84, func_8001D0FC: lw */
     u8* bloque;             /* func_8001CD84: base del bloque de animacion */
     struct NodoSecuencia* apoyos;       /* func_8001D0FC: lw */
@@ -162,6 +208,7 @@ typedef struct Objeto {
     u16 w196;
     u8 pad198[0x1A8 - 0x198];
     s32 i1A8;               /* func_80020A90: sw */
+    u8 pad1AC[0x1F4 - 0x1AC];
 } Objeto;
 
 /*

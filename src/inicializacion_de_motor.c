@@ -37,31 +37,6 @@ typedef struct OrigenEntrada {
     u8 b4;
 } OrigenEntrada;
 
-/* Registro de dieciseis bytes de la tabla de fotogramas; solo se lee el u16 de +0xA. */
-typedef struct Fotograma {
-    u8 pad00[0x0A];
-    u16 h0A;
-    u8 pad0C[4];
-} Fotograma;
-
-typedef struct TablaFotogramas {
-    u8 pad00[0x10];
-    Fotograma* fotogramas;
-} TablaFotogramas;
-
-typedef struct DefinicionAnimacion {
-    u8 pad00[0x4E];
-    u16 tipo;
-    u8 pad50[4];
-    TablaFotogramas* tabla;
-} DefinicionAnimacion;
-
-typedef struct NodoAnimacion {
-    struct NodoAnimacion* sig;
-    u8 pad04[4];
-    DefinicionAnimacion* def;
-} NodoAnimacion;
-
 extern void func_800449E0(u8* destino);
 extern void* memset(void* destino, s32 valor, u32 cantidad);
 extern void FlushCache(void);

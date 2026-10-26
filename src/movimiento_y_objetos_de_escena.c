@@ -18,8 +18,8 @@ void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* orden)
     s32 f;
 
     dy = m->dy;
-    nuevo = o->yE8 + dy;
-    if (nuevo >= o->yE8 + 0xC8) {
+    nuevo = o->param.trans.vy + dy;
+    if (nuevo >= o->param.trans.vy + 0xC8) {
         if (o->flags14 & 1) {
             goto calculo;
         }
@@ -30,9 +30,9 @@ void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* orden)
         o->h108 += 0x44;
         o->h116 = t;
         if (o->flags14 & 0x10000) {
-            t = o->yE8 + 0xC;
+            t = o->param.trans.vy + 0xC;
         } else {
-            t = o->yE8 + (s16)t;
+            t = o->param.trans.vy + (s16)t;
         }
         if (t >= nuevo) {
             if ((s16)orden->flags == 8 || (s16)orden->flags == 1) {
@@ -81,7 +81,7 @@ void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* orden)
     }
 calculo:
     o->h116 = m->dy;
-    if (m->dy + o->yE8 == o->i100 + o->h10C && (s16)orden->flags != 8 && (s16)orden->flags != 1) {
+    if (m->dy + o->param.trans.vy == o->i100 + o->h10C && (s16)orden->flags != 8 && (s16)orden->flags != 1) {
 despegue:
         f = o->flags14 | 2;
         o->flags14 = f;
@@ -114,47 +114,47 @@ void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
     s32 v;
     u16 flags;
 
-    w->x = o->xE4;
-    w->y = o->yE8;
-    w->z = o->zEC;
+    w->x = o->param.trans.vx;
+    w->y = o->param.trans.vy;
+    w->z = o->param.trans.vz;
     area = w->consulta;
     v = o->h10A;
     if (v < 0) {
-        o->yE8 = o->yE8 + v;
+        o->param.trans.vy = o->param.trans.vy + v;
     }
-    pos = &o->xE4;
-    w->y10 = o->yE8;
+    pos = &o->param.trans.vx;
+    w->y10 = o->param.trans.vy;
     w->h18 = d->x;
     w->h1A = d->z;
     func_80019474(pos, d, r, area);
     w->dx = d->x;
     w->dz = d->z;
-    o->xE4 = o->xE4 + d->x;
-    o->zEC = o->zEC + d->z;
+    o->param.trans.vx = o->param.trans.vx + d->x;
+    o->param.trans.vz = o->param.trans.vz + d->z;
     flags = r->flags;
     if (flags & 0x10) {
         w->h1A = w->h1A - d->z;
         d->z = 0;
         d->x = w->h18 - d->x;
-        o->yE8 = w->y10;
+        o->param.trans.vy = w->y10;
         func_80019474(pos, d, r, area);
         v = d->x;
         if (v == 0) {
             o->h110 = 0;
         } else {
             w->dx = w->dx + v;
-            o->xE4 = o->xE4 + d->x;
+            o->param.trans.vx = o->param.trans.vx + d->x;
         }
         d->x = 0;
         d->z = w->h1A;
-        o->yE8 = w->y10;
-        func_80019474(&o->xE4, d, r, area);
+        o->param.trans.vy = w->y10;
+        func_80019474(&o->param.trans.vx, d, r, area);
         v = d->z;
         if (v == 0) {
             o->h112 = 0;
         } else {
             w->dz = w->dz + v;
-            o->zEC = o->zEC + d->z;
+            o->param.trans.vz = o->param.trans.vz + d->z;
         }
     } else if (flags & 4) {
         o->h110 = 0;
@@ -163,17 +163,17 @@ void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
     }
     if (r->flags & 8) {
         if (o == D_80069698 || !(o->flags14 & 1)) {
-            o->yE8 = o->yE8 + 1;
+            o->param.trans.vy = o->param.trans.vy + 1;
             w->w1C = r->grupo;
-            func_8001C134(&o->xE4, r, (TrabajoBaldosa*)area);
+            func_8001C134(&o->param.trans.vx, r, (TrabajoBaldosa*)area);
             r->grupo = w->w1C;
         }
     }
-    o->i100 = o->yE8;
+    o->i100 = o->param.trans.vy;
     o->h10C = r->pendiente_abs;
-    o->xE4 = w->x;
-    o->yE8 = w->y;
-    o->zEC = w->z;
+    o->param.trans.vx = w->x;
+    o->param.trans.vy = w->y;
+    o->param.trans.vz = w->z;
     d->x = w->dx;
     d->z = w->dz;
 }
@@ -207,17 +207,17 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
     base = i + o->h10C;
     tope = base;
     if (f & 1) {
-        cur = o->yE8 + o->h10A;
+        cur = o->param.trans.vy + o->h10A;
         if (o->h108 <= 0x800) {
-            if (cur + o->h52 < r->techo) {
+            if (cur + o->max.vy < r->techo) {
                 if (base >= cur) {
-                    w->x = o->xE4 + d->x;
+                    w->x = o->param.trans.vx + d->x;
                     w->y = r->techo - 1;
                     w->res.grupo = -1;
-                    w->z = o->zEC + d->z;
+                    w->z = o->param.trans.vz + d->z;
                     func_8001C134(&w->x, &w->res, &w->tb);
                     if (!(w->res.flags & 8)) {
-                        tope = r->techo - o->h52;
+                        tope = r->techo - o->max.vy;
                         if (base < tope) {
                             tope = base;
                         }
@@ -253,17 +253,17 @@ guardar:
             o->flags14 = v;
         }
 calcular:
-        v = tope - o->yE8;
+        v = tope - o->param.trans.vy;
     } else {
         if (f & 4) {
-            if (base < o->yE8 + d->dy) {
-                d->dy = base - o->yE8;
+            if (base < o->param.trans.vy + d->dy) {
+                d->dy = base - o->param.trans.vy;
             }
             return;
         }
         v = 0xC8;
         if (!((u16)r->flags & 1)) {
-            v = base - o->yE8;
+            v = base - o->param.trans.vy;
         }
     }
     d->dy = v;

@@ -113,7 +113,7 @@ void func_8001E528(Objeto* o, ConjuntoSprites* c, u32 modo)
         indice = *(u8*)(c->tabla + c->actual);
     }
     r = c->registros + indice;
-    p = (SpritePlano*)((u8*)o->p78 + 0xC);
+    p = (SpritePlano*)((u8*)o->u78.p + 0xC);
     u = r->u;
     v = r->v;
     w = r->w;
@@ -158,7 +158,7 @@ void func_8001E600(Objeto* o, ConjuntoSprites* c, u32 modo)
     }
     r = c->registros + indice;
     desplazamiento = 2 - ((r->pagina >> 7) & 3);
-    p = (SpriteEscalado*)((u8*)o->p78 + 0xC);
+    p = (SpriteEscalado*)((u8*)o->u78.p + 0xC);
     p->s00 = (r->u >> desplazamiento) + ((r->pagina & 0xF) << 6);
     p->s02 = r->v + ((r->pagina << 4) & 0x100);
     p->w08 = c->c2C;
@@ -269,7 +269,7 @@ u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
     t = o->p70;
     *apoyo = t;
     if (o->p70 != NULL) {
-        nodo = (NodoPeldano*)t->p78; /* lw 0x78(t): cabeza de la lista de peldanos */
+        nodo = (NodoPeldano*)t->u78.p; /* lw 0x78(t): cabeza de la lista de peldanos */
         if (t->flags08 & 0x400000) {
             altura = o->i1A8 + d->dy - 0x12C;
             if (altura <= 0) {
@@ -295,7 +295,7 @@ u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
             t->i13C = nodo->w10;
             return 0;
         }
-        (*apoyo)->i13C = ((NodoPeldano*)(*apoyo)->p78)->w10;
+        (*apoyo)->i13C = ((NodoPeldano*)(*apoyo)->u78.p)->w10;
         if (altura > 0) {
             return 1;
         }

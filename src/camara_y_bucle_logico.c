@@ -232,7 +232,7 @@ void func_80032894(void)
     GEO_CARGAR_W(&CAMARA->mx);
     GEO_GUARDAR_W_T1(&mira);
     D_80069414 = 0;
-    func_8001CC68(&D_80069698->xE4);
+    func_8001CC68(&D_80069698->param.trans.vx);
     if (mira.x != 0) {
         CAMARA->mx = mira.x;
         CAMARA->m4[0] = mira.x;
@@ -256,9 +256,9 @@ void func_80032894(void)
         CAMARA->vpB4[2] = vp.z;
     }
     if (D_80069698 != NULL) {
-        D_80069DC0.x = D_80069698->xE4;
-        D_80069DC0.y = D_80069698->yE8;
-        D_80069DC0.z = D_80069698->zEC;
+        D_80069DC0.x = D_80069698->param.trans.vx;
+        D_80069DC0.y = D_80069698->param.trans.vy;
+        D_80069DC0.z = D_80069698->param.trans.vz;
     }
     CAMARA->i90 = 0;
     CAMARA->flags80 = 0x40;
@@ -509,8 +509,8 @@ void func_80034E7C(Objeto* o)
                         if (a != NULL && (a->flags18 & 0x400) == 0) {
                             a->flags14 &= ~0x814;
                             p->p6C->flags14 |= 0x1000;
-                            p->p6C->nodo.padre = NULL;
-                            p->p6C->nodo.transf = (Transformacion*)((u8*)p->p6C + 0xCC);
+                            p->p6C->coord.super = NULL;
+                            p->p6C->coord.param = PARAMETROS_SDK(p->p6C);
                             p->p6C->w26 = p->w26;
                             p->p6C->p70 = NULL;
                             func_8001CF50(p->p6C);
@@ -527,8 +527,8 @@ void func_80034E7C(Objeto* o)
                         p = sig;
                         continue;
                     }
-                    p->nodo.transf = (Transformacion*)((u8*)p + 0xCC);
-                    p->nodo.padre = NULL;
+                    p->coord.param = PARAMETROS_SDK(p);
+                    p->coord.super = NULL;
                     p->p70 = NULL;
                     p->flags14 = (p->flags14 & ~0x14) | 0x1202;
                     func_8001CFCC((u8*)p + 0x7C);
@@ -563,8 +563,8 @@ void func_8003502C(Objeto* o)
     }
     if (o->p6C != NULL) {
         o->p6C->flags14 &= ~0x814;
-        o->p6C->nodo.padre = NULL;
-        o->p6C->nodo.transf = (Transformacion*)((u8*)o->p6C + 0xCC);
+        o->p6C->coord.super = NULL;
+        o->p6C->coord.param = PARAMETROS_SDK(o->p6C);
         o->p6C->w26 = o->w26;
         o->p6C->p70 = NULL;
         func_8001CF50(o->p6C);
@@ -718,9 +718,9 @@ void func_800353B0(ObjEsc* a0)
     gte_SetRotMatrix(&D_80076130);
     gte_SetTransVector(&D_80076144);
     if (D_80069698 != NULL && (CAMARA->vpx + CAMARA->vpy + CAMARA->vpz) == 0) {
-        sc->m18 = D_80069698->xE4;
-        sc->m1C = D_80069698->yE8;
-        sc->m20 = D_80069698->zEC;
+        sc->m18 = D_80069698->param.trans.vx;
+        sc->m1C = D_80069698->param.trans.vy;
+        sc->m20 = D_80069698->param.trans.vz;
     } else {
         sc->m18 = CAMARA->vpx;
         sc->m1C = CAMARA->vpy;

@@ -711,7 +711,7 @@ s32 func_80018C68(ObjetoVolumen* a, ConsultaMatriz* o)
     GEO_COMPLEMENTO(&a->rot);
     GEO_GUARDAR_H_T1(&o->rot);
     /* 0x80018CC0..0x80018CD4: lw v0,%lo(D_80069698) ; addiu v0,v0,0xE4 ; lw 0x0/0x4/0x8 de esa base: tres s32 consecutivos que la macro lee como VECTOR. */
-    GEO_CARGAR_W((VECTOR*)&D_80069698->xE4);
+    GEO_CARGAR_W(&D_80069698->param.trans);
     GEO_RESTAR_W(&a->pos);
     GEO_GUARDAR_H_T4(&o->dif);
     GEO_IDENTIDAD(o);
