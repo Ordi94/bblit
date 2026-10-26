@@ -60,7 +60,11 @@ s32 D_80069380;
  *
  * La matriz se asigna a una variable que vale 0 antes del bucle y se vuelve a asignar dentro: con una sola
  * asignacion el optimizador de bucles saca &o->m fuera del bucle, y el original lo calcula en cada vuelta.
+ * El original la calcula justo despues de cargar el primer argumento de RotMatrixZYX; el C la calcula una
+ * instruccion antes y esa es toda la diferencia (60).
  */
+#ifdef NON_MATCHING
+/* Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo). Solo difiere la posicion de un addiu (el calculo de &o->m se emite una instruccion antes que en el original) y el registro del puntero de destino de la norma al cuadrado (v0 en lugar de a0). Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. Variantes probadas: 6. */
 Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o)
 {
     SVECTOR* dif;
@@ -87,8 +91,6 @@ Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o)
                         o->radio = o->actual->s20;
                         GEO_COMPLEMENTO(&o->actual->param.giro.rotate);
                         GEO_GUARDAR_H_T1(rot);
-                        /* Sin la barrera el compilador adelanta el calculo de &o->m; el original lo hace justo antes de la llamada. */
-                        GEO_BARRERA();
                         m = &o->m;
                         RotMatrixZYX(rot, m);
                         ApplyMatrixSV(m, dif, &o->res);
@@ -108,6 +110,9 @@ Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o)
     }
     return 0;
 }
+#else
+INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80016C0C);
+#endif
 
 /*
  * Variante de func_80016C0C que copia antes del bucle la posicion y la caja del objeto a al
@@ -164,12 +169,11 @@ Objeto* func_80016ED0(Objeto* a, u32 mascara, ConsultaCaja* o)
  * Variante con el punto a probar y una segunda mascara de exclusion como argumentos y el area
  * de trabajo como quinto argumento (en pila); el radio se ensancha 4 unidades.
  *
- * NON_MATCHING: puntuacion 103 con la configuracion versionada (g = 8 del archivo). Solo difiere el
- * reparto de registros: el original guarda el area de trabajo y el radio ampliado en s2 y s3 y
- * el C los intercambia. Las instrucciones, su orden y las macros vectoriales coinciden.
+ * NON_MATCHING: solo difiere el reparto de registros: el original guarda el area de trabajo y el
+ * radio ampliado en s2 y s3 y el C los intercambia, ademas de la posicion del calculo de &o->m.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 103 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Variantes probadas: 8. */
+/* Pendiente: puntuacion 308 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. Variantes probadas: 12. */
 Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o)
 {
     Objeto* n;
@@ -197,10 +201,8 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
                         r = n->s20 + 4;
                         GEO_COMPLEMENTO(&n->param.giro.rotate);
                         GEO_GUARDAR_H_T1(rot);
-                        GEO_BARRERA();
                         m = &o->m;
                         RotMatrixZYX(rot, m);
-                        m = &o->m;
                         ApplyMatrixSV(m, dif, &o->res);
                         if (o->res.vx >= n->min.vx - r
                             && o->res.vx <= n->max.vx + r
@@ -224,7 +226,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_800171E4);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 10573 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las
+ * Pendiente: puntuacion 10583 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las
  * comparaciones de las regiones no se han ajustado al original. Variantes probadas: 1.
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con
@@ -726,6 +728,8 @@ s32 func_80018C68(Objeto* a, ConsultaMatriz* o)
  * Prueba si el punto p cae dentro del volumen del objeto a ampliado por su radio. Descarta antes
  * por distancia al cuadrado en el plano.
  */
+#ifdef NON_MATCHING
+/* Pendiente: puntuacion 108 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. Variantes probadas: 6. */
 s32 func_80018D98(Objeto* a, VECTOR* p, ConsultaVolumen* o)
 {
     GEO_CARGAR_W(p);
@@ -751,11 +755,16 @@ s32 func_80018D98(Objeto* a, VECTOR* p, ConsultaVolumen* o)
     }
     return 0;
 }
+#else
+INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80018D98);
+#endif
 
 /*
  * Igual que func_80018D98 pero la posicion a probar es la del objeto b y la caja de b
  * (extensiones en y) se suma al margen vertical.
  */
+#ifdef NON_MATCHING
+/* Pendiente: puntuacion 108 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. Variantes probadas: 6. */
 s32 func_80018F80(Objeto* a, Objeto* b, ConsultaVolumen* o)
 {
     GEO_CARGAR_W(&b->param.trans);
@@ -781,6 +790,9 @@ s32 func_80018F80(Objeto* a, Objeto* b, ConsultaVolumen* o)
     }
     return 0;
 }
+#else
+INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80018F80);
+#endif
 
 /*
  * Recorre la lista de nodos de plano y devuelve el primero que contiene el punto p visto desde
