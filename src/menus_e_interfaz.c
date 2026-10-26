@@ -234,8 +234,8 @@ void func_8003ACA8(ObjetoCamara* objeto, void* sin_uso, MATRIX* m)
     D_80069416 = D_80069402;
 }
 
-/* Pendiente: puntuacion 990 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de registros (la tabla de ordenacion y el cursor intercambian v1 y a1, y las constantes 1, 0x80000000 y 0x05000000 caen en t0/a3/a2 en lugar de t1/t0/a3) y la posicion de la carga del cursor en el segundo paquete. Variantes probadas: 40 (720 permutaciones de las escrituras del primer paquete, cursor volatile, macros, estructura de paquete). */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 990 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de registros (la tabla de ordenacion y el cursor intercambian v1 y a1, y las constantes 1, 0x80000000 y 0x05000000 caen en t0/a3/a2 en lugar de t1/t0/a3) y la posicion de la carga del cursor en el segundo paquete. Variantes probadas: 40 (720 permutaciones de las escrituras del primer paquete, cursor volatile, macros, estructura de paquete). */
 s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
 {
     u32* tabla;
@@ -275,8 +275,8 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
 #endif
 
-/* Pendiente: puntuacion 1680 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el desplazamiento de la textura cae en a0 y la plantilla en v1, en lugar de a2 y a0) y la posicion del almacen de la profundidad, que el original deja justo antes de indexar la lista de ordenacion. Variantes probadas: 160 (forma de la plantilla, orden de declaracion de los locales, acumulacion del color). */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 1680 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el desplazamiento de la textura cae en a0 y la plantilla en v1, en lugar de a2 y a0) y la posicion del almacen de la profundidad, que el original deja justo antes de indexar la lista de ordenacion. Variantes probadas: 160 (forma de la plantilla, orden de declaracion de los locales, acumulacion del color). */
 void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
 {
     u32 color;
@@ -379,8 +379,8 @@ void func_8003B26C(PedidoModelo* pedido, EscenaDibujo* escena, VistaDibujo* vist
     }
 }
 
-/* Pendiente: puntuacion 485 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; solo difiere el reparto de v0/v1/a0 en la comparacion del numero de salas (la constante 0x10000 se carga antes del almacen de la profundidad) y en el puntero de la entrada visible. Variantes probadas: 60 (forma de la comparacion con shifts, orden de las escrituras previas al bucle, indexado frente a aritmetica de punteros, orden del cierre de la lista). */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 485 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; solo difiere el reparto de v0/v1/a0 en la comparacion del numero de salas (la constante 0x10000 se carga antes del almacen de la profundidad) y en el puntero de la entrada visible. Variantes probadas: 60 (forma de la comparacion con shifts, orden de las escrituras previas al bucle, indexado frente a aritmetica de punteros, orden del cierre de la lista). */
 void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vista)
 {
     PedidoModelo pedido;
@@ -442,8 +442,8 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B354);
 #endif
 
-/* Pendiente: puntuacion 875 con la configuracion versionada (g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el orden de las cargas de los limites del buffer en el prologo (el original carga D_80069680 antes que D_8006958C y guarda el limite primero), el reparto v0/v1 del calculo del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado) y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (900 permutaciones de las escrituras del prologo, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 875 con la configuracion versionada (g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el orden de las cargas de los limites del buffer en el prologo (el original carga D_80069680 antes que D_8006958C y guarda el limite primero), el reparto v0/v1 del calculo del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado) y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (900 permutaciones de las escrituras del prologo, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). */
 void func_8003B5AC(ObjetoEscena* lista)
 {
     EscenaDibujo* esc;
@@ -640,8 +640,8 @@ void func_8003B5AC(ObjetoEscena* lista)
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B5AC);
 #endif
 
-/* Pendiente: puntuacion 5924 con la configuracion versionada (g = 8 del archivo). Escrita a mano: carga las seis palabras de los tres vertices siguientes con lw mientras el GTE proyecta los actuales, usa mtc2 desde registros s0-s5, un rtpt sin nop previos y tres promedios con t4-t9 fijos; el compilador no reparte los registros ni ordena las cargas como el original. Variantes probadas: 3 (estructura con macros de ensamblador en linea, con y sin retardos, desenrollado manual). */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 5924 con la configuracion versionada (g = 8 del archivo). Escrita a mano: carga las seis palabras de los tres vertices siguientes con lw mientras el GTE proyecta los actuales, usa mtc2 desde registros s0-s5, un rtpt sin nop previos y tres promedios con t4-t9 fijos; el compilador no reparte los registros ni ordena las cargas como el original. Variantes probadas: 3 (estructura con macros de ensamblador en linea, con y sin retardos, desenrollado manual). */
 /* Salida de la proyeccion: x e y empaquetados y z con signo en 8 bytes (D_8006B668). */
 typedef struct SalidaVertice {
     u32 xy;
