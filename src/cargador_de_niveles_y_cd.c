@@ -79,8 +79,9 @@ void func_80040EB4(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 390 con la configuracion versionada (g = 8 del archivo). Mismas
- * instrucciones que el original; solo difiere el reparto de registros de la ultima etapa (el
+ * Pendiente: puntuacion 370 con la configuracion versionada (g = 8 del archivo). Mismas
+ * instrucciones que el original, con el desplazamiento del indice como primer sumando de la
+ * direccion de cada seccion; solo difiere el reparto de registros de la ultima etapa (el
  * original deja el puntero del bucle en a2 y la constante 4 en a3, el indice en t0 en todas las
  * etapas, y copia el puntero de la segunda etapa de una direccion calculada en v1).
  *
@@ -109,7 +110,7 @@ s32 func_80040F78(EntradaSeccion* secciones, s32 n, s32 tipo)
             break;
         }
     }
-    p = &secciones[i];
+    p = (EntradaSeccion*)((i * 12) + (s32)secciones);
     while (p->tipo != tipo) {
         if (i >= n) {
             break;
@@ -119,7 +120,7 @@ s32 func_80040F78(EntradaSeccion* secciones, s32 n, s32 tipo)
         i++;
     }
     i++;
-    p = &secciones[i];
+    p = (EntradaSeccion*)((i * 12) + (s32)secciones);
     while (p->tipo != 4) {
         if (i >= n) {
             break;
