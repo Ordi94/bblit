@@ -12,11 +12,33 @@ typedef struct AyudaCuerpo {
     u8 visible;
 } AyudaCuerpo;
 
+/* Estado principal del juego en 0x80010000: se accede con un puntero constante (un solo lui). */
+#define EST ((u8*)0x80010000)
+
+/* Lista de objetos ya dibujados (se encadena por +0x10) y contador de cuadros. */
 extern void* D_800694D8;
 extern s32 D_80069534;
-extern Ayuda* func_800363D4(void);
+
+/* Objeto de referencia respecto del que func_80037184 refleja los demas. */
 extern ObjetoEscena* D_800695EC;
-extern s32 func_800375F8[];
+
+/* Contadores de la interfaz del estado principal (bytes sueltos de 0x80010000). */
+extern u8 D_80010042;
+extern u8 D_80010043;
+extern u8 D_80010044;
+extern u8 D_80010045;
+extern u8 D_800100F7;
+extern u8 D_800100F9;
+extern u8 D_800100FA;
+
+/* Nivel de unidades mostrado por los indicadores y nivel de fundido pedido. */
+extern u8 D_80069524;
+extern u8 D_800695F6;
+
+/*
+ * Tablas del archivo: identificadores de plantilla de los grupos de objetos (D_8005E830), de los
+ * digitos 0 a 9 (D_8005E81C) y posiciones (x, y) de cada objeto de cada grupo.
+ */
 extern s16 D_8005E830[];
 extern s16 D_8005E81C[];
 extern s16 D_8005E86C[][2];
@@ -26,21 +48,24 @@ extern s16 D_8005E8BC[][2];
 extern s16 D_8005E8E0[][2];
 extern s16 D_8005E8F8[][2];
 extern s16 D_8005E910[][2];
-extern u8 D_80010043;
-extern u8 D_80010044;
-extern u8 D_80010045;
-extern u8 D_800100F7;
-extern u8 D_800100F9;
-extern u8 D_800100FA;
 
-/* Estado principal del juego en 0x80010000: se accede con un puntero constante (un solo lui). */
-#define EST ((u8*)0x80010000)
+/* Matriz inicial de un ayudante: cinco palabras de datos que el codigo del archivo copia. */
+extern s32 func_800375F8[];
+
+/*
+ * Variables pequenas direccionadas con 0x110($gp), 0x114($gp) y 0x118($gp): el angulo de giro
+ * del grupo de func_8003861C y los dos angulos de func_800389FC. Se definen en el archivo para
+ * que el ensamblador los reescriba a $gp.
+ */
+u16 D_80069430;
+s32 D_80069434;
+s32 D_80069438;
+
+extern Ayuda* func_800363D4(void);
 extern s32 func_80038C2C(s32 idx, s32 valor, s32 modo);
 extern void func_80038884(s32 idx, s32 modo);
-extern u8 D_800695F6;
-extern u8 D_80010042;
-extern u8 D_80069524;
 extern void func_80037DB4(ObjetoEscena* o, s16 id, s16* pos, s16 modo);
+extern u32 func_80037D3C(u16 valor);
 
 /*
  * Algunos llamadores pasan a func_80037DB4 enteros de 32 bits ya extendidos sin la conversion
@@ -49,15 +74,8 @@ extern void func_80037DB4(ObjetoEscena* o, s16 id, s16* pos, s16 modo);
  */
 typedef void (*ReiniciarSinConversion)(ObjetoEscena* o, s32 id, s16* pos, s32 modo);
 
-extern u32 func_80037D3C(u16 valor);
-
 /* Idem para func_80037D3C: el llamador le pasa el valor entero sin truncarlo a u16. */
 typedef u32 (*DigitosSinConversion)(s32 valor);
-
-/* Variable pequena: el original la direcciona con 0x110($gp) (angulo de giro del grupo). */
-u16 D_80069430;
-s32 D_80069434;
-s32 D_80069438;
 
 /*
  * Recorre la lista de escena 'lista' (por el enlace de +0x10) y, para cada objeto activo,
@@ -713,11 +731,10 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80038884);
 #endif
 
 /*
- * Posiciona los tres objetos 'idx'..'idx + 2' de la tabla D_8006AB70 como un reloj de aguja
- * doble: si 'apagar' es cero los activa (reiniciandolos desde las tablas de plantillas y de
- * posiciones si estaban inactivos) y gira la matriz de las dos agujas alrededor de Z, la
- * primera 'valor' / 960 y la segunda 'valor' / 7680 de vuelta (0x1000 = una vuelta); si no, los
- * desactiva.
+ * Posiciona los tres objetos 'idx'..'idx + 2' de la tabla D_8006AB70: si 'apagar' es cero los
+ * activa (reiniciandolos desde las tablas de plantillas y de posiciones si estaban inactivos) y
+ * gira alrededor de Z la matriz de los dos primeros: el primero 'valor' / 960 y el segundo
+ * 'valor' / 7680, ambos con 0x800 de desfase (0x1000 es una vuelta); si no, los desactiva.
  */
 void func_800389FC(s32 idx, s32 valor, s32 apagar)
 {
@@ -819,18 +836,13 @@ s32 func_80038C2C(s32 idx, s32 valor, s32 modo)
     return nuevo;
 }
 
-#ifdef NON_MATCHING
-/*
- * Pendiente: puntuacion 180 con la configuracion versionada (g = 8 del archivo). Coincide el
- * cuerpo del bucle; el original duplica el arranque del bucle (t0 = 0 y t1 = ~2) en los
- * huecos de retardo de cada rama previa y GCC los fusiona en un solo bloque. Variantes
- * probadas: 4.
- */
 /*
  * Avanza un paso la animacion de aparicion y desaparicion de tres objetos consecutivos de la
  * tabla D_8006AB70 a partir de 'idx': cuando el temporizador de cada uno llega a cero, el
  * parametro de profundidad del ayudante (m94.t[2]) crece o decrece segun el estado s1E (0
  * aparece, 1 y 2 desaparecen con distinta inercia) y, al terminar, el objeto se desactiva.
+ * El contador y la mascara se inician justo antes del bucle: el compilador los reparte en los
+ * huecos de retardo de las ramas previas.
  */
 void func_80038E84(s32 idx, s32 paso)
 {
@@ -838,6 +850,7 @@ void func_80038E84(s32 idx, s32 paso)
     ObjetoEscena** p;
     ObjetoEscena* o;
     s32 i;
+    s32 mascara;
 
     v[0] = D_8006AB70[idx];
     v[1] = D_8006AB70[idx + 1];
@@ -855,13 +868,15 @@ void func_80038E84(s32 idx, s32 paso)
                 v[0]->w22 = 0x29;
             }
         }
-        for (i = 0, p = v; i < 3; i++, p++) {
+        i = 0;
+        mascara = ~2;
+        for (p = v; i < 3; i++, p++) {
             o = *p;
             if (o->w22 == 0) {
                 if (o->s1E == 0) {
                     o->ayudas->m94.t[2] += 0xC8 + (o->ayudas->m94.t[2] >> 2);
                     if (o->ayudas->m94.t[2] > 0x1F40) {
-                        o->cab.libre &= ~2;
+                        o->cab.libre &= mascara;
                     }
                 } else if (o->s1E == 1) {
                     o->ayudas->m94.t[2] -= (o->ayudas->m94.t[2] >> 2) + paso;
@@ -873,7 +888,7 @@ void func_80038E84(s32 idx, s32 paso)
                 } else if (o->s1E == 2) {
                     o->ayudas->m94.t[2] -= (o->ayudas->m94.t[2] >> o->s1E) + paso;
                     if (o->ayudas->m94.t[2] < 0) {
-                        o->cab.libre &= ~2;
+                        o->cab.libre &= mascara;
                         o->ayudas->m94.t[2] = 0;
                     }
                 }
@@ -883,8 +898,5 @@ void func_80038E84(s32 idx, s32 paso)
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80038E84);
-#endif
 
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80039094);

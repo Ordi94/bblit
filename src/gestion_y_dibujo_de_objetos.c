@@ -115,17 +115,17 @@ void InitListPool(u8* base, s32 paso, s32 total)
     }
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 420 con la configuracion versionada (g = 8 del archivo). Mismo
- * recorrido y mismos accesos; difiere el reparto de registros de la cola (el original reutiliza
- * $a0 para el siguiente del nodo quitado y conserva la cabeza en $v0). Variantes probadas: 8.
+ * Quita 'nodo' de la lista que empieza en 'cab' y lo marca como libre; devuelve la nueva
+ * cabeza. Las salidas "sin cambios" comparten un solo retorno con goto: asi el compilador deja
+ * un unico bloque de salida que atienden tanto la lista de un solo nodo como el nodo ausente,
+ * y reutiliza $a0 para el siguiente del nodo quitado mientras la cabeza espera en $v0.
  */
 NodoLista* RemoveListNode(NodoLista* cab, NodoLista* nodo)
 {
     NodoLista* prev;
     NodoLista* cur;
-    NodoLista* sig;
+    NodoLista* r;
 
     if (cab == 0) {
         return 0;
@@ -133,6 +133,9 @@ NodoLista* RemoveListNode(NodoLista* cab, NodoLista* nodo)
     if (cab == nodo) {
         cab->libre = 1;
         return cab->siguiente;
+    }
+    if (cab->siguiente == 0) {
+        goto sin_cambios;
     }
     prev = cab;
     while (prev->siguiente != 0) {
@@ -142,45 +145,41 @@ NodoLista* RemoveListNode(NodoLista* cab, NodoLista* nodo)
         prev = prev->siguiente;
     }
     cur = prev->siguiente;
-    if (cur != 0) {
-        sig = cur->siguiente;
-        cur->libre = 1;
-        prev->siguiente = sig;
-        cur->siguiente = 0;
+    if (cur == 0) {
+        goto sin_cambios;
     }
+    r = cab;
+    cab = cur->siguiente;
+    cur->libre = 1;
+    prev->siguiente = cab;
+    cur->siguiente = 0;
+    return r;
+sin_cambios:
     return cab;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", RemoveListNode);
-#endif
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 150 con la configuracion versionada (g = 8 del archivo). El original
- * copia la cabeza a $v0 antes de la prueba y avanza con $a0; GCC usa $v0 como siguiente.
- * Variantes probadas: 4.
+ * Libera todos los nodos de la lista que empieza en 'cab' (los marca libres y corta sus
+ * enlaces) y devuelve siempre NULL: la cabeza de una lista vaciada. El puntero que avanza se
+ * lee antes de cortar el enlace del nodo actual.
  */
 NodoLista* ClearList(NodoLista* cab)
 {
-    NodoLista* n;
-    NodoLista* sig;
+    NodoLista* cur;
+    NodoLista* nxt;
 
-    n = cab;
-    if (n == 0) {
+    if (cab == 0) {
         return 0;
     }
-    sig = n;
+    nxt = cab;
     do {
-        n = sig;
-        sig = sig->siguiente;
-        n->libre = 1;
-        n->siguiente = 0;
-    } while (sig != 0);
+        cur = nxt;
+        nxt = cur->siguiente;
+        cur->libre = 1;
+        cur->siguiente = 0;
+    } while (nxt != 0);
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", ClearList);
-#endif
 
 /* Anade 'nodo' al final de la lista y devuelve la cabeza (el propio nodo si la lista estaba vacia). */
 NodoLista* AppendListNode(NodoLista* cab, NodoLista* nodo)
