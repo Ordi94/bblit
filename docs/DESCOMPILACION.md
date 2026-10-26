@@ -379,6 +379,16 @@ como común); un símbolo `extern` queda como `lui`. Por eso:
    las funciones de cada archivo los direccionan por `$gp` y ya coinciden: el enlazador funde las
    definiciones comunes en un solo símbolo, y declararlos `extern` en cabecera empeora cuatro funciones.
 
+Datos pequeños de `tarjeta_de_memoria` (`g = 8`), todos definidos solo en ese archivo y usados por
+`func_80015E94`, que los direcciona por `$gp` (el original usa `sb zero,0x3c($gp)`,
+`addiu a1,gp,0x40` y `addiu a2,gp,0x48`; `0x80069320` más cada desplazamiento da la dirección):
+
+| Símbolo | Dirección | Tipo | Evidencia en `func_80015E94` |
+|---|---|---|---|
+| `D_8006935C` | `0x8006935C` | `u8` | `sb zero,0x3c($gp)`: bandera de operación pendiente, a cero antes de `MemCardSync` |
+| `D_80069360` | `0x80069360` | `s32` | `addiu a1,gp,0x40`: segundo argumento de `MemCardSync`, pasado por dirección |
+| `D_80069368` | `0x80069368` | `s32` | `addiu a2,gp,0x48`: tercer argumento de `MemCardSync`, pasado por dirección |
+
 Cuando `config/symbols.txt` declare esos datos pequeños se retirarán de `[datos_pequenos]` (hoy figuran
 allí porque el ejecutable original no los nombra).
 
