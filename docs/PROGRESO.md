@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 291 | 32064 |
+| Código del juego | 450 | 201416 | 313 | 41320 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 32064 de 201416 (15.92 %).
-Funciones marcadas `NON_MATCHING`: 53.
-Coherencia con el ensamblador: correcta (811 `glabel` en `asm/` + 291 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 41320 de 201416 (20.51 %).
+Funciones marcadas `NON_MATCHING`: 57.
+Coherencia con el ensamblador: correcta (789 `glabel` en `asm/` + 313 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -32,7 +32,7 @@ Coherencia con el ensamblador: correcta (811 `glabel` en `asm/` + 291 en C = 110
 | interprete_de_eventos | 1 | 192 | 3 | 2 | 10868 | 11900 |
 | logica_de_niveles | 3 | 0 | 1 | 20 | 0 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
-| menus_e_interfaz | 1 | 0 | 0 | 27 | 0 | 13644 |
+| menus_e_interfaz | 1 | 22 | 4 | 1 | 9256 | 13644 |
 | movimiento_y_objetos_de_escena | 3 | 8 | 16 | 3 | 1400 | 18284 |
 | tarjeta_de_memoria | 1 | 6 | 3 | 1 | 1628 | 5116 |
 
@@ -60,7 +60,7 @@ Coherencia con el ensamblador: correcta (811 `glabel` en `asm/` + 291 en C = 110
 | `src/logica_de_niveles_2.c` | 0 | 0 | 3 | 0 | 2016 |
 | `src/logica_de_niveles_3.c` | 0 | 1 | 16 | 0 | 38752 |
 | `src/manejadores_por_tabla.c` | 12 | 0 | 0 | 384 | 384 |
-| `src/menus_e_interfaz.c` | 0 | 0 | 27 | 0 | 13644 |
+| `src/menus_e_interfaz.c` | 22 | 4 | 1 | 9256 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 1 | 3 | 0 | 176 | 2116 |
 | `src/movimiento_y_objetos_de_escena_2.c` | 6 | 9 | 0 | 1176 | 6336 |
 | `src/movimiento_y_objetos_de_escena_3.c` | 1 | 4 | 3 | 48 | 9832 |
@@ -105,6 +105,10 @@ Coherencia con el ensamblador: correcta (811 `glabel` en `asm/` + 291 en C = 110
 - `func_80037FE8`: Pendiente: puntuacion 3403 con la configuracion versionada (g = 8 del archivo). La estructura de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de otra forma. Variantes probadas: 6.
 - `func_80038884`: Pendiente: puntuacion 324 con la configuracion versionada (g = 8 del archivo). Coincide la estructura; difiere la asignacion de registros salvados (el original deja los tres identificadores en $s7, $s6 y $s5 y el parametro en $s4). Variantes probadas: 8.
 - `func_8003A3D0`: Pendiente: puntuacion 316 con la configuracion versionada (g = 8 del archivo). El cuerpo y los saltos coinciden; difiere solo el reparto de registros salvados: el original deja el area de trabajo en $s0, la salida en $s1, el objeto en $s2 y la direccion de la baldosa en $s3; GCC da $s0 a la salida y $s3 al objeto. Ni el orden de las declaraciones locales, ni izar la direccion de la baldosa o la constante -1 antes de la primera rama, ni un bucle con salida explicita cambian el reparto (las dos ultimas formas empeoran a 1144 y 1326). Variantes probadas: 17.
+- `func_8003AE08`: Pendiente: puntuacion 990 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de registros (la tabla de ordenacion y el cursor intercambian v1 y a1, y las constantes 1, 0x80000000 y 0x05000000 caen en t0/a3/a2 en lugar de t1/t0/a3) y la posicion de la carga del cursor en el segundo paquete. Variantes probadas: 40 (720 permutaciones de las escrituras del primer paquete, cursor volatile, macros, estructura de paquete).
+- `func_8003AF8C`: Pendiente: puntuacion 1680 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el desplazamiento de la textura cae en a0 y la plantilla en v1, en lugar de a2 y a0) y la posicion del almacen de la profundidad, que el original deja justo antes de indexar la lista de ordenacion. Variantes probadas: 160 (forma de la plantilla, orden de declaracion de los locales, acumulacion del color).
+- `func_8003B354`: Pendiente: puntuacion 485 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; solo difiere el reparto de v0/v1/a0 en la comparacion del numero de salas (la constante 0x10000 se carga antes del almacen de la profundidad) y en el puntero de la entrada visible. Variantes probadas: 60 (forma de la comparacion con shifts, orden de las escrituras previas al bucle, indexado frente a aritmetica de punteros, orden del cierre de la lista).
+- `func_8003B5AC`: Pendiente: puntuacion 1518 con la configuracion versionada (-G0 salvo g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el registro de la carga del desplazamiento geometrico (gte_SetGeomOffset usa t4/t5 y el original t2/t3), el reparto v0/v1 del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado, y el almacen de D_800694E2 se coloca antes que la relectura), el orden de las cargas de los limites del buffer en el prologo y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (900 permuta
 - `func_80040240`: Pendiente: puntuacion 130 con la configuracion versionada (g = 8 del archivo). El original calcula la direccion del bloque de alineacion con `addiu a1,gp,0x10`; maspsx solo la reescribe a $gp desde la version 2.80 de ASPSX (gp_allow_la) y la configuracion versionada fija 2.79, de modo que sale `lui` + `addiu`. Con 2.80 la funcion coincide en bytes (puntuacion 25 por la forma simbolica de 0x800100E7 y de D_80069330) y el ejecutable completo sigue verificando. Variantes: base_gp + 0x10, variable intermedia al principio y al final, conversion a u32, definicion tentativa del dato pequeno. Vibracio
 - `func_8004048C`: Pendiente: puntuacion 7264 con la configuracion versionada (g = 8 del archivo). El marco de pila del original es 8 bytes mayor, el reparto de registros de la rama de grabacion es otro y GCC fusiona el xor de (D_8006CFF2 ^ 0xFF) << 8 con el desplazamiento. Variantes probadas: 14 (switch con goto, if/else, copias). Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS (D_8006CFF1..7: id, boton
 - `func_80040F78`: Pendiente: puntuacion 390 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones que el original; solo difiere el reparto de registros de la ultima etapa (el original deja el puntero del bucle en a2 y la constante 4 en a3, el indice en t0 en todas las etapas). Variantes probadas: mas de 10 (orden de declaracion, puntero propio por etapa, bucles rotados, parametro de relleno). Recorre la cabecera de secciones de un contenedor (n entradas de tipo, tamano y tamano alineado) y calcula la posicion, en bytes desde el inicio del archivo, de los datos del banco que se pide: devuelve
