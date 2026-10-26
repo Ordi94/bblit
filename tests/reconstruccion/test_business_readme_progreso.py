@@ -267,14 +267,70 @@ def test_progreso_sin_readme_avisa_y_termina_bien(
     assert not (tmp_path / "README.md").exists()
 
 
-def test_progreso_con_marcadores_invalidos_falla_sin_modificar_el_readme(
+AVISO_README = "aviso: no se pudo actualizar la seccion de progreso del README: "
+
+
+def _progreso_con_causa(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, causa: str, capsys: pytest.CaptureFixture[str]
+) -> tuple[int, str, str]:
+    """Ejecuta ``progreso`` con una causa de fallo del README y da (codigo, stdout, stderr)."""
+    roto = f"x\n\n{MARCA_INICIO}\n{MARCA_INICIO}\n{MARCA_FIN}\n"
+    preparar_repo(tmp_path, roto if causa == "marcadores" else README)
+    if causa == "referencia_ausente":
+        (tmp_path / "config" / "ejecutable.json").unlink()
+    elif causa == "referencia_invalida":
+        (tmp_path / "config" / "ejecutable.json").write_text("{no es json", encoding="utf-8")
+    elif causa == "readme_no_escribible":
+
+        def fallar(*_: Any, **__: Any) -> bool:
+            raise PermissionError(13, "Acceso denegado", str(tmp_path / "README.md"))
+
+        monkeypatch.setattr(readme_progreso, "actualizar_readme", fallar)
+    codigo = cli.main(["progreso"], {}, tmp_path, lambda *_: "abc1234")
+    captura = capsys.readouterr()
+    return codigo, captura.out, captura.err
+
+
+@pytest.mark.parametrize(
+    ("causa", "motivo"),
+    [
+        ("referencia_ausente", "no se encontro config/ejecutable.json"),
+        ("referencia_invalida", "config/ejecutable.json no es JSON valido"),
+        ("readme_no_escribible", "Acceso denegado"),
+        ("marcadores", "marcadores de progreso"),
+    ],
+)
+def test_un_fallo_del_readme_no_aborta_progreso_y_deja_los_demas_resultados(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fecha_fija: None,
+    capsys: pytest.CaptureFixture[str],
+    causa: str,
+    motivo: str,
+) -> None:
+    codigo, salida, errores = _progreso_con_causa(tmp_path, monkeypatch, causa, capsys)
+    assert codigo == 0
+    assert (tmp_path / "docs" / "PROGRESO.md").is_file()
+    assert (tmp_path / "build" / "progreso.json").is_file()
+    assert "docs/PROGRESO.md y build/progreso.json escritos" in salida
+    assert "README.md: seccion de progreso" not in salida
+    assert AVISO_README in errores and motivo in errores
+    assert str(tmp_path) not in errores
+
+
+def test_un_fallo_del_readme_no_cambia_los_demas_avisos_ni_el_codigo_de_salida(
     tmp_path: Path, fecha_fija: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    roto = f"x\n\n{MARCA_INICIO}\n{MARCA_INICIO}\n{MARCA_FIN}\n"
-    preparar_repo(tmp_path, roto)
-    assert cli.main(["progreso"], {}, tmp_path, lambda *_: "abc1234") == 1
-    assert "marcadores de progreso" in capsys.readouterr().err
-    assert leer(tmp_path / "README.md") == roto
+    preparar_repo(tmp_path, README)
+    (tmp_path / "config" / "ejecutable.json").unlink()
+    (tmp_path / "asm").mkdir()
+    (tmp_path / "asm" / "x.s").write_text("glabel a\nglabel b\n", encoding="utf-8")
+    codigo = cli.main(["progreso"], {}, tmp_path, lambda *_: "abc1234")
+    errores = capsys.readouterr().err
+    assert codigo == 1
+    assert AVISO_README in errores
+    assert "glabel en asm/ + 1 funciones en C no suman las 1 de la tabla" in errores
+    assert leer(tmp_path / "README.md") == README
 
 
 def test_la_fecha_actual_tiene_formato_iso() -> None:

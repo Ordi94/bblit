@@ -140,6 +140,55 @@ def _actualizar_readme(raiz: Path, medido: progreso.Progreso, ejecutar: Ejecutor
     print(f"README.md: seccion de progreso {'actualizada' if cambio else 'sin cambios'}")
 
 
+def _motivo_sin_rutas(error: Exception) -> str:
+    """
+    Da el motivo de un fallo sin las rutas de la maquina.
+
+    Contexto:
+        Lo usa ``_actualizar_readme_sin_abortar``; un ``OSError`` trae la ruta completa en su
+        texto, asi que solo se conserva la descripcion del sistema.
+
+    Args:
+        error (Exception): Fallo capturado.
+
+    Returns:
+        str: ``strerror`` si el error de entrada/salida nombra una ruta; el mensaje tal cual
+        en el resto (los del proyecto ya van redactados sin rutas).
+
+    Ejemplo:
+        motivo = _motivo_sin_rutas(PermissionError(13, "Acceso denegado", "C:/x"))
+    """
+    if isinstance(error, OSError) and error.filename is not None:
+        return error.strerror or type(error).__name__
+    return str(error)
+
+
+def _actualizar_readme_sin_abortar(raiz: Path, medido: progreso.Progreso, ejecutar: Ejecutor) -> None:
+    """
+    Actualiza la seccion del README y convierte cualquier fallo en un aviso.
+
+    Contexto:
+        La seccion del README es secundaria: ``docs/PROGRESO.md`` y ``build/progreso.json`` ya
+        estan escritos cuando se llega aqui, y abortar perderia los avisos de coherencia y de
+        rutinas sin explicar que ``progreso`` emite despues.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        medido (progreso.Progreso): Medicion ya calculada.
+        ejecutar (Ejecutor): Ejecutor de procesos usado para leer el hash del commit.
+
+    Ejemplo:
+        _actualizar_readme_sin_abortar(raiz, medido, ejecutar)
+    """
+    try:
+        _actualizar_readme(raiz, medido, ejecutar)
+    except (*ERRORES_PROPIOS, OSError) as error:
+        print(
+            f"aviso: no se pudo actualizar la seccion de progreso del README: {_motivo_sin_rutas(error)}",
+            file=sys.stderr,
+        )
+
+
 def _ejecutar_progreso(raiz: Path, ejecutar: Ejecutor, con_readme: bool = True) -> int:
     """Implementa ``progreso``; devuelve 1 si el ensamblador y el codigo C no cuadran con la tabla."""
     medido = progreso.generar_progreso(raiz)
@@ -149,7 +198,7 @@ def _ejecutar_progreso(raiz: Path, ejecutar: Ejecutor, con_readme: bool = True) 
         f"{len(medido.no_coincidentes)} NON_MATCHING; docs/PROGRESO.md y build/progreso.json escritos"
     )
     if con_readme and (raiz / readme_progreso.RUTA_README).is_file():
-        _actualizar_readme(raiz, medido, ejecutar)
+        _actualizar_readme_sin_abortar(raiz, medido, ejecutar)
     elif con_readme:
         print("aviso: no existe README.md; seccion de progreso omitida", file=sys.stderr)
     if medido.manuscritas:
