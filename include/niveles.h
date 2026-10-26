@@ -293,33 +293,6 @@ typedef struct TrabajoBloque {
 #define TRABAJO_BLOQUE ((TrabajoBloque*)0x1F800000)
 
 /*
- * Macros de CPU de la zona de eventos: reproducen las secuencias del original con los
- * temporales fijos $8 (t0) y $9..$12 (t1..t4); la lista de registros destruidos es exactamente
- * la que cada cuerpo escribe.
- */
-#define ZONA_PONER_CERO_3W(p) \
-    __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsw $0, 4($8)\n\tsw $0, 8($8)" \
-                      : : "r"(p) : "$8", "memory")
-#define ZONA_PONER_CERO_WH(p) \
-    __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsh $0, 4($8)" \
-                      : : "r"(p) : "$8", "memory")
-#define ZONA_GUARDAR_H_T1(p) \
-    __asm__ volatile ("move $8, %0\n\tsh $9, 0($8)\n\tsh $10, 2($8)\n\tsh $11, 4($8)" \
-                      : : "r"(p) : "$8", "memory")
-#define ZONA_CARGAR_H(p) \
-    __asm__ volatile ("move $8, %0\n\tlh $9, 0($8)\n\tlh $10, 2($8)\n\tlh $11, 4($8)" \
-                      : : "r"(p) : "$8", "$9", "$10", "$11", "memory")
-#define ZONA_SUMAR_H(p) \
-    __asm__ volatile ("move $8, %0\n\tlh $12, 0($8)\n\tlh $13, 2($8)\n\tlh $14, 4($8)\n\t" \
-                      "add $12, $12, $9\n\tadd $13, $13, $10\n\tadd $14, $14, $11\n\t" \
-                      "sh $12, 0($8)\n\tsh $13, 2($8)\n\tsh $14, 4($8)" \
-                      : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
-#define ZONA_RELLENAR_1000(p) \
-    __asm__ volatile ("move $8, %0\n\taddiu $12, $0, 0x1000\n\tmove $9, $12\n\tmove $10, $12\n\t" \
-                      "move $11, $12\n\tsw $9, 0($8)\n\tsw $10, 4($8)\n\tsw $11, 8($8)" \
-                      : : "r"(p) : "$8", "$9", "$10", "$11", "$12", "memory")
-
-/*
  * Registro de estado de la lista de +0xF8 del objeto (el estado vigente). El enlace va en +0 y
  * el identificador en +4 (tambien codigo de accion que recibe func_8001D414). s06 es la animacion
  * del estado (se compara con trabajo.i14), s08 sus parametros (el bit 0x8000 impide reiniciarla),

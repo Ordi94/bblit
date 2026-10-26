@@ -493,9 +493,9 @@ void func_8002BA80(Objeto* o)
             }
             h->w26 = o->w26;
             if (t->flags & 0x1000) {
-                ZONA_PONER_CERO_3W(&t->objeto->i134);
-                ZONA_PONER_CERO_WH(&t->objeto->w12C);
-                ZONA_RELLENAR_1000(t->objeto->escala_rel);
+                GEO_CERO_W(&t->objeto->i134);
+                GEO_CERO_WH(&t->objeto->w12C);
+                GEO_RELLENAR_1000(t->objeto->escala_rel);
                 t->objeto->coord.super = &D_80069698->coord;
                 t->objeto->w26 = D_80069698->w26;
                 t->objeto->p70 = D_80069698;
@@ -1482,7 +1482,7 @@ sin_empuje:
         }
     }
 reposo:
-    ZONA_PONER_CERO_3W(&t->dx);
+    GEO_CERO_W(&t->dx);
     func_8001CBB8(o, (Movimiento*)&t->dx, (ResultadoBaldosa*)t, area);
     o->param.trans.vy += t->dy;
     func_8001CF50(o);
@@ -1592,7 +1592,7 @@ void func_8002EAA4(Objeto* o)
         t->vy = 0;
         t->vx = 0;
         t->vz = 0x1000;
-        ZONA_PONER_CERO_WH(&t->ax);
+        GEO_CERO_WH(&t->ax);
         c = &o->coord;
         t->cursor = c;
         if (t->cursor != 0) {
@@ -1608,14 +1608,14 @@ void func_8002EAA4(Objeto* o)
                 GEO_CARGAR_W(&t->cursor->coord.t[0]);
                 GEO_SUMAR_W(&t->px);
                 GEO_CARGAR_W(&t->px);
-                ZONA_GUARDAR_H_T1(&t->ax);
+                GEO_GUARDAR_H_T1_UNICA(&t->ax);
                 t->cursor = t->cursor->super;
             } while (t->cursor != 0);
         }
         o->param.giro.u.y = ratan2(t->vx, t->vz);
         o->param.giro.u.z = 0;
         o->param.giro.u.x = 0;
-        ZONA_CARGAR_H(&t->ax);
+        GEO_CARGAR_H(&t->ax);
         GEO_GUARDAR_W_T1(&o->param.trans);
     }
     if (o->p70 == 0) {
@@ -1664,9 +1664,9 @@ void func_8002F018(Objeto* o)
         }
         o->w3C |= 0x40;
         a = o->u78.ayudas;
-        ZONA_PONER_CERO_WH(&a->param.rotate);
-        ZONA_PONER_CERO_3W(&o->u78.ayudas->param.scale);
-        ZONA_PONER_CERO_3W(&o->u78.ayudas->param.trans);
+        GEO_CERO_WH(&a->param.rotate);
+        GEO_CERO_W(&o->u78.ayudas->param.scale);
+        GEO_CERO_W(&o->u78.ayudas->param.trans);
         o->w22 = 0;
         if (!(o->flags0C & 0x20020)) {
             p = D_80069698;
@@ -1850,9 +1850,9 @@ void func_8002F6B4(Objeto* o)
         t->cy = -y;
     }
     GEO_COMPLEMENTO(&o->param.giro.rotate);
-    ZONA_GUARDAR_H_T1(t);
-    ZONA_CARGAR_H(&t->cx);
-    ZONA_SUMAR_H(t);
+    GEO_GUARDAR_H_T1_UNICA(t);
+    GEO_CARGAR_H(&t->cx);
+    GEO_SUMAR_H(t);
     GEO_IDENTIDAD(&t->m);
     RotMatrixX(t->gx, &t->m);
     RotMatrixY((s16)t->gy, &t->m);
