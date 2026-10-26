@@ -165,8 +165,9 @@ ObjetoVolumen* func_80016ED0(ObjetoVolumen* a, u32 mascara, ConsultaCaja* o)
  * Variante con el punto a probar y una segunda mascara de exclusion como argumentos y el area
  * de trabajo como quinto argumento (en pila); el radio se ensancha 4 unidades.
  *
- * NON_MATCHING: puntuacion 408 (el archivo se compila con g = 8; 603 con -G0). Misma diferencia
- * que func_80016C0C con &o->m.
+ * NON_MATCHING: puntuacion 103 con la configuracion versionada (g = 8 del archivo). Solo difiere el
+ * reparto de registros: el original guarda el area de trabajo y el radio ampliado en s2 y s3 y
+ * el C los intercambia. Las instrucciones, su orden y las macros vectoriales coinciden.
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 103 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Variantes probadas: 8. */
