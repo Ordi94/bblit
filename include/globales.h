@@ -936,6 +936,20 @@ extern s16* D_800695FC;
 extern Objeto* D_8006D9B8[];
 
 /*
+ * Variables que comparten el cargador, el audio y el motor; el ancho lo fija el ensamblador:
+ * D_800694F6 (sb 0x8003FD4C) y D_80069620 (sb 0x8003E868, lbu 0x8003E9EC) son bytes; D_80069620 es el
+ * estado de presentacion de cuadros, que el retorno de llamada de VSync modifica mientras el bucle
+ * principal lo lee. D_8006951C y D_800695E4 son palabras (sw 0x80042C80 y lw 0x80042C94; lw 0x8003FABC
+ * y sw 0x80042EA4); D_8006966C es un puntero que el cargador escribe con sw (0x80042058) y avanza con
+ * lw 0x80044324.
+ */
+extern u8 D_800694F6;
+extern u8 D_80069620;
+extern u32 D_8006951C;
+extern u32 D_800695E4;
+extern u8* D_8006966C;
+
+/*
  * Llamadas al sistema del kernel (syscall 0 con a0 = 1 y 2, 16 bytes escritos a mano cada una en
  * 0x8004E66C y 0x8004E67C). LIBAPI.H las declara, pero incluye kernel.h, que necesita cabeceras
  * del sistema que el proyecto no trae; se repiten aqui con la misma firma.

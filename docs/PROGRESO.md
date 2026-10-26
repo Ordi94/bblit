@@ -13,7 +13,7 @@ construcción normal) y de la tabla de símbolos.
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
 Bytes de código del juego descompilados: 59692 de 201416 (29.64 %).
-Funciones marcadas `NON_MATCHING`: 64.
+Funciones marcadas `NON_MATCHING`: 62.
 Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
@@ -23,7 +23,7 @@ Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 110
 | arranque_y_bucle_principal | 1 | 9 | 1 | 0 | 1364 | 3404 |
 | audio_xa_y_spu | 1 | 34 | 3 | 0 | 6316 | 8220 |
 | camara_y_bucle_logico | 1 | 7 | 4 | 0 | 2348 | 14576 |
-| cargador_de_niveles_y_cd | 2 | 6 | 5 | 0 | 804 | 14264 |
+| cargador_de_niveles_y_cd | 2 | 6 | 3 | 2 | 804 | 14264 |
 | colision_y_terreno | 1 | 2 | 2 | 0 | 680 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
 | gestion_y_dibujo_de_objetos | 4 | 25 | 8 | 9 | 8400 | 18624 |
@@ -44,7 +44,7 @@ Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 110
 | `src/audio_xa_y_spu.c` | 34 | 3 | 0 | 6316 | 8220 |
 | `src/camara_y_bucle_logico.c` | 7 | 4 | 0 | 2348 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 6 | 3 | 0 | 804 | 13592 |
-| `src/cargador_de_niveles_y_cd_2.c` | 0 | 2 | 0 | 0 | 672 |
+| `src/cargador_de_niveles_y_cd_2.c` | 0 | 0 | 2 | 0 | 672 |
 | `src/colision_y_terreno.c` | 2 | 2 | 0 | 680 | 12480 |
 | `src/entrada_de_mando.c` | 5 | 1 | 0 | 1260 | 2784 |
 | `src/gestion_y_dibujo_de_objetos.c` | 12 | 3 | 0 | 1696 | 3812 |
@@ -123,8 +123,6 @@ Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 110
 - `func_80040F78`: Pendiente: puntuacion 370 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones que el original, con el desplazamiento del indice como primer sumando de la direccion de cada seccion; solo difiere el reparto de registros de la ultima etapa (el original deja el puntero del bucle en a2 y la constante 4 en a3, el indice en t0 en todas las etapas, y copia el puntero de la segunda etapa de una direccion calculada en v1). Recorre la cabecera de secciones de un contenedor (n entradas de tipo, tamano y tamano alineado) y calcula la posicion, en bytes desde el inicio del archivo, de 
 - `func_80041298`: Pendiente: puntuacion 1115 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y mismo flujo que el original; difiere el reparto de registros (el original deja el puntero de la lista A en v1 y el de busqueda en a1, aqui salen a2 y v1) y un nop de retardo que el original rellena. Variantes probadas: 14 (indice o puntero en el bucle de cinco, tipo del contador, temporales para el reparto, orden de declaracion). Convierte, en un contenedor ya cargado, las referencias entre registros por identificador en desplazamientos dentro de cada lista, para que el codigo que las usa no 
 - `func_800415A0`: Pendiente: puntuacion 285 con la configuracion versionada (g = 8 del archivo). La estructura (bloques, bucles, llamadas, las cinco tablas de saltos) sigue el ensamblador completo y el marco de pila mide lo mismo (0x210 bytes); difieren el reparto de registros (s1 y s8 intercambiados desde el prologo), el orden de las cargas de la cabecera de secciones y el codigo de cada etiqueta, que GCC emite en otro orden. Las posiciones de pila de la tabla de tamanos y de los campos escalares tambien difieren (el original deja la imagen y el rectangulo en las direcciones mas bajas del marco, despues la tab
-- `func_80044664`: Pendiente: puntuacion 13855 con la configuracion versionada (g = 0 del archivo). El original no usa marco de pila, guarda ra y s0..fp en el area de contexto que recibe en a2 y mantiene el flujo de entrada en a0, t4 y t0 durante todo el cuerpo, forma que GCC no emite. La descripcion en C sigue el algoritmo instruccion por instruccion. Variantes probadas: 1 (estado en estructura); las otras formas dependen de variables de registro, que no pueden ser los argumentos a0 a a2. Descomprime el flujo `entrada` en `salida`. El primer byte fija k (bits 0-2) y la escala de las longitudes largas (bits 3-4)
-- `func_80044854`: Pendiente: puntuacion 5145 con la configuracion versionada (g = 0 del archivo). El original guarda ra en el contexto del llamador (4(s1)), devuelve el flujo en a0, t4 y t0 y avanza s0, que son registros del llamador que GCC no deja usar sin marco; no es expresable como funcion C con parametros. Variantes probadas: 2 (estado en estructura, 5145; variables de registro globales en a0, t4, t0, s0 y s1, 3955). Espera un sector completo en el anillo de lectura y deja el flujo apuntando a su primer byte. Sondea el contador de bytes disponibles (D_80069480) hasta 0xFFFF veces; si la unidad informa un 
 - `func_80044940`: Pendiente: puntuacion 1460 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: neg y add con trampa de desbordamiento, registros fijos t0 a t2 y el temporal at en slt; GCC emite negu, addu y otro reparto de registros.
 - `func_800449B0`: Pendiente: puntuacion 960 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: registros fijos t0 y t1, nop explicito tras cada lw y el simbolo de la funcion vecina cargado con lui + lw; GCC reparte v0, v1 y a0.
 - `func_80044EA8`: Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). Misma estructura que el original; difiere la planificacion: el original carga la direccion de D_8006D018 (lui) justo despues de leer la lista de nodos y calcula la mascara andi 0xFFFF y el desplazamiento del indice despues de guardar la tabla, mientras que GCC los adelanta.
@@ -145,6 +143,8 @@ Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 110
 - `func_80037C00` (248 bytes)
 - `func_80037CF8` (68 bytes)
 - `func_8003BDD0` (580 bytes)
+- `func_80044664` (496 bytes)
+- `func_80044854` (176 bytes)
 - `func_800449E0` (36 bytes)
 
 ## `INCLUDE_ASM` sin comentario en archivos con funciones en C

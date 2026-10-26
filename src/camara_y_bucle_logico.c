@@ -125,12 +125,11 @@ typedef struct ParSonda {
 
 extern ParSonda D_8005E728[];
 /*
- * Vistas por direccion absoluta de campos de D_8006D928: D_8006D9B8[0] es EstadoCamara.i90 (+0x90) y
- * D_8006D990[3] es c68..c70 (+0x68). El original usa ambos accesos (sw %lo(D_8006D9B8) en 0x80033574 frente a
+ * Vistas por direccion absoluta de campos de D_8006D928: D_8006D9B8[0] (declarada en globales.h) es
+ * EstadoCamara.i90 (+0x90) y D_8006D990[3] es c68..c70 (+0x68). El original usa ambos accesos (sw %lo(D_8006D9B8) en 0x80033574 frente a
  * sw zero 0x90($a1) en 0x80033600; lui/addiu %lo(D_8006D990) en 0x80034138 frente a sw 0x68($s0) en 0x80033DDC),
  * asi que no se unifican.
  */
-extern Objeto* D_8006D9B8[3];
 extern s32 D_8006D990[3];
 extern u32 D_80010008;
 
