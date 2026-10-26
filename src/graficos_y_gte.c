@@ -1,5 +1,36 @@
 #include "geometria.h"
 #include "globales.h"
+#include "gte.h"
+
+
+/*
+ * Area de trabajo de las consultas de segmento (func_80017478 y func_80018664): matriz inversa del
+ * objeto candidato, matriz del objeto que se mueve, vectores locales, cuatro vertices mas un centro
+ * de la caja barrida y los angulos de las esquinas del candidato vistas desde su centro.
+ */
+typedef struct ConsultaSondeo {
+    MATRIX m;
+    MATRIX m2;
+    SVECTOR rot;
+    SVECTOR res;
+    SVECTOR dif;
+    VECTOR destino;
+    SVECTOR sal;
+    u8 pad70[0x78 - 0x70];
+    u32 caja;
+    s32 ang;
+    s32 radio;
+    s16 s84;
+    s16 s86;
+    ObjetoVolumen* actual;
+    ObjetoVolumen* cadena;
+    ObjetoVolumen* a;
+    ObjetoVolumen* b;
+    SVECTOR p[5];
+    SVECTOR* pt;
+    u32 dist2;
+    s16 angs[4];
+} ConsultaSondeo;
 
 /* Cabeza de la lista de nodos de plano (enlace en +0). */
 extern NodoVolumen* D_80069580;
@@ -167,7 +198,135 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_800171E4);
 
 INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
 
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 2420 con la configuracion versionada (g = 8 del archivo). Reparto de registros del prologo (el original usa a0 como
+ * copia de la posicion de a) y cadena de comparaciones de las esquinas que el original comparte entre regiones. Variantes probadas: 3.
+ *
+ * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
+ * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
+ */
+s32 func_80018664(ObjetoVolumen* a, ObjetoVolumen* b, ConsultaSondeo* w)
+{
+    s32 i;
+    SVECTOR* dif;
+    MATRIX* m2;
+    /* El marco del original reserva 8 bytes de locales que ninguna sentencia toca. */
+    SVECTOR reserva;
+
+
+    GEO_CARGAR_WH(&b->min);
+    GEO_OR_WH(&b->max);
+    GEO_GUARDAR_1W_T1(&w->caja);
+    if (w->caja == 0) {
+        return 0;
+    }
+    GEO_CARGAR_W(&a->pos);
+    GEO_RESTAR_W(&b->pos);
+    dif = &w->dif;
+    GEO_GUARDAR_H_T4(dif);
+    w->a = a;
+    w->b = b;
+    GEO_CARGAR_W(&w->a->pos);
+    GEO_RESTAR_W(&w->b->pos);
+    GEO_GUARDAR_H_T4(dif);
+    w->radio = w->b->radio;
+    GEO_COMPLEMENTO(&w->b->rot);
+    GEO_GUARDAR_H_T1(&w->rot);
+    RotMatrixZYX(&w->rot, &w->m);
+    ApplyMatrixSV(&w->m, dif, &w->res);
+    w->p[0].vx = (w->b->max.vx >> 1) + (w->b->min.vx >> 1);
+    w->p[0].vz = (w->b->max.vz >> 1) + (w->b->min.vz >> 1);
+    w->ang = ratan2(w->res.vx - w->p[0].vx, w->res.vz - w->p[0].vz);
+    if (w->ang >= 0) {
+        w->angs[0] = ratan2(w->b->max.vx + w->radio - w->p[0].vx, w->b->max.vz + w->radio - w->p[0].vz);
+        w->angs[1] = ratan2(w->b->max.vx + w->radio - w->p[0].vx, w->b->min.vz - w->radio - w->p[0].vz);
+    } else {
+        w->angs[2] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->max.vz + w->radio - w->p[0].vz);
+        w->angs[3] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->min.vz - w->radio - w->p[0].vz);
+    }
+    w->p[0].vx = w->p[2].vx = w->a->min.vx - w->a->radio;
+    w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->radio;
+    w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->radio;
+    w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->radio;
+    w->p[4].vx = w->p[4].vy = w->p[4].vz = 0;
+    w->p[0].vy = w->p[1].vy = w->p[2].vy = w->p[3].vy = 0;
+    m2 = &w->m2;
+    RotMatrix(&w->a->rot, m2);
+    gte_SetRotMatrix(m2);
+    w->pt = w->p;
+    for (i = 0; i < 4; i++) {
+        gte_ldv0(w->pt);
+        gte_rtv0();
+        gte_stsv(w->pt);
+        w->pt++;
+    }
+    gte_SetRotMatrix(&w->m);
+    w->pt = w->p;
+    for (i = 0; i < 5; i++, w->pt++) {
+        w->pt->vx += w->dif.vx;
+        w->pt->vz += w->dif.vz;
+        gte_ldv0(w->pt);
+        gte_rtv0();
+        gte_stsv(w->pt);
+        if (w->ang >= 0) {
+            if (w->ang < w->angs[0]) {
+                if (w->b->max.vz + w->radio < w->pt->vz) {
+                    continue;
+                }
+                if (w->b->max.vx + w->radio < w->pt->vx) {
+                    continue;
+                }
+            } else if (w->ang < w->angs[1]) {
+                if (w->b->max.vx + w->radio < w->pt->vx) {
+                    continue;
+                }
+                if (w->b->max.vz + w->radio < w->pt->vz) {
+                    continue;
+                }
+                if (w->pt->vz < w->b->min.vz - w->radio) {
+                    continue;
+                }
+            } else {
+                if (w->pt->vz < w->b->min.vz - w->radio) {
+                    continue;
+                }
+                if (w->b->max.vx + w->radio < w->pt->vx) {
+                    continue;
+                }
+            }
+        } else if (w->angs[2] < w->ang) {
+            if (w->b->max.vz + w->radio < w->pt->vz) {
+                continue;
+            }
+            if (w->pt->vx < w->b->min.vx - w->radio) {
+                continue;
+            }
+        } else if (w->angs[3] < w->ang) {
+            if (w->pt->vx < w->b->min.vx - w->radio) {
+                continue;
+            }
+            if (w->b->max.vz + w->radio < w->pt->vz) {
+                continue;
+            }
+            if (w->pt->vz < w->b->min.vz - w->radio) {
+                continue;
+            }
+        } else {
+            if (w->pt->vz < w->b->min.vz - w->radio) {
+                continue;
+            }
+            if (w->pt->vx < w->b->min.vx - w->radio) {
+                continue;
+            }
+        }
+        return 1;
+    }
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80018664);
+#endif
 
 /*
  * Clasifica el punto del jugador respecto de la caja del objeto a en el eje z de su sistema
