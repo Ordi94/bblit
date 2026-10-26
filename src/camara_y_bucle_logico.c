@@ -1,6 +1,7 @@
 #include "common.h"
 #include "globales.h"
 #include "geometria.h"
+#include "gte.h"
 
 /*
  * Vista del estado de la camara con los campos que EstadoCamara (globales.h) todavia no declara:
@@ -44,6 +45,32 @@ typedef struct Vec3 {
 #define OBJ_U32(o, off) (*(u32*)((u8*)(o) + (off)))
 #define OBJ_LISTA(o) ((void*)((u8*)(o) + 0x78))
 
+/* Area de trabajo de la sonda de camara (func_800330AC): direccion, matriz, resultado y consulta de colision. */
+typedef struct SondaCamara {
+    SVECTOR rot;
+    SVECTOR dir;
+    MATRIX m;
+    VECTOR res;
+    VECTOR pos;
+    u8 pad50[2];
+    u16 f52;
+    u8 pad54[6];
+    s16 s5A;
+    u8 pad5C[0x68 - 0x5C];
+    s32 i68;
+} SondaCamara;
+
+/* Angulos de un objeto: la sonda solo lee y reescribe el giro en Y (+2). */
+typedef struct Giro {
+    u16 x;
+    u16 y;
+    u16 z;
+} Giro;
+
+extern u16 D_8005E6F8[];
+extern s16 D_80069D90[];
+extern void func_80019474(void* pos, void* res, void* f50, void* i68);
+extern long SquareRoot0(long x);
 extern s32 rand(void);
 extern void ClearList(void* lista);
 extern Objeto* RemoveListNode(Objeto* lista, Objeto* nodo);
@@ -163,7 +190,79 @@ void func_80032A24(void)
 
 INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80032B2C);
 
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_800330AC);
+/*
+ * Busca un giro en Y para el que la sonda de colision avance libre: prueba hasta 25 giros de la
+ * tabla D_8005E6F8 y guarda la distancia de cada uno en D_80069D90. Devuelve 0 si el giro
+ * inicial sirve, 1 si sirve otro y 2 si ninguno (entonces elige el de mayor distancia).
+ */
+s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
+{
+    SondaCamara* w;
+    s32 i;
+    s32 k;
+    s32 s1;
+    s32 x;
+    s32 z;
+    s32* q;
+    /* El marco del original reserva 16 bytes de locales que ninguna sentencia toca. */
+    s32 reserva[4];
+
+    w = arg;
+    q = &w->i68;
+    w->pos.vx = a1->x;
+    w->pos.vy = a1->y;
+    w->pos.vz = a1->z;
+    i = 0;
+    w->dir.vx = (u16)a2->x;
+    w->dir.vy = (u16)a2->y;
+    w->dir.vz = (u16)a2->z;
+    w->rot.vx = 0;
+    w->rot.vz = 0;
+    do {
+        w->rot.vy = a0->y + D_8005E6F8[i];
+        RotMatrix(&w->rot, &w->m);
+        k = i;
+        gte_SetRotMatrix(&w->m);
+        gte_ldv0(&w->dir);
+        gte_rtv0();
+        gte_stlvnl(&w->res);
+        w->pos.vy = a1->y;
+        *q = 0;
+        w->s5A = -1;
+        s1 = w->res.vx + w->res.vz;
+        func_80019474(&w->pos, &w->res, &w->pad50, q);
+        x = w->res.vx;
+        z = w->res.vz;
+        s1 = s1 - (x + z);
+        D_80069D90[i] = SquareRoot0(x * x + z * z);
+        if ((w->f52 & 4) == 0 && s1 == 0) {
+            break;
+        }
+        i++;
+    } while (k < 0x18);
+    GEO_CARGAR_W(&w->res);
+    GEO_GUARDAR_W_T1(a2);
+    a0->y = D_8005E6F8[i];
+    if (i < 0x18) {
+        if (i != 0) {
+            return 1;
+        }
+    } else {
+        i = 0;
+        s1 = 0;
+        do {
+            w->dir.vx = 0;
+            if (s1 < D_80069D90[i]) {
+                s1 = D_80069D90[i];
+                w->dir.vx = i;
+            }
+            i++;
+        } while (i < 0x18);
+        a0->y = D_8005E6F8[w->dir.vx];
+        return 2;
+    }
+    return 0;
+}
 
 INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80033358);
 
