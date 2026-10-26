@@ -61,11 +61,9 @@ extern s32 func_80014FAC(void);
  * Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18
  * caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
  *
- * Pendiente (895): el original accede a la cuenta de entradas por $gp (0x38($gp)) y el archivo se
- * compila con -G0; ademas el original calcula la base del nombre una sola vez antes del bucle.
- *
- * NON_MATCHING: usa $gp; pendiente de soporte -G8. Puntuacion 895 con la configuracion
- * versionada (-G0) y 895 con g = 8.
+ * Pendiente: puntuacion 895 con la configuracion versionada (g = 8 del archivo). El original direcciona la tabla de
+ * cuentas con `addiu v0,gp,0x38`, que maspsx solo emite desde ASPSX 2.80 (hoy 2.79), y calcula la base del nombre
+ * una sola vez antes del bucle. Variantes probadas: 8 (bucles por indice y por puntero).
  */
 s32 func_80014AC4(s16 ranura)
 {
@@ -311,7 +309,7 @@ s32 func_8001515C(void)
  * D_8006D060 y su suma de control al buffer D_80069520 + 0x2000 y escribe 0x400 bytes con open/write
  * (hasta cinco intentos), comprobando despues la lectura.
  *
- * Pendiente (17610): no se reprodujo la disposicion de los bloques locales de la pila ni las copias
+ * Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). Variantes probadas: 1. No se reprodujo la disposicion de los bloques locales de la pila ni las copias
  * de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento.
  */
 typedef struct BloqueTarjeta {
@@ -404,11 +402,9 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800156F4);
 #ifdef NON_MATCHING
 /*
  * Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
- * Pendiente (120): usa $gp; con -G0 el compilador coloca el almacen en el hueco de retardo de la
- * llamada y el original lo coloca antes de cargar el modo; pendiente de soporte -G8.
- *
- * NON_MATCHING: usa $gp; pendiente de soporte -G8. Puntuacion 120 con la configuracion
- * versionada (-G0) y 120 con g = 8.
+ * Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). El original calcula las dos
+ * direcciones de $gp con `addiu a1,gp,0x40` y `addiu a2,gp,0x48` (ASPSX 2.80) y coloca el almacen del byte antes de
+ * cargar el modo; con 2.79 la forma no se emite. Variantes probadas: 3.
  */
 void func_80015E94(void)
 {
