@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 313 | 41320 |
+| Código del juego | 450 | 201416 | 310 | 39612 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 41320 de 201416 (20.51 %).
-Funciones marcadas `NON_MATCHING`: 57.
-Coherencia con el ensamblador: correcta (789 `glabel` en `asm/` + 313 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 39612 de 201416 (19.67 %).
+Funciones marcadas `NON_MATCHING`: 60.
+Coherencia con el ensamblador: correcta (792 `glabel` en `asm/` + 310 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -27,7 +27,7 @@ Coherencia con el ensamblador: correcta (789 `glabel` en `asm/` + 313 en C = 110
 | colision_y_terreno | 1 | 2 | 1 | 1 | 680 | 12480 |
 | entrada_de_mando | 1 | 4 | 2 | 0 | 764 | 2784 |
 | gestion_y_dibujo_de_objetos | 4 | 23 | 7 | 12 | 5772 | 18624 |
-| graficos_y_gte | 3 | 16 | 3 | 0 | 5024 | 11812 |
+| graficos_y_gte | 3 | 13 | 6 | 0 | 3316 | 11812 |
 | inicializacion_de_motor | 1 | 6 | 8 | 2 | 1028 | 5276 |
 | interprete_de_eventos | 1 | 192 | 3 | 2 | 10868 | 11900 |
 | logica_de_niveles | 3 | 0 | 1 | 20 | 0 | 60648 |
@@ -51,7 +51,7 @@ Coherencia con el ensamblador: correcta (789 `glabel` en `asm/` + 313 en C = 110
 | `src/gestion_y_dibujo_de_objetos_2.c` | 7 | 4 | 9 | 3184 | 10604 |
 | `src/gestion_y_dibujo_de_objetos_3.c` | 1 | 0 | 0 | 564 | 564 |
 | `src/gestion_y_dibujo_de_objetos_4.c` | 3 | 1 | 2 | 328 | 3644 |
-| `src/graficos_y_gte.c` | 6 | 3 | 0 | 3284 | 10072 |
+| `src/graficos_y_gte.c` | 3 | 6 | 0 | 1576 | 10072 |
 | `src/graficos_y_gte_10.c` | 6 | 0 | 0 | 1076 | 1076 |
 | `src/graficos_y_gte_12.c` | 4 | 0 | 0 | 664 | 664 |
 | `src/inicializacion_de_motor.c` | 6 | 8 | 2 | 1028 | 5276 |
@@ -71,9 +71,12 @@ Coherencia con el ensamblador: correcta (789 `glabel` en `asm/` + 313 en C = 110
 - `func_80014AC4`: Pendiente: puntuacion 895 con la configuracion versionada (g = 8 del archivo). El original direcciona la tabla de cuentas con `addiu v0,gp,0x38`, que maspsx solo emite desde ASPSX 2.80 (hoy 2.79), y calcula la base del nombre una sola vez antes del bucle. Variantes probadas: 8 (bucles por indice y por puntero). Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18 caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
 - `func_800151FC`: Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). Variantes probadas: 1. No se reprodujo la disposicion de los bloques locales de la pila ni las copias de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento. Da formato al archivo de partida: arma en la pila un bloque de 0x200 bytes con la cabecera de la tarjeta ("SC", bandera de icono, un bloque, titulo, paleta e imagenes), lo copia con la cabecera de D_8006D060 y su suma de control al buffer D_80069520 + 0x2000 y escribe 0x400 bytes con open/write (hasta cinco intentos), comprobando
 - `func_80015E94`: Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). El original calcula las dos direcciones de $gp con `addiu a1,gp,0x40` y `addiu a2,gp,0x48` (ASPSX 2.80) y coloca el almacen del byte antes de cargar el modo; con 2.79 la forma no se emite. Variantes probadas: 3. Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
-- `func_800171E4`: Pendiente: puntuacion 103 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Variantes probadas: 8.
+- `func_80016C0C`: Pendiente: puntuacion 60 con la configuracion versionada (g = 8 del archivo). Solo difiere la posicion de un addiu (el calculo de &o->m se emite una instruccion antes que en el original). Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. Variantes probadas: 6.
+- `func_800171E4`: Pendiente: puntuacion 298 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. Variantes probadas: 12.
 - `func_80017478`: Pendiente: puntuacion 10573 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las comparaciones de las regiones no se han ajustado al original. Variantes probadas: 1. Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la pared que cruzan y, si ninguno la cruza, usa la arista mas cercana. Devuelve el candidato elegido (el de menor distancia, con prefe
 - `func_80018664`: Pendiente: puntuacion 2420 con la configuracion versionada (g = 8 del archivo). Reparto de registros del prologo (el original usa a0 como copia de la posicion de a) y cadena de comparaciones de las esquinas que el original comparte entre regiones. Variantes probadas: 3. Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
+- `func_80018D98`: Pendiente: puntuacion 98 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. Variantes probadas: 6.
+- `func_80018F80`: Pendiente: puntuacion 98 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. Variantes probadas: 6.
 - `func_8001C134`: Pendiente: puntuacion 1078 con la configuracion versionada (g = 0, no carga globales). El compilador asigna s0/s1 al reves (el original guarda la estructura de trabajo en s0 y el resultado en s1) y falta un `move t2,a3`. Variantes probadas: 9 (copias de z, orden de sentencias, barreras, copias locales de los punteros de trabajo). Consulta la baldosa bajo el punto pos: busca la zona del punto (con el grupo recordado en res), lee el valor de la baldosa de 320 unidades y la subcelda de 40 unidades, y rellena res con la clase de terreno. 0x7E y 0x7F de la subcelda son transiciones de zona; cualqui
 - `func_8001C424`: Pendiente: puntuacion 1135 con la configuracion versionada (-G0). Misma estructura de ramas y mismos almacenes; en el bloque de despegue el original conserva dos copias de las banderas (move v1,v0) y ordena los almacenes de h108 y w10E de otro modo. Variantes probadas: 14.
 - `func_8001C6CC`: Pendiente: puntuacion 498 con la configuracion versionada (-G0). Misma secuencia de llamadas y almacenes; el original reparte s1 al objeto y s0 al area de trabajo y ordena un almacen de d->z antes de la lectura de w->h18, el C los asigna al reves. Variantes probadas: 7.

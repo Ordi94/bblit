@@ -79,6 +79,10 @@ typedef struct TrabajoBaldosa {
 } TrabajoBaldosa;
 
 /*
+ * Este archivo contiene solo macros que reproducen ensamblador del original, instruccion por
+ * instruccion; ninguna se usa para forzar el reparto de registros ni la planificacion del
+ * compilador (no hay sentencias vacias ni sentencias partidas con ese fin).
+ *
  * Macros de vector del motor. El original las escribio como sentencias de ensamblador en linea
  * con los temporales fijos $8..$14 (t0..t6): el ejecutable las delata porque cada vector entra
  * por "move $t0, puntero" y se resta con sub/add (con captura de desbordamiento), que GCC no
@@ -136,29 +140,14 @@ typedef struct TrabajoBaldosa {
         __asm__ volatile ("sh $10, 2($8)\n\tsh $11, 4($8)" : : : "memory"); \
     } while (0)
 /*
- * Barrera vacia: no emite codigo. Cada sentencia asm cuenta como una instruccion para el
- * asignador de registros; las barreras alargan la vida de los punteros de trabajo.
- */
-#define GEO_BARRERA() __asm__ volatile ("" : : : "memory")
-/*
- * La matriz identidad se parte en una sentencia por almacen (mas dos barreras). El binario es el
- * mismo que con una sola sentencia; la particion es un recurso de asignacion de registros, no
- * un dato del original: con una sentencia, func_80018D98 y func_80018F80 asignan s2 y s3 al reves.
+ * Matriz identidad de 3x3 medias palabras mas traslacion nula, en una sola sentencia: el original la
+ * escribe con "move t0, puntero ; ori t1, zero, 0x1000" y diez almacenes seguidos (sw/sh sobre t0).
  */
 #define GEO_IDENTIDAD(p) \
-    do { \
-        __asm__ volatile ("move $8, %0\n\tori $9, $0, 0x1000" : : "r"(p) : "$8", "$9", "memory"); \
-        __asm__ volatile ("sw $9, 0($8)" : : : "memory"); \
-        __asm__ volatile ("sw $0, 4($8)" : : : "memory"); \
-        __asm__ volatile ("sw $9, 8($8)" : : : "memory"); \
-        __asm__ volatile ("sw $0, 12($8)" : : : "memory"); \
-        __asm__ volatile ("sh $9, 16($8)" : : : "memory"); \
-        __asm__ volatile ("sw $0, 20($8)" : : : "memory"); \
-        __asm__ volatile ("sw $0, 24($8)" : : : "memory"); \
-        __asm__ volatile ("sw $0, 28($8)" : : : "memory"); \
-        GEO_BARRERA(); \
-        GEO_BARRERA(); \
-    } while (0)
+    __asm__ volatile ("move $8, %0\n\tori $9, $0, 0x1000\n\tsw $9, 0($8)\n\tsw $0, 4($8)\n\t" \
+                      "sw $9, 8($8)\n\tsw $0, 12($8)\n\tsh $9, 16($8)\n\tsw $0, 20($8)\n\t" \
+                      "sw $0, 24($8)\n\tsw $0, 28($8)" \
+                      : : "r"(p) : "$8", "$9", "memory")
 #define GEO_CARGAR_WH(p) \
     __asm__ volatile ("move $8, %0\n\tlw $9, 0($8)\n\tlh $10, 4($8)" \
                       : : "r"(p) : "$8", "$9", "$10", "memory")
