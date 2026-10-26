@@ -1,6 +1,8 @@
 #include "common.h"
 #include "geometria.h"
 #include "objetos.h"
+#include "menus.h"
+#include "motor.h"
 
 
 /*
@@ -310,4 +312,161 @@ s32 func_8003A3D0(Objeto* o, SalidaSonda* sal, Sonda* s)
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_8003A3D0);
 #endif
 
+/*
+ * Contexto de dibujo de las sombras en el scratchpad (0x1F800000). El estado del dibujador
+ * (EstadoDibujo) empieza en +8, igual que el que func_8003C014 recibe; la transformacion de la
+ * sombra (param) ocupa +0x68 y es tambien la estructura de salida de func_8003A3D0 (su posicion en
+ * +0x80) y el descriptor de func_80039D44. En +0x90 esta el ayudante con el que se dibuja la
+ * sombra (0xB8 bytes) y a continuacion, en +0x148, el area de trabajo de las consultas.
+ */
+typedef struct ContextoSombras {
+    s16 id;
+    u16 total;
+    u16 indice;
+    u16 escala;
+    EstadoDibujo estado;
+    u32* ot0;
+    u32* ot1;
+    u32* ot2;
+    u8 pad28[8];
+    Objeto* obj;
+    Objeto* hallado;
+    GsBOXF caja;
+    u8 pad48[0x68 - 0x48];
+    ParametrosObjeto param;
+    Ayuda modelo;
+} ContextoSombras;
+
+/*
+ * Vista del ayudante del contexto a partir de +0x0C, como la que usan los recorridos de ayudantes
+ * de gestion_y_dibujo_de_objetos_2.c: el original accede a pcoord, a w14 y al sistema de coordenadas
+ * con una base desplazada.
+ */
+typedef struct CuerpoSombra {
+    u32 w0;
+    GsCOORDINATE2* pcoord;
+    s32 w14;
+    s32 clave;
+    GsCOORDINATE2 coord;
+} CuerpoSombra;
+
+extern s16 D_80069532;
+extern s8 D_80069600;
+extern void func_8003753C(void* m);
+extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
+
+#ifdef NON_MATCHING
+/* Pendiente: puntuacion 1965 con la configuracion versionada (g = 8 del archivo). Difiere el reparto de registros del prologo, el orden de un almacen y la forma del salto de cierre del bucle de nodos (el original conserva el salto condicional hacia atras). */
+void func_8003A5C8(Objeto** objetos)
+{
+    ContextoSombras* c;
+    Sonda* area;
+    MATRIX* mat;
+    Ayuda* mod;
+    CuerpoSombra* q;
+    Objeto* t;
+    NodoAnimacion* n;
+    Objeto* s;
+    Objeto* p;
+
+    c = (ContextoSombras*)0x1F800000;
+    area = (Sonda*)0x1F800148;
+    c->estado.w0C = D_8006969C;
+    c->estado.w0E = D_800694B0;
+    c->ot0 = (u32*)D_8006AE20[D_8006967C].org;
+    c->ot1 = (u32*)D_8006AE60[D_8006967C].org;
+    c->ot2 = (u32*)D_8006AEA0[D_8006967C].org;
+    c->estado.b1 = 1;
+    c->estado.b2 = 1;
+    c->estado.w8 = D_80069668;
+    if (D_80069532 != 0) {
+        c->modelo.pcoord = (GsCOORDINATE2*)0x1F8000AC;
+        c->modelo.cab.siguiente = 0;
+        c->modelo.flags8 = 2;
+        c->modelo.visible = 1;
+        c->modelo.wC = 0x40000000;
+        c->modelo.coord.super = 0;
+        c->modelo.coord.sub = 0;
+        c->indice = 0;
+        c->total = D_80069532;
+        if (D_80069532 > 0) {
+            mat = (MATRIX*)0x1F800048;
+            mod = (Ayuda*)0x1F800090;
+            do {
+                c->obj = objetos[(s16)c->indice];
+                c->indice++;
+                if (func_8003A3D0(c->obj, (SalidaSonda*)&c->param, area) != 0) {
+                    if ((s16)c->obj->w26 == (s16)D_80069698->w26) {
+                        if (c->obj->flags14 & 0x10) {
+                            c->estado.s6 = (s32)(c->obj->w28 << 16) >> 17;
+                        } else {
+                            c->estado.s6 = c->obj->w28;
+                        }
+                    } else {
+                        c->estado.s6 = 0;
+                    }
+                    t = D_80069504;
+                    c->estado.s6 -= 0x80;
+                    c->id = c->obj->w3A;
+                    while (t != 0) {
+                        if (t->w1C == c->id) {
+                            n = t->lista;
+                            for (; n != 0; n = n->sig) {
+                                    if (n->def->tipo == 6) {
+                                        q = (CuerpoSombra*)((u8*)c + 0x9C);
+                                        q->coord.param = PARAMETROS_SDK(c);
+                                        q->w14 = (s32)n->def->tabla;
+                                        p = c->obj->p70;
+                                        if (p != 0 && ((p->flags08 & 8) || (p->flags0C & 0x2000))) {
+                                            c->escala = (c->obj->param.trans.vy - c->param.trans.vy) * 4 + 0x1000;
+                                            if ((s16)c->escala < 0x800) {
+                                                c->escala = 0x800;
+                                            }
+                                            c->param.escala.vy = 0x1000;
+                                            c->param.escala.vx = (s16)c->escala;
+                                            c->param.escala.vz = (s16)c->escala;
+                                            GEO_CARGAR_WH(&c->obj->p70->param.giro);
+                                            GEO_GUARDAR_WH(&c->param.giro);
+                                            s = c->obj->p70;
+                                        } else {
+                                            s = func_80039D44(c->obj, &c->param, 8, (SondaSombra*)area);
+                                            c->hallado = s;
+                                        }
+                                        if (s != 0) {
+                                            c->estado.s6 += s->w28;
+                                        }
+                                        func_8001CFCC(&q->coord);
+                                        func_8003760C(q->pcoord, mat, area);
+                                        c->estado.b0 = 0;
+                                        func_8003753C(mat);
+                                        func_8003BDD0(mod);
+                                        func_8003C014(c->obj, (ModeloDibujo*)mod, &c->estado, (VistaDibujo*)area);
+                                        break;
+                                    }
+                            }
+                            break;
+                        }
+                        t = t->siguiente;
+                    }
+                }
+            } while ((c->indice << 16) < (c->total << 16));
+        }
+    }
+    if (D_80069600 == 0) {
+        c->caja.x = -0x100;
+        c->caja.y = -0x78;
+        c->caja.w = 0x200;
+        c->caja.attribute = 0;
+        c->caja.h = 0xF0;
+        c->caja.b = 0;
+        c->caja.g = 0;
+        c->caja.r = 0;
+        GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AEA0[D_8006967C], 0x1FF);
+    }
+    if (D_80076188 > D_8006958C) {
+        D_80076188 = D_80069680;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_8003A5C8);
+#endif
