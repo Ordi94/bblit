@@ -47,6 +47,10 @@ extern s16 D_8005E8E0[][2];
 extern s16 D_8005E8F8[][2];
 extern s16 D_8005E910[][2];
 
+extern void func_800379A0(MATRIX* m, s32* v, s32* salida);
+extern void func_80037B08(MATRIX* a, MATRIX* b);
+extern void func_80037C00(MATRIX* a, MATRIX* b);
+
 /* Matriz inicial de un ayudante: cinco palabras de datos que el codigo del archivo copia. */
 extern s32 func_800375F8[];
 
@@ -240,9 +244,113 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037580);
  */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375C4);
 
+/*
+ * Dato, no funcion: cinco palabras (20 bytes, 0x800375F8..0x8003760B) incrustadas en .text entre func_800375C4 y
+ * func_8003760C. Son la matriz inicial de un ayudante (nueve valores de 16 bits y relleno) que func_800375C4 copia. El
+ * desensamblador las marca como instrucciones invalidas. Se conserva como bloque de palabras con INCLUDE_ASM: pasarlo a un
+ * dato de C obligaria a mover su contenido a otra seccion y a cambiar el reparto del script de particion, y el bloque no
+ * tiene tamano en config/symbols.txt. Se declara extern s32 func_800375F8[] mas arriba solo para direccionar el origen.
+ */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375F8);
 
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 17468 con la configuracion versionada (g = 8 del archivo). El C describe el flujo del original pero
+ * este no es codigo de GCC: carga las constantes con ori (0x64, 4, 1) en lugar de addiu, guarda s4, s6 y s5 fuera del orden
+ * de numeracion, copia cada matriz con ocho cargas seguidas de ocho almacenes y abre un marco de pila propio (addiu sp de
+ * 0x18 y 0x20) alrededor de cada par de llamadas a las rutinas manuscritas para alojar un vector de salida; GCC reserva
+ * todo el marco en el prologo. Por esas cuatro marcas se trata como rutina escrita a mano en el original.
+ */
+/*
+ * Calcula la matriz mundo de un nodo de jerarquia GsCOORDINATE2 y la deja en 'salida'. 'aux' es el area de trabajo del
+ * recorrido: la matriz acumulada en +0 (32 bytes) y, desde +0x20, una pila de hasta 100 punteros a nodo. Sube por super
+ * apilando nodos hasta uno cuya matriz mundo (workm) este al dia (flg igual al contador de cuadro D_80069534) o hasta la
+ * raiz; despues baja componiendo la matriz de cada nodo (rotacion por func_80037B08 y traslacion por func_800379A0) y
+ * deja workm y flg actualizados. Devuelve 0 si la rotacion resultante es nula (las cinco primeras palabras valen cero) y 1
+ * si no, tras transformarla con la matriz de vista D_80076130.
+ */
+s32 func_8003760C(GsCOORDINATE2* c, MATRIX* salida, void* aux)
+{
+    GsCOORDINATE2** pila;
+    GsCOORDINATE2** p;
+    GsCOORDINATE2* nodo;
+    GsCOORDINATE2* base;
+    MATRIX* acum;
+    VECTOR tmp;
+    s32 gen;
+    s32 n;
+    s32 ultimo;
+    s32 i;
+
+    acum = (MATRIX*)aux;
+    pila = (GsCOORDINATE2**)((u8*)aux + 0x20);
+    n = 0;
+    ultimo = 100;
+    gen = D_80069534;
+    nodo = c;
+    for (;;) {
+        pila[n] = nodo;
+        if (nodo->super != 0) {
+            if (nodo->flg == gen) {
+                *acum = nodo->workm;
+                break;
+            }
+            if (nodo->flg == 0) {
+                ultimo = n;
+            }
+            n++;
+            nodo = nodo->super;
+            continue;
+        }
+        if (nodo->flg == gen || nodo->flg == 0) {
+            nodo->flg = ((s32*)nodo)[1];
+            nodo->workm = nodo->coord;
+            *acum = nodo->coord;
+            break;
+        }
+        if (ultimo == 100) {
+            n = 0;
+            base = pila[0];
+        } else {
+            n = ultimo + 1;
+            base = pila[n];
+        }
+        *acum = base->workm;
+        break;
+    }
+    if (n > 0) {
+        p = &pila[n - 1];
+        do {
+            nodo = *p;
+            func_800379A0(acum, (s32*)((u8*)nodo + 0x18), (s32*)&tmp);
+            func_80037B08(acum, (MATRIX*)((u8*)nodo + 4));
+            acum->t[0] += tmp.vx;
+            acum->t[1] += tmp.vy;
+            acum->t[2] += tmp.vz;
+            n--;
+            (*p)->workm = *acum;
+            (*p)->flg = gen;
+            p--;
+        } while (n > 0);
+    }
+    *salida = *acum;
+    for (i = 0; i < 5; i++) {
+        if (((s32*)salida)[i] != 0) {
+            goto no_nula;
+        }
+    }
+    return 0;
+no_nula:
+    func_800379A0(&D_80076130, salida->t, (s32*)&tmp);
+    func_80037C00(&D_80076130, salida);
+    salida->t[0] = tmp.vx + D_80076130.t[0];
+    salida->t[1] = tmp.vy + D_80076130.t[1];
+    salida->t[2] = tmp.vz + D_80076130.t[2];
+    return 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_8003760C);
+#endif
 
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800379A0);
 
