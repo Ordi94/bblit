@@ -928,8 +928,6 @@ void func_8003D988(Vertice12* dest, Vertice12* a, Vertice12* b)
     dest->b = (a->b + b->b) >> 1;
 }
 
-/* Pendiente: puntuacion 65 con la configuracion versionada (g = 8 del archivo). Solo difiere el orden de dos instrucciones en la rama de textura con color por vertice: el original carga el cursor de primitivas antes del almacen del codigo (el li del codigo queda en el hueco del salto) y el compilador deja el almacen primero. Variantes probadas: 8 (orden de las dos sentencias, variable intermedia para el codigo, condicion de la rama). */
-#ifdef NON_MATCHING
 void func_8003DA4C(Vertice12* a, Vertice12* b, Vertice12* c, VistaDibujo* ctx)
 {
     PoligonoG3* g3;
@@ -979,8 +977,8 @@ void func_8003DA4C(Vertice12* a, Vertice12* b, Vertice12* c, VistaDibujo* ctx)
             }
         }
     } else {
-        a->codigo = 0x34;
         gt3 = (PoligonoGT3*)ctx->cursor;
+        a->codigo = 0x34;
         gt3->c0 = *(u32*)&a->r;
         gt3->c1 = *(u32*)&b->r;
         gt3->c2 = *(u32*)&c->r;
@@ -1003,9 +1001,6 @@ void func_8003DA4C(Vertice12* a, Vertice12* b, Vertice12* c, VistaDibujo* ctx)
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003DA4C);
-#endif
 
 s32 func_8003DD70(VerticeCaja* v, LimitesPantalla* lim)
 {
