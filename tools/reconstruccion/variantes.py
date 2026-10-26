@@ -19,6 +19,7 @@ from tools.reconstruccion.diff import (
     preparar_objetivo,
     puntuacion_desde_json,
     puntuar_objeto,
+    salida_truncada,
     validar_funcion,
 )
 from tools.reconstruccion.enlace_diff import TIMEOUT_ENLACE_S, bytes_coinciden, funcion_en_objeto
@@ -47,17 +48,20 @@ class ResultadoVariante:
         error: Primera linea del error si la variante no compilo o no se pudo comparar.
         bytes_iguales: Si los bytes enlazados de la funcion coinciden con los del original aunque la
             puntuacion no sea cero (``None`` si no se pudo comparar).
+        truncado: Si ``asm-differ`` corto el desensamblado de la variante en el limite de lineas:
+            la puntuacion es parcial y la variante no puede darse por coincidente.
     """
 
     nombre: str
     puntuacion: int | None
     error: str | None = None
     bytes_iguales: bool | None = None
+    truncado: bool = False
 
     @property
     def coincide(self) -> bool:
-        """Verdadero si la puntuacion es cero o los bytes enlazados son iguales."""
-        return self.puntuacion == 0 or self.bytes_iguales is True
+        """Verdadero si la medicion es completa y la puntuacion es cero o los bytes son iguales."""
+        return not self.truncado and (self.puntuacion == 0 or self.bytes_iguales is True)
 
 
 def listar_variantes(carpeta: Path) -> list[Path]:
@@ -103,7 +107,8 @@ def ordenar_resultados(resultados: list[ResultadoVariante]) -> list[ResultadoVar
     Ordena las variantes de menor a mayor puntuacion, dejando al final las que fallaron.
 
     Contexto:
-        Primero va la mejor formulacion; a igual puntuacion, por nombre.
+        Primero va la mejor formulacion; las de medicion truncada (puntuacion parcial) van tras las
+        completas; a igual puntuacion, por nombre.
 
     Args:
         resultados (list[ResultadoVariante]): Resultados sin ordenar.
@@ -115,7 +120,8 @@ def ordenar_resultados(resultados: list[ResultadoVariante]) -> list[ResultadoVar
         ordenados = ordenar_resultados(resultados)
     """
     return sorted(
-        resultados, key=lambda r: (r.puntuacion is None, not r.coincide, r.puntuacion or 0, r.nombre)
+        resultados,
+        key=lambda r: (r.puntuacion is None, r.truncado, not r.coincide, r.puntuacion or 0, r.nombre),
     )
 
 
@@ -141,6 +147,8 @@ def formatear_tabla(resultados: list[ResultadoVariante]) -> str:
         valor = str(r.puntuacion) if r.puntuacion is not None else f"error: {r.error}"
         if r.bytes_iguales and r.puntuacion:
             valor += " (bytes iguales)"
+        if r.truncado:
+            valor += " (medicion truncada)"
         filas.append(f"{r.nombre:<{ancho}}  {valor}")
     return "\n".join(filas)
 
@@ -201,7 +209,9 @@ def probar_variantes(
         Implementa ``probar``. El objetivo se ensambla una vez; cada variante se compila con las
         mismas opciones que el archivo ``src/`` donde vive la funcion (incluido su ``-G``). Un
         fallo de una variante (no compila, no define la funcion) se registra en su fila, sin
-        puntuacion, y no detiene a las demas.
+        puntuacion, y no detiene a las demas. Si ``asm-differ`` corta el desensamblado de una
+        variante en el limite de lineas, su puntuacion es parcial: se marca ``truncado`` y no se
+        da por coincidente, porque un prefijo igual al objetivo puntuaria cero sin serlo.
 
     Args:
         raiz (Path): Raiz del repositorio.
@@ -231,7 +241,7 @@ def probar_variantes(
     archivo, _ = fuentes_c.ubicar_funcion(estados, funcion)
     valor_g = leer_valores_g(raiz).get(Path(archivo).stem, 0)
     direccion = leer_direcciones_de_funciones(raiz).get(funcion)
-    objetivo, retornos = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
+    objetivo, retornos, max_lineas = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
     resultados: list[ResultadoVariante] = []
     for variante in variantes:
         objeto = f"{CARPETA_DIFF}/probar.{variante.name}.o"
@@ -257,9 +267,11 @@ def probar_variantes(
                 objetivo=objetivo,
                 funcion=funcion,
                 retornos=retornos,
+                max_lineas=max_lineas,
                 formato="json",
             )
             puntuacion = puntuacion_desde_json(salida)
+            truncado = salida_truncada(salida, max_lineas)
             iguales = None
             if puntuacion != 0 and direccion is not None:
                 iguales = bytes_coinciden(
@@ -271,7 +283,7 @@ def probar_variantes(
                     candidato=objeto,
                     objetivo=objetivo,
                 )
-            resultados.append(ResultadoVariante(variante.name, puntuacion, None, iguales))
+            resultados.append(ResultadoVariante(variante.name, puntuacion, None, iguales, truncado))
         except (ProcesoError, ValueError, OSError) as error:
             resultados.append(ResultadoVariante(variante.name, None, _primera_linea(str(error))))
     return ordenar_resultados(resultados)

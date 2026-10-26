@@ -35,11 +35,27 @@ from tools.reconstruccion.infraestructura import (
     listar_fuentes_c,
 )
 
-TIMEOUT_DIFF_S = 120
+TIMEOUT_DIFF_S = 300
+LIMITE_MINIMO_LINEAS = 1024
+MARGEN_LINEAS = 64
+"""Instrucciones que se suman a las del original para fijar el limite de ``asm-differ``.
+
+Cubre el caso en que el candidato en C es mas largo que el original. Medido con ``build/diff`` en
+93 funciones del juego (30 ya cerradas en C, repartidas por tamano de 2 a 198 instrucciones, y las
+63 ``NON_MATCHING``, de 12 a 4971): en las cerradas el candidato nunca supera al original (rango
+-3 a 0); en las ``NON_MATCHING`` la diferencia va de -405 a +41 instrucciones (mediana -1,
+percentil 90 en +4, percentil 99 y maximo en +41; las tres mayores: +41, +24 y +14). El menor
+margen que lo cubre todo es 41; se redondea hacia arriba a la potencia de 2 siguiente, 64, que deja
+23 instrucciones de holgura. Si un intento temprano aun asi lo supera, ``diff`` lo detecta y lo
+avisa (ver ``salida_truncada``) en lugar de informar una puntuacion parcial sin decirlo.
+"""
 CARPETA_ASM_COINCIDENTE = "asm/matchings"
 CARPETA_ASM_PENDIENTE = "asm/nonmatchings"
 _PATRON_FUNCION = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 _PATRON_RETORNO = re.compile(r"^\s*/\*.*?\*/\s+jr\s+\$ra\b", re.MULTILINE)
+_PATRON_INSTRUCCION = re.compile(r"^\s*/\*.*?\*/\s+[A-Za-z.]", re.MULTILINE)
+_MNEMONICOS_NO_INSTRUCCION = frozenset({"<label>", "<data-ref>", "ERROR"})
+_MNEMONICO_CORTE = "..."
 
 
 @dataclass(frozen=True)
@@ -53,10 +69,12 @@ class ResultadoDiff:
             coinciden con los del original; en otro caso la de ``asm-differ``.
         texto: Diferencias instruccion por instruccion, listas para imprimir.
         bytes_iguales: Si los bytes de la funcion enlazada coinciden con los del original (``None``
-            si no se pudo comparar o la puntuacion ya era cero).
+            si no se pudo comparar o la puntuacion ya era cero sin truncado).
         referencias_numericas: Filas cuya unica diferencia es una referencia escrita como numero.
         puntuacion_asm: Puntuacion que dio ``asm-differ`` antes de comparar los bytes (``None`` si
             no se registro).
+        truncado: Si ``asm-differ`` corto el desensamblado del candidato en el limite de lineas, de
+            modo que la puntuacion y el texto son parciales.
     """
 
     funcion: str
@@ -66,11 +84,17 @@ class ResultadoDiff:
     bytes_iguales: bool | None = None
     referencias_numericas: int = 0
     puntuacion_asm: int | None = None
+    truncado: bool = False
 
     @property
     def coincide(self) -> bool:
-        """Verdadero si la puntuacion es cero o si los bytes enlazados son iguales."""
-        return self.puntuacion == 0 or self.bytes_iguales is True
+        """
+        Verdadero si los bytes enlazados son iguales o si la medicion es completa y puntua cero.
+
+        Una medicion truncada solo cubre una ventana del candidato: su puntuacion cero no basta, y
+        solo el enlace byte a byte de la funcion completa puede darla por coincidente.
+        """
+        return self.bytes_iguales is True or (not self.truncado and self.puntuacion == 0)
 
 
 class FuncionSinCError(ValueError):
@@ -122,6 +146,52 @@ def contar_retornos(asm: str) -> int:
     return len(_PATRON_RETORNO.findall(asm))
 
 
+def contar_instrucciones(asm: str) -> int:
+    """
+    Cuenta las instrucciones de un ensamblador generado por el particionador.
+
+    Contexto:
+        ``asm-differ`` descarta lo que pasa de ``--max-lines`` instrucciones y puntua solo lo que
+        queda; ``diff`` usa este numero para que el limite cubra la funcion entera.
+
+    Args:
+        asm (str): Contenido del ``.s`` de la funcion objetivo.
+
+    Returns:
+        int: Numero de instrucciones, incluidas las de los huecos de salto (0 si no hay ninguna).
+
+    Ejemplo:
+        total = contar_instrucciones(texto)
+    """
+    return len(_PATRON_INSTRUCCION.findall(asm))
+
+
+def limite_lineas(instrucciones: int) -> int:
+    """
+    Calcula el ``--max-lines`` de ``asm-differ`` para una funcion de ``instrucciones`` instrucciones.
+
+    Contexto:
+        El candidato puede ser algo mas largo que el original; el margen evita que el corte caiga
+        justo en su ultima instruccion. Nunca baja del limite por omision de la herramienta, para
+        que las funciones pequenas se comporten como antes.
+
+    Args:
+        instrucciones (int): Instrucciones del original (no negativo).
+
+    Returns:
+        int: Instrucciones mas el margen, y como minimo ``LIMITE_MINIMO_LINEAS``.
+
+    Raises:
+        ValueError: Si ``instrucciones`` es negativo.
+
+    Ejemplo:
+        limite = limite_lineas(4971)
+    """
+    if instrucciones < 0:
+        raise ValueError("el numero de instrucciones no puede ser negativo")
+    return max(LIMITE_MINIMO_LINEAS, instrucciones + MARGEN_LINEAS)
+
+
 def envoltorio_objetivo(ruta_asm: str) -> str:
     """
     Genera el ensamblador que envuelve el ``.s`` de una funcion para producir un objeto.
@@ -171,7 +241,15 @@ def texto_diff_settings(objdump: Path) -> str:
 
 
 def comando_diff(
-    python: str, script: Path, candidato: str, objetivo: str, funcion: str, *, retornos: int, formato: str
+    python: str,
+    script: Path,
+    candidato: str,
+    objetivo: str,
+    funcion: str,
+    *,
+    retornos: int,
+    formato: str,
+    max_lineas: int = LIMITE_MINIMO_LINEAS,
 ) -> list[str]:
     """
     Devuelve los argumentos que ejecutan ``asm-differ`` sobre dos objetos.
@@ -188,18 +266,22 @@ def comando_diff(
         funcion (str): Funcion a comparar.
         retornos (int): Retornos tras los cuales se corta el desensamblado (al menos 1).
         formato (str): ``json`` o ``plain``.
+        max_lineas (int, opcional): Instrucciones que ``asm-differ`` compara como maximo; por
+            omision, el limite de la herramienta.
 
     Returns:
         list[str]: Lista de argumentos.
 
     Raises:
-        ValueError: Si el formato no es ``json`` ni ``plain``.
+        ValueError: Si el formato no es ``json`` ni ``plain``, o ``max_lineas`` no es positivo.
 
     Ejemplo:
         comando = comando_diff("python", Path("diff.py"), "c.o", "t.o", "func_X", retornos=1, formato="json")
     """
     if formato not in ("json", "plain"):
         raise ValueError("el formato debe ser 'json' o 'plain'")
+    if max_lineas < 1:
+        raise ValueError("el limite de lineas debe ser positivo")
     return [
         python,
         str(script),
@@ -209,6 +291,7 @@ def comando_diff(
         "--ref-file",
         objetivo,
         "--no-pager",
+        f"--max-lines={max_lineas}",
         f"--format={formato}",
         *(["-s"] * max(1, retornos)),
         funcion,
@@ -242,6 +325,41 @@ def puntuacion_desde_json(salida: str) -> int:
     if isinstance(puntos, bool) or not isinstance(puntos, int) or puntos < 0:
         raise ValueError("asm-differ no informo una puntuacion valida")
     return puntos
+
+
+def salida_truncada(salida: str, max_lineas: int) -> bool:
+    """
+    Indica si ``asm-differ`` corto el desensamblado del candidato en el limite de lineas.
+
+    Contexto:
+        Si el candidato supera ``--max-lines`` instrucciones, ``asm-differ`` descarta el resto y
+        puntua solo lo que queda, sin avisar. ``comparar_funcion`` usa esta comprobacion para
+        anotar el resultado en lugar de dar una cifra parcial por completa. El corte se reconoce
+        por la fila ``...`` que ``asm-differ`` anade, o porque el candidato ya llega al limite.
+
+    Args:
+        salida (str): Texto JSON producido con ``--format=json`` (ya validado por
+            ``puntuacion_desde_json``).
+        max_lineas (int): Limite con que se lanzo ``asm-differ``.
+
+    Returns:
+        bool: Verdadero si hubo corte; falso si no, o si las filas no tienen la forma esperada.
+
+    Ejemplo:
+        truncado = salida_truncada(salida_json, 1024)
+    """
+    filas = json.loads(salida).get("rows")
+    if not isinstance(filas, list):
+        return False
+    instrucciones = 0
+    for fila in filas:
+        columna = fila.get("current") if isinstance(fila, dict) else None
+        mnemonico = columna.get("mnemonic") if isinstance(columna, dict) else None
+        if mnemonico == _MNEMONICO_CORTE:
+            return True
+        if isinstance(mnemonico, str) and mnemonico not in _MNEMONICOS_NO_INSTRUCCION:
+            instrucciones += 1
+    return instrucciones >= max_lineas
 
 
 def elegir_asm_objetivo(archivo: str, funcion: str, existe: Callable[[str], bool]) -> str:
@@ -316,7 +434,7 @@ def comparar_funcion(
         raise FuncionSinCError(
             f"'{funcion}' sigue en INCLUDE_ASM: escriba su C (bajo NON_MATCHING si aun no coincide)"
         )
-    objetivo, retornos = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
+    objetivo, retornos, max_lineas = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
     candidato = f"{CARPETA_DIFF}/{Path(archivo).name}.o"
     compilar_fuente(
         raiz,
@@ -339,15 +457,20 @@ def comparar_funcion(
             objetivo=objetivo,
             funcion=funcion,
             retornos=retornos,
+            max_lineas=max_lineas,
             formato=formato,
         )
 
-    puntuacion = puntuacion_desde_json(lanzar("json"))
+    salida_json = lanzar("json")
+    puntuacion = puntuacion_desde_json(salida_json)
+    truncado = salida_truncada(salida_json, max_lineas)
     texto = lanzar("plain").rstrip("\n")
     iguales = None
     referencias = 0
     direccion = leer_direcciones_de_funciones(raiz).get(funcion)
-    if puntuacion != 0 and direccion is not None:
+    # Una medicion truncada solo cubre una ventana del candidato: aunque puntue 0, el enlace byte a
+    # byte de la funcion completa es la unica prueba definitiva de que la cola tambien coincide.
+    if (puntuacion != 0 or truncado) and direccion is not None:
         iguales = bytes_coinciden(
             raiz,
             herramientas,
@@ -359,12 +482,57 @@ def comparar_funcion(
         )
         referencias = contar_referencias_numericas(texto) if iguales else 0
     informada = 0 if iguales else puntuacion
-    return ResultadoDiff(funcion, archivo, informada, texto, iguales, referencias, puntuacion)
+    guardar_resultado(raiz, funcion, informada, max_lineas, truncado=truncado)
+    return ResultadoDiff(funcion, archivo, informada, texto, iguales, referencias, puntuacion, truncado)
+
+
+def ruta_resultado(funcion: str) -> str:
+    """
+    Da la ruta, relativa a la raiz, donde ``diff`` deja la ultima puntuacion de una funcion.
+
+    Contexto:
+        La comparten ``diff`` (que la escribe) y el aviso de ``progreso`` (que la lee).
+
+    Args:
+        funcion (str): Nombre de la funcion (ya validado).
+
+    Returns:
+        str: Ruta dentro de ``build/diff/``.
+
+    Ejemplo:
+        ruta = ruta_resultado("func_80036204")
+    """
+    return f"{CARPETA_DIFF}/{funcion}.resultado.json"
+
+
+def guardar_resultado(
+    raiz: Path, funcion: str, puntuacion: int, max_lineas: int, *, truncado: bool = False
+) -> None:
+    """
+    Registra la puntuacion informada por ``diff`` para que otras ordenes la contrasten sin repetirlo.
+
+    Contexto:
+        ``progreso`` compara con ella la cifra del comentario ``Pendiente`` de cada ``NON_MATCHING``.
+        Vive en ``build/diff/``, que ``clean`` elimina, y no se versiona.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        funcion (str): Funcion comparada.
+        puntuacion (int): Puntuacion informada.
+        max_lineas (int): Limite de lineas con que se midio.
+        truncado (bool, opcional): Si la medicion es parcial porque ``asm-differ`` corto el
+            candidato en el limite.
+
+    Ejemplo:
+        guardar_resultado(Path("."), "func_80036204", 0, 1024)
+    """
+    datos = {"funcion": funcion, "puntuacion": puntuacion, "maxLineas": max_lineas, "truncado": truncado}
+    (raiz / ruta_resultado(funcion)).write_text(json.dumps(datos) + "\n", encoding="utf-8", newline="\n")
 
 
 def preparar_objetivo(
     raiz: Path, funcion: str, archivo: str, herramientas: HerramientasCompilacion, ejecutar: Ejecutor
-) -> tuple[str, int]:
+) -> tuple[str, int, int]:
     """
     Ensambla el asm original de una funcion como objetivo de comparacion.
 
@@ -380,17 +548,20 @@ def preparar_objetivo(
         ejecutar (Ejecutor): Ejecutor de procesos.
 
     Returns:
-        tuple[str, int]: Ruta relativa del objeto objetivo y numero de ``jr $ra`` del original.
+        tuple[str, int, int]: Ruta relativa del objeto objetivo, numero de ``jr $ra`` del original y
+        limite de lineas de ``asm-differ`` que cubre la funcion entera.
 
     Raises:
         FileNotFoundError: Si falta el asm original (hay que ejecutar ``split``).
         ProcesoError: Si el ensamblador falla.
 
     Ejemplo:
-        objetivo, retornos = preparar_objetivo(Path("."), "func_80036204", "src/a.c", herramientas, ejecutar)
+        objetivo, retornos, lineas = preparar_objetivo(Path("."), "f", "src/a.c", herramientas, ejecutar)
     """
     ruta_asm = elegir_asm_objetivo(archivo, funcion, lambda ruta: (raiz / ruta).is_file())
-    retornos = contar_retornos((raiz / ruta_asm).read_text(encoding="utf-8"))
+    asm = (raiz / ruta_asm).read_text(encoding="utf-8")
+    retornos = contar_retornos(asm)
+    max_lineas = limite_lineas(contar_instrucciones(asm))
     (raiz / CARPETA_DIFF).mkdir(parents=True, exist_ok=True)
     envoltorio = f"{CARPETA_DIFF}/{funcion}.objetivo.s"
     objetivo = f"{CARPETA_DIFF}/{funcion}.objetivo.o"
@@ -400,7 +571,7 @@ def preparar_objetivo(
         raiz,
         TIMEOUT_DIFF_S,
     )
-    return objetivo, retornos
+    return objetivo, retornos, max_lineas
 
 
 def puntuar_objeto(
@@ -413,6 +584,7 @@ def puntuar_objeto(
     objetivo: str,
     funcion: str,
     retornos: int,
+    max_lineas: int,
     formato: str,
 ) -> str:
     """
@@ -431,6 +603,7 @@ def puntuar_objeto(
         objetivo (str): Objeto objetivo (idem).
         funcion (str): Funcion a comparar.
         retornos (int): Retornos tras los cuales se corta el desensamblado.
+        max_lineas (int): Instrucciones que ``asm-differ`` compara como maximo (ver ``limite_lineas``).
         formato (str): ``json`` o ``plain``.
 
     Returns:
@@ -442,7 +615,7 @@ def puntuar_objeto(
 
     Ejemplo:
         salida = puntuar_objeto(Path("."), herramientas, script, ejecutar, candidato=c, objetivo=t,
-            funcion="f", retornos=1, formato="json")
+            funcion="f", retornos=1, max_lineas=1024, formato="json")
     """
     carpeta = raiz / CARPETA_DIFF
     (carpeta / "diff_settings.py").write_text(
@@ -456,5 +629,6 @@ def puntuar_objeto(
         funcion,
         retornos=retornos,
         formato=formato,
+        max_lineas=max_lineas,
     )
     return ejecutar(comando, carpeta, TIMEOUT_DIFF_S)
