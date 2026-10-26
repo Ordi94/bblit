@@ -100,21 +100,44 @@ def _ejecutar_progreso(raiz: Path) -> int:
     return 0
 
 
+def resumir_comparacion(resultado: diff.ResultadoDiff) -> list[str]:
+    """
+    Da las lineas con que ``diff`` cierra su salida, despues de las columnas de ``asm-differ``.
+
+    Contexto:
+        Una funcion cuyos bytes enlazados coinciden con el original puntua 0, igual que una que
+        coincide instruccion por instruccion; las referencias que el C escribe en forma numerica y
+        el original en forma simbolica no son una diferencia. Se conservan como nota aparte, antes
+        de la linea de veredicto, para quien quiera normalizarlas.
+
+    Args:
+        resultado (diff.ResultadoDiff): Resultado de comparar una funcion.
+
+    Returns:
+        list[str]: Nota de referencias numericas (solo si los bytes coinciden) y linea de veredicto.
+
+    Ejemplo:
+        for linea in resumir_comparacion(resultado):
+            print(linea)
+    """
+    veredicto = f"{resultado.funcion} ({resultado.archivo}): puntuacion {resultado.puntuacion}"
+    if not resultado.bytes_iguales:
+        return [veredicto]
+    nota = (
+        f"nota: {resultado.referencias_numericas} referencias en forma numerica "
+        f"(asm-differ puntua {resultado.puntuacion_asm})"
+    )
+    return [nota, f"{veredicto} (coincide en bytes)"]
+
+
 def _ejecutar_comparacion(raiz: Path, rutas: Rutas, funcion: str, python: str, ejecutar: Ejecutor) -> int:
-    """Implementa ``diff``; devuelve 0 solo si la puntuacion es cero."""
+    """Implementa ``diff``; devuelve 0 solo si la puntuacion informada es cero."""
     lock = leer_lock(raiz / RUTA_LOCK)
     herramientas = compilacion.resolver_herramientas_compilacion(lock, rutas.toolchain, python)
     script = resolver_herramienta(lock, rutas.toolchain, "asm-differ", "diff")
     resultado = diff.comparar_funcion(raiz, funcion, herramientas, script, ejecutar)
     print(resultado.texto)
-    resumen = f"{resultado.funcion} ({resultado.archivo}): puntuacion {resultado.puntuacion}"
-    if resultado.bytes_iguales and resultado.puntuacion != 0:
-        resumen = (
-            f"{resultado.funcion} ({resultado.archivo}): coincide en bytes; "
-            f"{resultado.referencias_numericas} referencias en forma numerica "
-            f"(puntuacion {resultado.puntuacion})"
-        )
-    print(resumen)
+    print("\n".join(resumir_comparacion(resultado)))
     return 0 if resultado.coincide else 1
 
 

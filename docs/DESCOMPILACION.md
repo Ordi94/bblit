@@ -418,13 +418,21 @@ un C que accede a `0x800694A8` por `$gp` y el original pueden diferir solo en la
 numérico frente a símbolo) aunque tras enlazar produzcan los mismos bytes. Cuando la puntuación no es 0,
 `diff` y `probar` enlazan el candidato y el original por separado en la dirección de la función
 (`config/symbols.txt`), resolviendo los símbolos contra `build/SLUS_008.elf` de la última construcción
-correcta, y comparan los bytes. Si coinciden, `diff` termina con código 0 y avisa:
+correcta, y comparan los bytes. Si coinciden, la función **puntúa 0**, igual que una que coincide instrucción
+por instrucción: la forma de una referencia (símbolo o número) no es una diferencia. `diff` termina con código 0 y
+deja el número de referencias en forma numérica y la puntuación que dio `asm-differ` como nota aparte, antes
+del veredicto:
 
 ```text
-func_800400C0 (src/graficos_y_gte_10.c): coincide en bytes; 14 referencias en forma numerica (puntuacion 70)
+nota: 14 referencias en forma numerica (asm-differ puntua 70)
+func_800400C0 (src/entrada_de_mando.c): puntuacion 0 (coincide en bytes)
 ```
 
-y `probar` marca la variante con `(bytes iguales)`. Sin `build/SLUS_008.elf` o sin la dirección en la
+Una función con coincidencia exacta imprime solo `func_8003E034 (src/audio_xa_y_spu.c): puntuacion 0`. La nota es
+información para quien quiera escribir esas referencias en forma simbólica; no cambia el estado de la función. Una
+función «cerrada» (definida en C en la construcción normal) cuenta igual en `progreso` y en `docs/PROGRESO.md` haya
+coincidido de una forma o de otra: esos documentos no distinguen entre las dos. `probar` marca la variante con
+`(bytes iguales)` y la ordena como coincidente. Sin `build/SLUS_008.elf` o sin la dirección en la
 tabla de símbolos no se hace la comparación por bytes y vale la puntuación de `asm-differ`.
 
 ## Banco de variantes (`probar`)
@@ -522,7 +530,7 @@ una decisión del desarrollador, así el progreso solo cuenta lo que alguien esc
 | `split` | Copia el original a `expected/`, ejecuta el particionador y genera `asm/`, `src/` (los `.c` que falten) y el script del enlazador. No toca `asm/overlay/`. |
 | `build` | Para cada objeto del script del enlazador: ensambla el `.s` o compila el `.c` (preprocesador, `CC1PSX.EXE -O2 -G<g>`, `maspsx --aspsx-version=2.80`, `as`). Enlaza en el orden del script y escribe `build/SLUS_008.38`. Antes de empezar elimina la salida de la construcción anterior (ver «Invalidación de la salida»). |
 | `verify` | Compara el SHA-256 con el del original. Imprime `OK` o `FAIL` con el desplazamiento de la primera diferencia; si no existe el ejecutable reconstruido imprime `FAIL ... no existe` y devuelve 1. |
-| `diff <función>` | Compila el `.c` que contiene la función con `NON_MATCHING`, ensambla el original y ejecuta `asm-differ`. Código 0 si la puntuación es 0 o si los bytes enlazados coinciden (con aviso del número de referencias en forma numérica). Una función que sigue solo en `INCLUDE_ASM` se rechaza: compararla consigo misma daría 0 sin significar nada. |
+| `diff <función>` | Compila el `.c` que contiene la función con `NON_MATCHING`, ensambla el original y ejecuta `asm-differ`. Código 0 si la puntuación informada es 0: instrucciones iguales o bytes enlazados iguales (en ese caso informa 0 y añade una nota con las referencias en forma numérica y la puntuación de `asm-differ`). Una función que sigue solo en `INCLUDE_ASM` se rechaza: compararla consigo misma daría 0 sin significar nada. |
 | `probar <función> <carpeta>` | Compila y puntúa cada variante `.c` de la carpeta contra el original y muestra la tabla ordenada. Código 0 si la mejor coincide (puntuación 0 o bytes iguales). |
 | `progreso` | Escribe `docs/PROGRESO.md` y `build/progreso.json`. No necesita el disco ni el toolchain. |
 | `clean` | Elimina `asm/`, `expected/` y los artefactos propios de `build/`. Conserva `asm/overlay/`, `expected/overlay/`, `build/overlay/`, `build/emulador/` y `build/bblit_prueba.*`, que son de otras herramientas. |

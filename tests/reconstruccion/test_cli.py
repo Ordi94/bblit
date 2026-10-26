@@ -375,7 +375,8 @@ def test_diff_que_coincide_en_bytes_sale_con_cero_y_avisa_de_las_referencias_num
     capsys.readouterr()
     assert ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=EjecutorEnlace(70)) == 0
     assert capsys.readouterr().out.endswith(
-        "func_80036204 (src/code_a.c): coincide en bytes; 2 referencias en forma numerica (puntuacion 70)\n"
+        "nota: 2 referencias en forma numerica (asm-differ puntua 70)\n"
+        "func_80036204 (src/code_a.c): puntuacion 0 (coincide en bytes)\n"
     )
     assert (
         ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=EjecutorEnlace(70, difiere=True)) == 1
