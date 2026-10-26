@@ -1,25 +1,68 @@
 #include "common.h"
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_80026118);
+/*
+ * Doce manejadores de 32 bytes que la tabla de punteros de 0x8005E35C alcanza por
+ * indireccion. Cada uno delega en func_80026298 con una mascara de bits distinta y deja
+ * intacto el primer argumento (la entidad), que el despachador ya dejo en $a0.
+ */
+extern void func_80026298(void* entidad, s32 mascara);
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_80026138);
+void func_80026118(void* entidad)
+{
+    func_80026298(entidad, 0x2);
+}
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_80026158);
+void func_80026138(void* entidad)
+{
+    func_80026298(entidad, 0x1);
+}
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_80026178);
+void func_80026158(void* entidad)
+{
+    func_80026298(entidad, 0x80);
+}
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_80026198);
+void func_80026178(void* entidad)
+{
+    func_80026298(entidad, 0x4);
+}
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_800261B8);
+void func_80026198(void* entidad)
+{
+    func_80026298(entidad, 0x8);
+}
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_800261D8);
+void func_800261B8(void* entidad)
+{
+    func_80026298(entidad, 0x10);
+}
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_800261F8);
+void func_800261D8(void* entidad)
+{
+    func_80026298(entidad, 0x20);
+}
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_80026218);
+void func_800261F8(void* entidad)
+{
+    func_80026298(entidad, 0x22);
+}
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_80026238);
+void func_80026218(void* entidad)
+{
+    func_80026298(entidad, 0x40);
+}
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_80026258);
+void func_80026238(void* entidad)
+{
+    func_80026298(entidad, 0x100);
+}
 
-INCLUDE_ASM("asm/nonmatchings/manejadores_por_tabla", func_80026278);
+void func_80026258(void* entidad)
+{
+    func_80026298(entidad, 0x200);
+}
+
+void func_80026278(void* entidad)
+{
+    func_80026298(entidad, 0x400);
+}
