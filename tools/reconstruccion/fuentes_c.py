@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from enum import Enum
 
 MAX_BYTES_FUENTE = 2 * 1024 * 1024
@@ -36,12 +37,11 @@ _DEFINICION_PARTICIONADOR = re.compile(r"^(?:static\s+)?[^\s]+\s+([^\s(]+)\(([^;
 _DEFINICION_AMPLIA = re.compile(r"\b([A-Za-z_]\w*)\s*\(([^;(){}]*)\)\s*\{")
 _INCLUDE_ASM = re.compile(r'\bINCLUDE_ASM\(\s*"[^"]*"\s*,\s*([A-Za-z_]\w*)\s*\)')
 _IDENTIFICADOR = re.compile(r"^[A-Za-z_]\w*$")
-_BLOQUE_NO_COINCIDENTE = re.compile(
-    r"#ifdef NON_MATCHING\s*\n(.*?)#else\s*\n"
-    r'INCLUDE_ASM\(\s*"[^"]*"\s*,\s*([A-Za-z_]\w*)\s*\)\s*;\s*\n#endif',
-    re.DOTALL,
-)
 _PRIMER_COMENTARIO = re.compile(r"/\*(.*?)\*/", re.DOTALL)
+# Comentario (de bloque o de linea) que abre la rama de C de un bloque NON_MATCHING.
+_COMENTARIO_INICIAL = re.compile(r"\A\s*(/\*.*?\*/|//[^\n]*)", re.DOTALL)
+# Lo primero que debe decir ese comentario: la puntuacion pendiente del intento.
+_PENDIENTE = re.compile(r"\APendiente:\s*puntuacion\s+\d+\b")
 MAX_CARACTERES_MOTIVO = 600
 _PALABRAS_DE_CONTROL = frozenset({"if", "while", "for", "switch", "return", "sizeof", "else", "do"})
 
@@ -58,6 +58,21 @@ class EstadoFuncion(Enum):
     C = "c"
     NO_COINCIDENTE = "no_coincidente"
     ENSAMBLADOR = "ensamblador"
+
+
+@dataclass(frozen=True)
+class BloqueNoCoincidente:
+    """Un bloque ``#ifdef NON_MATCHING ... #else INCLUDE_ASM(...) #endif`` de un archivo C.
+
+    Attributes:
+        funcion: Funcion del ``INCLUDE_ASM`` de la rama ``#else``.
+        linea: Linea (desde 1) del ``#ifdef``.
+        rama_c: Texto de la rama de C, tal como esta escrito (con sus comentarios).
+    """
+
+    funcion: str
+    linea: int
+    rama_c: str
 
 
 def _quitar_comentarios(texto: str) -> str:
@@ -238,6 +253,137 @@ def analizar_fuentes(textos: Mapping[str, str]) -> dict[str, dict[str, EstadoFun
     return estados
 
 
+def _enmascarar_comentarios(texto: str) -> str:
+    """Sustituye cada caracter de un comentario por un espacio, conservando los saltos de linea."""
+
+    def reemplazo(coincidencia: re.Match[str]) -> str:
+        literal = coincidencia.group(0)
+        return re.sub(r"[^\n]", " ", literal) if literal.startswith("/") else literal
+
+    return _COMENTARIOS.sub(reemplazo, texto)
+
+
+def _aplanar_comentario(cuerpo: str) -> str:
+    """Une en una sola linea el cuerpo de un comentario, sin los asteriscos de margen."""
+    lineas = (linea.strip().lstrip("*").strip() for linea in cuerpo.splitlines())
+    return " ".join(linea for linea in lineas if linea)
+
+
+@dataclass
+class _Condicional:
+    """Condicion ``#if``, ``#ifdef`` o ``#ifndef`` abierta durante el recorrido de un archivo."""
+
+    es_no_coincidente: bool
+    inicio: int
+    otra_rama: int | None = None
+
+
+def bloques_no_coincidentes(texto: str) -> list[BloqueNoCoincidente]:
+    """
+    Localiza cada bloque ``#ifdef NON_MATCHING ... #else INCLUDE_ASM(...) #endif`` de un archivo C.
+
+    Contexto:
+        Es la lectura estructural comun de ``progreso``: de ella salen el motivo de cada intento,
+        la comprobacion de la linea ``Pendiente`` y la exclusion de estas funciones al clasificar los
+        ``INCLUDE_ASM`` sueltos. Las directivas se leen con una pila, de modo que un
+        ``NON_MATCHING`` anidado en otra condicion o en otro bloque cierra con su propio ``#endif``;
+        los comentarios se enmascaran para que un ``#ifdef`` escrito dentro de uno no cuente. Un
+        ``#ifdef NON_MATCHING`` sin rama ``#else`` con ``INCLUDE_ASM`` no es un intento de funcion y
+        se ignora.
+
+    Args:
+        texto (str): Contenido del archivo ``.c``.
+
+    Returns:
+        list[BloqueNoCoincidente]: Bloques en el orden en que se cierran.
+
+    Ejemplo:
+        bloques = bloques_no_coincidentes(texto)
+    """
+    lineas = texto.split("\n")
+    mascara = _enmascarar_comentarios(texto).split("\n")
+    pila: list[_Condicional] = []
+    bloques: list[BloqueNoCoincidente] = []
+    for numero, linea in enumerate(mascara):
+        directiva = linea.strip()
+        if not directiva.startswith("#"):
+            continue
+        palabras = directiva[1:].split()
+        nombre = palabras[0] if palabras else ""
+        if nombre in ("if", "ifdef", "ifndef"):
+            es_bloque = nombre == "ifdef" and len(palabras) > 1 and palabras[1] == MACRO_NO_COINCIDENTE
+            pila.append(_Condicional(es_bloque, numero))
+        elif nombre == "else" and pila:
+            pila[-1].otra_rama = numero
+        elif nombre == "endif" and pila:
+            condicional = pila.pop()
+            if not condicional.es_no_coincidente or condicional.otra_rama is None:
+                continue
+            ensamblador = _INCLUDE_ASM.search("\n".join(mascara[condicional.otra_rama + 1 : numero]))
+            if ensamblador is not None:
+                rama_c = "\n".join(lineas[condicional.inicio + 1 : condicional.otra_rama])
+                bloques.append(BloqueNoCoincidente(ensamblador.group(1), condicional.inicio + 1, rama_c))
+    return bloques
+
+
+def pendiente_declarada(bloque: BloqueNoCoincidente) -> bool:
+    """
+    Indica si un bloque ``NON_MATCHING`` abre con la linea ``Pendiente: puntuacion N``.
+
+    Contexto:
+        La puntuacion del intento vive en el primer comentario de la rama de C, justo debajo del
+        ``#ifdef NON_MATCHING``, porque es donde la lee ``progreso`` para listar el motivo. Un
+        comentario anterior al ``#ifdef`` o uno situado despues de codigo no cuentan.
+
+    Args:
+        bloque (BloqueNoCoincidente): Bloque a comprobar.
+
+    Returns:
+        bool: Verdadero si lo primero bajo el ``#ifdef`` es un comentario cuyo texto empieza por
+        ``Pendiente: puntuacion`` seguido de un numero.
+
+    Ejemplo:
+        declarada = pendiente_declarada(bloques_no_coincidentes(texto)[0])
+    """
+    inicial = _COMENTARIO_INICIAL.match(bloque.rama_c)
+    if inicial is None:
+        return False
+    crudo = inicial.group(1)
+    cuerpo = crudo[2:-2] if crudo.startswith("/*") else crudo[2:]
+    return _PENDIENTE.match(_aplanar_comentario(cuerpo)) is not None
+
+
+def verificar_pendientes(textos: Mapping[str, str]) -> None:
+    """
+    Exige la linea ``Pendiente: puntuacion N`` en todo bloque ``NON_MATCHING`` de los archivos C.
+
+    Contexto:
+        Guardia de ``progreso``: sin esa linea el intento figuraria en el conteo pero sin su
+        puntuacion ni su motivo, y ninguna otra comprobacion lo notaria.
+
+    Args:
+        textos (Mapping[str, str]): Texto por archivo (clave: ruta relativa).
+
+    Raises:
+        ValueError: Si algun bloque no la tiene; el mensaje lista archivo, linea y funcion de todos
+            los bloques afectados y dice donde debe ir el comentario.
+
+    Ejemplo:
+        verificar_pendientes({"src/a.c": texto})
+    """
+    faltantes = [
+        f"{archivo}:{bloque.linea} {bloque.funcion}"
+        for archivo in sorted(textos)
+        for bloque in bloques_no_coincidentes(textos[archivo])
+        if not pendiente_declarada(bloque)
+    ]
+    if faltantes:
+        raise ValueError(
+            f"{len(faltantes)} funcion(es) {MACRO_NO_COINCIDENTE} sin la linea 'Pendiente: puntuacion N' "
+            f"en el primer comentario bajo '#ifdef {MACRO_NO_COINCIDENTE}': " + "; ".join(faltantes)
+        )
+
+
 def motivos_no_coincidentes(texto: str) -> dict[str, str]:
     """
     Extrae el motivo escrito junto a cada intento ``NON_MATCHING``.
@@ -258,11 +404,8 @@ def motivos_no_coincidentes(texto: str) -> dict[str, str]:
         motivos = motivos_no_coincidentes(texto)
     """
     motivos: dict[str, str] = {}
-    for bloque in _BLOQUE_NO_COINCIDENTE.finditer(texto):
-        comentario = _PRIMER_COMENTARIO.search(bloque.group(1))
-        if comentario is None:
-            continue
-        lineas = (linea.strip().lstrip("*").strip() for linea in comentario.group(1).splitlines())
-        motivo = " ".join(linea for linea in lineas if linea)
-        motivos[bloque.group(2)] = motivo[:MAX_CARACTERES_MOTIVO]
+    for bloque in bloques_no_coincidentes(texto):
+        comentario = _PRIMER_COMENTARIO.search(bloque.rama_c)
+        if comentario is not None:
+            motivos[bloque.funcion] = _aplanar_comentario(comentario.group(1))[:MAX_CARACTERES_MOTIVO]
     return motivos

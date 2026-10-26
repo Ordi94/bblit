@@ -18,7 +18,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from tools.reconstruccion.fuentes_c import EstadoFuncion, analizar_fuentes, motivos_no_coincidentes
+from tools.reconstruccion.fuentes_c import (
+    EstadoFuncion,
+    analizar_fuentes,
+    motivos_no_coincidentes,
+    verificar_pendientes,
+)
 from tools.reconstruccion.infraestructura import PROGRESO_JSON, SIMBOLOS_PROYECTO, listar_fuentes_c
 
 # Rangos de docs/MAPA_MEMORIA.md (limites exactos de las funciones identificadas).
@@ -580,7 +585,8 @@ def generar_progreso(raiz: Path) -> Progreso:
 
     Raises:
         FileNotFoundError: Si falta ``config/symbols.txt``.
-        ValueError: Si la tabla o algun archivo C no se pueden interpretar.
+        ValueError: Si la tabla o algun archivo C no se pueden interpretar, o si algun bloque
+            ``NON_MATCHING`` no tiene la linea ``Pendiente: puntuacion N`` (nada se escribe).
 
     Ejemplo:
         progreso = generar_progreso(Path("."))
@@ -595,6 +601,7 @@ def generar_progreso(raiz: Path) -> Progreso:
     for texto in textos.values():
         motivos.update(motivos_no_coincidentes(texto))
     estados = analizar_fuentes(textos)
+    verificar_pendientes(textos)
     progreso = calcular_progreso(simbolos, estados, contar_glabel(raiz), motivos)
     documento = raiz / DOCUMENTO_PROGRESO
     documento.parent.mkdir(parents=True, exist_ok=True)

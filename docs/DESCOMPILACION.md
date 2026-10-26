@@ -213,6 +213,7 @@ macros dos veces es un error del ensamblador.
 
    ```c
    #ifdef NON_MATCHING
+   /* Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). Reparto de registros. */
    s32 func_80030D60(void* a0, Rango* a1)
    {
        /* mejor intento */
@@ -224,6 +225,14 @@ macros dos veces es un error del ensamblador.
 
    La construcción normal no define `NON_MATCHING`, así que sigue usando el ensamblador y el
    ejecutable no cambia. `diff` sí lo define y compara el intento.
+
+   **Posición exacta del comentario de pendientes.** Lo primero que hay debajo de cada
+   `#ifdef NON_MATCHING` es un comentario (`/* ... */` o `//`) cuyo texto empieza por
+   `Pendiente: puntuacion N`, con `N` la puntuación de `diff`, seguido del motivo técnico en una frase.
+   Es el comentario que `progreso` copia a `docs/PROGRESO.md` como motivo del intento. Un comentario
+   encima del `#ifdef`, después del código, o que empiece por otro texto no cuenta, y `progreso` termina
+   con error (`N funcion(es) NON_MATCHING sin la linea 'Pendiente: puntuacion N'...`) con el archivo, la
+   línea del `#ifdef` y la función de cada bloque afectado, sin escribir `docs/PROGRESO.md`.
 4. **Comparar**: `python tools/build.py diff func_80030D60`. La puntuación 0 y el código de
    salida 0 indican que las instrucciones y los símbolos coinciden. Cualquier otra puntuación
    termina con código 1 y muestra las dos columnas (objetivo y compilado) con una marca en las
@@ -490,6 +499,8 @@ su uso es un error de compilación a propósito. Las macros de carga y lectura d
   `docs/PROGRESO.md`.
 - Control de coherencia: los `glabel` de `asm/` más las funciones en C deben sumar las funciones
   de la tabla; si no, `progreso` termina con error y hay que ejecutar `split`.
+- Guardia de pendientes: todo bloque `#ifdef NON_MATCHING` debe llevar la línea `Pendiente: puntuacion N`
+  bajo el `#ifdef` (ver «Cómo mover una función de ensamblador a C»); si falta, `progreso` termina con error.
 
 Las funciones triviales vacías (`jr ra; nop`) también entran como `INCLUDE_ASM`: pasarlas a C es
 una decisión del desarrollador, así el progreso solo cuenta lo que alguien escribió.
