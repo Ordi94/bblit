@@ -347,6 +347,11 @@ fin:
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_80026298);
 #endif
 
+/*
+ * Pendiente de traducir: manejador de 0x4A94 bytes con 104 llamadas; la marca Handwritten del
+ * particionador procede de instrucciones GTE sueltas, tiene marco de pila (0x58) y no es una rutina
+ * manuscrita.
+ */
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_80026FEC);
 
 /*
@@ -1497,6 +1502,10 @@ reposo:
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002D68C);
 #endif
 
+/*
+ * Pendiente de traducir: manejador vacio (jr ra; nop) que equivale a una funcion C sin cuerpo; se
+ * traduce con el resto de los manejadores de la tabla de objetos.
+ */
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002EA9C);
 
 /*
@@ -1876,8 +1885,16 @@ void func_8002F6B4(Objeto* o)
     }
 }
 
+/*
+ * Pendiente de traducir: manejador vacio (jr ra; nop) que equivale a una funcion C sin cuerpo; se
+ * traduce con el resto de los manejadores de la tabla de objetos.
+ */
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F968);
 
+/*
+ * Pendiente de traducir: envoltorio de func_80039094 (jal sin tocar a0, marco 0x18); se traduce junto
+ * con ella.
+ */
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F970);
 
 #ifdef NON_MATCHING

@@ -247,9 +247,9 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375C4);
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375F8);
 
 /*
- * Rutina escrita a mano en el original: calcula la matriz mundo de un nodo GsCOORDINATE2 recorriendo la jerarquia hacia la
- * raiz y componiendola de vuelta con las rutinas manuscritas que siguen. El particionador no la marca Handwritten, pero el
- * ensamblador tiene cuatro formas que GCC 2.8.1 no emite: constantes con `ori` en lugar de `addiu` (ori a1,zero,0x64 y ori
+ * Pendiente de traducir: calcula la matriz mundo de un nodo GsCOORDINATE2 recorriendo la jerarquia hacia la
+ * raiz y componiendola de vuelta con las rutinas manuscritas que siguen. No es manuscrita (el particionador no la marca
+ * Handwritten y tiene marco de pila), pero el ensamblador tiene cuatro formas que GCC 2.8.1 no emite: constantes con `ori` en lugar de `addiu` (ori a1,zero,0x64 y ori
  * t0,zero,0x64 en 0x80037648 y 0x8003764C; ori a0,zero,4 en 0x800378F0; ori v0,zero,1 en 0x80037974); registros guardados
  * s4 (0xC), s5 (0x24) y s6 (0x8) fuera del orden de numeracion (0x80037624..0x8003762C); copias de matriz con ocho
  * cargas seguidas de ocho almacenes (0x80037864..0x800378A0 y 0x800378B0..0x800378EC); y marcos de pila abiertos a mitad de
@@ -821,4 +821,8 @@ void func_80038E84(s32 idx, s32 paso)
     }
 }
 
+/*
+ * Pendiente de traducir: actualizacion por cuadro de los indicadores de la interfaz (0x934 bytes, 21
+ * llamadas); tiene marco de pila y no es una rutina manuscrita.
+ */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80039094);

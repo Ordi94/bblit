@@ -511,10 +511,9 @@ void func_80020240(Objeto* o)
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020240);
 #endif
 
-/* Rutina escrita a mano en el original: splat la marca como funcion manuscrita y 31 de sus
- * instrucciones lo son (restas con signo `sub` donde el compilador emite `subu`, y movimientos
- * `mtc2` sueltos al GTE, por ejemplo en 0x8002046C y 0x80020494); aunque reserva un marco de 0x40
- * bytes, no se reproduce desde C y se conserva como ensamblador. */
+/* Pendiente de traducir: el particionador la marca Handwritten por 31 instrucciones sueltas (restas con
+ * signo `sub` donde el compilador emite `subu`, y `mtc2` sueltos al GTE, por ejemplo en 0x8002046C y
+ * 0x80020494), pero reserva un marco de 0x40 bytes y no es una rutina manuscrita. */
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020354);
 
 /*

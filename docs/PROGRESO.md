@@ -71,8 +71,8 @@ Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 110
 - `func_80014AC4`: Pendiente: puntuacion 895 con la configuracion versionada (g = 8 del archivo). El original direcciona la tabla de cuentas con `addiu v0,gp,0x38`, que maspsx emite desde ASPSX 2.80 (la version fijada), y calcula la base del nombre una sola vez antes del bucle. Variantes probadas: 8 (bucles por indice y por puntero). Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18 caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
 - `func_800151FC`: Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). Variantes probadas: 1. No se reprodujo la disposicion de los bloques locales de la pila ni las copias de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento. Da formato al archivo de partida: arma en la pila un bloque de 0x200 bytes con la cabecera de la tarjeta ("SC", bandera de icono, un bloque, titulo, paleta e imagenes), lo copia con la cabecera de D_8006D060 y su suma de control al buffer D_80069520 + 0x2000 y escribe 0x400 bytes con open/write (hasta cinco intentos), comprobando
 - `func_800156F4`: Pendiente: puntuacion 3175 con la configuracion versionada (g = 8 del archivo). Flujo y distribucion de bloques iguales al original; quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante. Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de regis
-- `func_80016C0C`: Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo). Solo difiere la posicion de un addiu (el calculo de &o->m se emite una instruccion antes que en el original) y el registro del puntero de destino de la norma al cuadrado (v0 en lugar de a0). Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido.
-- `func_800171E4`: Pendiente: puntuacion 308 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido.
+- `func_80016C0C`: Pendiente: puntuacion 10 con la configuracion versionada (g = 8 del archivo). Solo difiere el registro del puntero de destino de la norma al cuadrado (v0 en lugar de a0). Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido.
+- `func_800171E4`: Pendiente: puntuacion 113 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido.
 - `func_80017478`: Pendiente: puntuacion 10583 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las comparaciones de las regiones no se han ajustado al original. Variantes probadas: 1. Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la pared que cruzan y, si ninguno la cruza, usa la arista mas cercana. Devuelve el candidato elegido (el de menor distancia, con prefe
 - `func_80018664`: Pendiente: puntuacion 2420 con la configuracion versionada (g = 8 del archivo). Reparto de registros del prologo (el original usa a0 como copia de la posicion de a) y cadena de comparaciones de las esquinas que el original comparte entre regiones. Variantes probadas: 3. Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
 - `func_80018D98`: Pendiente: puntuacion 108 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido.
@@ -133,11 +133,11 @@ Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 110
 
 ## Rutinas manuscritas (siguen en ensamblador por diseño)
 
-- `func_80020354` (1852 bytes)
+- `RunLogicAction` (56 bytes)
+- `TestLogicCond` (56 bytes)
 - `func_8003753C` (68 bytes)
 - `func_80037580` (68 bytes)
 - `func_800375C4` (52 bytes)
-- `func_8003760C` (916 bytes)
 - `func_800379A0` (360 bytes)
 - `func_80037B08` (248 bytes)
 - `func_80037C00` (248 bytes)
@@ -145,19 +145,8 @@ Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 110
 - `func_8003BDD0` (580 bytes)
 - `func_80044664` (496 bytes)
 - `func_80044854` (176 bytes)
+- `func_80044904` (60 bytes)
 - `func_800449E0` (36 bytes)
-
-## `INCLUDE_ASM` sin comentario en archivos con funciones en C
-
-- `func_80039094` (`src/gestion_y_dibujo_de_objetos_2.c`)
-- `func_80044904` (`src/inicializacion_de_motor.c`)
-- `func_80045498` (`src/inicializacion_de_motor.c`)
-- `RunLogicAction` (`src/interprete_de_eventos.c`)
-- `TestLogicCond` (`src/interprete_de_eventos.c`)
-- `func_80026FEC` (`src/logica_de_niveles_3.c`)
-- `func_8002EA9C` (`src/logica_de_niveles_3.c`)
-- `func_8002F968` (`src/logica_de_niveles_3.c`)
-- `func_8002F970` (`src/logica_de_niveles_3.c`)
 
 ## Menciones sin símbolo de función (datos incrustados en el código; no cuentan)
 
