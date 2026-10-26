@@ -276,7 +276,11 @@ def test_ciclo_real_con_funciones_en_c_reproduce_el_ejecutable_y_discrimina(
         assert cli.main(["diff", funcion], variables, raiz) == 0
         assert "puntuacion 0" in capsys.readouterr().out
     assert cli.main(["diff", "func_80035244"], variables, raiz) == 1
-    assert capsys.readouterr().out.endswith("puntuacion 600\n")
+    # La puntuacion de una funcion pendiente baja con cada mejora de su traduccion, asi que la
+    # cifra no es estable; lo estable es que sea distinta de cero y que el comando discrimine.
+    ultima_linea = capsys.readouterr().out.rstrip("\n").splitlines()[-1]
+    patron = r"func_80035244 \(src/camara_y_bucle_logico\.c\): puntuacion [1-9][0-9]*"
+    assert re.fullmatch(patron, ultima_linea)
     # Una funcion que siga en ensamblador, la que sea: activar funciones no debe romper esta prueba.
     pendiente = next(
         n
