@@ -17,6 +17,30 @@ extern s32 D_80069534;
 extern Ayuda* func_800363D4(void);
 extern ObjetoEscena* D_800695EC;
 extern s32 func_800375F8[];
+extern s16 D_8005E830[];
+extern s16 D_8005E81C[];
+extern s16 D_8005E86C[][2];
+extern u8 D_800695F6;
+extern u8 D_80010042;
+extern u8 D_80069524;
+extern void func_80037DB4(ObjetoEscena* o, s16 id, s16* pos, s16 modo);
+
+/*
+ * Algunos llamadores pasan a func_80037DB4 enteros de 32 bits ya extendidos sin la conversion
+ * a s16 que impondria su prototipo: el original la llama sin prototipo visible. Este tipo de
+ * funcion permite la misma llamada directa sin conversion de los argumentos.
+ */
+typedef void (*ReiniciarSinConversion)(ObjetoEscena* o, s32 id, s16* pos, s32 modo);
+
+extern u32 func_80037D3C(u16 valor);
+
+/* Idem para func_80037D3C: el llamador le pasa el valor entero sin truncarlo a u16. */
+typedef u32 (*DigitosSinConversion)(s32 valor);
+
+/* Variable pequena: el original la direcciona con 0x110($gp) (angulo de giro del grupo). */
+u16 D_80069430;
+s32 D_80069434;
+s32 D_80069438;
 
 /*
  * Recorre la lista de escena 'lista' (por el enlace de +0x10) y, para cada objeto activo,
@@ -414,13 +438,234 @@ void func_80037FB8(NodoLista* n)
 
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037FE8);
 
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_8003861C);
+/*
+ * Actualiza el grupo de tres objetos 'idx'..'idx + 2' de la tabla D_8006AB70 segun el nivel de
+ * fundido D_8006AA70[1]: lo acerca de uno en uno al valor pedido en D_800695F6, escala el segundo
+ * objeto en proporcion y, si el grupo no estaba activo, lo reinicia con func_80037DB4 a partir
+ * de las tablas de plantillas D_8005E830 y de posiciones D_8005E86C. Con el fundido en cero
+ * y el nivel actual en cero desactiva los tres objetos.
+ */
+void func_8003861C(s32 idx)
+{
+    ObjetoEscena* v[3];
+    VECTOR esc;
+    u8 pedido;
+    u8 actual;
+    s16* ids;
+    s32 id0;
+    s32 id1;
+    s32 id2;
 
+    v[0] = D_8006AB70[idx];
+    v[1] = D_8006AB70[idx + 1];
+    v[2] = D_8006AB70[idx + 2];
+    pedido = D_8006AA70[1];
+    if (pedido != 0 || D_800695F6 != 0) {
+        if (D_800695F6 == 0) {
+            D_800695F6 = pedido;
+        }
+        actual = D_800695F6;
+        if (actual < pedido) {
+            D_800695F6 = D_800695F6 + 1;
+        } else if (pedido < actual) {
+            D_800695F6 = D_800695F6 - 1;
+        }
+        esc.vz = 0x1000;
+        esc.vy = 0x1000;
+        esc.vx = 0x1000 - (D_800695F6 << 5);
+        if (!(v[0]->cab.libre & 2)) {
+            ids = &D_8005E830[idx];
+            id0 = ids[0];
+            id1 = ids[1];
+            id2 = ids[2];
+            func_80037DB4(v[0], id0, D_8005E86C[idx], 1);
+            func_80037DB4(v[1], id1, D_8005E86C[idx + 1], 1);
+            func_80037DB4(v[2], id2, D_8005E86C[idx + 2], 1);
+            D_80069430 = 0;
+            ScaleMatrix(&v[1]->ayudas->m94, &esc);
+        } else {
+            D_80069430 += 0x50;
+            if ((s16)D_80069430 >= 0x1000) {
+                D_80069430 -= 0x1000;
+            }
+            func_800375C4((s32*)&v[0]->ayudas->m94);
+            RotMatrixY((s16)D_80069430, &v[0]->ayudas->m94);
+            func_800375C4((s32*)&v[1]->ayudas->m94);
+            ScaleMatrix(&v[1]->ayudas->m94, &esc);
+        }
+    } else if (v[0]->cab.libre & 2) {
+        v[0]->cab.libre &= ~2;
+        v[1]->cab.libre &= ~2;
+        v[2]->cab.libre &= ~2;
+    }
+}
+
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 324 con la configuracion versionada (g = 8 del archivo). Coincide la
+ * estructura; difiere la asignacion de registros salvados (el original deja los tres
+ * identificadores en $s7, $s6 y $s5 y el parametro en $s4). Variantes probadas: 8.
+ */
+/*
+ * Reinicia, de dos en dos, los objetos del grupo 'idx' (tres consecutivos de la tabla
+ * D_8006AB70) para cada unidad de D_80010042: el identificador de plantilla de cada uno se
+ * elige entre los tres de D_8005E830 segun cuantas unidades de D_80069524 alcanzan ese
+ * indice, y la posicion sale de D_8005E86C.
+ */
+void func_80038884(s32 idx, s32 modo)
+{
+    ObjetoEscena* v[3];
+    ObjetoEscena** p;
+    ObjetoEscena* o;
+    s16* ids;
+    s32 id0;
+    s32 id1;
+    s32 id2;
+    s32 k;
+    s32 j;
+    s32 id;
+    s32 nivel;
+
+    ids = &D_8005E830[idx];
+    id0 = ids[0];
+    id1 = ids[1];
+    id2 = ids[2];
+    v[0] = D_8006AB70[idx];
+    v[1] = D_8006AB70[idx + 1];
+    v[2] = D_8006AB70[idx + 2];
+    k = 0;
+    if (D_80010042 != 0) {
+        p = v;
+        do {
+            nivel = D_80069524;
+            if (nivel >= k + 2) {
+                j = k / 2;
+                o = p[j];
+                id = id0;
+            } else if (nivel >= k + 1) {
+                j = k / 2;
+                o = p[j];
+                id = id1;
+            } else {
+                j = k / 2;
+                o = p[j];
+                id = id2;
+            }
+            ((ReiniciarSinConversion)func_80037DB4)(o, id, D_8005E86C[idx + j], modo);
+            k += 2;
+        } while (k < D_80010042);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80038884);
+#endif
 
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800389FC);
+/*
+ * Posiciona los tres objetos 'idx'..'idx + 2' de la tabla D_8006AB70 como un reloj de aguja
+ * doble: si 'apagar' es cero los activa (reiniciandolos desde las tablas de plantillas y de
+ * posiciones si estaban inactivos) y gira la matriz de las dos agujas alrededor de Z, la
+ * primera 'valor' / 960 y la segunda 'valor' / 7680 de vuelta (0x1000 = una vuelta); si no, los
+ * desactiva.
+ */
+void func_800389FC(s32 idx, s32 valor, s32 apagar)
+{
+    ObjetoEscena* v[3];
+    s16* ids;
+    s32 id0;
+    s32 id1;
+    s32 id2;
+    s32 n;
 
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80038C2C);
+    v[0] = D_8006AB70[idx];
+    v[1] = D_8006AB70[idx + 1];
+    v[2] = D_8006AB70[idx + 2];
+    if (apagar == 0) {
+        if (!(v[0]->cab.libre & 2)) {
+            ids = &D_8005E830[idx];
+            id0 = ids[0];
+            id1 = ids[1];
+            id2 = ids[2];
+            func_80037DB4(v[0], id0, D_8005E86C[idx], 1);
+            func_80037DB4(v[1], id1, D_8005E86C[idx + 1], 1);
+            func_80037DB4(v[2], id2, D_8005E86C[idx + 2], 1);
+        }
+        n = valor << 12;
+        D_80069434 = n / 960 + 0x800;
+        D_80069438 = n / 7680 + 0x800;
+        while (D_80069434 >= 0x1000) {
+            D_80069434 -= 0x1000;
+        }
+        while (D_80069438 >= 0x1000) {
+            D_80069438 -= 0x1000;
+        }
+        func_800375C4((s32*)&v[0]->ayudas->m94);
+        RotMatrixZ(D_80069434, &v[0]->ayudas->m94);
+        func_800375C4((s32*)&v[1]->ayudas->m94);
+        RotMatrixZ(D_80069438, &v[1]->ayudas->m94);
+    } else {
+        v[0]->cab.libre &= ~2;
+        v[1]->cab.libre &= ~2;
+        v[2]->cab.libre &= ~2;
+    }
+}
+
+/*
+ * Muestra 'valor' (0 a 999) con tres objetos consecutivos de la tabla D_8006AB70 a partir de
+ * 'idx', uno por digito BCD: centenas (con el identificador fijo de la tabla D_8005E830),
+ * decenas y unidades (con los de D_8005E81C). Reinicia el objeto de un digito solo si estaba
+ * inactivo, o cambia su estado cuando el digito mostrado ya no es el pedido. Devuelve 1 si
+ * acaba de reiniciar el objeto de las unidades y 0 en otro caso.
+ */
+s32 func_80038C2C(s32 idx, s32 valor, s32 modo)
+{
+    ObjetoEscena* c;
+    ObjetoEscena* d;
+    ObjetoEscena* u;
+    s32 bcd;
+    s32 id0;
+    s32 idDec;
+    s32 idUni;
+    s32 nuevo;
+
+    nuevo = 0;
+    bcd = ((DigitosSinConversion)func_80037D3C)(valor);
+    id0 = D_8005E830[idx];
+    idDec = D_8005E81C[(bcd & 0xF0) >> 4];
+    idUni = D_8005E81C[bcd & 0xF];
+    c = D_8006AB70[idx];
+    d = D_8006AB70[idx + 1];
+    u = D_8006AB70[idx + 2];
+    if (c->cab.libre & 2) {
+        if (c->s1E == 0 && c->w22 == 0) {
+            c->s1E = 1;
+        }
+    } else {
+        ((ReiniciarSinConversion)func_80037DB4)(c, id0, D_8005E86C[idx], modo);
+    }
+    if (d->cab.libre & 2) {
+        if (d->s1E != 2 && d->w1C != idDec && u->ayudas->m94.t[2] <= 0x4B0) {
+            d->w22 = 0;
+            d->s1E = 2;
+            d->ayudas->m94.t[2] = u->ayudas->m94.t[2];
+        } else if (d->s1E == 0 && d->w22 == 0) {
+            d->s1E = 1;
+        }
+    } else {
+        ((ReiniciarSinConversion)func_80037DB4)(d, idDec, D_8005E86C[idx + 1], modo);
+    }
+    if (u->cab.libre & 2) {
+        if (u->w1C != idUni) {
+            u->s1E = 2;
+            u->w22 = 0;
+        } else if (u->s1E == 0 && u->w22 == 0) {
+            u->s1E = 1;
+        }
+    } else {
+        nuevo = 1;
+        ((ReiniciarSinConversion)func_80037DB4)(u, idUni, D_8005E86C[idx + 2], modo);
+    }
+    return nuevo;
+}
 
 #ifdef NON_MATCHING
 /*
