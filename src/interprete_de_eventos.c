@@ -14,6 +14,13 @@
 
 #define RA ESTADO->r
 
+/* Registro de condicion de rango: min y max con signo en los bytes 1 y 2. */
+typedef struct Rango {
+    s8 pad0;
+    s8 min;
+    s8 max;
+} Rango;
+
 /* Vector de tres componentes del que solo se rellenan x y z antes de llamar a ratan2. */
 typedef struct Vec3 {
     s32 x;
@@ -44,6 +51,11 @@ extern s32* D_80069640;
 extern s32 D_800693B4;
 extern s32 D_800693C0;
 extern s16 D_800693F6;
+/*
+ * Variables sueltas del estado principal que el original lee con la forma simbolica (lui al
+ * registro de destino): como simbolos externos reproducen esa forma; el acceso por la
+ * estructura de ESTADO daria un lui compartido distinto.
+ */
 extern u16 D_8001000A;
 extern u16 D_80010010;
 extern u16 D_8001003E;
@@ -66,6 +78,7 @@ extern u8 D_80069659;
 extern Byte D_8006965A;
 extern Byte D_8006965B;
 extern u8 D_8006965E;
+/* Se lee con lh en func_80031FE0 y se escribe con sh: s16. */
 extern s16 D_80069662;
 extern s8 D_8006966A;
 extern u8 D_80069674;
@@ -79,6 +92,12 @@ extern Entrada D_8006B378[];
 extern u32 D_8006D064;
 extern u16 D_8006D9A8[5];
 
+/*
+ * Registro de 16 bits partido en bytes (indice 7 del banco A). Se declara sin prototipo: el
+ * original pasa el operando de 16 bits (lhu) y un prototipo con u8, como la definicion, lo
+ * estrecharia con lbu.
+ */
+extern void func_8002F990();
 extern void func_8001CFCC(void* a0);
 extern void func_8001D588(s32 a0, void* a1);
 extern s32 func_80032874(void);
@@ -145,39 +164,55 @@ s32 func_8002FCB0(void* a0, u8* a1) { return (D_8006AA70[a1[2]] & a1[1]) == 0; }
 
 s32 func_8002FCD8(void* a0, u8* a1) { return (D_8006AA70[a1[2]] & a1[1]) == 0; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FD00(void* a0, u8* a1) { return RA[a1[2]] == a1[1]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FD24(void* a0, u8* a1) { return RA[a1[2]] == RA[a1[1]]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FD50(void* a0, u8* a1) { return RA[a1[2]] != a1[1]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FD74(void* a0, u8* a1) { return RA[a1[2]] != RA[a1[1]]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FDA0(void* a0, u8* a1) { return RA[a1[2]] == RA[a1[1]]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FDCC(void* a0, u8* a1) { return RA[a1[2]] > a1[1]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FDE8(void* a0, u8* a1) { return (s8)RA[a1[2]] > (s8)a1[1]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FE04(void* a0, u8* a1) { return RA[a1[2]] > RA[a1[1]]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FE28(void* a0, u8* a1) { return RA[a1[2]] >= a1[1]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FE4C(void* a0, u8* a1) { return RA[a1[2]] < a1[1]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FE68(void* a0, u8* a1) { return (s8)RA[a1[2]] < (s8)a1[1]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FE84(void* a0, u8* a1) { return RA[a1[2]] < RA[a1[1]]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FEA8(void* a0, u8* a1) { return RA[a1[2]] <= a1[1]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FECC(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) != 0; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FEF0(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) == 0; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_8002FF14(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) == 0; }
 
-/* El simbolo cubre dos rutinas de 0x20 bytes: esta (flags14 & 0x2000020 == 0) y la de 0x8002FF58 (flags14 & 0x8000 == 0), que necesitan simbolos propios; el C de arriba solo reproduce la primera mitad */
+/* Simbolo fundido: cubre dos rutinas de 0x20 bytes (esta, flags14 & 0x2000020 == 0, y func_8002FF58, flags14 & 0x8000 == 0); el C reproduce la primera mitad; con -G0 da 800 */
 #ifdef NON_MATCHING
 s32 func_8002FF38(Objeto* a0, u8* a1) { return (D_80069698->flags14 & 0x2000020) == 0; }
 #else
@@ -194,6 +229,7 @@ s32 func_8002FFD8(Objeto* a0, u8* a1) { u32 v; v = D_80069698->flags14 & 0x10; r
 
 s32 func_8002FFF8(Objeto* a0, u8* a1) { return D_80069698->w17C == a1[1]; }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 s32 func_80030018(Objeto* a0, u8* a1)
 {
@@ -218,6 +254,7 @@ s32 func_800300A4(Objeto* a0, u8* a1) { return (s16)D_80069698->w26 == a1[1]; }
 
 s32 func_800300C4(Objeto* a0, u8* a1) { return (s16)D_80069698->w26 != a1[1]; }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 s32 func_800300E4(Objeto* a0, u8* a1)
 {
@@ -260,6 +297,7 @@ s32 func_800300E4(Objeto* a0, u8* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800300E4);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 s32 func_800301E8(Objeto* a0, u8* a1)
 {
@@ -302,6 +340,7 @@ s32 func_800301E8(Objeto* a0, u8* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800301E8);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 s32 func_800302F8(Objeto* a0, u8* a1)
 {
@@ -344,6 +383,7 @@ s32 func_800302F8(Objeto* a0, u8* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800302F8);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 s32 func_80030404(Objeto* a0, u8* a1)
 {
@@ -421,6 +461,7 @@ s32 func_800306C0(Objeto* a0, u8* a1) { return D_800693F6 != 0; }
 
 s32 func_800306D0(Objeto* a0, u8* a1) { return D_8006AA70[a1[2]] == a1[1]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_800306F8(Objeto* a0, u8* a1) { return ESTADO->r[a1[2]] == a1[1]; }
 
 s32 func_8003071C(Objeto* a0, u8* a1) { u32 v; v = D_8001000A & 8; return v != 0; }
@@ -458,6 +499,7 @@ s32 func_80030834(Objeto* a0, u8* a1)
 
 s32 func_80030874(Objeto* a0, u8* a1) { return (a1[1] & *(s32*)(base_gp + 0xC0)) != 0; }
 
+/* Coincide en bytes con g = 8 (diff 30 por direccion absoluta); con la configuracion versionada da 350 */
 #ifdef NON_MATCHING
 s32 func_8003088C(Objeto* a0, u8* a1)
 {
@@ -482,6 +524,7 @@ s32 func_8003088C(Objeto* a0, u8* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003088C);
 #endif
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_80030924(Objeto* a0, u8* a1)
 {
     u32 b;
@@ -559,6 +602,7 @@ s32 func_80030B78(Objeto* a0, u8* a1)
     return 1;
 }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 s32 func_80030CB8(Objeto* a0, u8* a1)
 {
@@ -571,6 +615,7 @@ s32 func_80030CB8(Objeto* a0, u8* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030CB8);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 s32 func_80030CE0(Objeto* a0, u8* a1)
 {
@@ -583,6 +628,7 @@ s32 func_80030CE0(Objeto* a0, u8* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030CE0);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 75: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 s32 func_80030D08(Objeto* a0, u8* a1)
 {
@@ -595,6 +641,7 @@ s32 func_80030D08(Objeto* a0, u8* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030D08);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 75: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 s32 func_80030D34(Objeto* a0, u8* a1)
 {
@@ -607,17 +654,7 @@ s32 func_80030D34(Objeto* a0, u8* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030D34);
 #endif
 
-/*
- * Comprueba que la altura (Y >> 8) del objeto controlado D_80069698 este dentro del rango
- * [min, max] de la entrada. Las dos comparaciones con return explicito de 1 y 0 producen las
- * dos ramas con el valor en el hueco de retardo, como el original.
- */
-typedef struct Rango {
-    s8 pad0;
-    s8 min;
-    s8 max;
-} Rango;
-
+/* Altura (Y >> 8) del objeto controlado dentro de [min, max]; return explicito de 1 y 0 para el li del hueco de retardo. */
 s32 func_80030D60(void* a0, Rango* a1)
 {
     s32 v;
@@ -669,6 +706,7 @@ void func_80030F04(void) {}
 
 void func_80030F0C(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6]++; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_80030F30(Objeto* a0, Accion* a1)
 {
     if (a1->w6 == 7) {
@@ -680,10 +718,12 @@ void func_80030F30(Objeto* a0, Accion* a1)
 
 void func_80030F88(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = a1->b4; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_80030FA4(Objeto* a0, Accion* a1) { RA[a1->w6] = a1->b4; }
 
 void func_80030FBC(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6]--; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_80030FE0(Objeto* a0, Accion* a1)
 {
     if (a1->w6 == 7) {
@@ -695,26 +735,33 @@ void func_80030FE0(Objeto* a0, Accion* a1)
 
 void func_80031038(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = 0; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_80031050(Objeto* a0, Accion* a1) { RA[a1->w6] = 0; }
 
 void func_80031064(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = -D_8006AA70[a1->w6]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_80031088(Objeto* a0, Accion* a1) { RA[a1->w6] = -RA[a1->w6]; }
 
 void func_800310A8(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] |= a1->b4; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_800310D0(Objeto* a0, Accion* a1) { RA[a1->w6] |= a1->b4; }
 
 void func_800310F4(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] &= a1->b4; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_8003111C(Objeto* a0, Accion* a1) { RA[a1->w6] &= a1->b4; }
 
 void func_80031140(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = D_8006AA70[ACC_W4(a1)]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_80031164(Objeto* a0, Accion* a1) { RA[a1->w6] = RA[ACC_W4(a1)]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_80031184(Objeto* a0, Accion* a1) { RA[a1->w6] = D_8006AA70[ACC_W4(a1)]; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_800311AC(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = RA[ACC_W4(a1)]; }
 
 void func_800311D4(Objeto* a0, Accion* a1)
@@ -723,6 +770,7 @@ void func_800311D4(Objeto* a0, Accion* a1)
     D_8006AA70[ACC_W4(a1)]++;
 }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_80031214(Objeto* a0, Accion* a1)
 {
     if (a1->w6 == 7) {
@@ -739,6 +787,7 @@ void func_80031214(Objeto* a0, Accion* a1)
 
 void func_800312B0(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = func_80032874() % ACC_W4(a1); }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_800312F8(Objeto* a0, Accion* a1) { RA[a1->w6] = func_80032874() % ACC_W4(a1); }
 
 void func_8003133C(Objeto* a0, Accion* a1) { a0->flags14 |= 0x100; }
@@ -756,6 +805,7 @@ void func_80031384(Objeto* a0, Accion* a1)
     a0->flags14 |= 0x100;
 }
 
+/* No coincide (895): el original lee el contador dos veces, sin andi; volatile, u16 local y suma explicita no cambian */
 #ifdef NON_MATCHING
 void func_800313D4(Objeto* a0, Accion* a1)
 {
@@ -779,6 +829,7 @@ void func_80031424(Objeto* a0, Accion* a1)
     }
 }
 
+/* No coincide (350): el original guarda p70 en a0 y lo copia a v1 (33 instrucciones frente a 32); 3 formulaciones */
 #ifdef NON_MATCHING
 void func_8003147C(Objeto* a0, Accion* a1)
 {
@@ -826,12 +877,14 @@ void func_80031554(Objeto* a0)
     }
 }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 205: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80031624(Objeto* a0, Accion* a1) { func_8003F06C(a0, ACC_W4(a1), 1, D_8006967C); }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031624);
 #endif
 
+/* No coincide (795): el original carga D_80069554 en a0 */
 #ifdef NON_MATCHING
 void func_80031650(Objeto* a0, Accion* a1)
 {
@@ -846,6 +899,7 @@ INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031650);
 
 void func_80031694(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] += a1->b4; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_800316BC(Objeto* a0, Accion* a1)
 {
     if (a1->w6 == 7) {
@@ -857,6 +911,7 @@ void func_800316BC(Objeto* a0, Accion* a1)
 
 void func_80031714(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] -= a1->b4; }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_8003173C(Objeto* a0, Accion* a1)
 {
     if (a1->w6 == 7) {
@@ -866,6 +921,7 @@ void func_8003173C(Objeto* a0, Accion* a1)
     }
 }
 
+/* Coincide en bytes con g = 8 (diff 10 por direccion absoluta); con la configuracion versionada da 235 */
 #ifdef NON_MATCHING
 void func_80031794(Objeto* a0, Accion* a1)
 {
@@ -878,6 +934,7 @@ void func_80031794(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031794);
 #endif
 
+/* Coincide en bytes con g = 8 (diff 10 por direccion absoluta); con la configuracion versionada da 70 */
 #ifdef NON_MATCHING
 void func_800317FC(Objeto* a0, Accion* a1)
 {
@@ -908,34 +965,39 @@ void func_800318AC(Objeto* a0, Accion* a1)
     func_8001CFCC((u8*)a0 + 0x7C);
 }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 310: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_800318F8(Objeto* a0, Accion* a1) { D_800693F6 = ACC_W4(a1); }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800318F8);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 45: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_8003190C(Objeto* a0, Accion* a1) { D_80069698->flags14 |= 0x80000000; }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003190C);
 #endif
 
+/* Coincide en bytes con g = 8 (diff 15 por direccion absoluta); con la configuracion versionada da 245 */
 #ifdef NON_MATCHING
 void func_8003192C(Objeto* a0, Accion* a1)
 {
     ESTADO->modo = ESTADO->r[0xE];
-    *(u16*)&D_80069662 = 1;
+    D_80069662 = 1;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003192C);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 235: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80031948(Objeto* a0, Accion* a1) { D_80069698->wDE = ACC_W4(a1) << 4; }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031948);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80031960(Objeto* a0, Accion* a1) { D_80069698->w28 = ACC_W4(a1); }
 #else
@@ -946,12 +1008,14 @@ void func_80031974(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = a0->s1E; }
 
 void func_80031990(Objeto* a0, Accion* a1) { a0->s1E = D_8006AA70[a1->w6]; }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_800319AC(Objeto* a0, Accion* a1) { D_80069698->flags18 |= 1; }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800319AC);
 #endif
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_800319CC(Objeto* a0, Accion* a1)
 {
     if (RA[1] != RA[2]) {
@@ -961,6 +1025,7 @@ void func_800319CC(Objeto* a0, Accion* a1)
     }
 }
 
+/* Usa $gp; pendiente de soporte -G8. No coincide (160): el original coloca el sw tras el lw $ra */
 #ifdef NON_MATCHING
 void func_80031A0C(Objeto* a0, Accion* a1)
 {
@@ -970,6 +1035,7 @@ void func_80031A0C(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031A0C);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 220: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80031A34(Objeto* a0, Accion* a1)
 {
@@ -995,6 +1061,7 @@ void func_80031A34(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031A34);
 #endif
 
+/* Usa $gp; pendiente de soporte -G8. No coincide (160): el original coloca el sw tras el lw $ra */
 #ifdef NON_MATCHING
 void func_80031AE4(Objeto* a0, Accion* a1)
 {
@@ -1004,6 +1071,7 @@ void func_80031AE4(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031AE4);
 #endif
 
+/* Usa $gp; pendiente de soporte -G8. No coincide (170): el original coloca el sw tras el lw $ra */
 #ifdef NON_MATCHING
 void func_80031B1C(Objeto* a0, Accion* a1)
 {
@@ -1017,6 +1085,7 @@ void func_80031B50(Objeto* a0, Accion* a1) { a0->flags15C |= 0x10; }
 
 void func_80031B64(Objeto* a0, Accion* a1) { a0->flags15C &= ~0x10; }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 30: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80031B78(Objeto* a0, Accion* a1)
 {
@@ -1031,12 +1100,14 @@ void func_80031B78(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031B78);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 310: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80031B98(Objeto* a0, Accion* a1) { D_80069659 = a1->b4; }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031B98);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 150: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80031BAC(Objeto* a0, Accion* a1)
 {
@@ -1061,6 +1132,7 @@ void func_80031C10(Objeto* a0, Accion* a1)
     D_8006D928.s88 = a1->w6;
 }
 
+/* Coincide en bytes; diff puntua la forma simbolica. */
 void func_80031C54(Objeto* a0, Accion* a1)
 {
     s16 n;
@@ -1082,6 +1154,7 @@ void func_80031CC4(void) {}
 
 void func_80031CCC(void) {}
 
+/* No coincide (15): reparto v0/v1 y orden de operandos del bne; 10 formulaciones */
 #ifdef NON_MATCHING
 void func_80031CD4(Objeto* a0, Accion* a1)
 {
@@ -1104,6 +1177,7 @@ void func_80031D1C(Objeto* a0, Accion* a1) { a0->w3C |= 0x40; }
 
 void func_80031D30(void) {}
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 340: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80031D38(Objeto* a0, Accion* a1)
 {
@@ -1115,6 +1189,7 @@ void func_80031D38(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031D38);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 825: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80031D60(Objeto* a0, Accion* a1)
 {
@@ -1138,6 +1213,7 @@ void func_80031D60(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031D60);
 #endif
 
+/* No coincide (330): la distancia va en a0 y los sh salen en otro orden */
 #ifdef NON_MATCHING
 void func_80031E24(Objeto* a0, Accion* a1)
 {
@@ -1162,6 +1238,7 @@ void func_80031E24(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031E24);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 1425: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80031EF8(Objeto* a0, Accion* a1)
 {
@@ -1192,6 +1269,7 @@ void func_80031F70(Objeto* a0, Accion* a1)
 
 void func_80031FBC(Objeto* a0, Accion* a1) { func_8003AA50(0x41, 0x400); }
 
+/* Coincide en bytes con g = 8 (diff 20 por direccion absoluta); con la configuracion versionada da 1165 */
 #ifdef NON_MATCHING
 void func_80031FE0(Objeto* a0, Accion* a1)
 {
@@ -1234,6 +1312,7 @@ void func_800320D8(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xDFFF; }
 
 void func_800320F4(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 0x2000; }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 780: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80032110(Objeto* a0, Accion* a1)
 {
@@ -1245,36 +1324,42 @@ void func_80032110(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80032110);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 465: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_8003213C(Objeto* a0, Accion* a1) { D_80069624 = ACC_W4(a1) * 100 + a1->w6; }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003213C);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 465: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80032170(Objeto* a0, Accion* a1) { D_80069618 = ACC_W4(a1) * 100 + a1->w6; }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80032170);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 465: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_800321A4(Objeto* a0, Accion* a1) { D_8006961C = ACC_W4(a1) * 100 + a1->w6; }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800321A4);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 465: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_800321D8(Objeto* a0, Accion* a1) { D_8006960C = ((s8*)a1)[4] * 100 + ((s8*)a1)[6]; }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800321D8);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 365: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_8003220C(Objeto* a0, Accion* a1) { D_8006960C = (ACC_W4(a1) << 8) | a1->w6; }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003220C);
 #endif
 
+/* Coincide en bytes con g = 8 (diff 20 por direccion absoluta); con la configuracion versionada da 2240 */
 #ifdef NON_MATCHING
 void func_8003222C(Objeto* a0, Accion* a1)
 {
@@ -1307,6 +1392,7 @@ void func_8003222C(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003222C);
 #endif
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 205: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80032318(Objeto* a0, Accion* a1) { func_8003F06C(a0, ACC_W4(a1), 2, D_8006967C); }
 #else
@@ -1317,6 +1403,7 @@ void func_80032344(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0x7FFF; }
 
 void func_80032360(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 0x8000; }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 305: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_8003237C(Objeto* a0) { D_80069560 = (s32)a0; }
 #else
@@ -1325,6 +1412,7 @@ INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003237C);
 
 void func_8003238C(Objeto* a0, Accion* a1) { a0->flags18 |= 0x400; }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_800323A0(Objeto* a0, Accion* a1)
 {
@@ -1356,12 +1444,14 @@ INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800323A0);
 
 void func_80032474(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFCFF; }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 310: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80032490(Objeto* a0, Accion* a1) { D_80069554 = ACC_W4(a1); }
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80032490);
 #endif
 
+/* No coincide (10): el prologo usa a0 como base del banco y otro orden de lui */
 #ifdef NON_MATCHING
 void func_800324A4(Objeto* a0, Accion* a1)
 {
@@ -1451,6 +1541,7 @@ void func_80032668(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFFFE; }
 
 void func_80032684(Objeto* a0, Accion* a1) { D_8006D9A8[0] = 0x10; }
 
+/* Coincide (0) con g = 8; con la configuracion versionada da 45: forma simbolica de los almacenes (-G8) */
 #ifdef NON_MATCHING
 void func_80032694(Objeto* a0, Accion* a1) { D_80069698->flags14 &= ~9; }
 #else
@@ -1463,6 +1554,7 @@ void func_800326D0(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFFDF; }
 
 void func_800326EC(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 4; }
 
+/* No coincide (5635): el flujo de busqueda con saltos no se reproduce con bucles do/while */
 #ifdef NON_MATCHING
 void func_80032708(Objeto* a0, Accion* a1)
 {

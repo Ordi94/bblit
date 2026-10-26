@@ -61,7 +61,7 @@ typedef struct Objeto {
 typedef struct Accion {
     u8 pad00[4];
     u8 b4;
-    u8 b5;
+    u8 pad5;
     u16 w6;
 } Accion;
 #define ACC_W4(a) (*(u16*)&(a)->b4)
@@ -73,14 +73,10 @@ typedef struct Accion {
  */
 typedef struct EstadoPrincipal {
     u32 modo;
-    u8 pad04[0x0A - 0x04];
-    u16 w0A;
-    u8 pad0C[0x10 - 0x0C];
+    u8 pad04[0x10 - 0x04];
     u16 botones;
     s16 s12;
-    u8 pad14[0x3E - 0x14];
-    u16 w3E;
-    u8 pad40[0x40 - 0x40];
+    u8 pad14[0x40 - 0x14];
     u8 r[0x100];
 } EstadoPrincipal;
 #define ESTADO ((EstadoPrincipal*)0x80010000)
@@ -105,8 +101,5 @@ extern u8 D_8006AA70[];
 
 /* Objeto controlado (el protagonista). */
 extern Objeto* D_80069698;
-
-/* Registro de 16 bits partido en bytes (indice 7 del banco A): ver func_8002F990. */
-extern void func_8002F990(s32 a0, s32 a1);
 
 #endif
