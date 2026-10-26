@@ -201,8 +201,11 @@ NodoLista* AppendListNode(NodoLista* cab, NodoLista* nodo)
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 205 con la configuracion versionada (g = 8 del archivo). El original
- * mantiene el nodo en $a0 y deriva el puntero inducido en $a1; GCC los intercambia. Variantes
- * probadas: 5.
+ * mantiene el nodo en $a0 y deriva el puntero inducido en $a1; GCC los intercambia. Las 0x2E
+ * escrituras de sw $zero,0($a2) del original son un bucle real de 0x2E vueltas (contador en $v1,
+ * sltiu/bnez, la escritura en el hueco de retardo), no una secuencia desenrollada; escritas como
+ * 0x2E sentencias explicitas el resultado empeora (895), porque GCC no las pliega a ese bucle.
+ * Variantes probadas: 11.
  */
 Ayuda* func_800363D4(void)
 {

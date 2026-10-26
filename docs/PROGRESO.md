@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 255 | 25068 |
+| Código del juego | 450 | 201416 | 253 | 24948 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 25068 de 201416 (12.45 %).
-Funciones marcadas `NON_MATCHING`: 33.
-Coherencia con el ensamblador: correcta (847 `glabel` en `asm/` + 255 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 24948 de 201416 (12.39 %).
+Funciones marcadas `NON_MATCHING`: 31.
+Coherencia con el ensamblador: correcta (849 `glabel` en `asm/` + 253 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -26,7 +26,7 @@ Coherencia con el ensamblador: correcta (847 `glabel` en `asm/` + 255 en C = 110
 | cargador_de_niveles_y_cd | 2 | 0 | 0 | 11 | 0 | 14264 |
 | colision_y_terreno | 1 | 2 | 1 | 1 | 680 | 12480 |
 | entrada_de_mando | 1 | 4 | 2 | 0 | 764 | 2784 |
-| gestion_y_dibujo_de_objetos | 4 | 25 | 9 | 8 | 5892 | 18624 |
+| gestion_y_dibujo_de_objetos | 4 | 23 | 7 | 12 | 5772 | 18624 |
 | graficos_y_gte | 3 | 13 | 4 | 2 | 3888 | 11812 |
 | inicializacion_de_motor | 1 | 0 | 0 | 16 | 0 | 5276 |
 | interprete_de_eventos | 1 | 183 | 11 | 3 | 10232 | 11900 |
@@ -48,7 +48,7 @@ Coherencia con el ensamblador: correcta (847 `glabel` en `asm/` + 255 en C = 110
 | `src/colision_y_terreno.c` | 2 | 1 | 1 | 680 | 12480 |
 | `src/entrada_de_mando.c` | 4 | 2 | 0 | 764 | 2784 |
 | `src/gestion_y_dibujo_de_objetos.c` | 12 | 2 | 1 | 1696 | 3812 |
-| `src/gestion_y_dibujo_de_objetos_2.c` | 9 | 6 | 5 | 3304 | 10604 |
+| `src/gestion_y_dibujo_de_objetos_2.c` | 7 | 4 | 9 | 3184 | 10604 |
 | `src/gestion_y_dibujo_de_objetos_3.c` | 1 | 0 | 0 | 564 | 564 |
 | `src/gestion_y_dibujo_de_objetos_4.c` | 3 | 1 | 2 | 328 | 3644 |
 | `src/graficos_y_gte.c` | 5 | 2 | 2 | 2576 | 10072 |
@@ -88,14 +88,12 @@ Coherencia con el ensamblador: correcta (847 `glabel` en `asm/` + 255 en C = 110
 - `func_80032708`
 - `func_80035244`: Lee los botones (D_80010010 sin los bits 0 y 3) y, si cambiaron, avanza siete secuencias de teclas de D_8005E768 (24 bytes cada una: caso, paso y diez teclas); al completar una ejecuta su caso con un switch de siete entradas. El archivo se compila con -G8 (config/opciones_compilacion.toml). Puntuacion 600: la tabla de saltos, los destinos de los casos, el reparto de registros del estado y la forma simbolica de D_80069662 coinciden; difieren la posicion del almacen en 0x104($gp) (el original no lo coloca en el hueco de retardo), las constantes 0x47 y 1, que el original carga antes del bucle, y 
 - `func_80036164`: Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el original usa un solo puntero con desplazamientos 0x0C y 0x04. Variantes probadas: 9.
-- `func_800363D4`: Pendiente: puntuacion 205 con la configuracion versionada (g = 8 del archivo). El original mantiene el nodo en $a0 y deriva el puntero inducido en $a1; GCC los intercambia. Variantes probadas: 5.
+- `func_800363D4`: Pendiente: puntuacion 205 con la configuracion versionada (g = 8 del archivo). El original mantiene el nodo en $a0 y deriva el puntero inducido en $a1; GCC los intercambia. Las 0x2E escrituras de sw $zero,0($a2) del original son un bucle real de 0x2E vueltas (contador en $v1, sltiu/bnez, la escritura en el hueco de retardo), no una secuencia desenrollada; escritas como 0x2E sentencias explicitas el resultado empeora (895), porque GCC no las pliega a ese bucle. Variantes probadas: 11.
 - `func_80037184`: Pendiente: puntuacion 929 con la configuracion versionada (g = 8 del archivo). El cuerpo coincide instruccion por instruccion salvo el reparto de registros: GCC iza la constante 1 de la marca de visibilidad a $s5 fuera de los bucles y el original la carga junto al almacen. Variantes probadas: 9.
-- `func_8003753C`: Pendiente: puntuacion 160 con la configuracion versionada (g = 8 del archivo). Rutina de GTE escrita a mano: carga ocho palabras en $t0..$t7 y las escribe en los registros de control 0 a 7; la ultima escritura (ctc2 $t7,$7) va en el hueco de retardo del retorno, y GCC no mueve una sentencia __asm__ a ese hueco. Variantes probadas: 2.
-- `func_80037580`: Pendiente: puntuacion 160 con la configuracion versionada (g = 8 del archivo). Rutina de GTE escrita a mano: carga ocho palabras en $t0..$t7 y las escribe en los registros de control 0 a 4, 24, 25 y 7; la ultima escritura (ctc2 $t7,$7) va en el hueco de retardo del retorno, y GCC no mueve una sentencia __asm__ a ese hueco. Variantes probadas: 2.
-- `func_80037D3C`: Pendiente: puntuacion 125 con la configuracion versionada (g = 8 del archivo). Convierte un valor de 0 a 999 en tres digitos BCD (centenas, decenas, unidades); el original conserva las centenas en $a1 hasta el final y GCC las deja en $v0. Variantes probadas: 4.
+- `func_80037D3C`: Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). Convierte un valor de 0 a 999 en tres digitos BCD (centenas, decenas, unidades); el original conserva las centenas en $a1 hasta el final y calcula centenas << 8 justo despues de la multiplicacion, mientras que GCC las deja en $v0 y las desplaza mas tarde (reparto de registros y orden de evaluacion). Variantes probadas: 12.
 - `func_80037FE8`: Pendiente: puntuacion 3403 con la configuracion versionada (g = 8 del archivo). La estructura de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de otra forma. Variantes probadas: 6.
 - `func_80038884`: Pendiente: puntuacion 324 con la configuracion versionada (g = 8 del archivo). Coincide la estructura; difiere la asignacion de registros salvados (el original deja los tres identificadores en $s7, $s6 y $s5 y el parametro en $s4). Variantes probadas: 8.
-- `func_8003A3D0`: Pendiente: puntuacion 316 con la configuracion versionada (g = 8 del archivo). El cuerpo y los saltos coinciden; difiere solo el reparto de registros salvados: el original deja el area de trabajo en $s0, la salida en $s1, el objeto en $s2 y la direccion de la baldosa en $s3. Variantes probadas: 9.
+- `func_8003A3D0`: Pendiente: puntuacion 316 con la configuracion versionada (g = 8 del archivo). El cuerpo y los saltos coinciden; difiere solo el reparto de registros salvados: el original deja el area de trabajo en $s0, la salida en $s1, el objeto en $s2 y la direccion de la baldosa en $s3; GCC da $s0 a la salida y $s3 al objeto. Ni el orden de las declaraciones locales, ni izar la direccion de la baldosa o la constante -1 antes de la primera rama, ni un bucle con salida explicita cambian el reparto (las dos ultimas formas empeoran a 1144 y 1326). Variantes probadas: 17.
 - `func_80040240`: No coincide: puntuacion 240 (el archivo se compila con g = 8; 3210 con -G0). Vibracion del mando: mientras el mando 0 anuncia el modo extendido (PadInfoMode 1 = 7 y PadInfoMode 2 distinto de cero) descuenta los dos temporizadores de pulso (D_80069659 el pequeno, D_8006965A el grande) y fija los motores D_8006965C/D_8006965D si el estado global lo permite (bits 7 y 0 de 0x800100E7); si no, borra todo. Al reconectarse (estado 1) o mientras falte la alineacion, reenvia la vibracion con PadSetAct y PadSetActAlign. Puntuacion 240 con -G8: difiere solo el orden de las dos ultimas instrucciones antes
 - `func_8004048C`: No coincide: puntuacion 7264 (el archivo se compila con g = 8). Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS (D_8006CFF1..7: id, botones invertidos y ejes) en botones logicos y ejes de +/-0x7F. Puntuacion 7264 con -G8 (switch con goto, la formulacion mas cercana): la estructura de saltos y casi todo el cuerpo coinciden; difieren el marco de pila (el original reserva 8 bytes mas, 0x2
 - `func_8004443C`: No coincide: puntuacion 240 (el archivo se compila con g = 8 y define D_800694A8; era 555 con la variable declarada extern y 1254 con -G0). Reinicia el hardware grafico y muestra la pantalla de carga del archivo pedido: apaga los retornos de llamada, limpia la VRAM, carga la imagen asociada y reactiva la pantalla. Para el archivo 3 el numero de pantalla depende de D_80010065 (nivel). Puntuacion 555 con -G8: el cuerpo coincide salvo las cuatro escrituras de 0x188($gp) y el orden de la base de la tabla D_8005F200 frente al indice (el original calcula la base antes del desplazamiento).
