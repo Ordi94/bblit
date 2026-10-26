@@ -757,4 +757,12 @@ extern u32 D_8006949C;
 /* D_80010000: nivel de EstadoPrincipal (arranque.h) que func_8001E1A4 escribe con la forma simbolica (evento de zona) */
 extern s32 D_80010000;
 
+/*
+ * Llamadas al sistema del kernel (syscall 0 con a0 = 1 y 2, 16 bytes escritos a mano cada una en
+ * 0x8004E66C y 0x8004E67C). LIBAPI.H las declara, pero incluye kernel.h, que necesita cabeceras
+ * del sistema que el proyecto no trae; se repiten aqui con la misma firma.
+ */
+extern int EnterCriticalSection(void);
+extern void ExitCriticalSection(void);
+
 #endif

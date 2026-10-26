@@ -34,9 +34,6 @@ typedef struct FlujoEntrada {
 
 
 extern s32 func_80044904(void);
-/* Entrada y salida de seccion critica (llamadas al sistema de 16 bytes sin nombre en el simbolo). */
-extern void func_8004E66C(void);
-extern void func_8004E67C(void);
 extern void func_80044854(FlujoEntrada* flujo);
 
 #ifdef NON_MATCHING
@@ -174,9 +171,9 @@ void func_80044854(FlujoEntrada* flujo)
         }
         intentos = 0;
     }
-    func_8004E66C();
+    EnterCriticalSection();
     D_80069480 -= 0x800;
-    func_8004E67C();
+    ExitCriticalSection();
     flujo->actual = flujo->sector_siguiente;
     flujo->sector_siguiente += 0x800;
     if ((u32)flujo->sector_siguiente >= flujo->contexto->anillo_fin) {

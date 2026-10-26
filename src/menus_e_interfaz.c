@@ -44,7 +44,6 @@ extern s16 D_80069688;
 extern s32 D_80076098;
 extern s32 D_8007609C;
 extern u8 D_80069600;
-/* Tabla de punteros a objetos visibles (palabras de 4 bytes: sw con indice * 4 en func_8003B5AC); el otro archivo que la usa la declara u8[]. */
 extern EntradaCola D_8006D1C8[];
 
 /* Rutinas de otros archivos y del overlay (func_80010204 y func_80010258 dibujan un modelo). */
@@ -421,7 +420,7 @@ void func_8003B5AC(Objeto* lista)
 {
     EscenaDibujo* esc;
     VistaDibujo* vista = (VistaDibujo*)0x1F800038;
-    Objeto** visibles = (Objeto**)D_8006AD80; /* La tabla guarda punteros de 4 bytes: lui/addiu s7 con la base y sw indexado. */
+    Objeto** visibles = D_8006AD80; /* La tabla guarda punteros de 4 bytes: lui/addiu s7 con la base y sw indexado. */
     ModeloDibujo* modelo;
     Objeto* obj;
     s32 color;
