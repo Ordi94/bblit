@@ -165,6 +165,12 @@ typedef struct ParSonda {
 } ParSonda;
 
 extern ParSonda D_8005E728[];
+/*
+ * Vistas por direccion absoluta de campos de D_8006D928: D_8006D9B8[0] es EstadoCamara.i90 (+0x90) y
+ * D_8006D990[3] es c68..c70 (+0x68). El original usa ambos accesos (sw %lo(D_8006D9B8) en 0x80033574 frente a
+ * sw zero 0x90($a1) en 0x80033600; lui/addiu %lo(D_8006D990) en 0x80034138 frente a sw 0x68($s0) en 0x80033DDC),
+ * asi que no se unifican.
+ */
 extern Objeto* D_8006D9B8[3];
 extern s32 D_8006D990[3];
 extern u32 D_80010008;
@@ -445,6 +451,15 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
     return 0;
 }
 
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 3065 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * las constantes coinciden; difieren el reparto de registros temporales y la planificacion de las cargas y los
+ * almacenes en las sondas de apuntado (0x80033700-0x80033888), la direccion normalizada del modo guiado
+ * (0x80033CB4-0x80033D64), el giro lateral (0x80033F00-0x80034160), los barridos contra el terreno
+ * (0x80034348-0x80034720), las ocho sondas de empuje (0x800348C8-0x80034A9C) y el bloque de alturas
+ * (0x80034B00-0x80034E34).
+ */
 /*
  * Acerca la altura del punto de vista a la banda [base - 0x64, base + 0x64] desplazada por p4: si queda por encima
  * del limite inferior de la banda se mueve un octavo hacia el, y si queda por debajo del superior, hacia el otro.
@@ -468,15 +483,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
         } \
     }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3065 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
- * las constantes coinciden; difieren el reparto de registros temporales y la planificacion de las cargas y los
- * almacenes en las sondas de apuntado (0x80033700-0x80033888), la direccion normalizada del modo guiado
- * (0x80033CB4-0x80033D64), el giro lateral (0x80033F00-0x80034160), los barridos contra el terreno
- * (0x80034348-0x80034720), las ocho sondas de empuje (0x800348C8-0x80034A9C) y el bloque de alturas
- * (0x80034B00-0x80034E34).
- *
  * Camara de seguimiento de tercera persona, una vez por cuadro. Determina la zona bajo el objeto y bajo la
  * camara y actualiza el modelo de la sala; despues atiende, por prioridad, la cuenta atras de cambio de
  * zona, la camara bloqueada por un evento, el modo de apuntado (ocho sondas contra el terreno y los objetos
@@ -527,6 +534,10 @@ void func_80033358(Objeto* o, u32 reiniciar)
         z2 = (ZonaColision*)D_80069558;
     }
     D_800695B8 = (u16*)z2;
+    /*
+     * Relectura forzosa: el original almacena el resultado con sw en 0x80033408 y lo vuelve a cargar con lw
+     * de la misma direccion en 0x80033410, sin ningun almacen entre ambas, en lugar de reutilizar el registro.
+     */
     zp = *(u16* volatile*)&D_800695B8;
     if (zp != NULL) {
         D_800694DC->u78.modelos = D_8006B568[*zp];
@@ -743,8 +754,8 @@ void func_80033358(Objeto* o, u32 reiniciar)
     pulsado = D_8001000A;
     if ((pulsado & 4) == 0 && ((o->flags14 & 0x1000000) | D_8006AA7C) == 0) {
         if (D_8006D928.i90 != 0) {
-            w->v70.vx = o->param.trans.vx - ((Objeto*)D_8006D928.i90)->param.trans.vx;
-            w->v70.vz = o->param.trans.vz - ((Objeto*)D_8006D928.i90)->param.trans.vz;
+            w->v70.vx = o->param.trans.vx - D_8006D928.i90->param.trans.vx;
+            w->v70.vz = o->param.trans.vz - D_8006D928.i90->param.trans.vz;
             i = ratan2(w->v70.vx, w->v70.vz);
             if (i < 0) {
                 i = i + 0x1000;

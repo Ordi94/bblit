@@ -230,7 +230,7 @@ typedef struct EstadoCamara {
     s32 rz;
     GsCOORDINATE2* super;
     u8 pad20[0x68 - 0x20];
-    s32 c68;                /* func_8001CC68: sw, copia del punto de vista */
+    s32 c68;                /* func_8001CC68: sw, copia del punto de vista; c68..c70 son el mismo triple que D_8006D990[3] (0x8006D928 + 0x68): func_80033358 escribe sw 0x68($s0) en 0x80033DDC y 0x800344DC y lo carga por la direccion absoluta (lui/addiu %lo(D_8006D990) en 0x80034138), asi que ambos accesos son forzosos y no se unifican */
     s32 c6C;
     s32 c70;
     u8 pad74[0x80 - 0x74];
@@ -241,7 +241,7 @@ typedef struct EstadoCamara {
     s16 s8A;
     s16 h8C;                /* func_8001D588: sh zero */
     s16 h8E;                /* func_8001D588: sh zero */
-    s32 i90;                /* func_80032894: sw zero */
+    struct Objeto* i90;     /* func_80032894: sw zero en 0x800329CC; func_80033358: lw 0x90($s1) en 0x80033F18 seguido de lw 0xE4/0xEC del objeto (0x80033F2C/44), es decir un Objeto*; es la misma palabra que D_8006D9B8[0] (0x8006D928 + 0x90): se pone a cero con sw %lo(D_8006D9B8) en 0x80033574 y con sw zero 0x90($a1) en 0x80033600, asi que ambos accesos son forzosos */
     s32 c94;                /* func_8001CC68: sw, copia del punto de vista */
     s32 c98;
     s32 c9C;
@@ -254,7 +254,7 @@ typedef struct EstadoCamara {
     s32 cB8;
     s32 cBC;
     u8 padC0[0xC4 - 0xC0];
-    s32 iC4;                /* func_80033358: lw / sw 0xC4($s0) en 0x80033D2C; destino de la mira en el modo guiado (lhu en 0x80033C10) */
+    s32 iC4;                /* func_80033358: sw 0xC4($s0) en 0x80033D2C, lw en 0x80033D74; destino de la mira en el modo guiado (lhu en 0x80033C10) */
     s32 iC8;                /* func_80033358: sw 0xC8($s0) en 0x80033D3C */
     s32 iCC;                /* func_80033358: sw 0xCC($s0) en 0x80033D54 */
     u8 padD0[0xD4 - 0xD0];
