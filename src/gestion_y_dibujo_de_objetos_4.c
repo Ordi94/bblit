@@ -1,10 +1,34 @@
 #include "common.h"
+#include "geometria.h"
 #include "objetos.h"
 
 extern u32 D_80069610;
 extern u32 D_80069614;
 extern s32 D_8006954C;
 extern vu16 D_800695A6;
+extern s32 D_8006960C;
+
+/*
+ * Area de trabajo de la sonda de altura: la entidad que transforma func_8001CE64 (nodo,
+ * vector local y posicion transformada en +0x0C), el resultado de la consulta de baldosa en
+ * +0x1C y su area de trabajo en +0x34.
+ */
+typedef struct Sonda {
+    GsCOORDINATE2* nodo;
+    SVECTOR v;
+    VECTOR acc;
+    ResultadoBaldosa r;
+    TrabajoBaldosa w;
+} Sonda;
+
+/* Posicion que la sonda entrega, en +0x18 de la estructura de salida. */
+typedef struct SalidaSonda {
+    u8 pad00[0x18];
+    VECTOR pos;
+} SalidaSonda;
+
+extern void func_8001CE64(void* entidad);
+extern void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w);
 
 /* Resta de vectores de tres componentes: resultado = b - a. */
 void func_80039BFC(s32* a, s32* b, s32* resultado)
@@ -53,6 +77,72 @@ void func_80039CD0(s32 limite)
 
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_80039D44);
 
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 316 con la configuracion versionada (g = 8 del archivo). El cuerpo y los
+ * saltos coinciden; difiere solo el reparto de registros salvados: el original deja el area de
+ * trabajo en $s0, la salida en $s1, el objeto en $s2 y la direccion de la baldosa en $s3. Variantes
+ * probadas: 9.
+ */
+/*
+ * Calcula la posicion de apoyo de 'o' en 'sal': parte de la posicion del primer ayudante
+ * visible (transformada por su jerarquia) o de la del propio objeto, la baja por el terreno con
+ * func_8001C134 y la limita por D_8006960C y, salvo que el nivel lo desactive, por la altura
+ * del objeto. Devuelve 0 si el ayudante no es visible y 1 en otro caso.
+ */
+s32 func_8003A3D0(ObjetoEscena* o, SalidaSonda* sal, Sonda* s)
+{
+    Ayuda* a;
+    Ayuda* b;
+    ObjetoEscena* p;
+    TrabajoBaldosa* w;
+    s32 sin_grupo;
+
+    a = o->ayudas;
+    w = &s->w;
+    if (a != 0 && (b = (Ayuda*)a->cab.siguiente) != 0) {
+        if (b->visible == 0) {
+            return 0;
+        }
+        s->nodo = &b->coord;
+        func_8001CE64(s);
+        GEO_CARGAR_W(&s->acc);
+        GEO_GUARDAR_W_T1(&sal->pos);
+    } else {
+        if (a->visible == 0) {
+            return 0;
+        }
+        GEO_CARGAR_W(&o->param.trans);
+        GEO_GUARDAR_W_T1(&sal->pos);
+    }
+    p = o->p70;
+    if (p != 0 && ((p->w8 & 8) || (p->wC & 0x2000))) {
+        sal->pos.vy = o->param.trans.vy;
+    } else {
+        s->r.grupo = o->s26;
+        func_8001C134((s32*)&sal->pos, &s->r, w);
+        sin_grupo = -1;
+        while (s->r.flags & 8) {
+            if (s->r.grupo == sin_grupo) {
+                break;
+            }
+            sal->pos.vy = sal->pos.vy + 1;
+            func_8001C134((s32*)&sal->pos, &s->r, w);
+        }
+        sal->pos.vy = sal->pos.vy + (s16)s->r.pendiente_abs;
+        if (D_8006960C < sal->pos.vy) {
+            sal->pos.vy = D_8006960C;
+        }
+        if (!(D_8006D9A8[0] & 0x100)) {
+            if (sal->pos.vy < o->param.trans.vy) {
+                sal->pos.vy = o->param.trans.vy;
+            }
+        }
+    }
+    return 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_8003A3D0);
+#endif
 
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_8003A5C8);

@@ -31,7 +31,7 @@ typedef struct Ayuda {
     GsCOORDINATE2 coord;         /* +0x1C */
     GsCOORD2PARAM param;         /* +0x6C */
     MATRIX m94;                  /* +0x94 copia de la matriz de vista (func_80037048) */
-    u8 visible;                  /* +0xB4 resultado de la prueba de visibilidad */
+    s8 visible;                  /* +0xB4 resultado de la prueba de visibilidad */
     u8 padB5[3];
 } Ayuda;
 
@@ -76,7 +76,8 @@ typedef struct ObjetoEscena {
     s16 s2C;
     u8 pad2E[0x3C - 0x2E];
     s16 s3C;
-    u8 pad3E[0x74 - 0x3E];
+    u8 pad3E[0x70 - 0x3E];
+    struct ObjetoEscena* p70;    /* +0x70 objeto asociado (func_8003A3D0) */
     DescModelo* p74;             /* +0x74 descriptor del modelo */
     Ayuda* ayudas;               /* +0x78 lista de ayudantes */
     GsCOORDINATE2 coord;         /* +0x7C */
