@@ -56,3 +56,7 @@ python -m venv .venv
 .venv\Scripts\pip install -e .[dev]
 python tools/build.py --help
 ```
+
+## Licencia y aviso legal
+
+Las herramientas, la documentacion y la reconstruccion de este repositorio se publican bajo la licencia MIT (archivo LICENSE). El codigo C recuperado reproduce el comportamiento del ejecutable original de Bugs Bunny: Lost in Time, cuyos derechos pertenecen a sus titulares (Infogrames y Behaviour Interactive); se publica con fines de preservacion e interoperabilidad y no concede ningun derecho sobre el juego. Este repositorio no contiene ni distribuye el disco, el ejecutable original, los recursos del juego ni el SDK Psy-Q: para reconstruir hace falta una copia propia del disco y el toolchain instalado localmente (ver docs/TOOLCHAIN.md y docs/RUNBOOK.md).
