@@ -411,14 +411,13 @@ void func_800351B4(Objeto* o)
 
 #ifdef NON_MATCHING
 /*
- * Lee los botones (D_80010010 sin los bits 0 y 3) y, si cambiaron, avanza siete secuencias
- * de teclas de D_8005E768 (24 bytes cada una: caso, paso y diez teclas); al completar una
- * ejecuta su caso con un switch de siete entradas. El archivo se compila con -G8
- * (config/opciones_compilacion.toml). Puntuacion 600: la tabla de saltos, los destinos de los
- * casos, el reparto de registros del estado y la forma simbolica de D_80069662 coinciden;
- * difieren la posicion del almacen en 0x104($gp) (el original no lo coloca en el hueco de
- * retardo), las constantes 0x47 y 1, que el original carga antes del bucle, y el orden de los
- * incrementos de los punteros del bucle.
+ * Pendiente: puntuacion 550 con la configuracion versionada (g = 8 del archivo). El original carga antes del
+ * bucle las constantes 0x47 y 1 de la ultima rama (t2 y t1) y por eso la tabla de saltos cae en t3; GCC las deja
+ * dentro de la rama. Variantes: indexado por D_8005E768[i], constantes en locales, paso++, puntero local al estado.
+ *
+ * Lee los botones (D_80010010 sin los bits 0 y 3) y, si cambiaron respecto al cuadro anterior (dato pequeno
+ * 0x104($gp)), avanza siete secuencias de teclas de D_8005E768 (24 bytes cada una: caso, paso y diez teclas);
+ * al completar una ejecuta su caso con un switch de siete entradas.
  */
 void func_80035244(void)
 {
