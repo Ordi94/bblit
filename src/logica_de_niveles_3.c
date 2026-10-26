@@ -847,7 +847,7 @@ void func_8002CB8C(Objeto* o)
         o->w2E = f->w0C >> 1;
         o->alcance2 = o->w2E * o->w2E + o->s20 * o->s20;
         func_8001CFCC(&o->coord);
-        func_8001E528(o, b, 1, area);
+        ((DibujarSprite)func_8001E528)(o, b, 1, area);
     }
     if (b->b08 == 0) {
         w = b->b05;
@@ -857,7 +857,7 @@ void func_8002CB8C(Objeto* o)
             b->h02 = 0;
             b->actual = b->fotogramas;
         }
-        func_8001E528(o, b, 1, area);
+        ((DibujarSprite)func_8001E528)(o, b, 1, area);
     }
     b->b08 -= 1;
     n = (NodoDisparador*)o->apoyos;
@@ -926,7 +926,7 @@ void func_8002CEC4(Objeto* o)
         b->h02 = (u16)o->max.vx;
         b->b05 = (u8)o->max.vz;
         b->b08 = (u8)o->max.vz;
-        func_8001E600(o, b, 1, area);
+        ((DibujarSprite)func_8001E600)(o, b, 1, area);
     }
     if (b->b08 == 0) {
         b->b08 = b->b05;
@@ -934,7 +934,7 @@ void func_8002CEC4(Objeto* o)
         if (b->w00 < (u16)b->h02) {
             b->h02 = 0;
         }
-        func_8001E600(o, b, 1, area);
+        ((DibujarSprite)func_8001E600)(o, b, 1, area);
     }
     b->b08 -= 1;
     o->flags04 |= 2;

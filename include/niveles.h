@@ -410,9 +410,6 @@ typedef struct ScratchJugador {
 #define PORTADO(o) (&(o)->portado)
 
 extern s32 BugsRand(void);
-/* El original pasa el area de trabajo como cuarto argumento aunque la rutina solo declara tres. */
-extern void func_8001E528(Objeto* o, BloqueTrabajo* b, u32 modo, void* area);
-extern void func_8001E600(Objeto* o, BloqueTrabajo* b, u32 modo, void* area);
 extern u32 func_80045C4C(u32 a0, void* a1, Objeto* a2);
 extern u32 func_80045498(Objeto* objeto, void* guion, BloqueTrabajo* bloque);
 extern s32 func_8001F268(Objeto* o, BloqueTrabajo* b, s32 id, s32 arg, void* w);

@@ -4,43 +4,6 @@
 #include "animacion.h"
 
 /*
- * Registro de dieciseis bytes de un cuadro de sprite: banderas en +2 (bit 3 = espejo), pagina
- * de textura en +6 (bits 0 a 3 = columna de 64, bits 7 y 8 = profundidad de color), origen u, v
- * en +8 y +9, paleta en +0xA (bits 0 a 5 = x en 16, bits 6 y siguientes = y), y tamano en +0xC y
- * +0xE.
- */
-typedef struct RegistroSprite {
-    u8 pad00[2];
-    u8 flags;
-    u8 pad03[3];
-    u16 pagina;
-    u8 u;
-    u8 v;
-    u16 paleta;
-    u16 w;
-    u16 h;
-} RegistroSprite;
-
-/*
- * Descriptor de un conjunto de cuadros: cuadro actual en +2, tabla de indices en +0x1C,
- * registros en +0x20 y cuatro valores de color/escala en +0x2C..+0x32.
- */
-typedef struct ConjuntoSprites {
-    u8 pad00[2];
-    u16 actual;
-    u8 pad04[0x1C - 0x04];
-    u16* tabla;
-    RegistroSprite* registros;
-    u8 pad24[0x2C - 0x24];
-    u16 c2C;
-    u16 c2E;
-    u16 c30;
-    u16 c32;
-} ConjuntoSprites;
-
-extern void func_8001E600(Objeto* o, ConjuntoSprites* c, u32 modo);
-
-/*
  * Sprite del objeto en formato escalado: el bloque que sigue a los doce primeros bytes del
  * descriptor (func_8001E600). Pagina de textura en +0, v y bit alto en +2, paleta en +4 y +6,
  * anchura y altura de recorte en +0x10 y +0x12, y modo de color en +0x14 y +0x16.
@@ -91,9 +54,9 @@ typedef struct SpritePlano {
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 1535 con la configuracion versionada (g = 8 del archivo). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0. */
-void func_8001E528(Objeto* o, ConjuntoSprites* c, u32 modo)
+void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
-    RegistroSprite* r;
+    Fotograma* r;
     SpritePlano* p;
     u16 indice;
     u8 u;
@@ -108,17 +71,18 @@ void func_8001E528(Objeto* o, ConjuntoSprites* c, u32 modo)
         func_8001E600(o, c, modo);
         return;
     }
+    /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
     if (modo & 1) {
-        indice = c->actual;
+        indice = (u16)c->h02;
     } else {
-        indice = *(u8*)(c->tabla + c->actual);
+        indice = c->duraciones[(u16)c->h02].indice;
     }
-    r = c->registros + indice;
+    r = c->fotogramas + indice;
     p = (SpritePlano*)((u8*)o->u78.p + 0xC);
     u = r->u;
     v = r->v;
-    w = r->w;
-    h = r->h;
+    w = r->w0C;
+    h = r->w0E;
     pagina = r->pagina;
     u_fin = u + (w - 1);
     p->tpage = pagina;
@@ -131,7 +95,7 @@ void func_8001E528(Objeto* o, ConjuntoSprites* c, u32 modo)
     p->v2 = v_fin;
     p->u3 = u_fin;
     p->v3 = v_fin;
-    p->clut = r->paleta;
+    p->clut = r->h0A;
     p->bandera = r->flags & 8;
 }
 #else
@@ -145,31 +109,32 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E528);
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 2665 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; el original calcula el desplazamiento de color en t2 y deja el puntero al sprite en v1, el C reparte otros registros y reordena las lecturas del registro del cuadro. */
-void func_8001E600(Objeto* o, ConjuntoSprites* c, u32 modo)
+void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
-    RegistroSprite* r;
+    Fotograma* r;
     SpriteEscalado* p;
     u16 indice;
     s32 desplazamiento;
 
+    /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
     if (modo & 1) {
-        indice = c->actual;
+        indice = (u16)c->h02;
     } else {
-        indice = *(u8*)(c->tabla + c->actual);
+        indice = c->duraciones[(u16)c->h02].indice;
     }
-    r = c->registros + indice;
+    r = c->fotogramas + indice;
     desplazamiento = 2 - ((r->pagina >> 7) & 3);
     p = (SpriteEscalado*)((u8*)o->u78.p + 0xC);
     p->s00 = (r->u >> desplazamiento) + ((r->pagina & 0xF) << 6);
     p->s02 = r->v + ((r->pagina << 4) & 0x100);
-    p->w08 = c->c2C;
-    p->s10 = r->w >> desplazamiento;
-    p->w12 = r->h;
-    p->w0A = c->c2E;
-    p->s04 = (r->paleta & 0x3F) * 0x10;
-    p->s06 = r->paleta >> 6;
-    p->w0C = c->c30;
-    p->w0E = c->c32;
+    p->w08 = c->w2C;
+    p->s10 = r->w0C >> desplazamiento;
+    p->w12 = r->w0E;
+    p->w0A = c->w2E;
+    p->s04 = (r->h0A & 0x3F) * 0x10;
+    p->s06 = r->h0A >> 6;
+    p->w0C = c->w30;
+    p->w0E = c->w32;
     if (desplazamiento == 2) {
         p->s14 = 0x10;
         p->s16 = 1;
