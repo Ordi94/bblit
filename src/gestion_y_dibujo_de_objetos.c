@@ -24,20 +24,16 @@ extern s16 D_800694E6;
 extern EntradaId* D_800695D4;
 extern s16 D_80069660;
 extern Ayuda* D_8006964C;
-extern s16 D_8006955C;
-extern u8* D_8006968C;
-extern ObjetoEscena* D_80069504;
 extern ObjetoEscena* D_800694DC;
 extern ObjetoEscena* D_800694B4;
-extern ObjetoEscena* D_8006AB70[47];
 extern void* D_80069508;
 
+#ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un
  * segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el
  * original usa un solo puntero con desplazamientos 0x0C y 0x04. Variantes probadas: 9.
  */
-#ifdef NON_MATCHING
 EntradaId* func_80036164(s32 id)
 {
     s32 i;
@@ -119,12 +115,12 @@ void InitListPool(u8* base, s32 paso, s32 total)
     }
 }
 
+#ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 420 con la configuracion versionada (g = 8 del archivo). Mismo
  * recorrido y mismos accesos; difiere el reparto de registros de la cola (el original reutiliza
  * $a0 para el siguiente del nodo quitado y conserva la cabeza en $v0). Variantes probadas: 8.
  */
-#ifdef NON_MATCHING
 NodoLista* RemoveListNode(NodoLista* cab, NodoLista* nodo)
 {
     NodoLista* prev;
@@ -158,12 +154,12 @@ NodoLista* RemoveListNode(NodoLista* cab, NodoLista* nodo)
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", RemoveListNode);
 #endif
 
+#ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 150 con la configuracion versionada (g = 8 del archivo). El original
  * copia la cabeza a $v0 antes de la prueba y avanza con $a0; GCC usa $v0 como siguiente.
  * Variantes probadas: 4.
  */
-#ifdef NON_MATCHING
 NodoLista* ClearList(NodoLista* cab)
 {
     NodoLista* n;
@@ -203,12 +199,12 @@ NodoLista* AppendListNode(NodoLista* cab, NodoLista* nodo)
     return cab;
 }
 
+#ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 205 con la configuracion versionada (g = 8 del archivo). El original
  * mantiene el nodo en $a0 y deriva el puntero inducido en $a1; GCC los intercambia. Variantes
  * probadas: 5.
  */
-#ifdef NON_MATCHING
 Ayuda* func_800363D4(void)
 {
     s32 i;
@@ -299,6 +295,7 @@ void func_8003652C(void)
     o->cab.libre |= 2;
 }
 
+#ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). El bucle de las
  * 47 reservas coincide; la cabecera difiere solo en el orden en que el planificador coloca la
@@ -306,7 +303,6 @@ void func_8003652C(void)
  * puntero antes de publicar la cabeza y conserva la base del arreglo en $s1). Variantes
  * probadas: 3.
  */
-#ifdef NON_MATCHING
 void func_800365D0(void)
 {
     ObjetoEscena* o;
