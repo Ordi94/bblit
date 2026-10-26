@@ -35,7 +35,7 @@ volcados) se genera localmente y esta excluido del control de versiones.
 | `python tools/build.py build` | Compila los `src/*.c`, ensambla el resto y enlaza `build/SLUS_008.38` |
 | `python tools/build.py verify` | Compara el SHA-256 del ejecutable reconstruido con el original |
 | `python tools/build.py diff <funcion>` | Compara una funcion compilada desde C con su original (`asm-differ`) |
-| `python tools/build.py progreso` | Escribe `docs/PROGRESO.md` y `build/progreso.json` |
+| `python tools/build.py progreso` | Escribe `docs/PROGRESO.md`, `build/progreso.json` y la seccion de progreso de este README (`--sin-readme` la omite) |
 | `python tools/build.py probar <funcion> <carpeta>` | Compila cada variante `.c` de la carpeta para esa funcion y las ordena por puntuacion de `asm-differ` |
 | `python tools/build.py clean` | Elimina lo generado (`asm/`, `expected/`, artefactos de `build/`) |
 | `python -m tools.toolchain instalar` / `verificar` / `listar` / `ruta` | Instala y consulta los componentes del toolchain |
