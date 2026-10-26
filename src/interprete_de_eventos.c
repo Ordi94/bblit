@@ -778,7 +778,7 @@ void func_80031424(Objeto* a0, Accion* a1)
     }
 }
 
-/* No coincide (350): el original guarda p70 en a0 y lo copia a v1 (33 instrucciones frente a 32); 3 formulaciones */
+/* Pendiente: puntuacion 190 con la configuracion versionada (g = 8 del archivo). El original deja el objeto controlado en a2 y el enlace p70 en a0 con una copia en v1; GCC los reparte en a0 y a1 sin esa copia. Variantes probadas: 8 (a0 reasignado, locales h y c, copia c = a0 antes y despues, puntero j al objeto controlado). */
 #ifdef NON_MATCHING
 void func_8003147C(Objeto* a0, Accion* a1)
 {
@@ -1271,7 +1271,7 @@ void func_80032474(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFCFF; }
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80032490(Objeto* a0, Accion* a1) { D_80069554 = ACC_W4(a1); }
 
-/* No coincide (10): el prologo usa a0 como base del banco y otro orden de lui */
+/* Pendiente: puntuacion 265 con la configuracion versionada (g = 8 del archivo). Solo difiere el prologo: el original reparte a0 (base del banco A), v1 (D_8006D064) y v0 (indice) y GCC los asigna en otro orden; las seis ramas siguientes coinciden. Variantes probadas: 8 (RA con puntero constante, extern D_80010040[], copia local de la mascara, tipos de v, puntero local). */
 #ifdef NON_MATCHING
 void func_800324A4(Objeto* a0, Accion* a1)
 {
@@ -1370,9 +1370,9 @@ void func_800326D0(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFFDF; }
 
 void func_800326EC(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 4; }
 
-/* No coincide (5635): el flujo de busqueda con saltos no se reproduce con bucles do/while */
 #ifdef NON_MATCHING
-/* Mueve la seleccion del menu al siguiente elemento habilitado. */
+/* Pendiente: puntuacion 600 con la configuracion versionada (g = 8 del archivo). Los cuatro bucles de busqueda coinciden con la forma for/while; difiere el reparto de a0, a2 y v1 del prologo (el original comparte con a2 la base de D_80010040 y D_80010010). Variantes probadas: 9 (do/while con guarda, for, while y copias locales de la mascara). */
+/* Mueve la seleccion del menu al siguiente elemento habilitado de los seis posibles, hacia delante o hacia atras segun la direccion pulsada. */
 void func_80032708(Objeto* a0, Accion* a1)
 {
     s32 v;
