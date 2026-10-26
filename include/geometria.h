@@ -79,11 +79,9 @@ typedef struct TrabajoBaldosa {
 } TrabajoBaldosa;
 
 /*
- * Este archivo contiene solo macros que reproducen ensamblador del original, instruccion por
- * instruccion; ninguna se usa para forzar el reparto de registros ni la planificacion del
- * compilador (no hay sentencias vacias ni sentencias partidas con ese fin). La unica lista de
- * registros destruidos que excede lo que escribe el ensamblador es la de GEO_NORMA2_XZ, descrita
- * mas abajo.
+ * Este archivo contiene solo macros que reproducen las instrucciones del original, y la lista de
+ * registros destruidos de cada una contiene unicamente los registros que su ensamblador escribe
+ * (mas "memory" cuando almacena).
  *
  * Macros de vector del motor. El original las escribio como sentencias de ensamblador en linea
  * con los temporales fijos $8..$14 (t0..t6): el ejecutable las delata porque cada vector entra
@@ -93,10 +91,7 @@ typedef struct TrabajoBaldosa {
  * entre ellas es el de las macros. El resto de cada funcion (ramas, bucles, llamadas) es C
  * ordinario; las llamadas a libgte se hacen con sus prototipos de LIBGTE.H.
  *
- * Las que reciben una direccion la copian a $t0 al principio; las listas de registros
- * destruidos reproducen el efecto sobre la asignacion de registros: GEO_NORMA2_XZ declara tambien
- * $v0 y $v1, lo que desplaza el puntero de destino a $a0 (sin ellos GCC lo deja en $v0); no se
- * sabe que lista declaraba el original.
+ * Las que reciben una direccion la copian a $t0 al principio.
  *
  * GEO_CARGAR_W(p)        t1..t3 = vector de 3 palabras en p
  * GEO_RESTAR_W(p)        t4..t6 = t1..t3 - (vector de 3 palabras en p)
@@ -165,7 +160,7 @@ typedef struct TrabajoBaldosa {
 #define GEO_NORMA2_XZ(v, d) \
     __asm__ volatile ("lh $8, 0(%1)\n\tlh $9, 4(%1)\n\tmtc2 $8, $9\n\tmtc2 $9, $11\n\tnop\n\tnop\n\t" \
                       "sqr 0\n\tmfc2 $8, $25\n\tmfc2 $9, $27\n\tnop\n\tadd $8, $8, $9\n\tsw $8, 0(%0)" \
-                      : : "r"(d), "r"(v) : "$2", "$3", "$8", "$9", "memory")
+                      : : "r"(d), "r"(v) : "$8", "$9", "memory")
 /*
  * GEO_SUMAR_W(p): las tres palabras de p += t1..t3 (los temporales que dejo la macro anterior,
  * normalmente GEO_CARGAR_W). Queda en ensamblador en linea (no es GTE) porque consume t1..t3 de la
