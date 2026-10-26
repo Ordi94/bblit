@@ -63,10 +63,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2540 con la configuracion versionada (g = 0 del archivo). El reparto de
+ * Pendiente: puntuacion 2120 con la configuracion versionada (g = 0 del archivo). El reparto de
  * registros coincide con el original; difieren el orden de planificacion en los avances por
  * subcelda y por baldosa, el cierre compartido de resultados y una constante de indice que el
- * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 9950).
+ * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 9670).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -336,11 +336,11 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                         w->lin_z = (w->z / 320) * 0x140 - 1;
                     }
                     px = (w->dz << 12) / w->dx;
-                    pz = (w->dx << 12) / w->dz;
                     w->pend_x = px;
+                    pz = (w->dx << 12) / w->dz;
                     w->pend_z = pz;
-                    w->cbx_x = w->lin_x;
                     w->cbz_z = w->lin_z;
+                    w->cbx_x = w->lin_x;
                     w->cbz_x = ((pz * (w->lin_z - w->z)) >> 12) + w->x;
                     w->cbx_z = ((px * (w->lin_x - w->x)) >> 12) + w->z;
                     do {
@@ -492,8 +492,8 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                     w->aux = ty;
                                     w->rz = tz;
                                     w->sz_z = w->lim_z = w->lim_z + w->celda_z;
-                                    w->rx = tx;
                                     w->sz_x = tx + ((w->pend_z * w->celda_z) >> 12);
+                                    w->rx = tx;
                                 } else {
                                     w->acc_x = w->dx;
                                 }
@@ -505,8 +505,8 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                     w->aux = ty;
                                     w->rz = tz;
                                     w->sx_x = w->lim_x = w->lim_x + w->celda_x;
-                                    w->rx = tx;
                                     w->sx_z = tz + ((w->pend_x * w->celda_x) >> 12);
+                                    w->rx = tx;
                                 } else {
                                     w->acc_z = w->dz;
                                 }
