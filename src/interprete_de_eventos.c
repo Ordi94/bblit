@@ -1232,7 +1232,7 @@ void func_80032344(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0x7FFF; }
 void func_80032360(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 0x8000; }
 
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
-void func_8003237C(Objeto* a0) { D_80069560 = (s32)a0; }
+void func_8003237C(Objeto* a0) { D_80069560 = a0; }
 
 void func_8003238C(Objeto* a0, Accion* a1) { a0->flags18 |= 0x400; }
 

@@ -169,7 +169,7 @@ extern void (*D_8005E35C[])(ObjEsc*);
 extern void* D_800694D4;
 extern u16 D_80069652;
 extern s32 D_800695EC;
-extern void func_80033358(s32 a0, u32 a1);
+extern void func_80033358(void* a0, u32 a1);
 extern void func_80035244(void);
 extern void func_800351B4(Objeto* a0);
 extern void func_8003502C(Objeto* a0);
@@ -565,8 +565,8 @@ void func_8003502C(Objeto* o)
     Objeto* p;
     ObjetoVolumen* v;
 
-    if ((s32)o == D_80069560) {
-        D_80069560 = (s32)D_80069698;
+    if (o == D_80069560) {
+        D_80069560 = D_80069698;
     }
     if (D_80069698->p6C == o) {
         D_80069698->p6C = NULL;
@@ -951,7 +951,7 @@ fin:
     s0 = (ObjEsc*)D_80069630;
     D_800695D0 = 0;
     D_800695EC = 0;
-    D_80069560 = (s32)D_80069698;
+    D_80069560 = D_80069698;
     if (s0 != NULL) {
         do {
             o = s0;
