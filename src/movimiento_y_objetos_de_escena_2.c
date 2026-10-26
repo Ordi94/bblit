@@ -211,7 +211,7 @@ typedef struct DesplazamientoObjetos {
  * x y z del destino (la altura no se toca).
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 300 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y mismo orden de almacenes; el original copia el tercer argumento a a3 al principio y lo reutiliza como cuarto argumento de la llamada, el C lo copia despues. Variantes probadas: 9. */
+/* Pendiente: puntuacion 300 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y mismo orden de almacenes; el original copia el tercer argumento a a3 al principio y lo reutiliza como cuarto argumento de la llamada, el C lo copia despues y deja el puntero de trabajo y el de destino en el mismo registro hasta el primer almacen. */
 void func_8001D028(Objeto* origen, Objeto* destino, u8* p)
 {
     DesplazamientoObjetos* w;
@@ -823,7 +823,7 @@ extern void RunLogicAction(void* o, void* item);
  * secuencia de animacion, camara) y la lista continua solo si el evento lo permite (0x8000).
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 200 con la configuracion versionada (g = 8 del archivo). La unica diferencia es la carga del argumento de func_8003F06C: el original usa lw y el C con la conversion (s16) usa lh; sin la conversion el compilador iza la direccion de D_8006B558 fuera del bucle y la puntuacion sube a 692. Variantes probadas: 6. */
+/* Pendiente: puntuacion 200 con la configuracion versionada (g = 8 del archivo). La unica diferencia es la carga del argumento de func_8003F06C: el original usa lw y el C con la conversion (s16) usa lh; sin la conversion el bucle tiene menos instrucciones antes de la optimizacion de bucles y el compilador iza la direccion de D_8006B558 fuera de el, con lo que la puntuacion sube a 692. */
 void func_8001E1A4(Objeto* o, ConsultaPlano* c)
 {
     VECTOR destino;

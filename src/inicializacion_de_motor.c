@@ -127,7 +127,7 @@ INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449B0);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo). Solo difieren dos instrucciones muertas del original (ori a1,zero,0x200 y ori a2,zero,0x1FF antes de la etiqueta de entrada func_800449E8) que GCC elimina. Variantes probadas: 2. */
+/* Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo). Solo difieren dos instrucciones muertas del original (ori a1,zero,0x200 y ori a2,zero,0x1FF antes de la etiqueta de entrada func_800449E8) que GCC elimina; la rutina es manuscrita y esas instrucciones no se pueden emitir desde C. */
 void func_800449E0(u8* a0)
 {
     s32 i;
@@ -287,7 +287,7 @@ void func_80044E58(void)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). Misma estructura que el original; difiere la planificacion de la carga de la direccion de D_8006D018 (lui) y de la mascara andi 0xFFFF. Variantes probadas: 9. */
+/* Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). Misma estructura que el original; difiere la planificacion: el original carga la direccion de D_8006D018 (lui) justo despues de leer la lista de nodos y calcula la mascara andi 0xFFFF y el desplazamiento del indice despues de guardar la tabla, mientras que GCC los adelanta. */
 void func_80044EA8(s32 a0, u32 a1, Objeto* a2)
 {
     NodoAnimacion* nodo;
@@ -456,7 +456,7 @@ void func_80045368(s16 a0, s16 a1)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 230 con la configuracion versionada (g = 8 del archivo). El bucle de digitos incrementa el indice antes de leer en el original (li a1 frente a addiu a1,a1,1 y desplazamiento 0 frente a -1). Variantes probadas: 16. */
+/* Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo). El bucle de digitos ya coincide (el incremento va en la condicion, t[n++], y el indice se corrige con n-- al salir); difiere el prologo del bucle: el original no pliega el primer incremento (addiu a1,a1,1 sobre la copia de valor, con la constante 3 cargada despues) y GCC lo resuelve como li a1,1. */
 s32 func_800453D0(u8** p)
 {
     s32 signo;
@@ -494,7 +494,7 @@ INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800453D0);
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045498);
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Mismo flujo y mismas escrituras; el original conserva una copia de a2 en v0 para la primera comparacion y emite el sh de +0x26 despues de la carga del byte de D_8006AA7C. Variantes probadas: 12. */
+/* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Mismo flujo y mismas escrituras; el original conserva una copia de a2 en v0 para la primera comparacion y emite el sh de +0x26 despues de la carga del byte de D_8006AA7C. */
 u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
 {
     BloqueTrabajo* bloque;

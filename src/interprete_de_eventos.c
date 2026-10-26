@@ -1238,7 +1238,7 @@ void func_80032474(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFCFF; }
 void func_80032490(Objeto* a0, Accion* a1) { D_80069554 = ACC_W4(a1); }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 265 con la configuracion versionada (g = 8 del archivo). Solo difiere el prologo: el original reparte a0 (base del banco A), v1 (D_8006D064) y v0 (indice) y GCC los asigna en otro orden; las seis ramas siguientes coinciden. Variantes probadas: 8 (RA con puntero constante, extern D_80010040[], copia local de la mascara, tipos de v, puntero local). */
+/* Pendiente: puntuacion 265 con la configuracion versionada (g = 8 del archivo). Solo difiere el prologo: el original reparte a0 (base del banco A), v1 (D_8006D064) y v0 (indice) y GCC los asigna en otro orden; las seis ramas siguientes coinciden. Con el banco A como `extern u8 D_80010040[]` el lui de la base sale simbolico y en el mismo orden que el original, pero la puntuacion sube a 360 por el reparto de v0 y a0. */
 void func_800324A4(Objeto* a0, Accion* a1)
 {
     u32 v;

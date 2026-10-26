@@ -16,7 +16,8 @@ extern Objeto* D_800694B4;
 /*
  * Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un
  * segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el
- * original usa un solo puntero con desplazamientos 0x0C y 0x04. Variantes probadas: 9.
+ * original usa un solo puntero con desplazamientos 0x0C y 0x04. Ni el recorrido por indice sobre
+ * el arreglo ni la reordenacion de los incrementos eliminan el puntero derivado.
  */
 EntradaId* func_80036164(s32 id)
 {
@@ -189,7 +190,6 @@ NodoLista* AppendListNode(NodoLista* cab, NodoLista* nodo)
  * escrituras de sw $zero,0($a2) del original son un bucle real de 0x2E vueltas (contador en $v1,
  * sltiu/bnez, la escritura en el hueco de retardo), no una secuencia desenrollada; escritas como
  * 0x2E sentencias explicitas el resultado empeora (895), porque GCC no las pliega a ese bucle.
- * Variantes probadas: 11.
  */
 Ayuda* func_800363D4(void)
 {
