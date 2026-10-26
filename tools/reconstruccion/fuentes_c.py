@@ -42,6 +42,10 @@ _PRIMER_COMENTARIO = re.compile(r"/\*(.*?)\*/", re.DOTALL)
 _COMENTARIO_INICIAL = re.compile(r"\A\s*(/\*.*?\*/|//[^\n]*)", re.DOTALL)
 # Lo primero que debe decir ese comentario: la puntuacion pendiente del intento.
 _PENDIENTE = re.compile(r"\APendiente:\s*puntuacion\s+\d+\b")
+# Marca de una rutina que el original escribio a mano ("Rutina de GTE escrita a mano en el original").
+_MANUSCRITA = re.compile(
+    r"\brutina(?:\s+de\s+\w+)?\s+escrita\s+a\s+mano\s+en\s+el\s+original\b", re.IGNORECASE
+)
 MAX_CARACTERES_MOTIVO = 600
 _PALABRAS_DE_CONTROL = frozenset({"if", "while", "for", "switch", "return", "sizeof", "else", "do"})
 
@@ -58,6 +62,20 @@ class EstadoFuncion(Enum):
     C = "c"
     NO_COINCIDENTE = "no_coincidente"
     ENSAMBLADOR = "ensamblador"
+
+
+class MarcaAsm(Enum):
+    """Lo que dice el comentario que precede a una funcion que sigue en ``INCLUDE_ASM``.
+
+    Attributes:
+        MANUSCRITA: el comentario declara que la rutina esta escrita a mano en el original.
+        JUSTIFICADA: hay un comentario, pero no declara una rutina manuscrita.
+        SIN_COMENTARIO: ninguna linea de comentario inmediatamente encima.
+    """
+
+    MANUSCRITA = "manuscrita"
+    JUSTIFICADA = "justificada"
+    SIN_COMENTARIO = "sin_comentario"
 
 
 @dataclass(frozen=True)
@@ -382,6 +400,52 @@ def verificar_pendientes(textos: Mapping[str, str]) -> None:
             f"{len(faltantes)} funcion(es) {MACRO_NO_COINCIDENTE} sin la linea 'Pendiente: puntuacion N' "
             f"en el primer comentario bajo '#ifdef {MACRO_NO_COINCIDENTE}': " + "; ".join(faltantes)
         )
+
+
+def clasificar_include_asm(texto: str) -> dict[str, MarcaAsm]:
+    """
+    Clasifica cada ``INCLUDE_ASM`` suelto de un archivo segun el comentario que lo precede.
+
+    Contexto:
+        Una funcion que se queda en ensamblador por ser una rutina escrita a mano en el original lo
+        declara en el comentario inmediatamente encima. ``progreso`` lista esas rutinas aparte y
+        avisa de las que no explican por que siguen en ensamblador. Se ignoran los ``INCLUDE_ASM`` de
+        la rama ``#else`` de un bloque ``NON_MATCHING`` (son intentos pendientes, no rutinas de diseno).
+
+    Args:
+        texto (str): Contenido del archivo ``.c``.
+
+    Returns:
+        dict[str, MarcaAsm]: Marca por nombre de funcion. El comentario cuenta solo si termina en la
+        linea anterior al ``INCLUDE_ASM``; una linea en blanco de por medio lo desvincula.
+
+    Raises:
+        ValueError: Si el preprocesador del archivo esta desbalanceado.
+
+    Ejemplo:
+        marcas = clasificar_include_asm(texto)
+    """
+    mascara = _enmascarar_comentarios(texto)
+    activo = _texto_activo(mascara, no_coincidente=False)
+    lineas_mascara = mascara.split("\n")
+    comentarios: dict[int, str] = {}
+    for coincidencia in _COMENTARIOS.finditer(texto):
+        if coincidencia.group(0).startswith("/"):
+            comentarios[texto.count("\n", 0, coincidencia.end())] = coincidencia.group(0)
+    intentos = {bloque.funcion for bloque in bloques_no_coincidentes(texto)}
+    marcas: dict[str, MarcaAsm] = {}
+    for ensamblador in _INCLUDE_ASM.finditer(activo):
+        if ensamblador.group(1) in intentos:
+            continue
+        previa = activo.count("\n", 0, ensamblador.start()) - 1
+        comentario = comentarios.get(previa)
+        if comentario is None or lineas_mascara[previa].strip():
+            marcas[ensamblador.group(1)] = MarcaAsm.SIN_COMENTARIO
+        elif _MANUSCRITA.search(_aplanar_comentario(comentario)):
+            marcas[ensamblador.group(1)] = MarcaAsm.MANUSCRITA
+        else:
+            marcas[ensamblador.group(1)] = MarcaAsm.JUSTIFICADA
+    return marcas
 
 
 def motivos_no_coincidentes(texto: str) -> dict[str, str]:

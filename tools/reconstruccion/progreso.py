@@ -20,7 +20,9 @@ from typing import Any
 
 from tools.reconstruccion.fuentes_c import (
     EstadoFuncion,
+    MarcaAsm,
     analizar_fuentes,
+    clasificar_include_asm,
     motivos_no_coincidentes,
     verificar_pendientes,
 )
@@ -129,6 +131,10 @@ class Progreso:
         auxiliares: Funciones definidas en C que no figuran en la tabla (ayudantes locales).
         sin_simbolo: Funciones mencionadas en ``src/`` que la tabla no declara.
         glabel_en_asm: ``glabel`` del ensamblador generado, o ``None`` si no hay ``asm/``.
+        manuscritas: Funciones que siguen en ``INCLUDE_ASM`` porque el original es una rutina escrita
+            a mano, con su tamano en bytes.
+        sin_comentario: ``(archivo, funcion)`` de los ``INCLUDE_ASM`` sin comentario encima, en
+            archivos que ya tienen funciones en C.
     """
 
     arranque: ResumenZona
@@ -143,6 +149,8 @@ class Progreso:
     auxiliares: tuple[str, ...]
     sin_simbolo: tuple[str, ...]
     glabel_en_asm: int | None
+    manuscritas: tuple[tuple[str, int], ...] = ()
+    sin_comentario: tuple[tuple[str, str], ...] = ()
 
     @property
     def funciones_totales(self) -> int:
@@ -305,6 +313,7 @@ def calcular_progreso(
     estados: Mapping[str, Mapping[str, EstadoFuncion]],
     glabel_en_asm: int | None,
     motivos: Mapping[str, str] | None = None,
+    marcas: Mapping[str, Mapping[str, MarcaAsm]] | None = None,
 ) -> Progreso:
     """
     Calcula el progreso a partir de la tabla de simbolos y del estado de cada funcion.
@@ -317,6 +326,8 @@ def calcular_progreso(
         estados (Mapping[str, Mapping[str, EstadoFuncion]]): Estado por funcion y archivo C.
         glabel_en_asm (int, opcional): ``glabel`` contados en ``asm/``; ``None`` si no hay ``asm/``.
         motivos (Mapping[str, str], opcional): Motivo de cada intento ``NON_MATCHING``.
+        marcas (Mapping[str, Mapping[str, MarcaAsm]], opcional): Marca de cada ``INCLUDE_ASM`` suelto,
+            por funcion y archivo C; sin ella no hay rutinas manuscritas ni avisos.
 
     Returns:
         Progreso: Conteos por zona, por archivo y de coherencia.
@@ -330,6 +341,8 @@ def calcular_progreso(
     auxiliares: list[str] = []
     sin_simbolo: list[str] = []
     archivos: list[ArchivoProgreso] = []
+    manuscritas: list[tuple[str, int]] = []
+    sin_comentario: list[tuple[str, str]] = []
     for archivo in sorted(estados):
         contadores = {estado: 0 for estado in EstadoFuncion}
         bytes_c = bytes_total = 0
@@ -340,11 +353,18 @@ def calcular_progreso(
                 continue
             contadores[estado] += 1
             bytes_total += funcion.tamano
+            marca = (marcas or {}).get(archivo, {}).get(nombre)
+            if estado is EstadoFuncion.ENSAMBLADOR and marca is MarcaAsm.MANUSCRITA:
+                manuscritas.append((nombre, funcion.tamano))
+            elif estado is EstadoFuncion.ENSAMBLADOR and marca is MarcaAsm.SIN_COMENTARIO:
+                sin_comentario.append((archivo, nombre))
             if estado is EstadoFuncion.C:
                 en_c.append(funcion)
                 bytes_c += funcion.tamano
             elif estado is EstadoFuncion.NO_COINCIDENTE:
                 no_coincidentes.append(nombre)
+        if not any(estado is EstadoFuncion.C for estado in estados[archivo].values()):
+            sin_comentario = [par for par in sin_comentario if par[0] != archivo]
         archivos.append(
             ArchivoProgreso(
                 archivo,
@@ -368,6 +388,8 @@ def calcular_progreso(
         auxiliares=tuple(sorted(auxiliares)),
         sin_simbolo=tuple(sorted(sin_simbolo)),
         glabel_en_asm=glabel_en_asm,
+        manuscritas=tuple(sorted(manuscritas)),
+        sin_comentario=tuple(sorted(sin_comentario)),
     )
 
 
@@ -429,6 +451,8 @@ def a_json(progreso: Progreso) -> dict[str, Any]:
             }
             for s in progreso.subsistemas
         ],
+        "manuscritas": [{"funcion": n, "bytes": b} for n, b in progreso.manuscritas],
+        "sinComentario": [{"archivo": a, "funcion": f} for a, f in progreso.sin_comentario],
         "auxiliares": list(progreso.auxiliares),
         "sinSimbolo": list(progreso.sin_simbolo),
         "coherencia": {
@@ -521,6 +545,13 @@ def a_markdown(progreso: Progreso) -> str:
     ]
     if not progreso.no_coincidentes:
         lineas.append("Ninguna.")
+    lineas += ["", "## Rutinas manuscritas (siguen en ensamblador por diseño)", ""]
+    lineas += [f"- `{nombre}` ({tamano} bytes)" for nombre, tamano in progreso.manuscritas]
+    if not progreso.manuscritas:
+        lineas.append("Ninguna.")
+    if progreso.sin_comentario:
+        lineas += ["", "## `INCLUDE_ASM` sin comentario en archivos con funciones en C", ""]
+        lineas += [f"- `{nombre}` (`{archivo}`)" for archivo, nombre in progreso.sin_comentario]
     if progreso.auxiliares:
         lineas += ["", "## Ayudantes definidos en C (no figuran en la tabla)", ""]
         lineas += [f"- `{nombre}`" for nombre in progreso.auxiliares]
@@ -602,7 +633,8 @@ def generar_progreso(raiz: Path) -> Progreso:
         motivos.update(motivos_no_coincidentes(texto))
     estados = analizar_fuentes(textos)
     verificar_pendientes(textos)
-    progreso = calcular_progreso(simbolos, estados, contar_glabel(raiz), motivos)
+    marcas = {archivo: clasificar_include_asm(texto) for archivo, texto in textos.items()}
+    progreso = calcular_progreso(simbolos, estados, contar_glabel(raiz), motivos, marcas)
     documento = raiz / DOCUMENTO_PROGRESO
     documento.parent.mkdir(parents=True, exist_ok=True)
     documento.write_text(a_markdown(progreso), encoding="utf-8", newline="\n")

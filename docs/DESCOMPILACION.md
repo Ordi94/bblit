@@ -501,6 +501,16 @@ su uso es un error de compilación a propósito. Las macros de carga y lectura d
   de la tabla; si no, `progreso` termina con error y hay que ejecutar `split`.
 - Guardia de pendientes: todo bloque `#ifdef NON_MATCHING` debe llevar la línea `Pendiente: puntuacion N`
   bajo el `#ifdef` (ver «Cómo mover una función de ensamblador a C»); si falta, `progreso` termina con error.
+- **Rutinas manuscritas.** Una función que se queda en `INCLUDE_ASM` porque el original es una rutina
+  escrita a mano (sin `addiu sp`, temporales fijos, marca `Handwritten` del particionador) lleva encima,
+  sin línea en blanco de por medio, un comentario que dice «rutina escrita a mano en el original» (también
+  vale «Rutina de GTE escrita a mano en el original»). `progreso` las lista aparte, con su tamaño, en la
+  categoría «Rutinas manuscritas» de `docs/PROGRESO.md` (y en `manuscritas` de `build/progreso.json`); no
+  cuentan como funciones en C. Además avisa (por la salida de errores, sin cambiar el código de salida y en
+  la sección «`INCLUDE_ASM` sin comentario» del documento) de cada `INCLUDE_ASM` sin ningún comentario
+  encima en un archivo que ya tiene funciones en C: o es una rutina manuscrita sin marcar o falta explicar
+  por qué sigue en ensamblador. Los `INCLUDE_ASM` de la rama `#else` de un bloque `NON_MATCHING` son intentos
+  pendientes y no se clasifican.
 
 Las funciones triviales vacías (`jr ra; nop`) también entran como `INCLUDE_ASM`: pasarlas a C es
 una decisión del desarrollador, así el progreso solo cuenta lo que alguien escribió.

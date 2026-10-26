@@ -85,6 +85,11 @@ def _ejecutar_progreso(raiz: Path) -> int:
         f"({medido.c_juego.bytes} de {medido.juego.bytes} bytes, {medido.porcentaje_bytes_juego:.2f} %); "
         f"{len(medido.no_coincidentes)} NON_MATCHING; docs/PROGRESO.md y build/progreso.json escritos"
     )
+    if medido.manuscritas:
+        print(f"manuscritas: {len(medido.manuscritas)} rutinas escritas a mano siguen en ensamblador")
+    for archivo, funcion in medido.sin_comentario:
+        aviso = f"aviso: {archivo}: {funcion} sigue en INCLUDE_ASM sin comentario que lo explique"
+        print(aviso, file=sys.stderr)
     if medido.coherente is False:
         print(
             f"error: {medido.glabel_en_asm} glabel en asm/ + {medido.funciones_en_c} funciones en C no "
