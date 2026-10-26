@@ -13,14 +13,14 @@ construcción normal) y de la tabla de símbolos.
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
 Bytes de código del juego descompilados: 3232 de 201416 (1.60 %).
-Funciones marcadas `NON_MATCHING`: 20.
+Funciones marcadas `NON_MATCHING`: 39.
 Coherencia con el ensamblador: correcta (1076 `glabel` en `asm/` + 25 en C = 1101; la tabla declara 1101).
 
 ## Por subsistema
 
 | Subsistema | Archivos | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |
 |---|---:|---:|---:|---:|---:|---:|
-| arranque_y_bucle_principal | 1 | 0 | 0 | 10 | 0 | 3404 |
+| arranque_y_bucle_principal | 1 | 0 | 10 | 0 | 0 | 3404 |
 | audio_xa_y_spu | 1 | 0 | 0 | 37 | 0 | 8220 |
 | camara_y_bucle_logico | 1 | 0 | 1 | 10 | 0 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 0 | 0 | 11 | 0 | 14264 |
@@ -34,13 +34,13 @@ Coherencia con el ensamblador: correcta (1076 `glabel` en `asm/` + 25 en C = 110
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 0 | 0 | 27 | 0 | 13644 |
 | movimiento_y_objetos_de_escena | 3 | 1 | 0 | 26 | 236 | 18284 |
-| tarjeta_de_memoria | 1 | 0 | 0 | 10 | 0 | 5116 |
+| tarjeta_de_memoria | 1 | 0 | 9 | 1 | 0 | 5116 |
 
 ## Por archivo
 
 | Archivo | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |
 |---|---:|---:|---:|---:|---:|
-| `src/arranque_y_bucle_principal_2.c` | 0 | 0 | 10 | 0 | 3404 |
+| `src/arranque_y_bucle_principal_2.c` | 0 | 10 | 0 | 0 | 3404 |
 | `src/audio_xa_y_spu.c` | 0 | 0 | 37 | 0 | 8220 |
 | `src/camara_y_bucle_logico.c` | 0 | 1 | 10 | 0 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 0 | 0 | 9 | 0 | 13592 |
@@ -64,10 +64,28 @@ Coherencia con el ensamblador: correcta (1076 `glabel` en `asm/` + 25 en C = 110
 | `src/movimiento_y_objetos_de_escena.c` | 0 | 0 | 4 | 0 | 2116 |
 | `src/movimiento_y_objetos_de_escena_2.c` | 1 | 0 | 14 | 236 | 6336 |
 | `src/movimiento_y_objetos_de_escena_3.c` | 0 | 0 | 8 | 0 | 9832 |
-| `src/tarjeta_de_memoria.c` | 0 | 0 | 10 | 0 | 5116 |
+| `src/tarjeta_de_memoria.c` | 0 | 9 | 1 | 0 | 5116 |
 
 ## Funciones `NON_MATCHING`
 
+- `func_80014AC4`: Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18 caracteres de D_8005E051 y devuelve su indice, o -1 si no esta. Pendiente (895): el original accede a la cuenta de entradas por $gp (0x38($gp)) y el archivo se compila con -G0; ademas el original calcula la base del nombre una sola vez antes del bucle. NON_MATCHING: usa $gp; pendiente de soporte -G8. Puntuacion 895 con la configuracion versionada (-G0) y 895 con g = 8.
+- `func_80014BA0`: Lee `cantidad` bytes del archivo de partida a partir de `desplazamiento`; 1 si se leyo completo. coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 0.
+- `func_80014C54`: Lee y valida la cabecera del archivo de partida (hasta cinco intentos): comprueba la suma de control sobre los 0x200 bytes con la primera palabra a cero, la copia a D_8006D060 y, si el estado principal vale 0, vuelca los seis registros de nivel en el banco de registros del interprete. coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 20. (con g = 8 el diff marca 10, solo simbolizacion de direcciones absolutas).
+- `func_80014E24`: Lee la partida del slot ESTADO_PRINCIPAL->fDF (0x180 bytes a partir de 0x400 + (slot - 1) * 0x180) al buffer D_80069520, comprueba la suma de control de los primeros 0x140 bytes (palabra en +4 a cero durante el calculo) y los copia al estado principal; hasta cinco intentos. La reserva de 0x200 bytes en la pila no se usa: el marco de pila del original la conserva. coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 540. (con g = 8 el diff marca 25, solo simbolizacion de direcciones absolutas).
+- `func_80014EF8`: Escribe `cantidad` bytes en el archivo de partida a partir de `desplazamiento`; 1 si se escribio completo. coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 0.
+- `func_80014FAC`: Escribe la cabecera del archivo de partida: guarda el valor de 16 bits formado por los bytes 0x13C (alto) y 0x47 (bajo) del estado principal y el byte 0x45 en el registro del nivel que indica el byte 0xDF, recalcula la suma de control sobre el bloque de 0x200 bytes y lo graba (hasta cinco intentos). coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 50. (con g = 8 el diff marca 50, solo simbolizacion de direcciones absolutas).
+- `func_8001515C`: Graba la partida: calcula la suma de control del estado principal (0x140 bytes con la palabra +4 a cero), actualiza la cabecera y escribe el bloque de 0x180 bytes del slot ESTADO_PRINCIPAL->fDF (hasta cinco intentos). coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 25. (con g = 8 el diff marca 25, solo simbolizacion de direcciones absolutas).
+- `func_800151FC`: Da formato al archivo de partida: arma en la pila un bloque de 0x200 bytes con la cabecera de la tarjeta ("SC", bandera de icono, un bloque, titulo, paleta e imagenes), lo copia con la cabecera de D_8006D060 y su suma de control al buffer D_80069520 + 0x2000 y escribe 0x400 bytes con open/write (hasta cinco intentos), comprobando despues la lectura. Pendiente (17610): no se reprodujo la disposicion de los bloques locales de la pila ni las copias de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento.
+- `func_80015E94`: Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...). Pendiente (120): usa $gp; con -G0 el compilador coloca el almacen en el hueco de retardo de la llamada y el original lo coloca antes de cargar el modo; pendiente de soporte -G8. NON_MATCHING: usa $gp; pendiente de soporte -G8. Puntuacion 120 con la configuracion versionada (-G0) y 120 con g = 8.
+- `func_80015EC0`: coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 295. (con g = 8 el diff marca 80, solo simbolizacion de direcciones absolutas).
+- `func_80015F38`: coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 270. (con g = 8 el diff marca 65, solo simbolizacion de direcciones absolutas).
+- `func_80015FC8`: coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 10. (con g = 8 el diff marca 10, solo simbolizacion de direcciones absolutas).
+- `func_80016044`: coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 0.
+- `func_800160A8`: coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 0.
+- `func_80016118`: coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 25. (con g = 8 el diff marca 25, solo simbolizacion de direcciones absolutas).
+- `func_800161A8`: coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 20. (con g = 8 el diff marca 20, solo simbolizacion de direcciones absolutas).
+- `func_80016218`: Actualiza un cuadro: contadores de tiempo, lectura de mandos, logica y ordenacion de primitivas. La ordenacion corre con la pila en el bloque de memoria rapida (scratchpad): la pila se guarda en 0x1F8003FC, se cambia a esa zona y se restaura al terminar. Las dos secuencias son ensamblador porque el compilador no tiene forma de mover el puntero de pila. coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 3603.
+- `func_800163E4`: coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 10.
 - `func_80016C0C`
 - `func_80016ED0`
 - `func_800171E4`
@@ -88,6 +106,7 @@ Coherencia con el ensamblador: correcta (1076 `glabel` en `asm/` + 25 en C = 110
 - `func_8004443C`: No coincide: 555 con g = 8; con la configuracion actual -G0 da 1254. Reinicia el hardware grafico y muestra la pantalla de carga del archivo pedido: apaga los retornos de llamada, limpia la VRAM, carga la imagen asociada y reactiva la pantalla. Para el archivo 3 el numero de pantalla depende de D_80010065 (nivel). Puntuacion 555 con -G8: el cuerpo coincide salvo las cuatro escrituras de 0x188($gp) y el orden de la base de la tabla D_8005F200 frente al indice (el original calcula la base antes del desplazamiento).
 - `func_80044588`: No coincide: 290 con g = 8; con la configuracion actual -G0 da 230. Carga la pantalla del archivo pedido sin reiniciar la pantalla. Puntuacion 290 con -G8: difieren la escritura de 0x188($gp) y que el original conserva el valor leido en dos registros (el de comparacion y el del argumento).
 - `func_800445E8`: Coincide con g = 8 (0); con la configuracion actual -G0 da 110. Carga el contenedor pedido, entrega el resultado a func_80019364 y deja armados los retornos de llamada de VSync (func_80040AF0) y de audio y menus. Puntuacion 0 con -G8; con el -G0 por omision la carga de D_800694FC usa otro registro y la funcion pierde un nop.
+- `main`: Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la pausa y la maquina de estados D_80069662 (el estado 0x16 en adelante recarga el contenido). Con el mando ocioso unos 900 cuadros entra en el ciclo de demostracion. Pendiente (1135, 11 variantes): el flujo y los tipos coinciden (pausa y demostracion son s16, el contador de cuadros D_80069676 es volatile u16); difieren el reparto de registros salvados de las constantes 2 y 3 y de la tabla de tiempos D_8006CF68
 
 ## Menciones sin símbolo de función (datos incrustados en el código; no cuentan)
 
