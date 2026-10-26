@@ -262,7 +262,6 @@ s32 func_8003A3D0(Objeto* o, SalidaSonda* sal, Sonda* s)
     Ayuda* a;
     Ayuda* b;
     Objeto* p;
-    u16 i;
     TrabajoBaldosa* w;
     s32 sin_grupo;
 
