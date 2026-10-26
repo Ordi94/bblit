@@ -68,7 +68,9 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion en curso con la configuracion versionada (g = 8 del archivo). */
+/* Pendiente: puntuacion 14350 de 497000 con g = 8. Las diferencias restantes son de reparto de
+   registros (v0/v1/a0 y punteros s0-s2) y del orden en que el compilador planifica los
+   almacenamientos de las transiciones de cada contacto; la logica coincide. */
 void func_80020B90(Objeto* o)
 {
     ScratchJugador* sc;
