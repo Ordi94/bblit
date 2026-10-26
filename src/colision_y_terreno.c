@@ -63,10 +63,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 750 con la configuracion versionada (g = 0 del archivo). El reparto de
+ * Pendiente: puntuacion 710 con la configuracion versionada (g = 0 del archivo). El reparto de
  * registros coincide con el original; difieren el orden de planificacion en los avances por
  * subcelda y por baldosa, el cierre compartido de resultados y una constante de indice que el
- * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 5340).
+ * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 3255).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -119,7 +119,6 @@ void func_80019364(s32* a0)
         INDICE_PREVIO; \
         zona = w->zonas[w->n]; \
         if (w->celdas[w->n] == 0x7E) { \
-            k = 0; \
             if (w->n < k) { \
                 w->n = 0; \
             } \
@@ -191,7 +190,6 @@ void func_80019364(s32* a0)
         INDICE_PREVIO; \
         zona = w->zonas[w->n]; \
         if (w->celdas[w->n] == 0x7E) { \
-            k = 0; \
             if (w->n < k) { \
                 w->n = 0; \
             } \
