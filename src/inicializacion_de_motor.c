@@ -89,6 +89,7 @@ typedef struct ObjetoAnimado {
     void* p180;
 } ObjetoAnimado;
 
+extern void func_800449E0(u8* destino);
 extern void* memset(void* destino, s32 valor, u32 cantidad);
 extern void FlushCache(void);
 extern void func_8003ED6C(void);
@@ -111,19 +112,250 @@ extern void func_80039CD0(s32 prim);
 extern u16* D_80069590;
 extern u8 D_8006AA7C;
 extern u32 func_80045498(ObjetoAnimado* objeto, void* guion, BloqueTrabajo* bloque);
+/*
+ * Estado que func_80044A04 reinicia al empezar el nivel. Los de un tamano de dos o cuatro bytes se
+ * declaran escalares: el original los escribe con la forma simbolica de -G8 (lui at).
+ */
+extern vu16 D_800695A6;
+extern s16 D_800695BC;
+extern s16 D_80069650;
+extern s16 D_800694CC;
+extern u8 D_800695F6;
+extern s16 D_80069634;
+extern s16 D_8006952C;
+extern s32 D_80069560;
+extern void* D_80069508;
+extern s16 D_80069584;
+extern s16 D_800694E4;
+extern s16 D_80069668;
+extern s16 D_800694BC;
+extern s16 D_80069602;
+extern u8 D_80069628;
+extern u8 D_8006CFF0[];
+extern u8 D_8006D038[];
+extern s16 D_800694C8;
+extern s32 D_8006962C;
+extern u8 D_800694B2;
+extern u8 D_8006956C;
+extern u8 D_8006963D;
+extern u8 D_80069574;
+extern u8 D_8006965F;
+extern u8 D_8006950C;
+extern u8 D_80069514;
+extern u8 D_80069525;
+extern u8 D_80069524;
+extern u8 D_80069500;
+extern u8 D_80069684;
+extern s16 D_80069588;
+extern s16 D_8006956A;
+extern s32 D_80069604;
+extern u8 D_800694F6;
+extern u8 D_800694F2;
+extern s16 D_80069526;
+extern s16 D_8006969E;
+extern s16 D_8006968A;
+extern s16 D_800695C0;
+extern s32 D_80069558;
+extern void func_800449E8(u8* tabla);
+extern void func_800400C0(void);
+
+/* Tabla de veintisiete punteros a datos del motor que el overlay consulta. */
+extern void* D_8006B2F8[27];
+extern u8 D_8006A940[];
+extern u8 D_800695B8[];
+extern u8 D_80069610[];
+extern u8 D_80069664[];
+extern u8 D_8006954C[];
+extern u8 D_800695D0[];
+extern u8 D_8006B658[];
+extern u8 D_8006969C[];
+extern u8 D_800694B0[];
+extern u8 D_800695F2[];
+extern u8 D_800695F4[];
+extern u8 D_8006B668[];
+extern u8 D_800695DA[];
+extern u8 D_800695C4[];
+extern u8 D_800695A2[];
+extern u8 D_800695A4[];
+
 extern EntradaLista* D_800694D4;
 extern s16 D_80069652;
 extern EntradaLista* D_800694B8;
 
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044904);
 
+/* Pendiente: puntuacion 1460 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: neg y add con trampa de desbordamiento, registros fijos t0 a t2 y el temporal at en slt; GCC emite negu, addu y otro reparto de registros. Variantes probadas: 3. */
+#ifdef NON_MATCHING
+u32 func_80044940(s32* v)
+{
+    s32 x;
+    s32 y;
+    s32 z;
+    s32 mayor;
+    s32 medio;
+    s32 menor;
+
+    x = v[0];
+    y = v[1];
+    z = v[2];
+    if (x < 0) {
+        x = -x;
+    }
+    if (y < 0) {
+        y = -y;
+    }
+    if (z < 0) {
+        z = -z;
+    }
+    mayor = x;
+    menor = y;
+    if (x < y) {
+        mayor = y;
+        menor = x;
+    }
+    medio = z;
+    if (mayor < z) {
+        medio = mayor;
+        mayor = z;
+    }
+    return (mayor + ((u32)menor >> 2) + ((u32)medio >> 2)) | 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044940);
+#endif
 
+/* Pendiente: puntuacion 960 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: registros fijos t0 y t1, nop explicito tras cada lw y el simbolo de la funcion vecina cargado con lui + lw; GCC reparte v0, v1 y a0. Variantes probadas: 2. */
+#ifdef NON_MATCHING
+void func_800449B0(void)
+{
+    u32* destino;
+    u32* origen;
+
+    destino = (u32*)FntLoad;
+    origen = (u32*)func_800449E0;
+    destino[9] = origen[0];
+    destino[12] = origen[1];
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449B0);
+#endif
 
+/* Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo). Solo difieren dos instrucciones muertas del original (ori a1,zero,0x200 y ori a2,zero,0x1FF antes de la etiqueta de entrada func_800449E8) que GCC elimina. Variantes probadas: 2. */
+#ifdef NON_MATCHING
+void func_800449E0(u8* a0)
+{
+    s32 i;
+
+    i = 0x21;
+    do {
+        *a0 = 0;
+        i--;
+        a0++;
+    } while (i >= 0);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449E0);
+#endif
 
+/* Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). Mismas escrituras y mismo orden; el original coloca lui a0 de la primera llamada despues de la lectura de D_800695A6 y la planificacion del compilador la adelanta. Variantes probadas: 6. */
+#ifdef NON_MATCHING
+void func_80044A04(void)
+{
+    s32 buffer;
+    u8* estado;
+
+    D_80069650 = 0;
+    D_800694CC = 0;
+    D_8006966A = 0;
+    D_800695F6 = 0;
+    buffer = GsGetActiveBuff();
+    D_800695A6 = 0;
+    D_8006967C = buffer;
+    D_800695BC = buffer;
+    D_80069634 = buffer;
+    D_8006D018[0] = 0;
+    D_8006952C = 0x32;
+    D_80069676 = D_800695A6;
+    D_80069560 = 0;
+    D_80069508 = NULL;
+    D_80069698 = NULL;
+    D_80069584 = 0;
+    D_800694E4 = 0;
+    D_80069668 = 0;
+    D_800694BC = 0;
+    D_80069602 = 0x80;
+    D_80069628 = D_80069676;
+    func_800449E8(D_8006CFF0);
+    func_800449E8(D_8006D038);
+    func_800400C0();
+    D_800694C8 = -1;
+    D_8006962C = 0x1E;
+    D_800694B2 = 0xFF;
+    D_8006956C = 0xFF;
+    D_8006963D = 0xFF;
+    D_80069574 = 0xFF;
+    D_8006965F = 0xFF;
+    D_8006950C = 0xFF;
+    D_80069514 = 0xFF;
+    D_80069525 = 0xFF;
+    D_80069524 = 0xFF;
+    D_80069500 = 0xFF;
+    D_80069684 = 0xFF;
+    D_80069662 = 0;
+    D_80069588 = 0;
+    D_8006956A = 0;
+    D_80069604 = 0;
+    D_800694F6 = 0;
+    D_800694F2 = 0;
+    D_80069526 = 0;
+    D_8006969E = 0;
+    D_8006968A = 0;
+    D_800695C0 = 0;
+    estado = (u8*)0x80010000;
+    estado[0x49] = 0;
+    estado[0x4A] = 0;
+    estado[0x4B] = 0;
+    estado[0x4C] = 0;
+    estado[0x70] = 0;
+    estado[0x71] = 0;
+    estado[0x72] = 0;
+    estado[0x73] = 0;
+    D_8006B2F8[0] = D_8006AE20;
+    D_8006B2F8[1] = D_8006AE60;
+    D_8006B2F8[2] = D_8006AEA0;
+    D_8006B2F8[3] = &D_8006967C;
+    D_8006B2F8[4] = D_8006A940;
+    D_8006B2F8[5] = &D_80069588;
+    D_8006B2F8[6] = D_800695B8;
+    D_8006B2F8[7] = &D_80069680;
+    D_8006B2F8[8] = &D_8006958C;
+    D_8006B2F8[9] = D_80069610;
+    D_8006B2F8[10] = (void*)&D_800695A6;
+    D_8006B2F8[11] = D_80069664;
+    D_8006B2F8[12] = D_8006954C;
+    D_8006B2F8[13] = D_800695D0;
+    D_8006B2F8[14] = D_8006B658;
+    D_8006B2F8[15] = D_8006969C;
+    D_8006B2F8[16] = D_800694B0;
+    D_8006B2F8[17] = D_800695F2;
+    D_8006B2F8[18] = D_800695F4;
+    D_8006B2F8[19] = D_8006B668;
+    D_8006B2F8[20] = &D_8006956A;
+    D_8006B2F8[21] = D_800695DA;
+    D_8006B2F8[22] = D_800695C4;
+    D_8006B2F8[25] = D_800695A2;
+    D_8006B2F8[26] = D_800695A4;
+    D_8006D928.z = 0;
+    D_8006D928.y = 0;
+    D_8006D928.x = 0;
+    D_8006D928.vpz = 0;
+    D_8006D928.vpy = 0;
+    D_8006D928.vpx = 0;
+    D_80069558 = 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044A04);
+#endif
 
 void func_80044D44(void)
 {
