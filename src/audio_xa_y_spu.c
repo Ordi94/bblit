@@ -71,6 +71,7 @@ extern void func_8003E068(void);
 extern void func_8003E094(void);
 extern void func_8003E16C(u8 a0);
 extern void func_8003FC88(void);
+extern u32 func_8003FC04(void);
 extern void func_8003FD60(void);
 /* Volumen maestro de los efectos en el estado principal (0x80010000 + 0xE5). */
 extern u8 D_800100E5;
