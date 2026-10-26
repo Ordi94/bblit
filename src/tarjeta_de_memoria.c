@@ -437,26 +437,25 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  */
 void func_800156F4(void)
 {
-    u8 reserva[16];
-    s16 ranura;
-    s32 rc;
-    s32 fmt;
-    s32 orden;
-    s32 cmds;
-    s32 estado;
-    u32 rslt;
-    s32 i;
-    s32 j;
-    s32 tam;
-    s32 s1;
-    s32 s2;
-    s32 t;
-    s16* bloques;
-    EntradaDirectorio* ee;
-    s32 n;
-    s32 cuenta;
     CabeceraGuardado* cab;
-
+    s32 cuenta;
+    s32 n;
+    EntradaDirectorio* ee;
+    s16* bloques;
+    s32 t;
+    s32 s2;
+    s32 s1;
+    s32 tam;
+    s32 j;
+    s32 i;
+    u32 rslt;
+    s32 estado;
+    s32 cmds;
+    s32 orden;
+    s32 fmt;
+    s32 rc;
+    s16 ranura;
+    u8 reserva[16];
     ranura = 0;
     if (D_8006AA70[3] == 1) {
         D_8006935C = 0;

@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 345 | 46424 |
+| Código del juego | 450 | 201416 | 346 | 47376 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 46424 de 201416 (23.05 %).
-Funciones marcadas `NON_MATCHING`: 62.
-Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 47376 de 201416 (23.52 %).
+Funciones marcadas `NON_MATCHING`: 63.
+Coherencia con el ensamblador: ROTA (757 `glabel` en `asm/` + 346 en C = 1103; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -26,7 +26,7 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 | cargador_de_niveles_y_cd | 2 | 6 | 5 | 0 | 804 | 14264 |
 | colision_y_terreno | 1 | 2 | 1 | 1 | 680 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
-| gestion_y_dibujo_de_objetos | 4 | 23 | 7 | 12 | 5772 | 18624 |
+| gestion_y_dibujo_de_objetos | 4 | 24 | 7 | 11 | 6724 | 18624 |
 | graficos_y_gte | 3 | 13 | 6 | 0 | 3316 | 11812 |
 | inicializacion_de_motor | 1 | 6 | 8 | 2 | 1028 | 5276 |
 | interprete_de_eventos | 1 | 192 | 3 | 2 | 10868 | 11900 |
@@ -34,7 +34,7 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 22 | 4 | 1 | 9256 | 13644 |
 | movimiento_y_objetos_de_escena | 3 | 8 | 16 | 3 | 1400 | 18284 |
-| tarjeta_de_memoria | 1 | 6 | 3 | 1 | 1628 | 5116 |
+| tarjeta_de_memoria | 1 | 6 | 4 | 0 | 1628 | 5116 |
 
 ## Por archivo
 
@@ -48,7 +48,7 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 | `src/colision_y_terreno.c` | 2 | 1 | 1 | 680 | 12480 |
 | `src/entrada_de_mando.c` | 5 | 1 | 0 | 1260 | 2784 |
 | `src/gestion_y_dibujo_de_objetos.c` | 12 | 2 | 1 | 1696 | 3812 |
-| `src/gestion_y_dibujo_de_objetos_2.c` | 7 | 4 | 9 | 3184 | 10604 |
+| `src/gestion_y_dibujo_de_objetos_2.c` | 8 | 4 | 8 | 4136 | 10604 |
 | `src/gestion_y_dibujo_de_objetos_3.c` | 1 | 0 | 0 | 564 | 564 |
 | `src/gestion_y_dibujo_de_objetos_4.c` | 3 | 1 | 2 | 328 | 3644 |
 | `src/graficos_y_gte.c` | 3 | 6 | 0 | 1576 | 10072 |
@@ -64,12 +64,13 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 | `src/movimiento_y_objetos_de_escena.c` | 1 | 3 | 0 | 176 | 2116 |
 | `src/movimiento_y_objetos_de_escena_2.c` | 6 | 9 | 0 | 1176 | 6336 |
 | `src/movimiento_y_objetos_de_escena_3.c` | 1 | 4 | 3 | 48 | 9832 |
-| `src/tarjeta_de_memoria.c` | 6 | 3 | 1 | 1628 | 5116 |
+| `src/tarjeta_de_memoria.c` | 6 | 4 | 0 | 1628 | 5116 |
 
 ## Funciones `NON_MATCHING`
 
 - `func_80014AC4`: Pendiente: puntuacion 895 con la configuracion versionada (g = 8 del archivo). El original direcciona la tabla de cuentas con `addiu v0,gp,0x38`, que maspsx emite desde ASPSX 2.80 (la version fijada), y calcula la base del nombre una sola vez antes del bucle. Variantes probadas: 8 (bucles por indice y por puntero). Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18 caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
 - `func_800151FC`: Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). Variantes probadas: 1. No se reprodujo la disposicion de los bloques locales de la pila ni las copias de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento. Da formato al archivo de partida: arma en la pila un bloque de 0x200 bytes con la cabecera de la tarjeta ("SC", bandera de icono, un bloque, titulo, paleta e imagenes), lo copia con la cabecera de D_8006D060 y su suma de control al buffer D_80069520 + 0x2000 y escribe 0x400 bytes con open/write (hasta cinco intentos), comprobando
+- `func_800156F4`: Pendiente: puntuacion 3390 con la configuracion versionada (g = 8 del archivo). Flujo y estructura de bloques iguales al original; quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en las cuentas de bloques y en los bucles del directorio, y el reparto de las divisiones por 0x2000. Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de registros (D_8006AA70[0xA]: 1 aceptar, 2 formatear, 3 crear el archivo, 4 grabar con sonido, 5 cargar, 6 grabar) y la limpia; despues sondea con MemCardSync(1) la ultima operacion as
 - `func_80015E94`: Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). El original calcula las dos direcciones de $gp con `addiu a1,gp,0x40` y `addiu a2,gp,0x48` (ASPSX 2.80, la version fijada) y coloca el almacen del byte antes de cargar el modo. Variantes probadas: 3. Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
 - `func_80016C0C`: Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo). Solo difiere la posicion de un addiu (el calculo de &o->m se emite una instruccion antes que en el original) y el registro del puntero de destino de la norma al cuadrado (v0 en lugar de a0). Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. Variantes probadas: 6.
 - `func_800171E4`: Pendiente: puntuacion 308 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. Variantes probadas: 12.
@@ -103,7 +104,7 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 - `func_800353B0`: Pendiente: puntuacion 7961 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y las constantes coinciden; difieren el reparto de registros (el original conserva el scratchpad, &sx, &z6C y la mascara -3 en s1..s4 y no hoistea &v80 ni &c104), el relleno de los huecos de retardo de la macro de distancia (maspsx anade un nop extra tras dos de sus saltos) y la forma de la busqueda en la tabla D_8006A940 (el original relee el puntero guardado en el scratchpad en cada vuelta). Variantes probadas: 12 (locales del objeto, punteros hoisted, mascara en local, macro de d
 - `func_80036164`: Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el original usa un solo puntero con desplazamientos 0x0C y 0x04. Variantes probadas: 9.
 - `func_800363D4`: Pendiente: puntuacion 205 con la configuracion versionada (g = 8 del archivo). El original mantiene el nodo en $a0 y deriva el puntero inducido en $a1; GCC los intercambia. Las 0x2E escrituras de sw $zero,0($a2) del original son un bucle real de 0x2E vueltas (contador en $v1, sltiu/bnez, la escritura en el hueco de retardo), no una secuencia desenrollada; escritas como 0x2E sentencias explicitas el resultado empeora (895), porque GCC no las pliega a ese bucle. Variantes probadas: 11.
-- `func_80037184`: Pendiente: puntuacion 929 con la configuracion versionada (g = 8 del archivo). El cuerpo coincide instruccion por instruccion salvo el reparto de registros: GCC iza la constante 1 de la marca de visibilidad a $s5 fuera de los bucles y el original la carga junto al almacen. Variantes probadas: 9.
+- `func_8003760C`: Pendiente: puntuacion 17468 con la configuracion versionada (g = 8 del archivo). El C describe el flujo del original pero este no es codigo de GCC: carga las constantes con ori (0x64, 4, 1) en lugar de addiu, guarda s4, s6 y s5 fuera del orden de numeracion, copia cada matriz con ocho cargas seguidas de ocho almacenes y abre un marco de pila propio (addiu sp de 0x18 y 0x20) alrededor de cada par de llamadas a las rutinas manuscritas para alojar un vector de salida; GCC reserva todo el marco en el prologo. Por esas cuatro marcas se trata como rutina escrita a mano en el original.
 - `func_80037D3C`: Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). Convierte un valor de 0 a 999 en tres digitos BCD (centenas, decenas, unidades); el original conserva las centenas en $a1 hasta el final y calcula centenas << 8 justo despues de la multiplicacion, mientras que GCC las deja en $v0 y las desplaza mas tarde (reparto de registros y orden de evaluacion). Variantes probadas: 12.
 - `func_80037FE8`: Pendiente: puntuacion 3403 con la configuracion versionada (g = 8 del archivo). La estructura de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de otra forma. Variantes probadas: 6.
 - `func_80038884`: Pendiente: puntuacion 324 con la configuracion versionada (g = 8 del archivo). Coincide la estructura; difiere la asignacion de registros salvados (el original deja los tres identificadores en $s7, $s6 y $s5 y el parametro en $s4). Variantes probadas: 8.

@@ -5,8 +5,7 @@
  * Vista del ayudante (Ayuda, objetos.h) a partir de +0x0C: el puntero a su GsCOORDINATE2 (+0x10
  * del nodo) y la bandera de visibilidad (+0xB4 del nodo). Es una vista aparte de Ayuda a proposito:
  * el original recorre la lista con un puntero desplazado 0xC (addiu sobre el nodo) distinto del
- * propio nodo. Accediendo por los campos de Ayuda func_80037048 sube de 0 a 604 puntos y
- * func_80037184 de 929 a 1464.
+ * propio nodo. Accediendo por los campos de Ayuda func_80037048 sube de 0 a 604 puntos.
  */
 typedef struct AyudaCuerpo {
     s32 w0;
@@ -126,18 +125,16 @@ void func_80037048(Objeto* lista)
     }
 }
 
-#ifdef NON_MATCHING
-/*
- * Pendiente: puntuacion 105 con la configuracion versionada (g = 8 del archivo). El cuerpo coincide salvo una copia al final del
- * bucle externo: el original guarda el objeto actual en $v1 (move v1,v0) antes de leer su enlace y GCC reutiliza $v0 sin copia.
- * El recorrido de ayudantes usa una etiqueta y no un for: el optimizador de bucles iza la constante 1 de la marca de
- * visibilidad a $s5 cuando el recorrido es un bucle interior de 29 instrucciones, y el original la carga junto al almacen.
- */
 /*
  * Dibuja la lista de escena 'lista': para cada objeto activo con la bandera de dibujo (bit 3 de
  * flags18) lo refleja respecto del objeto de referencia D_800695EC segun los bits de s1E de este
  * (eje X, Y o Z), recalcula su matriz, decide la visibilidad de sus ayudantes, restaura su
  * posicion original y lo anade a la lista de dibujo D_800694D8 (que se encadena por +0x10).
+ *
+ * El recorrido de ayudantes usa una etiqueta y no un for: el optimizador de bucles saca la constante 1 de la marca de
+ * visibilidad a un registro guardado cuando el recorrido es un bucle interior de 29 instrucciones, y el original la carga
+ * junto al almacen. La constante del area de trabajo se asigna antes que el puntero al escritorio para que cada una tenga
+ * su propio lui, y el enlace del objeto en curso se guarda antes de releerlo para que el original conserve la copia.
  */
 void func_80037184(Objeto* lista)
 {
@@ -212,17 +209,14 @@ void func_80037184(Objeto* lista)
                 } else {
                     sp->previo->sig10 = sp->actual;
                 }
+                sp->previo = sp->actual;
                 o = sp->actual;
-                sp->previo = o;
                 sp->actual = o->sig10;
                 sp->previo->sig10 = 0;
             }
         } while (sp->actual != 0);
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037184);
-#endif
 
 /*
  * Rutina de GTE escrita a mano en el original (marca Handwritten del particionador): carga ocho
