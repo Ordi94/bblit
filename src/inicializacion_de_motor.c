@@ -98,6 +98,7 @@ extern void func_8003502C(ObjetoAnimado* objeto);
 extern ObjetoAnimado* func_80036734(s32 tipo, void* a, void* b);
 extern void func_8004BBF0(s32 valor);
 extern void func_8004E584(s32 valor);
+extern void func_80044EA8(s32 a0, u32 a1, ObjetoAnimado* a2);
 extern void func_80055AFC(s32 valor);
 extern void func_8005595C(s32 valor);
 
@@ -184,8 +185,8 @@ extern EntradaLista* D_800694B8;
 
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044904);
 
-/* Pendiente: puntuacion 1460 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: neg y add con trampa de desbordamiento, registros fijos t0 a t2 y el temporal at en slt; GCC emite negu, addu y otro reparto de registros. Variantes probadas: 3. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 1460 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: neg y add con trampa de desbordamiento, registros fijos t0 a t2 y el temporal at en slt; GCC emite negu, addu y otro reparto de registros. Variantes probadas: 3. */
 u32 func_80044940(s32* v)
 {
     s32 x;
@@ -224,8 +225,8 @@ u32 func_80044940(s32* v)
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044940);
 #endif
 
-/* Pendiente: puntuacion 960 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: registros fijos t0 y t1, nop explicito tras cada lw y el simbolo de la funcion vecina cargado con lui + lw; GCC reparte v0, v1 y a0. Variantes probadas: 2. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 960 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: registros fijos t0 y t1, nop explicito tras cada lw y el simbolo de la funcion vecina cargado con lui + lw; GCC reparte v0, v1 y a0. Variantes probadas: 2. */
 void func_800449B0(void)
 {
     u32* destino;
@@ -240,8 +241,8 @@ void func_800449B0(void)
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449B0);
 #endif
 
-/* Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo). Solo difieren dos instrucciones muertas del original (ori a1,zero,0x200 y ori a2,zero,0x1FF antes de la etiqueta de entrada func_800449E8) que GCC elimina. Variantes probadas: 2. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo). Solo difieren dos instrucciones muertas del original (ori a1,zero,0x200 y ori a2,zero,0x1FF antes de la etiqueta de entrada func_800449E8) que GCC elimina. Variantes probadas: 2. */
 void func_800449E0(u8* a0)
 {
     s32 i;
@@ -257,8 +258,8 @@ void func_800449E0(u8* a0)
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449E0);
 #endif
 
-/* Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). Mismas escrituras y mismo orden; el original coloca lui a0 de la primera llamada despues de la lectura de D_800695A6 y la planificacion del compilador la adelanta. Variantes probadas: 6. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). Mismas escrituras y mismo orden; el original coloca lui a0 de la primera llamada despues de la lectura de D_800695A6 y la planificacion del compilador la adelanta. Variantes probadas: 6. */
 void func_80044A04(void)
 {
     s32 buffer;
@@ -398,8 +399,8 @@ void func_80044E58(void)
     func_8005595C(0x64);
 }
 
-/* Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). Misma estructura que el original; difiere la planificacion de la carga de la direccion de D_8006D018 (lui) y de la mascara andi 0xFFFF. Variantes probadas: 9. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). Misma estructura que el original; difiere la planificacion de la carga de la direccion de D_8006D018 (lui) y de la mascara andi 0xFFFF. Variantes probadas: 9. */
 void func_80044EA8(s32 a0, u32 a1, ObjetoAnimado* a2)
 {
     NodoAnimacion* nodo;
@@ -478,8 +479,8 @@ void func_800450E8(Glifo* a0, u8 a1, OrigenEntrada* a2)
     D_80069652++;
 }
 
-/* Pendiente: puntuacion 3641 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s6 al contador y s7 y fp a las dimensiones del glifo, el C los reparte al reves y desplaza el resto de la planificacion. Variantes probadas: 8. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 3641 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s6 al contador y s7 y fp a las dimensiones del glifo, el C los reparte al reves y desplaza el resto de la planificacion. Variantes probadas: 8. */
 void func_80045150(EntradaLista* e)
 {
     Glifo* g;
@@ -567,8 +568,8 @@ void func_80045368(s16 a0, s16 a1)
     }
 }
 
-/* Pendiente: puntuacion 230 con la configuracion versionada (g = 8 del archivo). El bucle de digitos incrementa el indice antes de leer en el original (li a1 frente a addiu a1,a1,1 y desplazamiento 0 frente a -1). Variantes probadas: 16. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 230 con la configuracion versionada (g = 8 del archivo). El bucle de digitos incrementa el indice antes de leer en el original (li a1 frente a addiu a1,a1,1 y desplazamiento 0 frente a -1). Variantes probadas: 16. */
 s32 func_800453D0(u8** p)
 {
     s32 signo;
@@ -606,8 +607,8 @@ INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800453D0);
 
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045498);
 
-/* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Mismo flujo y mismas escrituras; el original conserva una copia de a2 en v0 para la primera comparacion y emite el sh de +0x26 despues de la carga del byte de D_8006AA7C. Variantes probadas: 12. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Mismo flujo y mismas escrituras; el original conserva una copia de a2 en v0 para la primera comparacion y emite el sh de +0x26 despues de la carga del byte de D_8006AA7C. Variantes probadas: 12. */
 u32 func_80045C4C(u32 a0, void* a1, ObjetoAnimado* a2)
 {
     BloqueTrabajo* bloque;

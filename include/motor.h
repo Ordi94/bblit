@@ -86,6 +86,9 @@ typedef struct TrabajoSuelo {
 
 extern int rsin(int angulo);
 
+/* Coloca la camara detras de una posicion (movimiento_y_objetos_de_escena_2.c). */
+extern void func_8001CC68(VECTOR* p);
+
 /* Consulta de baldosa de colision_y_terreno.c (la definicion vive alli). */
 extern void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w);
 
@@ -97,6 +100,8 @@ typedef struct RegistroAnim {
     u8 pad00[6];
     u16 w06;
     u16 w08;
+    u8 pad0A[2];
+    u32 w0C;
 } RegistroAnim;
 
 /*
@@ -107,6 +112,10 @@ typedef struct NodoSecuencia {
     struct NodoSecuencia* sig;
     u16 id;
     u16 desplazamiento;
+    u16 w08;
+    u16 w0A;
+    u16 pad0C[2];
+    u32 w10;
 } NodoSecuencia;
 
 /* Nodo de la lista de saltos (peldanos) de un objeto: siguiente en +0 y altura de destino en +0x10. */
@@ -122,15 +131,29 @@ typedef struct NodoPeldano {
  */
 typedef struct ObjetoMotor {
     struct ObjetoMotor* siguiente;
-    u8 pad04[0x08 - 0x04];
+    u32 flags04;
     u32 flags08;
-    u8 pad0C[0x14 - 0x0C];
+    u32 flags0C;
+    u8 pad10[0x14 - 0x10];
     u32 flags14;
-    u8 pad18[0x26 - 0x18];
+    u32 flags18;
+    u16 w1C;
+    u16 w1E;
+    u8 pad20[0x26 - 0x20];
     u16 w26;
-    u8 pad28[0x52 - 0x28];
+    u8 pad28[0x2C - 0x28];
+    u16 w2C;
+    u8 pad2E[0x34 - 0x2E];
+    s32 i34;
+    s16 h38;
+    u8 pad3A[0x48 - 0x3A];
+    s16 h48;
+    u8 pad4A[0x50 - 0x4A];
+    s16 h50;
     s16 h52;
-    u8 pad54[0x70 - 0x54];
+    u8 pad54[0x68 - 0x54];
+    s32 i68;
+    struct ObjetoMotor* p6C;
     struct ObjetoMotor* p70;
     u8 pad74[0x78 - 0x74];
     NodoPeldano* p78;
@@ -138,7 +161,12 @@ typedef struct ObjetoMotor {
     MATRIX mtx;
     u8 padA0[0xC0 - 0xA0];
     Transformacion* transf;
-    u8 padC4[0xDC - 0xC4];
+    s32 iC4;
+    u8 padC8[0xCC - 0xC8];
+    s32 iCC;
+    s32 iD0;
+    s32 iD4;
+    u8 padD8[0xDC - 0xD8];
     u16 wDC;
     u16 wDE;
     u16 wE0;
@@ -149,7 +177,7 @@ typedef struct ObjetoMotor {
     u8 padF0[0xF4 - 0xF0];
     NodoSecuencia* secuencias;
     u8* bloque;
-    u8 padFC[0x100 - 0xFC];
+    NodoSecuencia* apoyos;
     s32 i100;
     s16 h104;
     s16 h106;
@@ -174,10 +202,11 @@ typedef struct ObjetoMotor {
     u32 flags15C;
     u8 pad160[0x17C - 0x160];
     u16 w17C;
-    u8 pad17E[0x180 - 0x17E];
+    u16 h17E;
     NodoSecuencia* nodo180;
     RegistroAnim* registro184;
-    u8 pad188[0x1A8 - 0x188];
+    NodoSecuencia* nodo188;
+    u8 pad18C[0x1A8 - 0x18C];
     s32 i1A8;
 } ObjetoMotor;
 
@@ -200,7 +229,12 @@ typedef struct CamaraMotor {
     s32 c70;
     u8 pad74[0x80 - 0x74];
     u16 flags80;
-    u8 pad82[0x94 - 0x82];
+    u8 pad82[0x88 - 0x82];
+    s16 h88;
+    u8 pad8A[0x8C - 0x8A];
+    s16 h8C;
+    s16 h8E;
+    u8 pad90[0x94 - 0x90];
     s32 c94;
     s32 c98;
     s32 c9C;
@@ -219,12 +253,25 @@ extern void func_8001C424(ObjetoMotor* o, Movimiento* m, ResultadoBaldosa* r);
 extern void func_8001C6CC(ObjetoMotor* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w);
 extern void func_8001C998(ObjetoMotor* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w);
 
+/*
+ * Macro de lectura del GTE del juego: guarda MAC3 (registro 27 de datos) en la palabra de p
+ * pasando por los temporales fijos $8 y $9. El original la escribio como ensamblador en linea
+ * con los mismos temporales que las macros vectoriales de geometria.h.
+ */
+#define MOTOR_GUARDAR_MAC3(p)     __asm__ volatile ("move $9, %0
+	mfc2 $8, $27
+	nop
+	sw $8, 0($9)"                       : : "r"(p) : "$8", "$9", "memory")
+
 /* Comprobacion de coherencia con Objeto (globales.h): el arreglo tiene tamano negativo si difiere. */
 #define MOTOR_MISMO_OFFSET(campo_motor, campo_objeto) \
     typedef char motor_offset_##campo_motor[ \
         ((u32)&((ObjetoMotor*)0)->campo_motor == (u32)&((Objeto*)0)->campo_objeto) ? 1 : -1]
 MOTOR_MISMO_OFFSET(flags14, flags14);
+MOTOR_MISMO_OFFSET(flags18, flags18);
+MOTOR_MISMO_OFFSET(w1C, w1C);
 MOTOR_MISMO_OFFSET(w26, w26);
+MOTOR_MISMO_OFFSET(w2C, w2C);
 MOTOR_MISMO_OFFSET(wDC, wDC);
 MOTOR_MISMO_OFFSET(wDE, wDE);
 MOTOR_MISMO_OFFSET(wE0, wE0);

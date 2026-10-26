@@ -37,6 +37,8 @@ typedef struct ConjuntoSprites {
     u16 c32;
 } ConjuntoSprites;
 
+extern void func_8001E600(ObjetoMotor* o, ConjuntoSprites* c, u32 modo);
+
 /*
  * Sprite del objeto en formato escalado: el bloque que sigue a los doce primeros bytes del
  * descriptor (func_8001E600). Pagina de textura en +0, v y bit alto en +2, paleta en +4 y +6,
@@ -92,8 +94,8 @@ typedef struct SpritePlano {
  * func_8001E600. `modo` con el bit 0 activo toma el cuadro tal cual; si no, pasa por la tabla
  * de indices del conjunto.
  */
-/* Pendiente: puntuacion 1535 con la configuracion versionada (-G0). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0. Variantes probadas: 8. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 1535 con la configuracion versionada (-G0). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0. Variantes probadas: 8. */
 void func_8001E528(ObjetoMotor* o, ConjuntoSprites* c, u32 modo)
 {
     RegistroSprite* r;
@@ -151,13 +153,8 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E528);
  * 7 y 8 de la pagina) desplaza las coordenadas horizontales (2 = 4 bits, 1 = 8 bits, 0 = 16
  * bits) y fija la anchura de la textura y el modo del sprite.
  */
-/* Pendiente: puntuacion 2665 con la configuracion versionada (-G0). Mismos accesos y almacenes; el original calcula el desplazamiento de color en t2 y deja el puntero al sprite en v1, el C reparte otros registros y reordena las lecturas del registro del cuadro. Variantes probadas: 3. */
 #ifdef NON_MATCHING
-/*
- * Igual que func_8001E528 para el formato escalado: la profundidad de color del cuadro (bits
- * 7 y 8 de la pagina) desplaza las coordenadas horizontales (2 = 4 bits, 1 = 8 bits, 0 = 16
- * bits) y fija la anchura de la textura y el modo del sprite.
- */
+/* Pendiente: puntuacion 2665 con la configuracion versionada (-G0). Mismos accesos y almacenes; el original calcula el desplazamiento de color en t2 y deja el puntero al sprite en v1, el C reparte otros registros y reordena las lecturas del registro del cuadro. Variantes probadas: 3. */
 void func_8001E600(ObjetoMotor* o, ConjuntoSprites* c, u32 modo)
 {
     RegistroSprite* r;
@@ -224,8 +221,8 @@ void func_80020210(ObjetoMotor* o, u16 paso, u16 amplitud)
  * arco) y la fase crece `paso` cada cuadro hasta 0xC00. Al terminar deja la altura a cero, apaga
  * las banderas de movimiento y marca 0x200 si el objeto no estaba en suelo.
  */
-/* Pendiente: puntuacion 605 con la configuracion versionada (-G0). La condicion de continuar (bit 4 apagado o bit 0x10 activo) y la reunion de las dos ramas de la altura no se reproducen: el compilador adelanta la carga de las banderas y repite el almacen de h10A en cada rama. Variantes probadas: 10. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 605 con la configuracion versionada (-G0). La condicion de continuar (bit 4 apagado o bit 0x10 activo) y la reunion de las dos ramas de la altura no se reproducen: el compilador adelanta la carga de las banderas y repite el almacen de h10A en cada rama. Variantes probadas: 10. */
 void func_80020240(ObjetoMotor* o)
 {
     s32 v;
@@ -269,14 +266,8 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020354);
  * esta en el suelo del apoyo y 0 si lo toca; guarda en el apoyo la altura del peldano
  * alcanzado (+0x13C). Si el apoyo es plano (bandera 0x400000) solo compara con su altura.
  */
-/* Pendiente: puntuacion 2360 con la configuracion versionada (-G0). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica. Variantes probadas: 4. */
 #ifdef NON_MATCHING
-/*
- * Busca el peldano que corresponde a la altura del objeto sobre el objeto de apoyo (p70):
- * entrega el apoyo por *apoyo y devuelve 1 si el objeto esta por encima del peldano, 2 si
- * esta en el suelo del apoyo y 0 si lo toca; guarda en el apoyo la altura del peldano
- * alcanzado (+0x13C). Si el apoyo es plano (bandera 0x400000) solo compara con su altura.
- */
+/* Pendiente: puntuacion 2360 con la configuracion versionada (-G0). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica. Variantes probadas: 4. */
 u8 func_80020A90(ObjetoMotor* o, Movimiento* d, ObjetoMotor** apoyo)
 {
     ObjetoMotor* t;
