@@ -76,7 +76,7 @@ typedef struct Scratch {
     __asm__ volatile ("move $9, %0\n\tmfc2 $8, $27\n\tnop\n\tsw $8, 0($9)" : : "r"(p) : "$8", "$9", "memory")
 
 extern void (*D_8005E35C[])(Objeto*);
-extern void func_80033358(void* a0, u32 a1);
+extern void func_80033358(Objeto* o, u32 reiniciar);
 extern void func_80035244(void);
 extern void func_800351B4(Objeto* a0);
 extern void func_8003502C(Objeto* a0);
@@ -87,6 +87,38 @@ typedef struct Giro {
     u16 y;
     u16 z;
 } Giro;
+
+/*
+ * Memoria de trabajo de func_80033358 en el scratchpad (0x1F800000): vector local, rotacion, vector
+ * (0, 0, distancia), resultados de las rotaciones, sondas, resultado de la consulta de baldosa,
+ * parametros de seguimiento, matriz de rotacion y distancia. El area de 0x1C8 bytes que reciben
+ * func_80019474, func_8001C134 y func_80032B2C empieza en 0x1F8000F8.
+ */
+typedef struct TrabajoCamara {
+    SVECTOR local;              /* +0x00 */
+    SVECTOR rot;                /* +0x08 */
+    SVECTOR dir;                /* +0x10 */
+    VECTOR v18;                 /* +0x18 */
+    Giro rot28;                 /* +0x28 */
+    u8 pad2E[2];
+    VECTOR v30;                 /* +0x30 */
+    VECTOR v40;                 /* +0x40 */
+    VECTOR v50;                 /* +0x50 */
+    u8 pad60[0x70 - 0x60];
+    VECTOR v70;                 /* +0x70 */
+    u8 pad80[0x90 - 0x80];
+    VECTOR v90;                 /* +0x90 */
+    u8 padA0[0xA4 - 0xA0];
+    ResultadoBaldosa res;       /* +0xA4 */
+    ZonaColision* zona_ant;     /* +0xBC */
+    s32 p0;                     /* +0xC0 */
+    s32 p4;                     /* +0xC4 */
+    s32 p8;                     /* +0xC8 */
+    MATRIX m;                   /* +0xCC */
+    s32 dist;                   /* +0xEC */
+    u8 padF0[4];
+    s32 alt;                    /* +0xF4 */
+} TrabajoCamara;
 
 /* Secuencia de teclas de los trucos: caso a ejecutar, paso actual y hasta diez teclas (0 termina). */
 typedef struct Secuencia {
@@ -105,15 +137,32 @@ extern s32 rand(void);
 extern void func_8003F900(Objeto* a0);
 extern Vec3 D_80069DC0;
 
-/* Variables de datos pequenos: el original las direcciona con desplazamiento($gp). */
-u16 D_800693F4;
+/*
+ * Variables de datos pequenos: el original las direcciona con desplazamiento($gp). Este archivo es
+ * el dueno de todas: D_800693E8 y D_800693EA son el cabeceo de la camara de apuntado, D_800693F4 la
+ * cuenta del giro suavizado, D_800693F6 y D_800693F8 los contadores de espera, D_80069402 el giro
+ * de la camara, D_80069408 el paso lateral (se guarda con sw y se lee con lhu), D_8006940C el
+ * indicador de apuntado y D_80069416 el rumbo guardado.
+ */
+s16 D_800693E8;
+s16 D_800693EA;
+s16 D_800693F4;
 s16 D_800693F6;
 s16 D_800693F8;
 s32 D_800693F0;
-u16 D_8006940C;
+s16 D_80069402;
+s32 D_80069408;
+s16 D_8006940C;
 u16 D_80069414;
 s16 D_80069416;
 s16 D_80069424;
+
+extern ZonaColision* func_8001BF9C(s32* a0, s16 a1);
+extern u16 D_8005E728[];
+extern u16* D_800695B8;
+extern Objeto* D_8006D9B8;
+extern s32 D_8006D990[3];
+extern u32 D_80010008;
 
 
 /* Envoltorio de rand() del SDK: la logica del juego pide aleatorios por aqui. */
@@ -391,7 +440,592 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
     return 0;
 }
 
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 8476 con la configuracion versionada (g = 8 del archivo). Primer borrador completo: el flujo coincide; difiere el reparto de registros y el orden del bloque final.
+ *
+ * Camara de seguimiento de tercera persona, una vez por cuadro. Determina la zona bajo el objeto y bajo la
+ * camara y actualiza el modelo de la sala; despues atiende, por prioridad, la cuenta atras de cambio de
+ * zona, la camara bloqueada por un evento, el modo de apuntado (ocho sondas contra el terreno y los objetos
+ * solidos), la transicion guiada (banderas 0xC00) y el seguimiento libre (giro por boton, distancia, rayo
+ * por tramos contra los objetos y alturas contra el terreno). `reiniciar` suprime el suavizado.
+ */
+void func_80033358(Objeto* o, u32 reiniciar)
+{
+    TrabajoCamara* w;
+    void* area;
+    ZonaColision* zona;
+    struct ModeloDibujo* m;
+    u16* tab;
+    s32 i;
+    s32 n;
+    s32 ang;
+    s32 d;
+    s32 hit;
+    s16 r;
+    u16 c;
+    u16 f;
+    u16 g;
+    u16 pulsado;
+
+    area = (void*)0x1F8000F8;
+    w = (TrabajoCamara*)0x1F800000;
+    if (o == NULL) {
+        return;
+    }
+    w->zona_ant = func_8001BF9C(&o->param.trans.vx, (s16)o->w26);
+    if (w->zona_ant != NULL) {
+        D_80069698->w26 = w->zona_ant->grupo;
+        D_80069558 = (u16*)w->zona_ant;
+    } else {
+        D_80069558 = NULL;
+    }
+    zona = func_8001BF9C(&D_8006D928.vpx, -1);
+    w->zona_ant = zona;
+    if (zona == NULL) {
+        zona = (ZonaColision*)D_80069558;
+    }
+    D_800695B8 = (u16*)zona;
+    if (D_800695B8 != NULL) {
+        m = D_8006B568[*D_800695B8];
+        D_800694DC->u78.modelos = m;
+        D_800694DC->w28 = *(u16*)((u8*)m + 0xB6);
+        D_800694DC->w26 = *D_800695B8;
+    }
+    D_80069608 = D_80069608 & ~2;
+    if (o->u78.p == NULL) {
+        return;
+    }
+    if (D_80069DC0.x != o->param.trans.vx || D_80069DC0.y != o->param.trans.vy
+        || D_80069DC0.z != o->param.trans.vz) {
+        reiniciar = 1;
+    }
+    D_80069DC0.x = o->param.trans.vx;
+    D_80069DC0.y = o->param.trans.vy;
+    D_80069DC0.z = o->param.trans.vz;
+    if (o->w2C == 0xE) {
+        reiniciar = 1;
+    }
+    if ((*(u32*)&D_8006D928.flags80 & 0x340) == 0x40) {
+        c = D_800693F8;
+        if (D_800693F8 < 10) {
+            reiniciar = 1;
+            D_800693F8 = c + 1;
+        } else {
+            D_8006D928.flags80 = D_8006D928.flags80 & 0xFFBF;
+        }
+    }
+    c = D_800693F6;
+    if (D_800693F6 != 0) {
+        D_800693F6 = c - 1;
+        o->flags14 = o->flags14 | 0x80000000;
+        D_8006D9B8 = NULL;
+        func_80032A24();
+        return;
+    }
+    if (D_8006D9B8 != NULL) {
+        if (D_8006D9B8->registro184 != NULL) {
+            if ((*(u32*)((u8*)D_8006D9B8->registro184 + 0x10) & 0x200) != 0) {
+                o = D_8006D9B8;
+                o->flags14 = o->flags14 | 0x80000000;
+            }
+        }
+    }
+    if ((D_8006D928.flags80 & 0x300) != 0) {
+        o->flags14 = o->flags14 | 0x80000000;
+        D_800693F8 = 0;
+        D_8006D928.i90 = 0;
+        D_8006D928.flags80 = D_8006D928.flags80 | 0x40;
+        func_80032A24();
+        return;
+    }
+    w->p8 = D_80069624;
+    w->p4 = D_80069618;
+    w->p0 = D_8006961C;
+    if ((o->flags14 & 0x1000000) != 0) {
+        w->p0 = 0x1F4;
+    }
+    if ((D_8001000A & 0x10) != 0 && D_80069690 == 0 && (o->flags14 & 0x1015609) == 0
+        && (o->flags18 & 4) == 0 && (D_8006D928.flags80 & 0x2000) == 0 && D_8006AA7C == 0
+        && ((o->flags14 & 0x10000000) == 0 || reiniciar == 0) && D_80010076 == 0
+        && (D_8006D928.flags80 & 0x10) == 0) {
+        o->flags14 = o->flags14 | 0x80000000;
+        w->v90.vz = 0;
+        w->v90.vy = 0;
+        w->v90.vx = 0;
+        tab = D_8005E728;
+        i = 0;
+        do {
+            w->v30.vx = o->param.trans.vx;
+            w->v30.vy = o->param.trans.vy + w->p8;
+            w->v30.vz = o->param.trans.vz;
+            w->v70.vy = 0;
+            w->v70.vx = (s16)tab[0] >> 1;
+            w->v70.vz = (s16)tab[1] >> 1;
+            hit = func_80032B2C((Vec3*)&w->v30, (Vec3*)&w->v70, area, 0x24000);
+            if (hit == 0) {
+                w->v70.vy = 0;
+                w->v70.vx = w->v70.vx + ((s16)tab[0] >> 1);
+                w->v70.vz = w->v70.vz + ((s16)tab[1] >> 1);
+                func_80032B2C((Vec3*)&w->v30, (Vec3*)&w->v70, area, 0x24000);
+            }
+            tab += 2;
+            i++;
+            w->res.grupo = -1;
+            w->v30.vy = o->param.trans.vy + w->p8;
+            func_80019474(&w->v30, &w->v70, &w->res, area);
+            w->v90.vx = w->v90.vx + w->v70.vx;
+            w->v90.vz = w->v90.vz + w->v70.vz;
+        } while (i < 8);
+        w->v90.vx = (w->v90.vx * 3000) >> 12;
+        w->v90.vz = (w->v90.vz * 3000) >> 12;
+        if (D_8006940C == 0 || reiniciar != 0) {
+            if ((w->v90.vx | w->v90.vz) != 0 && reiniciar == 0) {
+                D_8006D928.x = o->param.trans.vx + w->v90.vx;
+                D_8006D928.y = o->param.trans.vy - 400;
+                D_8006940C = 1;
+                D_8006D928.z = o->param.trans.vz + w->v90.vz;
+            } else {
+                D_8006D928.x = D_8006D928.x + ((o->param.trans.vx + w->v90.vx - D_8006D928.x) >> 2);
+                D_8006D928.y = D_8006D928.y + ((o->param.trans.vy - (D_8006D928.y + 400)) >> 2);
+                D_8006D928.z = D_8006D928.z + ((o->param.trans.vz + w->v90.vz - D_8006D928.z) >> 2);
+            }
+        }
+        w->local.vx = 0;
+        w->local.vy = 0;
+        w->local.vz = -150;
+        D_800693E8 = D_800693E8 + (((s16)ESTADO_PRINCIPAL->mando.eje_y * 5) >> 4);
+        D_800693EA = D_800693EA + (((s16)ESTADO_PRINCIPAL->mando.eje_x * 5) >> 4);
+        if (D_800693EA < -0x14A) {
+            D_800693EA = -0x14A;
+        }
+        if (D_800693EA > 0x14A) {
+            D_800693EA = 0x14A;
+        }
+        if (D_800693E8 < -0x14A) {
+            D_800693E8 = -0x14A;
+        }
+        if (D_800693E8 > 0x14A) {
+            D_800693E8 = 0x14A;
+        }
+        w->dist = D_800693EA + o->param.giro.rotate.vy;
+        GEO_IDENTIDAD(&w->m);
+        RotMatrixX(D_800693E8, &w->m);
+        RotMatrixY(w->dist, &w->m);
+        ApplyMatrix(&w->m, &w->local, &w->v50);
+        D_8006D928.vpx = D_8006D928.vpx + ((D_8006D928.x + w->v50.vx - D_8006D928.vpx) >> 1);
+        D_8006D928.vpy = D_8006D928.vpy + ((D_8006D928.y - w->v50.vy - D_8006D928.vpy) >> 1);
+        D_8006D928.vpz = D_8006D928.vpz + ((D_8006D928.z + w->v50.vz - D_8006D928.vpz) >> 1);
+        func_80032A24();
+        D_80069608 = D_80069608 | 2;
+        return;
+    }
+    f = D_8006D928.flags80;
+    g = f & 0xFFEF;
+    D_800693EA = 0;
+    D_800693E8 = 0;
+    D_8006940C = 0;
+    D_80069608 = D_80069608 & ~2;
+    D_8006D928.flags80 = g;
+    if ((f & 0xC00) != 0) {
+        if ((f & 0x800) != 0) {
+            D_8006D928.x = D_8006D928.x - ((D_8006D928.x - D_8006D928.iD4) >> 2);
+            D_8006D928.y = D_8006D928.y - ((D_8006D928.y - D_8006D928.iD8) >> 2);
+            D_8006D928.z = D_8006D928.z - ((D_8006D928.z - D_8006D928.iDC) >> 2);
+        } else {
+            D_8006D928.x = D_8006D928.x - ((D_8006D928.x - o->param.trans.vx) >> 2);
+            D_8006D928.y = D_8006D928.y - ((D_8006D928.y + 400 - o->param.trans.vy) >> 2);
+            D_8006D928.z = D_8006D928.z - ((D_8006D928.z - o->param.trans.vz) >> 2);
+        }
+        if ((D_8006D928.flags80 & 0x1000) != 0) {
+            w->local.vx = (u16)D_8006D928.iC4 - (u16)D_8006D928.x;
+            w->local.vy = (u16)D_8006D928.iC8 - (u16)D_8006D928.y;
+            w->local.vz = (u16)D_8006D928.iCC - (u16)D_8006D928.z;
+            w->dist = SquareRoot0(w->local.vx * w->local.vx + w->local.vy * w->local.vy
+                                  + w->local.vz * w->local.vz);
+            if (w->dist == 0) {
+                w->dist = 1;
+            }
+            w->v18.vx = (w->local.vx << 12) / w->dist;
+            w->v18.vy = (w->local.vy << 12) / w->dist;
+            w->v18.vz = (w->local.vz << 12) / w->dist;
+            w->dist = D_8006D928.iE4;
+            D_8006D928.iC4 = D_8006D928.x + ((w->v18.vx * D_8006D928.iE4) >> 12);
+            D_8006D928.iC8 = D_8006D928.y + ((w->v18.vy * D_8006D928.iE4) >> 12);
+            D_8006D928.iCC = D_8006D928.z + ((w->v18.vz * D_8006D928.iE4) >> 12);
+        }
+        f = D_8006D928.flags80;
+        if ((f & 0x400) != 0) {
+            D_8006D928.vpx = D_8006D928.vpx - ((D_8006D928.vpx - D_8006D928.iC4) >> 2);
+            D_8006D928.vpy = D_8006D928.vpy - ((D_8006D928.vpy - D_8006D928.iC8) >> 2);
+            D_8006D928.vpz = D_8006D928.vpz - ((D_8006D928.vpz - D_8006D928.iCC) >> 2);
+        }
+        if ((f & 0x4000) != 0) {
+            D_8006D928.c68 = D_8006D928.vpx;
+            D_8006D928.c94 = D_8006D928.vpx;
+            D_8006D928.cB4 = D_8006D928.vpx;
+            D_8006D928.c6C = D_8006D928.vpy;
+            D_8006D928.c98 = D_8006D928.vpy;
+            D_8006D928.cB8 = D_8006D928.vpy;
+            D_8006D928.c70 = D_8006D928.vpz;
+            D_8006D928.c9C = D_8006D928.vpz;
+            D_8006D928.cBC = D_8006D928.vpz;
+            D_8006D928.cA4 = D_8006D928.x;
+            D_8006D928.cA8 = D_8006D928.y;
+            D_8006D928.cAC = D_8006D928.z;
+        }
+        if ((f & 8) != 0) {
+            D_8006D928.flags80 = f & 0xA3F7;
+        }
+        GEO_CARGAR_W(&D_8006D928);
+        GEO_RESTAR_W(D_8006D934);
+        GEO_GUARDAR_H_T4(w);
+        ang = ratan2(w->local.vx, w->local.vz);
+        D_80069416 = ang;
+        D_80069402 = ang;
+        D_800693F0 = SquareRoot0(w->local.vx * w->local.vx + w->local.vz * w->local.vz) + 1;
+        D_800693F4 = 0x3C;
+        D_800693F8 = 0;
+        D_8006D928.flags80 = D_8006D928.flags80 | 0x40;
+        func_80032A24();
+        return;
+    }
+    g = g & 0xA3E7;
+    D_8006D928.flags80 = g;
+    D_80069408 = 0;
+    pulsado = D_8001000A;
+    if ((pulsado & 4) == 0 && ((o->flags14 & 0x1000000) | D_8006AA7C) == 0) {
+        if (D_8006D928.i90 != 0) {
+            w->v70.vx = o->param.trans.vx - ((Objeto*)D_8006D928.i90)->param.trans.vx;
+            w->v70.vz = o->param.trans.vz - ((Objeto*)D_8006D928.i90)->param.trans.vz;
+            ang = ratan2(w->v70.vx, w->v70.vz);
+            if (ang < 0) {
+                ang = ang + 0x1000;
+            }
+            c = D_80069402;
+            r = D_80069402 % 0x1000;
+            if (r < 0) {
+                r = r + 0x1000;
+            }
+            ang = ang - r;
+            if (ang < 0) {
+                ang = ang + 0x1000;
+            }
+            if (ang > 0x800) {
+                ang = ang - 0x1000;
+            }
+            D_80069402 = c + (ang >> 4);
+            D_8006D928.flags80 = D_8006D928.flags80 | 2;
+            if (D_8006961C < 0x5DC) {
+                w->p0 = 0x5DC;
+            } else {
+                w->p0 = D_8006961C;
+            }
+            D_8006D9B8 = NULL;
+        } else {
+            if ((pulsado & 1) != 0 && (pulsado & 2) == 0 && (g & 0x8000) == 0) {
+                D_8006D928.flags80 = g | 0x82;
+                c = D_80069402;
+                i = 0x26;
+                goto aplicar_giro;
+            }
+            if (D_8006D928.i90 == 0 && (D_80010008 & 0x30000) == 0x20000
+                && ((s16)D_8006D928.flags80 & 0x8000) == 0) {
+                D_8006D928.flags80 = D_8006D928.flags80 | 0x82;
+                c = D_80069402;
+                i = -0x26;
+aplicar_giro:
+                D_80069408 = i;
+                D_80069402 = c + i;
+            } else if (reiniciar != 0) {
+                D_8006D928.flags80 = D_8006D928.flags80 & 0xFFFD;
+            }
+        }
+    }
+    D_80069402 = D_80069402 % 0x1000;
+    D_8006D928.c68 = D_8006D928.cB4;
+    D_8006D928.c6C = D_8006D928.cB8;
+    D_8006D928.c70 = D_8006D928.cBC;
+    D_8006D928.x = D_8006D928.cA4;
+    D_8006D928.y = D_8006D928.cA8;
+    D_8006D928.z = D_8006D928.cAC;
+    D_8006D928.vpx = D_8006D928.c94;
+    D_8006D928.vpy = D_8006D928.c98;
+    D_8006D928.vpz = D_8006D928.c9C;
+    GEO_CERO_WH(&w->v90);
+    GEO_CARGAR_W(D_8006D990);
+    GEO_RESTAR_W(&o->param.trans);
+    GEO_GUARDAR_H_T4(w);
+    d = w->local.vx * w->local.vx + w->local.vz * w->local.vz;
+    w->rot.vx = 0;
+    w->rot.vz = 0;
+    if (d != 0) {
+        w->dist = SquareRoot0(d) + 1;
+        w->rot.vy = ratan2(w->local.vx, w->local.vz);
+    } else {
+        w->dist = 0x64;
+        w->rot.vy = o->param.giro.u.y - 0x800;
+    }
+    if (reiniciar != 0) {
+        D_800693F4 = 0x3C;
+    }
+    c = D_800693F4;
+    if (D_800693F4 > 0) {
+        D_800693F4 = c - 1;
+    }
+    f = D_8006D928.flags80;
+    if ((f & 2) == 0) {
+        if (D_800693F4 == 0 || reiniciar != 0) {
+            ang = o->param.giro.rotate.vy + 0x800;
+            n = ang % 0x1000;
+            if (n < 0) {
+                n = n + 0x1000;
+            }
+            c = w->rot.vy;
+            r = (s16)c % 0x1000;
+            if (r < 0) {
+                r = r + 0x1000;
+            }
+            n = n - r;
+            if (n < 0) {
+                n = n + 0x1000;
+            }
+            if (n > 0x800) {
+                n = n - 0x1000;
+            }
+            n = (n * 30) >> 11;
+            if (n != 0) {
+                w->rot.vy = c + n;
+            } else {
+                D_8006D928.flags80 = f | 2;
+            }
+        }
+    }
+    if ((f & 2) != 0 || (D_8006D9A8[0] & 2) != 0) {
+        w->rot.vy = D_80069402;
+    } else {
+        D_80069402 = w->rot.vy;
+    }
+    w->dir.vy = 0;
+    w->dir.vx = 0;
+    w->dir.vz = w->dist;
+    RotMatrix(&w->rot, &w->m);
+    ApplyMatrix(&w->m, &w->dir, &w->v30);
+    w->v70.vx = o->param.trans.vx;
+    w->v70.vy = o->param.trans.vy - 0x1F4;
+    w->v70.vz = o->param.trans.vz;
+    if ((o->flags14 & 0x16) == 0) {
+        w->res.grupo = -1;
+        w->v70.vy = o->param.trans.vy;
+        func_8001C134(&w->v70.vx, &w->res, area);
+        w->zona_ant = w->res.zona;
+        w->v70.vy = o->param.trans.vy - 0x1F4;
+        func_8001C134(&w->v70.vx, &w->res, area);
+        if (w->zona_ant != w->res.zona && (w->res.flags & 6) != 0 && (s16)w->res.grupo != -1) {
+            w->v70.vy = w->res.zona->y_max + 0x1F4;
+            if (o->param.trans.vy < w->v70.vy) {
+                w->v70.vy = o->param.trans.vy;
+            }
+        } else {
+            w->v70.vy = o->param.trans.vy - 0x1F4;
+        }
+    }
+    w->res.grupo = -1;
+    w->alt = w->v70.vy;
+    w->v40.vx = w->v30.vx;
+    w->v40.vy = w->v30.vy;
+    w->v40.vz = w->v30.vz;
+    func_80019474(&w->v70, &w->v30, &w->res, area);
+    D_8006D928.c68 = o->param.trans.vx + w->v30.vx;
+    D_8006D928.c70 = o->param.trans.vz + w->v30.vz;
+    w->dist = SquareRoot0(w->v30.vx * w->v30.vx + w->v30.vz * w->v30.vz) | 1;
+    w->rot.vy = ratan2(w->v30.vx, w->v30.vz);
+    if ((D_8006D928.flags80 & 2) == 0) {
+        w->v30.vy = 0;
+        w->v30.vx = 0;
+        w->v30.vz = w->dist;
+        w->v70.vy = D_8006D928.vpy;
+        w->v70.vx = o->param.trans.vx;
+        w->v70.vz = o->param.trans.vz;
+        GEO_CARGAR_WH(&w->rot);
+        GEO_GUARDAR_WH(&w->rot28);
+        func_800330AC(&w->rot28, (Vec3*)&w->v70, (Vec3*)&w->v30, area);
+        w->rot.vy = w->rot.vy + ((s16)w->rot28.y >> 2);
+    }
+    if (w->dist < w->p0 - 0x64) {
+        w->dist = w->dist + ((w->p0 - (w->dist + 0x64)) >> 3);
+    }
+    if (w->p0 + 0x64 < w->dist) {
+        w->dist = w->dist + ((w->p0 - (w->dist - 0x64)) >> 1);
+    }
+    w->dir.vy = 0;
+    w->dir.vx = 0;
+    w->dir.vz = w->dist;
+    RotMatrixZYX(&w->rot, &w->m);
+    ApplyMatrix(&w->m, &w->dir, &w->v30);
+    w->v70.vx = o->param.trans.vx;
+    w->v70.vy = w->alt;
+    w->v70.vz = o->param.trans.vz;
+    w->res.grupo = -1;
+    func_80019474(&w->v70, &w->v30, &w->res, area);
+    d = SquareRoot0(w->v30.vx * w->v30.vx + w->v30.vz * w->v30.vz);
+    w->dir.vy = 0;
+    w->dir.vx = 0;
+    w->dir.vz = 200;
+    ApplyMatrix(&w->m, &w->dir, &w->v40);
+    GEO_CERO_W(&w->v50);
+    n = d / 200;
+    if (n >= 0) {
+        d = d - n * 200;
+        for (;;) {
+            w->v70.vy = o->param.trans.vy - 0x1F4;
+            if (n == 0) {
+                w->dir.vz = d;
+                ApplyMatrix(&w->m, &w->dir, &w->v40);
+            }
+            hit = func_80032B2C((Vec3*)&w->v70, (Vec3*)&w->v40, area, 0x20000);
+            n--;
+            w->v50.vx = w->v50.vx + w->v40.vx;
+            w->v50.vz = w->v50.vz + w->v40.vz;
+            w->v70.vx = w->v70.vx + w->v40.vx;
+            w->v70.vz = w->v70.vz + w->v40.vz;
+            if (n < 0 || hit != 0) {
+                break;
+            }
+        }
+    }
+    GEO_CARGAR_W(&w->v50);
+    GEO_GUARDAR_W_T1(&w->v30);
+    i = 0;
+    D_8006D928.c68 = o->param.trans.vx + w->v30.vx;
+    w->v90.vz = 0;
+    w->v90.vy = 0;
+    w->v90.vx = 0;
+    D_8006D928.c70 = o->param.trans.vz + w->v30.vz;
+    tab = D_8005E728;
+    w->v30.vy = o->param.trans.vy - 0x1F4;
+    do {
+        GEO_CARGAR_W(D_8006D990);
+        GEO_GUARDAR_W_T1(&w->v30);
+        w->v70.vy = 0;
+        w->v70.vx = (s16)tab[0] >> 1;
+        w->v70.vz = (s16)tab[1] >> 1;
+        w->v30.vy = o->param.trans.vy - 0xC8;
+        hit = func_80032B2C((Vec3*)&w->v30, (Vec3*)&w->v70, area, 0x20000);
+        if (hit == 0) {
+            w->v70.vy = 0;
+            w->v70.vx = w->v70.vx + ((s16)tab[0] >> 1);
+            w->v70.vz = w->v70.vz + ((s16)tab[1] >> 1);
+            func_80032B2C((Vec3*)&w->v30, (Vec3*)&w->v70, area, 0x20000);
+        }
+        tab += 2;
+        i++;
+        w->res.grupo = -1;
+        w->v30.vy = w->alt;
+        func_80019474(&w->v30, &w->v70, &w->res, area);
+        w->v90.vx = w->v90.vx + w->v70.vx;
+        w->v90.vz = w->v90.vz + w->v70.vz;
+    } while (i < 8);
+    if (reiniciar == 0 && (w->v90.vx | w->v90.vz) != 0) {
+        d = w->v90.vx * w->v90.vx + w->v90.vz * w->v90.vz;
+        D_8006D928.flags80 = D_8006D928.flags80 | 2;
+        if (SquareRoot0(d) >= 0x1F5) {
+            D_80069402 = (u16)D_80069402 - (u16)D_80069408;
+        }
+    }
+    w->v90.vx = w->v90.vx >> 2;
+    w->v90.vz = w->v90.vz >> 2;
+    D_8006D928.c68 = D_8006D928.c68 + w->v90.vx;
+    D_8006D928.c70 = D_8006D928.c70 + w->v90.vz;
+    GEO_CARGAR_W(D_8006D990);
+    GEO_RESTAR_W(&o->param.trans);
+    GEO_GUARDAR_H_T4(w);
+    w->dist = SquareRoot0(w->local.vx * w->local.vx + w->local.vz * w->local.vz) + 1;
+    w->rot.vy = ratan2(w->local.vx, w->local.vz);
+    w->rot.vz = 0;
+    w->rot.vx = 0;
+    if (reiniciar != 0 || (D_8006D928.flags80 & 0xC0) != 0) {
+        D_800693F0 = w->dist;
+        D_80069416 = w->rot.vy;
+    } else {
+        w->dist = D_800693F0;
+        w->rot.vy = D_80069416;
+    }
+    w->dir.vy = 0;
+    w->dir.vx = 0;
+    w->dir.vz = w->dist;
+    RotMatrix(&w->rot, &w->m);
+    ApplyMatrix(&w->m, &w->dir, &w->v18);
+    D_8006D928.c68 = o->param.trans.vx + w->v18.vx;
+    w->dir.vz = w->dist + 0x190;
+    D_8006D928.c70 = o->param.trans.vz + w->v18.vz;
+    ApplyMatrix(&w->m, &w->dir, &w->v18);
+    D_8006D928.x = D_8006D928.x + ((o->param.trans.vx - D_8006D928.x) >> 2);
+    D_8006D928.y = D_8006D928.y + ((o->param.trans.vy + w->p8 - D_8006D928.y) >> 2);
+    D_8006D928.z = D_8006D928.z + ((o->param.trans.vz - D_8006D928.z) >> 2);
+    D_8006D928.vpx = D_8006D928.vpx + ((o->param.trans.vx + w->v18.vx - D_8006D928.vpx) >> 2);
+    w->v30.vy = w->alt;
+    w->v30.vx = D_8006D928.c68;
+    w->v30.vz = D_8006D928.c70;
+    w->res.grupo = -1;
+    D_8006D928.vpz = D_8006D928.vpz + ((o->param.trans.vz + w->v18.vz - D_8006D928.vpz) >> 2);
+    func_8001C134(&w->v30.vx, &w->res, area);
+    if ((w->res.flags & 8) != 0 && w->res.suelo < o->param.trans.vy) {
+        w->res.grupo = -1;
+        w->v30.vy = w->v30.vy + 1;
+        func_8001C134(&w->v30.vx, &w->res, area);
+    }
+    if ((w->res.flags & 4) != 0 || (s16)w->res.grupo == -1) {
+        d = o->param.trans.vy;
+    } else if (o->param.trans.vy < w->res.suelo) {
+        d = o->param.trans.vy;
+    } else {
+        d = w->res.suelo;
+    }
+    n = d + 0x64 - w->p4;
+    if (n < D_8006D928.vpy) {
+        D_8006D928.vpy = D_8006D928.vpy + ((n - D_8006D928.vpy) >> 3);
+    } else {
+        n = d - 0x64 - w->p4;
+        if (D_8006D928.vpy < n) {
+            D_8006D928.vpy = D_8006D928.vpy + ((n - D_8006D928.vpy) >> 3);
+        }
+    }
+    D_8006D928.cA4 = D_8006D928.x;
+    D_8006D928.cA8 = D_8006D928.y;
+    D_8006D928.cAC = D_8006D928.z;
+    D_8006D928.c94 = D_8006D928.vpx;
+    D_8006D928.c98 = D_8006D928.vpy;
+    D_8006D928.c6C = D_8006D928.vpy;
+    D_8006D928.c9C = D_8006D928.vpz;
+    w->v30.vx = D_8006D928.vpx;
+    w->v30.vy = D_8006D928.vpy;
+    w->v30.vz = D_8006D928.vpz;
+    w->res.grupo = -1;
+    func_8001C134(&w->v30.vx, &w->res, area);
+    w->res.grupo = -1;
+    w->zona_ant = w->res.zona;
+    n = w->res.suelo;
+    w->v30.vy = D_8006D928.vpy - 0x258;
+    func_8001C134(&w->v30.vx, &w->res, area);
+    if (w->zona_ant != w->res.zona && (w->res.flags & 6) != 0 && (s16)w->res.grupo != -1) {
+        if (w->res.zona->y_max < n - 0x262) {
+            D_8006D928.vpy = D_8006D928.vpy + ((w->res.zona->y_max - (D_8006D928.vpy - 0x258)) >> 3);
+        } else {
+            D_8006D928.vpy = D_8006D928.vpy + ((n - 10 - D_8006D928.vpy) >> 3);
+        }
+        D_8006D928.c98 = D_8006D928.vpy;
+        D_8006D928.c6C = D_8006D928.vpy;
+    }
+    D_8006D928.cB4 = D_8006D928.c68;
+    D_8006D928.cB8 = D_8006D928.c6C;
+    D_8006D928.cBC = D_8006D928.c70;
+    func_80032A24();
+    D_8006D928.flags80 = D_8006D928.flags80 & 0xFF7F;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80033358);
+#endif
 
 /* Al dar de baja un objeto, libera a los que lo tenian como padre (p70) y deshace los enlaces cruzados. */
 void func_80034E7C(Objeto* o)

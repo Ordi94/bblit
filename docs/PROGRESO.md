@@ -13,7 +13,7 @@ construcción normal) y de la tabla de símbolos.
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
 Bytes de código del juego descompilados: 46424 de 201416 (23.05 %).
-Funciones marcadas `NON_MATCHING`: 62.
+Funciones marcadas `NON_MATCHING`: 63.
 Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
@@ -22,7 +22,7 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 |---|---:|---:|---:|---:|---:|---:|
 | arranque_y_bucle_principal | 1 | 9 | 1 | 0 | 1364 | 3404 |
 | audio_xa_y_spu | 1 | 34 | 3 | 0 | 6316 | 8220 |
-| camara_y_bucle_logico | 1 | 7 | 3 | 1 | 2348 | 14576 |
+| camara_y_bucle_logico | 1 | 7 | 4 | 0 | 2348 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 6 | 5 | 0 | 804 | 14264 |
 | colision_y_terreno | 1 | 2 | 1 | 1 | 680 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
@@ -42,7 +42,7 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 |---|---:|---:|---:|---:|---:|
 | `src/arranque_y_bucle_principal_2.c` | 9 | 1 | 0 | 1364 | 3404 |
 | `src/audio_xa_y_spu.c` | 34 | 3 | 0 | 6316 | 8220 |
-| `src/camara_y_bucle_logico.c` | 7 | 3 | 1 | 2348 | 14576 |
+| `src/camara_y_bucle_logico.c` | 7 | 4 | 0 | 2348 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 6 | 3 | 0 | 804 | 13592 |
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 2 | 0 | 0 | 672 |
 | `src/colision_y_terreno.c` | 2 | 1 | 1 | 680 | 12480 |
@@ -99,6 +99,7 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 - `func_800324A4`: Pendiente: puntuacion 265 con la configuracion versionada (g = 8 del archivo). Solo difiere el prologo: el original reparte a0 (base del banco A), v1 (D_8006D064) y v0 (indice) y GCC los asigna en otro orden; las seis ramas siguientes coinciden. Variantes probadas: 8 (RA con puntero constante, extern D_80010040[], copia local de la mascara, tipos de v, puntero local).
 - `func_80032708`: Pendiente: puntuacion 600 con la configuracion versionada (g = 8 del archivo). Los cuatro bucles de busqueda coinciden con la forma for/while; difiere el reparto de a0, a2 y v1 del prologo (el original comparte con a2 la base de D_80010040 y D_80010010). Variantes probadas: 9 (do/while con guarda, for, while y copias locales de la mascara).
 - `func_80032B2C`: Pendiente: puntuacion 774 con la configuracion versionada (g = 8 del archivo). El flujo y las macros vectoriales coinciden; difiere el reparto de los registros salvados (el original deja los argumentos en s5 y s2 y los punteros hoisted &w->i58, &w->rot, &w->v28, &w->d30 en s6, s4, s3, s1). Variantes probadas: 15 (punteros locales hoisted en distinto orden y subconjunto, asignacion al inicio o dentro del bloque). Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la mascara y cuya caja esta a menos de su alcance, lleva la posicion al siste
+- `func_80033358`: Pendiente: puntuacion 8476 con la configuracion versionada (g = 8 del archivo). Primer borrador completo: el flujo coincide; difiere el reparto de registros y el orden del bloque final. Camara de seguimiento de tercera persona, una vez por cuadro. Determina la zona bajo el objeto y bajo la camara y actualiza el modelo de la sala; despues atiende, por prioridad, la cuenta atras de cambio de zona, la camara bloqueada por un evento, el modo de apuntado (ocho sondas contra el terreno y los objetos solidos), la transicion guiada (banderas 0xC00) y el seguimiento libre (giro por boton, distancia, ra
 - `func_80035244`: Pendiente: puntuacion 550 con la configuracion versionada (g = 8 del archivo). El original carga antes del bucle las constantes 0x47 y 1 de la ultima rama (t2 y t1) y por eso la tabla de saltos cae en t3; GCC las deja dentro de la rama. Variantes: indexado por D_8005E768[i], constantes en locales, paso++, puntero local al estado. Lee los botones (D_80010010 sin los bits 0 y 3) y, si cambiaron respecto al cuadro anterior (dato pequeno 0x104($gp)), avanza siete secuencias de teclas de D_8005E768 (24 bytes cada una: caso, paso y diez teclas); al completar una ejecuta su caso con un switch de siet
 - `func_800353B0`: Pendiente: puntuacion 7961 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y las constantes coinciden; difieren el reparto de registros (el original conserva el scratchpad, &sx, &z6C y la mascara -3 en s1..s4 y no hoistea &v80 ni &c104), el relleno de los huecos de retardo de la macro de distancia (maspsx anade un nop extra tras dos de sus saltos) y la forma de la busqueda en la tabla D_8006A940 (el original relee el puntero guardado en el scratchpad en cada vuelta). Variantes probadas: 12 (locales del objeto, punteros hoisted, mascara en local, macro de d
 - `func_80036164`: Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el original usa un solo puntero con desplazamientos 0x0C y 0x04. Variantes probadas: 9.

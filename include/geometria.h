@@ -105,6 +105,8 @@ typedef struct TrabajoBaldosa {
  * GEO_OR_WH(p)           t1 = t1 | t2 | (palabra de p) | (media palabra de p + 4)
  * GEO_GUARDAR_WH(p)      6 bytes de p = t1 (palabra) y t2 (media palabra)
  * GEO_GUARDAR_1W_T1(p) palabra de p = t1
+ * GEO_CERO_W(p)          vector de 3 palabras en p = 0
+ * GEO_CERO_WH(p)         6 bytes de p = 0 (una palabra y una media palabra)
  * GEO_NORMA2_XZ(v, d)    *d = x*x + z*z del vector de medias palabras v (producto por el GTE)
  */
 #define GEO_CARGAR_W(p) \
@@ -157,6 +159,17 @@ typedef struct TrabajoBaldosa {
                       : : "r"(p) : "$8", "memory")
 #define GEO_GUARDAR_1W_T1(p) \
     __asm__ volatile ("move $8, %0\n\tsw $9, 0($8)" : : "r"(p) : "$8", "memory")
+/*
+ * Ponen a cero un vector sin tocar t1..t3: el original copia la direccion a t0 y escribe $zero
+ * (sw/sh sobre t0), de modo que el unico registro destruido es t0. GEO_CERO_W cubre tres palabras y
+ * GEO_CERO_WH una palabra y una media palabra (el vector de seis bytes de GEO_GUARDAR_WH).
+ */
+#define GEO_CERO_W(p) \
+    __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsw $0, 4($8)\n\tsw $0, 8($8)" \
+                      : : "r"(p) : "$8", "memory")
+#define GEO_CERO_WH(p) \
+    __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsh $0, 4($8)" \
+                      : : "r"(p) : "$8", "memory")
 #define GEO_NORMA2_XZ(v, d) \
     __asm__ volatile ("lh $8, 0(%1)\n\tlh $9, 4(%1)\n\tmtc2 $8, $9\n\tmtc2 $9, $11\n\tnop\n\tnop\n\t" \
                       "sqr 0\n\tmfc2 $8, $25\n\tmfc2 $9, $27\n\tnop\n\tadd $8, $8, $9\n\tsw $8, 0(%0)" \

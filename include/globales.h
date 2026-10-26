@@ -253,6 +253,16 @@ typedef struct EstadoCamara {
     s32 cB4;                /* func_8001CC68: sw, copia del punto de vista */
     s32 cB8;
     s32 cBC;
+    u8 padC0[0xC4 - 0xC0];
+    s32 iC4;                /* func_80033358: lw / sw 0xC4($s0) en 0x80033D2C; destino de la mira en el modo guiado (lhu en 0x80033C10) */
+    s32 iC8;                /* func_80033358: sw 0xC8($s0) en 0x80033D3C */
+    s32 iCC;                /* func_80033358: sw 0xCC($s0) en 0x80033D54 */
+    u8 padD0[0xD4 - 0xD0];
+    s32 iD4;                /* func_80033358: lw 0xD4($s1) en 0x80033B58; destino alternativo del modo guiado */
+    s32 iD8;                /* func_80033358: lw 0xD8($s1) en 0x80033B60 */
+    s32 iDC;                /* func_80033358: lw 0xDC($s1) en 0x80033B80 */
+    u8 padE0[0xE4 - 0xE0];
+    s32 iE4;                /* func_80033358: lw 0xE4($s0) en 0x80033CE8; distancia de la transicion guiada */
 } EstadoCamara;
 
 /*
@@ -433,6 +443,25 @@ extern void* D_80069560;
 extern s32 D_80069618;
 extern s32 D_8006961C;
 extern s32 D_80069624;
+
+/*
+ * D_800694DC: objeto de la sala. func_80033358 le cambia el modelo (+0x78), la etiqueta de grupo
+ * (+0x26) y el valor de +0x28 cuando la camara cruza a otra zona; el pozo de objetos lo reserva
+ * (func_8003652C, gestion_y_dibujo_de_objetos.c). lw de 32 bits.
+ */
+extern Objeto* D_800694DC;
+
+/*
+ * D_80069608: indicadores de la camara de apuntado. func_80033358 limpia el bit 1 (and con -3) y lo
+ * activa (ori 2); los eventos activan el bit 0. lw / sw de 32 bits.
+ */
+extern u32 D_80069608;
+
+/*
+ * D_8006D934: mitad alta de D_8006D928 (+0xC, la mira); el original la direcciona con su propio lui
+ * y la resta con la macro vectorial GEO_RESTAR_W (menus_e_interfaz.c, func_80033358).
+ */
+extern s32 D_8006D934[3];
 
 /* --- Motor e inicializacion ------------------------------------------------------------- */
 
