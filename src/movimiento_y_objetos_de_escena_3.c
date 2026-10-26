@@ -354,9 +354,9 @@ sigue:
                             h = func_80036734((s16)c->eventos[i].id, (s32*)&pos, (u16*)&giro);
                             if (h != 0) {
                                 o->flags18 |= ANIM_HIJO_VIVO;
-                                ANIM_CERO_W3(&h->portado.trans);
-                                ANIM_CERO_WH(&h->portado.giro);
-                                ANIM_UNOS_W3(&h->portado.escala);
+                                GEO_CERO_W(&h->portado.trans);
+                                GEO_CERO_WH(&h->portado.giro);
+                                MOTOR_UNOS_W(&h->portado.escala);
                                 if (h->w1C == 1) {
                                     D_80069608 |= 1;
                                 }

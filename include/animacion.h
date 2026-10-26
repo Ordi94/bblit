@@ -138,35 +138,6 @@ extern void func_8003690C(Objeto* o, BloqueTrabajo* cursor, AreaCuadro* w);
 extern u32 func_8001E720(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area);
 
 /*
- * Macros vectoriales del juego que reproducen las instrucciones del original (registros t
- * fijos): cada una copia primero la direccion a $8 con "move" y la lista de registros destruidos
- * contiene exactamente los que su cuerpo escribe, como las de geometria.h.
- *
- * ANIM_CARGAR_H3(p)      t1..t3 = vector de 3 medias palabras con signo en p (lh x3)
- * ANIM_CERO_W3(p)        vector de 3 palabras en p = 0
- * ANIM_CERO_WH(p)        palabra y media palabra de p = 0
- * ANIM_UNOS_W3(p)        vector de 3 palabras en p = 0x1000 (pasa por t4 y se copia a t1..t3)
- * ANIM_DIAGONAL_CERO(p)  elementos de la diagonal de la matriz p = 0 (sw 0, sw 8, sh 0x10)
- */
-#define ANIM_CARGAR_H3(p) \
-    __asm__ volatile ("move $8, %0\n\tlh $9, 0($8)\n\tlh $10, 2($8)\n\tlh $11, 4($8)" \
-                      : : "r"(p) : "$8", "$9", "$10", "$11", "memory")
-#define ANIM_CERO_W3(p) \
-    __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsw $0, 4($8)\n\tsw $0, 8($8)" \
-                      : : "r"(p) : "$8", "memory")
-#define ANIM_CERO_WH(p) \
-    __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsh $0, 4($8)" \
-                      : : "r"(p) : "$8", "memory")
-#define ANIM_UNOS_W3(p) \
-    __asm__ volatile ("move $8, %0\n\taddiu $12, $0, 0x1000\n\tmove $9, $12\n\tmove $10, $12\n\t" \
-                      "move $11, $12\n\tsw $9, 0($8)\n\tsw $10, 4($8)\n\tsw $11, 8($8)" \
-                      : : "r"(p) : "$8", "$9", "$10", "$11", "$12", "memory")
-#define ANIM_DIAGONAL_CERO(p) \
-    __asm__ volatile ("move $8, %0\n\tmove $9, $0\n\tsw $9, 0($8)\n\tsw $9, 8($8)\n\tsh $9, 16($8)" \
-                      : : "r"(p) : "$8", "$9", "memory")
-
-
-/*
  * Rutinas que invoca el avance de animacion. func_8001E528 recibe el area de trabajo del llamador
  * como cuarto argumento y func_8003F06C recibe el cuadro del anillo sin recortar (lh): se llaman
  * con prototipos de palabra completa para que el llamador no normalice los argumentos.

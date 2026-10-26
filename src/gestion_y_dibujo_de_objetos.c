@@ -473,7 +473,7 @@ void func_8003690C(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
                     }
                     if (w->banderas & 0x400000) {
                         if (!(a->flags8 & 0x400)) {
-                            ANIM_CARGAR_H3(p);
+                            GEO_CARGAR_H(p);
                             GEO_GUARDAR_W_T1(&param->scale);
                         }
                         p += 2;
@@ -584,7 +584,7 @@ void func_8003690C(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
                         param->scale.vz = 0;
                         param->scale.vy = 0;
                         param->scale.vx = 0;
-                        ANIM_DIAGONAL_CERO(w->m);
+                        MOTOR_DIAGONAL_CERO(w->m);
                         a->flags8 |= 0x8000;
                     } else {
                         func_800364E0(o, nodo);
