@@ -20,12 +20,14 @@ struct ModeloDibujo;
 typedef struct Fotograma {
     u8 pad00[0x0A];
     u16 h0A;
-    u8 pad0C[4];
+    u16 w0C;                /* anchura del cuadro: lhu en func_8002CB8C (0x8002CC74) */
+    u16 w0E;                /* altura del cuadro: lhu en func_8002CB8C (0x8002CCAC) */
 } Fotograma;
 
 typedef struct TablaFotogramas {
     u8 pad00[0x10];
     Fotograma* fotogramas;
+    u16 cuenta;             /* numero de cuadros: lhu en func_8002CB8C (0x8002CC58) */
 } TablaFotogramas;
 
 /*
@@ -92,10 +94,10 @@ typedef struct ParametrosObjeto {
  * animacion elegida; func_80045498 recibe su direccion.
  */
 typedef struct BloqueTrabajo {
-    u16 w00;                /* func_80020B90: lhu 0x144($s4) en 0x800255D0; lw / sw de la palabra entera sobre el apoyo (0x80022C18, 0x80022C24) */
+    u16 w00;                /* ultimo cuadro (cuadros - 1): sh en func_8002CB8C (0x8002CC70), lhu en 0x8002CD68 y 0x800255D0 (func_80020B90); func_80020B90 tambien lee y escribe la palabra entera sobre el apoyo (lw / sw 0x80022C18, 0x80022C24) */
     s16 h02;
     u8 pad04;
-    u8 b05;                 /* func_80020B90: sb en 0x800213BC y lbu en 0x800255D8 (indice de paso 5 - acumulado / 32) */
+    u8 b05;                 /* cuadros de espera entre cuadros de la animacion: sb en func_8002CB8C (0x8002CC64) y lbu en 0x8002CD58; func_80020B90: sb en 0x800213BC y lbu en 0x800255D8 (indice de paso 5 - acumulado / 32) */
     u8 pad06[2];
     u8 b08;
     u8 pad09;
@@ -105,6 +107,7 @@ typedef struct BloqueTrabajo {
     u32 flags18;
     u8 pad1C[4];
     struct Fotograma* fotogramas;
+    struct Fotograma* actual;   /* cuadro en curso: sw en func_8002CB8C (0x8002CC54 y 0x8002CD84) */
 } BloqueTrabajo;
 
 /*
@@ -151,7 +154,7 @@ typedef struct Objeto {
     u16 w3A;                /* menus_e_interfaz.c */
     u16 w3C;                /* las rutinas de creacion lo escriben con sh y el resto lo lee con lhu */
     u16 w3E;                /* func_800353B0 */
-    SVECTOR empuje;         /* +0x40: empuje externo que func_80020B90 suma al desplazamiento (lh x3 en 0x80021B24, 0x80021B38, 0x80021B4C) y borra (sh zero en 0x80021B60, 0x80021B64, 0x80021B68); w40 y w44 los escribe el objeto empujado con sh (0x80023CA0, 0x80023CB0) */
+    SVECTOR empuje;         /* +0x40: empuje externo que func_80020B90 suma al desplazamiento (lh x3 en 0x80021B24, 0x80021B38, 0x80021B4C) y borra (sh zero en 0x80021B60, 0x80021B64, 0x80021B68); vx y vz los escribe el objeto empujado con sh (0x80023CA0, 0x80023CB0). func_8002D68C (bloque empujable) lee el empuje pedido en X y en Z con lh (0x8002D814, 0x8002D828) y lo pone a cero con sh zero (0x8002D83C, 0x8002D844) */
     SVECTOR min;            /* caja del volumen (+0x48) y mitades de sprite que lee func_8001DF28 con lh */
     SVECTOR max;            /* +0x50 */
     VECTOR objetivo;        /* +0x58: punto de interaccion; func_80020B90 lo lee con lhu (0x80022A8C, 0x80022AAC) y lw 0x5C($s4) (0x80022B44) y pasa su direccion a func_800171E4 (0x800228C4) */
@@ -175,7 +178,16 @@ typedef struct Objeto {
     ParametrosObjeto param; /* +0xCC: func_8001CF50, func_8001DF28, func_8001E1A4 */
     struct NodoSecuencia* secuencias;   /* func_8001CD84, func_8001D0FC: lw */
     u8* bloque;             /* func_8001CD84: base del bloque de animacion */
-    struct NodoSecuencia* apoyos;       /* func_8001D0FC: lw */
+    /*
+     * +0xFC: lista enlazada de registros cuyo formato depende de la clase del objeto (w2C), de modo
+     * que el campo conserva el tipo de func_8001D0FC (lw) y cada manejador lo convierte con un cast
+     * a su registro. Los manejadores de disparadores (func_8002D03C y el resto de logica_de_niveles_3)
+     * leen NodoDisparador y pasan a TestLogicCond y RunLogicAction el nodo + 0x10 (addiu 0x10 en
+     * 0x8002D37C y 0x8002D3A4); el jugador (func_80020B90) lee Transicion y les pasa el nodo + 0xE
+     * (addiu 0xE en 0x80024CB8 y 0x80024CCC). Son dos disenos de registro distintos, no dos nombres
+     * del mismo.
+     */
+    struct NodoSecuencia* apoyos;
     s32 i100;               /* func_8001C424, func_8001C6CC, func_8001C998: lw / sw */
     s16 h104;               /* func_80020210, func_80020240: lh */
     s16 h106;               /* func_80020210: sh 0x106($a0) en 0x80020228; func_80020240: lhu 0x106($s0) en 0x8002030C; sin lectura con signo */
@@ -187,11 +199,19 @@ typedef struct Objeto {
     s16 h112;               /* func_8001C6CC: solo sh $zero, 0x112($s1) en 0x8001C86C y 0x8001C8AC; sin lectura que fije el signo */
     u8 pad114[0x116 - 0x114];
     s16 h116;               /* func_8001C424: lh 0x116($s0) en 0x8001C558, sh en 0x8001C4E0 y 0x8001C604 */
-    u8 pad118[0x13C - 0x118];
-    s32 i13C;               /* func_80020A90: sw */
-    u8 pad140[0x144 - 0x140];
+    u8 pad118[4];
+    /*
+     * +0x11C: transformacion propia del objeto que lleva el jugador (mismo diseno que param, +0xCC;
+     * 0x28 bytes hasta +0x144). func_8002BA80 la reinicia en el hijo que cuelga del jugador: el
+     * addiu 0x11C de 0x8002BF6C fija la escala, que se rellena con 0x1000 (sw 0x8002BF84, 0x8002BF88
+     * y 0x8002BF8C); el addiu 0x12C de 0x8002BF54 fija el giro, que se pone a cero (sw 0x8002BF5C y
+     * sh 0x8002BF60); el addiu 0x134 de 0x8002BF38 fija la traslacion, que se pone a cero (sw
+     * 0x8002BF40, 0x8002BF44 y 0x8002BF48). El nodo coord.param del hijo apunta a este bloque (addiu
+     * 0x11C en 0x8002BFC8 y sw 0xC0 en 0x8002BFCC). func_80020A90 escribe la altura relativa del apoyo
+     * en la coordenada Z de la traslacion (sw).
+     */
+    ParametrosObjeto portado;
     BloqueTrabajo trabajo;  /* +0x144, ver BloqueTrabajo */
-    u8 pad168[0x16C - 0x168];
     struct TablaFotogramas* tabla;      /* func_80044EA8: sw de la tabla activa */
     u8 pad170[0x17C - 0x170];
     u16 w17C;
@@ -208,7 +228,8 @@ typedef struct Objeto {
     u16 w192;               /* func_80031B78: solo sh $zero, 0x192($a0) en 0x80031B8C; sin lectura que fije el signo */
     u8 pad194[2];
     u16 w196;               /* func_80031B78: solo sh 0x196($a0) en 0x80031B94; sin lectura que fije el signo */
-    u8 pad198[0x1A8 - 0x198];
+    u8 pad198[0x1A4 - 0x198];
+    s32 i1A4;               /* velocidad vertical del jugador: lw en func_80026298 (0x8002656C) */
     s32 i1A8;               /* func_80020A90: lw 0x1A8($a0) en 0x80020AC0 y 0x80020AF8 */
     u8 pad1AC[0x1B4 - 0x1AC];
     u32 w1B4;               /* func_800353B0: lw, segundo argumento de func_80033358 */
@@ -256,15 +277,24 @@ typedef struct EstadoCamara {
     s32 cB8;
     s32 cBC;
     u8 padC0[0xC4 - 0xC0];
-    s32 iC4;                /* func_80033358: sw 0xC4($s0) en 0x80033D2C, lw en 0x80033D74; destino de la mira en el modo guiado (lhu en 0x80033C10) */
-    s32 iC8;                /* func_80033358: sw 0xC8($s0) en 0x80033D3C */
-    s32 iCC;                /* func_80033358: sw 0xCC($s0) en 0x80033D54 */
+    /*
+     * Punto de vista deseado (+0xC4) y punto de mira deseado (+0xD4) que fijan los directores de
+     * camara, y distancia de acercamiento (+0xE4). func_8002C1DC los escribe con sw: 0x8002C574,
+     * 0x8002C590 y 0x8002C5D0 (vista), 0x8002C6E0, 0x8002C6FC y 0x8002C71C (mira), 0x8002CAA4
+     * (distancia), y los lee con lw en 0x8002C670, 0x8002C690 y 0x8002C6B0. func_80033358 usa la
+     * misma memoria: sw 0xC4/0xC8/0xCC($s0) en 0x80033D2C, 0x80033D3C y 0x80033D54 (destino de la
+     * mira en el modo guiado, lhu en 0x80033C10), lw 0xD4/0xD8/0xDC($s1) en 0x80033B58, 0x80033B60 y
+     * 0x80033B80 (destino alternativo) y lw 0xE4($s0) en 0x80033CE8 (distancia de la transicion).
+     */
+    s32 iC4;
+    s32 iC8;
+    s32 iCC;
     u8 padD0[0xD4 - 0xD0];
-    s32 iD4;                /* func_80033358: lw 0xD4($s1) en 0x80033B58; destino alternativo del modo guiado */
-    s32 iD8;                /* func_80033358: lw 0xD8($s1) en 0x80033B60 */
-    s32 iDC;                /* func_80033358: lw 0xDC($s1) en 0x80033B80 */
+    s32 iD4;
+    s32 iD8;
+    s32 iDC;
     u8 padE0[0xE4 - 0xE0];
-    s32 iE4;                /* func_80033358: lw 0xE4($s0) en 0x80033CE8; distancia de la transicion guiada */
+    s32 iE4;
 } EstadoCamara;
 
 /*
@@ -867,6 +897,16 @@ extern u8* D_80069550;
 extern u32* D_80069598;
 extern s16* D_800695AC;
 extern s16* D_800695FC;
+
+/*
+ * D_8006D9B8: objeto activo cercano al jugador. Lo escriben con sw las zonas de eventos
+ * (func_8002BA80: sw 0x8002BAC8 y 0x8002BB24) y el personaje animado.
+ *
+ * Se declara como arreglo sin tamano (D_8006D9B8[0]) y no como escalar: con el umbral de datos pequenos
+ * de -G8 un puntero escalar se emite en la forma simbolica con $at, que el original no usa (func_8002BA80
+ * baja de 935 a 590 puntos con el arreglo); el arreglo da el lui y el desplazamiento del original.
+ */
+extern Objeto* D_8006D9B8[];
 
 /*
  * Llamadas al sistema del kernel (syscall 0 con a0 = 1 y 2, 16 bytes escritos a mano cada una en

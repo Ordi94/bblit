@@ -292,10 +292,10 @@ u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
             } while (nodo != NULL);
         }
         if (nodo != NULL && altura > 0) {
-            t->i13C = nodo->w10;
+            t->portado.trans.vz = nodo->w10;
             return 0;
         }
-        (*apoyo)->i13C = ((NodoPeldano*)(*apoyo)->u78.p)->w10;
+        (*apoyo)->portado.trans.vz = ((NodoPeldano*)(*apoyo)->u78.p)->w10;
         if (altura > 0) {
             return 1;
         }

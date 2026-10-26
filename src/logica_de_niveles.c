@@ -12,21 +12,11 @@ extern void func_80020210(Objeto* o, s32 paso, s32 amplitud);
 extern void func_80020240(Objeto* o);
 extern s32 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo);
 extern ApoyoHallado* func_80020354(Objeto* o, VECTOR* pos, void* trabajo, u32 mascara);
-extern Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o);
-extern Objeto* func_80017478(Objeto* a, SVECTOR* v, void* w, u32 mascara);
 extern s32 func_80018664(Objeto* a, Objeto* b, void* w);
-extern Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o);
-extern s32 func_8001F268(Objeto* o, BloqueTrabajo* b, s32 id, s32 arg, void* w);
-extern void func_8001CBB8(Objeto* o, Movimiento* d, ResultadoBaldosa* r, void* w);
 extern void func_8001D414(s16 accion);
 extern void func_8001D994(Objeto* o);
-extern void func_8001E1A4(Objeto* o, ConsultaPlano* c);
-extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
 extern void func_8003AA7C(u8 modo, u16 duracion);
 extern void func_80032894(void);
-extern s32 BugsRand(void);
-extern s32 TestLogicCond(void* o, void* item);
-extern void RunLogicAction(void* o, void* item);
 
 /*
  * Estado compartido con el resto de la logica: botones y ejes del mando, rumbo de la camara,
