@@ -54,15 +54,30 @@ typedef struct ObjetoEscena {
     u32 flags04;
     u32 flags08;
     u32 flags0C;
-    u8 pad10[0x26 - 0x10];
+    struct ObjetoEscena* sig;
+    u32 flags14;
+    u32 flags18;
+    u8 pad1C[0x26 - 0x1C];
     u16 w26;
     u16 w28;
     u8 pad2A[2];
     u16 w2C;
-    u8 pad2E[0x3C - 0x2E];
+    u8 pad2E[0x3A - 0x2E];
+    u16 w3A;
     u16 w3C;
     u16 w3E;
-    u8 pad40[0x7C - 0x40];
+    u8 pad40[0x48 - 0x40];
+    u16 h48;
+    u16 h4A;
+    u16 h4C;
+    u8 pad4E[2];
+    u16 h50;
+    u16 h52;
+    u16 h54;
+    u8 pad56[0x70 - 0x56];
+    struct ObjetoEscena* p70;
+    u8 pad74[4];
+    struct ModeloDibujo* modelos;
     u8 nodo[4];
     u8 pad80[0xC4 - 0x80];
     s32 iC4;
@@ -285,21 +300,41 @@ typedef struct PoligonoGT4 {
 } PoligonoGT4;
 
 /*
- * Escena en curso (segundo argumento de las rutinas de modelos): +4..+6 son los bytes de estado
- * que se pasan al dibujador de modelos (func_8003B26C, func_8003B354); +8 la profundidad del
- * objeto que func_8003AF8C calcula; +0xA el desplazamiento de profundidad; +0x2C y +0x30 el
- * inicio y el limite del buffer de primitivas (func_8003AE08, func_8003AF8C); +0x34 el objeto
- * que fija la sala visible.
+ * Estado que se pasa al dibujador de modelos del overlay (func_80010204/func_80010258): los
+ * primeros bytes de la escena. +0..+2: bytes de estado (func_8003B26C y func_8003B354);
+ * +4 (s4): profundidad del objeto (func_8003AF8C) y, en func_8003C014, desplazamiento de la
+ * entidad; +6 (s6): desplazamiento de profundidad; +8 (w8): nivel del fundido de pantalla;
+ * +0xC/+0xE (w0C, w0E) y +0x10/+0x12: limites de profundidad del modelo.
+ */
+typedef struct EstadoDibujo {
+    u8 b0;
+    u8 b1;
+    u8 b2;
+    u8 pad03;
+    s16 s4;
+    s16 s6;
+    u16 w8;
+    u8 pad0A[2];
+    u16 w0C;
+    u16 w0E;
+    u16 w10;
+    u16 w12;
+} EstadoDibujo;
+
+/*
+ * Escena en curso, en el scratchpad (0x1F800000, 0x38 bytes): estado del dibujador en +4, las
+ * bases de las tres listas de ordenacion en +0x18/+0x1C/+0x20, punteros a los contadores del
+ * cuadro en +0x24/+0x28, inicio y limite del buffer de primitivas en +0x2C/+0x30 (func_8003AE08,
+ * func_8003AF8C) y el objeto en curso en +0x34.
  */
 typedef struct EscenaDibujo {
-    u8 pad00[0x04];
-    u8 b4;
-    u8 b5;
-    u8 b6;
-    u8 pad07;
-    s16 profundidad;
-    s16 desplazamiento;
-    u8 pad0C[0x2C - 0x0C];
+    u8 pad00[4];
+    EstadoDibujo estado;
+    u32* ot0;
+    u32* ot1;
+    u32* ot2;
+    u16* cuenta_a;
+    u16* cuenta_b;
     s32 inicio;
     s32 limite;
     ObjetoEscena* objeto;
@@ -307,10 +342,7 @@ typedef struct EscenaDibujo {
 
 /*
  * Vista de dibujo (tercer argumento de las rutinas de modelos y contexto de la cola de poligonos).
- * Sus campos se reutilizan por fases: func_8003C014 fija +4, +0xC y +0xE como limites de
- * profundidad del modelo y func_8003C1C8 los reescribe como centro de pantalla (+4, +6), banderas
- * (+8) y datos del poligono en curso; por eso +0xC y +0xE comparten memoria con el indice de la
- * lista de ordenacion de func_8003DA4C. +0: tipo de primitiva (8 y 12 sin textura, 16 y 20 con
+ * +0: tipo de primitiva (8 y 12 sin textura, 16 y 20 con
  * textura y color plano, 24 y 28 con textura y color por vertice); +0x10: registro de banderas del
  * GTE (negativo si el poligono se descarta); +0x18: cursor de la primitiva siguiente; +0x1C,
  * +0x20 y +0x24: bases de las tres listas de ordenacion, de resolucion decreciente; +0x28:
@@ -345,9 +377,5 @@ typedef struct VistaDibujo {
  * guardado con el limite del buffer sin reutilizar el registro.
  */
 #define CURSOR_RELEIDO(c) (*(volatile s32*)&(c)->cursor)
-
-/* Los limites de profundidad del modelo ocupan las dos mitades de VistaDibujo.indice. */
-#define VISTA_W0C(v) (*(u16*)&(v)->indice)
-#define VISTA_W0E(v) (*((u16*)&(v)->indice + 1))
 
 #endif

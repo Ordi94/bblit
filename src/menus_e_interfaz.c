@@ -49,7 +49,7 @@ extern ModeloDibujo* D_8006B568[];
 extern u16 D_8006969C;
 extern u16 D_800694B0;
 extern u8 D_80069600;
-extern s32 func_80010258(void* modelo, s32 cursor, void* vista, void* estado);
+extern s32 func_80010258(void* modelo, s32 cursor, void* estado, void* vista);
 extern s16 D_800695DA;
 extern void* D_800695C4;
 extern EntradaCola D_8006D1C8[];
@@ -260,7 +260,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
             color = 0x808080;
         }
         desplazamiento = 0;
-        ctx->profundidad = 0;
+        ctx->estado.s4 = 0;
     } else {
         if (ctx->objeto->iC4 != 0) {
             pila.nodo = ctx->objeto->nodo;
@@ -272,9 +272,9 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         par = func_8001DF28(ctx->objeto, vista);
         color = par->color;
         desplazamiento = par->desplazamiento;
-        ctx->profundidad = (ctx->objeto->iD4 >> 2) - ctx->desplazamiento;
+        ctx->estado.s4 = (ctx->objeto->iD4 >> 2) - ctx->estado.s6;
     }
-    if ((ctx->objeto->flags04 & 2) && color != 0 && ctx->profundidad >= 0) {
+    if ((ctx->objeto->flags04 & 2) && color != 0 && ctx->estado.s4 >= 0) {
         q = sprite->palabras;
         p = (u32*)D_80076188;
         p[2] = sprite->palabras[0];
@@ -285,19 +285,19 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         p[7] = q[5];
         p[8] = q[6];
         p[9] = q[7];
-        if (ctx->profundidad < 0x200) {
+        if (ctx->estado.s4 < 0x200) {
             orden = (u32*)D_8006AE20[D_8006967C].org;
         } else {
-            if (ctx->profundidad < 0x400) {
-                n = (s16)((u16)ctx->profundidad - 0x200) >> 1;
+            if (ctx->estado.s4 < 0x400) {
+                n = (s16)((u16)ctx->estado.s4 - 0x200) >> 1;
                 orden = (u32*)D_8006AE60[D_8006967C].org;
             } else {
-                n = (s16)((u16)ctx->profundidad - 0x400) >> 5;
+                n = (s16)((u16)ctx->estado.s4 - 0x400) >> 5;
                 orden = (u32*)D_8006AEA0[D_8006967C].org;
             }
-            ctx->profundidad = n;
+            ctx->estado.s4 = n;
         }
-        ranura = orden + ctx->profundidad;
+        ranura = orden + ctx->estado.s4;
         palabra = *ranura | 0x09000000;
         if (sprite->semitransparente != 0) {
             modo = 0x2E000000;
@@ -326,12 +326,12 @@ void func_8003B26C(PedidoModelo* pedido, EscenaDibujo* escena, VistaDibujo* vist
     modelo = D_8006B568[pedido->modelo];
     if (func_8003760C(modelo->geometria, vista, (u8*)vista + 0x20) != 0) {
         func_8003753C(vista);
-        escena->b4 = (u8)pedido->grupo;
-        escena->b5 = modelo->estado;
-        escena->b6 = (u8)pedido->profundidad + 1;
+        escena->estado.b0 = (u8)pedido->grupo;
+        escena->estado.b1 = modelo->estado;
+        escena->estado.b2 = (u8)pedido->profundidad + 1;
         D_800695DA = 0;
         D_800695C4 = D_8006D1C8;
-        D_80076188 = func_80010204(modelo, D_80076188, &escena->b4, vista);
+        D_80076188 = func_80010204(modelo, D_80076188, &escena->estado, vista);
         if (D_800695DA != 0) {
             func_8003C1C8(vista);
         }
@@ -350,11 +350,11 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
 
     D_800695C4 = D_8006D1C8;
     D_800695DA = 0;
-    escena->b4 = 0;
-    escena->b6 = 1;
-    escena->b5 = 1;
+    escena->estado.b0 = 0;
+    escena->estado.b2 = 1;
+    escena->estado.b1 = 1;
     func_8003753C((u8*)modelo + 0x94);
-    D_80076188 = func_80010204(modelo, D_80076188, &escena->b4, vista);
+    D_80076188 = func_80010204(modelo, D_80076188, &escena->estado, vista);
     if (D_800695DA != 0) {
         func_8003C1C8(vista);
     }
@@ -372,7 +372,7 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     }
     cuenta = D_80069588;
     pedido.grupo = 1;
-    escena->desplazamiento = -0x80;
+    escena->estado.s6 = -0x80;
     pedido.profundidad = 1;
     if ((cuenta << 16) > 0x10000) {
         do {
@@ -395,7 +395,7 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
         entrada->bandera = 0;
         entrada->modelo = anterior;
     }
-    escena->b4 = 0;
+    escena->estado.b0 = 0;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B354);
@@ -405,23 +405,23 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B5AC);
 
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003BDD0);
 
-void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, VistaDibujo* vista, void* estado)
+void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista)
 {
-    VISTA_W0C(vista) = D_8006969C;
+    estado->w0C = D_8006969C;
     if (entidad->w3C & 2) {
-        VISTA_W0E(vista) = entidad->w3E;
+        estado->w0E = entidad->w3E;
     } else {
-        VISTA_W0E(vista) = D_800694B0;
+        estado->w0E = D_800694B0;
     }
     if (entidad->flags0C & 0x02000000) {
-        vista->s4 = entidad->w28 - 0x80;
-        if (D_800694B0 < VISTA_W0E(vista)) {
-            VISTA_W0E(vista) = D_800694B0;
+        estado->s4 = entidad->w28 - 0x80;
+        if (D_800694B0 < estado->w0E) {
+            estado->w0E = D_800694B0;
         }
         if (entidad->w2C == 9 || (entidad->flags0C & 0x20000000)) {
             D_80069600 = 1;
-            VISTA_W0C(vista) = 0x3FFF;
-            VISTA_W0E(vista) = 0x3FFF;
+            estado->w0C = 0x3FFF;
+            estado->w0E = 0x3FFF;
         }
     }
     if (lista != NULL) {
@@ -435,9 +435,9 @@ void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, VistaDibujo* vist
                 if (entidad->flags0C & 0x02000000) {
                     D_800695DA = 0;
                     D_800695C4 = D_8006D1C8;
-                    D_80076188 = func_80010204(lista, D_80076188, vista, estado);
+                    D_80076188 = func_80010204(lista, D_80076188, estado, vista);
                 } else {
-                    D_80076188 = func_80010258(lista, D_80076188, vista, estado);
+                    D_80076188 = func_80010258(lista, D_80076188, estado, vista);
                 }
             }
             lista = lista->siguiente;
