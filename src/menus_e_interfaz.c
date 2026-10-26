@@ -438,7 +438,7 @@ void func_8003B5AC(Objeto* lista)
     u16 nivel;
 
     func_8003ABB4();
-    esc = (EscenaDibujo*)0x1F800000;
+    esc = ESCENA_DIBUJO;
     D_800695A2 = 0;
     D_800695A4 = 0;
     D_80069600 = 0;

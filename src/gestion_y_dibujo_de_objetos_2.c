@@ -2,8 +2,11 @@
 #include "objetos.h"
 
 /*
- * Vista del ayudante a partir de +0x0C: el puntero a su GsCOORDINATE2 (+0x10 del nodo) y la
- * bandera de visibilidad (+0xB4 del nodo). Las rutinas de recorrido acceden por esta base.
+ * Vista del ayudante (Ayuda, objetos.h) a partir de +0x0C: el puntero a su GsCOORDINATE2 (+0x10
+ * del nodo) y la bandera de visibilidad (+0xB4 del nodo). Es una vista aparte de Ayuda a proposito:
+ * el original recorre la lista con un puntero desplazado 0xC (addiu sobre el nodo) distinto del
+ * propio nodo. Accediendo por los campos de Ayuda func_80037048 sube de 0 a 604 puntos y
+ * func_80037184 de 929 a 1464.
  */
 typedef struct AyudaCuerpo {
     s32 w0;
