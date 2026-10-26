@@ -22,11 +22,6 @@ typedef struct EntradaDirectorio {
     s32 sistema;
 } EntradaDirectorio;
 
-/* Directorio de una ranura: hasta 15 entradas (MemCardGetDirentry con maximo 15). */
-typedef struct RanuraDirectorio {
-    EntradaDirectorio e[15];
-} RanuraDirectorio;
-
 /* Llamadas de la BIOS y de libapi. */
 extern s32 VSync(s32 modo);
 extern s32 open(char* nombre, u32 modo);
@@ -48,22 +43,23 @@ extern char D_80069324[];
 extern u8 D_8006AA7A[];
 
 /*
- * Los contadores y resultados de libmcrd viven en la zona direccionada por $gp: el original los declara
- * como datos pequenos (-G8), asi que se definen aqui, sin extern, y el enlace les da su direccion.
+ * Estado de la tarjeta en la zona direccionada por $gp (+0x30..+0x4C): el original lo declara como datos pequenos
+ * (-G8), asi que se define aqui, sin extern, y el enlace le da la direccion de config/symbols.txt. Lo usa solo
+ * func_800156F4 (func_80014AC4 y func_80015E94 acceden a +0x38 y +0x3C con base_gp, forma transitoria).
  */
-s32 D_80069350;
-s32 D_80069354;
-s32 D_80069358[2];
-s8 D_8006935C;
-s16 D_8006935E[2];
-s32 D_80069360;
-s32 D_80069368;
-s16 D_8006936C;
+s32 D_80069350;     /* +0x30: suma de control recalculada del directorio */
+s32 D_80069354;     /* +0x34: suma de control de referencia, tomada al leer la cabecera */
+s32 D_80069358[2];  /* +0x38: entradas de directorio por ranura (la ranura 1 solapa D_8006935C) */
+s8 D_8006935C;      /* +0x3C: la tarjeta esta lista (1) o hay que volver a leerla (0) */
+s16 D_8006935E[2];  /* +0x3E: bloques usados por ranura (la ranura 1 solapa D_80069360) */
+s32 D_80069360;     /* +0x40: orden de libmcrd que acaba de terminar (1 existe, 2 acepta) */
+s32 D_80069368;     /* +0x48: resultado de esa orden (0 correcto, 3 tarjeta nueva, 4 sin formato) */
+s16 D_8006936C;     /* +0x4C: indice del archivo de partida en el directorio, -1 si no esta */
 
 /*
  * Cabecera del archivo de partida (0x168 bytes, en el desplazamiento 0x200 del archivo): una suma de
- * control en la primera palabra, un byte en +4 y ocho registros de nivel de 0x2C bytes desde +8, cada
- * uno con un valor de 16 bits y un extra de 16 bits.
+ * control en la primera palabra, la mascara de ranuras con partida en +4 y ocho registros de nivel de
+ * 0x2C bytes desde +8, cada uno con un valor de 16 bits y un extra de 16 bits.
  */
 typedef struct RegistroNivel {
     u16 valor;
@@ -438,14 +434,14 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  */
 void func_800156F4(void)
 {
-    CabeceraGuardado* cab;
-    s32 cuenta;
-    s32 n;
-    EntradaDirectorio* ee;
+    CabeceraGuardado* cabecera;
+    s32 cuenta_previa;
+    s32 completos;
+    EntradaDirectorio* entrada;
     s16* bloques;
-    s32 t;
-    s32 s2;
-    s32 s1;
+    s32 grupo;
+    s32 salvado;
+    s32 partida;
     s32 tam;
     s32 j;
     s32 i;
@@ -457,6 +453,7 @@ void func_800156F4(void)
     s32 rc;
     s16 ranura;
     u8 reserva[16];
+
     ranura = 0;
     if (D_8006AA70[3] == 1) {
         D_8006935C = 0;
@@ -495,19 +492,19 @@ void func_800156F4(void)
                 D_8006AA70[0x1A] = 2;
             } else {
                 func_8003F06C(D_80069698, 0x40, 1, D_8006967C);
-                s2 = ESTADO_PRINCIPAL->r[0x10];
+                salvado = ESTADO_PRINCIPAL->r[0x10];
                 D_8006AA70[0x25] = 1;
                 D_8006AA70[0x1C] = 0;
                 D_8006AA70[0x1A] = 0;
                 D_8006AA70[0x1B] = 0x10;
-                s1 = ESTADO_PRINCIPAL->r[BANCO_PARTIDA];
+                partida = ESTADO_PRINCIPAL->r[BANCO_PARTIDA];
                 func_80015EC0();
                 ESTADO_PRINCIPAL->r[0xE] = 0x38;
                 ESTADO_PRINCIPAL->r[0x8D] = 3;
-                ESTADO_PRINCIPAL->r[BANCO_PARTIDA] = s1;
-                ESTADO_PRINCIPAL->r[0x10] = s2;
-                cab = &D_8006D060;
-                cab->mascara |= 1 << (s1 - 1);
+                ESTADO_PRINCIPAL->r[BANCO_PARTIDA] = partida;
+                ESTADO_PRINCIPAL->r[0x10] = salvado;
+                cabecera = &D_8006D060;
+                cabecera->mascara |= 1 << (partida - 1);
             }
         } else if (orden == 5) {
             if (D_8006935C == 1) {
@@ -516,7 +513,7 @@ void func_800156F4(void)
                     D_8006AA70[0x25] = 1;
                     D_8006AA70[0x1B] = 0x10;
                     func_8003F06C(D_80069698, 0x40, 1, D_8006967C);
-                    s2 = ESTADO_PRINCIPAL->r[0x10];
+                    salvado = ESTADO_PRINCIPAL->r[0x10];
                     if (func_80014E24() != 0) {
                         if (ESTADO_PRINCIPAL->nivel != 0) {
                             ESTADO_PRINCIPAL->r[0xE] = ESTADO_PRINCIPAL->nivel;
@@ -524,7 +521,7 @@ void func_800156F4(void)
                             ESTADO_PRINCIPAL->r[0xE] = 0x38;
                         }
                         D_80069594 = ESTADO_PRINCIPAL->r[0xA6];
-                        ESTADO_PRINCIPAL->r[0x10] = s2;
+                        ESTADO_PRINCIPAL->r[0x10] = salvado;
                         ESTADO_PRINCIPAL->r[0xFB] = 0;
                         ESTADO_PRINCIPAL->r[0x8D] = 3;
                     } else {
@@ -538,7 +535,7 @@ void func_800156F4(void)
             if (D_8006935C != 1) {
                 goto sin_bandera;
             }
-            s2 = ESTADO_PRINCIPAL->r[0xA6];
+            salvado = ESTADO_PRINCIPAL->r[0xA6];
             ESTADO_PRINCIPAL->r[0xA6] = D_80069594;
             if (func_8001515C() != 0) {
                 D_8006AA70[8] = 0xA;
@@ -546,7 +543,7 @@ void func_800156F4(void)
                 D_8006AA70[8] = 1;
                 D_8006AA70[0x12] = 1;
             }
-            ESTADO_PRINCIPAL->r[0xA6] = s2;
+            ESTADO_PRINCIPAL->r[0xA6] = salvado;
             goto fin_ordenes;
         tarjeta_nueva:
             D_8006935C = 0;
@@ -616,28 +613,28 @@ void func_800156F4(void)
                 *bloques = 0;
                 for (i = 0; i < D_80069358[ranura]; i++) {
                     tam = ((EntradaDirectorio*)((s8*)D_800697B0 + ranura * 0x258))[i].tam;
-                    n = tam / 0x2000;
-                    cuenta = *bloques;
+                    completos = tam / 0x2000;
+                    cuenta_previa = *bloques;
                     if ((tam & 0x1FFF) != 0) {
-                        *bloques = cuenta + 1 + n;
+                        *bloques = cuenta_previa + 1 + completos;
                     } else {
-                        *bloques = cuenta + n;
+                        *bloques = cuenta_previa + completos;
                     }
                 }
                 i = 0;
-                t = i;
+                grupo = i;
                 for (; i < D_80069358[0]; i++) {
-                    for (j = 0; D_800697B0[j + i * 0x28 + t * 120] != 0; j++) {
+                    for (j = 0; D_800697B0[j + i * 0x28 + grupo * 120] != 0; j++) {
                     }
                     for (; j < 0x14; j++) {
-                        D_800697B0[j + i * 0x28 + t * 120] = 0;
+                        D_800697B0[j + i * 0x28 + grupo * 120] = 0;
                     }
-                    ee = (EntradaDirectorio*)(D_800697B0 + i * 0x28 + t * 120);
-                    ee->attr = 0;
-                    ee->tam = 0;
-                    ee->sig = 0;
-                    ee->cabeza = 0;
-                    *(s32*)(D_800697B0 + 0x24 + i * 0x28 + t * 120) = 0;
+                    entrada = (EntradaDirectorio*)(D_800697B0 + i * 0x28 + grupo * 120);
+                    entrada->attr = 0;
+                    entrada->tam = 0;
+                    entrada->sig = 0;
+                    entrada->cabeza = 0;
+                    *(s32*)(D_800697B0 + 0x24 + i * 0x28 + grupo * 120) = 0;
                 }
                 D_8006936C = func_80014AC4(ranura);
                 if (D_8006936C >= 0) {
