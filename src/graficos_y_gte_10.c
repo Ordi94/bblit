@@ -115,17 +115,11 @@ void func_80040B8C(void)
  * Marca con el bit 15 cada celda no nula de una tabla de s16 (el bit alto distingue una
  * entrada ocupada); el numero de celdas esta en el campo +4 de la cabecera.
  */
-typedef struct CabeceraLista {
-    s16 pad0;
-    s16 pad2;
-    s16 cuenta;
-} CabeceraLista;
-
-void func_80040D98(CabeceraLista* a0, s16* a1)
+void func_80040D98(RECT* a0, s16* a1)
 {
     s32 i;
 
-    for (i = 0; i < a0->cuenta; i++) {
+    for (i = 0; i < a0->w; i++) {
         if (*a1 != 0) {
             *a1 = *a1 | 0x8000;
         }

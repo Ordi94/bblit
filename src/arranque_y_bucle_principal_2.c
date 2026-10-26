@@ -5,6 +5,9 @@
 #include "psyq/LIBGTE.H"
 #include "psyq/LIBGPU.H"
 #include "psyq/LIBGS.H"
+#include "objetos.h"
+#include "menus.h"
+#include "geometria.h"
 
 extern s32 D_80069638;
 
@@ -19,17 +22,11 @@ extern void func_80044D44(void);
 extern void func_80044E58(void);
 extern void func_80040EB4(void);
 extern s32 func_800415A0(s16 nivel, void* destino);
-extern void func_80019364(void* tabla);
-extern void func_80040AF0();
 extern void func_8003DF84(void);
-extern void func_8003AA50(u32 modo, u32 duracion);
-extern void func_8003AA7C(u32 modo, u32 duracion);
 extern void func_8003E9E8(void);
 extern void func_800156F4();
 extern void func_80015E94(void);
 extern void func_80015F38(void);
-extern void func_80037FB8(void* a);
-extern void func_80037FE8(void* a);
 extern void func_80040240(void);
 extern void func_8003E88C(void);
 extern void func_8003FC88(void);
@@ -52,12 +49,7 @@ extern void func_800160A8(void);
 extern void func_8003E3C0(void);
 extern void func_8003F3F0(s16 indice);
 extern void func_800353B0(Objeto* a);
-extern void func_80037048(void* a);
-extern void func_800399C8(void* a);
-extern void func_8003B5AC(void* a);
 extern void func_8003A5C8(void* a);
-extern void func_80045150(void* a);
-extern void func_80037184(void* a);
 extern void func_8001020C(s32 a);
 
 void func_80015EC0(void)

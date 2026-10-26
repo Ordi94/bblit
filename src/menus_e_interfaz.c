@@ -4,9 +4,9 @@
 #include "geometria.h"
 #include "arranque.h"
 #include "menus.h"
+#include "motor.h"
+#include "objetos.h"
 
-extern s32 D_800693F0;
-extern s16 D_80069416;
 
 /*
  * Estado del fundido de pantalla. Todas son variables de 2 bytes que el original escribe con
@@ -50,12 +50,8 @@ extern EntradaCola D_8006D1C8[];
 /* Rutinas de otros archivos y del overlay (func_80010204 y func_80010258 dibujan un modelo). */
 extern void func_80039CD0(s32 cursor);
 /* Recibe en a0 la direccion de la pila local (addiu a0,sp,...); movimiento_y_objetos_de_escena_2.c la declara con Entidad*, tipo que este archivo no conoce. */
-extern void func_8001CE64(void* pila);
-extern ColorYDesplazamiento* func_8001DF28(void* objeto, void* vista);
-extern s32 func_8003760C(void* geometria, void* vista, void* vista_siguiente);
 extern void func_8003753C(void* vista);
 extern s32 func_80010204(void* modelo, s32 cursor, void* estado, void* vista);
-extern s32 func_80010258(void* modelo, s32 cursor, void* estado, void* vista);
 extern s32 func_80012AE4(s32 cursor, EstadoDibujo* estado, s32 color);
 extern s32 func_80012AB0(s32 cursor, EstadoDibujo* estado);
 
@@ -73,7 +69,6 @@ extern s32 func_8003DD70(VerticeCaja* v, LimitesPantalla* lim);
 extern void func_8003CA5C(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
 extern void func_8003D0D4(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
 extern void func_8003C1C8(VistaDibujo* vista);
-extern s32 func_8003BDD0(ModeloDibujo* modelo);
 extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
 
 /* Estado principal (solo el telon de pantalla) y copias de la camara que deja el dibujo por cuadro. */
@@ -261,7 +256,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     s32 desplazamiento;
     s32 k;
     ColorYDesplazamiento* par;
-    PilaNodo pila;
+    AcumuladorNodos pila;
     u32* p;
     u32* q;
     u32* orden;

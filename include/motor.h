@@ -65,7 +65,6 @@ typedef struct TrabajoSuelo {
 extern int rsin(int angulo);
 
 /* Coloca la camara detras de una posicion (movimiento_y_objetos_de_escena_2.c). */
-extern void func_8001CC68(VECTOR* p);
 
 /* Consulta de baldosa de colision_y_terreno.c (la definicion vive alli). */
 extern void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w);
@@ -119,5 +118,35 @@ extern void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, Trabajo
                       "nop\n\t" \
                       "sw $8, 0($9)" \
                       : : "r"(p) : "$8", "$9", "memory")
+
+/*
+ * Proyeccion de un objeto sobre la pantalla: area de trabajo de la proyeccion de un sprite que
+ * func_8001DF28 rellena a partir de la posicion (+0x38) y devuelve en +0x58: profundidad en
+ * +0x54, escala en +0x90, esquinas del cuadro en +0x4C..+0x52 y puntero a las coordenadas
+ * del sprite en +0x98.
+ */
+typedef struct ProyeccionSprite {
+    u8 pad00[0x38];
+    SVECTOR pos;
+    u8 pad40[0x4C - 0x40];
+    s16 h4C;
+    s16 h4E;
+    s16 h50;
+    s16 h52;
+    s32 z54;
+    s32 w58;
+    s32 w5C;
+    u8 pad60[0x90 - 0x60];
+    s32 escala;
+    s16 h94;
+    u8 pad96[0x98 - 0x96];
+    s16* coordenadas;
+} ProyeccionSprite;
+extern void func_8001CF50(Objeto* o);
+extern void func_8001CFCC(GsCOORDINATE2* n);
+extern void func_8001D588(s32 modo, VECTOR* p);
+extern void* func_8001DF28(Objeto* o, ProyeccionSprite* b);
+extern u32 func_80044940(s32* v);
+extern void func_8001CC68(VECTOR* p);
 
 #endif

@@ -338,7 +338,6 @@ INCLUDE_RODATA("asm/nonmatchings/cargador_de_niveles_y_cd", D_80067F18);
 #define EN(tipo, p, desp) (*(tipo*)((u8*)(p) + (desp)))
 
 extern void* memset(void* destino, s32 valor, u32 cantidad);
-extern u8* func_80036164(u32 identificador);
 extern void func_800368E8(void);
 extern void func_8003ED6C(void);
 extern void func_8003EAEC(void);
@@ -349,10 +348,8 @@ extern void func_8003ECD4(u8* datos, s32 tamano);
 extern void func_8003ECF8(u8* parametros);
 extern void func_8003652C(void);
 extern void func_800365D0(void);
-extern void func_80040D98(RECT* rect, s16* tabla);
 extern void func_80040DDC(void);
 extern void func_800443CC(void);
-extern s32 func_80044664(u8* entrada, u8* salida, void* contexto);
 
 extern u16 D_800695B4;
 extern void* D_80069648;

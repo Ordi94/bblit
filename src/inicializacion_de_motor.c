@@ -5,6 +5,7 @@
 #include "psyq/LIBCD.H"
 #include "psyq/LIBPRESS.H"
 #include "psyq/LIBSPU.H"
+#include "motor.h"
 
 /* Origen de una entrada: un u16 en +0 y un byte en +4. */
 typedef struct OrigenEntrada {
@@ -19,7 +20,6 @@ extern void FlushCache(void);
 extern void func_8003ED6C(void);
 extern void func_8003FFA0(void);
 extern void func_8003502C(Objeto* objeto);
-extern Objeto* func_80036734(s32 tipo, void* a, void* b);
 extern void func_8004BBF0(s32 valor);
 extern void func_8004E584(s32 valor);
 extern void func_80044EA8(s32 a0, u32 a1, Objeto* a2);

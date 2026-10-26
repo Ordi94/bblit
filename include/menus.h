@@ -46,13 +46,6 @@ typedef struct ModeloDibujo {
     u8 estado;
 } ModeloDibujo;
 
-/* Pila de func_8003AF8C para func_8001CE64: puntero al nodo, vector de entrada y acumulador. */
-typedef struct PilaNodo {
-    void* nodo;
-    SVECTOR v;
-    VECTOR acc;
-} PilaNodo;
-
 /* Resultado de func_8001DF28: color base del sprite proyectado y desplazamiento de su textura. */
 typedef struct ColorYDesplazamiento {
     u32 color;
@@ -325,5 +318,8 @@ typedef struct VistaDibujo {
  * guardado con el limite del buffer sin reutilizar el registro.
  */
 #define CURSOR_RELEIDO(c) (*(volatile s32*)&(c)->cursor)
+void func_8003AA50(u8 modo, u16 duracion);
+void func_8003AA7C(u8 modo, u16 duracion);
+void func_8003B5AC(Objeto* lista);
 
 #endif

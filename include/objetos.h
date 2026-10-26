@@ -70,7 +70,6 @@ typedef struct Escritorio {
 
 #define ESCRITORIO ((Escritorio*)0x1F800000)
 
-extern s32 func_8003760C(GsCOORDINATE2* c, MATRIX* m, void* aux);
 extern void func_80037CF8(s32* origen, s32* destino);
 
 /* Pozos de objetos y plantillas de la escena. */
@@ -79,24 +78,9 @@ extern s16 D_8006955C;
 extern u8* D_8006968C;
 extern Objeto* D_8006AB70[47];
 
-/*
- * Entidad que transforma func_8001CE64: el nodo de jerarquia por el que sube (+0x00), el vector
- * local de entrada (+0x04) y el acumulador de la posicion transformada (+0x0C). func_8001CE64
- * lee de ella con lw 0x0 (nodo), lh 0x4/0x6/0x8 (v) y lw 0xC/0x10/0x14 (acc); el nodo es un
- * GsCOORDINATE2 (la matriz en +0x04 y el padre en +0x48).
- */
-typedef struct EntidadTransformada {
-    GsCOORDINATE2* nodo;
-    SVECTOR v;
-    VECTOR acc;
-} EntidadTransformada;
-
 /* Rutinas de ayudantes y de dibujo que usan varios archivos de este subsistema. */
 Ayuda* func_800363D4(void);
 void func_80037580(s32* m);
-void func_8003BDD0(Ayuda* a);
-s32 func_80010258(Ayuda* a, s32 prim, void* area1, void* area2);
-void func_8001CE64(EntidadTransformada* e);
 
 NodoLista* AllocListNode(u8* base, s32 paso, s32 total);
 void InitListPool(u8* base, s32 paso, s32 total);
@@ -114,5 +98,19 @@ extern Ayuda* D_8006964C;
 
 /* D_8006B668 */
 extern EntradaPunto D_8006B668[];
+EntradaId* func_80036164(s32 id);
+Objeto* func_80036734(s16 id, s32* pos, u16* ang);
+void func_80037048(Objeto* lista);
+void func_80037184(Objeto* lista);
+void func_80037FB8(NodoLista* n);
+void func_80037FE8(void* lista);
+void func_800399C8(Objeto* lista);
+
+/* Rutina del overlay que dibuja un modelo: recibe un Ayuda (escena) o un ModeloDibujo (menus). */
+s32 func_80010258(void* modelo, s32 cursor, void* estado, void* vista);
+
+/* Rutina en ensamblador que proyecta los vertices de un Ayuda o de un ModeloDibujo. */
+s32 func_8003BDD0(void* modelo);
+extern s32 func_8003760C(GsCOORDINATE2* c, MATRIX* m, void* aux);
 
 #endif

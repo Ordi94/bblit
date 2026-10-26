@@ -1,6 +1,7 @@
 #include "common.h"
 #include "arranque.h"
 #include "globales.h"
+#include "cargador.h"
 
 /* Nombre del archivo de partida en la tarjeta de memoria: unidad, serie del disco y titulo. */
 char D_8005E04C[] = "bu00:BASLUS-00838 BBLIT";
@@ -48,7 +49,6 @@ typedef struct BloqueCabecera {
 
 extern CabeceraGuardado D_8006D060;
 
-extern u32 func_80041238(void* datos, s32 cantidad);
 extern s32 func_80014BA0(void* destino, s32 cantidad, s32 desplazamiento);
 extern s32 func_80014EF8(void* origen, s32 cantidad, s32 desplazamiento);
 extern s32 func_80014FAC(void);

@@ -524,13 +524,13 @@ struct NodoVolumen;
 
 /* --- Variables compartidas entre archivos (una sola declaracion por simbolo) ------------- */
 
-/* D_8001000A: Byte alto de botones_a que leen los eventos con la forma simbolica (un lui por acceso), ver EstadoPrincipal en arranque.h; accesos del ensamblador: lhu x16, sh x15 */
+/* D_8001000A: botones_a de EstadoPrincipal (arranque.h) que los eventos leen con la forma simbolica (un lui por acceso); accesos del ensamblador: lhu x16, sh x15 */
 extern u16 D_8001000A;
 
-/* D_80010041: Byte 0x01 del banco de registros del estado principal con la forma simbolica (salud, ver EstadoPrincipal en arranque.h); accesos del ensamblador: lbu x11, sb x12, lb x1 */
+/* D_80010041: r[0x01] del banco de registros de EstadoPrincipal (arranque.h) con la forma simbolica; accesos del ensamblador: lbu x11, sb x12, lb x1 */
 extern u8 D_80010041;
 
-/* D_800100E6: Byte 0xA6 del banco de registros del estado principal con la forma simbolica; accesos del ensamblador: lbu x8, sb x9 */
+/* D_800100E6: r[0xA6] del banco de registros de EstadoPrincipal con la forma simbolica; accesos del ensamblador: lbu x8, sb x9 */
 extern u8 D_800100E6;
 
 /* D_80069402: accesos del ensamblador: sh(gp) x6, lh(gp) x2, lhu(gp) x5, sh x5, lhu x1 */
@@ -693,5 +693,68 @@ extern void* D_8006B2F8[27];
 
 /* D_8006B568 */
 extern struct ModeloDibujo* D_8006B568[];
+
+/*
+ * Area de trabajo de func_8001CE64: nodo desde el que se acumula la traslacion en +0, vector de
+ * entrada y de salida recortado a 16 bits en +4 y acumulador de 32 bits en +0xC. El llamador la
+ * reserva en la pila o en la memoria rapida; no forma parte de ningun objeto.
+ */
+typedef struct AcumuladorNodos {
+    GsCOORDINATE2* nodo;
+    SVECTOR v;
+    VECTOR acc;
+} AcumuladorNodos;
+void func_8001CE64(AcumuladorNodos* e);
+void func_80040AF0(void);
+void func_80045150(EntradaLista* e);
+u32 func_80045C4C(u32 a0, void* a1, Objeto* a2);
+void func_8002F990(s32 a0, s32 a1);
+void func_80040D98(RECT* a0, s16* a1);
+
+/*
+ * --- Datos pequenos de $gp ---------------------------------------------------------------
+ *
+ * Con -G8 un dato pequeno solo se direcciona con desplazamiento($gp) en el archivo que lo define
+ * (definicion tentativa, sin extern); un archivo que solo lo ve como extern lo emite en forma
+ * simbolica. Por eso el archivo que lo escribe lo define una vez (camara_y_bucle_logico.c,
+ * cargador_de_niveles_y_cd.c) y el resto usa la declaracion de abajo.
+ *
+ * D_80069488, D_800694A4 y D_800694A8 no se declaran aqui: cargador_de_niveles_y_cd.c y
+ * graficos_y_gte_10.c (y graficos_y_gte_12.c para D_800694A8) los direccionan con $gp en funciones
+ * que ya coinciden, asi que cada uno los define. Declararlos extern en una cabecera sube
+ * func_80040DDC de 5 a 110, func_80040E30 de 15 a 330, func_8004443C de 15 a 330 y func_80044588
+ * de 5 a 110. El enlazador funde las definiciones tentativas en un solo simbolo; D_80069488 lleva
+ * volatile en el cargador, que lo escribe desde el retorno de llamada de lectura, y no en la
+ * presentacion de cuadros, que solo lo lee entre llamadas.
+ */
+
+/* D_800693F0: accesos del ensamblador: sw(gp) x3, lw(gp) x1, sw x1 */
+extern s32 D_800693F0;
+
+/* D_800693F6: accesos del ensamblador: lh(gp) x1, lhu(gp) x1, sh(gp) x2, sh x3, lh x1 */
+extern s16 D_800693F6;
+
+/* D_800693F8: accesos del ensamblador: lh(gp) x1, lhu(gp) x1, sh(gp) x4, sh x1 */
+extern s16 D_800693F8;
+
+/* D_80069416: accesos del ensamblador: sh(gp) x3, lhu(gp) x1, sh x3 */
+extern s16 D_80069416;
+
+/* D_8006947C: accesos del ensamblador: sw(gp) x1, lw x1, lw(gp) x1 */
+extern u32 D_8006947C;
+
+/* D_80069480: accesos del ensamblador: sw(gp) x3, lw(gp) x3 */
+extern u32 D_80069480;
+
+/* D_80069490: accesos del ensamblador: sw(gp) x1, lw(gp) x5, lw x1 */
+extern u32 D_80069490;
+
+/* D_8006949C: accesos del ensamblador: sw(gp) x3, lw(gp) x4, sw x1 */
+extern u32 D_8006949C;
+
+/* --- Palabras de EstadoPrincipal con la forma simbolica ------------------------------------- */
+
+/* D_80010000: nivel de EstadoPrincipal (arranque.h) que func_8001E1A4 escribe con la forma simbolica (evento de zona) */
+extern s32 D_80010000;
 
 #endif

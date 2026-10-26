@@ -4,6 +4,7 @@
 #include "gte.h"
 #include "arranque.h"
 #include "objetos.h"
+#include "motor.h"
 
 typedef struct Vec3 {
     s32 x;
@@ -107,9 +108,6 @@ extern s16 D_80069D90[];
 extern void func_80019474(void* pos, void* res, void* f50, void* i68);
 extern long SquareRoot0(long x);
 extern s32 rand(void);
-extern void func_8001CC68(void* a0);
-extern void func_8001CF50(void* a0);
-extern void func_8001CFCC(void* a0);
 extern void func_8003F900(Objeto* a0);
 extern Vec3 D_80069DC0;
 

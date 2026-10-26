@@ -6,14 +6,13 @@
 #include "psyq/LIBGPU.H"
 #include "psyq/LIBETC.H"
 #include "psyq/LIBCD.H"
+#include "geometria.h"
 
 extern s32 func_800415A0(s16 archivo, void* destino);
 extern void func_80044A04(void);
-extern void func_80019364(void* dato);
 extern void func_8003DF84(void);
 extern void func_8003E068(void);
 extern void func_8003E3C0(void);
-extern void func_80040AF0(void);
 
 /*
  * Pantalla de carga y arranque de un contenedor. Este archivo se compila con un umbral de datos

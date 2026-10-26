@@ -2,6 +2,7 @@
 #include "globales.h"
 #include "psyq/TYPES.H"
 #include "psyq/LIBCD.H"
+#include "cargador.h"
 
 /*
  * Descompresor LZSS de las secciones de un contenedor y su lectura de sectores.
@@ -22,18 +23,6 @@
  * estado explicito en una estructura.
  */
 
-/* Area de contexto del descompresor en el scratchpad (la tabla de longitudes empieza en +0x38). */
-typedef struct ContextoDescompresion {
-    u32 retorno;
-    u32 retorno_lectura;
-    u32 guardados[9];
-    u32 anillo_inicio;
-    u32 anillo_fin;
-    u16 umbral;
-    u16 parametros;
-    u16 longitudes[128];
-} ContextoDescompresion;
-
 /* Estado del flujo de entrada que el original conserva en registros (ver arriba). */
 typedef struct FlujoEntrada {
     u8* actual;
@@ -43,10 +32,6 @@ typedef struct FlujoEntrada {
     ContextoDescompresion* contexto;
 } FlujoEntrada;
 
-extern u32 D_8006947C;
-extern u32 D_80069480;
-extern u32 D_80069490;
-extern u32 D_8006949C;
 
 extern s32 func_80044904(void);
 /* Entrada y salida de seccion critica (llamadas al sistema de 16 bytes sin nombre en el simbolo). */

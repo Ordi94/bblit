@@ -9,7 +9,7 @@
  * +0x1C y su area de trabajo en +0x34.
  */
 typedef struct Sonda {
-    EntidadTransformada ent;
+    AcumuladorNodos ent;
     ResultadoBaldosa r;
     TrabajoBaldosa w;
 } Sonda;

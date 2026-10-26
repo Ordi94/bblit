@@ -1,7 +1,8 @@
 #include "eventos.h"
 #include "globales.h"
+#include "motor.h"
+#include "menus.h"
 
-extern s16 D_800693F6;
 
 /*
  * Rutinas del interprete de eventos. Las tablas de saltos de condiciones (D_8005E3F0) y de
@@ -72,19 +73,12 @@ extern u32 D_8006D064;
  * original pasa el operando de 16 bits (lhu) y un prototipo con u8, como la definicion, lo
  * estrecharia con lbu.
  */
-extern void func_8002F990();
-extern void func_8001CFCC(void* a0);
-extern void func_8001D588(s32 a0, void* a1);
 extern s32 BugsRand(void);
-extern void func_8003AA50(s32 a0, s32 a1);
-extern void func_8003AA7C(s32 a0, s32 a1);
 extern void func_8003DFE4(void);
 extern void func_8003E094(void);
 extern void func_8003E3C0(void);
 extern void func_8003E88C(void);
 extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
-extern s32 func_80044940(void* a0);
-extern s32 func_80045C4C(s32 a0, s32 a1, s32 a2);
 
 /* Acceso a la base de $gp: los datos pequenos del original se direccionan por registro. */
 

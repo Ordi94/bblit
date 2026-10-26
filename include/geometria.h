@@ -278,5 +278,6 @@ typedef struct ConsultaCaja {
     s32 radio;
     VECTOR pos;
 } ConsultaCaja;
+extern void func_80019364(s32* zonas);
 
 #endif

@@ -1,21 +1,8 @@
 #include "common.h"
 #include "gte.h"
 #include "motor.h"
+#include "menus.h"
 
-extern s16 D_800693F6;
-extern s16 D_800693F8;
-extern s16 D_80069416;
-
-/*
- * Area de trabajo de func_8001CE64: nodo desde el que se acumula la traslacion en +0, vector de
- * entrada y de salida recortado a 16 bits en +4 y acumulador de 32 bits en +0xC. El llamador la
- * reserva en la pila o en la memoria rapida; no forma parte de ningun objeto.
- */
-typedef struct AcumuladorNodos {
-    GsCOORDINATE2* nodo;
-    SVECTOR v;
-    VECTOR acc;
-} AcumuladorNodos;
 
 /*
  * Datos de golpe del atacante: banderas en +0xC (0x200000 = golpe leve, siempre resta 1) y
@@ -44,7 +31,6 @@ extern InicioNivel D_8006ACD0;
  */
 s16 D_800693B8;
 extern u32 D_80069608;
-extern void func_8003AA50(u32 modo, u32 duracion);
 extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
 
 
@@ -740,31 +726,6 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001DA14);
 #endif
 
 /*
- * Proyeccion de un objeto sobre la pantalla: area de trabajo de la proyeccion de un sprite que
- * func_8001DF28 rellena a partir de la posicion (+0x38) y devuelve en +0x58: profundidad en
- * +0x54, escala en +0x90, esquinas del cuadro en +0x4C..+0x52 y puntero a las coordenadas
- * del sprite en +0x98.
- */
-typedef struct ProyeccionSprite {
-    u8 pad00[0x38];
-    SVECTOR pos;
-    u8 pad40[0x4C - 0x40];
-    s16 h4C;
-    s16 h4E;
-    s16 h50;
-    s16 h52;
-    s32 z54;
-    s32 w58;
-    s32 w5C;
-    u8 pad60[0x90 - 0x60];
-    s32 escala;
-    s16 h94;
-    u8 pad96[0x98 - 0x96];
-    s16* coordenadas;
-} ProyeccionSprite;
-
-
-/*
  * Proyecta el objeto en pantalla y calcula las esquinas de su sprite: si esta mas cerca de 150
  * unidades lo oculta (apaga la bandera 2 y enciende 0x100) y si no, escala su tamano con la
  * profundidad y reparte el recorte entre las dos mitades cuando la bandera 0x8000000 pide
@@ -855,7 +816,6 @@ typedef struct EventoZona {
 
 /* Definida en graficos_y_gte.c: devuelve el nodo de plano que toca el objeto (sin prototipo en las cabeceras, el retorno se tomaba como int). */
 extern NodoVolumen* func_80019180(Objeto* a, VECTOR* p, ConsultaPlano* o);
-extern s32 D_80010000;
 extern s32 TestLogicCond(void* o, void* item);
 extern void RunLogicAction(void* o, void* item);
 

@@ -368,7 +368,7 @@ void func_80037FB8(NodoLista* n)
  * valor se convierte a BCD con func_80037D3C y cada digito elige su plantilla en D_8005E81C)
  * y, para los contadores opcionales, fija el parametro de profundidad de cada ayudante a 0x5DC.
  */
-void func_80037FE8(void)
+void func_80037FE8(void* lista)
 {
     s32 ids[6];
     s32* pid;
