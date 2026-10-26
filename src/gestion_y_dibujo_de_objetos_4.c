@@ -22,8 +22,6 @@ typedef struct SalidaSonda {
     VECTOR pos;
 } SalidaSonda;
 
-extern void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w);
-
 /*
  * Area de trabajo de func_80039D44 (0xB4 bytes). Entre +8 y +0x77 la misma memoria tiene dos
  * disposiciones segun la fase: 's' cuando el objeto cae dentro de un solido (matriz inversa del
