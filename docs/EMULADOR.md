@@ -166,10 +166,10 @@ antes de lanzar, porque el emulador arranca en esa carpeta y no en la del llamad
 
 | Opcion | Por defecto | Notas |
 |---|---|---|
-| `--emulador` | `BBLIT_REDUX` o `toolchain/pcsx-redux/pcsx-redux.exe` | Ejecutable de PCSX-Redux |
-| `--bios` | `BBLIT_BIOS` o `toolchain/duckstation/bios/ps-22a.bin` | BIOS de PlayStation |
-| `--imagen` | `build/bblit_prueba.cue` | Imagen a cargar |
-| `--trabajo` | `build/emulador` | Carpeta de trabajo del emulador |
+| `--emulador` | `BBLIT_REDUX`, o `pcsx-redux/pcsx-redux.exe` dentro del toolchain (`BBLIT_TOOLCHAIN`, `config/local.toml` o `<raiz>/toolchain`) | Ejecutable de PCSX-Redux |
+| `--bios` | `BBLIT_BIOS`, o `duckstation/bios/ps-22a.bin` dentro del toolchain | BIOS de PlayStation |
+| `--imagen` | `<raiz>/build/bblit_prueba.cue` | Imagen a cargar |
+| `--trabajo` | `<raiz>/build/emulador` | Carpeta de trabajo del emulador |
 | `--puerto` | 8080 | Puerto del servidor web (1024 a 65535); permite dos emuladores a la vez |
 
 ### Subcomandos

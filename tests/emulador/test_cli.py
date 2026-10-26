@@ -287,8 +287,8 @@ def test_sesion_usa_los_valores_por_defecto_y_las_variables_del_entorno(monkeypa
     config = recibido["c"]
     assert config.ejecutable.as_posix() == "otro/redux.exe"
     assert config.bios.as_posix() == "otra/bios.bin"
-    assert config.imagen.as_posix() == cli.IMAGEN_POR_DEFECTO
-    assert config.carpeta_trabajo.as_posix() == cli.TRABAJO_POR_DEFECTO
+    assert config.imagen == cli.RAIZ_REPOSITORIO / cli.IMAGEN_POR_DEFECTO
+    assert config.carpeta_trabajo == cli.RAIZ_REPOSITORIO / cli.TRABAJO_POR_DEFECTO
     assert (config.hito, config.puerto, config.tope_hito) == ("pantalla", 8080, 90.0)
 
 

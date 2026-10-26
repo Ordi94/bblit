@@ -3,7 +3,9 @@
 ``python tools/build.py diff <funcion>`` hace tres cosas: compila el archivo C que contiene la
 funcion (con ``NON_MATCHING`` definida, para ver tambien los intentos que la construccion normal
 no usa), ensambla el asm original de la funcion como objetivo y ejecuta ``asm-differ`` sobre
-ambos objetos. La puntuacion 0 significa que las instrucciones y los simbolos coinciden.
+ambos objetos. La puntuacion 0 significa que las instrucciones y los simbolos coinciden o que,
+tras enlazar, los bytes de la funcion son los del original aunque ``asm-differ`` puntue la forma
+simbolica frente a la numerica de una referencia (esa puntuacion queda en ``puntuacion_asm``).
 
 Una funcion que sigue en ``INCLUDE_ASM`` no se compara: el objeto candidato contendria el mismo
 ensamblador que el objetivo y la puntuacion 0 seria una coincidencia falsa.
@@ -47,11 +49,14 @@ class ResultadoDiff:
     Attributes:
         funcion: Nombre de la funcion comparada.
         archivo: Archivo C que la contiene.
-        puntuacion: Puntuacion de ``asm-differ`` (0 es coincidencia exacta).
+        puntuacion: Puntuacion informada: 0 si las instrucciones coinciden o si los bytes enlazados
+            coinciden con los del original; en otro caso la de ``asm-differ``.
         texto: Diferencias instruccion por instruccion, listas para imprimir.
         bytes_iguales: Si los bytes de la funcion enlazada coinciden con los del original (``None``
             si no se pudo comparar o la puntuacion ya era cero).
         referencias_numericas: Filas cuya unica diferencia es una referencia escrita como numero.
+        puntuacion_asm: Puntuacion que dio ``asm-differ`` antes de comparar los bytes (``None`` si
+            no se registro).
     """
 
     funcion: str
@@ -60,6 +65,7 @@ class ResultadoDiff:
     texto: str
     bytes_iguales: bool | None = None
     referencias_numericas: int = 0
+    puntuacion_asm: int | None = None
 
     @property
     def coincide(self) -> bool:
@@ -352,7 +358,8 @@ def comparar_funcion(
             objetivo=objetivo,
         )
         referencias = contar_referencias_numericas(texto) if iguales else 0
-    return ResultadoDiff(funcion, archivo, puntuacion, texto, iguales, referencias)
+    informada = 0 if iguales else puntuacion
+    return ResultadoDiff(funcion, archivo, informada, texto, iguales, referencias, puntuacion)
 
 
 def preparar_objetivo(

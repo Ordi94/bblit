@@ -131,6 +131,34 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 - `func_80045C4C`: Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Mismo flujo y mismas escrituras; el original conserva una copia de a2 en v0 para la primera comparacion y emite el sh de +0x26 despues de la carga del byte de D_8006AA7C. Variantes probadas: 12.
 - `main`: Pendiente: puntuacion 1025 con la configuracion versionada (g = 8 del archivo). Variantes probadas: 11. El flujo y los tipos coinciden (pausa y demostracion son s16, el contador de cuadros D_80069676 es volatile u16); difieren el reparto de registros salvados de las constantes 2 y 3 y de la tabla de tiempos D_8006CF68, y la base `lui` del estado se hoistea antes que en el original. Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la pausa y la maquina de esta
 
+## Rutinas manuscritas (siguen en ensamblador por diseño)
+
+- `func_8003753C` (68 bytes)
+- `func_80037580` (68 bytes)
+- `func_800375C4` (52 bytes)
+- `func_80037CF8` (68 bytes)
+- `func_8003BDD0` (580 bytes)
+
+## `INCLUDE_ASM` sin comentario en archivos con funciones en C
+
+- `func_80033358` (`src/camara_y_bucle_logico.c`)
+- `func_80019474` (`src/colision_y_terreno.c`)
+- `func_8003690C` (`src/gestion_y_dibujo_de_objetos.c`)
+- `func_8003760C` (`src/gestion_y_dibujo_de_objetos_2.c`)
+- `func_800379A0` (`src/gestion_y_dibujo_de_objetos_2.c`)
+- `func_80037B08` (`src/gestion_y_dibujo_de_objetos_2.c`)
+- `func_80037C00` (`src/gestion_y_dibujo_de_objetos_2.c`)
+- `func_80039094` (`src/gestion_y_dibujo_de_objetos_2.c`)
+- `func_80039D44` (`src/gestion_y_dibujo_de_objetos_4.c`)
+- `func_8003A5C8` (`src/gestion_y_dibujo_de_objetos_4.c`)
+- `func_80044904` (`src/inicializacion_de_motor.c`)
+- `func_80045498` (`src/inicializacion_de_motor.c`)
+- `RunLogicAction` (`src/interprete_de_eventos.c`)
+- `TestLogicCond` (`src/interprete_de_eventos.c`)
+- `func_8001E720` (`src/movimiento_y_objetos_de_escena_3.c`)
+- `func_8001F268` (`src/movimiento_y_objetos_de_escena_3.c`)
+- `func_80020354` (`src/movimiento_y_objetos_de_escena_3.c`)
+
 ## Menciones sin símbolo de función (datos incrustados en el código; no cuentan)
 
 - `func_800375F8`

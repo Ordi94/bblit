@@ -6,7 +6,7 @@ import argparse
 import os
 import sys
 from collections.abc import Mapping, Sequence
-from pathlib import Path
+from pathlib import Path, PurePath
 
 from tools.reconstruccion import compilacion, diff, progreso, variantes
 from tools.reconstruccion import infraestructura as infra
@@ -19,7 +19,7 @@ RAIZ_REPOSITORIO = Path(__file__).resolve().parents[2]
 RUTA_REFERENCIA = Path("config") / "ejecutable.json"
 RUTA_LOCK = Path("config") / "toolchain.lock.json"
 RUTA_LOCAL = Path("config") / "local.toml"
-ERRORES_CONTROLADOS = (ValueError, FileNotFoundError, ProcesoError, OSError)
+ERRORES_PROPIOS = (ValueError, ProcesoError)
 
 
 def construir_parser() -> argparse.ArgumentParser:
@@ -31,7 +31,7 @@ def construir_parser() -> argparse.ArgumentParser:
 
     Returns:
         argparse.ArgumentParser: Analizador con las ordenes ``split``, ``build``, ``verify``,
-        ``clean``, ``diff``, ``probar`` y ``progreso``.
+        ``clean``, ``diff``, ``probar``, ``progreso`` y ``verificar-config``.
 
     Ejemplo:
         args = construir_parser().parse_args(["clean"])
@@ -56,6 +56,10 @@ def construir_parser() -> argparse.ArgumentParser:
         "carpeta", type=Path, help="carpeta con una variante completa de la funcion por archivo .c"
     )
     sub.add_parser("progreso", help="mide la descompilacion y escribe docs/PROGRESO.md y build/progreso.json")
+    sub.add_parser(
+        "verificar-config",
+        help="avisa de las claves de [datos_pequenos] que config/symbols.txt ya declara (solo informa)",
+    )
     return parser
 
 
@@ -77,6 +81,33 @@ def _ejecutar_verificacion(raiz: Path, rutas: Rutas, referencia: EjecutableRefer
     return 0 if coincide else 1
 
 
+def _imprimir_avisos(avisos: Sequence[str]) -> None:
+    """Imprime cada aviso de configuracion por la salida de errores."""
+    for aviso in avisos:
+        print(f"aviso: {aviso}", file=sys.stderr)
+
+
+def _avisar_configuracion(raiz: Path) -> None:
+    """Avisa de la configuracion repetida al terminar ``split`` sin tumbarlo.
+
+    Es una comprobacion informativa: si no se puede hacer, se dice y se sigue.
+    """
+    try:
+        avisos = infra.verificar_configuracion(raiz)
+    except (ValueError, FileNotFoundError, OSError) as error:
+        print(f"aviso: no se pudo verificar la configuracion: {error}", file=sys.stderr)
+        return
+    _imprimir_avisos(avisos)
+
+
+def _ejecutar_verificacion_configuracion(raiz: Path) -> int:
+    """Implementa ``verificar-config``; solo informa, asi que devuelve 0 aunque haya avisos."""
+    avisos = infra.verificar_configuracion(raiz)
+    _imprimir_avisos(avisos)
+    print(f"verificar-config: {len(avisos)} avisos")
+    return 0
+
+
 def _ejecutar_progreso(raiz: Path) -> int:
     """Implementa ``progreso``; devuelve 1 si el ensamblador y el codigo C no cuadran con la tabla."""
     medido = progreso.generar_progreso(raiz)
@@ -85,6 +116,11 @@ def _ejecutar_progreso(raiz: Path) -> int:
         f"({medido.c_juego.bytes} de {medido.juego.bytes} bytes, {medido.porcentaje_bytes_juego:.2f} %); "
         f"{len(medido.no_coincidentes)} NON_MATCHING; docs/PROGRESO.md y build/progreso.json escritos"
     )
+    if medido.manuscritas:
+        print(f"manuscritas: {len(medido.manuscritas)} rutinas escritas a mano siguen en ensamblador")
+    for archivo, funcion in medido.sin_comentario:
+        aviso = f"aviso: {archivo}: {funcion} sigue en INCLUDE_ASM sin comentario que lo explique"
+        print(aviso, file=sys.stderr)
     if medido.coherente is False:
         print(
             f"error: {medido.glabel_en_asm} glabel en asm/ + {medido.funciones_en_c} funciones en C no "
@@ -95,21 +131,44 @@ def _ejecutar_progreso(raiz: Path) -> int:
     return 0
 
 
+def resumir_comparacion(resultado: diff.ResultadoDiff) -> list[str]:
+    """
+    Da las lineas con que ``diff`` cierra su salida, despues de las columnas de ``asm-differ``.
+
+    Contexto:
+        Una funcion cuyos bytes enlazados coinciden con el original puntua 0, igual que una que
+        coincide instruccion por instruccion; las referencias que el C escribe en forma numerica y
+        el original en forma simbolica no son una diferencia. Se conservan como nota aparte, antes
+        de la linea de veredicto, para quien quiera normalizarlas.
+
+    Args:
+        resultado (diff.ResultadoDiff): Resultado de comparar una funcion.
+
+    Returns:
+        list[str]: Nota de referencias numericas (solo si los bytes coinciden) y linea de veredicto.
+
+    Ejemplo:
+        for linea in resumir_comparacion(resultado):
+            print(linea)
+    """
+    veredicto = f"{resultado.funcion} ({resultado.archivo}): puntuacion {resultado.puntuacion}"
+    if not resultado.bytes_iguales:
+        return [veredicto]
+    nota = (
+        f"nota: {resultado.referencias_numericas} referencias en forma numerica "
+        f"(asm-differ puntua {resultado.puntuacion_asm})"
+    )
+    return [nota, f"{veredicto} (coincide en bytes)"]
+
+
 def _ejecutar_comparacion(raiz: Path, rutas: Rutas, funcion: str, python: str, ejecutar: Ejecutor) -> int:
-    """Implementa ``diff``; devuelve 0 solo si la puntuacion es cero."""
+    """Implementa ``diff``; devuelve 0 solo si la puntuacion informada es cero."""
     lock = leer_lock(raiz / RUTA_LOCK)
     herramientas = compilacion.resolver_herramientas_compilacion(lock, rutas.toolchain, python)
     script = resolver_herramienta(lock, rutas.toolchain, "asm-differ", "diff")
     resultado = diff.comparar_funcion(raiz, funcion, herramientas, script, ejecutar)
     print(resultado.texto)
-    resumen = f"{resultado.funcion} ({resultado.archivo}): puntuacion {resultado.puntuacion}"
-    if resultado.bytes_iguales and resultado.puntuacion != 0:
-        resumen = (
-            f"{resultado.funcion} ({resultado.archivo}): coincide en bytes; "
-            f"{resultado.referencias_numericas} referencias en forma numerica "
-            f"(puntuacion {resultado.puntuacion})"
-        )
-    print(resumen)
+    print("\n".join(resumir_comparacion(resultado)))
     return 0 if resultado.coincide else 1
 
 
@@ -137,6 +196,7 @@ def _ejecutar_construccion(
     if original is not None:
         infra.dividir(raiz, original, referencia, herramientas, ejecutar)
         print("split completado: asm/ y script del enlazador generados")
+        _avisar_configuracion(raiz)
         return 0
     destino = compilacion.construir_mixto(
         raiz,
@@ -165,6 +225,36 @@ def _despachar(
     return _ejecutar_construccion(raiz, rutas, referencia, args.orden, ejecutar)
 
 
+def describir_error_de_sistema(error: OSError) -> str:
+    """
+    Da el texto de un error de entrada/salida sin exponer rutas de la maquina.
+
+    Contexto:
+        Lo usa ``main``. Un ``OSError`` nativo (permisos, disco, archivo ausente) lleva en su texto
+        la ruta completa; el proyecto tambien lanza ``FileNotFoundError`` con un mensaje propio y
+        sin ``errno`` (por ejemplo "falta config/symbols.txt"), que se conserva tal cual porque es
+        una instruccion para el usuario y no contiene directorios de la maquina.
+
+    Args:
+        error (OSError): Error capturado.
+
+    Returns:
+        str: El mensaje propio si el error no trae ``errno``; si no, el tipo de error, el motivo
+        del sistema (``strerror``) y solo el nombre base del archivo, nunca el directorio.
+
+    Ejemplo:
+        print(describir_error_de_sistema(PermissionError(13, "Acceso denegado", "C:/datos/a.bin")))
+    """
+    if error.errno is None:
+        return str(error)
+    detalle = f"error de entrada/salida: {type(error).__name__}"
+    if error.strerror:
+        detalle += f" ({error.strerror})"
+    if error.filename:
+        detalle += f": {PurePath(str(error.filename)).name}"
+    return detalle
+
+
 def main(
     argv: Sequence[str] | None = None,
     entorno: Mapping[str, str] | None = None,
@@ -176,8 +266,8 @@ def main(
 
     Contexto:
         Lo invoca ``tools/build.py``. Los errores esperados se imprimen en una linea sin
-        traza y devuelven 1; ``verify`` y ``diff`` devuelven 1 tambien cuando las huellas o las
-        funciones difieren.
+        traza ni rutas de la maquina y devuelven 1; ``verify`` y ``diff`` devuelven 1 tambien
+        cuando las huellas o las funciones difieren.
 
     Args:
         argv (Sequence[str], opcional): Argumentos; por defecto ``sys.argv[1:]``.
@@ -196,11 +286,16 @@ def main(
     try:
         if args.orden == "progreso":
             return _ejecutar_progreso(raiz)
+        if args.orden == "verificar-config":
+            return _ejecutar_verificacion_configuracion(raiz)
         referencia = infra.leer_referencia(raiz / RUTA_REFERENCIA)
         if args.orden == "clean":
             return _ejecutar_clean(raiz, referencia)
         rutas = resolver_rutas(raiz, variables, leer_local_toml(raiz / RUTA_LOCAL), args.disc, args.toolchain)
         return _despachar(args, raiz, rutas, referencia, ejecutar)
-    except ERRORES_CONTROLADOS as error:
+    except ERRORES_PROPIOS as error:
         print(f"error: {error}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"error: {describir_error_de_sistema(error)}", file=sys.stderr)
         return 1
