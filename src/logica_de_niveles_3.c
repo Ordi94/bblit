@@ -493,13 +493,13 @@ void func_8002BA80(Objeto* o)
             }
             h->w26 = o->w26;
             if (t->flags & 0x1000) {
-                GEO_CERO_W(&t->objeto->i134);
-                GEO_CERO_WH(&t->objeto->w12C);
-                GEO_RELLENAR_1000(t->objeto->escala_rel);
+                GEO_CERO_W(&t->objeto->portado.trans);
+                GEO_CERO_WH(&t->objeto->portado.giro);
+                GEO_RELLENAR_1000(&t->objeto->portado.escala);
                 t->objeto->coord.super = &D_80069698->coord;
                 t->objeto->w26 = D_80069698->w26;
                 t->objeto->p70 = D_80069698;
-                t->objeto->coord.param = (GsCOORD2PARAM*)t->objeto->escala_rel;
+                t->objeto->coord.param = (GsCOORD2PARAM*)&t->objeto->portado;
                 t->objeto->w26 = o->w26;
                 func_8001CFCC(&t->objeto->coord);
             }

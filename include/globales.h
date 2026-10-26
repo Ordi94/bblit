@@ -201,19 +201,16 @@ typedef struct Objeto {
     s16 h116;               /* func_8001C424: lh 0x116($s0) en 0x8001C558, sh en 0x8001C4E0 y 0x8001C604 */
     u8 pad118[4];
     /*
-     * +0x11C: transformacion relativa que func_8002BA80 reinicia en el hijo que cuelga del jugador
-     * (escala 0x1000 en las tres palabras: sw 0x8002BF84, 0x8002BF88 y 0x8002BF8C); el nodo
-     * coord.param del hijo apunta aqui (sw 0x8002BFCC).
+     * +0x11C: transformacion propia del objeto que lleva el jugador (mismo diseno que param, +0xCC;
+     * 0x28 bytes hasta +0x144). func_8002BA80 la reinicia en el hijo que cuelga del jugador: el
+     * addiu 0x11C de 0x8002BF6C fija la escala, que se rellena con 0x1000 (sw 0x8002BF84, 0x8002BF88
+     * y 0x8002BF8C); el addiu 0x12C de 0x8002BF54 fija el giro, que se pone a cero (sw 0x8002BF5C y
+     * sh 0x8002BF60); el addiu 0x134 de 0x8002BF38 fija la traslacion, que se pone a cero (sw
+     * 0x8002BF40, 0x8002BF44 y 0x8002BF48). El nodo coord.param del hijo apunta a este bloque (addiu
+     * 0x11C en 0x8002BFC8 y sw 0xC0 en 0x8002BFCC). func_80020A90 escribe la altura relativa del apoyo
+     * en la coordenada Z de la traslacion (sw).
      */
-    s32 escala_rel[3];
-    u8 pad128[4];
-    s32 w12C;               /* func_8002BA80: sw zero, 0x8002BF5C */
-    s16 h130;               /* func_8002BA80: sh zero, 0x8002BF60 */
-    u8 pad132[2];
-    s32 i134;               /* func_8002BA80: sw zero, 0x8002BF40; desplazamiento respecto al portador */
-    s32 i138;               /* func_8002BA80: sw zero, 0x8002BF44 */
-    s32 i13C;               /* func_80020A90: sw; func_8002BA80: sw zero, 0x8002BF48 */
-    u8 pad140[0x144 - 0x140];
+    ParametrosObjeto portado;
     BloqueTrabajo trabajo;  /* +0x144, ver BloqueTrabajo */
     struct TablaFotogramas* tabla;      /* func_80044EA8: sw de la tabla activa */
     u8 pad170[0x17C - 0x170];

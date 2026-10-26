@@ -403,9 +403,9 @@ typedef struct ScratchJugador {
     AcumuladorNodos acum;
 } ScratchJugador;
 
-/* Transformacion del jugador relativa al apoyo (+0x18C) y la del objeto portado (+0x11C). */
+/* Transformacion del jugador relativa al apoyo (+0x18C) y la del objeto portado (Objeto.portado, +0x11C). */
 #define APOYO(o) ((ParametrosObjeto*)((u8*)(o) + 0x18C))
-#define PORTADO(o) ((ParametrosObjeto*)((u8*)(o) + 0x11C))
+#define PORTADO(o) (&(o)->portado)
 
 extern s32 BugsRand(void);
 extern s32 TestLogicCond(void* o, void* registro);
