@@ -209,30 +209,30 @@ typedef struct DesplazamientoObjetos {
  * Lleva el objeto destino a la posicion del origen mas el desplazamiento que permite la
  * colision: calcula la distancia entre ambos, la limita con la consulta y reescribe solo
  * x y z del destino (la altura no se toca).
+ *
+ * El argumento p se avanza 0x38 bytes justo despues de copiarlo a w: mientras p valga lo mismo que w
+ * el compilador usa uno solo de los dos registros para los almacenes; al cambiar p, los almacenes
+ * usan w (registro salvado) y la copia de p queda en el registro del cuarto argumento de la llamada,
+ * como en el original.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 300 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y mismo orden de almacenes; el original copia el tercer argumento a a3 al principio y lo reutiliza como cuarto argumento de la llamada, el C lo copia despues y deja el puntero de trabajo y el de destino en el mismo registro hasta el primer almacen. */
 void func_8001D028(Objeto* origen, Objeto* destino, u8* p)
 {
     DesplazamientoObjetos* w;
 
     w = (DesplazamientoObjetos*)p;
+    p += 0x38;
     w->d.vx = destino->param.trans.vx - origen->param.trans.vx;
     w->d.vy = destino->param.trans.vy - origen->param.trans.vy;
     w->d.vz = destino->param.trans.vz - origen->param.trans.vz;
     w->origen.vx = origen->param.trans.vx;
     w->origen.vy = origen->param.trans.vy;
     w->origen.vz = origen->param.trans.vz;
-    p += 0x38;
     *(s32*)p = 0;
     w->h2A = origen->w26;
     func_80019474(&w->origen, w, w->consulta, p);
     destino->param.trans.vx = origen->param.trans.vx + w->d.vx;
     destino->param.trans.vz = origen->param.trans.vz + w->d.vz;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D028);
-#endif
 
 /*
  * Estado de la busqueda de una secuencia de animacion del objeto controlado: fotograma elegido
