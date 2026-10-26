@@ -9,6 +9,7 @@ from tools.ghidra.dominio import (
     calcular_informe,
     construir_simbolos,
     es_identificador_c,
+    fusionar_simbolos,
     nombre_por_defecto,
     normalizar_nombre,
     validar_simbolos,
@@ -206,3 +207,27 @@ def test_un_dato_puede_contener_al_siguiente_pero_una_funcion_no_puede_solaparse
         validar_simbolos([Simbolo("f", 0x80069350, "func", 8), Simbolo("D_80069352", 0x80069352, "u16", 2)])
     with pytest.raises(ValueError, match="se solapa con f"):
         validar_simbolos([Simbolo("D_80069350", 0x80069350, "u32", 8), Simbolo("f", 0x80069354, "func", 8)])
+
+
+def test_fusionar_simbolos_ordena_por_direccion_entradas_desordenadas() -> None:
+    funciones = [Simbolo("g", 0x80014B00, "func", 8), Simbolo("f", 0x80014A00, "func", 8)]
+    datos = [Simbolo("D_80060001", 0x80060001, "u8", 1), Simbolo("D_80014A80", 0x80014A80, "u32", 4)]
+    fusion = fusionar_simbolos(funciones, datos)
+    assert [s.nombre for s in fusion] == ["f", "D_80014A80", "g", "D_80060001"]
+    validar_simbolos(fusion)
+
+
+def test_fusionar_simbolos_con_listas_vacias() -> None:
+    dato = Simbolo("D_80060000", 0x80060000, "u32", 4)
+    assert fusionar_simbolos([], []) == []
+    assert fusionar_simbolos([], [dato]) == [dato]
+    assert fusionar_simbolos([Simbolo("f", 0x80014A00, "func", 8)], [])[0].nombre == "f"
+
+
+def test_fusionar_simbolos_nombra_funcion_y_dato_si_comparten_direccion() -> None:
+    funciones = [Simbolo("f", 0x80014A00, "func", 8)]
+    datos = [Simbolo("D_80014A00", 0x80014A00, "u32", 4)]
+    with pytest.raises(
+        ValueError, match=r"direccion 0x80014A00 compartida por la funcion f y el dato D_80014A00"
+    ):
+        fusionar_simbolos(funciones, datos)
