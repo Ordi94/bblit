@@ -64,15 +64,13 @@ extern u8 D_80010041;
 extern u8 D_800694F2;
 extern s32 D_800694F8;
 extern s32 D_80069554;
-extern s32 D_80069560;
 extern u8 D_80069586;
 extern s32 D_8006960C;
-extern s32 D_80069618;
-extern s32 D_8006961C;
-extern s32 D_80069624;
 extern u8 D_80069674;
 extern s32 D_80069690;
-extern u16 D_800695D0;
+
+/* Dato pequeno: el original lo direcciona como 0xC0($gp). */
+s32 D_800693E0;
 extern u16 D_8006B658[];
 extern u8 D_8006B558[];
 extern Entrada D_8006B378[];
@@ -196,15 +194,11 @@ s32 CondTigaz(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) == 0; }
 /* Coincide en bytes; diff puntua la forma simbolica. */
 s32 CondTigmz(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) == 0; }
 
-/* Simbolo fundido: cubre dos rutinas de 0x20 bytes (esta, flags14 & 0x2000020 == 0, y func_8002FF58, flags14 & 0x8000 == 0); el C reproduce la primera mitad; con -G0 da 800 */
-#ifdef NON_MATCHING
+/* Comprueba que ni flags14 & 0x2000000 ni flags14 & 0x20 esten activos en el objeto controlado. */
 s32 func_8002FF38(Objeto* a0, u8* a1) { return (D_80069698->flags14 & 0x2000020) == 0; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8002FF38);
-#endif
 
-/* Segunda rutina del antiguo simbolo fundido: comprueba flags14 & 0x8000 == 0. */
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8002FF58);
+/* Comprueba que el bit 15 de flags14 del objeto controlado este apagado. */
+s32 func_8002FF58(Objeto* a0, u8* a1) { u32 v; v = D_80069698->flags14 & 0x8000; return v == 0; }
 
 s32 func_8002FF78(Objeto* a0, u8* a1) { return (D_80069698->flags14 & 0x2000020) != 0; }
 
@@ -460,11 +454,11 @@ s32 func_80030834(Objeto* a0, u8* a1)
 {
     s32 v;
     v = func_80045C4C(*(u16*)(a1 + 4), 0, 0);
-    *(s32*)(base_gp + 0xC0) = v;
+    D_800693E0 = v;
     return (a1[1] & v) != 0;
 }
 
-s32 func_80030874(Objeto* a0, u8* a1) { return (a1[1] & *(s32*)(base_gp + 0xC0)) != 0; }
+s32 func_80030874(Objeto* a0, u8* a1) { return (a1[1] & D_800693E0) != 0; }
 
 /* Coincide en bytes (el diff marca 30 por direccion absoluta); el archivo se compila con -G8 */
 s32 func_8003088C(Objeto* a0, u8* a1)
@@ -752,17 +746,20 @@ void func_80031384(Objeto* a0, Accion* a1)
     a0->flags14 |= 0x100;
 }
 
-/* No coincide (895): el original lee el contador dos veces, sin andi; volatile, u16 local y suma explicita no cambian */
-#ifdef NON_MATCHING
+/*
+ * Apila un valor en el banco D_8006B658 (ocho entradas de 16 bits) si queda espacio. El contador es volatile:
+ * el original lo lee dos veces, una para la comparacion y otra para el indice, y escribe la entrada antes
+ * de guardar el contador incrementado.
+ */
 void func_800313D4(Objeto* a0, Accion* a1)
 {
+    u16 i;
     if (D_800695D0 < 8) {
-        D_8006B658[D_800695D0++] = ACC_W4(a1);
+        i = D_800695D0;
+        D_8006B658[i] = ACC_W4(a1);
+        D_800695D0 = i + 1;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800313D4);
-#endif
 
 void func_8003141C(Objeto* a0, Accion* a1) { a0->w22 = 0; }
 
@@ -776,8 +773,8 @@ void func_80031424(Objeto* a0, Accion* a1)
     }
 }
 
-/* No coincide (350): el original guarda p70 en a0 y lo copia a v1 (33 instrucciones frente a 32); 3 formulaciones */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 190 con la configuracion versionada (g = 8 del archivo). El original deja el objeto controlado en a2 y el enlace p70 en a0 con una copia en v1; GCC los reparte en a0 y a1 sin esa copia. Variantes probadas: 8 (a0 reasignado, locales h y c, copia c = a0 antes y despues, puntero j al objeto controlado). */
 void func_8003147C(Objeto* a0, Accion* a1)
 {
     Objeto* c;
@@ -827,18 +824,17 @@ void func_80031554(Objeto* a0)
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031624(Objeto* a0, Accion* a1) { func_8003F06C(a0, ACC_W4(a1), 1, D_8006967C); }
 
-/* No coincide (795): el original carga D_80069554 en a0 */
-#ifdef NON_MATCHING
+/* Pide a func_8001D588 la pantalla D_80069554 o, si no hay ninguna, la de D_800694F8; la llamada es incondicional. */
 void func_80031650(Objeto* a0, Accion* a1)
 {
+    s32 v;
     D_80010041 = 0;
-    if (D_80069554 == 0) {
-        func_8001D588(D_800694F8, D_8006B558);
+    v = D_80069554;
+    if (v == 0) {
+        v = D_800694F8;
     }
+    func_8001D588(v, D_8006B558);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031650);
-#endif
 
 void ActionAddsi(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] += a1->b4; }
 
@@ -936,15 +932,12 @@ void ActionGvcrt(Objeto* a0, Accion* a1)
     }
 }
 
-/* Usa $gp; pendiente de soporte -G8. No coincide (160): el original coloca el sw tras el lw $ra */
-#ifdef NON_MATCHING
+/* Guarda en el dato pequeno D_800693E0 el resultado de func_80045C4C; el original lo direcciona por $gp.
+ * Coincide en bytes (1 referencia en forma numerica; el diff puntua 5 por la forma simbolica). */
 void func_80031A0C(Objeto* a0, Accion* a1)
 {
-    *(s32*)(base_gp + 0xC0) = func_80045C4C(ACC_W4(a1), 0, 0);
+    D_800693E0 = func_80045C4C(ACC_W4(a1), 0, 0);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031A0C);
-#endif
 
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031A34(Objeto* a0, Accion* a1)
@@ -968,25 +961,19 @@ void func_80031A34(Objeto* a0, Accion* a1)
     }
 }
 
-/* Usa $gp; pendiente de soporte -G8. No coincide (160): el original coloca el sw tras el lw $ra */
-#ifdef NON_MATCHING
+/* Guarda en el dato pequeno D_800693E0 el resultado de func_80045C4C; el original lo direcciona por $gp.
+ * Coincide en bytes (1 referencia en forma numerica; el diff puntua 5 por la forma simbolica). */
 void func_80031AE4(Objeto* a0, Accion* a1)
 {
-    *(s32*)(base_gp + 0xC0) = func_80045C4C(D_8006AA70[a1->w6], 0, 0);
+    D_800693E0 = func_80045C4C(D_8006AA70[a1->w6], 0, 0);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031AE4);
-#endif
 
-/* Usa $gp; pendiente de soporte -G8. No coincide (170): el original coloca el sw tras el lw $ra */
-#ifdef NON_MATCHING
+/* Como func_80031AE4 pero con el valor del banco A de registros. Coincide en bytes (3 referencias en forma
+ * numerica; el diff puntua 15 por la forma simbolica). */
 void func_80031B1C(Objeto* a0, Accion* a1)
 {
-    *(s32*)(base_gp + 0xC0) = func_80045C4C(RA[a1->w6], 0, 0);
+    D_800693E0 = func_80045C4C(RA[a1->w6], 0, 0);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031B1C);
-#endif
 
 void func_80031B50(Objeto* a0, Accion* a1) { a0->flags15C |= 0x10; }
 
@@ -1049,8 +1036,7 @@ void func_80031CC4(void) {}
 
 void func_80031CCC(void) {}
 
-/* No coincide (15): reparto v0/v1 y orden de operandos del bne; 10 formulaciones */
-#ifdef NON_MATCHING
+/* Suelta el enlace del hijo p6C: lo marca con 0x100, borra su vuelta a este objeto si apuntaba a el y rompe el propio enlace. */
 void func_80031CD4(Objeto* a0, Accion* a1)
 {
     Objeto* o;
@@ -1058,15 +1044,12 @@ void func_80031CD4(Objeto* a0, Accion* a1)
     if (o != 0) {
         o->flags14 |= 0x100;
         o = a0->p6C;
-        if (a0 == o->p70) {
+        if (o->p70 == a0) {
             o->p70 = 0;
-            a0->p6C = 0;
         }
+        a0->p6C = 0;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031CD4);
-#endif
 
 void func_80031D1C(Objeto* a0, Accion* a1) { a0->w3C |= 0x40; }
 
@@ -1101,8 +1084,10 @@ void func_80031D60(Objeto* a0, Accion* a1)
     }
 }
 
-/* No coincide (330): la distancia va en a0 y los sh salen en otro orden */
-#ifdef NON_MATCHING
+/*
+ * Sacude la camara con una amplitud proporcional a la cercania de un objeto: si no hay sacudida en curso y la
+ * distancia al punto de vista es menor de 0x800, la amplitud es w6 * distancia / 2048 y la velocidad angular w4 * 11.
+ */
 void func_80031E24(Objeto* a0, Accion* a1)
 {
     s32 v[3];
@@ -1116,15 +1101,12 @@ void func_80031E24(Objeto* a0, Accion* a1)
             d = (a1->w6 * d) / 2048;
             if (d > 0) {
                 D_8006D928.s8A = 0;
-                D_8006D928.s88 = d;
                 D_8006D928.s86 = ACC_W4(a1) * 11;
+                D_8006D928.s88 = d;
             }
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031E24);
-#endif
 
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031EF8(Objeto* a0, Accion* a1)
@@ -1287,8 +1269,8 @@ void func_80032474(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFCFF; }
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80032490(Objeto* a0, Accion* a1) { D_80069554 = ACC_W4(a1); }
 
-/* No coincide (10): el prologo usa a0 como base del banco y otro orden de lui */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 265 con la configuracion versionada (g = 8 del archivo). Solo difiere el prologo: el original reparte a0 (base del banco A), v1 (D_8006D064) y v0 (indice) y GCC los asigna en otro orden; las seis ramas siguientes coinciden. Variantes probadas: 8 (RA con puntero constante, extern D_80010040[], copia local de la mascara, tipos de v, puntero local). */
 void func_800324A4(Objeto* a0, Accion* a1)
 {
     u32 v;
@@ -1386,8 +1368,9 @@ void func_800326D0(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFFDF; }
 
 void func_800326EC(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 4; }
 
-/* No coincide (5635): el flujo de busqueda con saltos no se reproduce con bucles do/while */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 600 con la configuracion versionada (g = 8 del archivo). Los cuatro bucles de busqueda coinciden con la forma for/while; difiere el reparto de a0, a2 y v1 del prologo (el original comparte con a2 la base de D_80010040 y D_80010010). Variantes probadas: 9 (do/while con guarda, for, while y copias locales de la mascara). */
+/* Mueve la seleccion del menu al siguiente elemento habilitado de los seis posibles, hacia delante o hacia atras segun la direccion pulsada. */
 void func_80032708(Objeto* a0, Accion* a1)
 {
     s32 v;
@@ -1397,49 +1380,37 @@ void func_80032708(Objeto* a0, Accion* a1)
         return;
     }
     if (ESTADO->botones & 0x6000) {
-        i = v;
-        if (i < 7) {
-            do {
-                if (D_8006D064 & (1 << (i - 1))) {
-                    break;
-                }
-                i++;
-            } while (i < 7);
+        for (i = v; i < 7; i++) {
+            if (D_8006D064 & (1 << (i - 1))) {
+                break;
+            }
         }
         if (i >= 7) {
             if (ESTADO->botones & 0x2000) {
                 i = v - 3;
             } else {
-                i = 6;
-                do {
-                    if (D_8006D064 & (1 << (i - 1))) {
-                        break;
-                    }
-                    i--;
-                } while (i > 0);
+        for (i = 6; i > 0; i--) {
+            if (D_8006D064 & (1 << (i - 1))) {
+                break;
+            }
+        }
             }
         }
     } else {
-        i = v;
-        if (i > 0) {
-            do {
-                if (D_8006D064 & (1 << (i - 1))) {
-                    break;
-                }
-                i--;
-            } while (i > 0);
+        for (i = v; i > 0; i--) {
+            if (D_8006D064 & (1 << (i - 1))) {
+                break;
+            }
         }
         if (i <= 0) {
             if (ESTADO->botones & 0x8000) {
                 i = v + 3;
             } else {
-                i = 1;
-                do {
-                    if (D_8006D064 & (1 << (i - 1))) {
-                        break;
-                    }
-                    i++;
-                } while (i < 7);
+        for (i = 1; i < 7; i++) {
+            if (D_8006D064 & (1 << (i - 1))) {
+                break;
+            }
+        }
             }
         }
     }

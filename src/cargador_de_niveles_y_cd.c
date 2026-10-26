@@ -391,7 +391,6 @@ extern u8* D_800695D4;
 extern u8* D_80069644;
 extern u8* D_80069528;
 extern u8* D_80069538;
-extern u8* D_800694B8;
 extern u8* D_80069520;
 extern u8* D_8006966C;
 extern u8* D_80069550;
@@ -413,7 +412,6 @@ extern s16 D_800695F2;
 extern s16 D_800695F4;
 extern s16 D_8006969C;
 extern void* D_80069640;
-extern void* D_80069560;
 extern u8 D_80069658;
 
 #ifdef NON_MATCHING

@@ -15,12 +15,9 @@ extern void func_8003E3C0(void);
 extern void func_80040AF0(void);
 
 /*
- * Pantalla de carga y arranque de un contenedor. Las funciones que escriben variables de la
- * zona 0x80069xxx o leen datos pequenos con $gp se emiten como el original solo con un
- * umbral de datos pequenos mayor que cero (-G8) para este archivo; con el -G0 por omision
- * de config/opciones_compilacion.toml conservan el ensamblador (NON_MATCHING). Las dos que
- * usan $gp (func_8004443C y func_80044588) ademas dependen de un simbolo externo pequeno
- * con desplazamiento $gp, que el ensamblador del flujo no reescribe.
+ * Pantalla de carga y arranque de un contenedor. Este archivo se compila con un umbral de datos
+ * pequenos mayor que cero (-G8) en config/opciones_compilacion.toml: la maquina de estados de la
+ * carga (D_800694A8) es un dato pequeno que el original direcciona como 0x188($gp).
  */
 
 /* Registro de 16 bytes por archivo; el campo +4 es el archivo de la pantalla de carga, 0 si no hay. */
@@ -62,20 +59,18 @@ void func_800443CC(void)
     } while (i < 2);
 }
 
-#ifdef NON_MATCHING
 /*
- * No coincide: puntuacion 240 (el archivo se compila con g = 8 y define D_800694A8; era 555
- * con la variable declarada extern y 1254 con -G0).
  * Reinicia el hardware grafico y muestra la pantalla de carga del archivo pedido: apaga
  * los retornos de llamada, limpia la VRAM, carga la imagen asociada y reactiva la pantalla.
- * Para el archivo 3 el numero de pantalla depende de D_80010065 (nivel).
- * Puntuacion 555 con -G8: el cuerpo coincide salvo las cuatro escrituras de 0x188($gp) y
- * el orden de la base de la tabla D_8005F200 frente al indice (el original calcula la base
- * antes del desplazamiento).
+ * Para el archivo 3 el numero de pantalla depende de D_80010065 (nivel). La tabla de
+ * registros se toma por un puntero local: asi el original calcula la base antes del
+ * desplazamiento del indice. Coincide en bytes (3 referencias en forma numerica; el diff puntua 15
+ * por la forma simbolica).
  */
 void func_8004443C(s32 archivo)
 {
     RegistroArchivo* reg;
+    RegistroArchivo* tabla;
     DISPENV* env;
     s32 nivel;
 
@@ -88,7 +83,8 @@ void func_8004443C(s32 archivo)
     D_800694A8 = 0;
     SetDispMask(0);
     func_800443CC();
-    reg = &D_8005F200[archivo];
+    tabla = D_8005F200;
+    reg = &tabla[archivo];
     if (reg->pantalla != 0) {
         D_800694A8 = 4;
         if (archivo == 3) {
@@ -119,32 +115,27 @@ void func_8004443C(s32 archivo)
     PutDispEnv(env);
     SetDispMask(1);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte_12", func_8004443C);
-#endif
 
-#ifdef NON_MATCHING
 /*
- * No coincide: puntuacion 175 (el archivo se compila con g = 8 y define D_800694A8; era 290
- * con la variable declarada extern).
- * Carga la pantalla del archivo pedido sin reiniciar la pantalla. Puntuacion 290 con -G8:
- * difiere que el original conserva el valor leido en dos
- * registros (el de comparacion y el del argumento).
+ * Carga la pantalla del archivo pedido sin reiniciar la pantalla. La tabla de registros se toma por un puntero
+ * local y la maquina de estados de la carga (D_800694A8) pasa a 4 antes de leer el numero de pantalla: asi el
+ * original reparte la tabla y el argumento en registros distintos. Coincide en bytes (1 referencia en forma
+ * numerica; el diff puntua 5 por la forma simbolica).
  */
 void func_80044588(s32 archivo)
 {
-    s32 id;
+    RegistroArchivo* reg;
+    RegistroArchivo* tabla;
 
-    id = D_8005F200[archivo].pantalla;
-    if (id != 0) {
+    tabla = D_8005F200;
+    reg = &tabla[archivo];
+    if (reg->pantalla != 0) {
         D_800694A8 = 4;
-        while (func_800415A0(id, (void*)0x80077000) != 0) {
+        archivo = reg->pantalla;
+        while (func_800415A0(archivo, (void*)0x80077000) != 0) {
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte_12", func_80044588);
-#endif
 
 /*
  * Carga el contenedor pedido, entrega el resultado a func_80019364 y deja armados los

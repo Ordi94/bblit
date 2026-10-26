@@ -233,4 +233,45 @@ extern s8 D_8006966A;
 /* Cursor descendente de la demostracion: se carga y se guarda como puntero (lw / sw). */
 extern u16* D_800695B0;
 
+/* --- Camara, eventos y tarjeta de memoria ------------------------------------------------ */
+
+/*
+ * D_80010076: bandera de un byte del estado principal. El ensamblador la carga con lbu (main,
+ * func_8004048C, func_80033358, func_8003B5AC) y la guarda con sb (func_8003B5AC); la tarjeta de
+ * memoria la escribe como simbolo (con -G8 cc1 emite `sb $0,D_80010076`), por lo que no se
+ * accede por un puntero.
+ */
+extern u8 D_80010076;
+
+/*
+ * D_80069560: objeto de referencia de la camara. Se guarda con sw (0x80036020 en func_800353B0,
+ * func_800415A0, func_80044A04 con $zero) y se carga con lw (0x800353F8): se compara y se copia
+ * como puntero de objeto y tambien se pone a cero. Se declara void* porque el cargador le asigna
+ * un puntero a nodo de lista (func_800415A0); como puntero genera el mismo codigo que como entero
+ * en todas las funciones que lo usan.
+ */
+extern void* D_80069560;
+
+/*
+ * D_80069618, D_8006961C, D_80069624: parametros de seguimiento de la camara. Palabras de 32 bits:
+ * func_80033358 las carga con lw (0x8003361C, 0x80033624, 0x8003362C) y los eventos las escriben
+ * con sw.
+ */
+extern s32 D_80069618;
+extern s32 D_8006961C;
+extern s32 D_80069624;
+
+/*
+ * D_800695D0: contador de ocho entradas que usan los eventos. func_800353B0 lo pone a cero con sh
+ * (0x80036010) y los eventos lo comparan con 8, lo leen y lo incrementan; es volatile porque el
+ * original recarga el valor en cada acceso.
+ */
+extern vu16 D_800695D0;
+
+/*
+ * D_800694B8: puntero a datos del nivel. Se guarda con sw (0x80041E70 en func_800415A0) y se carga
+ * con lw (0x800353B8 en func_800353B0, 0x80045390 en func_80045368) para pasarlo tal cual.
+ */
+extern void* D_800694B8;
+
 #endif

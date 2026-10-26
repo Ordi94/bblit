@@ -156,6 +156,44 @@ typedef struct TrabajoBaldosa {
     __asm__ volatile ("lh $8, 0(%1)\n\tlh $9, 4(%1)\n\tmtc2 $8, $9\n\tmtc2 $9, $11\n\tnop\n\tnop\n\t" \
                       "sqr 0\n\tmfc2 $8, $25\n\tmfc2 $9, $27\n\tnop\n\tadd $8, $8, $9\n\tsw $8, 0(%0)" \
                       : : "r"(d), "r"(v) : "$2", "$3", "$8", "$9", "memory")
+/*
+ * GEO_SUMAR_W(p): las tres palabras de p += t1..t3 (los temporales que dejo la macro anterior,
+ * normalmente GEO_CARGAR_W). Queda en ensamblador en linea (no es GTE) porque consume t1..t3 de la
+ * sentencia previa y el original lo escribio con los temporales fijos $8, $12..$14 y add con
+ * captura de desbordamiento: escrita en C (p->x += d0, ...) func_800353B0 pasa de 7961 a 9641
+ * puntos, porque sin la sentencia que lo reserva GCC reparte de otro modo los registros s del
+ * bucle de las esquinas (el original no hoistea &v80 ni &c104) y carga los sumandos con lw a
+ * otros registros.
+ */
+#define GEO_SUMAR_W(p) \
+    __asm__ volatile ("move $8, %0\n\tlw $12, 0($8)\n\tlw $13, 4($8)\n\tlw $14, 8($8)\n\t" \
+                      "add $12, $12, $9\n\tadd $13, $13, $10\n\tadd $14, $14, $11\n\t" \
+                      "sw $12, 0($8)\n\tsw $13, 4($8)\n\tsw $14, 8($8)" \
+                      : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
+/*
+ * GEO_DISTANCIA_APROX(p): distancia aproximada al vector de tres palabras de p (d0, d4, d8): el
+ * maximo de |x|, |y|, |z| mas un cuarto de cada uno de los otros dos; el resultado, con el bit 0
+ * activo, se guarda en p + 0x44. Queda en ensamblador en linea (no es GTE) porque el original lo
+ * escribio a mano con noreorder y GCC 2.8.1 no puede reproducir su forma desde C: cada salto
+ * condicional lleva un nop explicito en su hueco de retardo, el valor absoluto es bgez + neg sobre
+ * el propio registro, la comparacion usa $at (slt $at, t0, t1) y la suma es add con captura de
+ * desbordamiento. Escrita en C (valor absoluto, dos comparaciones y una suma) func_800353B0 pasa de
+ * 7961 a 11566 puntos: GCC emite el valor absoluto sin saltos y reparte otros registros.
+ */
+#define GEO_DISTANCIA_APROX(p) \
+    __asm__ volatile (".set push\n\t.set noreorder\n\t.set noat\n\t" \
+                      "addu $4, %0, $0\n\tlw $8, 0($4)\n\tlw $9, 4($4)\n\tlw $10, 8($4)\n\t" \
+                      "bgez $8, 1f\n\tnop\n\tsub $8, $0, $8\n" \
+                      "1:\tbgez $9, 2f\n\tnop\n\tsub $9, $0, $9\n" \
+                      "2:\taddu $2, $8, $0\n\tbgez $10, 3f\n\tnop\n\tsub $10, $0, $10\n" \
+                      "3:\taddu $3, $9, $0\n\tslt $1, $8, $9\n\tbeqz $1, 4f\n\tnop\n\t" \
+                      "addu $2, $9, $0\n\taddu $3, $8, $0\n" \
+                      "4:\taddu $7, $10, $0\n\tslt $1, $2, $10\n\tbeqz $1, 5f\n\tnop\n\t" \
+                      "addu $7, $2, $0\n\taddu $2, $10, $0\n" \
+                      "5:\tsrl $3, $3, 2\n\tsrl $7, $7, 2\n\tadd $2, $2, $3\n\tadd $2, $2, $7\n\t" \
+                      "ori $2, $2, 1\n\taddiu $5, %0, 0x44\n\taddu $4, $5, $0\n\tsw $2, 0($4)\n\t" \
+                      ".set pop" \
+                      : : "r"(p) : "$1", "$2", "$3", "$4", "$5", "$7", "$8", "$9", "$10", "memory")
 
 /*
  * Objeto del motor tal como lo ven los calculos de volumen: indicadores en +8, lista enlazada
