@@ -46,6 +46,23 @@ extern s32 func_8003D814(void);
 extern void func_8003D0D4(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
 
 extern ModeloDibujo* D_8006B568[];
+extern u16 D_800695F2;
+extern u16 D_800695F4;
+extern s16 D_800695A2;
+extern s16 D_800695A4;
+extern s16 D_80069532;
+extern void* D_800694D8;
+extern ObjetoEscena* D_8006AD80[];
+extern s32 func_80012AE4(s32 cursor, EstadoDibujo* estado, s32 color);
+extern s32 func_80012AB0(s32 cursor, EstadoDibujo* estado);
+extern s32 func_8003BDD0(ModeloDibujo* modelo);
+extern void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
+
+#define PANT ((EstadoPantalla*)0x80010000)
+
+#define COPIAS ((CopiasCamara*)&D_8006D928)
+
+
 extern u16 D_8006969C;
 extern u16 D_800694B0;
 extern u8 D_80069600;
@@ -401,7 +418,203 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B354);
 #endif
 
+/* Pendiente: puntuacion 915 con la configuracion versionada (g = 8 del archivo). Las instrucciones, el reparto de registros del bucle de objetos y la tabla de costes coinciden; difieren el orden de las cargas de los limites del buffer en el prologo (el original carga D_80069680 antes que D_8006958C y guarda el limite primero), la relectura del nivel del fundido tras guardarlo (el compilador reutiliza el registro) y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (orden de las nueve escrituras del prologo con 900 permutaciones, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). */
+#ifdef NON_MATCHING
+void func_8003B5AC(ObjetoEscena* lista)
+{
+    EscenaDibujo* esc;
+    VistaDibujo* vista = (VistaDibujo*)0x1F800038;
+    ModeloDibujo* modelo;
+    ObjetoEscena* obj;
+    s32 color;
+    s32 k;
+    s32 rr;
+    s32 gg;
+    s32 bb;
+    s32 px;
+    s32 py;
+    s32 pz;
+    s32 qx;
+    s32 qy;
+    s32 qz;
+    s8 hecho;
+    u16 nivel;
+    s32 cero;
+    s32 cero2;
+
+    func_8003ABB4();
+    esc = (EscenaDibujo*)0x1F800000;
+    cero = 0;
+    cero2 = cero;
+    D_800695A2 = 0;
+    D_800695A4 = 0;
+    D_80069600 = 0;
+    D_80069532 = 0;
+    __asm__ volatile ("ctc2 %0, $24\n\tctc2 %1, $25" : : "r"(cero), "r"(cero2));
+    esc->cuenta_a = &D_800695A2;
+    esc->cuenta_b = &D_800695A4;
+    esc->limite = D_8006958C;
+    esc->inicio = D_80069680;
+    esc->ot0 = (u32*)D_8006AE20[D_8006967C].org;
+    esc->ot1 = (u32*)D_8006AE60[D_8006967C].org;
+    esc->ot2 = (u32*)D_8006AEA0[D_8006967C].org;
+    esc->objeto = lista;
+    D_8006D928.flags80 &= 0xFCFF;
+    if (PANT->b76 != 0) {
+        ((GsBOXF*)vista)->x = -0x100;
+        ((GsBOXF*)vista)->y = -0x78;
+        ((GsBOXF*)vista)->w = 0x200;
+        ((GsBOXF*)vista)->attribute = 0;
+        ((GsBOXF*)vista)->b = 0;
+        ((GsBOXF*)vista)->g = 0;
+        ((GsBOXF*)vista)->r = 0;
+        if ((s8)PANT->b76 > 0) {
+            D_8006D928.flags80 = D_8006D928.flags80 | 0x8000;
+            ((GsBOXF*)vista)->h = PANT->b76;
+            GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
+            ((GsBOXF*)vista)->y = 0x78 - ((GsBOXF*)vista)->h;
+            GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
+            if (PANT->b76 < 0x1E) {
+                PANT->b76 += 2;
+            }
+        } else {
+            D_8006D928.flags80 = D_8006D928.flags80 & 0x7CFF;
+            ((GsBOXF*)vista)->h = -(s8)PANT->b76;
+            GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
+            ((GsBOXF*)vista)->y = 0x78 - ((GsBOXF*)vista)->h;
+            GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
+            PANT->b76 += 2;
+        }
+    }
+    if (D_8006966A != 0) {
+        if ((u8)D_8006966A & 0x40) {
+            nivel = 0x1000 - D_80069668;
+        } else {
+            nivel = D_80069668;
+        }
+        esc->estado.w8 = nivel;
+        D_800694E2 = nivel;
+        k = (s16)esc->estado.w8 / 16 - 1;
+        if (k < 0) {
+            color = 0;
+        } else {
+            rr = (k * D_800694E8) / 255;
+            gg = (k * D_800694E1) / 255;
+            bb = (k * D_800694E0) / 255;
+            color = (s16)rr + ((s32)(gg << 16) >> 8) + (bb << 16);
+        }
+        D_80076188 = func_80012AE4(D_80076188, &esc->estado, color);
+        D_80076188 = func_80012AB0(D_80076188, &esc->estado);
+    } else if (D_8006AA70[0xC] != 0) {
+        color = 0;
+        esc->estado.w8 = 0x833;
+        D_80076188 = func_80012AE4(D_80076188, &esc->estado, color);
+        D_80076188 = func_80012AB0(D_80076188, &esc->estado);
+    } else {
+        esc->estado.w8 = D_80069668;
+    }
+    if (esc->objeto != NULL) {
+        do {
+            if (!(esc->objeto->flags04 & 2)) {
+                esc->objeto = esc->objeto->sig;
+                continue;
+            }
+            if (esc->objeto->w2C == 7) {
+                esc->estado.s4 = -0x80;
+                esc->estado.w0C = D_8006969C;
+                esc->estado.w0E = D_800694B0;
+                esc->estado.w10 = D_800695F2;
+                esc->estado.w12 = D_800695F4;
+                esc->estado.s6 = esc->objeto->w28 - 0x80;
+                func_8003B354(esc->objeto->modelos, esc, vista);
+                esc->objeto = esc->objeto->sig;
+                continue;
+            }
+            esc->estado.s6 = esc->objeto->w28;
+            if (esc->objeto->flags14 & 0x10) {
+                esc->estado.s6 = (s16)esc->objeto->w28 >> 1;
+                esc->estado.s6 = esc->estado.s6 + esc->objeto->p70->w28;
+            }
+            if ((D_80069698 != 0 && (s16)esc->objeto->w26 != (s16)D_80069698->w26) || D_800694D8 != 0) {
+                esc->estado.s6 = (s16)esc->objeto->w28 >> 1;
+            }
+            esc->estado.s6 = esc->estado.s6 - 0x80;
+            if (esc->objeto->w3A != 0) {
+                if (D_80069532 < 0x28) {
+                    if ((Objeto*)esc->objeto != D_80069698 || (D_8006D928.flags80 & 0x20) == 0) {
+                        D_8006AD80[D_80069532++] = esc->objeto;
+                    }
+                } else {
+                    for (;;) {
+                    }
+                }
+            }
+            modelo = esc->objeto->modelos;
+            hecho = 0;
+            if (modelo != NULL) {
+                do {
+                    if (modelo->banderas & 6) {
+                        if (modelo->visible != 0) {
+                            if (esc->objeto->flags08 & 0x40) {
+                                modelo->modo = 0x40000000;
+                            } else {
+                                modelo->modo = 0;
+                            }
+                            D_800695DA = 0;
+                            D_800695C4 = D_8006D1C8;
+                            func_8003753C((u8*)modelo + 0x94);
+                            hecho = func_8003BDD0(modelo);
+                        }
+                    } else if ((modelo->banderas & 0x11) && !(modelo->banderas & 0x8000)) {
+                        func_8003AF8C((SpriteDibujo*)modelo, esc, vista);
+                    } else if (modelo->banderas & 0x20) {
+                        func_8003AE08((u32*)modelo, esc);
+                    } else if (modelo->banderas & 0x40) {
+                        obj = esc->objeto;
+                        if ((obj->h50 | obj->h52 | obj->h54 | obj->h48 | obj->h4A | obj->h4C) != 0) {
+                            obj->flags18 = obj->flags18 | 0x1000;
+                            if (esc->objeto->flags0C & 0x100) {
+                                D_8006D928.flags80 = D_8006D928.flags80 | 0x200;
+                            }
+                            func_8003ACA8((ObjetoCamara*)modelo, (void*)esc, (MATRIX*)vista);
+                            if (esc->objeto->flags0C & 0x10000000) {
+                                px = D_8006D928.vpx;
+                                py = D_8006D928.vpy;
+                                pz = D_8006D928.vpz;
+                                qx = D_8006D928.x;
+                                qy = D_8006D928.y;
+                                qz = D_8006D928.z;
+                                COPIAS->c68 = px;
+                                COPIAS->c94 = px;
+                                COPIAS->cB4 = px;
+                                COPIAS->c6C = py;
+                                COPIAS->c98 = py;
+                                COPIAS->cB8 = py;
+                                COPIAS->c70 = pz;
+                                COPIAS->c9C = pz;
+                                COPIAS->cBC = pz;
+                                COPIAS->cA4 = qx;
+                                COPIAS->cA8 = qy;
+                                COPIAS->cAC = qz;
+                            }
+                        }
+                    }
+                    modelo = modelo->siguiente;
+                } while (modelo != NULL);
+            }
+            if (hecho != 0) {
+                esc->estado.b0 = 0;
+                esc->estado.b2 = 1;
+                esc->estado.b1 = 1;
+                func_8003C014(esc->objeto, esc->objeto->modelos, &esc->estado, vista);
+            }
+            esc->objeto = esc->objeto->sig;
+        } while (esc->objeto != NULL);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B5AC);
+#endif
 
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003BDD0);
 
