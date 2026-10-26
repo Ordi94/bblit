@@ -1608,7 +1608,7 @@ void func_8002EAA4(Objeto* o)
                 GEO_CARGAR_W(&t->cursor->coord.t[0]);
                 GEO_SUMAR_W(&t->px);
                 GEO_CARGAR_W(&t->px);
-                GEO_GUARDAR_H_T1_UNICA(&t->ax);
+                GEO_GUARDAR_H_T1(&t->ax);
                 t->cursor = t->cursor->super;
             } while (t->cursor != 0);
         }
@@ -1850,7 +1850,7 @@ void func_8002F6B4(Objeto* o)
         t->cy = -y;
     }
     GEO_COMPLEMENTO(&o->param.giro.rotate);
-    GEO_GUARDAR_H_T1_UNICA(t);
+    GEO_GUARDAR_H_T1(t);
     GEO_CARGAR_H(&t->cx);
     GEO_SUMAR_H(t);
     GEO_IDENTIDAD(&t->m);

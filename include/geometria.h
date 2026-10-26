@@ -243,7 +243,6 @@ typedef struct TrabajoRecorrido {
  * GEO_CERO_WH(p)         6 bytes de p = 0 (una palabra y una media palabra)
  * GEO_NORMA2_XZ(v, d)    *d = x*x + z*z del vector de medias palabras v (producto por el GTE)
  * GEO_CARGAR_H(p)        t1..t3 = vector de 3 medias palabras con signo en p
- * GEO_GUARDAR_H_T1_UNICA(p) igual que GEO_GUARDAR_H_T1, en una sola sentencia asm
  * GEO_SUMAR_H(p)         las 3 medias palabras de p += t1..t3 (tras GEO_CARGAR_H)
  * GEO_RELLENAR_1000(p)   vector de 3 palabras en p = 0x1000 (t1..t3 y t4 quedan con 0x1000)
  */
@@ -271,11 +270,16 @@ typedef struct TrabajoRecorrido {
     __asm__ volatile ("move $8, %0\n\taddi $12, $0, 0x1000\n\tlh $9, 0($8)\n\tlh $10, 2($8)\n\t" \
                       "lh $11, 4($8)\n\tsub $9, $12, $9\n\tsub $10, $12, $10\n\tsub $11, $12, $11" \
                       : : "r"(p) : "$8", "$9", "$10", "$11", "$12", "memory")
+/*
+ * GEO_GUARDAR_H_T1(p): tres medias palabras de p = t1..t3 en una sola sentencia asm, que es como el
+ * original las emite (move $t0, puntero y tres sh sobre $t0: 0x80016F20, 0x80018CAC, 0x800192B8, 0x8002EF68
+ * y 0x8002F7A0). Partirla en dos sentencias no existe en el original y solo cambia el reparto de registros
+ * del compilador. Lee $9..$11 sin declararlos, igual que GEO_GUARDAR_W_T1: el acoplamiento con la macro
+ * previa es del original y debe conservarse el orden de sentencias.
+ */
 #define GEO_GUARDAR_H_T1(p) \
-    do { \
-        __asm__ volatile ("move $8, %0\n\tsh $9, 0($8)" : : "r"(p) : "$8", "memory"); \
-        __asm__ volatile ("sh $10, 2($8)\n\tsh $11, 4($8)" : : : "memory"); \
-    } while (0)
+    __asm__ volatile ("move $8, %0\n\tsh $9, 0($8)\n\tsh $10, 2($8)\n\tsh $11, 4($8)" \
+                      : : "r"(p) : "$8", "memory")
 /*
  * Matriz identidad de 3x3 medias palabras mas traslacion nula, en una sola sentencia: el original la
  * escribe con "move t0, puntero ; ori t1, zero, 0x1000" y diez almacenes seguidos (sw/sh sobre t0).
@@ -305,7 +309,7 @@ typedef struct TrabajoRecorrido {
  * 0x80024F1C y 0x800251C0; GEO_CARGAR_H en 0x80023290. Las usa tambien la logica de niveles:
  * GEO_CERO_W en 0x8002BF3C (func_8002BA80), 0x8002EA04 (func_8002D68C) y 0x8002F134 y 0x8002F150
  * (func_8002F018); GEO_CERO_WH en 0x8002BF58, 0x8002EE3C y 0x8002F11C; GEO_CARGAR_H en 0x8002EFBC
- * (func_8002EAA4) y 0x8002F7B4 (func_8002F6B4); GEO_GUARDAR_H_T1_UNICA en 0x8002EF68 y 0x8002F7A0.
+ * (func_8002EAA4) y 0x8002F7B4 (func_8002F6B4); GEO_GUARDAR_H_T1 en 0x8002EF68 y 0x8002F7A0.
  */
 #define GEO_CERO_W(p) \
     __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsw $0, 4($8)\n\tsw $0, 8($8)" \
@@ -334,17 +338,6 @@ typedef struct TrabajoRecorrido {
                       "add $12, $12, $9\n\tadd $13, $13, $10\n\tadd $14, $14, $11\n\t" \
                       "sw $12, 0($8)\n\tsw $13, 4($8)\n\tsw $14, 8($8)" \
                       : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
-/*
- * GEO_GUARDAR_H_T1_UNICA(p): lo mismo que GEO_GUARDAR_H_T1 (tres medias palabras de p = t1..t3) en una
- * sola sentencia asm, que es como el original las emite (move $t0, puntero y tres sh sobre $t0:
- * 0x8002EF68 en func_8002EAA4 y 0x8002F7A0 en func_8002F6B4). La variante partida en dos sentencias
- * cambia el reparto de registros de func_8002EAA4 (0 a 70 puntos: un move del bucle usa a0 en
- * lugar de a1). Lee $9..$11 sin declararlos, igual que GEO_GUARDAR_W_T1:
- * el acoplamiento con la macro previa es del original y debe conservarse el orden de sentencias.
- */
-#define GEO_GUARDAR_H_T1_UNICA(p) \
-    __asm__ volatile ("move $8, %0\n\tsh $9, 0($8)\n\tsh $10, 2($8)\n\tsh $11, 4($8)" \
-                      : : "r"(p) : "$8", "memory")
 /*
  * GEO_SUMAR_H(p): las tres medias palabras de p += t1..t3, con los temporales que dejo la macro
  * anterior (GEO_CARGAR_H) y los mismos $8, $12..$14 y add con captura de desbordamiento que
