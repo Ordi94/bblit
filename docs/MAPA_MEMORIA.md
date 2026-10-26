@@ -11,7 +11,7 @@ de las referencias del codigo con granularidad de `0x100` bytes y se marcan como
 |---|---|---|---|---|
 | RAM de trabajo previa | `0x80010000` | `0x80014A00` | Variables globales del juego (71 direcciones referenciadas, `0x80010000..0x8001013F`) y rutinas cargadas en ejecucion (`0x80010204`, `0x8001020C`, `0x80010258`, `0x80012AB0`, `0x80012AE4`) | Media |
 | Arranque | `0x80014A00` | `0x80014AC4` | Codigo de arranque del SDK (`__main`, `start`, `stup1`, `stup0`) y 16 bytes de datos desde `0x80014AB4` (en `0x80014AB0` hay un `break`) | Alta |
-| Codigo del juego | `0x80014AC4` | `0x80045DA0` | 449 simbolos de funcion (201.416 bytes) | Alta |
+| Codigo del juego | `0x80014AC4` | `0x80045DA0` | 450 simbolos de funcion (201.416 bytes) | Alta |
 | Codigo de librerias Sony | `0x80045DA0` | `0x8005DEA0` | 98.560 bytes; 650 simbolos de funcion (598 identificados por firma) | Alta |
 | Rodata (tablas de saltos, cadenas del juego) | `0x8005DEA0` | `0x8005F000` | Tablas de saltos en `0x8005E300..0x8005E700`, tabla de ficheros en `0x8005EE78` | Media |
 | Data inicializada | `0x8005F000` | `0x80067800` | Tablas y estructuras del juego (el bloque `0x80061900..0x80066500` no se referencia directamente: se accede por punteros) | Media |
@@ -44,7 +44,7 @@ referencias del segmento).
 
 - **Arranque del SDK**: `0x80014A00..0x80014AC4`. `start` (`0x80014A08`) limpia el BSS, fija `gp`,
   inicializa el heap y llama a `main`.
-- **Codigo del juego**: `0x80014AC4..0x80045DA0`. 449 simbolos de funcion. Incluye tres funciones enormes
+- **Codigo del juego**: `0x80014AC4..0x80045DA0`. 450 simbolos de funcion. Incluye tres funciones enormes
   (`0x80020B90` con 19.880 bytes, `0x80026FEC` con 19.092 bytes y `0x80019474` con 11.048 bytes) y
   un grupo de 12 rutinas de 32 bytes en `0x80026118..0x80026298` que solo se invocan por tabla.
   `main` esta en `0x80016414`.
@@ -57,22 +57,23 @@ referencias del segmento).
 
 ### Recuento de funciones
 
-La tabla `config/symbols.txt` tiene 1101 simbolos de funcion: 2 de arranque comunes (`__main`
-y `start`), 449 en la zona del juego y 650 en la zona de librerias. La depuracion de 1217 candidatos de
+La tabla `config/symbols.txt` tiene 1102 simbolos de funcion: 2 de arranque comunes (`__main`
+y `start`), 450 en la zona del juego y 650 en la zona de librerias. La depuracion de 1217 candidatos de
 Ghidra (935 de libreria y 282 del juego) dio 1217 - 306 fundidos - 10 descartados + 7 rutinas
 completas que ningun candidato cubria = 908 (detalle en `docs/GHIDRA.md`). Separar las rutinas que solo se
 llaman por tablas de punteros (194 nuevas: 92 de `func_8002F9F8` y 102 de `func_80030ECC`, que quedan de
-0x38 bytes) y fusionar `func_800415A0` con `func_80042BB8` da 908 - 1 + 194 = 1101. Las cifras de origen
-de abajo (599, 277, 32) corresponden a los 908 de la depuracion. Por origen, 599 son de
+0x38 bytes) y fusionar `func_800415A0` con `func_80042BB8` da 908 - 1 + 194 = 1101; la regla del retorno
+intermedio separa ademas `func_8002FF38` en dos rutinas de 0x20 bytes (`func_8002FF58` es la nueva) y deja
+1102. Las cifras de origen de abajo (599, 277, 32) corresponden a los 908 de la depuracion. Por origen, 599 son de
 libreria identificada por firma (400 con nombre oficial), 277 del juego y 32 tienen una direccion que no figura entre los candidatos (rutinas nuevas o funciones cuyo inicio se adelanto). Dentro de la zona de librerias hay 52 simbolos
 que ninguna firma reconoce (rutinas internas de libreria).
 
 **Nota sobre las cifras de funciones.** Cada numero cuenta una cosa distinta:
 
-- **1101** simbolos de funcion en el ejecutable (`config/symbols.txt`): 650 estan en la zona de librerias de Sony
-  (`0x80045DA0..0x8005DEA0`), 2 son de arranque y 449 son codigo del juego.
-- **449** simbolos en el rango de codigo del juego `0x80014AC4..0x80045DA0` (256 antes de separar las rutinas por
-  tablas de punteros); es la cifra que usa `docs/PROGRESO.md`.
+- **1102** simbolos de funcion en el ejecutable (`config/symbols.txt`): 650 estan en la zona de librerias de Sony
+  (`0x80045DA0..0x8005DEA0`), 2 son de arranque y 450 son codigo del juego.
+- **450** simbolos en el rango de codigo del juego `0x80014AC4..0x80045DA0` (256 antes de separar las rutinas por
+  tablas de punteros y 449 antes de la regla del retorno intermedio); es la cifra que usa `docs/PROGRESO.md`.
 - **282** funciones "del juego" segun las firmas de Ghidra (`es_libreria` en 0 en `funciones.csv`); 23 de ellas
   caen en la zona de librerias, y por eso no coincide con 256.
 - **309** rutinas en el ambito de los borradores en C (`m2c`): las 256 del rango, las 52 de la zona de librerias

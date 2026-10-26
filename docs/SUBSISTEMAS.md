@@ -10,11 +10,12 @@ regenera con los comandos de la seccion final.
 
 **Nota sobre las cifras de funciones.** Cada numero cuenta una cosa distinta:
 
-- **1101** simbolos de funcion en el ejecutable (`config/symbols.txt`): 650 estan en la zona de librerias de
-  Sony (`0x80045DA0..0x8005DEA0`), 2 son de arranque y 449 son codigo del juego. Eran 908 al hacer este analisis
+- **1102** simbolos de funcion en el ejecutable (`config/symbols.txt`): 650 estan en la zona de librerias de
+  Sony (`0x80045DA0..0x8005DEA0`), 2 son de arranque y 450 son codigo del juego. Eran 908 al hacer este analisis
   (256 en el rango del juego); la tabla actual separa 194 rutinas que se llaman solo por tablas de punteros
-  (908 - 1 + 194 = 1101; ver `docs/GHIDRA.md`) y `config/simbolos_adicionales.txt` ya no existe.
-- **449** simbolos en el rango de codigo del juego `0x80014AC4..0x80045DA0`; es la cifra que usa `docs/PROGRESO.md`,
+  (908 - 1 + 194 = 1101) y, con la regla del retorno intermedio, una mas (1102; ver `docs/GHIDRA.md`).
+  `config/simbolos_adicionales.txt` ya no existe.
+- **450** simbolos en el rango de codigo del juego `0x80014AC4..0x80045DA0`; es la cifra que usa `docs/PROGRESO.md`,
   que es la fuente de las cifras actuales por subsistema. Las 194 rutinas nuevas caen en `interprete_de_eventos`
   (196 funciones con las dos de 0x38 bytes) y la fusion de `func_800415A0` con `func_80042BB8` deja
   `cargador_de_niveles_y_cd` en 11. Las demas filas no cambian; las secciones de detalle de mas abajo conservan
@@ -26,7 +27,7 @@ regenera con los comandos de la seccion final.
   la tabla anterior de 908 simbolos, de modo que ven 258 funciones del juego con `__main` y `start`.
 
 - Desensamblado: copia propia con `splat` en una carpeta de trabajo (no se usa `asm/` del repositorio,
-  cuya forma cambia con la particion). 908 funciones, las de la tabla de entonces (hoy `config/symbols.txt` tiene 1101).
+  cuya forma cambia con la particion). 908 funciones, las de la tabla de entonces (hoy `config/symbols.txt` tiene 1102).
 - Grafo de llamadas (`python -m tools.ghidra grafo`): 1596 aristas con destino conocido y 2631
   sitios de llamada. `jal` 1532, `j` 32, por tabla 32, llamadas indirectas 184 instrucciones (en 139
   funciones). Del codigo del juego: 525 hacia el juego, 309 hacia librerias de Sony, 8 hacia la RAM
@@ -335,7 +336,7 @@ el epilogo `0x8004439C`) y no se llama por separado.
 - Los nombres de subsistema son hipotesis. `menus_e_interfaz` y `gestion_y_dibujo_de_objetos` se infirieron
   de las llamadas a `GsSortBoxFill`, las listas de objetos y los datos, sin cadenas que los confirmen.
 - Este analisis se calculo con la tabla de 908 simbolos, en la que `func_8002F9F8` y `func_80030ECC` agrupaban
-  decenas de rutinas. La tabla actual (1101) las separa; las cifras de funciones de las secciones de detalle
+  decenas de rutinas. La tabla actual (1102) las separa; las cifras de funciones de las secciones de detalle
   no se han recalculado y la referencia vigente es `docs/PROGRESO.md`.
 
 ## Como se regenera

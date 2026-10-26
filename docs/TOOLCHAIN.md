@@ -144,7 +144,7 @@ copia de `expected/`.
 - `splat` solo reconoce como función lo que es destino de un `jal` o está declarado. La
   dirección de entrada (`pc0 = 0x80014A08`) no lo es, así que `split` la declara en
   `build/simbolos_entrada.txt` (salvo que `config/symbols.txt` ya la defina). El proyecto
-  declara 1101 símbolos de función en `config/symbols.txt`;
+  declara 1102 símbolos de función en `config/symbols.txt`;
   sin tabla de símbolos, `splat` detectaría unas 978 funciones por sus `jr $ra`.
 - El ensamblador es GNU `as` con `-EL -march=r3000 -mips1` (`maspsx` le fuerza `-G0`). Las instrucciones del
   coprocesador GTE se expanden con las macros que genera `splat` en `asm/include/`
