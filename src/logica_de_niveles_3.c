@@ -8,7 +8,7 @@
 extern s16 D_800695DE;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 3383 con la configuracion versionada (g = 8 del archivo). Orden de instrucciones y reparto de registros: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1. */
+/* Pendiente: puntuacion 2925 con la configuracion versionada (g = 8 del archivo). Reparto de registros y orden de instrucciones: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1. */
 /*
  * Manejador de los objetos moviles por mascara (clases 12, 13, 18, 19 y 22 a 29): una sola rutina
  * atiende doce modos, uno por bit de la mascara (balancin, giro, bajar o subir con el jugador,
@@ -44,8 +44,8 @@ void func_80026298(Objeto* o, u32 mascara)
             func_8001CF50(o);
             o->w17C = (s16)o->w17C >> 1;
             v.vx = 0;
-            v.vy = 0;
             v.vz = (s16)o->w17C;
+            v.vy = 0;
             ApplyMatrixLV(&o->coord.coord, &v, &v);
             MOVIL_ORIGEN_X(o) = o->param.trans.vx + v.vx;
             MOVIL_LIMITE_ALTO(o) = o->param.trans.vy + v.vy;
@@ -207,8 +207,8 @@ sube:
         if (o->p6C == D_80069698 && o->p6C->p70 == o) {
             t->v.vx = 0;
             t->v.vy = 0;
-            func_8001CFCC(&o->coord);
             t->v.vz = 0;
+            func_8001CFCC(&o->coord);
             func_8001CFCC(&D_80069698->coord);
             t->cursor = &D_80069698->coord;
             if (t->cursor != 0) {
@@ -232,8 +232,8 @@ sube:
         }
     } else if (mascara & 0x10) {
         v.vx = 0;
-        v.vy = 0;
         v.vz = (rsin((s16)o->w17E) * (s16)o->w17C) >> 12;
+        v.vy = 0;
         paso = (s16)o->w17E;
         o->w17E = (o->w17E + o->s1E) & 0xFFF;
         if (paso < 0x400 && (s16)o->w17E >= 0x400) {
@@ -262,9 +262,9 @@ sube:
                 o->flags14 = (o->flags14 & 0xFF9FFFFF) | 0x2000;
             }
         }
-        v.vx = 0;
-        v.vy = 0;
         v.vz = (s16)o->w17E;
+        v.vy = 0;
+        v.vx = 0;
 aplica:
         ApplyMatrixLV(&o->coord.coord, &v, &v);
         o->param.trans.vx = v.vx + MOVIL_ORIGEN_X(o);
