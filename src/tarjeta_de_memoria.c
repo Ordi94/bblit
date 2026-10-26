@@ -12,6 +12,21 @@ extern s8 D_8005E051[];
 /* Directorio de cada tarjeta: 15 entradas DIRENTRY de 0x28 bytes por ranura (0x258 bytes). */
 extern s8 D_800697B0[];
 
+/* Entrada de directorio de libmcrd (struct DIRENTRY del SDK, 0x28 bytes): nombre, atributos, tamano, enlace, cabeza y sistema. */
+typedef struct EntradaDirectorio {
+    char nombre[20];
+    s32 attr;
+    s32 tam;
+    s32 sig;
+    s32 cabeza;
+    s32 sistema;
+} EntradaDirectorio;
+
+/* Directorio de una ranura: hasta 15 entradas (MemCardGetDirentry con maximo 15). */
+typedef struct RanuraDirectorio {
+    EntradaDirectorio e[15];
+} RanuraDirectorio;
+
 /* Llamadas de la BIOS y de libapi. */
 extern s32 VSync(s32 modo);
 extern s32 open(char* nombre, u32 modo);
@@ -21,7 +36,29 @@ extern s32 write(s32 fd, void* origen, s32 cantidad);
 extern s32 close(s32 fd);
 extern s32 MemCardSync(s32 modo, s32* cmds, s32* rslt);
 
-/* Los contadores y resultados de libmcrd viven en la zona direccionada por $gp. */
+extern s32 MemCardAccept(s32 canal);
+extern s32 MemCardFormat(s32 canal);
+extern s32 MemCardExist(s32 canal);
+extern s32 MemCardGetDirentry(s32 canal, char* nombre, s8* dir, s32* cuenta, s32 desde, s32 maximo);
+extern s32 func_8003F06C(void* objeto, s32 id, s32 modo, s32 clave);
+extern void func_80015EC0(void);
+
+/* Patron de busqueda del directorio ("*") y copia del orden pendiente del banco de registros (+0xA), que se limpia al atenderla. */
+extern char D_80069324[];
+extern u8 D_8006AA7A[];
+
+/*
+ * Los contadores y resultados de libmcrd viven en la zona direccionada por $gp: el original los declara
+ * como datos pequenos (-G8), asi que se definen aqui, sin extern, y el enlace les da su direccion.
+ */
+s32 D_80069350;
+s32 D_80069354;
+s32 D_80069358[2];
+s8 D_8006935C;
+s16 D_8006935E[2];
+s32 D_80069360;
+s32 D_80069368;
+s16 D_8006936C;
 
 /*
  * Cabecera del archivo de partida (0x168 bytes, en el desplazamiento 0x200 del archivo): una suma de
@@ -36,8 +73,7 @@ typedef struct RegistroNivel {
 
 typedef struct CabeceraGuardado {
     u32 suma;
-    u8 b4;
-    u8 pad5[3];
+    u32 mascara;    /* +4: ranuras con partida guardada, un bit por ranura (func_800156F4); func_80014C54 copia su byte bajo al banco de registros */
     RegistroNivel nivel[8];
 } CabeceraGuardado;
 
@@ -131,7 +167,7 @@ s32 func_80014C54(void)
             p->c.suma = func_80041238(p, 0x200);
             if (p->c.suma == suma) {
                 D_8006D060 = p->c;
-                D_8006AA70[4] = D_8006D060.b4;
+                D_8006AA70[4] = D_8006D060.mascara;
                 if (ESTADO_PRINCIPAL->nivel == 0) {
                     D_8006AA70[0x2A] = D_8006D060.nivel[0].valor;
                     D_8006AA70[0x2B] = D_8006D060.nivel[0].valor >> 8;
@@ -386,12 +422,257 @@ s32 func_800151FC(void)
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
 #endif
 
+#ifdef NON_MATCHING
 /*
- * Sondeo por cuadro de la tarjeta de memoria (maquina de estados sobre D_8006AA70[0x0A]: 0, 1, 2, 3,
- * 4, 5, 6 con MemCardAccept, MemCardFormat y MemCardSync). Usa $gp en 35 accesos (0x38..0x4C($gp)):
- * pendiente de soporte -G8; sin intento en C, por lo que no hay puntuacion de diff que informar.
+ * Pendiente: puntuacion 3390 con la configuracion versionada (g = 8 del archivo). Flujo y estructura de bloques iguales al original;
+ * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en las cuentas de bloques y en los
+ * bucles del directorio, y el reparto de las divisiones por 0x2000.
+ *
+ * Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de registros (D_8006AA70[0xA]: 1 aceptar,
+ * 2 formatear, 3 crear el archivo, 4 grabar con sonido, 5 cargar, 6 grabar) y la limpia; despues sondea con MemCardSync(1) la ultima
+ * operacion asincrona de libmcrd (cmds = D_80069360, rslt = D_80069368). Con la tarjeta lista lee el directorio de la ranura 0, cuenta
+ * los bloques que ocupa cada archivo y comprueba el de la partida. Los destinos de tarjeta nueva y de partidas presentes viven entre
+ * las ramas de la orden 6 y se alcanzan con goto desde el sondeo: el original los coloca ahi y el compilador no reordena bloques.
+ * La reserva de 16 bytes mantiene el marco de pila del original. El argumento que pasa main se ignora.
  */
+void func_800156F4(void)
+{
+    u8 reserva[16];
+    s16 ranura;
+    s32 rc;
+    s32 fmt;
+    s32 orden;
+    s32 cmds;
+    s32 estado;
+    u32 rslt;
+    s32 i;
+    s32 j;
+    s32 tam;
+    s32 s1;
+    s32 s2;
+    s32 t;
+    s16* bloques;
+    EntradaDirectorio* ee;
+    s32 n;
+    s32 cuenta;
+    CabeceraGuardado* cab;
+
+    ranura = 0;
+    if (D_8006AA70[3] == 1) {
+        D_8006935C = 0;
+        MemCardSync(0, &D_80069360, &D_80069368);
+        MemCardAccept(0);
+        D_8006AA70[3] = 2;
+    }
+    orden = D_8006AA70[0xA];
+    if (orden != 0) {
+        if (orden == 1) {
+            D_8006935C = 0;
+            MemCardSync(0, &D_80069360, &D_80069368);
+            MemCardAccept(0);
+        } else if (orden == 2) {
+            MemCardSync(0, &D_80069360, &D_80069368);
+            fmt = MemCardFormat(0);
+            if (fmt == 0) {
+                D_8006AA70[0x1B] = 0xB;
+            } else if (fmt == 1) {
+                D_8006AA70[0x1B] = 0xC;
+            }
+        } else if (orden == 3) {
+            if (D_8006935C == 1) {
+                MemCardSync(0, &D_80069360, &D_80069368);
+                if (D_8006935E[0] >= 15) {
+                    D_8006AA70[0x1B] = 7;
+                } else {
+                    func_800151FC();
+                    MemCardSync(0, &D_80069360, &D_80069368);
+                    MemCardAccept(0);
+                }
+            }
+        } else if (orden == 4) {
+            if ((D_8006D060.mascara & (1 << (ESTADO_PRINCIPAL->r[BANCO_PARTIDA] - 1))) != 0 && D_8006AA70[0x1A] == 0) {
+                D_8006AA70[0x1B] = 0x13;
+                D_8006AA70[0x1A] = 2;
+            } else {
+                func_8003F06C(D_80069698, 0x40, 1, D_8006967C);
+                s2 = ESTADO_PRINCIPAL->r[0x10];
+                D_8006AA70[0x25] = 1;
+                D_8006AA70[0x1C] = 0;
+                D_8006AA70[0x1A] = 0;
+                D_8006AA70[0x1B] = 0x10;
+                s1 = ESTADO_PRINCIPAL->r[BANCO_PARTIDA];
+                func_80015EC0();
+                ESTADO_PRINCIPAL->r[0xE] = 0x38;
+                ESTADO_PRINCIPAL->r[0x8D] = 3;
+                ESTADO_PRINCIPAL->r[BANCO_PARTIDA] = s1;
+                ESTADO_PRINCIPAL->r[0x10] = s2;
+                cab = &D_8006D060;
+                cab->mascara |= 1 << (s1 - 1);
+            }
+        } else if (orden == 5) {
+            if (D_8006935C == 1) {
+                if ((D_8006D060.mascara & (1 << (ESTADO_PRINCIPAL->r[BANCO_PARTIDA] - 1))) != 0) {
+                    D_8006AA70[0x1C] = 0;
+                    D_8006AA70[0x25] = 1;
+                    D_8006AA70[0x1B] = 0x10;
+                    func_8003F06C(D_80069698, 0x40, 1, D_8006967C);
+                    s2 = ESTADO_PRINCIPAL->r[0x10];
+                    if (func_80014E24() != 0) {
+                        if (ESTADO_PRINCIPAL->nivel != 0) {
+                            ESTADO_PRINCIPAL->r[0xE] = ESTADO_PRINCIPAL->nivel;
+                        } else {
+                            ESTADO_PRINCIPAL->r[0xE] = 0x38;
+                        }
+                        D_80069594 = ESTADO_PRINCIPAL->r[0xA6];
+                        ESTADO_PRINCIPAL->r[0x10] = s2;
+                        ESTADO_PRINCIPAL->r[0xFB] = 0;
+                        ESTADO_PRINCIPAL->r[0x8D] = 3;
+                    } else {
+                        D_8006AA70[0x1B] = 0x14;
+                    }
+                } else {
+                    func_8003F06C(D_80069698, 0x41, 1, D_8006967C);
+                }
+            }
+        } else if (orden == 6) {
+            if (D_8006935C != 1) {
+                goto sin_bandera;
+            }
+            s2 = ESTADO_PRINCIPAL->r[0xA6];
+            ESTADO_PRINCIPAL->r[0xA6] = D_80069594;
+            if (func_8001515C() != 0) {
+                D_8006AA70[8] = 0xA;
+            } else {
+                D_8006AA70[8] = 1;
+                D_8006AA70[0x12] = 1;
+            }
+            ESTADO_PRINCIPAL->r[0xA6] = s2;
+            goto fin_ordenes;
+        tarjeta_nueva:
+            D_8006935C = 0;
+            MemCardAccept(0);
+            D_8006AA70[0x1B] = cmds;
+            D_8006AA70[0x1C] = 0;
+            D_8006AA70[0x1D] = 0;
+            D_8006AA70[0x1E] = 0;
+            D_8006AA70[0x22] = 0;
+            D_8006AA70[0x20] = 0;
+            D_8006AA70[0x23] = 0;
+            D_8006AA70[0x24] = 0;
+            return;
+        con_partidas:
+            D_8006AA70[0x24] = 1;
+            return;
+        sin_bandera:
+            D_8006AA70[8] = 2;
+            D_8006AA70[0x12] = 1;
+        }
+    fin_ordenes:
+        D_8006AA7A[0] = 0;
+    }
+    rc = MemCardSync(1, &D_80069360, &D_80069368);
+    switch (rc) {
+    case -1:
+        MemCardExist(0);
+        break;
+    case 0:
+        break;
+    case 1:
+        cmds = D_80069360;
+        switch (cmds) {
+        case 1:
+            rslt = D_80069368;
+            if (rslt != 0) {
+                if (rslt == 3) {
+                    goto tarjeta_nueva;
+                }
+                estado = D_8006AA70[0x1B];
+                if (estado != 4 && estado != 0xF && estado != 0x10) {
+                    D_8006935C = 0;
+                    D_80069358[0] = 0;
+                    D_80069358[1] = 0;
+                    D_8006AA70[0x1B] = 4;
+                    D_8006AA70[0x1C] = 0;
+                    D_8006AA70[0x1D] = 0;
+                    D_8006AA70[0x1E] = cmds;
+                    D_8006AA70[0x22] = 0;
+                    D_8006AA70[0x20] = 0;
+                    D_8006AA70[0x23] = 0;
+                    D_8006AA70[0x24] = 0;
+                }
+            }
+            break;
+        case 2:
+            rslt = D_80069368;
+            switch (rslt) {
+            case 0:
+            case 3:
+                D_8006935C = 1;
+                for (i = 0; i < 0x96U; i++) {
+                    ((s32*)D_800697B0)[i] = 0;
+                }
+                MemCardGetDirentry(ranura, D_80069324, &D_800697B0[ranura * 0x258], &D_80069358[ranura], 0, 15);
+                bloques = &D_8006935E[ranura];
+                *bloques = 0;
+                for (i = 0; i < D_80069358[ranura]; i++) {
+                    tam = ((EntradaDirectorio*)((s8*)D_800697B0 + ranura * 0x258))[i].tam;
+                    n = tam / 0x2000;
+                    cuenta = *bloques;
+                    if ((tam & 0x1FFF) != 0) {
+                        *bloques = cuenta + 1 + n;
+                    } else {
+                        *bloques = cuenta + n;
+                    }
+                }
+                i = 0;
+                t = i;
+                for (; i < D_80069358[0]; i++) {
+                    for (j = 0; D_800697B0[j + i * 0x28 + t * 120] != 0; j++) {
+                    }
+                    for (; j < 0x14; j++) {
+                        D_800697B0[j + i * 0x28 + t * 120] = 0;
+                    }
+                    ee = (EntradaDirectorio*)(D_800697B0 + i * 0x28 + t * 120);
+                    ee->attr = 0;
+                    ee->tam = 0;
+                    ee->sig = 0;
+                    ee->cabeza = 0;
+                    *(s32*)(D_800697B0 + 0x24 + i * 0x28 + t * 120) = 0;
+                }
+                D_8006936C = func_80014AC4(ranura);
+                if (D_8006936C >= 0) {
+                    if (ESTADO_PRINCIPAL->nivel == 0) {
+                        D_80069354 = func_80041238(D_800697B0, D_80069358[ranura] * 0x28);
+                        func_80014C54();
+                    } else {
+                        D_80069350 = func_80041238(D_800697B0, D_80069358[ranura] * 0x28);
+                        if (D_80069350 != D_80069354) {
+                            D_8006935C = 0;
+                        }
+                    }
+                    D_8006AA70[0x1B] = 0xE;
+                    if ((D_8006D060.mascara & 0x3F) != 0) {
+                        goto con_partidas;
+                    }
+                    D_8006AA70[0x24] = 2;
+                } else {
+                    D_8006AA70[0x1B] = 2;
+                    D_8006AA70[0x22] = 1;
+                }
+                break;
+            case 4:
+                D_8006AA70[0x1B] = 5;
+                D_8006AA70[0x1D] = 2;
+                break;
+            }
+            break;
+        }
+        break;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800156F4);
+#endif
 
 #ifdef NON_MATCHING
 /*
