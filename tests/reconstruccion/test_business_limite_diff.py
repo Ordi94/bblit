@@ -137,3 +137,17 @@ def test_diff_imprime_un_aviso_claro_si_la_salida_esta_truncada() -> None:
     assert cli.resumir_comparacion(completo) == ["f (src/a.c): puntuacion 70"]
     con_bytes = diff.ResultadoDiff("f", "src/a.c", 0, "", True, 2, 70, True)
     assert len(cli.resumir_comparacion(con_bytes)) == 3
+
+
+def test_el_truncado_se_distingue_con_el_limite_real_de_una_funcion_de_mas_de_1024_instrucciones(
+    repo_diff: Any,  # noqa: F811
+) -> None:
+    ruta = repo_diff / "asm" / "matchings" / "code_a" / "func_80036204.s"
+    ruta.write_text(asm_sintetico(1500), encoding="utf-8")
+    limite = 1500 + diff.MARGEN_LINEAS
+    exacto = comparar_con_filas(repo_diff, [fila("addiu")] * limite)
+    uno_menos = comparar_con_filas(repo_diff, [fila("addiu")] * (limite - 1))
+    con_el_minimo = comparar_con_filas(repo_diff, [fila("addiu")] * diff.LIMITE_MINIMO_LINEAS)
+    assert exacto.truncado is True
+    assert uno_menos.truncado is False
+    assert con_el_minimo.truncado is False, "un candidato de 1024 filas cabe en el limite de 1564"
