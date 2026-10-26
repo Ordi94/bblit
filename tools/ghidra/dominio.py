@@ -297,6 +297,43 @@ def construir_simbolos(funciones: list[Funcion]) -> list[Simbolo]:
     return simbolos
 
 
+def fusionar_simbolos(funciones: list[Simbolo], datos: list[Simbolo]) -> list[Simbolo]:
+    """
+    Fusiona los simbolos de funcion y los de datos pequenos en una sola lista ordenada.
+
+    Contexto:
+        Paso del comando ``simbolos`` previo a escribir la tabla: ``validar_simbolos`` exige orden
+        ascendente estricto global. Concatenar ambas listas solo cumplia el orden mientras todos
+        los datos estuvieran por encima del codigo; la fusion lo garantiza sea cual sea el rango
+        de busqueda de los datos y, si una funcion y un dato comparten direccion, lo dice con
+        los dos nombres en lugar de fallar mas abajo con un error de orden.
+
+    Args:
+        funciones (list[Simbolo]): Simbolos de funcion, en cualquier orden.
+        datos (list[Simbolo]): Simbolos de datos, en cualquier orden.
+
+    Returns:
+        list[Simbolo]: Todos los simbolos ordenados por direccion ascendente.
+
+    Raises:
+        ValueError: Si un simbolo de funcion y uno de datos comparten direccion; el mensaje
+            nombra ambos. Las repeticiones dentro de una misma lista las rechaza
+            ``validar_simbolos``.
+
+    Ejemplo:
+        simbolos = fusionar_simbolos(funciones, datos)
+    """
+    por_direccion = {s.direccion: s for s in funciones}
+    for dato in datos:
+        existente = por_direccion.get(dato.direccion)
+        if existente is not None:
+            raise ValueError(
+                f"direccion 0x{dato.direccion:08X} compartida por la funcion {existente.nombre} "
+                f"y el dato {dato.nombre}"
+            )
+    return sorted([*funciones, *datos], key=lambda simbolo: simbolo.direccion)
+
+
 def validar_simbolos(simbolos: list[Simbolo]) -> None:
     """
     Comprueba las reglas del contrato de la tabla de simbolos.

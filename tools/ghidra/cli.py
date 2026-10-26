@@ -32,6 +32,7 @@ from tools.ghidra.dominio import (
     Simbolo,
     calcular_informe,
     construir_simbolos,
+    fusionar_simbolos,
 )
 from tools.ghidra.ejecucion import (
     NOMBRE_EJECUTABLE,
@@ -238,7 +239,7 @@ def _comando_simbolos(args: argparse.Namespace, entorno: Mapping[str, str]) -> i
             segmento, DIRECCION_BASE, (DIRECCION_BASE, FIN_CODIGO), gp, DIRECCION_FIN
         )
     )
-    simbolos = [*funciones_finales, *datos]
+    simbolos = fusionar_simbolos(funciones_finales, datos)
     texto = formatear_tabla(simbolos)
     parsear_tabla(texto)
     nombres = {s.direccion: s.nombre for s in simbolos}

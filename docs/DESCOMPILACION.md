@@ -410,10 +410,17 @@ KiB cada una, nombres simples (`[A-Za-z0-9_.-]`). Todo el trabajo queda en `buil
 en `src/`. Se usa antes de `diff`: se prueban muchas formulaciones, se copia la mejor a `src/` bajo
 `NON_MATCHING` y se sigue con `diff`.
 
-**Límite conocido (pendiente):** `probar` no comprueba que la variante defina la función. Una variante vacía, o
-con solo la declaración, no se marca como error: aparece en la tabla con una puntuación alta y distinta de cero
-(medido: 400 para `func_800306C0` y 9800 para `func_80035244`). Hay que comprobar que la variante realmente
-define la función antes de fiarse de su posición en la tabla.
+Una variante que no define la función pedida (define otra, o está vacía o solo la declara) también es una fila de
+error: tras compilarla se consulta la tabla de símbolos del objeto y, si `.text` no trae la función con tamaño
+mayor que cero, la fila dice `error: la variante no define <función>`. Esa fila no lleva puntuación, no se envía a
+`asm-differ` (que puntuaría el hueco contra el original con un número alto pero válido) y queda al final de la
+tabla, igual que una que no compila:
+
+```text
+variante  puntuacion
+ok.c      70 (bytes iguales)
+otra.c    error: la variante no define func_800400C0
+```
 
 ## Invalidación de la salida
 

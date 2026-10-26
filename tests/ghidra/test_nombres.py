@@ -94,3 +94,9 @@ def test_una_direccion_que_no_es_inicio_de_funcion_se_reporta() -> None:
     resultado, choques = _aplicar(_tres(), {0x80020004: "Interior"})
     assert [s.nombre for s in resultado] == ["func_80020000", "func_80020008", "func_80020010"]
     assert choques == [Choque(0x80020004, "Interior", "sin funcion", "")]
+
+
+def test_dos_direcciones_que_piden_el_mismo_nombre_nuevo_solo_la_primera_lo_recibe() -> None:
+    resultado, choques = _aplicar(_tres(), {A: "Nuevo", B: "Nuevo"})
+    assert [s.nombre for s in resultado] == ["Nuevo", "func_80020008", "func_80020010"]
+    assert choques == [Choque(B, "Nuevo", "repetido", f"0x{A:08X}")]

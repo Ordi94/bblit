@@ -4,7 +4,9 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
+from tools.ghidra import cli
 from tools.ghidra.cli import construir_parser, main
+from tools.ghidra.dominio import Simbolo
 from tools.ghidra.ejecucion import ResultadoEjecucion
 
 from tests.ghidra.segmentos import cierre, escribir_ejecutable
@@ -193,6 +195,47 @@ def test_simbolos_escribe_la_tabla_exacta(
         "DecDCTReset = 0x80045DA0; // type:func size:0x60\n"
         "func_80045F28 = 0x80045F28; // type:func size:0x2C\n"
     )
+
+
+def _con_datos_pequenos(monkeypatch: pytest.MonkeyPatch, datos: list[Simbolo]) -> None:
+    """Fija un ``$gp`` y los datos pequenos que descubre el comando, sin depender del ejecutable."""
+    monkeypatch.setattr(cli, "leer_gp", lambda *_argumentos: 0x80069320)
+    monkeypatch.setattr(cli, "descubrir_datos_pequenos", lambda *_argumentos: datos)
+
+
+def test_simbolos_intercala_los_datos_por_direccion_aunque_caigan_entre_funciones(
+    tmp_path: Path,
+    funciones_csv: Path,
+    ejecutable: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _con_datos_pequenos(monkeypatch, [Simbolo("D_80017000", 0x80017000, "u32", 4)])
+    destino = tmp_path / "symbols.txt"
+    argumentos = ["simbolos", "--funciones", str(funciones_csv), "--salida", str(destino)]
+    assert main([*argumentos, "--exe", str(ejecutable)]) == 0
+    capsys.readouterr()
+    lineas = destino.read_text(encoding="utf-8").splitlines()
+    assert lineas[2].startswith("func_80016C0C = 0x80016C0C")
+    assert lineas[3] == "D_80017000 = 0x80017000; // type:u32 size:0x4"
+    assert lineas[4].startswith("DecDCTReset = 0x80045DA0")
+
+
+def test_simbolos_rechaza_un_dato_en_la_direccion_de_una_funcion_nombrando_ambos(
+    tmp_path: Path,
+    funciones_csv: Path,
+    ejecutable: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _con_datos_pequenos(monkeypatch, [Simbolo("D_80016414", 0x80016414, "u32", 4)])
+    destino = tmp_path / "symbols.txt"
+    argumentos = ["simbolos", "--funciones", str(funciones_csv), "--salida", str(destino)]
+    assert main([*argumentos, "--exe", str(ejecutable)]) == 2
+    assert capsys.readouterr().err == (
+        "error: direccion 0x80016414 compartida por la funcion main y el dato D_80016414\n"
+    )
+    assert not destino.exists()
 
 
 def test_simbolos_rechaza_un_csv_invalido_sin_escribir(
