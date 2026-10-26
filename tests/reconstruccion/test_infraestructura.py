@@ -513,3 +513,64 @@ def test_localizar_imagen_con_bin_en_subcarpetas_distintas_es_ambigua(tmp_path: 
         (tmp_path / carpeta / nombre).write_bytes(b"")
     with pytest.raises(ValueError, match=r"hay varias imagenes .bin"):
         infra.localizar_imagen(tmp_path)
+
+
+def preparar_funcion_local(raiz: Path) -> None:
+    carpeta = raiz / "asm" / "nonmatchings" / "inicio"
+    carpeta.mkdir(parents=True)
+    (carpeta / ".L80044904.s").write_text(
+        "nonmatching .L80044904, 0x8\n\nglabel .L80044904\n  .L8004490C:\n    nop\nendlabel .L80044904\n",
+        encoding="utf-8",
+    )
+    otra = raiz / "asm" / "nonmatchings" / "otro"
+    otra.mkdir(parents=True)
+    (otra / "func_80044664.s").write_text("glabel func_80044664\n    j .L80044904\n", encoding="utf-8")
+    (raiz / "src").mkdir()
+    (raiz / "src" / "inicio.c").write_text(
+        '#include "common.h"\n\nINCLUDE_ASM("asm/nonmatchings/inicio", .L80044904);\n', encoding="utf-8"
+    )
+
+
+def test_sanear_funciones_locales_renombra_archivo_directivas_saltos_y_esqueleto(raiz: Any) -> None:
+    preparar_funcion_local(raiz)
+    assert infra.sanear_funciones_locales(raiz) == [".L80044904"]
+    carpeta = raiz / "asm" / "nonmatchings" / "inicio"
+    assert [p.name for p in carpeta.iterdir()] == ["func_80044904.s"]
+    texto = (carpeta / "func_80044904.s").read_text(encoding="utf-8")
+    assert "glabel func_80044904" in texto and ".L8004490C:" in texto
+    assert "j func_80044904" in (raiz / "asm" / "nonmatchings" / "otro" / "func_80044664.s").read_text(
+        encoding="utf-8"
+    )
+    assert 'inicio", func_80044904);' in (raiz / "src" / "inicio.c").read_text(encoding="utf-8")
+    assert infra.sanear_funciones_locales(raiz) == [], "es idempotente"
+
+
+def test_sanear_funciones_locales_sin_nombres_locales_ni_src_no_cambia_nada(raiz: Any) -> None:
+    carpeta = raiz / "asm" / "nonmatchings" / "a"
+    carpeta.mkdir(parents=True)
+    (carpeta / "func_80010000.s").write_text("glabel func_80010000\n", encoding="utf-8")
+    assert infra.sanear_funciones_locales(raiz) == []
+    assert infra.sanear_funciones_locales(raiz / "no_existe") == []
+
+
+def test_sanear_funciones_locales_sin_carpeta_src(raiz: Any) -> None:
+    preparar_funcion_local(raiz)
+    (raiz / "src" / "inicio.c").unlink()
+    (raiz / "src").rmdir()
+    assert infra.sanear_funciones_locales(raiz) == [".L80044904"]
+
+
+class RegistroConFuncionLocal(Registro):
+    """Simula un splat que bautiza una funcion como etiqueta local."""
+
+    def __call__(self, comando: Any, directorio: Any, timeout_s: Any) -> Any:
+        salida = super().__call__(comando, directorio, timeout_s)
+        if "splat" in comando:
+            preparar_funcion_local(directorio)
+        return salida
+
+
+def test_dividir_sanea_las_funciones_locales_que_deja_splat(raiz: Any, original: Any) -> None:
+    infra.dividir(raiz, original, REFERENCIA, herramientas(), RegistroConFuncionLocal())
+    assert (raiz / "asm" / "nonmatchings" / "inicio" / "func_80044904.s").is_file()
+    assert "func_80044904" in (raiz / "src" / "inicio.c").read_text(encoding="utf-8")

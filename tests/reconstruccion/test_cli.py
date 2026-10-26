@@ -13,6 +13,7 @@ from tests.toolchain.ayudantes import bloque_componente, lock_de
 
 from .test_compilacion import SALIDA_OBJDUMP, EjecutorC
 from .test_diff import ASM_FUNCION, EjecutorDiff
+from .test_gp import EjecutorEnlace
 from .test_infraestructura import EJECUTABLE, REFERENCIA, Registro, referencia_json
 from .test_variantes import EjecutorVariantes, crear_repo, crear_variantes
 
@@ -353,3 +354,30 @@ def test_cli_probar_imprime_la_tabla_y_el_codigo_depende_de_la_mejor_variante(
         == 1
     )
     assert capsys.readouterr().err == "error: la carpeta de variantes no existe\n"
+
+
+def test_diff_que_coincide_en_bytes_sale_con_cero_y_avisa_de_las_referencias_numericas(
+    entorno_completo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_completo
+    assert ejecutar_cli(raiz, variables, "split") == 0
+    (raiz / "src").mkdir()
+    (raiz / "src" / "code_a.c").write_text(
+        "s32 func_80036204(s32 x)\n{\n    return x;\n}\n", encoding="utf-8"
+    )
+    (raiz / "asm" / "matchings" / "code_a").mkdir(parents=True)
+    (raiz / "asm" / "matchings" / "code_a" / "func_80036204.s").write_text(ASM_FUNCION, encoding="utf-8")
+    (raiz / "build" / "diff").mkdir(parents=True, exist_ok=True)
+    (raiz / "build" / "SLUS_008.elf").write_bytes(b"elf")
+    (raiz / "config" / "symbols.txt").write_text(
+        "func_80036204 = 0x80036204; // type:func size:0x4c\n", encoding="utf-8"
+    )
+    capsys.readouterr()
+    assert ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=EjecutorEnlace(70)) == 0
+    assert capsys.readouterr().out.endswith(
+        "func_80036204 (src/code_a.c): coincide en bytes; 2 referencias en forma numerica (puntuacion 70)\n"
+    )
+    assert (
+        ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=EjecutorEnlace(70, difiere=True)) == 1
+    )
+    assert capsys.readouterr().out.endswith("puntuacion 70\n")

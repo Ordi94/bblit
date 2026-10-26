@@ -87,6 +87,7 @@ def test_comando_maspsx_usa_aspsx_279_y_el_ensamblador_por_ruta() -> None:
         "py",
         "maspsx.py",
         "--aspsx-version=2.79",
+        "--use-comm-section",
         "--run-assembler",
         "--gnu-as-path=as.exe",
         "-EL",
@@ -236,7 +237,7 @@ def test_resolver_herramientas_compilacion_localiza_cada_ejecutable(tmp_path: Pa
     for relativa in ("psyq-4.4/pssn/bin/CPPPSX.EXE", "psyq-4.4/pssn/bin/CC1PSX.EXE", "maspsx/maspsx.py"):
         (tmp_path / relativa).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / relativa).write_bytes(b"")
-    for nombre in ("as.exe", "d.exe"):
+    for nombre in ("as.exe", "d.exe", "ld.exe", "o.exe"):
         (tmp_path / "binutils-mipsel" / "bin").mkdir(parents=True, exist_ok=True)
         (tmp_path / "binutils-mipsel" / "bin" / nombre).write_bytes(b"")
     herramientas = comp.resolver_herramientas_compilacion(lock_completo(), tmp_path, "py")
@@ -245,6 +246,8 @@ def test_resolver_herramientas_compilacion_localiza_cada_ejecutable(tmp_path: Pa
     assert herramientas.compilador.name == "CC1PSX.EXE"
     assert herramientas.maspsx == tmp_path / "maspsx" / "maspsx.py"
     assert herramientas.ensamblador.name == "as.exe" and herramientas.objdump.name == "d.exe"
+    assert herramientas.enlazador is not None and herramientas.enlazador.name == "ld.exe"
+    assert herramientas.objcopy is not None and herramientas.objcopy.name == "o.exe"
 
 
 def test_resolver_herramientas_compilacion_sin_sdk_instalado(tmp_path: Path) -> None:
@@ -327,3 +330,51 @@ def test_el_ejecutor_por_defecto_de_construir_mixto_es_ejecutar_proceso() -> Non
         "secciones_declaradas": (),
         "valor_g": 0,
     }
+
+
+MENSAJE_G_INVALIDO = "el valor de -G debe ser un entero entre 0 y 64"
+
+
+@pytest.mark.parametrize("valor_g", [0, 1, 8, 64])
+def test_los_comandos_llevan_el_g_pedido(valor_g: int) -> None:
+    compilador = comp.comando_compilar(Path("CC1PSX.EXE"), "a.i", "a.s", valor_g)
+    ensamblador = comp.comando_maspsx(herramientas_compilacion(), "a.s", "a.o", "asm/include", valor_g)
+    assert compilador[3] == f"-G{valor_g}"
+    assert f"-G{valor_g}" in ensamblador
+    assert sum(1 for a in ensamblador if a.startswith("-G")) == 1
+
+
+@pytest.mark.parametrize("valor_g", [-1, 65, 1000, True, False, "8", 8.0, None])
+def test_los_comandos_rechazan_un_g_fuera_de_rango_o_no_entero(valor_g: Any) -> None:
+    with pytest.raises(ValueError, match=MENSAJE_G_INVALIDO):
+        comp.comando_compilar(Path("CC1PSX.EXE"), "a.i", "a.s", valor_g)
+    with pytest.raises(ValueError, match=MENSAJE_G_INVALIDO):
+        comp.comando_maspsx(herramientas_compilacion(), "a.s", "a.o", "asm/include", valor_g)
+
+
+def test_el_g_del_toml_llega_a_los_comandos_reales_del_compilador_y_de_maspsx(tmp_path: Path) -> None:
+    preparar_construccion(tmp_path, SCRIPT_MIXTO)
+    (tmp_path / "src" / "b.c").write_text("int y;\n", encoding="utf-8")
+    (tmp_path / infra.SCRIPT_ENLAZADOR).write_text(
+        "main\n{\n    build/src/a.c.o(.text);\n    build/src/b.c.o(.text);\n}\n", encoding="utf-8"
+    )
+    (tmp_path / "config").mkdir()
+    (tmp_path / infra.OPCIONES_COMPILACION).write_text("[archivos.a]\ng = 8\n", encoding="utf-8")
+    ejecutor = EjecutorC(secciones=SALIDA_OBJDUMP.replace("0000001d", "00000000"))
+    comp.construir_mixto(tmp_path, REFERENCIA, herramientas_base(), herramientas_compilacion, ejecutor)
+
+    def g_por_archivo(programa: str, indice_archivo: int) -> dict[str, list[str]]:
+        comandos = [c for c in ejecutor.comandos if Path(c[0]).name == programa and "-o" in c]
+        resultado: dict[str, list[str]] = {}
+        for comando in comandos:
+            archivo = Path(comando[indice_archivo]).name.split(".")[0]
+            resultado[archivo] = [a for a in comando if a.startswith("-G")]
+        return resultado
+
+    assert g_por_archivo("CC1PSX.EXE", -1) == {"a": ["-G8"], "b": ["-G0"]}
+    ensamblados = {
+        Path(c[c.index("-o") + 1]).name.split(".")[0]: [a for a in c if a.startswith("-G")]
+        for c in ejecutor.comandos
+        if "--run-assembler" in c
+    }
+    assert ensamblados == {"a": ["-G8"], "b": ["-G0"]}

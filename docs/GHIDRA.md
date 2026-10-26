@@ -183,7 +183,8 @@ subsegmentos por archivo bajo `asm/nonmatchings/`, ver `docs/DESCOMPILACION.md`)
 - Funcion de libreria con nombre exportado por el SDK (identificada por firma): ese nombre
   (`DrawSync`, `CdReadSync`, `VSync`, ...).
 - La depuracion anterior dejo 908 simbolos; la separacion de rutinas por tablas de punteros (ver
-  abajo) la lleva a 1101, que es la tabla definitiva actual.
+  abajo) la lleva a 1101 funciones, la regla del retorno intermedio a 1102 y los 66 datos pequenos de `$gp` a 1168
+  lineas, que es la tabla definitiva actual.
 - Rutina interna de un objeto de libreria sin nombre exportado (Ghidra la llama
   `LIBPRESS_OBJ_188`: objeto y desplazamiento): `func_80XXXXXX`. El origen consta en la columna
   `libreria_origen` de `funciones.csv`, no en el nombre.
@@ -268,7 +269,7 @@ instruccion es destino de un `switch` consumido por la anterior.
 | Tablas de punteros a funcion en el juego | `0x8005E35C` (37 entradas, `jalr` en `0x8003607C`, consumida por `func_800353B0`; 31 destinos distintos, todos ya eran funcion), `0x8005E3F0` (92 entradas, `lw`+`jr` en `0x8002FA20`) y `0x8005E560` (102 entradas, `lw`+`jr` en `0x80030EF4`) |
 | Tablas de punteros a funcion en librerias | `0x800619AC`, `0x80067848`, `0x80067D9C` (sus destinos ya eran funciones de libreria) |
 | Tablas de `switch` | las 18 restantes, entre ellas las 5 de `func_800415A0` y las de `func_80035244`, `func_8003690C` y `func_8003C1C8` |
-| Simbolos de funcion | 908 antes, 1101 despues (908 - 1 + 194) |
+| Simbolos de funcion | 908 antes, 1101 despues (908 - 1 + 194); 1102 con la regla del retorno intermedio |
 | Funciones nuevas | 194, de 8 a 424 bytes cada una (6 de 8 bytes): 92 salen de `func_8002F9F8` y 102 de `func_80030ECC` |
 | Bloques madre tras partir | `func_8002F9F8` y `func_80030ECC` quedan de `0x38` bytes (el despachador y los `jr ra` de las rutas por defecto) |
 | Funciones del juego en el rango | 449 (antes 256 con `symbols.txt` y 262 con el parche) |
@@ -309,6 +310,91 @@ la copia salvo lo que se indica):
 `INCLUDE_ASM` de `src/` se regeneraron con la particion por subsistema y la comprobacion de reparto del archivo
 retirado se elimino. Las cifras de `docs/SUBSISTEMAS.md` y `docs/ARCHIVOS_ORIGEN.md` y los borradores se calcularon
 con la tabla de 908 simbolos; la fuente de las cifras actuales por subsistema es `docs/PROGRESO.md`.
+
+## Rutinas pegadas tras un retorno
+
+La regla de las tablas de punteros no ve las rutinas que nadie enumera. `func_8002FF38` (0x40 bytes) contenia dos
+rutinas de 0x20 bytes, cada una con su propio `jr ra`; la segunda no esta en ninguna tabla. Regla
+(`depuracion.py`, `_partir_por_retornos`, aplicada a las funciones del juego tras partir por tablas y fusionar
+continuaciones): un `jr ra` con su ranura de retardo en medio de una funcion separa dos rutinas si ninguna rama
+condicional ni `j` de la funcion cruza ese punto (ni de un lado al otro ni en sentido contrario), la ranura no es un
+salto, no hay destinos de `switch` a ambos lados ni en el propio punto, y las dos piezas cierran como funciones
+completas. La razon tecnica: todo lo que sigue a un retorno completo de una funcion de un solo cuerpo es destino de
+alguna rama anterior; si ninguna lo es, ese codigo solo puede alcanzarse llamandolo, es decir, es otra rutina. Las
+funciones con varios retornos legitimos siempre tienen ramas que cruzan el punto (el salto sobre el epilogo).
+
+Calibracion sobre la poblacion completa del codigo del juego: 41 puntos con `jr ra` en medio de una funcion, 40
+cruzados por alguna rama o `j` y 1 libre (`0x8002FF58`). La regla separa exactamente ese: `func_8002FF38` y
+`func_8002FF58`, de 0x20 bytes cada una. No parte ninguna funcion legitima (la tabla conserva las mismas 1101
+funciones anteriores mas esta).
+
+## Datos pequenos direccionados con `$gp`
+
+El codigo accede a variables pequenas con un desplazamiento de 16 bits sobre `$gp` (`0x80069320`, que el arranque
+fija con `lui gp` y `addiu gp`). Ninguna firma ni funcion las declara, pero el codigo las delata, y
+`tools/ghidra/datos_pequenos.py` las descubre por regla al generar la tabla: cada direccion `gp + desplazamiento`
+distinta es un simbolo `D_<direccion>`. El tipo y el tamano salen del acceso mas ancho: `lb`/`lbu`/`sb` dan `u8` de 1
+byte, `lh`/`lhu`/`sh` dan `u16` de 2 y `lw`/`sw` dan `u32` de 4. Si solo se toma la direccion (`addiu reg, gp, desp`)
+se declara `u8` con la distancia al siguiente dato como tamano, con tope de 0x40; es una cota superior, no el tamano
+real (afecta a `D_80069330`, `D_80069390` y `D_80069444`).
+
+Hay 66 datos, de `0x80069330` a `0x800694AC`: 63 acceden con `lb`/`lh`/`lw` y 3 solo con `addiu`. La evidencia de cada uno
+(mnemonicos, veces y funciones) esta en el aporte de simbolos. Dos cuestiones del formato:
+
+- `splat` solo acepta como `type:` los tipos de su lista (`u8`, `u16`, `u32`, `s32`, ...): `type:data` es un error de
+  lectura, asi que la tabla escribe el tipo concreto (`D_80069338 = 0x80069338; // type:u8 size:0x1`).
+- Un acceso ancho puede abarcar a la variable siguiente (`D_8006935C` u32 contiene a `D_8006935E` u16, que tambien se
+  accede como media palabra). Ambas se declaran y el validador de la tabla admite que un dato contenga a otro; dos
+  funciones, o una funcion y un dato, siguen sin poder solaparse.
+
+Con los datos en la tabla, `build` ya no necesita la seccion `[datos_pequenos]` de `config/opciones_compilacion.toml`:
+medido en una copia del repositorio con la seccion vaciada, `split`, `build` y `verify` dan OK (el `gp.ld` solo define
+`_gp`) y `python tools/build.py diff func_80040AF0` sigue en 0. Los consumidores de la tabla que solo tratan funciones
+(el grafo, los borradores, los subsistemas) ignoran los simbolos que no son `func`, igual que `progreso` y la lectura de
+direcciones de funcion de `build`.
+
+**Cifras tras esta regla:** 1102 simbolos de funcion (908 - 1 + 194 + 1) y 66 de dato, es decir 1168 lineas en
+`config/symbols.txt`. Las funciones en el rango del juego son 450.
+
+**Pendiente para el dueno de `src/`:** la funcion nueva `func_8002FF58` necesita su linea
+`INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8002FF58);` justo despues del bloque de `func_8002FF38` en
+`src/interprete_de_eventos.c`; sin ella el cuerpo enlazado mide 32 bytes menos que la cabecera y `build` falla. Con esa
+unica linea (medido en una copia): `clean`, `split`, `build` y `verify` dan OK, 871 `glabel` en `asm/` mas 231 funciones
+en C suman las 1102 de la tabla. Despues de esa linea el criterio de la tabla de simbolos pasa de 1101 a 1102 funciones.
+
+## Nombres de funciones
+
+`config/symbols.txt` no se edita a mano: se regenera con `python -m tools.ghidra simbolos`. Los nombres que no salen de
+una firma del SDK viven en un archivo propio y versionado, `config/nombres_funciones.txt`, con una linea
+`0xDIRECCION Nombre  # origen: ...` por funcion (se ignoran las lineas vacias y las que empiezan por `#`). El comando
+lo lee con `--nombres` y aplica cada nombre a la funcion que empieza en esa direccion:
+
+```text
+python -m tools.ghidra simbolos --funciones <funciones.csv> --salida config/symbols.txt --nombres config/nombres_funciones.txt --exe <SLUS_008.38>
+```
+
+Reglas (`tools/ghidra/nombres.py`):
+
+- Un nombre oficial del SDK identificado por firma, y `main`, tienen prioridad: si el archivo propone otro nombre
+  para esa direccion no se aplica y el comando informa del choque (`firma`). Si propone el mismo nombre no hay choque.
+- Un nombre que ya usa otro simbolo (de firma, por defecto `func_<direccion>` o del propio archivo) tampoco se aplica
+  (`repetido`); una direccion que no es inicio de funcion se informa como `sin funcion`.
+- El archivo se valida entero antes de usarlo: cada linea debe tener direccion de ocho digitos hexadecimales e
+  identificador C valido, y ni una direccion ni un nombre pueden repetirse.
+
+Contenido actual: 76 nombres, de la descompilacion de la version de PC del juego usada solo como referencia
+semantica, verificados contra nuestro desensamblado (el codigo de condicion o de accion de PC es el indice de las
+tablas `0x8005E3F0` y `0x8005E560`, la rutina de ese indice esta en la direccion indicada y la semantica coincide).
+Son 75 rutinas del juego (condiciones `Cond*` y acciones `Action*` del interprete de eventos, sus dos despachadores
+`TestLogicCond` y `RunLogicAction`, `BugsRand` y las cinco rutinas de la lista de nodos) y `TransMatrix`. Cuatro de
+ellas (`TestLogicCond`, `RunLogicAction`, `ActionAddgi`, `ActionSubgi`) se comportan distinto en PC y PS1, pero su
+nombre es correcto y se aplican. Se excluyen tres nombres dudosos hasta comprobarlos (`CondTpnmv`, `CondTpmov`,
+`GsSetProjection`). Con este archivo la regeneracion aplica los 76 y no tiene choques.
+
+Cambiar un nombre exige regenerar la tabla y renombrar el codigo que lo cita: las definiciones, los prototipos, las
+llamadas y las lineas `INCLUDE_ASM` de `src/` e `include/` (el ensamblador de `asm/nonmatchings/` se regenera con
+`split`). La documentacion historica (este documento, `docs/SUBSISTEMAS.md`, `docs/ARCHIVOS_ORIGEN.md`) sigue
+citando las funciones por su nombre automatico `func_<direccion>`; la correspondencia esta en el archivo de nombres.
 
 ## Analisis derivado de la exportacion
 

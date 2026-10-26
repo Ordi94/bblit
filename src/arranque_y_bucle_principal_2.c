@@ -1,4 +1,5 @@
 #include "common.h"
+#include "globales.h"
 #include "arranque.h"
 #include "psyq/TYPES.H"
 #include "psyq/LIBGTE.H"
@@ -30,10 +31,9 @@ extern u32 D_800694FC;
 extern volatile u16 D_80069676;
 /*
  * Estado de la maquina de `main`. Se declara s16 aqui: el asm compara con `lh` seis veces y solo el
- * incremento carga con `lhu`; declarado u16 (como en camara_y_bucle_logico.c) main sube de 1135 a
- * 2135. La discrepancia entre archivos se resuelve con una cabecera global unica de variables.
+ * incremento carga con `lhu`; declarado u16 main sube de 1135 a 2135. Los demas archivos usan la
+ * declaracion comun de globales.h.
  */
-extern s16 D_80069662;
 extern u8 D_800695DC;
 extern s32 D_8006CF68[];
 extern u8 D_8006AA70[];
@@ -77,7 +77,7 @@ extern void func_8003FD60(void);
 extern void func_8003E094(void);
 extern void func_8003E068(void);
 extern void func_800445E8(s16 nivel);
-extern s32 func_80032874(void);
+extern s32 BugsRand(void);
 extern s32 VSync(s32 modo);
 extern void SetDispMask(s32 mascara);
 extern void func_800443CC(void);
@@ -99,11 +99,6 @@ extern void func_80045150(void* a);
 extern void func_80037184(void* a);
 extern void func_8001020C(s32 a);
 
-#ifdef NON_MATCHING
-/*
- * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 295.
- * (con g = 8 el diff marca 80, solo simbolizacion de direcciones absolutas).
- */
 void func_80015EC0(void)
 {
     EstadoPrincipal* e;
@@ -132,15 +127,7 @@ void func_80015EC0(void)
     e->f1E = 0xFF;
     e->f20 = 0x7F;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80015EC0);
-#endif
 
-#ifdef NON_MATCHING
-/*
- * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 270.
- * (con g = 8 el diff marca 65, solo simbolizacion de direcciones absolutas).
- */
 void func_80015F38(void)
 {
     EstadoPrincipal* e;
@@ -167,15 +154,7 @@ void func_80015F38(void)
     e->fE7 = f;
     e->fE8 = g;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80015F38);
-#endif
 
-#ifdef NON_MATCHING
-/*
- * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 10.
- * (con g = 8 el diff marca 10, solo simbolizacion de direcciones absolutas).
- */
 void func_80015FC8(s32 segundos, u16 mascara)
 {
     s32 i;
@@ -188,14 +167,7 @@ void func_80015FC8(s32 segundos, u16 mascara)
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80015FC8);
-#endif
 
-#ifdef NON_MATCHING
-/*
- * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 0.
- */
 void func_80016044(void)
 {
     RECT r;
@@ -213,14 +185,7 @@ void func_80016044(void)
         i++;
     } while (i < 2);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80016044);
-#endif
 
-#ifdef NON_MATCHING
-/*
- * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 0.
- */
 void func_800160A8(void)
 {
     SetDispMask(0);
@@ -231,15 +196,7 @@ void func_800160A8(void)
     } while (PutDispEnv(&D_8006CF78) == 0);
     SetDispMask(1);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_800160A8);
-#endif
 
-#ifdef NON_MATCHING
-/*
- * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 25.
- * (con g = 8 el diff marca 25, solo simbolizacion de direcciones absolutas).
- */
 void func_80016118(void)
 {
     EstadoPrincipal* e;
@@ -259,15 +216,7 @@ void func_80016118(void)
     e->nivel = 2;
     func_80015FC8(2, 0);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80016118);
-#endif
 
-#ifdef NON_MATCHING
-/*
- * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 20.
- * (con g = 8 el diff marca 20, solo simbolizacion de direcciones absolutas).
- */
 void func_800161A8(void)
 {
     EstadoPrincipal* e;
@@ -284,18 +233,13 @@ void func_800161A8(void)
     func_80016044();
     func_80015FC8(0x14, 0x140);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_800161A8);
-#endif
 
-#ifdef NON_MATCHING
 /*
  * Actualiza un cuadro: contadores de tiempo, lectura de mandos, logica y ordenacion de primitivas.
  * La ordenacion corre con la pila en el bloque de memoria rapida (scratchpad): la pila se guarda en
  * 0x1F8003FC, se cambia a esa zona y se restaura al terminar. Las dos secuencias son ensamblador
  * porque el compilador no tiene forma de mover el puntero de pila.
  *
- * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 3603.
  */
 void func_80016218(void)
 {
@@ -329,22 +273,12 @@ void func_80016218(void)
                       "lw $29, 0($29)\n\t"
                       "nop");
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80016218);
-#endif
 
-#ifdef NON_MATCHING
-/*
- * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 10.
- */
 void func_800163E4(void)
 {
     func_8003E3C0();
     func_8003F3F0(D_8006967C);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_800163E4);
-#endif
 
 #ifdef NON_MATCHING
 /*
@@ -358,8 +292,7 @@ INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_800163E4);
  * constantes 2 y 3 y de la tabla de tiempos D_8006CF68, y la base `lui` del estado se hoistea antes
  * que en el original.
  *
- * NON_MATCHING: sin cerrar. Puntuacion 15140 con la configuracion versionada (-G0) y 1135 con
- * g = 8.
+ * NON_MATCHING: sin cerrar. Puntuacion 1135 (el archivo se compila con g = 8; 15140 con -G0).
  */
 s32 main(void)
 {
@@ -509,7 +442,7 @@ s32 main(void)
                 D_80069659 = 0;
                 func_80040240();
                 if (e->f4F == 0) {
-                    srand((func_80032874() + VSync(1)) % 300);
+                    srand((BugsRand() + VSync(1)) % 300);
                 } else {
                     func_80015F38();
                     if (demo == 0x4A) {

@@ -121,7 +121,7 @@ def test_validar_simbolos_acepta_una_tabla_correcta() -> None:
     validar_simbolos(
         [
             Simbolo("DrawSync", 0x80051938, "func", 0x68),
-            Simbolo("D_80060000", 0x80060001, "data", 4),
+            Simbolo("D_80060000", 0x80060001, "u32", 4),
         ]
     )
 
@@ -159,7 +159,7 @@ def test_validar_simbolos_rechaza_con_el_nombre_del_infractor(simbolos: list[Sim
 
 
 def test_validar_simbolos_no_exige_alineacion_a_los_datos() -> None:
-    validar_simbolos([Simbolo("D_80060001", 0x80060001, "data", 1)])
+    validar_simbolos([Simbolo("D_80060001", 0x80060001, "u8", 1)])
 
 
 def test_calcular_informe_cuenta_libreria_juego_y_cobertura() -> None:
@@ -196,3 +196,13 @@ def test_calcular_informe_no_cuenta_dos_veces_los_bytes_solapados() -> None:
 def test_calcular_informe_rechaza_direcciones_duplicadas() -> None:
     with pytest.raises(ValueError, match="direccion duplicada"):
         calcular_informe([funcion(0x80014A00, "a"), funcion(0x80014A00, "b")])
+
+
+def test_un_dato_puede_contener_al_siguiente_pero_una_funcion_no_puede_solaparse() -> None:
+    validar_simbolos(
+        [Simbolo("D_80069350", 0x80069350, "u32", 4), Simbolo("D_80069352", 0x80069352, "u16", 2)]
+    )
+    with pytest.raises(ValueError, match="se solapa con D_80069352"):
+        validar_simbolos([Simbolo("f", 0x80069350, "func", 8), Simbolo("D_80069352", 0x80069352, "u16", 2)])
+    with pytest.raises(ValueError, match="se solapa con f"):
+        validar_simbolos([Simbolo("D_80069350", 0x80069350, "u32", 8), Simbolo("f", 0x80069354, "func", 8)])

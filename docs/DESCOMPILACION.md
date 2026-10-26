@@ -258,29 +258,137 @@ extern u32 D_80069698;           /* palabra */
 - No hay que definir el símbolo: el enlazador lo resuelve contra `asm/data/` o contra
   `build/undefined_syms_auto.txt`. Definir un dato en C solo es posible cuando también se migra su
   zona (ver trampas).
+  Excepción: una variable pequeña direccionada por `$gp` se define (sin `extern`) en el archivo que la
+  usa; ver «Datos pequeños y `$gp`».
 - Cuando se identifique el propósito, se renombra en `config/symbols.txt` (única fuente de
   nombres) y se regenera con `split`.
 
 ## Opciones de compilación por archivo
 
 `config/opciones_compilacion.toml` declara, por archivo `src/<nombre>.c`, opciones que `build`,
-`diff` y `probar` aplican por igual (una sola función las lee). Hoy solo existe `g`, el umbral de
-datos pequeños (`-G`) del compilador, entero entre 0 y 64; los archivos que no figuran usan `-G0`:
+`diff` y `probar` aplican por igual (una sola función las lee, así que las tres órdenes compilan
+cada archivo con exactamente las mismas banderas). Tiene tres tablas:
 
 ```toml
-[archivos.camara_y_bucle_logico]
+[archivos.interprete_de_eventos]   # umbral de datos pequeños (-G) de ese archivo, 0 a 64
 g = 8
+
+[enlace]                           # valor de $gp que fija el arranque del juego
+gp = 0x80069320
+
+[datos_pequenos]                   # variables que el código direcciona con desplazamiento($gp)
+D_800694A8 = 0x800694A8
 ```
+
+Los archivos que no figuran usan `-G0`. Hoy compilan con `g = 8` los ocho archivos cuyo original
+usa datos pequeños o almacenes simbólicos: `camara_y_bucle_logico`, `arranque_y_bucle_principal_2`,
+`tarjeta_de_memoria`, `entrada_de_mando`, `graficos_y_gte`, `graficos_y_gte_10`, `graficos_y_gte_12` e
+`interprete_de_eventos`. La regla para añadir uno es empírica: una función que sale con puntuación
+distinta de cero en `-G0` y 0 con `-G8` demuestra que el original usó datos pequeños.
 
 Con un `-G` mayor que cero el compilador emite las variables externas pequeñas en forma
 simbólica (`sh $2,D_80069662`, que el ensamblador expande con `lui $at`), como el original, en
 lugar de `lui` más desplazamiento. Efecto medido en `func_80035244` (archivo
 `camara_y_bucle_logico`): 1.510 con `-G0`, 1.025 con `-G8` y 600 con `-G8` y la mejor variante del
 banco. La coincidencia exacta requiere además las constantes cargadas antes del bucle y el almacén
-fuera del hueco de retardo; el motivo queda en `docs/PROGRESO.md`. El valor `8` se declara para este
-archivo porque sus tres funciones con `$gp` lo necesitan; otros archivos se irán añadiendo con
-la evidencia de su primera función. El acceso por `$gp` se escribe con una variable de registro
-(`register u8* base_gp __asm__("$28");` y `*(s16*)(base_gp + 0x104)`).
+fuera del hueco de retardo; el motivo queda en `docs/PROGRESO.md`.
+
+## Datos pequeños y `$gp`
+
+El arranque del juego fija `$gp` en `0x80069320` (`lui gp,0x8007 ; addiu gp,gp,-0x6CE0`). Con datos
+pequeños (`-G8`) el código accede a las variables de unos pocos bytes con `desplazamiento($gp)` en
+lugar de `lui` más desplazamiento. El soporte tiene cuatro piezas que se apoyan entre sí.
+
+### Orden de emisión de GCC y la macro `INCLUDE_ASM`
+
+Con `-G0` `CC1PSX.EXE` emite las funciones C en el mismo orden en que aparecen en el fuente, entre los
+bloques `__asm__` de las funciones aún en ensamblador. Con `-G` mayor que cero emite primero todas las
+directivas `.globl` y deja **todos los cuerpos de funciones C al final**, después de cada `__asm__` de
+nivel superior: en un archivo mixto las funciones C acaban fuera de su posición y el ejecutable ya no
+coincide. La solución es la que documenta `maspsx` para este caso: `INCLUDE_ASM` (`include/macro.h`)
+envuelve el `__asm__` en una función ficticia `__maspsx_include_asm_hack_<NOMBRE>` cuyas líneas llevan la
+marca `# maspsx-keep`; `maspsx` comenta todo lo demás del envoltorio y deja el ensamblador en su sitio,
+de modo que el orden del fuente vuelve a ser el de salida con cualquier `-G`. Se comprobó con
+`interprete_de_eventos` (`g = 8`), que mezcla funciones en C, intentos `NON_MATCHING` e `INCLUDE_ASM` y
+reproduce el ejecutable con `verify` en OK.
+
+Ejemplo sintético, compilado de verdad con el compilador del proyecto: dos funciones C con un
+`INCLUDE_ASM` entre ellas.
+
+```c
+s32 func_primera_c(s32 x) { return x + D_80069338; }
+INCLUDE_ASM("asm_ejemplo", func_en_asm);
+s32 func_segunda_c(s32 x) { return x * 2; }
+```
+
+Orden en que `CC1PSX.EXE` emite las etiquetas, con la macro anterior (un `__asm__` suelto, sin función
+de relleno) y con la actual, y orden final de las funciones en `.text` del objeto:
+
+| Macro | `-G` | Salida de `cc1` (abreviada) | Orden en `.text` |
+|---|---|---|---|
+| sin relleno | 0 | `.globl primera`, `primera:`, `[asm func_en_asm]`, `.globl segunda`, `segunda:` | primera, en_asm, segunda (correcto) |
+| sin relleno | 8 | `.globl primera`, `[asm func_en_asm]`, `.globl segunda`, `primera:`, `segunda:` | en_asm, primera, segunda (**roto**) |
+| con relleno | 0 | `.globl primera`, `primera:`, `.globl hack_en_asm`, `hack_en_asm:`, `[asm func_en_asm]`, `.globl segunda`, `segunda:` | primera, en_asm, segunda (correcto) |
+| con relleno | 8 | `.globl primera`, `.globl hack_en_asm`, `.globl segunda`, `primera:`, `hack_en_asm:`, `[asm func_en_asm]`, `segunda:` | primera, en_asm, segunda (correcto) |
+
+Con `-G8` y sin relleno todos los `.globl` salen primero y el `__asm__` de nivel superior cae antes
+de cualquier cuerpo de función C: el ensamblador original queda al principio del archivo. Con el
+relleno, el `__asm__` pasa a ser el cuerpo de una función más y sigue el orden de las demás. El ejemplo,
+las salidas de `cc1` y el listado completo están en `analisis/reconstruccion/orden_emision/`, fuera de
+este repositorio (`ejemplo.c`, `medir_orden.py`, `salidas/` y `orden_emision.txt`).
+
+### Declarar una variable pequeña
+
+`maspsx` solo reescribe a `$gp` los símbolos que el **propio archivo define** (en `.sbss`, `.sdata` o
+como común); un símbolo `extern` queda como `lui`. Por eso:
+
+1. Se declara la variable en el archivo que la usa como **definición tentativa, sin `extern`**:
+   `u8 D_800694A8;`. Con `--use-comm-section` (que `build` pasa a `maspsx`) queda como símbolo común y
+   la reubicación `GPREL16` apunta al símbolo mismo.
+2. Se añade `D_800694A8 = 0x800694A8` a `[datos_pequenos]`. `build` escribe `build/gp.ld` con
+   `_gp = 0x80069320;` y una asignación por símbolo, y lo pasa al enlazador después del script
+   principal: la asignación sustituye al símbolo común y el desplazamiento resultante es el exacto del
+   original (`lw v0,0x188(gp)`). Son símbolos absolutos: no mueven ningún byte.
+3. Se define en **un solo archivo**; si otro archivo lo usa, lo declara `extern` y accede por `lui`.
+
+Cuando `config/symbols.txt` declare esos datos pequeños se retirarán de `[datos_pequenos]` (hoy figuran
+allí porque el ejecutable original no los nombra).
+
+### Detectar un acceso por `$gp`
+
+En el ensamblador de la función (`asm/nonmatchings/<archivo>/<función>.s`) se busca
+`desplazamiento($gp)`: la dirección de la variable es `0x80069320` más el desplazamiento con signo
+(`0x188($gp)` es `0x800694A8`). El mnemónico da el tamaño (`lb`/`sb` un byte, `lh`/`sh` dos, `lw`/`sw`
+cuatro). En el juego hay 63 desplazamientos distintos. Si el original accede así a una variable, ese
+archivo se compiló con datos pequeños y se declara con `g = 8`. La variable de registro
+`register u8* base_gp __asm__("$28");` (`include/globales.h`) sigue siendo válida para acceder por
+desplazamiento a una zona sin nombre, pero en algunos casos reserva el marco antes de cargar la bandera
+y el orden de las instrucciones ya no es el del original: una variable definida en el archivo es
+preferible.
+
+### Cuando `maspsx` no reescribe el símbolo
+
+- **Variable externa que debía ser pequeña**: el código sale con `lui` más desplazamiento. Se define en el
+  archivo (pasos 1 y 2) en lugar de declararla `extern`.
+- **`addiu rX,$gp,desplazamiento` (dirección de una variable pequeña)**: ASPSX 2.79 no lo emite; hace falta
+  ASPSX 2.80 o posterior (`gp_allow_la` en `maspsx`). Las tres funciones de `tarjeta_de_memoria` que lo
+  necesitan (`func_80014AC4`, `func_80015E94` y `func_800156F4`) se quedan en `NON_MATCHING`.
+
+### Comparación por bytes (`diff` y `probar`)
+
+`asm-differ` compara instrucción por instrucción con los símbolos como los escribe el objeto, de modo que
+un C que accede a `0x800694A8` por `$gp` y el original pueden diferir solo en la **forma** (inmediato
+numérico frente a símbolo) aunque tras enlazar produzcan los mismos bytes. Cuando la puntuación no es 0,
+`diff` y `probar` enlazan el candidato y el original por separado en la dirección de la función
+(`config/symbols.txt`), resolviendo los símbolos contra `build/SLUS_008.elf` de la última construcción
+correcta, y comparan los bytes. Si coinciden, `diff` termina con código 0 y avisa:
+
+```text
+func_800400C0 (src/graficos_y_gte_10.c): coincide en bytes; 14 referencias en forma numerica (puntuacion 70)
+```
+
+y `probar` marca la variante con `(bytes iguales)`. Sin `build/SLUS_008.elf` o sin la dirección en la
+tabla de símbolos no se hace la comparación por bytes y vale la puntuación de `asm-differ`.
 
 ## Banco de variantes (`probar`)
 
@@ -338,7 +446,8 @@ su uso es un error de compilación a propósito. Las macros de carga y lectura d
   `INCLUDE_ASM`.
 - Los bytes salen del tamaño declarado en `config/symbols.txt`.
 - Intentos pendientes hoy (`docs/PROGRESO.md` los lista con su motivo): `func_8002F990` (puntuación 350) y
-  `func_80035244` (puntuación 600 con `-G8`).
+  `func_80035244` (puntuación 600 con `-G8`), entre otros: la lista completa está en
+  `docs/PROGRESO.md`.
 - Control de coherencia: los `glabel` de `asm/` más las funciones en C deben sumar las funciones
   de la tabla; si no, `progreso` termina con error y hay que ejecutar `split`.
 
@@ -350,10 +459,10 @@ una decisión del desarrollador, así el progreso solo cuenta lo que alguien esc
 | Orden | Efecto |
 |---|---|
 | `split` | Copia el original a `expected/`, ejecuta el particionador y genera `asm/`, `src/` (los `.c` que falten) y el script del enlazador. No toca `asm/overlay/`. |
-| `build` | Para cada objeto del script del enlazador: ensambla el `.s` o compila el `.c` (preprocesador, `CC1PSX.EXE -O2 -G0`, `maspsx --aspsx-version=2.79`, `as`). Enlaza en el orden del script y escribe `build/SLUS_008.38`. Antes de empezar elimina la salida de la construcción anterior (ver «Invalidación de la salida»). |
+| `build` | Para cada objeto del script del enlazador: ensambla el `.s` o compila el `.c` (preprocesador, `CC1PSX.EXE -O2 -G<g>`, `maspsx --aspsx-version=2.79`, `as`). Enlaza en el orden del script y escribe `build/SLUS_008.38`. Antes de empezar elimina la salida de la construcción anterior (ver «Invalidación de la salida»). |
 | `verify` | Compara el SHA-256 con el del original. Imprime `OK` o `FAIL` con el desplazamiento de la primera diferencia; si no existe el ejecutable reconstruido imprime `FAIL ... no existe` y devuelve 1. |
-| `diff <función>` | Compila el `.c` que contiene la función con `NON_MATCHING`, ensambla el original y ejecuta `asm-differ`. Código 0 solo si la puntuación es 0. Una función que sigue solo en `INCLUDE_ASM` se rechaza: compararla consigo misma daría 0 sin significar nada. |
-| `probar <función> <carpeta>` | Compila y puntúa cada variante `.c` de la carpeta contra el original y muestra la tabla ordenada. Código 0 solo si la mejor tiene puntuación 0. |
+| `diff <función>` | Compila el `.c` que contiene la función con `NON_MATCHING`, ensambla el original y ejecuta `asm-differ`. Código 0 si la puntuación es 0 o si los bytes enlazados coinciden (con aviso del número de referencias en forma numérica). Una función que sigue solo en `INCLUDE_ASM` se rechaza: compararla consigo misma daría 0 sin significar nada. |
+| `probar <función> <carpeta>` | Compila y puntúa cada variante `.c` de la carpeta contra el original y muestra la tabla ordenada. Código 0 si la mejor coincide (puntuación 0 o bytes iguales). |
 | `progreso` | Escribe `docs/PROGRESO.md` y `build/progreso.json`. No necesita el disco ni el toolchain. |
 | `clean` | Elimina `asm/`, `expected/` y los artefactos propios de `build/`. Conserva `asm/overlay/`, `expected/overlay/`, `build/overlay/`, `build/emulador/` y `build/bblit_prueba.*`, que son de otras herramientas. |
 
@@ -361,6 +470,16 @@ Los objetos intermedios (`.i`, `.s` y `.o` de cada compilación) quedan en `buil
 `diff` en `build/diff/`.
 
 ## Trampas conocidas
+
+- **Funciones llamadas `.L<direccion>` por el particionador.** Si otra función salta con `j` al inicio de
+  una función que `config/symbols.txt` no nombra, `splat` la trata como etiqueta local: el `.s` se llama
+  `.L80044904.s` y el esqueleto `.c` lleva `INCLUDE_ASM(..., .L80044904)`, que no compila. `split` las
+  renombra a `func_<direccion>` en el archivo, en las directivas, en los saltos que las referencian y en
+  los esqueletos de `src/`. Las etiquetas locales de dentro de una función no se tocan.
+- **Los esqueletos regenerados no traen los datos que posee el código.** Con `src/` borrado, `split` genera
+  los 25 `.c` y todos compilan, pero el enlace falla por los símbolos de los subsegmentos `.data` que
+  pertenecen a un archivo C (hoy `D_8005E04C`, de `tarjeta_de_memoria`): el esqueleto no lleva ningún
+  `INCLUDE` de ese dato. Por eso `src/` forma parte del repositorio y no se regenera.
 
 - **Datos y tablas de salto que el compilador emite.** `CC1PSX.EXE` deja las constantes, las
   cadenas y las tablas de salto de un `switch` en `.rdata` (que el ensamblador llama `.rodata`)
@@ -371,9 +490,9 @@ Los objetos intermedios (`.i`, `.s` y `.o` de cada compilación) quedan en `buil
   `0x800375F8`, cinco palabras, y los cuatro de `0x80014AB4`). El particionador los emite como
   `dlabel` con `.word`; entran por `INCLUDE_ASM` como cualquier otra pieza y no cuentan como
   función en `progreso`. No se pueden pasar a C.
-- **`-G` no es igual para todos los archivos.** El valor por omisión es `-G0` (la cabecera
-  declara `gp0 = 0`), pero 46 funciones del juego usan `desplazamiento($gp)`, señal de que su
-  archivo original se compiló con datos pequeños. Ver «Opciones de compilación por archivo».
+- **`-G` no es igual para todos los archivos.** El valor por omisión es `-G0`, pero muchas funciones
+  del juego usan `desplazamiento($gp)` o almacenes simbólicos, señal de que su archivo original se
+  compiló con `-G8`. Ver «Opciones de compilación por archivo» y «Datos pequeños y `$gp`».
 - **`CC1PSX.EXE` no preprocesa.** Por eso `#include` y las macros pasan antes por `CPPPSX.EXE`
   con `-Iinclude`. La macro `INCLUDE_ASM` usa `#NAME` y concatenación de cadenas, que el
   preprocesador del SDK soporta.

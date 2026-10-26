@@ -22,6 +22,7 @@ from tools.ghidra.borradores import (
     generar_borradores,
     seleccionar_funciones,
 )
+from tools.ghidra.datos_pequenos import descubrir_datos_pequenos, leer_gp
 from tools.ghidra.depuracion import depurar_funciones, refinar_con_tablas
 from tools.ghidra.dominio import (
     DIRECCION_BASE,
@@ -60,6 +61,7 @@ from tools.ghidra.grafo import (
 )
 from tools.ghidra.lectura import leer_funciones_csv
 from tools.ghidra.limites import VENTANAS, calcular_limites, formatear_archivos_csv, proponer_archivos
+from tools.ghidra.nombres import Choque, aplicar_nombres, parsear_nombres
 from tools.ghidra.simbolos import escribir_atomico, formatear_nuevas_csv, formatear_tabla, parsear_tabla
 from tools.ghidra.subsistemas import (
     caracterizar,
@@ -119,6 +121,9 @@ def construir_parser() -> argparse.ArgumentParser:
     simbolos.add_argument("--salida", type=Path, required=True, help="archivo symbols.txt a escribir")
     simbolos.add_argument("--exe", type=Path, help=f"ruta de {NOMBRE_EJECUTABLE} (o variable BBLIT_DISC)")
     simbolos.add_argument("--tablas", type=Path, help="CSV donde escribir la clasificacion de las tablas")
+    simbolos.add_argument(
+        "--nombres", type=Path, help="archivo de nombres de funciones (config/nombres_funciones.txt)"
+    )
     simbolos.add_argument("--nuevas", type=Path, help="CSV donde escribir las funciones nuevas y fusionadas")
 
     informe = sub.add_parser("informe", help="imprime conteos y cobertura de funciones.csv")
@@ -219,7 +224,21 @@ def _comando_simbolos(args: argparse.Namespace, entorno: Mapping[str, str]) -> i
     de_puntero = {d for t in tablas if t.tipo == "puntero_a_funcion" for d in t.destinos}
     de_salto = {d for t in tablas if t.tipo == "salto" for d in t.destinos}
     refinado = refinar_con_tablas(depuracion.funciones, segmento, de_puntero, de_salto)
-    simbolos = construir_simbolos(refinado.funciones)
+    funciones_finales = construir_simbolos(refinado.funciones)
+    del_archivo: dict[int, str] = {}
+    choques: list[Choque] = []
+    if args.nombres is not None:
+        del_archivo = parsear_nombres(args.nombres.read_text(encoding="utf-8"))
+        funciones_finales, choques = aplicar_nombres(funciones_finales, refinado.funciones, del_archivo)
+    gp = leer_gp(segmento, DIRECCION_BASE, (DIRECCION_BASE, FIN_CODIGO))
+    datos = (
+        []
+        if gp is None
+        else descubrir_datos_pequenos(
+            segmento, DIRECCION_BASE, (DIRECCION_BASE, FIN_CODIGO), gp, DIRECCION_FIN
+        )
+    )
+    simbolos = [*funciones_finales, *datos]
     texto = formatear_tabla(simbolos)
     parsear_tabla(texto)
     nombres = {s.direccion: s.nombre for s in simbolos}
@@ -232,7 +251,8 @@ def _comando_simbolos(args: argparse.Namespace, entorno: Mapping[str, str]) -> i
         )
     if args.nuevas is not None:
         escribir_atomico(
-            args.nuevas, formatear_nuevas_csv(refinado.nuevas, refinado.fusionadas, simbolos, antes)
+            args.nuevas,
+            formatear_nuevas_csv(refinado.nuevas, refinado.fusionadas, simbolos, antes, refinado.por_retorno),
         )
     escribir_atomico(args.salida, texto)
     print(
@@ -244,9 +264,14 @@ def _comando_simbolos(args: argparse.Namespace, entorno: Mapping[str, str]) -> i
     print(
         f"tablas: {len(tablas)} ({de_puntero_n} de punteros a funcion, "
         f"{len(tablas) - de_puntero_n} de switch); "
-        f"{len(refinado.nuevas)} funciones nuevas, {len(refinado.fusionadas)} continuaciones fusionadas, "
+        f"{len(refinado.nuevas)} funciones nuevas, {len(refinado.por_retorno)} separadas por retorno, "
+        f"{len(refinado.fusionadas)} continuaciones fusionadas, "
         f"{len(refinado.conflictos)} destinos no aplicados"
     )
+    if args.nombres is not None:
+        print(f"nombres: {len(del_archivo) - len(choques)} aplicados o ya iguales, {len(choques)} choques")
+        for choque in choques:
+            print(f"choque 0x{choque.direccion:08X} {choque.nombre}: {choque.motivo} ({choque.existente})")
     return 0
 
 
@@ -281,7 +306,7 @@ def _cargar_analisis(args: argparse.Namespace, entorno: Mapping[str, str], ejecu
     """Obtiene el desensamblado propio y construye el grafo."""
     exe = resolver_ejecutable(args.exe, entorno)
     segmento = leer_segmento(exe)
-    simbolos = parsear_tabla(args.simbolos.read_text(encoding="utf-8"))
+    simbolos = [s for s in parsear_tabla(args.simbolos.read_text(encoding="utf-8")) if s.tipo == "func"]
     texto = asegurar_desensamblado(
         exe,
         args.simbolos,

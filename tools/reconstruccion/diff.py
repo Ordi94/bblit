@@ -23,8 +23,15 @@ from tools.reconstruccion.compilacion import (
     HerramientasCompilacion,
     compilar_fuente,
 )
+from tools.reconstruccion.enlace_diff import bytes_coinciden, contar_referencias_numericas
 from tools.reconstruccion.fuentes_c import EstadoFuncion
-from tools.reconstruccion.infraestructura import CARPETA_DIFF, Ejecutor, leer_valores_g, listar_fuentes_c
+from tools.reconstruccion.infraestructura import (
+    CARPETA_DIFF,
+    Ejecutor,
+    leer_direcciones_de_funciones,
+    leer_valores_g,
+    listar_fuentes_c,
+)
 
 TIMEOUT_DIFF_S = 120
 CARPETA_ASM_COINCIDENTE = "asm/matchings"
@@ -42,17 +49,22 @@ class ResultadoDiff:
         archivo: Archivo C que la contiene.
         puntuacion: Puntuacion de ``asm-differ`` (0 es coincidencia exacta).
         texto: Diferencias instruccion por instruccion, listas para imprimir.
+        bytes_iguales: Si los bytes de la funcion enlazada coinciden con los del original (``None``
+            si no se pudo comparar o la puntuacion ya era cero).
+        referencias_numericas: Filas cuya unica diferencia es una referencia escrita como numero.
     """
 
     funcion: str
     archivo: str
     puntuacion: int
     texto: str
+    bytes_iguales: bool | None = None
+    referencias_numericas: int = 0
 
     @property
     def coincide(self) -> bool:
-        """Verdadero si la puntuacion es cero."""
-        return self.puntuacion == 0
+        """Verdadero si la puntuacion es cero o si los bytes enlazados son iguales."""
+        return self.puntuacion == 0 or self.bytes_iguales is True
 
 
 class FuncionSinCError(ValueError):
@@ -325,8 +337,22 @@ def comparar_funcion(
         )
 
     puntuacion = puntuacion_desde_json(lanzar("json"))
-    texto = lanzar("plain")
-    return ResultadoDiff(funcion, archivo, puntuacion, texto.rstrip("\n"))
+    texto = lanzar("plain").rstrip("\n")
+    iguales = None
+    referencias = 0
+    direccion = leer_direcciones_de_funciones(raiz).get(funcion)
+    if puntuacion != 0 and direccion is not None:
+        iguales = bytes_coinciden(
+            raiz,
+            herramientas,
+            ejecutar,
+            funcion=funcion,
+            direccion=direccion,
+            candidato=candidato,
+            objetivo=objetivo,
+        )
+        referencias = contar_referencias_numericas(texto) if iguales else 0
+    return ResultadoDiff(funcion, archivo, puntuacion, texto, iguales, referencias)
 
 
 def preparar_objetivo(

@@ -102,7 +102,14 @@ def _ejecutar_comparacion(raiz: Path, rutas: Rutas, funcion: str, python: str, e
     script = resolver_herramienta(lock, rutas.toolchain, "asm-differ", "diff")
     resultado = diff.comparar_funcion(raiz, funcion, herramientas, script, ejecutar)
     print(resultado.texto)
-    print(f"{resultado.funcion} ({resultado.archivo}): puntuacion {resultado.puntuacion}")
+    resumen = f"{resultado.funcion} ({resultado.archivo}): puntuacion {resultado.puntuacion}"
+    if resultado.bytes_iguales and resultado.puntuacion != 0:
+        resumen = (
+            f"{resultado.funcion} ({resultado.archivo}): coincide en bytes; "
+            f"{resultado.referencias_numericas} referencias en forma numerica "
+            f"(puntuacion {resultado.puntuacion})"
+        )
+    print(resumen)
     return 0 if resultado.coincide else 1
 
 
@@ -117,7 +124,7 @@ def _ejecutar_probar(
         raiz, funcion, carpeta, herramientas, script_diff=script, ejecutar=ejecutar
     )
     print(variantes.formatear_tabla(resultados))
-    return 0 if resultados[0].puntuacion == 0 else 1
+    return 0 if resultados[0].coincide else 1
 
 
 def _ejecutar_construccion(

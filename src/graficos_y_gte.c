@@ -16,7 +16,7 @@ extern NodoVolumen* D_80069580;
  * lleva al sistema local del otro objeto con la inversa de sus angulos y se compara con su caja
  * ampliada por el radio. mascara filtra por indicadores; o es el area de trabajo.
  *
- * NON_MATCHING: 456 con la configuracion versionada (-G0) y 456 con g=8 (depende de -G8; el archivo hoy compila con -G0).
+ * NON_MATCHING: puntuacion 456 (el archivo se compila con g = 8; 456 tambien con -G0).
  * Diferencia: el original no saca &o->m del bucle y el compilador si.
  */
 #ifdef NON_MATCHING
@@ -70,11 +70,9 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80016C0C);
  * Variante de func_80016C0C que copia antes del bucle la posicion y la caja del objeto a al
  * area de trabajo y compara contra esas copias; devuelve el primer objeto solido que la
  * contiene.
- * NON_MATCHING: puntuacion con la configuracion versionada (-G0): 230; con g=8: 0. Depende de
- * -G8; el archivo hoy compila con -G0. Con g=8 el puntero global se carga directamente en $s0;
- * con -G0 la parte alta va a otro registro. Un archivo mixto con -G8 reordena el codigo.
+ * Con g = 8 (config/opciones_compilacion.toml) el puntero global se carga directamente en $s0;
+ * con -G0 la parte alta iria a otro registro (230).
  */
-#ifdef NON_MATCHING
 ObjetoVolumen* func_80016ED0(ObjetoVolumen* a, u32 mascara, ConsultaCaja* o)
 {
     GEO_COMPLEMENTO(&a->rot);
@@ -118,16 +116,13 @@ ObjetoVolumen* func_80016ED0(ObjetoVolumen* a, u32 mascara, ConsultaCaja* o)
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80016ED0);
-#endif
 
 /*
  * Variante con el punto a probar y una segunda mascara de exclusion como argumentos y el area
  * de trabajo como quinto argumento (en pila); el radio se ensancha 4 unidades.
  *
- * NON_MATCHING: 603 con la configuracion versionada (-G0) y 408 con g=8 (depende de -G8; el archivo hoy
- * compila con -G0). Misma diferencia que func_80016C0C con &o->m.
+ * NON_MATCHING: puntuacion 408 (el archivo se compila con g = 8; 603 con -G0). Misma diferencia
+ * que func_80016C0C con &o->m.
  */
 #ifdef NON_MATCHING
 ObjetoVolumen* func_800171E4(ObjetoVolumen* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o)
@@ -265,11 +260,9 @@ s32 func_80018F80(ObjetoVolumen* a, ObjetoVolumen* b, ConsultaVolumen* o)
  * Recorre la lista de nodos de plano y devuelve el primero que contiene el punto p visto desde
  * el objeto a: pasa al sistema local del nodo (con rotacion si el bit 0 de sus indicadores esta
  * apagado) y acota x y z por sus limites; en y lo acota por el margen del objeto.
- * NON_MATCHING: puntuacion con la configuracion versionada (-G0): 205; con g=8: 0. Depende de
- * -G8; el archivo hoy compila con -G0. Con g=8 el puntero global se carga directamente en $s0;
- * con -G0 la parte alta va a otro registro. Un archivo mixto con -G8 reordena el codigo.
+ * Con g = 8 (config/opciones_compilacion.toml) el puntero global se carga directamente en $s0;
+ * con -G0 la parte alta iria a otro registro (205).
  */
-#ifdef NON_MATCHING
 NodoVolumen* func_80019180(ObjetoVolumen* a, VECTOR* p, ConsultaPlano* o)
 {
     NodoVolumen* n;
@@ -313,6 +306,3 @@ siguiente:
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80019180);
-#endif

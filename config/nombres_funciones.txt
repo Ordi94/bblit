@@ -1,0 +1,89 @@
+# Nombres de funciones para config/symbols.txt.
+#
+# Formato: `0xDIRECCION Nombre  # origen: ...` (una por linea; las lineas vacias y las que empiezan por # se ignoran).
+# `python -m tools.ghidra simbolos` lo lee y aplica el nombre a la funcion que empieza en esa direccion. Los
+# nombres oficiales del SDK por firma tienen prioridad: si una direccion del archivo ya tiene nombre oficial no se
+# cambia y el comando informa del choque. Un nombre repetido o igual al de otro simbolo tambien se informa y no se
+# aplica. Nunca se edita config/symbols.txt a mano: se cambia este archivo y se regenera la tabla.
+#
+# Origen: la descompilacion de la version de PC del juego, usada solo como referencia semantica (sin copiar su codigo).
+# Cada nombre se verifico contra nuestro desensamblado: el codigo de condicion o de accion de PC es el indice de las
+# tablas 0x8005E3F0 y 0x8005E560, la rutina de ese indice esta en la direccion indicada y la semantica coincide. Se
+# excluyen tres nombres dudosos (CondTpnmv, CondTpmov, GsSetProjection) hasta comprobarlos.
+#
+0x8002F9F8 TestLogicCond  # origen: version PC, functions.md fila 82 (game/logic); el comportamiento de PC y PS1 difiere, el nombre es el mismo
+0x8002FA30 CondTrue  # origen: version PC, functions.md fila 83 (game/logic)
+0x8002FA38 CondCiseq  # origen: version PC, functions.md fila 84 (game/logic)
+0x8002FA60 CondCseq  # origen: version PC, functions.md fila 85 (game/logic)
+0x8002FA90 CondCisne  # origen: version PC, functions.md fila 86 (game/logic)
+0x8002FAB8 CondCsne  # origen: version PC, functions.md fila 87 (game/logic)
+0x8002FAE8 CondCsseq  # origen: version PC, functions.md fila 88 (game/logic)
+0x8002FB18 CondCisltu  # origen: version PC, functions.md fila 89 (game/logic)
+0x8002FB38 CondCislt  # origen: version PC, functions.md fila 90 (game/logic)
+0x8002FB58 CondCsltu  # origen: version PC, functions.md fila 91 (game/logic)
+0x8002FB80 CondCslt  # origen: version PC, functions.md fila 92 (game/logic)
+0x8002FBA8 CondCisleu  # origen: version PC, functions.md fila 93 (game/logic)
+0x8002FBD0 CondCisgtu  # origen: version PC, functions.md fila 94 (game/logic)
+0x8002FBF0 CondCisgt  # origen: version PC, functions.md fila 95 (game/logic)
+0x8002FC10 CondCsgtu  # origen: version PC, functions.md fila 96 (game/logic)
+0x8002FC38 CondCsgt  # origen: version PC, functions.md fila 97 (game/logic)
+0x8002FC60 CondCisgeu  # origen: version PC, functions.md fila 98 (game/logic)
+0x8002FC88 CondTismnz  # origen: version PC, functions.md fila 99 (game/logic)
+0x8002FCB0 CondTisaz  # origen: version PC, functions.md fila 100 (game/logic)
+0x8002FCD8 CondTismz  # origen: version PC, functions.md fila 101 (game/logic)
+0x8002FD00 CondCigeq  # origen: version PC, functions.md fila 102 (game/logic)
+0x8002FD24 CondCgeq  # origen: version PC, functions.md fila 103 (game/logic)
+0x8002FD50 CondCigne  # origen: version PC, functions.md fila 104 (game/logic)
+0x8002FD74 CondCgne  # origen: version PC, functions.md fila 105 (game/logic)
+0x8002FDA0 CondCggeq  # origen: version PC, functions.md fila 106 (game/logic)
+0x8002FDCC CondCigltu  # origen: version PC, functions.md fila 107 (game/logic)
+0x8002FDE8 CondCiglt  # origen: version PC, functions.md fila 108 (game/logic)
+0x8002FE04 CondCgltu  # origen: version PC, functions.md fila 109 (game/logic)
+0x8002FE28 CondCigleu  # origen: version PC, functions.md fila 110 (game/logic)
+0x8002FE4C CondCiggtu  # origen: version PC, functions.md fila 111 (game/logic)
+0x8002FE68 CondCiggt  # origen: version PC, functions.md fila 112 (game/logic)
+0x8002FE84 CondCggtu  # origen: version PC, functions.md fila 113 (game/logic)
+0x8002FEA8 CondCiggeu  # origen: version PC, functions.md fila 114 (game/logic)
+0x8002FECC CondTigmnz  # origen: version PC, functions.md fila 115 (game/logic)
+0x8002FEF0 CondTigaz  # origen: version PC, functions.md fila 116 (game/logic)
+0x8002FF14 CondTigmz  # origen: version PC, functions.md fila 117 (game/logic)
+0x800306D0 CondTisxz  # origen: version PC, functions.md fila 118 (game/logic)
+0x800306F8 CondTigxz  # origen: version PC, functions.md fila 119 (game/logic)
+0x8003071C CondTbdact  # origen: version PC, functions.md fila 120 (game/logic)
+0x80030734 CondTbuact  # origen: version PC, functions.md fila 121 (game/logic)
+0x80030ECC RunLogicAction  # origen: version PC, functions.md fila 125 (game/logic); el comportamiento de PC y PS1 difiere, el nombre es el mismo
+0x80030F04 ActionNop  # origen: version PC, functions.md fila 126 (game/logic)
+0x80030F0C ActionIncs  # origen: version PC, functions.md fila 127 (game/logic)
+0x80030F30 ActionIncg  # origen: version PC, functions.md fila 128 (game/logic)
+0x80030F88 ActionMovsi  # origen: version PC, functions.md fila 129 (game/logic)
+0x80030FA4 ActionMovgi  # origen: version PC, functions.md fila 130 (game/logic)
+0x80030FBC ActionDecs  # origen: version PC, functions.md fila 131 (game/logic)
+0x80030FE0 ActionDecg  # origen: version PC, functions.md fila 132 (game/logic)
+0x80031038 ActionClrs  # origen: version PC, functions.md fila 133 (game/logic)
+0x80031050 ActionClrg  # origen: version PC, functions.md fila 134 (game/logic)
+0x80031064 ActionNegs  # origen: version PC, functions.md fila 135 (game/logic)
+0x80031088 ActionNegg  # origen: version PC, functions.md fila 136 (game/logic)
+0x800310A8 ActionOrsi  # origen: version PC, functions.md fila 137 (game/logic)
+0x800310D0 ActionOrgi  # origen: version PC, functions.md fila 138 (game/logic)
+0x800310F4 ActionAndsi  # origen: version PC, functions.md fila 139 (game/logic)
+0x8003111C ActionAndgi  # origen: version PC, functions.md fila 140 (game/logic)
+0x80031140 ActionMovss  # origen: version PC, functions.md fila 141 (game/logic)
+0x80031164 ActionMovgg  # origen: version PC, functions.md fila 142 (game/logic)
+0x80031184 ActionMovgs  # origen: version PC, functions.md fila 143 (game/logic)
+0x800311AC ActionMovsg  # origen: version PC, functions.md fila 144 (game/logic)
+0x800311D4 ActionIncss  # origen: version PC, functions.md fila 145 (game/logic)
+0x80031214 ActionIncgg  # origen: version PC, functions.md fila 146 (game/logic)
+0x800312B0 ActionRnds  # origen: version PC, functions.md fila 147 (game/logic)
+0x800312F8 ActionRndg  # origen: version PC, functions.md fila 148 (game/logic)
+0x80031694 ActionAddsi  # origen: version PC, functions.md fila 149 (game/logic)
+0x800316BC ActionAddgi  # origen: version PC, functions.md fila 150 (game/logic); el comportamiento de PC y PS1 difiere, el nombre es el mismo
+0x80031714 ActionSubsi  # origen: version PC, functions.md fila 151 (game/logic)
+0x8003173C ActionSubgi  # origen: version PC, functions.md fila 152 (game/logic); el comportamiento de PC y PS1 difiere, el nombre es el mismo
+0x800319CC ActionGvcrt  # origen: version PC, functions.md fila 153 (game/logic)
+0x80032874 BugsRand  # origen: version PC, functions.md fila 154 (game/misc)
+0x80036204 AllocListNode  # origen: version PC, functions.md fila 155 (game/list)
+0x80036250 InitListPool  # origen: version PC, functions.md fila 156 (game/list)
+0x800362D0 RemoveListNode  # origen: version PC, functions.md fila 157 (game/list)
+0x80036358 ClearList  # origen: version PC, functions.md fila 158 (game/list)
+0x8003638C AppendListNode  # origen: version PC, functions.md fila 159 (game/list)
+0x8004FADC TransMatrix  # origen: version PC, functions.md fila 57 (sdk/gte)

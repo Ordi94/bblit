@@ -404,6 +404,133 @@ def fuente_de_objeto(objeto: str) -> str:
 MAX_VALOR_G = 64
 _CLAVES_OPCIONES = frozenset({"g"})
 _PATRON_ARCHIVO_C = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
+_PATRON_DATO_PEQUENO = re.compile(r"^D_[0-9A-F]{8}$")
+_PATRON_FUNCION_SIMBOLO = re.compile(r"^([A-Za-z_]\w*)\s*=\s*0x([0-9A-Fa-f]{1,8})\s*;\s*//(.*)$")
+
+
+def valor_gp(datos: object) -> int | None:
+    """
+    Lee el valor del registro ``$gp`` que declara ``config/opciones_compilacion.toml``.
+
+    Contexto:
+        El juego fija ``$gp`` en su arranque (``lui gp,0x8007 ; addiu gp,gp,-0x6CE0``) y accede a
+        los datos pequenos con ``desplazamiento($gp)``. El enlazador necesita el simbolo ``_gp``
+        con ese valor para resolver las referencias relativas a ``$gp`` de los objetos C; es un
+        simbolo absoluto y no cambia ningun byte si ningun objeto lo referencia.
+
+    Args:
+        datos (object): Resultado de ``tomllib.loads``; tabla opcional ``enlace`` con la clave ``gp``.
+
+    Returns:
+        int | None: Valor de ``_gp``, o ``None`` si no se declara.
+
+    Raises:
+        ValueError: Si la forma no es la esperada o ``gp`` no es un entero de 32 bits alineado a 4.
+
+    Ejemplo:
+        gp = valor_gp({"enlace": {"gp": 0x80069320}})
+    """
+    if not isinstance(datos, dict):
+        raise ValueError("opciones de compilacion: se esperaba una tabla")
+    enlace = datos.get("enlace")
+    if enlace is None:
+        return None
+    if not isinstance(enlace, dict) or set(enlace) - {"gp"}:
+        raise ValueError("opciones de compilacion: 'enlace' solo admite la clave 'gp'")
+    gp = enlace.get("gp")
+    if isinstance(gp, bool) or not isinstance(gp, int) or not 0 < gp <= MAX_U32 or gp % 4:
+        raise ValueError("opciones de compilacion: 'enlace.gp' debe ser un entero de 32 bits multiplo de 4")
+    return gp
+
+
+def direcciones_de_funciones(texto: str) -> dict[str, int]:
+    """
+    Extrae la direccion de cada funcion de un archivo de simbolos de splat.
+
+    Contexto:
+        ``diff`` necesita la direccion de la funcion en el ejecutable para enlazar su candidato
+        en el mismo sitio y comparar los bytes.
+
+    Args:
+        texto (str): Contenido de ``config/symbols.txt``.
+
+    Returns:
+        dict[str, int]: Direccion por nombre; las lineas que no son funciones se ignoran.
+
+    Ejemplo:
+        direcciones = direcciones_de_funciones("f = 0x80014AC4; // type:func size:0x10")
+    """
+    direcciones: dict[str, int] = {}
+    for linea in texto.splitlines():
+        coincidencia = _PATRON_FUNCION_SIMBOLO.match(linea.strip())
+        if coincidencia is not None and "type:func" in coincidencia.group(3):
+            direcciones[coincidencia.group(1)] = int(coincidencia.group(2), 16)
+    return direcciones
+
+
+def datos_pequenos(datos: object) -> dict[str, int]:
+    """
+    Lee la tabla ``datos_pequenos`` de ``config/opciones_compilacion.toml``.
+
+    Contexto:
+        Un archivo C que accede a una variable pequena con ``desplazamiento($gp)`` la declara como
+        definicion tentativa (``s32 D_800694A8;``): ``maspsx`` la emite como simbolo comun y
+        reescribe sus accesos a ``$gp``. El enlace debe fijar la direccion real de esos simbolos
+        (el ejecutable original no los nombra porque su codigo los direcciona por desplazamiento);
+        esta tabla da nombre y direccion a cada uno hasta que ``config/symbols.txt`` los declare.
+
+    Args:
+        datos (object): Resultado de ``tomllib.loads``; tabla opcional ``datos_pequenos`` con
+            ``NOMBRE = direccion``.
+
+    Returns:
+        dict[str, int]: Direccion por nombre de simbolo.
+
+    Raises:
+        ValueError: Si la forma no es la esperada, un nombre no es un identificador ``D_<direccion>``
+            o la direccion no es un entero de 32 bits.
+
+    Ejemplo:
+        simbolos = datos_pequenos({"datos_pequenos": {"D_800694A8": 0x800694A8}})
+    """
+    if not isinstance(datos, dict):
+        raise ValueError("opciones de compilacion: se esperaba una tabla")
+    tabla = datos.get("datos_pequenos", {})
+    if not isinstance(tabla, dict):
+        raise ValueError("opciones de compilacion: 'datos_pequenos' debe ser una tabla")
+    simbolos: dict[str, int] = {}
+    for nombre, direccion in tabla.items():
+        if not _PATRON_DATO_PEQUENO.match(nombre):
+            raise ValueError(f"opciones de compilacion: simbolo '{nombre}' no valido (se espera D_XXXXXXXX)")
+        if isinstance(direccion, bool) or not isinstance(direccion, int) or not 0 < direccion <= MAX_U32:
+            raise ValueError(f"opciones de compilacion: direccion de '{nombre}' no valida")
+        if int(nombre[2:], 16) != direccion:
+            raise ValueError(f"opciones de compilacion: '{nombre}' no coincide con su direccion")
+        simbolos[nombre] = direccion
+    return simbolos
+
+
+def texto_gp_ld(gp: int, simbolos: dict[str, int] | None = None) -> str:
+    """
+    Genera el fragmento de script del enlazador que define ``_gp``.
+
+    Contexto:
+        ``build`` lo escribe en ``build/gp.ld`` y lo pasa al enlazador despues del script principal.
+
+    Args:
+        gp (int): Valor de ``_gp``.
+        simbolos (dict[str, int], opcional): Datos pequenos a los que dar direccion
+            (``datos_pequenos``).
+
+    Returns:
+        str: Lineas de asignacion para el enlazador.
+
+    Ejemplo:
+        texto = texto_gp_ld(0x80069320)
+    """
+    lineas = [f"_gp = 0x{gp:08X};\n"]
+    lineas += [f"{nombre} = 0x{direccion:08X};\n" for nombre, direccion in sorted((simbolos or {}).items())]
+    return "".join(lineas)
 
 
 def valores_g_por_archivo(datos: object) -> dict[str, int]:
@@ -431,8 +558,10 @@ def valores_g_por_archivo(datos: object) -> dict[str, int]:
     Ejemplo:
         valores = valores_g_por_archivo({"archivos": {"camara_y_bucle_logico": {"g": 8}}})
     """
-    if not isinstance(datos, dict) or set(datos) - {"archivos"}:
-        raise ValueError("opciones de compilacion: solo se admite la tabla 'archivos'")
+    if not isinstance(datos, dict) or set(datos) - {"archivos", "enlace", "datos_pequenos"}:
+        raise ValueError(
+            "opciones de compilacion: solo se admiten las tablas 'archivos', 'enlace' y 'datos_pequenos'"
+        )
     tabla = datos.get("archivos", {})
     if not isinstance(tabla, dict):
         raise ValueError("opciones de compilacion: 'archivos' debe ser una tabla")
@@ -559,3 +688,58 @@ def comando_enlazar(enlazador: Path, scripts: Sequence[str], elf: str, mapa: str
 def comando_objcopy(objcopy: Path, elf: str, binario: str) -> list[str]:
     """Devuelve los argumentos que extraen la imagen binaria plana de un ELF."""
     return [str(objcopy), "-O", "binary", elf, binario]
+
+
+_PATRON_FUNCION_LOCAL = re.compile(r"^\s*glabel\s+\.L([0-9A-Fa-f]{8})\s*$", re.MULTILINE)
+
+
+def funciones_con_nombre_local(texto_asm: str) -> frozenset[str]:
+    """
+    Busca las funciones que el particionador bautizo como etiqueta local (``.L<direccion>``).
+
+    Contexto:
+        Cuando otra funcion salta con ``j`` a la direccion de inicio de una funcion que la tabla
+        de simbolos no nombra, ``splat`` la trata como etiqueta local y la llama ``.L80044904``: un
+        nombre que no es un identificador de C y que, como nombre de archivo, empieza por punto.
+        Las etiquetas locales genuinas de dentro de una funcion no se declaran con ``glabel``, asi
+        que solo se consideran las que si lo hacen. ``split`` las renombra a ``func_<direccion>``.
+
+    Args:
+        texto_asm (str): Contenido de un archivo ``.s`` generado por el particionador.
+
+    Returns:
+        frozenset[str]: Nombres con punto inicial (``.L80044904``) declarados con ``glabel``.
+
+    Ejemplo:
+        nombres = funciones_con_nombre_local(texto_del_asm)
+    """
+    return frozenset(f".L{direccion}" for direccion in _PATRON_FUNCION_LOCAL.findall(texto_asm))
+
+
+def renombrar_funciones_locales(texto: str, nombres: frozenset[str]) -> str:
+    """
+    Sustituye cada nombre ``.L<direccion>`` de ``nombres`` por ``func_<direccion>``.
+
+    Contexto:
+        Segunda mitad del saneo de ``split``: se aplica a todos los ``.s`` (definicion y saltos que
+        la referencian) y a los esqueletos ``.c``. Solo toca los nombres indicados, de modo que las
+        etiquetas locales de dentro de una funcion no cambian.
+
+    Args:
+        texto (str): Contenido de un ``.s`` o ``.c``.
+        nombres (frozenset[str]): Nombres a sustituir, de ``funciones_con_nombre_local``.
+
+    Returns:
+        str: Texto con los nombres sustituidos.
+
+    Ejemplo:
+        nuevo = renombrar_funciones_locales("j .L80044904", frozenset({".L80044904"}))
+    """
+    if not nombres:
+        return texto
+
+    def sustituir(coincidencia: re.Match[str]) -> str:
+        nombre = coincidencia.group(0)
+        return f"func_{nombre[2:]}" if nombre in nombres else nombre
+
+    return re.sub(r"\.L[0-9A-Fa-f]{8}(?![0-9A-Za-z_])", sustituir, texto)

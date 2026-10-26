@@ -17,18 +17,30 @@ __asm__(".include \"macro.inc\"\n");
  * descompilada. FOLDER es una cadena literal con la carpeta (relativa a la raiz del
  * repositorio) y NAME el nombre de la funcion sin comillas ni extension.
  *
+ * El __asm__ va dentro de una funcion de relleno llamada __maspsx_include_asm_hack_<NAME>:
+ * con un umbral de datos pequenos (-G) mayor que cero el compilador emite todos los cuerpos de
+ * funcion al final del archivo, DESPUES de cualquier __asm__ de nivel superior, y un archivo que
+ * mezcla C e INCLUDE_ASM saldria con las funciones en otro orden que el original. Dentro de una
+ * funcion, el ensamblador incluido sigue el mismo orden de emision que las funciones en C, con
+ * cualquier -G. maspsx reconoce el prefijo del nombre y conserva solo las lineas marcadas con
+ * "# maspsx-keep" (el resto del relleno, prologo y epilogo, se descarta).
+ *
  * Los .set noat/noreorder son necesarios porque el ensamblador original usa $at y rellena
  * a mano los huecos de salto; al terminar se restauran los valores que espera la salida del
  * compilador.
  */
 #define INCLUDE_ASM(FOLDER, NAME) \
-    __asm__( \
-        ".section .text\n" \
-        "    .set noat\n" \
-        "    .set noreorder\n" \
-        "    .include \"" FOLDER "/" #NAME ".s\"\n" \
-        "    .set reorder\n" \
-        "    .set at\n")
+    void __maspsx_include_asm_hack_##NAME() \
+    { \
+        __asm__( \
+            ".text # maspsx-keep\n" \
+            "\t.align\t2 # maspsx-keep\n" \
+            "\t.set noreorder # maspsx-keep\n" \
+            "\t.set noat # maspsx-keep\n" \
+            ".include \"" FOLDER "/" #NAME ".s\" # maspsx-keep\n" \
+            "\t.set reorder # maspsx-keep\n" \
+            "\t.set at # maspsx-keep\n"); \
+    }
 
 /*
  * INCLUDE_RODATA(carpeta, simbolo)

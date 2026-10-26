@@ -1,9 +1,10 @@
 #include "eventos.h"
+#include "globales.h"
 
 /*
  * Rutinas del interprete de eventos. Las tablas de saltos de condiciones (D_8005E3F0) y de
  * acciones (D_8005E560) apuntan a las rutinas hoja de este archivo; las dos entradas que las
- * recorren (func_8002F9F8 y func_80030ECC) son ensamblador manuscrito.
+ * recorren (TestLogicCond y RunLogicAction) son ensamblador manuscrito.
  *
  * Las rutinas bajo NON_MATCHING con cuerpo completo reproducen el original compiladas con -G8:
  * el original escribe las variables globales con la forma simbolica (lui $at) y accede por
@@ -79,7 +80,6 @@ extern Byte D_8006965A;
 extern Byte D_8006965B;
 extern u8 D_8006965E;
 /* Se lee con lh en func_80031FE0 y se escribe con sh: s16. */
-extern s16 D_80069662;
 extern s8 D_8006966A;
 extern u8 D_80069674;
 extern s16 D_8006967C;
@@ -100,7 +100,7 @@ extern u16 D_8006D9A8[5];
 extern void func_8002F990();
 extern void func_8001CFCC(void* a0);
 extern void func_8001D588(s32 a0, void* a1);
-extern s32 func_80032874(void);
+extern s32 BugsRand(void);
 extern void func_8003AA50(s32 a0, s32 a1);
 extern void func_8003AA7C(s32 a0, s32 a1);
 extern void func_8003DFE4(void);
@@ -113,104 +113,103 @@ extern s32 func_80045C4C(s32 a0, s32 a1, s32 a2);
 extern s32 ratan2(s32 a0, s32 a1);
 
 /* Acceso a la base de $gp: los datos pequenos del original se direccionan por registro. */
-register u8* base_gp __asm__("$28");
 
 
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8002F9F8);
+INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", TestLogicCond);
 
-s32 func_8002FA30(void) { return 1; }
+s32 CondTrue(void) { return 1; }
 
 /* Compara un byte de un registro con la entrada de la tabla D_8006AA70 que indica otro byte. */
-s32 func_8002FA38(void* a0, u8* a1)
+s32 CondCiseq(void* a0, u8* a1)
 {
     return D_8006AA70[a1[2]] == a1[1];
 }
 
-s32 func_8002FA60(void* a0, u8* a1) { return D_8006AA70[a1[2]] == D_8006AA70[a1[1]]; }
+s32 CondCseq(void* a0, u8* a1) { return D_8006AA70[a1[2]] == D_8006AA70[a1[1]]; }
 
-s32 func_8002FA90(void* a0, u8* a1) { return D_8006AA70[a1[2]] != a1[1]; }
+s32 CondCisne(void* a0, u8* a1) { return D_8006AA70[a1[2]] != a1[1]; }
 
-s32 func_8002FAB8(void* a0, u8* a1) { return D_8006AA70[a1[2]] != D_8006AA70[a1[1]]; }
+s32 CondCsne(void* a0, u8* a1) { return D_8006AA70[a1[2]] != D_8006AA70[a1[1]]; }
 
-s32 func_8002FAE8(void* a0, u8* a1) { return D_8006AA70[a1[2]] == D_8006AA70[a1[1]]; }
+s32 CondCsseq(void* a0, u8* a1) { return D_8006AA70[a1[2]] == D_8006AA70[a1[1]]; }
 
-/* Igual que func_8002FA38 pero con la comparacion 'mayor que'. */
-s32 func_8002FB18(void* a0, u8* a1)
+/* Igual que CondCiseq pero con la comparacion 'mayor que'. */
+s32 CondCisltu(void* a0, u8* a1)
 {
     return D_8006AA70[a1[2]] > a1[1];
 }
 
-s32 func_8002FB38(void* a0, u8* a1) { return (s8)D_8006AA70[a1[2]] > (s8)a1[1]; }
+s32 CondCislt(void* a0, u8* a1) { return (s8)D_8006AA70[a1[2]] > (s8)a1[1]; }
 
-s32 func_8002FB58(void* a0, u8* a1) { return D_8006AA70[a1[2]] > D_8006AA70[a1[1]]; }
+s32 CondCsltu(void* a0, u8* a1) { return D_8006AA70[a1[2]] > D_8006AA70[a1[1]]; }
 
-s32 func_8002FB80(void* a0, u8* a1) { return (s8)D_8006AA70[a1[2]] > (s8)D_8006AA70[a1[1]]; }
+s32 CondCslt(void* a0, u8* a1) { return (s8)D_8006AA70[a1[2]] > (s8)D_8006AA70[a1[1]]; }
 
-s32 func_8002FBA8(void* a0, u8* a1) { return D_8006AA70[a1[2]] >= a1[1]; }
+s32 CondCisleu(void* a0, u8* a1) { return D_8006AA70[a1[2]] >= a1[1]; }
 
-s32 func_8002FBD0(void* a0, u8* a1) { return D_8006AA70[a1[2]] < a1[1]; }
+s32 CondCisgtu(void* a0, u8* a1) { return D_8006AA70[a1[2]] < a1[1]; }
 
-s32 func_8002FBF0(void* a0, u8* a1) { return (s8)D_8006AA70[a1[2]] < (s8)a1[1]; }
+s32 CondCisgt(void* a0, u8* a1) { return (s8)D_8006AA70[a1[2]] < (s8)a1[1]; }
 
-s32 func_8002FC10(void* a0, u8* a1) { return D_8006AA70[a1[2]] < D_8006AA70[a1[1]]; }
+s32 CondCsgtu(void* a0, u8* a1) { return D_8006AA70[a1[2]] < D_8006AA70[a1[1]]; }
 
-s32 func_8002FC38(void* a0, u8* a1) { return (s8)D_8006AA70[a1[2]] < (s8)D_8006AA70[a1[1]]; }
+s32 CondCsgt(void* a0, u8* a1) { return (s8)D_8006AA70[a1[2]] < (s8)D_8006AA70[a1[1]]; }
 
-s32 func_8002FC60(void* a0, u8* a1) { return D_8006AA70[a1[2]] <= a1[1]; }
+s32 CondCisgeu(void* a0, u8* a1) { return D_8006AA70[a1[2]] <= a1[1]; }
 
-s32 func_8002FC88(void* a0, u8* a1) { return (D_8006AA70[a1[2]] & a1[1]) != 0; }
+s32 CondTismnz(void* a0, u8* a1) { return (D_8006AA70[a1[2]] & a1[1]) != 0; }
 
-s32 func_8002FCB0(void* a0, u8* a1) { return (D_8006AA70[a1[2]] & a1[1]) == 0; }
+s32 CondTisaz(void* a0, u8* a1) { return (D_8006AA70[a1[2]] & a1[1]) == 0; }
 
-s32 func_8002FCD8(void* a0, u8* a1) { return (D_8006AA70[a1[2]] & a1[1]) == 0; }
-
-/* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FD00(void* a0, u8* a1) { return RA[a1[2]] == a1[1]; }
+s32 CondTismz(void* a0, u8* a1) { return (D_8006AA70[a1[2]] & a1[1]) == 0; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FD24(void* a0, u8* a1) { return RA[a1[2]] == RA[a1[1]]; }
+s32 CondCigeq(void* a0, u8* a1) { return RA[a1[2]] == a1[1]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FD50(void* a0, u8* a1) { return RA[a1[2]] != a1[1]; }
+s32 CondCgeq(void* a0, u8* a1) { return RA[a1[2]] == RA[a1[1]]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FD74(void* a0, u8* a1) { return RA[a1[2]] != RA[a1[1]]; }
+s32 CondCigne(void* a0, u8* a1) { return RA[a1[2]] != a1[1]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FDA0(void* a0, u8* a1) { return RA[a1[2]] == RA[a1[1]]; }
+s32 CondCgne(void* a0, u8* a1) { return RA[a1[2]] != RA[a1[1]]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FDCC(void* a0, u8* a1) { return RA[a1[2]] > a1[1]; }
+s32 CondCggeq(void* a0, u8* a1) { return RA[a1[2]] == RA[a1[1]]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FDE8(void* a0, u8* a1) { return (s8)RA[a1[2]] > (s8)a1[1]; }
+s32 CondCigltu(void* a0, u8* a1) { return RA[a1[2]] > a1[1]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FE04(void* a0, u8* a1) { return RA[a1[2]] > RA[a1[1]]; }
+s32 CondCiglt(void* a0, u8* a1) { return (s8)RA[a1[2]] > (s8)a1[1]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FE28(void* a0, u8* a1) { return RA[a1[2]] >= a1[1]; }
+s32 CondCgltu(void* a0, u8* a1) { return RA[a1[2]] > RA[a1[1]]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FE4C(void* a0, u8* a1) { return RA[a1[2]] < a1[1]; }
+s32 CondCigleu(void* a0, u8* a1) { return RA[a1[2]] >= a1[1]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FE68(void* a0, u8* a1) { return (s8)RA[a1[2]] < (s8)a1[1]; }
+s32 CondCiggtu(void* a0, u8* a1) { return RA[a1[2]] < a1[1]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FE84(void* a0, u8* a1) { return RA[a1[2]] < RA[a1[1]]; }
+s32 CondCiggt(void* a0, u8* a1) { return (s8)RA[a1[2]] < (s8)a1[1]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FEA8(void* a0, u8* a1) { return RA[a1[2]] <= a1[1]; }
+s32 CondCggtu(void* a0, u8* a1) { return RA[a1[2]] < RA[a1[1]]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FECC(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) != 0; }
+s32 CondCiggeu(void* a0, u8* a1) { return RA[a1[2]] <= a1[1]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FEF0(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) == 0; }
+s32 CondTigmnz(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) != 0; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_8002FF14(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) == 0; }
+s32 CondTigaz(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) == 0; }
+
+/* Coincide en bytes; diff puntua la forma simbolica. */
+s32 CondTigmz(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) == 0; }
 
 /* Simbolo fundido: cubre dos rutinas de 0x20 bytes (esta, flags14 & 0x2000020 == 0, y func_8002FF58, flags14 & 0x8000 == 0); el C reproduce la primera mitad; con -G0 da 800 */
 #ifdef NON_MATCHING
@@ -218,6 +217,9 @@ s32 func_8002FF38(Objeto* a0, u8* a1) { return (D_80069698->flags14 & 0x2000020)
 #else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8002FF38);
 #endif
+
+/* Segunda rutina del antiguo simbolo fundido: comprueba flags14 & 0x8000 == 0. */
+INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8002FF58);
 
 s32 func_8002FF78(Objeto* a0, u8* a1) { return (D_80069698->flags14 & 0x2000020) != 0; }
 
@@ -229,8 +231,7 @@ s32 func_8002FFD8(Objeto* a0, u8* a1) { u32 v; v = D_80069698->flags14 & 0x10; r
 
 s32 func_8002FFF8(Objeto* a0, u8* a1) { return D_80069698->w17C == a1[1]; }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 s32 func_80030018(Objeto* a0, u8* a1)
 {
     u16* p;
@@ -238,9 +239,6 @@ s32 func_80030018(Objeto* a0, u8* a1)
     p += D_80069698->w17E;
     return p[3] == a1[1];
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030018);
-#endif
 
 s32 func_8003004C(Objeto* a0, u8* a1) { u32 v; v = D_80069698->flags14 & 0x40; return v != 0; }
 
@@ -254,8 +252,7 @@ s32 func_800300A4(Objeto* a0, u8* a1) { return (s16)D_80069698->w26 == a1[1]; }
 
 s32 func_800300C4(Objeto* a0, u8* a1) { return (s16)D_80069698->w26 != a1[1]; }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 s32 func_800300E4(Objeto* a0, u8* a1)
 {
     Vec3 v;
@@ -293,12 +290,8 @@ s32 func_800300E4(Objeto* a0, u8* a1)
     }
     return 1;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800300E4);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 s32 func_800301E8(Objeto* a0, u8* a1)
 {
     Vec3 v;
@@ -336,12 +329,8 @@ s32 func_800301E8(Objeto* a0, u8* a1)
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800301E8);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 s32 func_800302F8(Objeto* a0, u8* a1)
 {
     Vec3 v;
@@ -379,12 +368,8 @@ s32 func_800302F8(Objeto* a0, u8* a1)
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800302F8);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 s32 func_80030404(Objeto* a0, u8* a1)
 {
     Vec3 v;
@@ -422,9 +407,6 @@ s32 func_80030404(Objeto* a0, u8* a1)
     }
     return 1;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030404);
-#endif
 
 s32 func_80030504(Objeto* a0, u8* a1) { u32 v = a1[1] | (a1[2] << 8); return a0->w22 < v; }
 
@@ -459,14 +441,14 @@ s32 func_80030688(Objeto* a0, u8* a1) { u32 v = a1[1] | (a1[2] << 8); return a0-
 
 s32 func_800306C0(Objeto* a0, u8* a1) { return D_800693F6 != 0; }
 
-s32 func_800306D0(Objeto* a0, u8* a1) { return D_8006AA70[a1[2]] == a1[1]; }
+s32 CondTisxz(Objeto* a0, u8* a1) { return D_8006AA70[a1[2]] == a1[1]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 func_800306F8(Objeto* a0, u8* a1) { return ESTADO->r[a1[2]] == a1[1]; }
+s32 CondTigxz(Objeto* a0, u8* a1) { return ESTADO->r[a1[2]] == a1[1]; }
 
-s32 func_8003071C(Objeto* a0, u8* a1) { u32 v; v = D_8001000A & 8; return v != 0; }
+s32 CondTbdact(Objeto* a0, u8* a1) { u32 v; v = D_8001000A & 8; return v != 0; }
 
-s32 func_80030734(Objeto* a0, u8* a1) { u32 v; v = D_8001000A & 8; return v == 0; }
+s32 CondTbuact(Objeto* a0, u8* a1) { u32 v; v = D_8001000A & 8; return v == 0; }
 
 s32 func_8003074C(Objeto* a0, u8* a1)
 {
@@ -499,8 +481,7 @@ s32 func_80030834(Objeto* a0, u8* a1)
 
 s32 func_80030874(Objeto* a0, u8* a1) { return (a1[1] & *(s32*)(base_gp + 0xC0)) != 0; }
 
-/* Coincide en bytes con g = 8 (diff 30 por direccion absoluta); con la configuracion versionada da 350 */
-#ifdef NON_MATCHING
+/* Coincide en bytes (el diff marca 30 por direccion absoluta); el archivo se compila con -G8 */
 s32 func_8003088C(Objeto* a0, u8* a1)
 {
     u32 b;
@@ -520,9 +501,6 @@ s32 func_8003088C(Objeto* a0, u8* a1)
     b = ((b & 0xF000) >> 8) | ((b & 0xF0) >> 4);
     return (a1[1] & b) != 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003088C);
-#endif
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
 s32 func_80030924(Objeto* a0, u8* a1)
@@ -602,8 +580,7 @@ s32 func_80030B78(Objeto* a0, u8* a1)
     return 1;
 }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 s32 func_80030CB8(Objeto* a0, u8* a1)
 {
     u32 b;
@@ -611,12 +588,8 @@ s32 func_80030CB8(Objeto* a0, u8* a1)
     b = ((b & 0xF00) >> 4) | (b & 0xF);
     return (a1[1] & b) != 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030CB8);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 s32 func_80030CE0(Objeto* a0, u8* a1)
 {
     u32 b;
@@ -624,12 +597,8 @@ s32 func_80030CE0(Objeto* a0, u8* a1)
     b = ((b & 0xF00) >> 4) | (b & 0xF);
     return (a1[1] & b) == 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030CE0);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 75: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 s32 func_80030D08(Objeto* a0, u8* a1)
 {
     u32 b;
@@ -637,12 +606,8 @@ s32 func_80030D08(Objeto* a0, u8* a1)
     b = ((b & 0xF000) >> 8) | ((b & 0xF0) >> 4);
     return (a1[1] & b) != 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030D08);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 75: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 s32 func_80030D34(Objeto* a0, u8* a1)
 {
     u32 b;
@@ -650,9 +615,6 @@ s32 func_80030D34(Objeto* a0, u8* a1)
     b = ((b & 0xF000) >> 8) | ((b & 0xF0) >> 4);
     return (a1[1] & b) == 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030D34);
-#endif
 
 /* Altura (Y >> 8) del objeto controlado dentro de [min, max]; return explicito de 1 y 0 para el li del hueco de retardo. */
 s32 func_80030D60(void* a0, Rango* a1)
@@ -700,14 +662,14 @@ s32 func_80030E20(Objeto* a0, u8* a1)
 
 s32 func_80030EB4(Objeto* a0, u8* a1) { return D_80069698->p6C != 0; }
 
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030ECC);
+INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", RunLogicAction);
 
-void func_80030F04(void) {}
+void ActionNop(void) {}
 
-void func_80030F0C(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6]++; }
+void ActionIncs(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6]++; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_80030F30(Objeto* a0, Accion* a1)
+void ActionIncg(Objeto* a0, Accion* a1)
 {
     if (a1->w6 == 7) {
         func_8002F990(ACC_W4(a1), 1);
@@ -716,15 +678,15 @@ void func_80030F30(Objeto* a0, Accion* a1)
     }
 }
 
-void func_80030F88(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = a1->b4; }
+void ActionMovsi(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = a1->b4; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_80030FA4(Objeto* a0, Accion* a1) { RA[a1->w6] = a1->b4; }
+void ActionMovgi(Objeto* a0, Accion* a1) { RA[a1->w6] = a1->b4; }
 
-void func_80030FBC(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6]--; }
+void ActionDecs(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6]--; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_80030FE0(Objeto* a0, Accion* a1)
+void ActionDecg(Objeto* a0, Accion* a1)
 {
     if (a1->w6 == 7) {
         func_8002F990(ACC_W4(a1), 2);
@@ -733,45 +695,45 @@ void func_80030FE0(Objeto* a0, Accion* a1)
     }
 }
 
-void func_80031038(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = 0; }
+void ActionClrs(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = 0; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_80031050(Objeto* a0, Accion* a1) { RA[a1->w6] = 0; }
+void ActionClrg(Objeto* a0, Accion* a1) { RA[a1->w6] = 0; }
 
-void func_80031064(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = -D_8006AA70[a1->w6]; }
-
-/* Coincide en bytes; diff puntua la forma simbolica. */
-void func_80031088(Objeto* a0, Accion* a1) { RA[a1->w6] = -RA[a1->w6]; }
-
-void func_800310A8(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] |= a1->b4; }
+void ActionNegs(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = -D_8006AA70[a1->w6]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_800310D0(Objeto* a0, Accion* a1) { RA[a1->w6] |= a1->b4; }
+void ActionNegg(Objeto* a0, Accion* a1) { RA[a1->w6] = -RA[a1->w6]; }
 
-void func_800310F4(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] &= a1->b4; }
-
-/* Coincide en bytes; diff puntua la forma simbolica. */
-void func_8003111C(Objeto* a0, Accion* a1) { RA[a1->w6] &= a1->b4; }
-
-void func_80031140(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = D_8006AA70[ACC_W4(a1)]; }
+void ActionOrsi(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] |= a1->b4; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_80031164(Objeto* a0, Accion* a1) { RA[a1->w6] = RA[ACC_W4(a1)]; }
+void ActionOrgi(Objeto* a0, Accion* a1) { RA[a1->w6] |= a1->b4; }
+
+void ActionAndsi(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] &= a1->b4; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_80031184(Objeto* a0, Accion* a1) { RA[a1->w6] = D_8006AA70[ACC_W4(a1)]; }
+void ActionAndgi(Objeto* a0, Accion* a1) { RA[a1->w6] &= a1->b4; }
+
+void ActionMovss(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = D_8006AA70[ACC_W4(a1)]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_800311AC(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = RA[ACC_W4(a1)]; }
+void ActionMovgg(Objeto* a0, Accion* a1) { RA[a1->w6] = RA[ACC_W4(a1)]; }
 
-void func_800311D4(Objeto* a0, Accion* a1)
+/* Coincide en bytes; diff puntua la forma simbolica. */
+void ActionMovgs(Objeto* a0, Accion* a1) { RA[a1->w6] = D_8006AA70[ACC_W4(a1)]; }
+
+/* Coincide en bytes; diff puntua la forma simbolica. */
+void ActionMovsg(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = RA[ACC_W4(a1)]; }
+
+void ActionIncss(Objeto* a0, Accion* a1)
 {
     D_8006AA70[a1->w6]++;
     D_8006AA70[ACC_W4(a1)]++;
 }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_80031214(Objeto* a0, Accion* a1)
+void ActionIncgg(Objeto* a0, Accion* a1)
 {
     if (a1->w6 == 7) {
         func_8002F990(ACC_W4(a1), 1);
@@ -785,10 +747,10 @@ void func_80031214(Objeto* a0, Accion* a1)
     }
 }
 
-void func_800312B0(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = func_80032874() % ACC_W4(a1); }
+void ActionRnds(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = BugsRand() % ACC_W4(a1); }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_800312F8(Objeto* a0, Accion* a1) { RA[a1->w6] = func_80032874() % ACC_W4(a1); }
+void ActionRndg(Objeto* a0, Accion* a1) { RA[a1->w6] = BugsRand() % ACC_W4(a1); }
 
 void func_8003133C(Objeto* a0, Accion* a1) { a0->flags14 |= 0x100; }
 
@@ -877,12 +839,8 @@ void func_80031554(Objeto* a0)
     }
 }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 205: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031624(Objeto* a0, Accion* a1) { func_8003F06C(a0, ACC_W4(a1), 1, D_8006967C); }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031624);
-#endif
 
 /* No coincide (795): el original carga D_80069554 en a0 */
 #ifdef NON_MATCHING
@@ -897,10 +855,10 @@ void func_80031650(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031650);
 #endif
 
-void func_80031694(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] += a1->b4; }
+void ActionAddsi(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] += a1->b4; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_800316BC(Objeto* a0, Accion* a1)
+void ActionAddgi(Objeto* a0, Accion* a1)
 {
     if (a1->w6 == 7) {
         func_8002F990(ACC_W4(a1), 0);
@@ -909,10 +867,10 @@ void func_800316BC(Objeto* a0, Accion* a1)
     }
 }
 
-void func_80031714(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] -= a1->b4; }
+void ActionSubsi(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] -= a1->b4; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_8003173C(Objeto* a0, Accion* a1)
+void ActionSubgi(Objeto* a0, Accion* a1)
 {
     if (a1->w6 == 7) {
         func_8002F990(ACC_W4(a1), 3);
@@ -921,8 +879,7 @@ void func_8003173C(Objeto* a0, Accion* a1)
     }
 }
 
-/* Coincide en bytes con g = 8 (diff 10 por direccion absoluta); con la configuracion versionada da 235 */
-#ifdef NON_MATCHING
+/* Coincide en bytes (el diff marca 10 por direccion absoluta); el archivo se compila con -G8 */
 void func_80031794(Objeto* a0, Accion* a1)
 {
     Objeto* p;
@@ -930,12 +887,8 @@ void func_80031794(Objeto* a0, Accion* a1)
     *(u16*)((u8*)p + 0x12) += (u32)(((ACC_W4(a1) << 4) + a1->w6) * D_80069694 * ESTADO->s12) >> 7;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031794);
-#endif
 
-/* Coincide en bytes con g = 8 (diff 10 por direccion absoluta); con la configuracion versionada da 70 */
-#ifdef NON_MATCHING
+/* Coincide en bytes (el diff marca 10 por direccion absoluta); el archivo se compila con -G8 */
 void func_800317FC(Objeto* a0, Accion* a1)
 {
     Objeto* p;
@@ -943,9 +896,6 @@ void func_800317FC(Objeto* a0, Accion* a1)
     *(u16*)((u8*)p + 0x12) += (u32)((s8)D_8006AA70[a1->w6] * D_80069694 * ESTADO->s12) >> 7;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800317FC);
-#endif
 
 void func_8003186C(Objeto* a0, Accion* a1)
 {
@@ -965,58 +915,34 @@ void func_800318AC(Objeto* a0, Accion* a1)
     func_8001CFCC((u8*)a0 + 0x7C);
 }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 310: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_800318F8(Objeto* a0, Accion* a1) { D_800693F6 = ACC_W4(a1); }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800318F8);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 45: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_8003190C(Objeto* a0, Accion* a1) { D_80069698->flags14 |= 0x80000000; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003190C);
-#endif
 
-/* Coincide en bytes con g = 8 (diff 15 por direccion absoluta); con la configuracion versionada da 245 */
-#ifdef NON_MATCHING
+/* Coincide en bytes (el diff marca 15 por direccion absoluta); el archivo se compila con -G8 */
 void func_8003192C(Objeto* a0, Accion* a1)
 {
     ESTADO->modo = ESTADO->r[0xE];
     D_80069662 = 1;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003192C);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 235: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031948(Objeto* a0, Accion* a1) { D_80069698->wDE = ACC_W4(a1) << 4; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031948);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031960(Objeto* a0, Accion* a1) { D_80069698->w28 = ACC_W4(a1); }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031960);
-#endif
 
 void func_80031974(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] = a0->s1E; }
 
 void func_80031990(Objeto* a0, Accion* a1) { a0->s1E = D_8006AA70[a1->w6]; }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_800319AC(Objeto* a0, Accion* a1) { D_80069698->flags18 |= 1; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800319AC);
-#endif
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-void func_800319CC(Objeto* a0, Accion* a1)
+void ActionGvcrt(Objeto* a0, Accion* a1)
 {
     if (RA[1] != RA[2]) {
         RA[1]++;
@@ -1035,8 +961,7 @@ void func_80031A0C(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031A0C);
 #endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 220: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031A34(Objeto* a0, Accion* a1)
 {
     Objeto* o;
@@ -1057,9 +982,6 @@ void func_80031A34(Objeto* a0, Accion* a1)
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031A34);
-#endif
 
 /* Usa $gp; pendiente de soporte -G8. No coincide (160): el original coloca el sw tras el lw $ra */
 #ifdef NON_MATCHING
@@ -1085,8 +1007,7 @@ void func_80031B50(Objeto* a0, Accion* a1) { a0->flags15C |= 0x10; }
 
 void func_80031B64(Objeto* a0, Accion* a1) { a0->flags15C &= ~0x10; }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 30: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031B78(Objeto* a0, Accion* a1)
 {
     u16 v;
@@ -1096,19 +1017,11 @@ void func_80031B78(Objeto* a0, Accion* a1)
     a0->w192 = 0;
     a0->w196 = v;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031B78);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 310: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031B98(Objeto* a0, Accion* a1) { D_80069659 = a1->b4; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031B98);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 150: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031BAC(Objeto* a0, Accion* a1)
 {
     u8 v;
@@ -1119,9 +1032,6 @@ void func_80031BAC(Objeto* a0, Accion* a1)
         D_8006965B.v = v;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031BAC);
-#endif
 
 void func_80031C10(Objeto* a0, Accion* a1)
 {
@@ -1177,20 +1087,15 @@ void func_80031D1C(Objeto* a0, Accion* a1) { a0->w3C |= 0x40; }
 
 void func_80031D30(void) {}
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 340: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031D38(Objeto* a0, Accion* a1)
 {
     D_8006965B.v = 0;
     D_8006965A.v = a1->b4;
     D_8006965E = ((u8*)a1)[6];
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031D38);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 825: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031D60(Objeto* a0, Accion* a1)
 {
     s32 v[3];
@@ -1209,9 +1114,6 @@ void func_80031D60(Objeto* a0, Accion* a1)
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031D60);
-#endif
 
 /* No coincide (330): la distancia va en a0 y los sh salen en otro orden */
 #ifdef NON_MATCHING
@@ -1238,8 +1140,7 @@ void func_80031E24(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031E24);
 #endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 1425: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031EF8(Objeto* a0, Accion* a1)
 {
     switch (a1->w6) {
@@ -1254,9 +1155,6 @@ void func_80031EF8(Objeto* a0, Accion* a1)
         break;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031EF8);
-#endif
 
 void func_80031F70(Objeto* a0, Accion* a1)
 {
@@ -1269,8 +1167,7 @@ void func_80031F70(Objeto* a0, Accion* a1)
 
 void func_80031FBC(Objeto* a0, Accion* a1) { func_8003AA50(0x41, 0x400); }
 
-/* Coincide en bytes con g = 8 (diff 20 por direccion absoluta); con la configuracion versionada da 1165 */
-#ifdef NON_MATCHING
+/* Coincide en bytes (el diff marca 20 por direccion absoluta); el archivo se compila con -G8 */
 void func_80031FE0(Objeto* a0, Accion* a1)
 {
     u32 v1;
@@ -1304,63 +1201,35 @@ void func_80031FE0(Objeto* a0, Accion* a1)
     }
     a0->flags18 = f | 0x6000;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031FE0);
-#endif
 
 void func_800320D8(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xDFFF; }
 
 void func_800320F4(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 0x2000; }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 780: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80032110(Objeto* a0, Accion* a1)
 {
     D_80069624 = -200;
     D_80069618 = 600;
     D_8006961C = 1100;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80032110);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 465: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_8003213C(Objeto* a0, Accion* a1) { D_80069624 = ACC_W4(a1) * 100 + a1->w6; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003213C);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 465: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80032170(Objeto* a0, Accion* a1) { D_80069618 = ACC_W4(a1) * 100 + a1->w6; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80032170);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 465: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_800321A4(Objeto* a0, Accion* a1) { D_8006961C = ACC_W4(a1) * 100 + a1->w6; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800321A4);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 465: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_800321D8(Objeto* a0, Accion* a1) { D_8006960C = ((s8*)a1)[4] * 100 + ((s8*)a1)[6]; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800321D8);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 365: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_8003220C(Objeto* a0, Accion* a1) { D_8006960C = (ACC_W4(a1) << 8) | a1->w6; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003220C);
-#endif
 
-/* Coincide en bytes con g = 8 (diff 20 por direccion absoluta); con la configuracion versionada da 2240 */
-#ifdef NON_MATCHING
+/* Coincide en bytes (el diff marca 20 por direccion absoluta); el archivo se compila con -G8 */
 void func_8003222C(Objeto* a0, Accion* a1)
 {
     u32 w;
@@ -1388,32 +1257,20 @@ void func_8003222C(Objeto* a0, Accion* a1)
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003222C);
-#endif
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 205: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80032318(Objeto* a0, Accion* a1) { func_8003F06C(a0, ACC_W4(a1), 2, D_8006967C); }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80032318);
-#endif
 
 void func_80032344(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0x7FFF; }
 
 void func_80032360(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 0x8000; }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 305: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_8003237C(Objeto* a0) { D_80069560 = (s32)a0; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003237C);
-#endif
 
 void func_8003238C(Objeto* a0, Accion* a1) { a0->flags18 |= 0x400; }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 10: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_800323A0(Objeto* a0, Accion* a1)
 {
     Vec3 v;
@@ -1438,18 +1295,11 @@ void func_800323A0(Objeto* a0, Accion* a1)
     }
     D_8006AA70[a1->w6] = ang >> 4;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800323A0);
-#endif
 
 void func_80032474(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFCFF; }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 310: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80032490(Objeto* a0, Accion* a1) { D_80069554 = ACC_W4(a1); }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80032490);
-#endif
 
 /* No coincide (10): el prologo usa a0 como base del banco y otro orden de lui */
 #ifdef NON_MATCHING
@@ -1541,12 +1391,8 @@ void func_80032668(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFFFE; }
 
 void func_80032684(Objeto* a0, Accion* a1) { D_8006D9A8[0] = 0x10; }
 
-/* Coincide (0) con g = 8; con la configuracion versionada da 45: forma simbolica de los almacenes (-G8) */
-#ifdef NON_MATCHING
+/* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80032694(Objeto* a0, Accion* a1) { D_80069698->flags14 &= ~9; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80032694);
-#endif
 
 void func_800326B4(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 0x20; }
 

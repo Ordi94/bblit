@@ -38,15 +38,16 @@ def test_cada_destino_de_una_tabla_de_punteros_parte_el_bloque_en_rutinas_exacta
 def test_las_entradas_repetidas_y_los_destinos_que_ya_son_funcion_no_crean_nada() -> None:
     funciones = [funcion(M, "FUN_80020000", 16), funcion(M + 16, "FUN_80020010", 24)]
     refinado = refinar_con_tablas(funciones, segmento(_rutinas(5)), [M + 16, M + 16, M + 24, M + 24], set())
-    assert _tamanos(refinado.funciones) == [(M, 16), (M + 16, 8), (M + 24, 16)]
+    assert _tamanos(refinado.funciones) == [(M + 8 * i, 8) for i in range(5)]
     assert refinado.nuevas == [(M + 24, M + 16)]
+    assert refinado.por_retorno == [(M + 8, M), (M + 32, M + 24)]
 
 
 def test_los_destinos_invalidos_se_reportan_sin_partir_nada() -> None:
     refinado = refinar_con_tablas(
         [_bloque()], segmento(_rutinas(5)), [0x80001000, M + 10, 0x80030000, 0x8004E000], set()
     )
-    assert _tamanos(refinado.funciones) == [(M, 40)]
+    assert refinado.nuevas == []
     assert refinado.conflictos == [
         (0x80001000, "fuera del rango del juego"),
         (M + 10, "destino desalineado"),
@@ -72,7 +73,7 @@ def _par(origen: list[int], destino: list[int], tamano: int = 32) -> tuple[list[
     return funciones, segmento(palabras)
 
 
-_CUERPO = [*retorno(), *retorno(), *retorno(), *retorno()]
+_CUERPO = [*([NOP] * 6), *retorno()]
 
 
 def test_una_funcion_a_la_que_la_anterior_bifurca_con_ramas_condicionales_es_continuacion() -> None:
@@ -158,3 +159,67 @@ def test_la_segunda_mitad_se_conserva_si_alguien_la_llama_o_si_nadie_bifurca_a_e
         refinado = refinar_con_tablas(funciones, datos, set(), set())
         assert _tamanos(refinado.funciones) == [(F1, 0x40), (F2, 0x40)]
         assert refinado.fusionadas == []
+
+
+G0 = 0x80022000
+
+
+def _dos_rutinas(entre: list[int] | None = None) -> tuple[list[Funcion], bytes]:
+    """Un solo simbolo de 0x40 bytes que contiene dos rutinas de 0x20 bytes, cada una con su ``jr ra``."""
+    primera = _rellenar(entre or [addiu(V0, 0, 1)], 0x20)
+    segunda = _rellenar([addiu(V0, 0, 2)], 0x20)
+    return [funcion(G0, "FUN_80022000", 0x40)], segmento(programa(G0, primera) | programa(G0 + 0x20, segunda))
+
+
+def test_un_retorno_completo_sin_nada_que_cruce_ese_punto_separa_dos_rutinas() -> None:
+    funciones, datos = _dos_rutinas()
+    refinado = refinar_con_tablas(funciones, datos, set(), set())
+    assert _tamanos(refinado.funciones) == [(G0, 0x20), (G0 + 0x20, 0x20)]
+    assert refinado.por_retorno == [(G0 + 0x20, G0)]
+    assert refinado.nuevas == []
+
+
+def test_una_rama_o_un_j_que_cruza_el_retorno_mantiene_una_sola_funcion() -> None:
+    hacia_delante = [beq(0, V0, G0, G0 + 0x28), NOP]
+    funciones, datos = _dos_rutinas(hacia_delante)
+    refinado = refinar_con_tablas(funciones, datos, set(), set())
+    assert _tamanos(refinado.funciones) == [(G0, 0x40)]
+    assert refinado.por_retorno == []
+    vuelta = programa(G0, _rellenar([NOP], 0x20)) | programa(G0 + 0x20, _rellenar([j(G0 + 4), NOP], 0x20))
+    refinado = refinar_con_tablas([funcion(G0, "FUN_80022000", 0x40)], segmento(vuelta), set(), set())
+    assert refinado.por_retorno == []
+
+
+def test_un_destino_de_switch_en_el_punto_o_a_ambos_lados_mantiene_una_sola_funcion() -> None:
+    funciones, datos = _dos_rutinas()
+    for saltos in ({G0 + 0x20}, {G0 + 0x10, G0 + 0x30}):
+        assert refinar_con_tablas(funciones, datos, set(), saltos).por_retorno == []
+    assert refinar_con_tablas(funciones, datos, set(), {G0 + 0x40}).por_retorno == [(G0 + 0x20, G0)]
+    assert refinar_con_tablas(funciones, datos, set(), {G0 + 0x4}).por_retorno == [(G0 + 0x20, G0)]
+
+
+def test_una_ranura_que_es_un_salto_o_una_pieza_que_no_cierra_no_separan() -> None:
+    con_salto_en_la_ranura = programa(G0, [jr(RA), j(G0 + 0x10), *([NOP] * 4), *retorno()])
+    refinado = refinar_con_tablas(
+        [funcion(G0, "FUN_80022000", 0x20)], segmento(con_salto_en_la_ranura), set(), set()
+    )
+    assert refinado.por_retorno == []
+    # el resto solo cierra con un bucle (beq zero, zero) y no tiene ningun jr ni j: no es una funcion completa
+    bucle = programa(G0, [jr(RA), NOP, NOP, NOP, NOP, NOP, beq(0, 0, G0 + 0x18, G0 + 0x10), NOP])
+    refinado = refinar_con_tablas([funcion(G0, "FUN_80022000", 0x20)], segmento(bucle), set(), set())
+    assert refinado.por_retorno == []
+
+
+def test_solo_se_separa_en_el_codigo_del_juego_y_en_funciones_de_al_menos_dos_rutinas_minimas() -> None:
+    fuera = programa(0x80046000, _rellenar([NOP], 0x20) + _rellenar([NOP], 0x20))
+    refinado = refinar_con_tablas([funcion(0x80046000, "FUN_80046000", 0x40)], segmento(fuera), set(), set())
+    assert refinado.por_retorno == []
+    pequena = programa(G0, retorno())
+    assert (
+        refinar_con_tablas([funcion(G0, "FUN_80022000", 8)], segmento(pequena), set(), set()).por_retorno
+        == []
+    )
+    tres = programa(G0, [*retorno(), *retorno(), *retorno()])
+    refinado = refinar_con_tablas([funcion(G0, "FUN_80022000", 24)], segmento(tres), set(), set())
+    assert _tamanos(refinado.funciones) == [(G0, 8), (G0 + 8, 8), (G0 + 16, 8)]
+    assert refinado.por_retorno == [(G0 + 8, G0), (G0 + 16, G0)]

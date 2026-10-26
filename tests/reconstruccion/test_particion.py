@@ -259,3 +259,18 @@ def test_generar_progreso_lee_los_motivos_de_los_fuentes(tmp_path: Path) -> None
     assert "- `func_80014AC4`: Intento a medias." in (tmp_path / "docs" / "PROGRESO.md").read_text(
         encoding="utf-8"
     )
+
+
+def test_combinar_simbolos_deja_la_ultima_fuente_en_una_direccion_en_conflicto_y_ordena_por_direccion() -> (
+    None
+):
+    base = [FuncionSimbolo("f_tardia", 0x80020000, 0x20), FuncionSimbolo("f_fundida", 0x80010000, 0x100)]
+    adicionales = [FuncionSimbolo("f_reducida", 0x80010000, 0x40), FuncionSimbolo("f_nueva", 0x80015000, 0x8)]
+    combinada = progreso.combinar_simbolos(base, adicionales)
+    assert combinada == [
+        FuncionSimbolo("f_reducida", 0x80010000, 0x40),
+        FuncionSimbolo("f_nueva", 0x80015000, 0x8),
+        FuncionSimbolo("f_tardia", 0x80020000, 0x20),
+    ]
+    assert progreso.combinar_simbolos(adicionales, base)[0] == FuncionSimbolo("f_fundida", 0x80010000, 0x100)
+    assert progreso.combinar_simbolos() == []

@@ -32,12 +32,14 @@ TIMEOUT_SPLAT_S = 900
 TIMEOUT_ENSAMBLAR_S = 300
 TIMEOUT_ENLAZAR_S = 600
 MAX_BYTES_REFERENCIA = 64 * 1024
+MAX_BYTES_SIMBOLOS = 4 * 1024 * 1024
 SCRIPT_ENLAZADOR = "build/SLUS_008.ld"
 SIMBOLOS_AUTOMATICOS = ("build/undefined_funcs_auto.txt", "build/undefined_syms_auto.txt")
 SIMBOLOS_ENTRADA = "build/simbolos_entrada.txt"
 SIMBOLOS_PROYECTO = "config/symbols.txt"
 CONFIGURACION_SPLAT = "config/splat.yaml"
 OPCIONES_COMPILACION = "config/opciones_compilacion.toml"
+SCRIPT_GP = "build/gp.ld"
 CARPETA_MACROS = "asm/include"
 ELF_SALIDA = "build/SLUS_008.elf"
 MAPA_SALIDA = "build/SLUS_008.map"
@@ -456,16 +458,95 @@ def leer_valores_g(raiz: Path) -> dict[str, int]:
     Ejemplo:
         valores = leer_valores_g(Path("."))
     """
-    ruta = raiz / OPCIONES_COMPILACION
+    datos = _leer_opciones(raiz)
+    return {} if datos is None else dominio.valores_g_por_archivo(datos)
+
+
+def leer_direcciones_de_funciones(raiz: Path) -> dict[str, int]:
+    """
+    Lee la direccion de cada funcion de ``config/symbols.txt``.
+
+    Contexto:
+        Usada por ``diff`` y ``probar`` para enlazar un candidato en la direccion de la funcion.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+
+    Returns:
+        dict[str, int]: Direccion por nombre; vacio si no existe el archivo.
+
+    Raises:
+        ValueError: Si el archivo excede el tamano permitido.
+
+    Ejemplo:
+        direcciones = leer_direcciones_de_funciones(Path("."))
+    """
+    ruta = raiz / SIMBOLOS_PROYECTO
     if not ruta.is_file():
         return {}
+    if ruta.stat().st_size > MAX_BYTES_SIMBOLOS:
+        raise ValueError(f"{SIMBOLOS_PROYECTO} excede el tamano permitido")
+    return dominio.direcciones_de_funciones(ruta.read_text(encoding="utf-8"))
+
+
+def leer_gp(raiz: Path) -> int | None:
+    """
+    Lee el valor de ``_gp`` de ``config/opciones_compilacion.toml``.
+
+    Contexto:
+        ``build`` lo usa para definir ``_gp`` en el enlace; sin el, un objeto compilado con
+        datos pequenos que use ``$gp`` no resolveria sus referencias.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+
+    Returns:
+        int | None: Valor de ``_gp``, o ``None`` si no hay archivo o no lo declara.
+
+    Raises:
+        ValueError: Si el archivo es invalido (ver ``leer_valores_g``).
+
+    Ejemplo:
+        gp = leer_gp(Path("."))
+    """
+    datos = _leer_opciones(raiz)
+    return None if datos is None else dominio.valor_gp(datos)
+
+
+def leer_datos_pequenos(raiz: Path) -> dict[str, int]:
+    """
+    Lee los simbolos de datos pequenos de ``config/opciones_compilacion.toml``.
+
+    Contexto:
+        ``build`` los define en el enlace junto a ``_gp``; ``diff`` los toma despues del ELF.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+
+    Returns:
+        dict[str, int]: Direccion por simbolo; vacio si no hay archivo o tabla.
+
+    Raises:
+        ValueError: Si el archivo es invalido (ver ``leer_valores_g``).
+
+    Ejemplo:
+        simbolos = leer_datos_pequenos(Path("."))
+    """
+    datos = _leer_opciones(raiz)
+    return {} if datos is None else dominio.datos_pequenos(datos)
+
+
+def _leer_opciones(raiz: Path) -> object | None:
+    """Carga ``config/opciones_compilacion.toml`` con cota de tamano; ``None`` si no existe."""
+    ruta = raiz / OPCIONES_COMPILACION
+    if not ruta.is_file():
+        return None
     if ruta.stat().st_size > MAX_BYTES_REFERENCIA:
         raise ValueError(f"{OPCIONES_COMPILACION} excede el tamano permitido")
     try:
-        datos = tomllib.loads(ruta.read_text(encoding="utf-8"))
+        return tomllib.loads(ruta.read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError:
         raise ValueError(f"{OPCIONES_COMPILACION} no es TOML valido") from None
-    return dominio.valores_g_por_archivo(datos)
 
 
 def artefactos_de_build(nombre_ejecutable: str) -> tuple[str, ...]:
@@ -491,6 +572,7 @@ def artefactos_de_build(nombre_ejecutable: str) -> tuple[str, ...]:
         CARPETA_DIFF,
         PROGRESO_JSON,
         SCRIPT_ENLAZADOR,
+        SCRIPT_GP,
         *SIMBOLOS_AUTOMATICOS,
         SIMBOLOS_ENTRADA,
         ELF_SALIDA,
@@ -580,6 +662,46 @@ def dividir(
     ejecutar(dominio.comando_splat(herramientas.python, CONFIGURACION_SPLAT), raiz, TIMEOUT_SPLAT_S)
     if not (raiz / SCRIPT_ENLAZADOR).is_file():
         raise ProcesoError("splat no genero el script del enlazador")
+    sanear_funciones_locales(raiz)
+
+
+def sanear_funciones_locales(raiz: Path) -> list[str]:
+    """
+    Renombra a ``func_<direccion>`` las funciones que ``splat`` llamo ``.L<direccion>``.
+
+    Contexto:
+        Segunda parte de ``split``. Con una tabla de simbolos que no nombra el inicio de una funcion
+        a la que otra salta con ``j``, ``splat`` la declara como etiqueta local: el ``.s`` se llama
+        ``.L80044904.s`` y el esqueleto ``.c`` lleva ``INCLUDE_ASM(..., .L80044904)``, que no
+        compila. Se cambia el nombre en el archivo, en las directivas, en los saltos que la
+        referencian (en cualquier ``.s``) y en los esqueletos de ``src/``. Es idempotente.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+
+    Returns:
+        list[str]: Nombres originales que se renombraron (ordenados).
+
+    Ejemplo:
+        renombradas = sanear_funciones_locales(Path("."))
+    """
+    ensambladores = sorted((raiz / "asm").rglob("*.s"))
+    nombres: set[str] = set()
+    for ruta in ensambladores:
+        nombres |= dominio.funciones_con_nombre_local(ruta.read_text(encoding="utf-8"))
+    if not nombres:
+        return []
+    fijos = frozenset(nombres)
+    fuentes = sorted((raiz / "src").glob("*.c")) if (raiz / "src").is_dir() else []
+    for ruta in [*ensambladores, *fuentes]:
+        texto = ruta.read_text(encoding="utf-8")
+        nuevo = dominio.renombrar_funciones_locales(texto, fijos)
+        if nuevo != texto:
+            ruta.write_text(nuevo, encoding="utf-8", newline="\n")
+    for ruta in ensambladores:
+        if ruta.name[:-2] in fijos:
+            ruta.rename(ruta.with_name(f"func_{ruta.name[2:]}"))
+    return sorted(nombres)
 
 
 def salidas_de_enlace(nombre_ejecutable: str) -> tuple[str, ...]:
@@ -714,6 +836,11 @@ def construir_con_compilador(
             TIMEOUT_ENSAMBLAR_S,
         )
     scripts = [SCRIPT_ENLAZADOR, *(s for s in SIMBOLOS_AUTOMATICOS if (raiz / s).is_file())]
+    gp = leer_gp(raiz)
+    if gp is not None:
+        texto_gp = dominio.texto_gp_ld(gp, leer_datos_pequenos(raiz))
+        (raiz / SCRIPT_GP).write_text(texto_gp, encoding="utf-8", newline="\n")
+        scripts.append(SCRIPT_GP)
     ejecutar(
         dominio.comando_enlazar(herramientas.enlazador, scripts, ELF_SALIDA, MAPA_SALIDA),
         raiz,

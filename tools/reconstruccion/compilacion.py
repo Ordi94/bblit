@@ -53,6 +53,8 @@ class HerramientasCompilacion:
         maspsx: Script ``maspsx.py``.
         ensamblador: ``mipsel-none-elf-as``.
         objdump: ``mipsel-none-elf-objdump`` (lista las secciones del objeto).
+        enlazador: ``mipsel-none-elf-ld`` (compara funciones por sus bytes enlazados); opcional.
+        objcopy: ``mipsel-none-elf-objcopy`` (extrae los bytes de ``.text``); opcional.
     """
 
     python: str
@@ -61,6 +63,8 @@ class HerramientasCompilacion:
     maspsx: Path
     ensamblador: Path
     objdump: Path
+    enlazador: Path | None = None
+    objcopy: Path | None = None
 
 
 def resolver_herramientas_compilacion(
@@ -95,6 +99,8 @@ def resolver_herramientas_compilacion(
         maspsx=resolver_herramienta(lock, raiz_toolchain, "maspsx", "maspsx"),
         ensamblador=resolver_herramienta(lock, raiz_toolchain, "binutils-mipsel", "as"),
         objdump=resolver_herramienta(lock, raiz_toolchain, "binutils-mipsel", "objdump"),
+        enlazador=resolver_herramienta(lock, raiz_toolchain, "binutils-mipsel", "ld"),
+        objcopy=resolver_herramienta(lock, raiz_toolchain, "binutils-mipsel", "objcopy"),
     )
 
 
@@ -137,6 +143,27 @@ def comando_preprocesar(
     ]
 
 
+def _validar_valor_g(valor_g: int) -> None:
+    """
+    Comprueba que el umbral ``-G`` sea un entero entre 0 y ``MAX_VALOR_G``.
+
+    Contexto:
+        Los dos comandos que llevan ``-G`` (compilador y ``maspsx``) lo validan con la misma regla:
+        el valor llega de un archivo de configuracion y acaba como argumento de un proceso.
+
+    Args:
+        valor_g (int): Valor a comprobar; un booleano no se acepta aunque sea entero en Python.
+
+    Raises:
+        ValueError: Si el valor no es un entero en rango.
+
+    Ejemplo:
+        _validar_valor_g(8)
+    """
+    if isinstance(valor_g, bool) or not isinstance(valor_g, int) or not 0 <= valor_g <= MAX_VALOR_G:
+        raise ValueError(f"el valor de -G debe ser un entero entre 0 y {MAX_VALOR_G}")
+
+
 def comando_compilar(compilador: Path, entrada: str, salida: str, valor_g: int = 0) -> list[str]:
     """
     Devuelve los argumentos que compilan C preprocesado a ensamblador.
@@ -161,13 +188,12 @@ def comando_compilar(compilador: Path, entrada: str, salida: str, valor_g: int =
     Ejemplo:
         comando = comando_compilar(Path("CC1PSX.EXE"), "build/a.i", "build/a.s", 8)
     """
-    if isinstance(valor_g, bool) or not isinstance(valor_g, int) or not 0 <= valor_g <= MAX_VALOR_G:
-        raise ValueError(f"el valor de -G debe ser un entero entre 0 y {MAX_VALOR_G}")
+    _validar_valor_g(valor_g)
     return [str(compilador), *OPCIONES_COMPILADOR, f"-G{valor_g}", entrada, "-o", salida]
 
 
 def comando_maspsx(
-    herramientas: HerramientasCompilacion, entrada: str, objeto: str, incluir: str
+    herramientas: HerramientasCompilacion, entrada: str, objeto: str, incluir: str, valor_g: int = 0
 ) -> list[str]:
     """
     Devuelve los argumentos que ensamblan la salida del compilador con ``maspsx``.
@@ -182,23 +208,31 @@ def comando_maspsx(
         entrada (str): Ensamblador producido por el compilador.
         objeto (str): Objeto de salida.
         incluir (str): Carpeta donde estan las macros incluidas por el ensamblador.
+        valor_g (int, opcional): Umbral ``-G`` de datos pequenos. ``maspsx`` lo necesita para
+            reescribir a ``$gp`` las variables pequenas que el propio archivo define; GNU ``as``
+            sigue recibiendo ``-G0`` (``maspsx`` se lo fuerza), asi no reescribe externos.
 
     Returns:
         list[str]: Lista de argumentos.
 
+    Raises:
+        ValueError: Si ``valor_g`` no es un entero entre 0 y ``MAX_VALOR_G``.
+
     Ejemplo:
-        comando = comando_maspsx(herramientas, "a.s", "a.o", "asm/include")
+        comando = comando_maspsx(herramientas, "a.s", "a.o", "asm/include", 8)
     """
+    _validar_valor_g(valor_g)
     return [
         herramientas.python,
         str(herramientas.maspsx),
         f"--aspsx-version={VERSION_ASPSX}",
+        "--use-comm-section",
         "--run-assembler",
         f"--gnu-as-path={herramientas.ensamblador}",
         "-EL",
         "-march=r3000",
         "-mips1",
-        "-G0",
+        f"-G{valor_g}",
         "-I",
         incluir,
         "-o",
@@ -425,7 +459,7 @@ def compilar_archivo(
         TIMEOUT_COMPILAR_S,
     )
     ejecutar(
-        comando_maspsx(herramientas, ensamblador, objeto, CARPETA_MACROS),
+        comando_maspsx(herramientas, ensamblador, objeto, CARPETA_MACROS, valor_g),
         raiz,
         TIMEOUT_ENSAMBLAR_S,
     )

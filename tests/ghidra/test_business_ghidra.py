@@ -24,6 +24,7 @@ from tools.ghidra.grafo import (
 )
 from tools.ghidra.lectura import parsear_funciones_csv
 from tools.ghidra.limites import MAX_USUARIOS_DATO
+from tools.ghidra.nombres import parsear_nombres
 from tools.ghidra.simbolos import formatear_tabla, parsear_tabla
 from tools.ghidra.subsistemas import parsear_rangos
 from tools.ghidra.tablas import Corrida, clasificar_tablas, detectar_corridas
@@ -326,9 +327,9 @@ def test_la_tabla_del_repositorio_conserva_las_tres_funciones_ya_escritas_en_c()
         s.nombre: s for s in parsear_tabla((RAIZ / "config" / "symbols.txt").read_text(encoding="utf-8"))
     }
     for nombre, direccion, tamano in (
-        ("func_8002FA38", 0x8002FA38, 0x28),
-        ("func_8002FB18", 0x8002FB18, 0x20),
-        ("func_80036204", 0x80036204, 0x4C),
+        ("CondCiseq", 0x8002FA38, 0x28),
+        ("CondCisltu", 0x8002FB18, 0x20),
+        ("AllocListNode", 0x80036204, 0x4C),
     ):
         assert (simbolos[nombre].direccion, simbolos[nombre].tamano) == (direccion, tamano)
 
@@ -353,4 +354,41 @@ def test_los_despachadores_por_tabla_miden_lo_que_su_codigo_y_sus_rutinas_estan_
     assert simbolos[0x80030ECC].tamano == 0x38
     condiciones = [a for a in simbolos if 0x8002F9F8 < a < 0x80030ECC]
     acciones = [a for a in simbolos if 0x80030ECC < a < 0x80032874]
-    assert (len(condiciones), len(acciones)) == (92, 102)
+    assert (len(condiciones), len(acciones)) == (
+        93,
+        102,
+    )  # 92 de la tabla y func_8002FF58, separada por su retorno
+
+
+def test_dos_rutinas_pegadas_tras_un_retorno_completo_sin_ramas_que_crucen_son_dos_funciones() -> None:
+    """func_8002FF38 encierra dos rutinas de 0x20 bytes: la segunda empieza tras un jr ra con su ranura."""
+    simbolos = _simbolos_del_repositorio()
+    assert (simbolos[0x8002FF38].tamano, simbolos[0x8002FF58].tamano) == (0x20, 0x20)
+
+
+def test_las_variables_direccionadas_con_gp_estan_declaradas_con_el_tipo_de_su_acceso() -> None:
+    """Cada desplazamiento sobre $gp (0x80069320) es un dato; su acceso mas ancho fija el tipo."""
+    simbolos = _simbolos_del_repositorio()
+    datos = {d: s for d, s in simbolos.items() if s.tipo != "func"}
+    assert len(datos) == 66
+    assert min(datos) == 0x80069330
+    assert max(datos) == 0x800694AC
+    assert {
+        d: (datos[d].tipo, datos[d].tamano) for d in (0x80069338, 0x80069448, 0x80069488, 0x800694A8)
+    } == {
+        0x80069338: ("u8", 1),
+        0x80069448: ("u16", 2),
+        0x80069488: ("u32", 4),
+        0x800694A8: ("u8", 1),
+    }
+    assert all(s.nombre == f"D_{d:08X}" for d, s in datos.items())
+    assert all(d > max(a for a, s in simbolos.items() if s.tipo == "func") for d in datos)
+
+
+def test_la_tabla_del_repositorio_lleva_todos_los_nombres_del_archivo_de_nombres() -> None:
+    """Si el archivo de nombres cambia hay que regenerar la tabla: nunca se edita symbols.txt a mano."""
+    nombres = parsear_nombres((RAIZ / "config" / "nombres_funciones.txt").read_text(encoding="utf-8"))
+    simbolos = _simbolos_del_repositorio()
+    assert len(nombres) == 76
+    assert {d: simbolos[d].nombre for d in nombres} == nombres
+    assert all(simbolos[d].tipo == "func" for d in nombres)

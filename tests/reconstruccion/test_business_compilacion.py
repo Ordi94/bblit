@@ -20,7 +20,7 @@ typedef struct Ranura {
     u32 marca;
 } Ranura;
 
-Ranura* func_80036204(u8* base, s32 paso, s32 total)
+Ranura* AllocListNode(u8* base, s32 paso, s32 total)
 {
     u8* p;
     u8* fin;
@@ -39,7 +39,7 @@ Ranura* func_80036204(u8* base, s32 paso, s32 total)
     return 0;
 }
 """
-COINCIDENTES = ("func_8002FA38", "func_8002FB18", "func_80036204", "func_8001CE64", "func_80030D60")
+COINCIDENTES = ("CondCiseq", "CondCisltu", "AllocListNode", "func_8001CE64", "func_80030D60")
 NO_COINCIDENTES = ("func_8002F990", "func_80035244")
 INICIO_JUEGO = 0x80014AC4
 FIN_JUEGO = 0x80045DA0
@@ -147,7 +147,7 @@ def test_las_funciones_que_coinciden_estan_en_c_y_los_intentos_bajo_non_matching
         assert todos[nombre] is EstadoFuncion.C, nombre
     for nombre in NO_COINCIDENTES:
         assert todos[nombre] is EstadoFuncion.NO_COINCIDENTE, nombre
-    assert sum(1 for e in todos.values() if e is EstadoFuncion.C) == len(COINCIDENTES)
+    assert sum(1 for e in todos.values() if e is EstadoFuncion.C) >= len(COINCIDENTES)
 
 
 def test_las_cabeceras_son_c89_y_definen_los_tipos_y_la_macro() -> None:
@@ -222,7 +222,9 @@ def test_la_cadena_de_la_tarjeta_de_memoria_vive_en_c_y_cubre_exactamente_su_tra
 
 
 def test_el_g_por_archivo_esta_declarado_con_su_evidencia() -> None:
-    assert leer_valores_g(RAIZ_REPO) == {"camara_y_bucle_logico": 8}
+    valores = leer_valores_g(RAIZ_REPO)
+    assert valores["camara_y_bucle_logico"] == 8 and valores["graficos_y_gte_10"] == 8
+    assert set(valores.values()) == {8}
     texto = (RAIZ_REPO / "config" / "opciones_compilacion.toml").read_text(encoding="utf-8")
     assert "desplazamiento($gp)" in texto
 
@@ -253,7 +255,7 @@ def repo_mixto(tmp_path: Path) -> Any:
     return raiz, {"BBLIT_DISC": str(rutas.disc), "BBLIT_TOOLCHAIN": str(rutas.toolchain)}
 
 
-def test_ciclo_real_con_cinco_funciones_en_c_reproduce_el_ejecutable_y_discrimina(
+def test_ciclo_real_con_funciones_en_c_reproduce_el_ejecutable_y_discrimina(
     repo_mixto: Any, capsys: pytest.CaptureFixture[str]
 ) -> None:
     raiz, variables = repo_mixto
@@ -270,13 +272,19 @@ def test_ciclo_real_con_cinco_funciones_en_c_reproduce_el_ejecutable_y_discrimin
     assert cli.main(["verify"], variables, raiz) == 0
     assert capsys.readouterr().out.startswith("OK ")
 
-    for funcion in ("func_80036204", "func_8001CE64", "func_80030D60"):
+    for funcion in ("AllocListNode", "func_8001CE64", "func_80030D60"):
         assert cli.main(["diff", funcion], variables, raiz) == 0
         assert "puntuacion 0" in capsys.readouterr().out
     assert cli.main(["diff", "func_80035244"], variables, raiz) == 1
     assert capsys.readouterr().out.endswith("puntuacion 600\n")
-    assert cli.main(["diff", "func_80014BA0"], variables, raiz) == 1
-    assert "'func_80014BA0' sigue en INCLUDE_ASM" in capsys.readouterr().err
+    # Una funcion que siga en ensamblador, la que sea: activar funciones no debe romper esta prueba.
+    pendiente = next(
+        n
+        for n, e in plano(analizar_fuentes(listar_fuentes_c(raiz))).items()
+        if e is EstadoFuncion.ENSAMBLADOR
+    )
+    assert cli.main(["diff", pendiente], variables, raiz) == 1
+    assert f"'{pendiente}' sigue en INCLUDE_ASM" in capsys.readouterr().err
 
     carpeta = raiz.parent / "variantes"
     carpeta.mkdir()
@@ -286,7 +294,7 @@ def test_ciclo_real_con_cinco_funciones_en_c_reproduce_el_ejecutable_y_discrimin
     )
     (carpeta / "rota.c").write_text("esto no es C\n", encoding="utf-8")
     capsys.readouterr()
-    assert cli.main(["probar", "func_80036204", str(carpeta)], variables, raiz) == 0
+    assert cli.main(["probar", "AllocListNode", str(carpeta)], variables, raiz) == 0
     filas = capsys.readouterr().out.splitlines()
     assert filas[0].split() == ["variante", "puntuacion"]
     assert filas[1].split() == ["buena.c", "0"]
@@ -296,12 +304,17 @@ def test_ciclo_real_con_cinco_funciones_en_c_reproduce_el_ejecutable_y_discrimin
     capsys.readouterr()
     assert cli.main(["progreso"], variables, raiz) == 0
     resumen = capsys.readouterr().out
-    assert resumen.startswith("progreso: 5 funciones del juego en C de ")
-    assert "2 NON_MATCHING" in resumen
+    # Los totales se derivan de las fuentes del repositorio, no de un numero fijo: activar una
+    # funcion nueva no debe romper esta prueba.
+    estados_repo = plano(analizar_fuentes(listar_fuentes_c(raiz)))
+    en_c = sum(1 for e in estados_repo.values() if e is EstadoFuncion.C)
+    sin_cerrar = sum(1 for e in estados_repo.values() if e is EstadoFuncion.NO_COINCIDENTE)
+    assert resumen.startswith(f"progreso: {en_c} funciones del juego en C de ")
+    assert f"{sin_cerrar} NON_MATCHING" in resumen
     medido = progreso.generar_progreso(raiz)
     assert medido.coherente is True
-    assert medido.glabel_en_asm is not None and medido.glabel_en_asm + 5 == medido.funciones_totales
-    assert medido.c_juego.bytes == 0x28 + 0x20 + 0x4C + 0xEC + 0x44
+    assert medido.glabel_en_asm is not None and medido.glabel_en_asm + en_c == medido.funciones_totales
+    assert medido.c_juego.bytes >= 0x28 + 0x20 + 0x4C + 0xEC + 0x44
     assert medido.juego.bytes == 201416
 
     (raiz / "asm" / "overlay").mkdir()

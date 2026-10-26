@@ -34,8 +34,8 @@ def test_valores_g_por_archivo_acepta_la_forma_documentada() -> None:
 @pytest.mark.parametrize(
     ("datos", "mensaje"),
     [
-        ([], "solo se admite la tabla 'archivos'"),
-        ({"otra": {}}, "solo se admite la tabla 'archivos'"),
+        ([], "solo se admiten las tablas 'archivos', 'enlace' y 'datos_pequenos'"),
+        ({"otra": {}}, "solo se admiten las tablas 'archivos', 'enlace' y 'datos_pequenos'"),
         ({"archivos": []}, "'archivos' debe ser una tabla"),
         ({"archivos": {"1malo": {"g": 8}}}, "archivo '1malo' no valido"),
         ({"archivos": {"a-b": {"g": 8}}}, "archivo 'a-b' no valido"),

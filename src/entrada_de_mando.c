@@ -1,4 +1,5 @@
 #include "common.h"
+#include "globales.h"
 #include "psyq/TYPES.H"
 #include "psyq/LIBPAD.H"
 #include "psyq/LIBETC.H"
@@ -89,7 +90,6 @@ extern s8 D_800695A0;
 extern s8 D_80069595;
 extern s8 D_8006963C;
 extern u16* D_800695B0;
-extern s16 D_80069662;
 extern s16 D_80069672;
 extern s16 D_8006952C;
 extern s8 D_8006966A;
@@ -115,16 +115,13 @@ extern EntidadActual* D_80069698;
  * (que ocupa el hueco de retardo de la llamada) y el compilador, con la variable de registro,
  * lo calcula despues.
  */
-register u8* base_gp __asm__("$28");
 
 /* Registro absoluto del eje Y: lo escribe el original por direccion, sin base compartida. */
 #define W14 (*(u16*)0x80010014)
 
 extern void func_80040430(s8* contador, u16 mascara);
 
-#ifdef NON_MATCHING
 /*
- * Coincide con g = 8 (25, solo marcas i); con la configuracion actual -G0 da 955.
  * Arranque del mando: borra el estado de vibracion y de repeticion, inicia la tarjeta de
  * memoria y el controlador directo, y espera hasta 30 cuadros a que el mando 0 este estable
  * (PadStateStable); si admite el modo extendido lo fija en analogico (hasta 5 intentos).
@@ -171,11 +168,7 @@ void func_8003FFA0(void)
         } while (PadSetMainMode(0, 1, 2) == 0 && ++i < 5);
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/entrada_de_mando", func_8003FFA0);
-#endif
 
-#ifdef NON_MATCHING
 /*
  * No coincide en el diff (70 con g = 8 y con -G0), aunque los bytes son los del original (build y verify
  * OK con este cuerpo): el objetivo usa los simbolos D_80010026..D_8001003C y D_80010051 y el candidato
@@ -202,9 +195,6 @@ void func_800400C0(void)
     G->mando.mapa[6] = t->v[6];
     G->mando.mapa[7] = t->v[7];
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/entrada_de_mando", func_800400C0);
-#endif
 
 /*
  * Reasigna los botones fisicos del cuadro a los logicos segun la tabla de configuracion:
@@ -249,7 +239,7 @@ void func_80040158(Mando* m)
 
 #ifdef NON_MATCHING
 /*
- * No coincide: 240 con g = 8; con la configuracion actual -G0 da 3210.
+ * No coincide: puntuacion 240 (el archivo se compila con g = 8; 3210 con -G0).
  * Vibracion del mando: mientras el mando 0 anuncia el modo extendido (PadInfoMode 1 = 7 y
  * PadInfoMode 2 distinto de cero) descuenta los dos temporizadores de pulso (D_80069659 el
  * pequeno, D_8006965A el grande) y fija los motores D_8006965C/D_8006965D si el estado
@@ -323,9 +313,7 @@ void func_80040240(void)
 INCLUDE_ASM("asm/nonmatchings/entrada_de_mando", func_80040240);
 #endif
 
-#ifdef NON_MATCHING
 /*
- * Coincide con g = 8 (10, solo marcas i); con la configuracion actual -G0 da 285.
  * Repeticion automatica de un boton: mientras esta pulsado cuenta hacia atras el contador
  * de retardo; al llegar a cero marca el boton en D_800695EA (botones que disparan este
  * cuadro). Soltarlo rearma el retardo en 2 cuadros. Puntuacion 10 con -G8: solo cambia la
@@ -343,13 +331,10 @@ void func_80040430(s8* contador, u16 mascara)
     }
     *contador = 2;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/entrada_de_mando", func_80040430);
-#endif
 
 #ifdef NON_MATCHING
 /*
- * No coincide: 7419 con g = 8; con la configuracion actual -G0 da 10074.
+ * No coincide: puntuacion 7419 (el archivo se compila con g = 8; 10074 con -G0).
  * Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o
  * entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma
  * los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS

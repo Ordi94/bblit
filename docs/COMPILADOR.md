@@ -24,11 +24,16 @@ fecha del juego (mayo de 1999).
    (o en `asm/matchings/` si ya está en C). Cada uno se ensambla con `mipsel-none-elf-as` a un
    objeto ELF (el objetivo); `python tools/build.py diff <función>` automatiza este paso.
 2. `m2c --target mipsel-gcc-c` produce un borrador en C de la función; se reescribe a mano.
-3. El C se compila con `CC1PSX.EXE -quiet -O2 -G0` (y `-O1` cuando `-O2` no coincide). Se usa
-   `-G0` porque la cabecera declara `gp0 = 0`: el programa no usa el registro `$gp`.
+3. El C se compila con `CC1PSX.EXE -quiet -O2 -G<g>` (y `-O1` cuando `-O2` no coincide). El
+   umbral `-G` se declara por archivo en `config/opciones_compilacion.toml`: los archivos cuyo
+   original usa datos pequenos (`desplazamiento($gp)` o almacenes simbolicos a variables de
+   `0x80069xxx`) se compilan con el `-G8` del original; `-G0` queda solo para los archivos donde
+   aun no se ha demostrado que haga falta otro valor. La cabecera `gp0 = 0` del ejecutable no
+   significa que el programa no use `$gp`: es el valor inicial, y el arranque lo fija en
+   `0x80069320`. Ver «Datos pequenos y `$gp`» en `docs/DESCOMPILACION.md`.
 4. La salida de ensamblador pasa por `maspsx --aspsx-version=<versión>` y por GNU `as`
-   (`-EL -march=r3000 -mips1 -G0`) para producir un objeto ELF con los mismos reubicables que
-   el original.
+   (`-EL -march=r3000 -mips1`; `maspsx` fuerza `-G0` en `as` y recibe el `-G` real aparte) para
+   producir un objeto ELF con los mismos reubicables que el original.
 5. `asm-differ -o --file candidato.o --ref-file objetivo.o <función> --format=json` compara
    ambos. El campo `current_score` vale 0 solo si las instrucciones y los símbolos
    coinciden por completo.
@@ -124,10 +129,11 @@ struct Ranura *func_80036204(unsigned char *base, int paso, int total)
   tipo) y la misma versión de GCC produce el resultado.
 - `func_8002F990`: el original lee los dos bytes con una única instrucción `lui` (los dos
   símbolos comparten la parte alta de la dirección) y GCC genera dos `lui` cuando son
-  variables externas distintas; hay que declararlos como miembros de una estructura o de un
-  arreglo. Además, el original conserva una copia del valor (`move a2, v1` en el hueco de
-  retardo del primer salto) que ni 2.7.2 ni 2.8.1 reproducen con el C probado. GCC 2.8.1
-  se acerca más (puntuación 350 frente a 705).
+  variables externas distintas. No hace falta una estructura `extern`: un puntero constante a
+  `0x80010000` (`Est* e = (Est*)0x80010000;` con `e->r[7]` y `e->r[0xFC]`) reproduce el `lui` único
+  con `-G0` y con `-G8`. Lo que falta es la copia del valor que conserva el original (`move a2, v1`
+  en el hueco de retardo del primer salto), que ni 2.7.2 ni 2.8.1 reproducen con el C probado: la
+  mejor formulación mide 25 palabras frente a 26.
 
 ## Conclusión
 
@@ -135,7 +141,8 @@ Regla de cabeceras: las del proyecto en `include/psyq/` deben ser las del SDK 4.
 versión que el compilador identificado; las del SDK 4.7 solo sirven de consulta.
 
 El proyecto compila con **GCC 2.8.1 de Psy-Q (`CC1PSX.EXE` build 4.0.0010, el de Psy-Q 4.4)**
-con las opciones **`-O2 -G0`**. Para el ensamblador se usa `maspsx --aspsx-version=2.79`, la
+con las opciones **`-O2` y el `-G` original de cada archivo (8 donde el codigo usa datos
+pequenos; `-G0` solo donde se ha demostrado necesario)**. Para el ensamblador se usa `maspsx --aspsx-version=2.79`, la
 versión de ASPSX de ese SDK; la coincidencia observada no depende de ese valor. Es la única
 combinación que reproduce exactamente una función no trivial del juego: GCC 2.7.2 no lo logra
 con ninguna de las formulaciones probadas, y `-O1` no coincide en ninguna de las funciones

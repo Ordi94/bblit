@@ -4,14 +4,14 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_80036164);
 
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_800361CC);
 
-/* Ranura de una reserva: 'marca' con el bit 0 activo indica que esta ocupada. */
+/* Ranura de una reserva: 'marca' con el bit 0 activo indica que esta libre. */
 typedef struct Ranura {
     s32 dato;
     u32 marca;
 } Ranura;
 
-/* Devuelve la primera ranura marcada, la libera y avanza por la reserva de 'paso' en 'paso'. */
-Ranura* func_80036204(u8* base, s32 paso, s32 total)
+/* Devuelve la primera ranura libre, la ocupa (borra la marca) y avanza por la reserva de 'paso' en 'paso'. */
+Ranura* AllocListNode(u8* base, s32 paso, s32 total)
 {
     u8* p;
     u8* fin;
@@ -30,13 +30,13 @@ Ranura* func_80036204(u8* base, s32 paso, s32 total)
     return 0;
 }
 
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_80036250);
+INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", InitListPool);
 
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_800362D0);
+INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", RemoveListNode);
 
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_80036358);
+INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", ClearList);
 
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_8003638C);
+INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", AppendListNode);
 
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_800363D4);
 

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from tools.ghidra.cli import construir_parser, main
+from tools.ghidra.dominio import Simbolo
 from tools.ghidra.ejecucion import ResultadoEjecucion
 from tools.ghidra.simbolos import formatear_tabla
 
@@ -216,3 +217,16 @@ def test_un_tiempo_agotado_del_desensamblador_se_reporta_con_codigo_2(
 
     assert main(_argumentos("grafo", entradas), {}, agotado) == 2
     assert capsys.readouterr().err == "error: el proceso excedio 600 segundos\n"
+
+
+def test_los_simbolos_de_datos_de_la_tabla_no_cuentan_como_funciones_en_el_grafo(
+    entradas: dict[str, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    con_datos = [
+        *simbolos(),
+        Simbolo("D_80069338", 0x80069338, "u8", 1),
+        Simbolo("D_80069350", 0x80069350, "u32", 4),
+    ]
+    entradas["simbolos"].write_text(formatear_tabla(con_datos), encoding="utf-8", newline="\n")
+    assert main(_argumentos("grafo", entradas), {}, Splat()) == 0
+    assert capsys.readouterr().out.splitlines()[0].startswith("aristas: 4 (7 sitios de llamada)")

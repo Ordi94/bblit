@@ -262,3 +262,32 @@ def test_estructura_binaria_de_la_cabecera_campo_a_campo() -> None:
         0x801FFFF0,
         0,
     )
+
+
+ASM_CON_FUNCION_LOCAL = """
+nonmatching .L80044904, 0x3C
+
+glabel .L80044904
+    /* 30704 80044904 21302002 */  addu       $a2, $s1, $zero
+  .L80044910:
+    /* 30710 80044910 0800E003 */  jr         $ra
+endlabel .L80044904
+"""
+
+
+def test_funciones_con_nombre_local_solo_toma_las_declaradas_con_glabel() -> None:
+    assert dominio.funciones_con_nombre_local(ASM_CON_FUNCION_LOCAL) == {".L80044904"}
+    assert dominio.funciones_con_nombre_local("glabel func_80044904\n  .L80044910:\n") == frozenset()
+    assert dominio.funciones_con_nombre_local("glabel .L8004490\nglabel .L800449041\n") == frozenset()
+
+
+def test_renombrar_funciones_locales_cambia_definicion_y_saltos_y_respeta_las_etiquetas_internas() -> None:
+    nombres = frozenset({".L80044904"})
+    nuevo = dominio.renombrar_funciones_locales(
+        ASM_CON_FUNCION_LOCAL + "    j  .L80044904\n    b  .L80044910\n    j  .L800449041\n", nombres
+    )
+    assert "glabel func_80044904" in nuevo and "endlabel func_80044904" in nuevo
+    assert "    j  func_80044904\n" in nuevo
+    assert ".L80044910:" in nuevo and "b  .L80044910" in nuevo
+    assert ".L800449041" in nuevo, "un nombre mas largo no es el mismo simbolo"
+    assert dominio.renombrar_funciones_locales(ASM_CON_FUNCION_LOCAL, frozenset()) == ASM_CON_FUNCION_LOCAL

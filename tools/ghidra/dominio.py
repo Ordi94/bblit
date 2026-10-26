@@ -37,7 +37,7 @@ FIN_CODIGO: Final[int] = 0x8005DEA0
 TAMANO_MINIMO_FUNCION: Final[int] = 8
 """Una funcion ocupa al menos un retorno y su ranura de retardo."""
 
-TipoSimbolo = Literal["func", "data"]
+TipoSimbolo = Literal["func", "u8", "u16", "u32"]
 
 _PATRON_IDENTIFICADOR: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _PATRON_CARACTER_INVALIDO: Final[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9_]")
@@ -83,7 +83,7 @@ class Simbolo:
     Attributes:
         nombre (str): Identificador C valido.
         direccion (int): Direccion dentro del segmento.
-        tipo (TipoSimbolo): ``func`` o ``data``.
+        tipo (TipoSimbolo): ``func`` o un tipo de dato del desensamblador (``u8``, ``u16``, ``u32``).
         tamano (int): Bytes que ocupa el simbolo.
     """
 
@@ -188,6 +188,25 @@ def normalizar_nombre(nombre: str) -> str:
     if not limpio or limpio[0].isdigit():
         limpio = f"_{limpio}"
     return limpio
+
+
+def tiene_nombre_oficial(funcion: Funcion) -> bool:
+    """
+    Indica si el nombre de la funcion viene de una firma del SDK (o es la entrada ``main``).
+
+    Contexto:
+        Un nombre asi tiene prioridad sobre cualquier otro origen, por ejemplo el archivo de nombres.
+
+    Args:
+        funcion (Funcion): Funcion exportada por Ghidra.
+
+    Returns:
+        bool: Verdadero si la tabla conservara el nombre de Ghidra en lugar de ``func_<direccion>``.
+
+    Ejemplo:
+        tiene_nombre_oficial(Funcion(0x80051938, "DrawSync", 0x68, True, "", 0, True, ""))  # True
+    """
+    return _usa_nombre_propio(funcion)
 
 
 def _usa_nombre_propio(funcion: Funcion) -> bool:
@@ -334,7 +353,7 @@ def _validar_simbolo(simbolo: Simbolo) -> None:
 
 
 def _validar_vecinos(previo: Simbolo, actual: Simbolo) -> None:
-    """Reglas entre dos simbolos consecutivos: orden estricto y sin solape."""
+    """Reglas entre dos simbolos consecutivos: orden estricto y sin solape (un dato puede contener a otro)."""
     if actual.direccion == previo.direccion:
         raise ValueError(
             f"simbolo {actual.nombre}: direccion 0x{actual.direccion:08X} "
@@ -342,7 +361,8 @@ def _validar_vecinos(previo: Simbolo, actual: Simbolo) -> None:
         )
     if actual.direccion < previo.direccion:
         raise ValueError(f"simbolo {actual.nombre}: fuera de orden ascendente tras {previo.nombre}")
-    if previo.direccion + previo.tamano > actual.direccion:
+    anidados = previo.tipo != "func" and actual.tipo != "func"
+    if previo.direccion + previo.tamano > actual.direccion and not anidados:
         raise ValueError(f"simbolo {previo.nombre}: se solapa con {actual.nombre}")
 
 

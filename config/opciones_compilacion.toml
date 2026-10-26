@@ -4,6 +4,43 @@
 # accede a variables con desplazamiento($gp) se compilo con datos pequenos; con un valor mayor
 # que cero las variables externas pequenas se emiten en forma simbolica (sh $2,D_80069662),
 # como en el original, en lugar de lui mas desplazamiento. build, diff y probar leen este archivo.
+# Los archivos que no figuran compilan con -G0.
 
 [archivos.camara_y_bucle_logico]
 g = 8
+
+[archivos.arranque_y_bucle_principal_2]
+g = 8
+
+[archivos.tarjeta_de_memoria]
+g = 8
+
+[archivos.entrada_de_mando]
+g = 8
+
+[archivos.graficos_y_gte]
+g = 8
+
+[archivos.graficos_y_gte_10]
+g = 8
+
+[archivos.graficos_y_gte_12]
+g = 8
+
+[archivos.interprete_de_eventos]
+g = 8
+
+# Enlace. gp: valor de $gp que fija el codigo de arranque del juego (lui gp,0x8007 ;
+# addiu gp,gp,-0x6CE0). build lo define como _gp en el enlace; las referencias relativas a $gp
+# de los objetos C se resuelven contra el. Es un simbolo absoluto: no cambia ningun byte.
+[enlace]
+gp = 0x80069320
+
+# Datos pequenos que el codigo direcciona con desplazamiento($gp): simbolo = direccion. Un archivo C
+# que los usa los declara como definicion tentativa (sin extern) y maspsx los reescribe a $gp; el
+# enlace les da esta direccion (los fija junto a _gp). Se retiran cuando config/symbols.txt los declare.
+[datos_pequenos]
+D_80069338 = 0x80069338
+D_80069488 = 0x80069488
+D_800694A4 = 0x800694A4
+D_800694A8 = 0x800694A8

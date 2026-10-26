@@ -21,10 +21,12 @@ from tools.reconstruccion.diff import (
     puntuar_objeto,
     validar_funcion,
 )
+from tools.reconstruccion.enlace_diff import bytes_coinciden
 from tools.reconstruccion.infraestructura import (
     CARPETA_DIFF,
     Ejecutor,
     ProcesoError,
+    leer_direcciones_de_funciones,
     leer_valores_g,
     listar_fuentes_c,
 )
@@ -43,11 +45,19 @@ class ResultadoVariante:
         nombre: Nombre del archivo de la variante.
         puntuacion: Puntuacion de ``asm-differ`` (0 es coincidencia exacta); ``None`` si fallo.
         error: Primera linea del error si la variante no compilo o no se pudo comparar.
+        bytes_iguales: Si los bytes enlazados de la funcion coinciden con los del original aunque la
+            puntuacion no sea cero (``None`` si no se pudo comparar).
     """
 
     nombre: str
     puntuacion: int | None
     error: str | None = None
+    bytes_iguales: bool | None = None
+
+    @property
+    def coincide(self) -> bool:
+        """Verdadero si la puntuacion es cero o los bytes enlazados son iguales."""
+        return self.puntuacion == 0 or self.bytes_iguales is True
 
 
 def listar_variantes(carpeta: Path) -> list[Path]:
@@ -104,7 +114,9 @@ def ordenar_resultados(resultados: list[ResultadoVariante]) -> list[ResultadoVar
     Ejemplo:
         ordenados = ordenar_resultados(resultados)
     """
-    return sorted(resultados, key=lambda r: (r.puntuacion is None, r.puntuacion or 0, r.nombre))
+    return sorted(
+        resultados, key=lambda r: (r.puntuacion is None, not r.coincide, r.puntuacion or 0, r.nombre)
+    )
 
 
 def formatear_tabla(resultados: list[ResultadoVariante]) -> str:
@@ -127,6 +139,8 @@ def formatear_tabla(resultados: list[ResultadoVariante]) -> str:
     filas = [f"{'variante':<{ancho}}  puntuacion"]
     for r in resultados:
         valor = str(r.puntuacion) if r.puntuacion is not None else f"error: {r.error}"
+        if r.bytes_iguales and r.puntuacion:
+            valor += " (bytes iguales)"
         filas.append(f"{r.nombre:<{ancho}}  {valor}")
     return "\n".join(filas)
 
@@ -182,6 +196,7 @@ def probar_variantes(
     estados = fuentes_c.analizar_fuentes(listar_fuentes_c(raiz))
     archivo, _ = fuentes_c.ubicar_funcion(estados, funcion)
     valor_g = leer_valores_g(raiz).get(Path(archivo).stem, 0)
+    direccion = leer_direcciones_de_funciones(raiz).get(funcion)
     objetivo, retornos = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
     resultados: list[ResultadoVariante] = []
     for variante in variantes:
@@ -207,7 +222,19 @@ def probar_variantes(
                 retornos=retornos,
                 formato="json",
             )
-            resultados.append(ResultadoVariante(variante.name, puntuacion_desde_json(salida)))
+            puntuacion = puntuacion_desde_json(salida)
+            iguales = None
+            if puntuacion != 0 and direccion is not None:
+                iguales = bytes_coinciden(
+                    raiz,
+                    herramientas,
+                    ejecutar,
+                    funcion=funcion,
+                    direccion=direccion,
+                    candidato=objeto,
+                    objetivo=objetivo,
+                )
+            resultados.append(ResultadoVariante(variante.name, puntuacion, None, iguales))
         except (ProcesoError, ValueError, OSError) as error:
             resultados.append(ResultadoVariante(variante.name, None, _primera_linea(str(error))))
     return ordenar_resultados(resultados)

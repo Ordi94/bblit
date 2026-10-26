@@ -196,13 +196,14 @@ solo difiera la primera palabra (la ranura del cargador).
 | Volcado | Resultado |
 |---|---|
 | Pantalla de título | Coincide con la variante `a` (solo difiere la ranura: `0x8006B2F8`). Es la variante de `LEVEL1/TITLE`. |
-| Partida en curso | Coincide con la variante `b` (solo difiere la ranura). |
+| Partida en curso (`ram_nivel1.bin`) | Coincide con la variante `b` (solo difiere la ranura). El identificador de nivel de `0x80010000` es `0x33` = 51, el contenedor `LEVEL5\MERLIN.BZZ`. |
 
 Los seis sitios que parchea `0x8001020C` coinciden con el archivo en ambos volcados: o la rutina no
 se había llamado todavía o escribió los mismos valores. La variante `b` no la trae ningún
 contenedor de `LEVEL1` (`LEVEL1` trae `a` y `c`), así que el volcado de la partida no es de un
-nivel 1 de ese directorio; para saber cuál de los 24 contenedores de `b` estaba cargado basta un
-punto de ruptura en `0x800415A0` y leer el índice de archivo.
+nivel 1 de ese directorio. El volcado corresponde al nivel 51, `MERLIN` (`LEVEL5\MERLIN.BZZ`): el estado
+principal `0x80010000` vale `0x33` y la entrada 51 de la tabla de sectores `0x8005EE78` tiene el tamaño de ese
+archivo (1.581.056 bytes), que trae la variante `b`.
 
 ## 9. Partición y reconstrucción
 

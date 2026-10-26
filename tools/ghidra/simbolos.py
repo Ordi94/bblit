@@ -17,7 +17,7 @@ from tools.ghidra.dominio import Simbolo, TipoSimbolo, validar_simbolos
 
 _PATRON_LINEA: Final[re.Pattern[str]] = re.compile(
     r"^(?P<nombre>[A-Za-z_][A-Za-z0-9_]*) = 0x(?P<direccion>[0-9A-F]{8}); "
-    r"// type:(?P<tipo>func|data) size:0x(?P<tamano>[0-9A-F]{1,8})$"
+    r"// type:(?P<tipo>func|u8|u16|u32) size:0x(?P<tamano>[0-9A-F]{1,8})$"
 )
 
 MAX_LINEAS: Final[int] = 100_000
@@ -150,6 +150,7 @@ def formatear_nuevas_csv(
     fusionadas: Sequence[tuple[int, int]],
     simbolos: Sequence[Simbolo],
     antes: Mapping[int, str],
+    por_retorno: Sequence[tuple[int, int]] = (),
 ) -> str:
     """
     Lista las funciones que la tabla gana al partir bloques y las que pierde al fusionar.
@@ -163,9 +164,12 @@ def formatear_nuevas_csv(
         fusionadas (Sequence[tuple[int, int]]): Pares ``(absorbida, principal)``.
         simbolos (Sequence[Simbolo]): Tabla final.
         antes (Mapping[int, str]): Direccion a nombre en la tabla anterior (para las absorbidas).
+        por_retorno (Sequence[tuple[int, int]], opcional): Pares ``(direccion, madre)`` de rutinas separadas
+            porque la anterior termina con un retorno completo.
 
     Returns:
-        str: CSV con LF y las columnas de ``COLUMNAS_NUEVAS``; ``operacion`` es ``partida`` o ``fusionada``.
+        str: CSV con LF y las columnas de ``COLUMNAS_NUEVAS``; ``operacion`` es ``partida``,
+        ``partida_por_retorno`` o ``fusionada``.
 
     Ejemplo:
         texto = formatear_nuevas_csv(refinado.nuevas, refinado.fusionadas, simbolos, nombres_antes)
@@ -178,6 +182,18 @@ def formatear_nuevas_csv(
         simbolo, padre = por_direccion[direccion], por_direccion[madre]
         escritor.writerow(
             [f"0x{direccion:08X}", simbolo.nombre, simbolo.tamano, f"0x{madre:08X}", padre.nombre, "partida"]
+        )
+    for direccion, madre in sorted(por_retorno):
+        simbolo, padre = por_direccion[direccion], por_direccion[madre]
+        escritor.writerow(
+            [
+                f"0x{direccion:08X}",
+                simbolo.nombre,
+                simbolo.tamano,
+                f"0x{madre:08X}",
+                padre.nombre,
+                "partida_por_retorno",
+            ]
         )
     for absorbida, principal in sorted(fusionadas):
         padre = por_direccion[principal]

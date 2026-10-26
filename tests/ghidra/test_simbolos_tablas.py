@@ -8,7 +8,7 @@ from tools.ghidra.cli import main
 from tools.ghidra.dominio import Simbolo
 from tools.ghidra.simbolos import COLUMNAS_NUEVAS, escribir_atomico, formatear_nuevas_csv
 
-from tests.ghidra.ensamblaje import programa, retorno
+from tests.ghidra.ensamblaje import addiu, lui, lw, programa, retorno
 from tests.ghidra.segmentos import escribir_ejecutable
 from tests.ghidra.sintetica import csv_funciones, fila
 
@@ -87,7 +87,7 @@ def test_el_comando_simbolos_parte_el_bloque_y_escribe_las_dos_listas(
     salida = capsys.readouterr().out.splitlines()
     assert salida[1] == (
         "tablas: 1 (1 de punteros a funcion, 0 de switch); 4 funciones nuevas, "
-        "0 continuaciones fusionadas, 0 destinos no aplicados"
+        "0 separadas por retorno, 0 continuaciones fusionadas, 0 destinos no aplicados"
     )
     lineas = destino.read_text(encoding="utf-8").splitlines()
     assert [linea for linea in lineas if "size:0x8" in linea and "80020" in linea][:2] == [
@@ -118,3 +118,52 @@ def test_si_falla_la_escritura_de_las_listas_la_tabla_anterior_no_se_toca(
     assert main(_simbolos(entradas, destino, "--tablas", str(carpeta))) == 2
     assert destino.read_text(encoding="utf-8") == "anterior\n"
     assert capsys.readouterr().err.startswith("error de entrada/salida:")
+
+
+def test_el_csv_de_nuevas_distingue_las_separadas_por_retorno() -> None:
+    simbolos = [Simbolo("func_80020000", M, "func", 8), Simbolo("func_80020008", M + 8, "func", 8)]
+    texto = formatear_nuevas_csv([], [], simbolos, {}, [(M + 8, M)])
+    filas = list(csv.reader(io.StringIO(texto)))
+    assert filas[1] == [
+        "0x80020008",
+        "func_80020008",
+        "8",
+        "0x80020000",
+        "func_80020000",
+        "partida_por_retorno",
+    ]
+
+
+def test_el_comando_simbolos_declara_los_datos_de_gp_despues_de_las_funciones(
+    tmp_path: Path, entradas: dict[str, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    palabras = programa(0x80014AC4, [lui(28, 0x8007), addiu(28, 28, -0x6CE0), lw(8, 0x18, 28), 0x27840030])
+    exe = escribir_ejecutable(tmp_path / "gp.38", palabras | programa(M, [*retorno()] * 1))
+    filas = [fila(direccion=f"0x{M:08X}", nombre="FUN_80020000", tamano="8")]
+    funciones = tmp_path / "gp_funciones.csv"
+    funciones.write_text(csv_funciones(filas), encoding="utf-8", newline="")
+    destino = tmp_path / "gp_symbols.txt"
+    argumentos = ["simbolos", "--funciones", str(funciones), "--salida", str(destino), "--exe", str(exe)]
+    assert main(argumentos) == 0
+    lineas = destino.read_text(encoding="utf-8").splitlines()
+    assert lineas[-2:] == [
+        "D_80069338 = 0x80069338; // type:u32 size:0x4",
+        "D_80069350 = 0x80069350; // type:u8 size:0x40",
+    ]
+    assert all(linea.startswith("func_") for linea in lineas[:-2])
+
+
+def test_el_comando_simbolos_aplica_el_archivo_de_nombres_y_reporta_los_choques(
+    tmp_path: Path, entradas: dict[str, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    nombres = tmp_path / "nombres.txt"
+    nombres.write_text("0x80020008 RutinaUno  # origen: prueba\n0x80020010 func_80020000\n", encoding="utf-8")
+    destino = tmp_path / "symbols.txt"
+    assert main(_simbolos(entradas, destino, "--nombres", str(nombres))) == 0
+    salida = capsys.readouterr().out.splitlines()
+    assert "nombres: 1 aplicados o ya iguales, 1 choques" in salida
+    assert "choque 0x80020010 func_80020000: repetido (0x80020000)" in salida
+    lineas = destino.read_text(encoding="utf-8").splitlines()
+    assert "RutinaUno = 0x80020008; // type:func size:0x8" in lineas
+    assert "func_80020008 = 0x80020008; // type:func size:0x8" not in lineas
+    assert "func_80020010 = 0x80020010; // type:func size:0x8" in lineas

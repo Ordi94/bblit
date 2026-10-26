@@ -37,7 +37,7 @@ extern void* D_800694FC;
 extern u8 D_80010065;
 
 /* Dato pequeno de $gp (+0x188): maquina de estados de la pantalla de carga (0, 2, 4; bit 0 = activa). */
-extern u8 D_800694A8;
+u8 D_800694A8;
 
 /* Pone a negro dos veces, con un cuadro de espera, el rectangulo de 512x512 de la VRAM en (512, 0). */
 void func_800443CC(void)
@@ -61,7 +61,8 @@ void func_800443CC(void)
 
 #ifdef NON_MATCHING
 /*
- * No coincide: 555 con g = 8; con la configuracion actual -G0 da 1254.
+ * No coincide: puntuacion 240 (el archivo se compila con g = 8 y define D_800694A8; era 555
+ * con la variable declarada extern y 1254 con -G0).
  * Reinicia el hardware grafico y muestra la pantalla de carga del archivo pedido: apaga
  * los retornos de llamada, limpia la VRAM, carga la imagen asociada y reactiva la pantalla.
  * Para el archivo 3 el numero de pantalla depende de D_80010065 (nivel).
@@ -121,9 +122,10 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte_12", func_8004443C);
 
 #ifdef NON_MATCHING
 /*
- * No coincide: 290 con g = 8; con la configuracion actual -G0 da 230.
+ * No coincide: puntuacion 175 (el archivo se compila con g = 8 y define D_800694A8; era 290
+ * con la variable declarada extern).
  * Carga la pantalla del archivo pedido sin reiniciar la pantalla. Puntuacion 290 con -G8:
- * difieren la escritura de 0x188($gp) y que el original conserva el valor leido en dos
+ * difiere que el original conserva el valor leido en dos
  * registros (el de comparacion y el del argumento).
  */
 void func_80044588(s32 archivo)
@@ -141,9 +143,7 @@ void func_80044588(s32 archivo)
 INCLUDE_ASM("asm/nonmatchings/graficos_y_gte_12", func_80044588);
 #endif
 
-#ifdef NON_MATCHING
 /*
- * Coincide con g = 8 (0); con la configuracion actual -G0 da 110.
  * Carga el contenedor pedido, entrega el resultado a func_80019364 y deja armados los
  * retornos de llamada de VSync (func_80040AF0) y de audio y menus. Puntuacion 0 con -G8;
  * con el -G0 por omision la carga de D_800694FC usa otro registro y la funcion pierde un nop.
@@ -160,6 +160,3 @@ void func_800445E8(s16 archivo)
     func_8003E068();
     func_8003E3C0();
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte_12", func_800445E8);
-#endif

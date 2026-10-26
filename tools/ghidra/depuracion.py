@@ -8,6 +8,7 @@ filtran aqui, con reglas puras sobre las palabras del segmento.
 
 from collections.abc import Collection
 from dataclasses import dataclass, replace
+from typing import Final
 
 from tools.ghidra.dominio import (
     ALINEACION_FUNCION,
@@ -291,12 +292,15 @@ class Refinamiento:
         funciones (list[Funcion]): Funciones tras partir los bloques madre y fusionar las continuaciones.
         nuevas (list[tuple[int, int]]): Pares ``(direccion, madre)`` de cada funcion creada al partir.
         fusionadas (list[tuple[int, int]]): Pares ``(absorbida, principal)`` de continuaciones fundidas.
+        por_retorno (list[tuple[int, int]]): Pares ``(direccion, madre)`` de rutinas separadas porque
+            la anterior termina con un retorno completo y nada cruza ese punto.
         conflictos (list[tuple[int, str]]): Destinos que no se aplicaron y la razon.
     """
 
     funciones: list[Funcion]
     nuevas: list[tuple[int, int]]
     fusionadas: list[tuple[int, int]]
+    por_retorno: list[tuple[int, int]]
     conflictos: list[tuple[int, str]]
 
 
@@ -345,7 +349,8 @@ def refinar_con_tablas(
     Parte los bloques que contienen rutinas de tablas de punteros y une las continuaciones.
 
     Contexto:
-        Las rutinas hoja a las que se llega por una tabla de punteros a funcion no tienen prologo ni
+        Ademas separa las rutinas pegadas sin tabla (ver ``_partir_por_retornos``). Las rutinas hoja a las
+        que se llega por una tabla de punteros a funcion no tienen prologo ni
         ningun ``jal`` que las delate, y la depuracion las deja fundidas en la funcion anterior. Todo
         destino de esas tablas dentro del rango del juego es inicio de funcion. En sentido contrario,
         una funcion que solo existe porque un ``switch`` de la anterior cae justo en su primera
@@ -391,7 +396,8 @@ def refinar_con_tablas(
     resultado, fusionadas = _fusionar_continuaciones(
         segmento, resultado, _destinos_de_llamada(segmento) | set(destinos_de_puntero), set(destinos_de_salto)
     )
-    return Refinamiento(resultado, nuevas, fusionadas, sorted(conflictos))
+    resultado, por_retorno = _partir_por_retornos(segmento, resultado, set(destinos_de_salto))
+    return Refinamiento(resultado, nuevas, fusionadas, por_retorno, sorted(conflictos))
 
 
 def _partir(
@@ -444,3 +450,69 @@ def _fusionar_continuaciones(
         else:
             resultado.append(funcion)
     return resultado, fusionadas
+
+
+_JR_RA: Final[int] = 0x03E00008
+_RAMAS_CONDICIONALES: Final[frozenset[int]] = frozenset({1, 4, 5, 6, 7, 0x14, 0x15, 0x16, 0x17})
+
+
+def _objetivo_de_salto(direccion: int, palabra: int) -> int | None:
+    """Destino de una rama o de un ``j``; ``None`` si la instruccion no bifurca (``jal`` no cuenta)."""
+    operacion = palabra >> 26
+    if operacion in _RAMAS_CONDICIONALES:
+        inmediato = palabra & 0xFFFF
+        return direccion + 4 + 4 * (inmediato - 0x10000 if inmediato & 0x8000 else inmediato)
+    if operacion == 2:
+        return (direccion & 0xF0000000) | ((palabra & 0x03FFFFFF) << 2)
+    return None
+
+
+def _puntos_de_retorno(segmento: bytes, funcion: Funcion, saltos: set[int]) -> list[int]:
+    """Puntos de ``funcion`` donde empieza una rutina distinta tras un retorno completo."""
+    inicio, fin = funcion.direccion, funcion.direccion + funcion.tamano
+    bifurcaciones = [
+        (direccion, objetivo)
+        for direccion in range(inicio, fin, ALINEACION_FUNCION)
+        if (objetivo := _objetivo_de_salto(direccion, palabra_en(segmento, direccion))) is not None
+        and inicio <= objetivo < fin
+    ]
+    internos = sorted(s for s in saltos if inicio <= s < fin)
+    puntos: list[int] = []
+    for punto in range(inicio + TAMANO_MINIMO_FUNCION, fin - TAMANO_MINIMO_FUNCION + 1, ALINEACION_FUNCION):
+        ranura = palabra_en(segmento, punto - 4)
+        if palabra_en(segmento, punto - 8) != _JR_RA or _objetivo_de_salto(punto - 4, ranura) is not None:
+            continue
+        cruza = any((origen < punto) != (objetivo < punto) for origen, objetivo in bifurcaciones)
+        con_tabla = bool(internos) and internos[0] <= punto <= internos[-1]
+        if not cruza and not con_tabla:
+            puntos.append(punto)
+    return puntos
+
+
+def _partir_por_retornos(
+    segmento: bytes, funciones: list[Funcion], saltos: set[int]
+) -> tuple[list[Funcion], list[tuple[int, int]]]:
+    """
+    Separa las rutinas que quedaron pegadas tras un ``jr ra`` sin nada que las una.
+
+    Contexto:
+        Una funcion de un solo cuerpo no puede tener codigo alcanzable solo despues de su retorno:
+        todo lo que sigue a un ``jr ra`` con su ranura es el destino de alguna rama anterior. Si
+        ninguna rama ni ``j`` cruza ese punto, ni hay destinos de ``switch`` a ambos lados, el
+        codigo posterior solo puede alcanzarse llamandolo: es otra rutina. Las funciones con varios
+        retornos legitimos siempre tienen ramas que cruzan el punto.
+    """
+    resultado: list[Funcion] = []
+    separadas: list[tuple[int, int]] = []
+    for funcion in funciones:
+        piezas = [funcion]
+        if INICIO_JUEGO <= funcion.direccion < FIN_JUEGO and funcion.tamano >= 2 * TAMANO_MINIMO_FUNCION:
+            inicio, fin = funcion.direccion, funcion.direccion + funcion.tamano
+            for punto in _puntos_de_retorno(segmento, funcion, saltos):
+                if _cierra(segmento, inicio, punto) and _cierra(segmento, punto, fin):
+                    piezas[-1] = replace(piezas[-1], tamano=punto - inicio)
+                    piezas.append(_funcion_nueva(punto, fin - punto))
+                    separadas.append((punto, funcion.direccion))
+                    inicio = punto
+        resultado.extend(piezas)
+    return resultado, separadas

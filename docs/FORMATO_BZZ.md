@@ -167,6 +167,10 @@ Medido sobre las 742 secciones descomprimidas (157.558.875 bytes en total).
 | 4 | 108 | 56 a 1.342.066 | Tablas de registros del nivel o la escena (con 382 imagenes TIM incrustadas). | Cabecera de offsets (`0x108` en los niveles) y registros de 24 bytes. Semantica sin identificar. |
 | 5 a 10 | 57 cada uno | 13.716 a 189.532 | Seis bancos con la misma cabecera y el mismo formato de registros que el tipo 4; solo en niveles jugables. Sin imagenes ni codigo. | Misma cabecera de offsets (`0x108` seguido de un tamano), registros de 24 bytes. Semantica sin identificar. |
 
+El identificador de un archivo es su índice en la tabla de sectores de `0x8005EE78` (entrada = `LBA, tamaño`; las
+dos últimas son los audios XA). Para los 108 archivos `.BZZ` del disco la entrada coincide con su posición y su
+tamaño en el disco; por ejemplo, la 51 (`0x33`) es `LEVEL5\MERLIN.BZZ`, de 1.581.056 bytes.
+
 ### Tipo 1: script y tablas
 
 - Los 76 archivos con tipo 2 empiezan por `2D 45 00 2E` (`-E`, indice 0, `.`); los 32 sin tipo 2

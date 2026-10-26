@@ -1,4 +1,5 @@
 #include "geometria.h"
+#include "globales.h"
 
 /* Cabezas de lista por grupo: la primera zona de cada grupo de la tabla cargada. */
 extern ZonaColision* D_80069C18[];
@@ -8,7 +9,6 @@ extern ZonaColision* D_80069C18[];
  * accede con desplazamiento fijo sobre $gp aunque el archivo se compila con -G0. Depende de que
  * nada reasigne $gp (el arranque lo fija a 0x80069320 y no cambia).
  */
-register u8* base_gp __asm__("$28");
 
 /*
  * Carga la tabla de zonas de un bloque: [cuenta][zonas de 0x44 bytes]. Registra cuenta y puntero,

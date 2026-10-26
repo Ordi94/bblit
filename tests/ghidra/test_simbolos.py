@@ -22,8 +22,8 @@ def test_formatear_simbolo_usa_hexadecimal_en_mayusculas() -> None:
 
 
 def test_formatear_simbolo_de_datos() -> None:
-    linea = formatear_simbolo(Simbolo("D_80060000", 0x80060000, "data", 0xA0))
-    assert linea == "D_80060000 = 0x80060000; // type:data size:0xA0"
+    linea = formatear_simbolo(Simbolo("D_80060000", 0x80060000, "u8", 0xA0))
+    assert linea == "D_80060000 = 0x80060000; // type:u8 size:0xA0"
 
 
 def test_formatear_tabla_escribe_una_linea_por_simbolo_con_salto_final() -> None:
@@ -82,3 +82,17 @@ def test_parsear_tabla_acota_el_numero_de_lineas(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(modulo, "MAX_LINEAS", 2)
     with pytest.raises(ValueError, match=r"symbols: 3 lineas exceden el maximo de 2"):
         parsear_tabla("a\nb\nc\n")
+
+
+def test_la_tabla_acepta_los_tipos_de_dato_del_desensamblador_y_rechaza_data() -> None:
+    texto = (
+        "D_80069338 = 0x80069338; // type:u8 size:0x1\n"
+        "D_8006935E = 0x8006935E; // type:u16 size:0x2\n"
+        "D_80069350 = 0x80069350; // type:u32 size:0x4\n"
+    )
+    with pytest.raises(ValueError, match="orden"):
+        parsear_tabla(texto)
+    ordenada = "\n".join(sorted(texto.splitlines())) + "\n"
+    assert [s.tipo for s in parsear_tabla(ordenada)] == ["u8", "u32", "u16"]
+    with pytest.raises(ValueError, match="linea 1: formato invalido"):
+        parsear_tabla("D_80069338 = 0x80069338; // type:data size:0x1\n")

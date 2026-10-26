@@ -1,6 +1,7 @@
 #include "common.h"
+#include "globales.h"
 
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80032874);
+INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", BugsRand);
 
 INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80032894);
 
@@ -54,9 +55,7 @@ typedef struct EstadoPrincipal {
 
 extern Secuencia D_8005E768[];
 extern u16 D_80010010;
-extern u16 D_80069662;
 #define PRINCIPAL ((EstadoPrincipal*)0x80010000)
-register u8* base_gp __asm__("$28");
 
 void func_80035244(void)
 {
