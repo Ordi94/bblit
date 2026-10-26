@@ -56,7 +56,7 @@ extern s32 func_80014FAC(void);
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 895 con la configuracion versionada (g = 8 del archivo). El original direcciona la tabla de
- * cuentas con `addiu v0,gp,0x38`, que maspsx solo emite desde ASPSX 2.80 (hoy 2.79), y calcula la base del nombre
+ * cuentas con `addiu v0,gp,0x38`, que maspsx emite desde ASPSX 2.80 (la version fijada), y calcula la base del nombre
  * una sola vez antes del bucle. Variantes probadas: 8 (bucles por indice y por puntero).
  *
  * Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18
@@ -396,8 +396,8 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800156F4);
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). El original calcula las dos
- * direcciones de $gp con `addiu a1,gp,0x40` y `addiu a2,gp,0x48` (ASPSX 2.80) y coloca el almacen del byte antes de
- * cargar el modo; con 2.79 la forma no se emite. Variantes probadas: 3.
+ * direcciones de $gp con `addiu a1,gp,0x40` y `addiu a2,gp,0x48` (ASPSX 2.80, la version fijada) y coloca el almacen del byte antes de
+ * cargar el modo. Variantes probadas: 3.
  *
  * Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
  */

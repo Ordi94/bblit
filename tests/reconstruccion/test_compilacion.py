@@ -82,11 +82,11 @@ def test_comando_compilar_fija_las_opciones_del_compilador_original() -> None:
     ]
 
 
-def test_comando_maspsx_usa_aspsx_279_y_el_ensamblador_por_ruta() -> None:
+def test_comando_maspsx_usa_aspsx_280_porque_el_original_usa_gp_allow_la_y_el_ensamblador_por_ruta() -> None:
     assert comp.comando_maspsx(herramientas_compilacion(), "a.s", "a.o", "asm/include") == [
         "py",
         "maspsx.py",
-        "--aspsx-version=2.79",
+        "--aspsx-version=2.80",
         "--use-comm-section",
         "--run-assembler",
         "--gnu-as-path=as.exe",
