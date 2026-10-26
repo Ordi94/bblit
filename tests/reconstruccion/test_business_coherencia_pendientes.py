@@ -62,6 +62,13 @@ def test_una_medicion_anterior_a_la_ultima_edicion_del_c_no_es_reciente(raiz: Pa
     assert avisos(raiz) == []
 
 
+def test_una_medicion_con_la_misma_fecha_que_el_c_si_se_contrasta(raiz: Path) -> None:
+    ruta = escribir_medicion(raiz, medicion(340))
+    igual = (raiz / "src" / "a.c").stat().st_mtime
+    os.utime(ruta, (igual, igual))
+    assert len(avisos(raiz)) == 1
+
+
 @pytest.mark.parametrize(
     "contenido",
     [
