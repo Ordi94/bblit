@@ -131,7 +131,6 @@ extern Secuencia D_8005E768[];
 
 extern u16 D_8005E6F8[];
 extern s16 D_80069D90[];
-extern void func_80019474(void* pos, void* res, void* f50, void* i68);
 extern long SquareRoot0(long x);
 extern s32 rand(void);
 extern void func_8003F900(Objeto* a0);
