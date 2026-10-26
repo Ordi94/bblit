@@ -31,9 +31,6 @@ typedef struct EntradaPunto {
 extern s32 D_80076188;
 extern u16 D_8005E948[];
 extern EntradaPunto D_8006B668[];
-extern void func_80037580(s32* m);
-extern void func_8003BDD0(Ayuda* a);
-extern s32 func_80010258(Ayuda* a, s32 prim, void* area1, void* area2);
 
 /*
  * Dibuja la lista de escena 'lista' (enlazada por +0x00): para cada objeto activo fija el
@@ -61,6 +58,11 @@ void func_800399C8(ObjetoEscena* lista)
     sp->ot2 = D_8006AEA0[D_8006967C].org;
     sp->s0C = 0;
     sp->s12 = 0x3FFF;
+    /*
+     * Pone a cero los registros de traslacion $5 y $6 del GTE (TRX y TRY) y deja TRZ como esta:
+     * gte_ldtr escribiria tambien $7 (TRZ), y el original no lo toca. Ninguna macro cubre una
+     * escritura aislada de dos registros de traslacion, por eso se emiten las dos ctc2.
+     */
     __asm__ volatile ("ctc2 $0, $5");
     __asm__ volatile ("ctc2 $0, $6");
     if (lista != 0) {

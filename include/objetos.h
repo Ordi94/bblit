@@ -111,6 +111,25 @@ extern s16 D_8006955C;
 extern u8* D_8006968C;
 extern ObjetoEscena* D_8006AB70[47];
 
+/*
+ * Entidad que transforma func_8001CE64: el nodo de jerarquia por el que sube (+0x00), el vector
+ * local de entrada (+0x04) y el acumulador de la posicion transformada (+0x0C). func_8001CE64
+ * lee de ella con lw 0x0 (nodo), lh 0x4/0x6/0x8 (v) y lw 0xC/0x10/0x14 (acc); el nodo es un
+ * GsCOORDINATE2 (la matriz en +0x04 y el padre en +0x48).
+ */
+typedef struct EntidadTransformada {
+    GsCOORDINATE2* nodo;
+    SVECTOR v;
+    VECTOR acc;
+} EntidadTransformada;
+
+/* Rutinas de ayudantes y de dibujo que usan varios archivos de este subsistema. */
+Ayuda* func_800363D4(void);
+void func_80037580(s32* m);
+void func_8003BDD0(Ayuda* a);
+s32 func_80010258(Ayuda* a, s32 prim, void* area1, void* area2);
+void func_8001CE64(EntidadTransformada* e);
+
 NodoLista* AllocListNode(u8* base, s32 paso, s32 total);
 void InitListPool(u8* base, s32 paso, s32 total);
 NodoLista* RemoveListNode(NodoLista* cab, NodoLista* nodo);

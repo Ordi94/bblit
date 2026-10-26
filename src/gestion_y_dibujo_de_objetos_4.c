@@ -14,9 +14,7 @@ extern s32 D_8006960C;
  * +0x1C y su area de trabajo en +0x34.
  */
 typedef struct Sonda {
-    GsCOORDINATE2* nodo;
-    SVECTOR v;
-    VECTOR acc;
+    EntidadTransformada ent;
     ResultadoBaldosa r;
     TrabajoBaldosa w;
 } Sonda;
@@ -27,7 +25,6 @@ typedef struct SalidaSonda {
     VECTOR pos;
 } SalidaSonda;
 
-extern void func_8001CE64(void* entidad);
 extern void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w);
 
 /* Resta de vectores de tres componentes: resultado = b - a. */
@@ -81,8 +78,10 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_80039D44);
 /*
  * Pendiente: puntuacion 316 con la configuracion versionada (g = 8 del archivo). El cuerpo y los
  * saltos coinciden; difiere solo el reparto de registros salvados: el original deja el area de
- * trabajo en $s0, la salida en $s1, el objeto en $s2 y la direccion de la baldosa en $s3. Variantes
- * probadas: 9.
+ * trabajo en $s0, la salida en $s1, el objeto en $s2 y la direccion de la baldosa en $s3; GCC da
+ * $s0 a la salida y $s3 al objeto. Ni el orden de las declaraciones locales, ni izar la direccion
+ * de la baldosa o la constante -1 antes de la primera rama, ni un bucle con salida explicita
+ * cambian el reparto (las dos ultimas formas empeoran a 1144 y 1326). Variantes probadas: 17.
  */
 /*
  * Calcula la posicion de apoyo de 'o' en 'sal': parte de la posicion del primer ayudante
@@ -104,9 +103,9 @@ s32 func_8003A3D0(ObjetoEscena* o, SalidaSonda* sal, Sonda* s)
         if (b->visible == 0) {
             return 0;
         }
-        s->nodo = &b->coord;
-        func_8001CE64(s);
-        GEO_CARGAR_W(&s->acc);
+        s->ent.nodo = &b->coord;
+        func_8001CE64(&s->ent);
+        GEO_CARGAR_W(&s->ent.acc);
         GEO_GUARDAR_W_T1(&sal->pos);
     } else {
         if (a->visible == 0) {
