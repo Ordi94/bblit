@@ -559,7 +559,7 @@ siguiente:
  */
 void func_8002C1DC(Objeto* o)
 {
-    TrabajoCamara* t;
+    TrabajoDirectorCamara* t;
     MATRIX* m;
     s32 paso;
     s32 ca;
@@ -571,7 +571,7 @@ void func_8002C1DC(Objeto* o)
     u16 fl;
     s32 cond;
 
-    t = TRABAJO_CAMARA;
+    t = TRABAJO_DIRECTOR_CAMARA;
     t->nodo = (NodoDisparador*)o->apoyos;
     if (t->nodo == 0) {
         return;

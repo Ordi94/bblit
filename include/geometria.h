@@ -61,6 +61,49 @@ typedef struct ResultadoBaldosa {
     ZonaColision* zona;
 } ResultadoBaldosa;
 
+/* Angulos de un objeto: la sonda solo lee y reescribe el giro en Y (+2). */
+typedef struct Giro {
+    u16 x;
+    u16 y;
+    u16 z;
+} Giro;
+
+/*
+ * Memoria de trabajo de func_80033358 en el scratchpad (0x1F800000): vector local, rotacion, vector
+ * (0, 0, distancia), resultados de las rotaciones, sondas, resultado de la consulta de baldosa,
+ * parametros de seguimiento, matriz de rotacion y distancia. El area de 0x1C8 bytes que reciben
+ * func_80019474, func_8001C134 y func_80032B2C empieza en 0x1F8000F8. El scratchpad lo reparten por
+ * turnos rutinas con disposiciones distintas; la de func_8002C1DC es TrabajoDirectorCamara (niveles.h).
+ * Evidencia de los campos: sw en 0x1F8000BC (zona_ant, 0x800333B0), sw en 0x1F8000C0..C8 (p0, p4, p8,
+ * 0x80033630), sw en 0x1F800030..38 (v30, 0x80033740), 0x1F800070..78 (v70, 0x80033774), 0x1F800090..98
+ * (v90, 0x80033728), sh en 0x1F8000AE (res.tipo, 0x80033804).
+ */
+typedef struct TrabajoCamara {
+    SVECTOR local;              /* +0x00 */
+    SVECTOR rot;                /* +0x08 */
+    SVECTOR dir;                /* +0x10 */
+    VECTOR v18;                 /* +0x18 */
+    Giro rot28;                 /* +0x28 */
+    u8 pad2E[2];
+    VECTOR v30;                 /* +0x30 */
+    VECTOR v40;                 /* +0x40 */
+    VECTOR v50;                 /* +0x50 */
+    u8 pad60[0x70 - 0x60];
+    VECTOR v70;                 /* +0x70 */
+    u8 pad80[0x90 - 0x80];
+    VECTOR v90;                 /* +0x90 */
+    u8 padA0[0xA4 - 0xA0];
+    ResultadoBaldosa res;       /* +0xA4 */
+    ZonaColision* zona_ant;     /* +0xBC */
+    s32 p0;                     /* +0xC0 */
+    s32 p4;                     /* +0xC4 */
+    s32 p8;                     /* +0xC8 */
+    MATRIX m;                   /* +0xCC */
+    s32 dist;                   /* +0xEC */
+    u8 padF0[4];
+    s32 alt;                    /* +0xF4 */
+} TrabajoCamara;
+
 /*
  * Area de trabajo de func_8001C134: la copia del punto consultado, su resto dentro de la baldosa
  * (320 unidades) y el valor leido de la subcelda (40 unidades).
