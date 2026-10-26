@@ -209,15 +209,15 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
     if (f & 1) {
         cur = o->yE8 + o->h10A;
         if (o->h108 <= 0x800) {
-            if (cur + o->h52 < ORDEN_TECHO(r)) {
+            if (cur + o->h52 < r->techo) {
                 if (base >= cur) {
                     w->x = o->xE4 + d->x;
-                    w->y = ORDEN_TECHO(r) - 1;
+                    w->y = r->techo - 1;
                     w->res.grupo = -1;
                     w->z = o->zEC + d->z;
                     func_8001C134(&w->x, &w->res, &w->tb);
                     if (!(w->res.flags & 8)) {
-                        tope = ORDEN_TECHO(r) - o->h52;
+                        tope = r->techo - o->h52;
                         if (base < tope) {
                             tope = base;
                         }

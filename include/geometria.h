@@ -36,7 +36,10 @@ typedef struct ZonaColision {
 /*
  * Resultado de la consulta de baldosa de func_8001C134. tipo conserva los cuatro bits altos del
  * valor de la baldosa; grupo es el grupo de la zona encontrada (-1 si ninguna) y zona la propia
- * zona. suelo es la altura donde se apoya el punto.
+ * zona. En las rutinas de movimiento, flags 8 y 1 marcan rampa y salto y los bits 4, 8 y 0x10
+ * piden tipos de movimiento. suelo es la altura donde se apoya el punto y techo la altura del
+ * techo sobre el punto: func_8001C998 la lee con lw 0xC para limitar el salto y func_8001C134
+ * no la escribe.
  */
 typedef struct ResultadoBaldosa {
     u16 clase;
@@ -45,7 +48,7 @@ typedef struct ResultadoBaldosa {
     u16 pendiente_abs;
     u16 tipo;
     s16 grupo;
-    u8 pad0C[4];
+    s32 techo;
     s32 suelo;
     ZonaColision* zona;
 } ResultadoBaldosa;

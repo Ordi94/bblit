@@ -29,14 +29,6 @@ typedef struct Movimiento {
 } Movimiento;
 
 /*
- * La orden de movimiento de un objeto es el resultado de la consulta de baldosa
- * (ResultadoBaldosa, geometria.h): +2 banderas del terreno (8 y 1 = rampa y salto, bits 4, 8 y
- * 0x10 piden tipos de movimiento), +6 pendiente absoluta, +8 tipo y +0xA grupo. La altura del
- * techo en +0xC cae en el hueco que geometria.h deja sin nombre.
- */
-#define ORDEN_TECHO(r) (*(s32*)((u8*)(r) + 0xC))
-
-/*
  * Area de trabajo del movimiento de un objeto: copia de la posicion de partida en +0, posicion
  * de trabajo (desplazamiento realizado) en +0xC y +0x14, altura en +0x10, copias de 16 bits del
  * desplazamiento en +0x18 y +0x1A, grupo de la baldosa en +0x1C y el area de la consulta de
