@@ -76,7 +76,8 @@ void func_80020B90(Objeto* o)
     s32* p;
     s16 a;
     u32 fl;
-    s16 b;
+    u32 f4;
+    s32 b;
     s32 c;
     s16 tilt16;
     s32 ang;
@@ -86,15 +87,19 @@ void func_80020B90(Objeto* o)
     s32 dd;
     s16 d16;
     s32 pj;
-    s16 vj;
+    s32 vj;
     s16 dd16;
     Objeto* pp;
+    Objeto* t1;
+    Objeto* t2;
+    RegistroEstado* rg;
     s32 mz;
     s16* ptr16;
     s32 vs;
     u16 hw;
     s32 sum;
     VECTOR* pos;
+    VECTOR* pt;
     u8 reserva[8];
 
     sc = (ScratchJugador*)0x1F800000;
@@ -636,7 +641,8 @@ void func_80020B90(Objeto* o)
                     o->p70->p6C = NULL;
                     o->p70 = NULL;
                 } else if (o->p70->flags08 & 8) {
-                    sc->tmp = sc->reg->s18;
+                    pj = sc->reg->s18;
+                    sc->tmp = pj;
                     if ((o->p70->flags08 & 0x8000) || (o->p70->w2C == 0xE && o->p70->registro184 != NULL && (((RegistroEstado*)o->p70->registro184)->flags10 & 0x10000000))) {
                         if (o->p70->w2C == 5) {
                             vj = o->p70->s1E;
@@ -644,12 +650,12 @@ void func_80020B90(Objeto* o)
                             vj = *(s16*)&o->p70->w196;
                         }
                         if (vj == 0) {
-                            vj = sc->reg->s18 * 0x145 >> 9;
+                            vj = pj * 0x145 >> 9;
                         }
                         sc->tmp = vj;
                     }
-                    sc->rel.vy = 0;
                     sc->rel.vx = o->param.trans.vx - o->p70->param.trans.vx;
+                    sc->rel.vy = 0;
                     sc->rel.vz = o->param.trans.vz - o->p70->param.trans.vz;
                     GEO_CARGAR_W(&o->p70->param.trans);
                     GEO_GUARDAR_W_T1(&sc->punto);
@@ -665,7 +671,8 @@ void func_80020B90(Objeto* o)
                     o->coord.param = (GsCOORD2PARAM*)&o->param;
                     o->p70->p6C = NULL;
                     o->p70 = NULL;
-                    o->flags14 &= ~0x15;
+                    o->flags14 &= ~0x14;
+                    rg = sc->reg;
                     pj = sc->tmp;
                     goto llamar_salto;
                 }
@@ -680,9 +687,10 @@ void func_80020B90(Objeto* o)
                     gte_stlvnl(&sc->desp);
                     o->flags14 = (o->flags14 & ~0x84) | 2;
                 }
-                pj = sc->reg->s18;
+                rg = sc->reg;
+                pj = rg->s18;
 llamar_salto:
-                func_80020210(o, pj, sc->reg->s16);
+                func_80020210(o, pj, rg->s16);
             }
         }
         if ((o->flags14 & 1) && (o->flags14 & 0x600) != 0x200 && ((s32)o->flags14 >= 0 || MANDO->demo != 0)) {
@@ -737,8 +745,9 @@ llamar_salto:
                 }
             }
         }
-        if (((sc->reg->flags0C & 0x40) || (sc->reg->flags10 & 0x40000)) && o->i68 != 0 && o->p6C != NULL) {
+        if (((sc->reg->flags0C & 0x40) || (sc->reg->flags10 & 0x40000)) && o->i68 != 0) {
             pp = o->p6C;
+            if (pp != NULL) {
             pp->flags14 &= ~0x806;
             if (sc->reg->flags10 & 0x40000) {
                 pp->flags14 |= 0x80000;
@@ -779,6 +788,7 @@ llamar_salto:
             o->max.vz = 0x28;
             o->w2E = 0x50;
             o->alcance2 = 0x1900;
+            }
         }
         if ((sc->reg->flags0C & 0x200) && (MANDO->botones_a & 8)) {
             if (o->p70 != NULL && !(o->p70->flags08 & 0x400000)) {
@@ -792,12 +802,13 @@ llamar_salto:
                 sc->punto.vz = o->param.trans.vz;
                 sc->apoyo_hallado = func_80020354(o, &sc->punto, w, 0x400004);
                 if (sc->apoyo_hallado != NULL) {
+                    t1 = sc->apoyo_hallado->objeto;
                     o->coord.param = (GsCOORD2PARAM*)APOYO(o);
                     APOYO(o)->trans.vx = 0;
-                    o->p70 = sc->apoyo_hallado->objeto;
+                    o->p70 = t1;
                     APOYO(o)->trans.vz = 0;
                     APOYO(o)->trans.vy = sc->apoyo_hallado->h0A;
-                    sc->tmp = (s16)o->param.giro.u.y - (s16)o->p70->param.giro.u.y;
+                    sc->tmp = (s16)o->param.giro.u.y - (s16)t1->param.giro.u.y;
                     if (sc->tmp < 0) {
                         sc->tmp = sc->tmp - 0x1000;
                     }
@@ -864,22 +875,20 @@ llamar_salto:
             sc->desp.z += sc->rel.vz - (s16)sc->tmp_sv.vz;
             o->param.giro.u.y = ratan2(sc->paso_x, (s16)sc->paso_z);
         }
-        if (o->p6C != NULL) {
-            sc->tocado = o->p6C;
-            if (((o->p6C->flags08 & 0x2000) || o->p6C->w2C == 0x22) && !(sc->reg->flags0C & 0x40)) {
+        pt = &sc->punto;
+        t2 = o->p6C;
+        sc->tocado = t2;
+        if (t2 != NULL) {
+            if (((t2->flags08 & 0x2000) || t2->w2C == 0x22) && !(sc->reg->flags0C & 0x40)) {
                 if (!(sc->reg->flags10 & 0x40000)) {
-                    D_80069D60[2].vx = o->min.vx;
-                    D_80069D60[0].vx = o->min.vx;
-                    D_80069D60[3].vx = o->max.vx;
-                    D_80069D60[1].vx = o->max.vx;
-                    D_80069D60[1].vz = o->max.vz;
-                    D_80069D60[0].vz = o->max.vz;
+                    D_80069D60[0].vx = D_80069D60[2].vx = o->min.vx;
+                    D_80069D60[1].vx = D_80069D60[3].vx = o->max.vx;
+                    D_80069D60[0].vz = D_80069D60[1].vz = o->max.vz;
                     D_80069D60[3].vy = 0;
                     D_80069D60[2].vy = 0;
                     D_80069D60[1].vy = 0;
                     D_80069D60[0].vy = 0;
-                    D_80069D60[3].vz = o->min.vz;
-                    D_80069D60[2].vz = o->min.vz;
+                    D_80069D60[2].vz = D_80069D60[3].vz = o->min.vz;
                     gte_SetRotMatrix(&sc->m);
                     a = 0;
                     D_800693DC = (s16*)D_80069D60;
@@ -890,11 +899,7 @@ llamar_salto:
                         a++;
                         D_800693DC += 4;
                     } while (a < 4);
-                    b = 0;
-                    c = 0;
-                    d = 0;
-                    mz = 0;
-                    a = 0;
+                    a = c = b = d = mz = 0;
                     D_800693DC = (s16*)D_80069D60;
                     do {
                         if (D_800693DC[0] < c) {
@@ -910,8 +915,8 @@ llamar_salto:
                         a++;
                         D_800693DC += 4;
                     } while (a < 4);
-                    D_80069D60[3].vz = 0;
-                    D_80069D60[2].vz = 0;
+                    D_80069D60[3].vx = 0;
+                    D_80069D60[2].vx = 0;
                     D_80069D60[1].vz = 0;
                     D_80069D60[0].vz = 0;
                     D_80069D60[3].vy = 0;
@@ -953,7 +958,7 @@ llamar_salto:
         sc->tmp_v.vx = sc->desp.x;
         sc->punto.vz = o->param.trans.vz;
         sc->res.grupo = o->w26;
-        func_80019474(&sc->punto, &sc->tmp_v, &sc->res, w);
+        func_80019474(pt, &sc->tmp_v, &sc->res, w);
         a = sc->tmp_v.vx;
         sc->punto.vx = o->param.trans.vx;
         sc->punto.vy = o->param.trans.vy;
@@ -962,7 +967,7 @@ llamar_salto:
         sc->tmp_v.vz = sc->desp.z;
         sc->punto.vz = o->param.trans.vz;
         sc->res.grupo = o->w26;
-        func_80019474(&sc->punto, &sc->tmp_v, &sc->res, w);
+        func_80019474(pt, &sc->tmp_v, &sc->res, w);
         sc->desp.x = a;
         sc->desp.z = sc->tmp_v.vz;
         if (!(o->flags14 & 0x81000000) || MANDO->demo != 0 || (D_80069608 & 2)) {
@@ -1015,9 +1020,15 @@ llamar_salto:
             sc->paso_x = a;
             sc->paso_z = sc->tmp_v.vz;
             if (sc->tocado->flags08 & 8) {
-                if (!(o->flags14 & 0x1000010) && (!(o->flags14 & 1) || (o->flags14 & 8)) && (s16)sc->paso_y >= -0x63) {
+                if (!(o->flags14 & 0x1000010)) {
+                    if (!(o->flags14 & 1)) {
+                        goto aterrizar;
+                    }
+                    if (o->flags14 & 8) {
+aterrizar:
+                        if ((s16)sc->paso_y >= -0x63) {
                     o->p70 = sc->tocado;
-                    sc->paso_x = (u16)o->param.trans.vx + (u16)sc->desp.x - (u16)sc->tocado->param.trans.vx;
+                    sc->paso_x = (u16)o->param.trans.vx + (u16)sc->desp.x - (u16)o->p70->param.trans.vx;
                     sc->paso_y = (u16)o->param.trans.vy - (u16)o->p70->param.trans.vy;
                     sc->paso_z = (u16)o->param.trans.vz + (u16)sc->desp.z - (u16)o->p70->param.trans.vz;
                     sc->ang_x = 0x1000 - o->p70->param.giro.u.x;
@@ -1057,9 +1068,9 @@ llamar_salto:
                     if (!(o->flags14 & 0x10000) && (o->flags14 & 0x208) && (D_800693D4 & 0x208)) {
                         sc->tocado->flags14 |= 0x80;
                     }
-                    if (!(o->flags14 & 0x03000000) && (sc->tocado->flags14 & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL) {
+                    if (!(o->flags14 & 0x03000000) && ((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL) {
                         if (((RegistroEstado*)sc->tocado->registro184)->flags10 & 0x8000) {
-                            sc->tocado->flags14 |= 0x04000000;
+                            sc->tocado->flags14 = f4 | 0x04000000;
                             sc->tocado->w38 = 1;
                             sc->tocado->i34 = 1;
                             o->i34 = sc->tocado->w1C;
@@ -1073,8 +1084,8 @@ llamar_salto:
                         o->flags14 &= ~0x209;
                     }
                     o->flags14 &= ~2;
-                    if ((sc->tocado->flags14 & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL && (((RegistroEstado*)sc->tocado->registro184)->flags10 & 0x8000)) {
-                        sc->tocado->flags14 |= 0x04000000;
+                    if (((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL && (((RegistroEstado*)sc->tocado->registro184)->flags10 & 0x8000)) {
+                        sc->tocado->flags14 = f4 | 0x04000000;
                         sc->tocado->w38 = 1;
                         sc->tocado->i34 = 1;
                         o->i34 = sc->tocado->w1C;
@@ -1085,6 +1096,8 @@ llamar_salto:
                             D_80069D30[2] = sc->desp.z;
                         }
                         o->flags14 |= 0x10000000;
+                    }
+                        }
                     }
                 }
             }
@@ -1119,21 +1132,22 @@ llamar_salto:
                 if (!(o->flags14 & 0x10000) && (o->flags14 & 0x208) && (s16)sc->paso_y >= -0x63) {
                     sc->tocado->flags14 |= 0x80;
                 }
-                if (!(o->flags14 & 0x03000000) && (sc->tocado->flags14 & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL) {
+                if (!(o->flags14 & 0x03000000) && ((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL) {
                     goto marcar_estado;
                 }
-                if (!(sc->tocado->flags08 & 0x02000000) && !(sc->reg->flags0C & 0x40) && (s16)sc->paso_y < -0x1E) {
-                    goto copia_paso;
+                if (!(sc->tocado->flags08 & 0x02000000)) {
+                    vs = sc->reg->flags0C & 0x40;
+                    goto cola_paso;
                 }
             } else if ((sc->tocado->flags08 & 0x20100) && o->p6C != sc->tocado && o->p70 != sc->tocado) {
                 sc->tocado->flags14 |= 0x8000;
                 if (!(o->flags14 & 0x10000) && (o->flags14 & 0x208) && (s16)sc->paso_y >= -0x63) {
                     sc->tocado->flags14 |= 0x80;
                 }
-                if (!(o->flags14 & 0x03000000) && (sc->tocado->flags14 & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL) {
+                if (!(o->flags14 & 0x03000000) && ((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL) {
 marcar_estado:
                     if (((RegistroEstado*)sc->tocado->registro184)->flags10 & 0x8000) {
-                        sc->tocado->flags14 |= 0x04000000;
+                        sc->tocado->flags14 = f4 | 0x04000000;
                         sc->tocado->w38 = 1;
                         sc->tocado->i34 = 1;
                         o->i34 = sc->tocado->w1C;
@@ -1143,10 +1157,14 @@ marcar_estado:
                     }
                 } else if (!(o->flags14 & 0x10) && (sc->tocado->flags08 & 8) && (s16)sc->paso_y >= -0x63) {
                     sc->desp.y += (s16)sc->paso_y;
-                } else if (!(sc->tocado->flags08 & 0x02000000) && (s16)sc->paso_y < -0x1E) {
+                } else {
+                    vs = sc->tocado->flags08 & 0x02000000;
+cola_paso:
+                    if (vs == 0 && (s16)sc->paso_y < -0x1E) {
 copia_paso:
-                    sc->desp.x = sc->paso_x;
-                    sc->desp.z = (s16)sc->paso_z;
+                        sc->desp.x = sc->paso_x;
+                        sc->desp.z = (s16)sc->paso_z;
+                    }
                 }
             }
         } else {
@@ -1156,7 +1174,11 @@ copia_paso:
         }
 fin_choque:
         if (sc->tocado != NULL && (sc->tocado->flags08 & 0x900000)) {
-            if (!(o->flags14 & 1) || (o->flags14 & 8)) {
+            if (!(o->flags14 & 1)) {
+                goto rebotar;
+            }
+            if (o->flags14 & 8) {
+rebotar:
                 sc->tocado->flags14 |= 0x8000;
                 D_8006965A = 5;
                 D_8006965B = 0x50;
@@ -1217,7 +1239,7 @@ fin_choque:
                         }
                         c = (b << 12) / sc->tocado->w2E;
                         d = -((s16)(u16)sc->tmp_sv.vy << 12) / -sc->tocado->max.vy + c;
-                        d = -(((sc->tmp - (d * sc->tmp >> 12)) * rsin(D_800693CC)) >> 12);
+                        d = -((sc->tmp - (d * sc->tmp >> 12)) * rsin(D_800693CC)) >> 12;
                         a = d;
                         if (D_800693CC < 0x400) {
                             D_800693CC += 0x40;
@@ -1322,10 +1344,11 @@ sin_rebote:
             sc->tmp_v.vx += o->param.trans.vx;
             sc->tmp_v.vy += o->param.trans.vy;
             sc->tmp_v.vz += o->param.trans.vz;
-            sc->tocado = func_800171E4(o, (VECTOR*)&sc->tmp_v, 0x2802, 0x02000000, (ConsultaVolumen*)w);
-            if (sc->tocado != NULL) {
+            t1 = func_800171E4(o, (VECTOR*)&sc->tmp_v, 0x2802, 0x02000000, (ConsultaVolumen*)w);
+            sc->tocado = t1;
+            if (t1 != NULL) {
                 o->flags14 |= 0x40000;
-                D_80069388 = sc->tocado;
+                D_80069388 = t1;
                 sc->tocado->flags14 |= 0x8000;
             }
         }
@@ -1339,8 +1362,7 @@ sin_rebote:
             }
             sc->estado_sig = 0xFFF3;
             sc->cand = sc->trans;
-            if (sc->cand != NULL) {
-                do {
+            for (; sc->cand != NULL; sc->cand = sc->cand->sig) {
                     if (sc->cand->id != sc->reg->w0A) {
                         break;
                     }
@@ -1385,8 +1407,7 @@ sin_rebote:
                         }
                         break;
                     }
-                } while ((sc->cand = sc->cand->sig) != NULL);
-            }
+                }
             if (sc->cand != NULL) {
                 if (sc->cand->wC != 0 && o->p6C != NULL) {
                     if (sc->cand->wC == 0xD3) {
@@ -1482,9 +1503,10 @@ sin_rebote:
                     D_80069388 = NULL;
                     GEO_CERO_W(&PORTADO(sc->tocado)->trans);
                     GEO_CERO_WH(&PORTADO(sc->tocado)->giro);
-                    PORTADO(sc->tocado)->escala.vz = 0x1000;
-                    PORTADO(sc->tocado)->escala.vy = 0x1000;
-                    PORTADO(sc->tocado)->escala.vx = 0x1000;
+                    t1 = sc->tocado;
+                    PORTADO(t1)->escala.vz = 0x1000;
+                    PORTADO(t1)->escala.vy = 0x1000;
+                    PORTADO(t1)->escala.vx = 0x1000;
                     sc->tocado->p70 = o;
                     func_8001CFCC(&sc->tocado->coord);
                 }
