@@ -303,7 +303,7 @@ void func_8003E16C(u8 track)
     }
 }
 
-/* Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el orden de los dos lui iniciales (la base de la tabla de posiciones se emite antes que la del estado principal en el original). Variantes probadas: 14. */
+/* Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere solo el orden de los dos lui iniciales (el original emite la base de la tabla de posiciones antes que la del estado principal). Variantes probadas: 17. */
 #ifdef NON_MATCHING
 void func_8003E298(s32 a0)
 {
@@ -718,7 +718,7 @@ u32 func_8003EDA8(Objeto* o, Efecto* e)
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003EDA8);
 #endif
 
-/* Pendiente: puntuacion 2792 con la configuracion versionada (g = 8 del archivo). El flujo coincide; el original recorre la tabla de efectos con dos punteros (entrada y entrada + 4) y GCC reparte un tercero para los bytes de la entrada, lo que desplaza todos los registros s. Variantes probadas: 6. */
+/* Pendiente: puntuacion 2792 con la configuracion versionada (g = 8 del archivo). El flujo coincide; el original recorre la tabla de efectos con dos punteros que avanzan juntos (entrada y entrada + 4) y aqui la reduccion de fuerza del bucle exterior reparte un tercero para los accesos de +2 y +3, lo que desplaza los registros s. Variantes probadas: 9. */
 #ifdef NON_MATCHING
 void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
 {
