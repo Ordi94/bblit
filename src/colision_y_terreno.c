@@ -63,10 +63,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2140 con la configuracion versionada (g = 0 del archivo). El reparto de
+ * Pendiente: puntuacion 2135 con la configuracion versionada (g = 0 del archivo). El reparto de
  * registros coincide con el original; difieren el orden de planificacion en los avances por
  * subcelda y por baldosa, el cierre compartido de resultados y una constante de indice que el
- * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 9550).
+ * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 7010).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -806,11 +806,10 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
     /* Sin desplazamiento: consulta de la baldosa bajo el punto. */
     w->baldosa = zona->baldosas[(w->bx - cur->x) / 320 + (w->bz - cur->z) / 320 * cur->columnas];
     res->tipo = w->baldosa & 0xF000;
-    w->baldosa = w->baldosa & 0xFFF;
-    w->rz = w->bz % 320;
-    w->n = w->n + 1;
     w->rx = w->bx % 320;
-    w->celdas[w->n] = (s8)((u8(*)[64])zona->subceldas)[w->baldosa][w->rx / 40 + w->rz / 40 * 8];
+    w->rz = w->bz % 320;
+    w->baldosa = w->baldosa & 0xFFF;
+    w->celdas[++w->n] = (s8)((u8(*)[64])zona->subceldas)[w->baldosa][w->rx / 40 + w->rz / 40 * 8];
     c = w->celdas[w->n];
     if (c > 0 && c < 0x7E) {
         c = -c;
