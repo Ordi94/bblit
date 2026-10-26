@@ -78,7 +78,7 @@ void func_8003FFA0(void)
     func_8005A21C(1);
     i = 0;
     MemCardStart();
-    PadInitDirect(D_8006CFF0, D_8006D038);
+    PadInitDirect(&D_8006CFF0, &D_8006D038);
     PadStartCom();
     do {
         if (PadGetState(0) == estable) {

@@ -84,6 +84,11 @@ Notas de procedencia:
   del Runtime Library 4.1 (el `CC1PSX.EXE` de 1995 que trae el paquete `PSYQ_SDK.zip` es de
   32 bits con extensor DOS y no corre en Windows de 64 bits). Por eso `psyq-4.1` se extrae de
   la imagen con un lector ISO 9660 propio (`tools/toolchain/iso9660.py`).
+- El `ASPSX.EXE` de `psyq-4.4` es la versión 2.79, no la 2.86: la cadena `SDevTC ASPSX version 2.79`
+  está en el propio ejecutable. Se comprueba desde la raíz del repositorio con
+  `.venv\Scripts\python.exe -c "import pathlib; d = pathlib.Path(r'toolchain\psyq-4.4\pssn\bin\ASPSX.EXE').read_bytes(); print(d[d.index(b'SDevTC ASPSX'):][:26])"`,
+  que imprime `b'SDevTC ASPSX version 2.79\n'`. La construcción emula la 2.80 con `maspsx` (ver
+  `docs/COMPILADOR.md`); la nota del lock se corrigió sin tocar ninguna huella.
 - Los paquetes 4.6 y 4.7 incluyen GCC 2.95.2 (fecha 1999-10-24), posterior al juego; no se
   instalan.
 - Los hash de los archivos de GitHub corresponden al `zip` de un commit concreto. Si GitHub
@@ -122,6 +127,11 @@ python tools/build.py clean               # elimina asm/, expected/ y los artefa
   plana con `objcopy`. La cabecera PS-X EXE de 0x800 bytes se regenera desde
   `config/ejecutable.json` (no se copia del original). El orden de enlace lo fija el script, así que
   es el mismo con o sin C.
+- `verificar-config` (y, al terminar, `split`) compara las claves de `[datos_pequenos]` de
+  `config/opciones_compilacion.toml` con `config/symbols.txt` y avisa por la salida de errores de cada
+  una cuya dirección ya declara la tabla de símbolos: con el mismo nombre (la clave puede retirarse), con otro
+  nombre o con el mismo nombre declarado como función. Solo informa: no cambia ningún archivo, devuelve 0 y no
+  necesita el disco. Hoy avisa de 29 claves, todas con el mismo nombre.
 - `verify` imprime `OK esperado=<huella> obtenido=<huella>` y devuelve 0, o `FAIL ...` con
   el desplazamiento de la primera diferencia y devuelve 1.
 - `clean` elimina `asm/`, `expected/` y lo que `split`, `build`, `diff` y `progreso` generan

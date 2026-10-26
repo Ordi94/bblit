@@ -393,19 +393,22 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  */
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800156F4);
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). El original calcula las dos
- * direcciones de $gp con `addiu a1,gp,0x40` y `addiu a2,gp,0x48` (ASPSX 2.80, la version fijada) y coloca el almacen del byte antes de
- * cargar el modo. Variantes probadas: 3.
- *
+ * Datos pequenos de la zona de $gp que usa la espera de la tarjeta: bandera de operacion pendiente
+ * en +0x3C y los dos bloques de ordenes y resultados que MemCardSync recibe por direccion (+0x40 y
+ * +0x48). Se definen aqui (sin extern) y se declaran en la tabla de datos pequenos de la
+ * configuracion para que el ensamblador los reescriba a $gp; con `base_gp` el almacen de la bandera
+ * ocupaba el hueco de retardo del jal en lugar de `li a0,1`.
+ */
+u8 D_8006935C;
+s32 D_80069360;
+s32 D_80069368;
+
+/*
  * Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
  */
 void func_80015E94(void)
 {
-    *(u8*)(base_gp + 0x3C) = 0;
-    MemCardSync(1, (s32*)(base_gp + 0x40), (s32*)(base_gp + 0x48));
+    D_8006935C = 0;
+    MemCardSync(1, &D_80069360, &D_80069368);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80015E94);
-#endif

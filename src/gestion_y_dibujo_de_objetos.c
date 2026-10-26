@@ -11,14 +11,14 @@ typedef struct NodoClave {
     s32 clave;
 } NodoClave;
 
-extern Objeto* D_800694DC;
 extern Objeto* D_800694B4;
 
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un
  * segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el
- * original usa un solo puntero con desplazamientos 0x0C y 0x04. Variantes probadas: 9.
+ * original usa un solo puntero con desplazamientos 0x0C y 0x04. Ni el recorrido por indice sobre
+ * el arreglo ni la reordenacion de los incrementos eliminan el puntero derivado.
  */
 EntradaId* func_80036164(s32 id)
 {
@@ -191,7 +191,6 @@ NodoLista* AppendListNode(NodoLista* cab, NodoLista* nodo)
  * escrituras de sw $zero,0($a2) del original son un bucle real de 0x2E vueltas (contador en $v1,
  * sltiu/bnez, la escritura en el hueco de retardo), no una secuencia desenrollada; escritas como
  * 0x2E sentencias explicitas el resultado empeora (895), porque GCC no las pliega a ese bucle.
- * Variantes probadas: 11.
  */
 Ayuda* func_800363D4(void)
 {
@@ -393,7 +392,7 @@ void func_800368E8(void)
 }
 
 /*
- * Aplica un cuadro de la animacion de un objeto: lee del flujo de pistas del cursor (c->flujo) la
+ * Aplica un cuadro de la animacion de un objeto: lee del flujo de pistas del cursor (BloqueTrabajo.actual) la
  * cabecera de dos palabras (numero de pistas en la mitad alta de la primera) y despues una pista
  * por nodo afectado. Cada pista empieza con una palabra [tamano:8][banderas:8][tipo:4][nodo:16];
  * segun el tipo actualiza la pose de un nodo, la caja del objeto, su posicion absoluta (acumulando
@@ -420,9 +419,9 @@ void func_8003690C(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
     u16* h;
 
     w = a2;
-    w->cab.w = *c->flujo++;
+    w->cab.w = *FLUJO_PISTAS(c)++;
     w->npistas = w->cab.h.alto;
-    w->palabra2 = *c->flujo++;
+    w->palabra2 = *FLUJO_PISTAS(c)++;
     o->i68 = 0;
     w->modo = 1;
     if (o->u78.ayudas != 0) {
@@ -437,7 +436,7 @@ void func_8003690C(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
     w->idx = 0;
     if (w->npistas != 0) {
         do {
-            p = c->flujo;
+            p = FLUJO_PISTAS(c);
             nodo = *p++;
             w->tipo = nodo & 0xF0000;
             w->banderas = nodo & 0xF00000;
@@ -525,9 +524,9 @@ void func_8003690C(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
                         w->nodo = w->nodo->super;
                     } while (w->nodo != 0);
                 }
-                o->apar[0] = w->acc.vx;
-                o->apar[1] = w->acc.vy;
-                o->apar[2] = w->acc.vz;
+                o->objetivo.vx = w->acc.vx;
+                o->objetivo.vy = w->acc.vy;
+                o->objetivo.vz = w->acc.vz;
                 o->i68 = e->pcoord;
                 break;
             case PISTA_SPRITE:
@@ -600,7 +599,7 @@ void func_8003690C(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
                 e->w0 = (e->w0 & p[0]) | p[1];
                 break;
             }
-            c->flujo += w->tam;
+            FLUJO_PISTAS(c) += w->tam;
             w->idx++;
         } while (w->idx < w->npistas);
     }

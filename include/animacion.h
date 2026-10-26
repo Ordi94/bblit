@@ -178,19 +178,11 @@ extern void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave);
 extern s32 func_80018D98(Objeto* a, VECTOR* p, void* area);
 
 /*
- * Tabla activa del cursor (+0x28): coincide con Objeto.tabla (+0x16C) cuando el cursor es
- * Objeto.trabajo (+0x144), y func_8001E720 la escribe a traves del cursor.
+ * Flujo de pistas del cuadro en curso: BloqueTrabajo.actual (+0x24) es el puntero al cuadro y,
+ * mientras func_8003690C lo aplica, la misma palabra avanza como puntero a palabras de 32 bits
+ * (lw / sw de 0x24(cursor)). Se accede con un cast de la propia direccion del campo para que
+ * exista una sola definicion de esa memoria.
  */
-#define CURSOR_TABLA(c) (*(TablaFotogramas**)((u8*)(c) + 0x28))
-
-/*
- * Bloque de parametros de agarre del protagonista (Objeto + 0x18C): mismo diseno que
- * ParametrosObjeto; solape con campos de otras clases de objeto (w192, w196, i1A8), por eso se
- * accede por desplazamiento.
- */
-#define AGARRE(j) (*(ParametrosObjeto*)((u8*)(j) + 0x18C))
-
-/* Parametros propios de un objeto hijo recien creado (Objeto + 0x11C). */
-#define HIJO_PARAM(h) ((u8*)(h) + 0x11C)
+#define FLUJO_PISTAS(c) (*(u32**)&(c)->actual)
 
 #endif

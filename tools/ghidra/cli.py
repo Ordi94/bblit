@@ -213,8 +213,33 @@ def _comando_exportar(args: argparse.Namespace, entorno: Mapping[str, str], ejec
     return 0
 
 
+def _exigir_archivo_de_salida(ruta: Path | None, opcion: str) -> None:
+    """
+    Rechaza una carpeta existente donde se espera el archivo de una salida.
+
+    Contexto:
+        Las salidas de ``simbolos`` se escriben con un reemplazo atomico de archivo; si la ruta es una
+        carpeta, el sistema operativo responde con un ``PermissionError`` que no dice la causa.
+        Se valida antes de analizar nada para que el usuario vea que opcion esta mal.
+
+    Args:
+        ruta (Path | None): Valor de la opcion; ``None`` si no se indico.
+        opcion (str): Nombre de la opcion tal como se escribe en la linea de ordenes.
+
+    Raises:
+        ValueError: Si la ruta existe y es una carpeta.
+
+    Ejemplo:
+        _exigir_archivo_de_salida(args.salida, "--salida")
+    """
+    if ruta is not None and ruta.is_dir():
+        raise ValueError(f"{opcion} debe ser un archivo, no una carpeta")
+
+
 def _comando_simbolos(args: argparse.Namespace, entorno: Mapping[str, str]) -> int:
     """Ejecuta el subcomando ``simbolos``."""
+    for ruta, opcion in ((args.salida, "--salida"), (args.tablas, "--tablas"), (args.nuevas, "--nuevas")):
+        _exigir_archivo_de_salida(ruta, opcion)
     segmento = leer_segmento(resolver_ejecutable(args.exe, entorno))
     depuracion = depurar_funciones(leer_funciones_csv(args.funciones), segmento)
     inicios = [f.direccion for f in depuracion.funciones]

@@ -247,7 +247,7 @@ sigue:
                 break;
             }
         }
-        CURSOR_TABLA(c) = n->def->tabla;
+        c->tabla = n->def->tabla;
         if (o->flags08 & 0x200000) {
             o->u78.ayudas->flags8 = 1;
             if (o->p70 == 0) {
@@ -272,17 +272,17 @@ sigue:
                 return 0x400;
             }
         }
-        fot = CURSOR_TABLA(c)->fotogramas;
+        fot = c->tabla->fotogramas;
         if (o->flags08 & 0x200000) {
             k = o->param.escala.vx;
-            o->min.vx = o->min.vz = (-(fot->w >> 1) * k) >> 12;
+            o->min.vx = o->min.vz = (-(fot->w0C >> 1) * k) >> 12;
             o->min.vy = 0;
-            o->max.vx = o->max.vz = ((fot->w >> 1) * k) >> 12;
-            o->max.vy = -((fot->h * o->param.escala.vy) >> 12);
+            o->max.vx = o->max.vz = ((fot->w0C >> 1) * k) >> 12;
+            o->max.vy = -((fot->w0E * o->param.escala.vy) >> 12);
             if (o->flags0C & 0x4000000) {
-                o->param.trans.vy = o->param.trans.vy + (fot->h >> 1);
+                o->param.trans.vy = o->param.trans.vy + (fot->w0E >> 1);
             }
-            m = fot->w * 2;
+            m = fot->w0C * 2;
             t = (m * o->param.escala.vx) >> 12;
             o->w2E = (u16)o->max.vx + t;
             o->alcance2 = o->w2E * o->w2E;
@@ -296,7 +296,7 @@ sigue:
         c->fotogramas = fot;
         c->b04 = 0;
         c->flags18 = modo | 0x1200;
-        c->flujo = (u32*)fot;
+        FLUJO_PISTAS(c) = (u32*)fot;
         c->w00 = n->def->n_cuadros - 1;
         c->duraciones = (ParCuadro*)n->def->tabla;
         c->h02 = 0;
@@ -354,9 +354,9 @@ sigue:
                             h = func_80036734((s16)c->eventos[i].id, (s32*)&pos, (u16*)&giro);
                             if (h != 0) {
                                 o->flags18 |= ANIM_HIJO_VIVO;
-                                ANIM_CERO_W3((u8*)h + 0x134);
-                                ANIM_CERO_WH((u8*)h + 0x12C);
-                                ANIM_UNOS_W3(HIJO_PARAM(h));
+                                ANIM_CERO_W3(&h->portado.trans);
+                                ANIM_CERO_WH(&h->portado.giro);
+                                ANIM_UNOS_W3(&h->portado.escala);
                                 if (h->w1C == 1) {
                                     D_80069608 |= 1;
                                 }
@@ -366,7 +366,7 @@ sigue:
                                 h->coord.super = o->i68;
                                 h->w26 = o->w26;
                                 h->p70 = o;
-                                h->coord.param = (GsCOORD2PARAM*)HIJO_PARAM(h);
+                                h->coord.param = (GsCOORD2PARAM*)&h->portado;
                                 if (!(c->eventos[i].banderas & EVENTO_SIN_SUSTITUIR)) {
                                     if (o->p6C != 0) {
                                         func_8003502C(o->p6C);
@@ -384,13 +384,13 @@ sigue:
                             }
                         }
                         if (c->eventos[i].banderas & EVENTO_HIJO_SUELTO) {
-                            h = func_80036734((s16)c->eventos[i].id, o->apar, &o->param.giro.u.x);
+                            h = func_80036734((s16)c->eventos[i].id, &o->objetivo.vx, &o->param.giro.u.x);
                             if (h != 0) {
                                 h->w26 = o->w26;
                             }
                         }
                         if (c->eventos[i].banderas & EVENTO_HIJO_CON_GIRO) {
-                            h = func_80036734((s16)c->eventos[i].id, o->apar,
+                            h = func_80036734((s16)c->eventos[i].id, &o->objetivo.vx,
                                               (u16*)((u8*)o->i68->param + 0x10));
                             if (h != 0) {
                                 h->w26 = o->w26;
@@ -401,26 +401,26 @@ sigue:
                         if (c->eventos[i].banderas & EVENTO_AGARRA) {
                             if (!(D_80069698->flags14 & 0x3000000)) {
                                 if (D_80069698->p70 == 0) {
-                                    if ((s16)func_80018D98(D_80069698, (VECTOR*)o->apar, area) != 0) {
+                                    if ((s16)func_80018D98(D_80069698, &o->objetivo, area) != 0) {
                                         if (c->eventos[i].banderas & EVENTO_AGARRE_SIN_DESFASE) {
-                                            AGARRE(D_80069698).trans.vx = 0;
-                                            AGARRE(D_80069698).trans.vy = 0;
-                                            AGARRE(D_80069698).trans.vz = 0;
+                                            D_80069698->u18C.agarre.trans.vx = 0;
+                                            D_80069698->u18C.agarre.trans.vy = 0;
+                                            D_80069698->u18C.agarre.trans.vz = 0;
                                         } else {
-                                            AGARRE(D_80069698).trans.vx = D_80069698->param.trans.vx - o->apar[0];
-                                            AGARRE(D_80069698).trans.vy = D_80069698->param.trans.vy - o->apar[1];
-                                            AGARRE(D_80069698).trans.vz = D_80069698->param.trans.vz - o->apar[2];
+                                            D_80069698->u18C.agarre.trans.vx = D_80069698->param.trans.vx - o->objetivo.vx;
+                                            D_80069698->u18C.agarre.trans.vy = D_80069698->param.trans.vy - o->objetivo.vy;
+                                            D_80069698->u18C.agarre.trans.vz = D_80069698->param.trans.vz - o->objetivo.vz;
                                         }
-                                        D_80069698->param.trans.vx = o->apar[0];
-                                        D_80069698->param.trans.vy = o->apar[1];
-                                        D_80069698->param.trans.vz = o->apar[2];
-                                        AGARRE(D_80069698).escala.vz = D_80069698->param.escala.vz;
-                                        AGARRE(D_80069698).escala.vx = D_80069698->param.escala.vx;
-                                        AGARRE(D_80069698).giro.u.x = 0;
-                                        AGARRE(D_80069698).giro.u.y = 0;
-                                        AGARRE(D_80069698).giro.u.z = 0;
-                                        AGARRE(D_80069698).escala.vy = D_80069698->param.escala.vy;
-                                        D_80069698->coord.param = (GsCOORD2PARAM*)&AGARRE(D_80069698);
+                                        D_80069698->param.trans.vx = o->objetivo.vx;
+                                        D_80069698->param.trans.vy = o->objetivo.vy;
+                                        D_80069698->param.trans.vz = o->objetivo.vz;
+                                        D_80069698->u18C.agarre.escala.vz = D_80069698->param.escala.vz;
+                                        D_80069698->u18C.agarre.escala.vx = D_80069698->param.escala.vx;
+                                        D_80069698->u18C.agarre.giro.u.x = 0;
+                                        D_80069698->u18C.agarre.giro.u.y = 0;
+                                        D_80069698->u18C.agarre.giro.u.z = 0;
+                                        D_80069698->u18C.agarre.escala.vy = D_80069698->param.escala.vy;
+                                        D_80069698->coord.param = (GsCOORD2PARAM*)&D_80069698->u18C.agarre;
                                         D_80069698->w17E = 0;
                                         D_80069698->coord.super = o->i68;
                                         D_80069698->w17C = c->eventos[i].id;
@@ -451,7 +451,7 @@ sigue:
                         if (c->eventos[i].banderas & EVENTO_COLOCA) {
                             if (!(D_80069698->flags14 & 0x3000000)) {
                                 if (D_80069698->p70 == 0) {
-                                    if ((s16)func_80018D98(D_80069698, (VECTOR*)o->apar, area) != 0) {
+                                    if ((s16)func_80018D98(D_80069698, &o->objetivo, area) != 0) {
                                         j = D_80069698;
                                         j->param.giro.u.y = o->param.giro.u.y + 0x800;
                                         j->w17E = 0;
@@ -568,13 +568,13 @@ u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
     if (o->p70 != NULL) {
         nodo = (NodoPeldano*)t->u78.p; /* lw 0x78(t): cabeza de la lista de peldanos */
         if (t->flags08 & 0x400000) {
-            altura = o->i1A8 + d->dy - 0x12C;
+            altura = o->u18C.agarre.trans.vy + d->dy - 0x12C;
             if (altura <= 0) {
                 return 2;
             }
             return altura >= t->trabajo.h0A;
         }
-        altura = o->i1A8 + d->dy - 0x12C;
+        altura = o->u18C.agarre.trans.vy + d->dy - 0x12C;
         acc = 0;
         if (nodo != NULL) {
             paso = (u16)t->trabajo.h0A;
@@ -589,10 +589,10 @@ u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
             } while (nodo != NULL);
         }
         if (nodo != NULL && altura > 0) {
-            t->i13C = nodo->w10;
+            t->portado.trans.vz = nodo->w10;
             return 0;
         }
-        (*apoyo)->i13C = ((NodoPeldano*)(*apoyo)->u78.p)->w10;
+        (*apoyo)->portado.trans.vz = ((NodoPeldano*)(*apoyo)->u78.p)->w10;
         if (altura > 0) {
             return 1;
         }
