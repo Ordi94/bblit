@@ -321,6 +321,11 @@ INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_800163E4);
  * del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la
  * pausa y la maquina de estados D_80069662 (el estado 0x16 en adelante recarga el contenido).
  * Con el mando ocioso unos 900 cuadros entra en el ciclo de demostracion.
+ *
+ * Pendiente (1135, 11 variantes): el flujo y los tipos coinciden (pausa y demostracion son s16, el
+ * contador de cuadros D_80069676 es volatile u16); difieren el reparto de registros salvados de las
+ * constantes 2 y 3 y de la tabla de tiempos D_8006CF68, y la base `lui` del estado se hoistea antes
+ * que en el original.
  */
 void main(void)
 {

@@ -62,6 +62,9 @@ extern s32 func_80014FAC(void);
 /*
  * Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18
  * caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
+ *
+ * Pendiente (895): el original accede a la cuenta de entradas por $gp (0x38($gp)) y el archivo se
+ * compila con -G0; ademas el original calcula la base del nombre una sola vez antes del bucle.
  */
 s32 func_80014AC4(s16 ranura)
 {
@@ -314,11 +317,101 @@ s32 func_8001515C(void)
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_8001515C);
 #endif
 
-INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
+#ifdef NON_MATCHING
+/*
+ * Da formato al archivo de partida: arma en la pila un bloque de 0x200 bytes con la cabecera de la
+ * tarjeta ("SC", bandera de icono, un bloque, titulo, paleta e imagenes), lo copia con la cabecera de
+ * D_8006D060 y su suma de control al buffer D_80069520 + 0x2000 y escribe 0x400 bytes con open/write
+ * (hasta cinco intentos), comprobando despues la lectura.
+ *
+ * Pendiente (17610): no se reprodujo la disposicion de los bloques locales de la pila ni las copias
+ * de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento.
+ */
+typedef struct BloqueTarjeta {
+    u8 cab[4];
+    u8 titulo[0x40];
+    u8 reservado[0x1C];
+    u8 imagen[0x20];
+    u8 paleta[0x80];
+    u8 cuadro_a[0x80];
+    u8 cuadro_b[0x80];
+} BloqueTarjeta;
 
+typedef struct Fragmento {
+    u8 b[0x200];
+} Fragmento;
+
+extern u8 D_80067E34[];
+extern u8 D_8005DFA0[];
+extern u8 D_8005DFCC[];
+extern void* memset(void* destino, s32 valor, u32 cantidad);
+
+s32 func_800151FC(void)
+{
+    BloqueTarjeta blq;
+    u8* base;
+    u8* dest;
+    u8* sumada;
+    s32 i;
+    s32 fd;
+    u32 suma;
+
+    blq.cab[0] = 0x53;
+    blq.cab[1] = 0x43;
+    blq.cab[2] = 0x13;
+    blq.cab[3] = 1;
+    *(Fragmento*)blq.titulo = *(Fragmento*)D_80067E34;
+    memset(blq.reservado, 0, 0x1C);
+    base = D_80069520;
+    memset(&D_8006D060, 0, 0x168);
+    dest = base + 0x2000;
+    memset(dest, 0, 0x2000);
+    *(Fragmento*)dest = *(Fragmento*)&blq;
+    sumada = dest + 0x200;
+    *(CabeceraGuardado*)sumada = D_8006D060;
+    D_8006D060.suma = func_80041238(sumada, 0x200);
+    *(CabeceraGuardado*)sumada = D_8006D060;
+    for (i = 0; i < 5; i++) {
+        fd = open(D_8005E04C, (blq.cab[3] << 16) | 0x200);
+        if (fd != -1) {
+            close(fd);
+            fd = open(D_8005E04C, 2);
+            if (fd != -1) {
+                if (write(fd, dest, 0x400) != 0x400) {
+                    close(fd);
+                    continue;
+                }
+                close(fd);
+                if (func_80014BA0(base, 0x400, 0) != 0) {
+                    *(u32*)(base + 0x200) = 0;
+                    suma = func_80041238(base + 0x200, 0x200);
+                    *(u32*)(base + 0x200) = suma;
+                    if (suma == D_8006D060.suma) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    return i != 5;
+}
+#else
+INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
+#endif
+
+/*
+ * Sondeo por cuadro de la tarjeta de memoria (maquina de estados sobre D_8006AA70[0x0A]: 0, 1, 2, 3,
+ * 4, 5, 6 con MemCardAccept, MemCardFormat y MemCardSync). Usa $gp en 35 accesos (0x38..0x4C($gp)):
+ * pendiente de soporte -G8; sin intento en C.
+ */
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800156F4);
 
 #ifdef NON_MATCHING
+/*
+ * Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
+ * Pendiente (120): usa $gp; con -G0 el compilador coloca el almacen en el hueco de retardo de la
+ * llamada y el original lo coloca antes de cargar el modo; pendiente de soporte -G8.
+ */
 void func_80015E94(void)
 {
     *(u8*)(base_gp + 0x3C) = 0;
