@@ -63,10 +63,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 4497 con la configuracion versionada (g = 0 del archivo). El reparto de
+ * Pendiente: puntuacion 3617 con la configuracion versionada (g = 0 del archivo). El reparto de
  * registros coincide con el original; difieren el orden de planificacion en los avances por
  * subcelda y por baldosa, el cierre compartido de resultados y una constante de indice que el
- * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 18352).
+ * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 17332).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -189,6 +189,11 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
     s16 k = 0;
     s32 dx;
     s32 dz;
+    s32 px;
+    s32 pz;
+    s32 tx;
+    s32 ty;
+    s32 tz;
 
     if ((u32)w + 0x1C8 > 0x1F8003FFU) {
         for (;;) { }
@@ -245,12 +250,14 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                         w->celda_z = -0x28;
                         w->lin_z = (w->z / 320) * 0x140 - 1;
                     }
-                    w->pend_z = (w->dx << 12) / w->dz;
-                    w->pend_x = (w->dz << 12) / w->dx;
+                    px = (w->dz << 12) / w->dx;
+                    pz = (w->dx << 12) / w->dz;
+                    w->pend_x = px;
+                    w->pend_z = pz;
                     w->cbx_x = w->lin_x;
                     w->cbz_z = w->lin_z;
-                    w->cbz_x = ((w->pend_z * (w->lin_z - w->z)) >> 12) + w->x;
-                    w->cbx_z = ((w->pend_x * (w->lin_x - w->x)) >> 12) + w->z;
+                    w->cbz_x = ((pz * (w->lin_z - w->z)) >> 12) + w->x;
+                    w->cbx_z = ((px * (w->lin_x - w->x)) >> 12) + w->z;
                     do {
                         if (w->bx < cur->x || w->bx >= cur->x + cur->ancho_x
                             || w->bz < cur->z || w->bz >= cur->z + cur->ancho_z) {
@@ -386,23 +393,29 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             w->d_sx = SquareRoot0(w->dsx_x * w->dsx_x + w->dsx_z * w->dsx_z);
                             if (w->d_sz < w->d_sx) {
                                 if (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z) {
-                                    w->rz = w->sz_z;
-                                    w->aux = w->sz_y;
+                                    tx = w->sz_x;
+                                    ty = w->sz_y;
+                                    tz = w->sz_z;
+                                    w->aux = ty;
+                                    w->rz = tz;
                                     w->lim_z = w->lim_z + w->celda_z;
                                     w->sz_z = w->lim_z;
-                                    w->rx = w->sz_x;
-                                    w->sz_x = w->sz_x + ((w->pend_z * w->celda_z) >> 12);
+                                    w->rx = tx;
+                                    w->sz_x = tx + ((w->pend_z * w->celda_z) >> 12);
                                 } else {
                                     w->acc_x = w->dx;
                                 }
                             } else {
                                 if (w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x) {
-                                    w->rz = w->sx_z;
-                                    w->aux = w->sx_y;
+                                    tx = w->sx_x;
+                                    ty = w->sx_y;
+                                    tz = w->sx_z;
+                                    w->aux = ty;
+                                    w->rz = tz;
                                     w->lim_x = w->lim_x + w->celda_x;
-                                    w->rx = w->sx_x;
                                     w->sx_x = w->lim_x;
-                                    w->sx_z = w->sx_z + ((w->pend_x * w->celda_x) >> 12);
+                                    w->rx = tx;
+                                    w->sx_z = tz + ((w->pend_x * w->celda_x) >> 12);
                                 } else {
                                     w->acc_z = w->dz;
                                 }
