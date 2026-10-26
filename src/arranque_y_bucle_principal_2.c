@@ -221,6 +221,7 @@ void func_80016218(void)
                       "addiu $8, $8, -4\n\t"
                       "move $29, $8"
                       : : "r"(0x1F8003FC) : "$8");
+    /* 0x80016288: lui a0,%hi(D_8006D928) ; jal GsSetRefView2L ; addiu a0,a0,%lo(D_8006D928): se pasa la base de la estructura, que empieza por un GsRVIEW2. */
     GsSetRefView2L((GsRVIEW2*)&D_8006D928);
     GsClearOt(0, 0, &D_8006AE20[D_8006967C]);
     GsClearOt(0, 0, &D_8006AE60[D_8006967C]);

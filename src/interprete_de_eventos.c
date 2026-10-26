@@ -1090,6 +1090,7 @@ void func_80031D60(Objeto* a0, Accion* a1)
     v[2] = a0->zEC - D_8006D928.z;
     d = func_80044940(v);
     if (d < 0x800) {
+        /* 0x80031DD0, 0x80031E00 y 0x80031E10: sb a D_8006965A / D_8006965B con lui $at; el escalar u8 cambia el orden de la lectura de a1. */
         ((Byte*)&D_8006965A)->v = a1->b4;
         d = (a1->w6 * d) / 2048;
         if (d <= 0) {

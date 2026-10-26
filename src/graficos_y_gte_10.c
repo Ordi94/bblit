@@ -96,6 +96,7 @@ void func_80040B8C(void)
         }
         GsSwapDispBuff();
         func_8003F528(D_800695BC);
+        /* 0x80040C74, 0x80040CA0 y 0x80040CCC: lw a0,0x10(v0) carga GsOT.tag (+0x10) y lo pasa a DrawOTag, que espera u_long*. */
         DrawOTag((u_long*)D_8006AEA0[D_800695BC].tag);
         DrawOTag((u_long*)D_8006AE60[D_800695BC].tag);
         DrawOTag((u_long*)D_8006AE20[D_800695BC].tag);
