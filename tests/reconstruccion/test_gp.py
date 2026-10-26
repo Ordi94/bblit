@@ -325,7 +325,7 @@ def test_diff_con_bytes_iguales_coincide_y_cuenta_las_referencias_numericas(tmp_
     resultado = diff.comparar_funcion(
         tmp_path, "func_80036204", herramientas_con_enlace(), Path("diff.py"), EjecutorEnlace(70)
     )
-    assert resultado.puntuacion == 70
+    assert resultado.puntuacion == 0 and resultado.puntuacion_asm == 70
     assert resultado.bytes_iguales is True and resultado.referencias_numericas == 2
     assert resultado.coincide is True
 

@@ -22,6 +22,21 @@ typedef struct Accion {
 } Accion;
 #define ACC_W4(a) (*(u16*)&(a)->b4)
 
-/* Objeto controlado (el protagonista). */
+/*
+ * Rutinas del interprete de eventos que llaman la logica de niveles, el movimiento y la
+ * animacion. TestLogicCond y RunLogicAction son manuscritas: despachan por el byte de operacion
+ * del registro (a1) y no leen el objeto (a0), que pasa intacto a la rutina elegida. El llamador
+ * enmascara el resultado de la condicion con 0xFFFF (andi en 0x8001EC0C), asi que se declara
+ * de palabra completa.
+ *
+ * func_8003F06C (audio_xa_y_spu.c) normaliza id a 16 bits en la propia rutina (sll / sra en
+ * 0x8003F0C8) y no devuelve valor. Los llamadores pasan los argumentos sin estrechar (el cuarto
+ * es D_8006967C cargado con lh, sin andi), de modo que el prototipo visible para ellos es de
+ * palabra completa; la definicion conserva los anchos que la rutina usa y por eso no incluye
+ * esta cabecera.
+ */
+extern s32 TestLogicCond(Objeto* o, void* registro);
+extern void RunLogicAction(Objeto* o, void* registro);
+extern void func_8003F06C(void* o, s32 id, s32 modo, s32 voz);
 
 #endif

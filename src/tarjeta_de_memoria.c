@@ -2,6 +2,7 @@
 #include "arranque.h"
 #include "globales.h"
 #include "cargador.h"
+#include "eventos.h"
 
 /* Nombre del archivo de partida en la tarjeta de memoria: unidad, serie del disco y titulo. */
 char D_8005E04C[] = "bu00:BASLUS-00838 BBLIT";
@@ -35,7 +36,6 @@ extern s32 MemCardAccept(s32 canal);
 extern s32 MemCardFormat(s32 canal);
 extern s32 MemCardExist(s32 canal);
 extern s32 MemCardGetDirentry(s32 canal, char* nombre, s8* dir, s32* cuenta, s32 desde, s32 maximo);
-extern s32 func_8003F06C(void* objeto, s32 id, s32 modo, s32 clave);
 extern void func_80015EC0(void);
 
 /* Patron de busqueda del directorio ("*") y copia del orden pendiente del banco de registros (+0xA), que se limpia al atenderla. */
@@ -44,13 +44,17 @@ extern u8 D_8006AA7A[];
 
 /*
  * Estado de la tarjeta en la zona direccionada por $gp (+0x30..+0x4C): el original lo declara como datos pequenos
- * (-G8), asi que se define aqui, sin extern, y el enlace le da la direccion de config/symbols.txt. Lo usa solo
- * func_800156F4 (func_80014AC4 y func_80015E94 acceden a +0x38 y +0x3C con base_gp, forma transitoria).
+ * (-G8), asi que se define aqui, sin extern, y el enlace le da la direccion de config/symbols.txt. Se declaran
+ * ademas en la tabla de datos pequenos de la configuracion para que el ensamblador los reescriba a $gp: con
+ * `base_gp` el almacen de la bandera +0x3C ocupaba el hueco de retardo del jal de func_80015E94 en lugar de
+ * `li a0,1`. Los usan func_800156F4 y func_80015E94 (func_80014AC4 accede a +0x38 y +0x3C con base_gp, forma transitoria).
+ * La bandera +0x3C se declara u8 (la escribe con sb func_80015E94); func_800156F4 la lee con `lb`
+ * (0x800157C0, 0x800158FC, 0x800159E8), de modo que sus lecturas pasan por un acceso s8.
  */
 s32 D_80069350;     /* +0x30: suma de control recalculada del directorio */
 s32 D_80069354;     /* +0x34: suma de control de referencia, tomada al leer la cabecera */
 s32 D_80069358[2];  /* +0x38: entradas de directorio por ranura (la ranura 1 solapa D_8006935C) */
-s8 D_8006935C;      /* +0x3C: la tarjeta esta lista (1) o hay que volver a leerla (0) */
+u8 D_8006935C;      /* +0x3C: la tarjeta esta lista (1) o hay que volver a leerla (0) */
 s16 D_8006935E[2];  /* +0x3E: bloques usados por ranura (la ranura 1 solapa D_80069360) */
 s32 D_80069360;     /* +0x40: orden de libmcrd que acaba de terminar (1 existe, 2 acepta) */
 s32 D_80069368;     /* +0x48: resultado de esa orden (0 correcto, 3 tarjeta nueva, 4 sin formato) */
@@ -476,7 +480,7 @@ void func_800156F4(void)
                 D_8006AA70[0x1B] = 0xC;
             }
         } else if (orden == 3) {
-            if (D_8006935C == 1) {
+            if (*(s8*)&D_8006935C == 1) {
                 MemCardSync(0, &D_80069360, &D_80069368);
                 if (D_8006935E[0] >= 15) {
                     D_8006AA70[0x1B] = 7;
@@ -507,7 +511,7 @@ void func_800156F4(void)
                 cabecera->mascara |= 1 << (partida - 1);
             }
         } else if (orden == 5) {
-            if (D_8006935C == 1) {
+            if (*(s8*)&D_8006935C == 1) {
                 if ((D_8006D060.mascara & (1 << (ESTADO_PRINCIPAL->r[BANCO_PARTIDA] - 1))) != 0) {
                     D_8006AA70[0x1C] = 0;
                     D_8006AA70[0x25] = 1;
@@ -532,7 +536,7 @@ void func_800156F4(void)
                 }
             }
         } else if (orden == 6) {
-            if (D_8006935C != 1) {
+            if (*(s8*)&D_8006935C != 1) {
                 goto sin_bandera;
             }
             salvado = ESTADO_PRINCIPAL->r[0xA6];
@@ -671,19 +675,11 @@ void func_800156F4(void)
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800156F4);
 #endif
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). El original calcula las dos
- * direcciones de $gp con `addiu a1,gp,0x40` y `addiu a2,gp,0x48` (ASPSX 2.80, la version fijada) y coloca el almacen del byte antes de
- * cargar el modo. Variantes probadas: 3.
- *
  * Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
  */
 void func_80015E94(void)
 {
-    *(u8*)(base_gp + 0x3C) = 0;
-    MemCardSync(1, (s32*)(base_gp + 0x40), (s32*)(base_gp + 0x48));
+    D_8006935C = 0;
+    MemCardSync(1, &D_80069360, &D_80069368);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80015E94);
-#endif

@@ -1,5 +1,7 @@
 #include "common.h"
+#include "gte.h"
 #include "objetos.h"
+#include "animacion.h"
 #include "psyq/MEMORY.H"
 
 /* Nodo de una lista con clave de busqueda en +0x18 (la lista de ayudantes de un objeto). */
@@ -9,14 +11,14 @@ typedef struct NodoClave {
     s32 clave;
 } NodoClave;
 
-extern Objeto* D_800694DC;
 extern Objeto* D_800694B4;
 
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un
  * segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el
- * original usa un solo puntero con desplazamientos 0x0C y 0x04. Variantes probadas: 9.
+ * original usa un solo puntero con desplazamientos 0x0C y 0x04. Ni el recorrido por indice sobre
+ * el arreglo ni la reordenacion de los incrementos eliminan el puntero derivado.
  */
 EntradaId* func_80036164(s32 id)
 {
@@ -189,7 +191,6 @@ NodoLista* AppendListNode(NodoLista* cab, NodoLista* nodo)
  * escrituras de sw $zero,0($a2) del original son un bucle real de 0x2E vueltas (contador en $v1,
  * sltiu/bnez, la escritura en el hueco de retardo), no una secuencia desenrollada; escritas como
  * 0x2E sentencias explicitas el resultado empeora (895), porque GCC no las pliega a ese bucle.
- * Variantes probadas: 11.
  */
 Ayuda* func_800363D4(void)
 {
@@ -390,4 +391,219 @@ void func_800368E8(void)
     }
 }
 
+/*
+ * Aplica un cuadro de la animacion de un objeto: lee del flujo de pistas del cursor (BloqueTrabajo.actual) la
+ * cabecera de dos palabras (numero de pistas en la mitad alta de la primera) y despues una pista
+ * por nodo afectado. Cada pista empieza con una palabra [tamano:8][banderas:8][tipo:4][nodo:16];
+ * segun el tipo actualiza la pose de un nodo, la caja del objeto, su posicion absoluta (acumulando
+ * la cadena de nodos con el GTE), el vinculo con el nodo padre, el cuadro de sprite de un nodo,
+ * un campo de 32 bits o crea y retira ayudantes. El flujo avanza por el tamano de cada pista.
+ * `w` es el area de trabajo del llamador (AreaCuadro).
+ *
+ * El ayudante de la pista (s0) y su vista desde +0xC (s5) y los parametros del nodo (s4) se
+ * conservan entre pistas: una pista cuyo nodo no existe reutiliza los de la anterior.
+ */
+#ifdef NON_MATCHING
+/* Pendiente: puntuacion 510 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difiere el reparto de registros callee-saved: el original deja el area de trabajo en $s1 y el puntero del flujo en $s2, GCC (prioridad de global-alloc por referencias y longitud de vida) los intercambia o adelanta el area a $s0 al copiar el parametro; ademas el sumando s20 de la caja cae en $a0 en lugar de $v1. */
+void func_8003690C(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
+{
+    AreaCuadro* w;
+    u32* p;
+    u32 nodo;
+    u32 f;
+    u32 n;
+    Ayuda* a;
+
+    NucleoAyuda* e;
+    GsCOORD2PARAM* param;
+    u16* h;
+
+    w = a2;
+    w->cab.w = *FLUJO_PISTAS(c)++;
+    w->npistas = w->cab.h.alto;
+    w->palabra2 = *FLUJO_PISTAS(c)++;
+    o->i68 = 0;
+    w->modo = 1;
+    if (o->u78.ayudas != 0) {
+        w->tabla = &w->ayudas[0];
+        p = (u32*)&w->ayudas[1];
+        for (a = o->u78.ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
+            *(Ayuda**)p = a;
+            p++;
+        }
+        w->modo = 0;
+    }
+    w->idx = 0;
+    if (w->npistas != 0) {
+        do {
+            p = FLUJO_PISTAS(c);
+            nodo = *p++;
+            w->tipo = nodo & 0xF0000;
+            w->banderas = nodo & 0xF00000;
+            w->tam = nodo >> 24;
+            nodo &= 0xFFFF;
+            if (w->modo != 0) {
+                a = (Ayuda*)o->u78.ayudas;
+                while (a != 0 && a->clave != nodo) {
+                    a = (Ayuda*)a->cab.siguiente;
+                }
+            } else {
+                a = 0;
+                if (nodo != 0) {
+                    a = w->tabla[nodo];
+                }
+            }
+            if (a != 0) {
+                e = (NucleoAyuda*)&a->wC;
+                w->m = &e->pcoord->coord;
+                param = e->pcoord->param;
+                e->pcoord->flg = 0;
+            }
+            switch (w->tipo) {
+            case PISTA_POSE:
+                f = a->flags8;
+                a->flags8 = f & 0x7FFF;
+                if (w->banderas & 0x600000) {
+                    if (w->banderas & 0x200000) {
+                        if (!(f & 0x400)) {
+                            GEO_CARGAR_WH(p);
+                            GEO_GUARDAR_WH(&param->rotate);
+                        }
+                        p += 2;
+                    }
+                    if (w->banderas & 0x400000) {
+                        if (!(a->flags8 & 0x400)) {
+                            GEO_CARGAR_H(p);
+                            GEO_GUARDAR_W_T1(&param->scale);
+                        }
+                        p += 2;
+                    }
+                    if (!(a->flags8 & 0x400)) {
+                        RotMatrix(&param->rotate, w->m);
+                        ScaleMatrix(w->m, &param->scale);
+                    }
+                }
+                if (w->banderas & 0x800000) {
+                    if (!(a->flags8 & 0x400)) {
+                        param->trans.vx = p[0];
+                        param->trans.vy = p[1];
+                        param->trans.vz = p[2];
+                        TransMatrix(w->m, &param->trans);
+                    }
+                }
+                break;
+            case PISTA_CAJA:
+                GEO_CARGAR_WH(p);
+                GEO_GUARDAR_WH(&o->min);
+                h = (u16*)p;
+                f = o->s20;
+                o->max.vx = h[3];
+                o->max.vy = h[4];
+                o->max.vz = h[5];
+                o->w2E = h[6];
+                n = o->w2E + f;
+                o->alcance2 = n * n;
+                break;
+            case PISTA_POSICION:
+                w->v.vx = 0;
+                w->v.vy = 0;
+                w->v.vz = 0;
+                w->nodo = e->pcoord;
+                if (w->nodo != 0) {
+                    do {
+                        gte_SetRotMatrix(&w->nodo->coord);
+                        gte_ldv0(&w->v);
+                        gte_rtv0();
+                        gte_stlvnl(&w->acc);
+                        w->acc.vx += w->nodo->coord.t[0];
+                        w->acc.vy += w->nodo->coord.t[1];
+                        w->acc.vz += w->nodo->coord.t[2];
+                        w->v.vx = w->acc.vx;
+                        w->v.vy = w->acc.vy;
+                        w->v.vz = w->acc.vz;
+                        w->nodo = w->nodo->super;
+                    } while (w->nodo != 0);
+                }
+                o->objetivo.vx = w->acc.vx;
+                o->objetivo.vy = w->acc.vy;
+                o->objetivo.vz = w->acc.vz;
+                o->i68 = e->pcoord;
+                break;
+            case PISTA_SPRITE:
+                w->n = *(u16*)p;
+                if (w->n != 0) {
+                    a->flags8 = 4;
+                    e->w8 = (s32)c->fotogramas + (w->n - 1) * 0x1C;
+                } else {
+                    a->flags8 = 8;
+                    e->w8 = 0;
+                }
+                break;
+            case PISTA_PADRE:
+                if (p[0] == 0 || p[0] == 0xFFFF) {
+                    e->pcoord->super = &o->coord;
+                } else {
+                    nodo = p[0];
+                    for (w->p70 = (Ayuda*)o->u78.ayudas; w->p70 != 0; w->p70 = (Ayuda*)w->p70->cab.siguiente) {
+                        if (w->p70->clave == nodo) {
+                            break;
+                        }
+                    }
+                    w->aux = (NucleoAyuda*)&w->p70->wC;
+                    e->pcoord->super = w->aux->pcoord;
+                }
+                break;
+            case PISTA_AYUDANTE:
+                f = w->banderas;
+                switch ((f >> 20) & 1) {
+                case 0:
+                    switch ((f >> 21) & 7) {
+                    case 0:
+                        func_80036474(o, nodo);
+                        break;
+                    case 1:
+                        func_80036474(o, nodo)->flags8 = 0x40;
+                        o->flags04 |= 0x20;
+                        break;
+                    case 2:
+                        func_80036474(o, nodo)->flags8 = 0x80;
+                        break;
+                    case 3:
+                        func_80036474(o, nodo)->flags8 = 0x100;
+                        break;
+                    case 4:
+                        func_80036474(o, nodo)->flags8 = 0x200;
+                        break;
+                    case 5:
+                        a->flags8 &= 0x7FFF;
+                        break;
+                    }
+                    break;
+                case 1:
+                    if (((f >> 21) & 7) == 5) {
+                        param->scale.vz = 0;
+                        param->scale.vy = 0;
+                        param->scale.vx = 0;
+                        MOTOR_DIAGONAL_CERO(w->m);
+                        a->flags8 |= 0x8000;
+                    } else {
+                        func_800364E0(o, nodo);
+                    }
+                    break;
+                }
+                break;
+            case PISTA_CAMPO32:
+                param->trans.pad = p[0];
+                break;
+            case PISTA_MASCARA:
+                e->w0 = (e->w0 & p[0]) | p[1];
+                break;
+            }
+            FLUJO_PISTAS(c) += w->tam;
+            w->idx++;
+        } while (w->idx < w->npistas);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_8003690C);
+#endif

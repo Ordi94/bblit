@@ -79,11 +79,11 @@ void func_80040EB4(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 390 con la configuracion versionada (g = 8 del archivo). Mismas
- * instrucciones que el original; solo difiere el reparto de registros de la ultima etapa (el
+ * Pendiente: puntuacion 370 con la configuracion versionada (g = 8 del archivo). Mismas
+ * instrucciones que el original, con el desplazamiento del indice como primer sumando de la
+ * direccion de cada seccion; solo difiere el reparto de registros de la ultima etapa (el
  * original deja el puntero del bucle en a2 y la constante 4 en a3, el indice en t0 en todas las
- * etapas). Variantes probadas: mas de 10 (orden de declaracion, puntero propio por etapa, bucles
- * rotados, parametro de relleno).
+ * etapas, y copia el puntero de la segunda etapa de una direccion calculada en v1).
  *
  * Recorre la cabecera de secciones de un contenedor (n entradas de tipo, tamano y tamano alineado)
  * y calcula la posicion, en bytes desde el inicio del archivo, de los datos del banco que se pide:
@@ -110,7 +110,7 @@ s32 func_80040F78(EntradaSeccion* secciones, s32 n, s32 tipo)
             break;
         }
     }
-    p = &secciones[i];
+    p = (EntradaSeccion*)((i * 12) + (s32)secciones);
     while (p->tipo != tipo) {
         if (i >= n) {
             break;
@@ -120,7 +120,7 @@ s32 func_80040F78(EntradaSeccion* secciones, s32 n, s32 tipo)
         i++;
     }
     i++;
-    p = &secciones[i];
+    p = (EntradaSeccion*)((i * 12) + (s32)secciones);
     while (p->tipo != 4) {
         if (i >= n) {
             break;
@@ -376,8 +376,9 @@ extern u32 D_800695E4;
  * (bloques, bucles, llamadas, las cinco tablas de saltos) sigue el ensamblador completo y el marco
  * de pila mide lo mismo (0x210 bytes); difieren el reparto de registros (s1 y s8 intercambiados
  * desde el prologo), el orden de las cargas de la cabecera de secciones y el codigo de cada
- * etiqueta, que GCC emite en otro orden. Variantes probadas: 2 (tamano del bufer de campos y de la
- * tabla de secciones).
+ * etiqueta, que GCC emite en otro orden. Las posiciones de pila de la tabla de tamanos y de los
+ * campos escalares tambien difieren (el original deja la imagen y el rectangulo en las direcciones
+ * mas bajas del marco, despues la tabla de secciones y la de tamanos).
  *
  * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `destino`.
  * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus

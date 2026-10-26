@@ -38,7 +38,6 @@ extern u32 func_80045498(Objeto* objeto, void* guion, BloqueTrabajo* bloque);
 extern s16 D_80069650;
 extern s16 D_800694CC;
 extern s16 D_80069634;
-extern s16 D_80069584;
 extern s16 D_800694E4;
 extern s16 D_800694BC;
 extern s16 D_80069602;
@@ -64,14 +63,13 @@ extern void func_800449E8(u8* tabla);
 extern void func_800400C0(void);
 
 /* Tabla de veintisiete punteros a datos del motor que el overlay consulta. */
-extern u8 D_800695B8[];
 extern u8 D_80069664[];
 
 
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044904);
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1460 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: neg y add con trampa de desbordamiento, registros fijos t0 a t2 y el temporal at en slt; GCC emite negu, addu y otro reparto de registros. Variantes probadas: 3. */
+/* Pendiente: puntuacion 1460 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: neg y add con trampa de desbordamiento, registros fijos t0 a t2 y el temporal at en slt; GCC emite negu, addu y otro reparto de registros. */
 u32 func_80044940(s32* v)
 {
     s32 x;
@@ -111,7 +109,7 @@ INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044940);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 960 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: registros fijos t0 y t1, nop explicito tras cada lw y el simbolo de la funcion vecina cargado con lui + lw; GCC reparte v0, v1 y a0. Variantes probadas: 2. */
+/* Pendiente: puntuacion 960 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: registros fijos t0 y t1, nop explicito tras cada lw y el simbolo de la funcion vecina cargado con lui + lw; GCC reparte v0, v1 y a0. */
 void func_800449B0(void)
 {
     u32* destino;
@@ -126,25 +124,21 @@ void func_800449B0(void)
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449B0);
 #endif
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo). Solo difieren dos instrucciones muertas del original (ori a1,zero,0x200 y ori a2,zero,0x1FF antes de la etiqueta de entrada func_800449E8) que GCC elimina. Variantes probadas: 2. */
-void func_800449E0(u8* a0)
-{
-    s32 i;
-
-    i = 0x21;
-    do {
-        *a0 = 0;
-        i--;
-        a0++;
-    } while (i >= 0);
-}
-#else
+/*
+ * Rutina escrita a mano en el original: sin marco de pila, dos ori de relleno (0x800449E0 y
+ * 0x800449E4) antes del segundo punto de entrada func_800449E8 (0x800449E8), y func_800449B0 copia
+ * sus dos primeras palabras como datos dentro de FntLoad. GCC elimina los ori muertos y no existe
+ * C que reproduzca un segundo punto de entrada, por eso se conserva como ensamblador.
+ */
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449E0);
-#endif
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). Mismas escrituras y mismo orden; el original coloca lui a0 de la primera llamada despues de la lectura de D_800695A6 y la planificacion del compilador la adelanta. Variantes probadas: 6. */
+/*
+ * Reinicia el estado del motor: banderas, indices de los tres buffers, tabla de punteros de datos
+ * del codigo superpuesto (D_8006B2F8) y camara. Los dos buffers del mando (D_8006CFF0 y
+ * D_8006D038) se pasan por direccion de un byte suelto: con -G8 la direccion de un objeto de
+ * hasta 8 bytes se emite como un solo `la`, que el planificador no parte ni usa para rellenar el
+ * hueco de retardo del `jal`, igual que el original.
+ */
 void func_80044A04(void)
 {
     s32 buffer;
@@ -171,8 +165,8 @@ void func_80044A04(void)
     D_800694BC = 0;
     D_80069602 = 0x80;
     D_80069628 = D_80069676;
-    func_800449E8(D_8006CFF0);
-    func_800449E8(D_8006D038);
+    func_800449E8(&D_8006CFF0);
+    func_800449E8(&D_8006D038);
     func_800400C0();
     D_800694C8 = -1;
     D_8006962C = 0x1E;
@@ -212,7 +206,7 @@ void func_80044A04(void)
     D_8006B2F8[3] = &D_8006967C;
     D_8006B2F8[4] = D_8006A940;
     D_8006B2F8[5] = &D_80069588;
-    D_8006B2F8[6] = D_800695B8;
+    D_8006B2F8[6] = &D_800695B8;
     D_8006B2F8[7] = &D_80069680;
     D_8006B2F8[8] = &D_8006958C;
     D_8006B2F8[9] = &D_80069610;
@@ -239,9 +233,6 @@ void func_80044A04(void)
     D_8006D928.vpx = 0;
     D_80069558 = NULL;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044A04);
-#endif
 
 void func_80044D44(void)
 {
@@ -285,7 +276,7 @@ void func_80044E58(void)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). Misma estructura que el original; difiere la planificacion de la carga de la direccion de D_8006D018 (lui) y de la mascara andi 0xFFFF. Variantes probadas: 9. */
+/* Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). Misma estructura que el original; difiere la planificacion: el original carga la direccion de D_8006D018 (lui) justo despues de leer la lista de nodos y calcula la mascara andi 0xFFFF y el desplazamiento del indice despues de guardar la tabla, mientras que GCC los adelanta. */
 void func_80044EA8(s32 a0, u32 a1, Objeto* a2)
 {
     NodoAnimacion* nodo;
@@ -297,7 +288,7 @@ void func_80044EA8(s32 a0, u32 a1, Objeto* a2)
         nodo = nodo->sig;
     }
     tabla = nodo->def->tabla;
-    a2->tabla = tabla;
+    a2->trabajo.tabla = tabla;
     f = &tabla->fotogramas[a1 & 0xFFFF];
     D_8006D018[(s16)a0] = f->h0A;
 }
@@ -365,7 +356,7 @@ void func_800450E8(Glifo* a0, u8 a1, OrigenEntrada* a2)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 3641 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s6 al contador y s7 y fp a las dimensiones del glifo, el C los reparte al reves y desplaza el resto de la planificacion. Variantes probadas: 8. */
+/* Pendiente: puntuacion 3641 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s6 al contador y s7 y fp a las dimensiones del glifo, el C los reparte al reves y desplaza el resto de la planificacion. */
 void func_80045150(EntradaLista* e)
 {
     Glifo* g;
@@ -454,7 +445,7 @@ void func_80045368(s16 a0, s16 a1)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 230 con la configuracion versionada (g = 8 del archivo). El bucle de digitos incrementa el indice antes de leer en el original (li a1 frente a addiu a1,a1,1 y desplazamiento 0 frente a -1). Variantes probadas: 16. */
+/* Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo). El bucle de digitos ya coincide (el incremento va en la condicion, t[n++], y el indice se corrige con n-- al salir); difiere el prologo del bucle: el original no pliega el primer incremento (addiu a1,a1,1 sobre la copia de valor, con la constante 3 cargada despues) y GCC lo resuelve como li a1,1. */
 s32 func_800453D0(u8** p)
 {
     s32 signo;
@@ -474,8 +465,7 @@ s32 func_800453D0(u8** p)
         t = *p;
         n++;
         do {
-            n++;
-        } while ((t[n - 1] >> 4) == 3);
+        } while ((t[n++] >> 4) == 3);
         n--;
     }
     i = n - 1;
@@ -493,7 +483,7 @@ INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800453D0);
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045498);
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Mismo flujo y mismas escrituras; el original conserva una copia de a2 en v0 para la primera comparacion y emite el sh de +0x26 despues de la carga del byte de D_8006AA7C. Variantes probadas: 12. */
+/* Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Mismo flujo, mismas escrituras y mismo orden; el estado del lector se lee como D_8006AA70[0xC] (arreglo) para que el lui de la base pueda separarse de la carga, como en el original. Solo difiere la primera comparacion: el original la hace sobre una copia de a2 en v0 (move v0,a2 ; beqz v0) y GCC compara a2 directamente. */
 u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
 {
     BloqueTrabajo* bloque;
@@ -517,13 +507,13 @@ u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
             nodo = nodo->sig;
         }
         tabla = nodo->def->tabla;
-        a2->tabla = tabla;
+        a2->trabajo.tabla = tabla;
         bloque->fotogramas = tabla->fotogramas;
         a2->w17E = a0 + 0x8000;
         a2->p180 = NULL;
         a1 = (u8*)D_80069590 + D_80069590[a0];
         a2->w26 = D_80069698->w26;
-        if (D_8006AA7C == 1) {
+        if (D_8006AA70[0xC] == 1) {
             a2->flags0C |= 0x40000000;
         }
     }

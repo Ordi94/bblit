@@ -22,7 +22,7 @@
         "libapi": "psx/lib/LIBAPI.LIB",
         "libgpu_h": "psx/include/LIBGPU.H"
       },
-      "notas": "Psy-Q Runtime Library 4.4 (octubre de 1998), espejo ps1_sdks de archive.org. CC1PSX.EXE es GCC 2.8.1 SN32 build 4.0.0010 (ejecutable Win32). Trae ASPSX 2.86 del SDK, PSYLINK, DMPSX, bibliotecas LIB e INCLUDE de la misma version."
+      "notas": "Psy-Q Runtime Library 4.4 (octubre de 1998), espejo ps1_sdks de archive.org. CC1PSX.EXE es GCC 2.8.1 SN32 build 4.0.0010 (ejecutable Win32). Trae ASPSX 2.79 del SDK (la cadena 'SDevTC ASPSX version 2.79' figura en ASPSX.EXE; comando en docs/TOOLCHAIN.md), PSYLINK, DMPSX, bibliotecas LIB e INCLUDE de la misma version."
     },
     "psyq-4.1": {
       "url": "https://archive.org/download/ps1_sdks/Programmer%20Tools%20Runtime%20Library%204.1%20DTL-S2002%20CD%20Release%202.1%20Dec1997.rar",
