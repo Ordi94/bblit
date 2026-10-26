@@ -199,7 +199,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E600);
  * evento puede crear un hijo acoplado, un objeto suelto, agarrar o soltar al protagonista.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2890 con la configuracion versionada (g = 8 del archivo). Flujo y almacenes identicos al original; difiere el reparto de registros callee-saved (el cursor y el identificador de animacion intercambian $s3 y $s4 porque el indice de 16 bits se asigna antes) y la planificacion de las cadenas de almacenes del agarre y de la creacion del hijo. */
+/* Pendiente: puntuacion 570 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4 y la macro de escala 0x1000 que escribe $t4 lo declara destruido, con lo que GCC evita $t4), el reparto de $a0/$v1 en la lectura del estado y el orden de cuatro almacenes del bloque de parametros de agarre. */
 u32 func_8001E720(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
 {
     NodoAnimacion* n;
@@ -209,6 +209,7 @@ u32 func_8001E720(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
     Objeto* j;
     GsCOORDINATE2* nc;
     u16 i;
+    u16 i0;
     u16 r;
     s32 k;
     s32 t;
@@ -412,6 +413,7 @@ sigue:
                                         }
                                         D_80069698->param.trans.vx = o->apar[0];
                                         D_80069698->param.trans.vy = o->apar[1];
+                                        D_80069698->param.trans.vz = o->apar[2];
                                         AGARRE(D_80069698).escala.vz = D_80069698->param.escala.vz;
                                         AGARRE(D_80069698).escala.vx = D_80069698->param.escala.vx;
                                         AGARRE(D_80069698).giro.u.x = 0;
@@ -419,11 +421,10 @@ sigue:
                                         AGARRE(D_80069698).giro.u.z = 0;
                                         AGARRE(D_80069698).escala.vy = D_80069698->param.escala.vy;
                                         D_80069698->coord.param = (GsCOORD2PARAM*)&AGARRE(D_80069698);
-                                        D_80069698->param.trans.vz = o->apar[2];
-                                        D_80069698->coord.super = o->i68;
                                         D_80069698->w17E = 0;
-                                        D_80069698->flags14 = 0x2000000;
+                                        D_80069698->coord.super = o->i68;
                                         D_80069698->w17C = c->eventos[i].id;
+                                        D_80069698->flags14 = 0x2000000;
                                         o->p6C = D_80069698;
                                         D_80069698->p70 = o;
                                         func_8001CFCC(&D_80069698->coord);
@@ -436,10 +437,11 @@ sigue:
                                 if (o->p6C != 0) {
                                     D_80069698->param.giro.u.x = o->param.giro.u.x;
                                     D_80069698->param.giro.u.y = o->param.giro.u.y + 0x800;
+                                    i0 = o->param.giro.u.z;
                                     D_80069698->coord.param = PARAMETROS_SDK(D_80069698);
                                     D_80069698->coord.super = 0;
                                     D_80069698->p70 = 0;
-                                    D_80069698->param.giro.u.z = o->param.giro.u.z;
+                                    D_80069698->param.giro.u.z = i0;
                                     o->p6C = 0;
                                     D_80069698->w17E = 0;
                                     D_80069698->w17C = c->eventos[i].id;
@@ -453,8 +455,8 @@ sigue:
                                         j = D_80069698;
                                         j->param.giro.u.y = o->param.giro.u.y + 0x800;
                                         j->w17E = 0;
-                                        j->flags14 = 0x2000000;
                                         j->w17C = c->eventos[i].id;
+                                        j->flags14 = 0x2000000;
                                     }
                                 }
                             }
