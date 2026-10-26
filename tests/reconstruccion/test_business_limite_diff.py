@@ -32,7 +32,9 @@ def test_contar_instrucciones_incluye_huecos_de_salto_y_omite_etiquetas() -> Non
     ("instrucciones", "esperado"),
     [(0, 1024), (1, 1024), (960, 1024), (961, 1025), (1738, 1802), (4971, 5035)],
 )
-def test_el_limite_es_instrucciones_mas_margen_y_nunca_menos_de_1024(instrucciones: int, esperado: int) -> None:
+def test_el_limite_es_instrucciones_mas_margen_y_nunca_menos_de_1024(
+    instrucciones: int, esperado: int
+) -> None:
     assert diff.limite_lineas(instrucciones) == esperado
 
 
@@ -44,7 +46,9 @@ def test_un_numero_de_instrucciones_negativo_se_rechaza() -> None:
 @pytest.mark.parametrize("malo", [0, -5])
 def test_un_limite_de_lineas_no_positivo_se_rechaza(malo: int) -> None:
     with pytest.raises(ValueError, match="positivo"):
-        diff.comando_diff("py", Path("diff.py"), "c.o", "t.o", "f", retornos=1, formato="json", max_lineas=malo)
+        diff.comando_diff(
+            "py", Path("diff.py"), "c.o", "t.o", "f", retornos=1, formato="json", max_lineas=malo
+        )
 
 
 def test_una_funcion_pequena_conserva_el_limite_por_omision(repo_diff: Any) -> None:  # noqa: F811

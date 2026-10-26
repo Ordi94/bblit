@@ -422,7 +422,48 @@ def comparar_funcion(
         )
         referencias = contar_referencias_numericas(texto) if iguales else 0
     informada = 0 if iguales else puntuacion
+    guardar_resultado(raiz, funcion, informada, max_lineas)
     return ResultadoDiff(funcion, archivo, informada, texto, iguales, referencias, puntuacion)
+
+
+def ruta_resultado(funcion: str) -> str:
+    """
+    Da la ruta, relativa a la raiz, donde ``diff`` deja la ultima puntuacion de una funcion.
+
+    Contexto:
+        La comparten ``diff`` (que la escribe) y el aviso de ``progreso`` (que la lee).
+
+    Args:
+        funcion (str): Nombre de la funcion (ya validado).
+
+    Returns:
+        str: Ruta dentro de ``build/diff/``.
+
+    Ejemplo:
+        ruta = ruta_resultado("func_80036204")
+    """
+    return f"{CARPETA_DIFF}/{funcion}.resultado.json"
+
+
+def guardar_resultado(raiz: Path, funcion: str, puntuacion: int, max_lineas: int) -> None:
+    """
+    Registra la puntuacion informada por ``diff`` para que otras ordenes la contrasten sin repetirlo.
+
+    Contexto:
+        ``progreso`` compara con ella la cifra del comentario ``Pendiente`` de cada ``NON_MATCHING``.
+        Vive en ``build/diff/``, que ``clean`` elimina, y no se versiona.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        funcion (str): Funcion comparada.
+        puntuacion (int): Puntuacion informada.
+        max_lineas (int): Limite de lineas con que se midio.
+
+    Ejemplo:
+        guardar_resultado(Path("."), "func_80036204", 0, 1024)
+    """
+    datos = {"funcion": funcion, "puntuacion": puntuacion, "maxLineas": max_lineas}
+    (raiz / ruta_resultado(funcion)).write_text(json.dumps(datos) + "\n", encoding="utf-8", newline="\n")
 
 
 def preparar_objetivo(
@@ -451,7 +492,7 @@ def preparar_objetivo(
         ProcesoError: Si el ensamblador falla.
 
     Ejemplo:
-        objetivo, retornos, max_lineas = preparar_objetivo(Path("."), "func_80036204", "src/a.c", herramientas, ejecutar)
+        objetivo, retornos, lineas = preparar_objetivo(Path("."), "f", "src/a.c", herramientas, ejecutar)
     """
     ruta_asm = elegir_asm_objetivo(archivo, funcion, lambda ruta: (raiz / ruta).is_file())
     asm = (raiz / ruta_asm).read_text(encoding="utf-8")

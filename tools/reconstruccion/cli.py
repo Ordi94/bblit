@@ -8,10 +8,10 @@ import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePath
 
-from tools.reconstruccion import compilacion, diff, progreso, variantes
+from tools.reconstruccion import coherencia_pendientes, compilacion, diff, progreso, variantes
 from tools.reconstruccion import infraestructura as infra
 from tools.reconstruccion.dominio import EjecutableReferencia
-from tools.reconstruccion.infraestructura import Ejecutor, ProcesoError
+from tools.reconstruccion.infraestructura import Ejecutor, ProcesoError, listar_fuentes_c
 from tools.toolchain.configuracion import Rutas, leer_local_toml, resolver_rutas
 from tools.toolchain.instalacion import leer_lock, resolver_herramienta
 
@@ -121,6 +121,8 @@ def _ejecutar_progreso(raiz: Path) -> int:
     for archivo, funcion in medido.sin_comentario:
         aviso = f"aviso: {archivo}: {funcion} sigue en INCLUDE_ASM sin comentario que lo explique"
         print(aviso, file=sys.stderr)
+    for aviso in coherencia_pendientes.avisos_puntuacion_pendiente(raiz, listar_fuentes_c(raiz)):
+        print(f"aviso: {aviso}", file=sys.stderr)
     if medido.coherente is False:
         print(
             f"error: {medido.glabel_en_asm} glabel en asm/ + {medido.funciones_en_c} funciones en C no "

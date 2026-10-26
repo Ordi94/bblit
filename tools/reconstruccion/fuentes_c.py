@@ -41,7 +41,7 @@ _PRIMER_COMENTARIO = re.compile(r"/\*(.*?)\*/", re.DOTALL)
 # Comentario (de bloque o de linea) que abre la rama de C de un bloque NON_MATCHING.
 _COMENTARIO_INICIAL = re.compile(r"\A\s*(/\*.*?\*/|//[^\n]*)", re.DOTALL)
 # Lo primero que debe decir ese comentario: la puntuacion pendiente del intento.
-_PENDIENTE = re.compile(r"\APendiente:\s*puntuacion\s+\d+\b")
+_PENDIENTE = re.compile(r"\APendiente:\s*puntuacion\s+(\d+)\b")
 # Marca de una rutina que el original escribio a mano ("Rutina de GTE escrita a mano en el original").
 _MANUSCRITA = re.compile(
     r"\brutina(?:\s+de\s+\w+)?\s+escrita\s+a\s+mano\s+en\s+el\s+original\b", re.IGNORECASE
@@ -344,6 +344,34 @@ def bloques_no_coincidentes(texto: str) -> list[BloqueNoCoincidente]:
     return bloques
 
 
+def puntuacion_pendiente(bloque: BloqueNoCoincidente) -> int | None:
+    """
+    Lee la puntuacion que un bloque ``NON_MATCHING`` declara en su linea ``Pendiente``.
+
+    Contexto:
+        La usan ``pendiente_declarada`` y el aviso de ``progreso`` que la compara con la ultima
+        medicion de ``diff``. Solo cuenta el primer comentario de la rama de C, justo debajo del
+        ``#ifdef NON_MATCHING``.
+
+    Args:
+        bloque (BloqueNoCoincidente): Bloque a leer.
+
+    Returns:
+        int | None: La puntuacion declarada, o ``None`` si lo primero de la rama no es un comentario
+        que empiece por ``Pendiente: puntuacion`` seguido de un numero.
+
+    Ejemplo:
+        puntos = puntuacion_pendiente(bloques_no_coincidentes(texto)[0])
+    """
+    inicial = _COMENTARIO_INICIAL.match(bloque.rama_c)
+    if inicial is None:
+        return None
+    crudo = inicial.group(1)
+    cuerpo = crudo[2:-2] if crudo.startswith("/*") else crudo[2:]
+    coincidencia = _PENDIENTE.match(_aplanar_comentario(cuerpo))
+    return None if coincidencia is None else int(coincidencia.group(1))
+
+
 def pendiente_declarada(bloque: BloqueNoCoincidente) -> bool:
     """
     Indica si un bloque ``NON_MATCHING`` abre con la linea ``Pendiente: puntuacion N``.
@@ -363,12 +391,7 @@ def pendiente_declarada(bloque: BloqueNoCoincidente) -> bool:
     Ejemplo:
         declarada = pendiente_declarada(bloques_no_coincidentes(texto)[0])
     """
-    inicial = _COMENTARIO_INICIAL.match(bloque.rama_c)
-    if inicial is None:
-        return False
-    crudo = inicial.group(1)
-    cuerpo = crudo[2:-2] if crudo.startswith("/*") else crudo[2:]
-    return _PENDIENTE.match(_aplanar_comentario(cuerpo)) is not None
+    return puntuacion_pendiente(bloque) is not None
 
 
 def verificar_pendientes(textos: Mapping[str, str]) -> None:

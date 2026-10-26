@@ -598,6 +598,11 @@ Los objetos intermedios (`.i`, `.s` y `.o` de cada compilación) quedan en `buil
   de 1024 instrucciones sube respecto a la que daba el corte antiguo (más instrucciones comparadas), y la
   cifra anotada en un comentario `Pendiente` con el límite viejo deja de coincidir. Las funciones de 1024
   instrucciones o menos puntúan igual que antes.
+- **Aviso de cifra vieja en `Pendiente`.** `diff` deja la puntuación informada en
+  `build/diff/<función>.resultado.json`. `progreso` la contrasta con la cifra del comentario `Pendiente` de
+  cada `NON_MATCHING` y, si difieren, imprime `aviso:` por la salida de errores (no cambia el código de
+  salida). Solo cuenta una medición posterior a la última edición del archivo C; nunca ejecuta `diff`, y sin
+  medición (o con una ilegible) no dice nada. La cifra se corrige a mano en el comentario.
 - **Diferencias típicas entre el C y el original.** Los nombres de registro y el orden de
   instrucciones dependen de cómo se escriba el C; probar variantes (`while` por `for`, una variable
   intermedia, el tipo de una variable local) antes de concluir que la función no coincide. Los
