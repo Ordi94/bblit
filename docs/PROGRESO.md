@@ -14,7 +14,7 @@ construcción normal) y de la tabla de símbolos.
 
 Bytes de código del juego descompilados: 28508 de 201416 (14.15 %).
 Funciones marcadas `NON_MATCHING`: 27.
-Coherencia con el ensamblador: ROTA (871 `glabel` en `asm/` + 253 en C = 1124; la tabla declara 1102).
+Coherencia con el ensamblador: correcta (849 `glabel` en `asm/` + 253 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
