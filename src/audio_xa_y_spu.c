@@ -52,7 +52,11 @@ extern void func_8003DFE4(void);
 extern u16 D_8005E968[];
 extern u16 D_8005E974[];
 extern CdlLOC D_8005F8FC[];
-/* Parametro de CdlSetmode (modo 0xCA: velocidad doble, XA-ADPCM, sector completo, filtro). */
+
+/* Modo de CdlSetmode para la musica XA: velocidad doble, ADPCM activo, filtro de canal y pausa automatica (0xCA). */
+#define CD_MODO_XA (CdlModeSpeed | CdlModeRT | CdlModeSF | CdlModeAP)
+
+/* Parametro de CdlSetmode que se envia antes de leer la pista. */
 extern u8 D_800694D0;
 extern void func_8003E034(s32 a0);
 extern void func_8003E88C(void);
@@ -102,28 +106,21 @@ typedef struct EstadoAudio {
  * Definicion de un efecto de sonido: 128 entradas de 8 bytes en D_8006AEE0. func_8003EB88 las
  * registra al cargar el nivel; func_8003F06C busca por identificador y func_8003F528 lee los
  * campos de la entrada que tiene asociada cada ranura de voz.
+ *
+ * grupo y fila indexan las tablas de sonidos que lee func_8003FDEC (lbu 2 y 3 de la entrada en
+ * func_8003F528). cuenta (+6) es el tope de volumen cuando flags tiene el bit 2 (func_8003F06C,
+ * func_8003F3F0) y el periodo de repeticion en cuadros cuando tiene los bits 4 y 8
+ * (func_8003F528); azar (+7) es el umbral de la tirada de BugsRand cuando flags tiene el bit 7.
  */
 typedef struct Efecto {
     u16 id;
-    u8 vol_a;
-    u8 vol_b;
+    u8 grupo;
+    u8 fila;
     u16 flags;
     u8 cuenta;
-    u8 b7;
+    u8 azar;
 } Efecto;
 
-/*
- * Vista de un efecto a partir de +4 (banderas, tope de volumen y umbral de azar). func_8003F06C
- * recorre la tabla con un puntero a la entrada y otro a esta vista, que avanzan juntos.
- */
-typedef struct EfectoCola {
-    u16 flags;
-    u8 cuenta;
-    u8 b7;
-} EfectoCola;
-
-
-/* Ranura de voz de efecto: 24 entradas de 0x14 bytes en D_8006B378. */
 /* Volumen de una voz: un byte por canal. Se pasa por valor a las rutinas del SPU. */
 typedef struct Canales {
     u8 izq;
@@ -135,6 +132,7 @@ typedef union VolVoz {
     Canales c;
 } VolVoz;
 
+/* Ranura de voz de efecto: 24 entradas de 0x14 bytes en D_8006B378. */
 typedef struct Voz {
     u16 flags;
     s16 voz;
@@ -245,7 +243,7 @@ void func_8003E034(s32 a0)
 
     param[1] = a0;
     param[0] = 1;
-    CdControlB(0xD, param, 0);
+    CdControlB(CdlSetfilter, param, 0);
 }
 
 void func_8003E068(void)
@@ -302,10 +300,10 @@ void func_8003E16C(u8 track)
         D_80069440 = D_80069450 + acc - 0x20;
         CdIntToPos(D_80069450, &D_80069444);
         CdReadyCallback(func_8003E680);
-        D_800694D0 = 0xCA;
-        CdControlB(0xE, &D_800694D0, 0);
+        D_800694D0 = CD_MODO_XA;
+        CdControlB(CdlSetmode, &D_800694D0, 0);
         func_8003E034((track - 2) % 8);
-        CdControlB(0x1B, (u8*)&D_80069444, 0);
+        CdControlB(CdlReadS, (u8*)&D_80069444, 0);
     } else {
         func_8003E88C();
     }
@@ -338,10 +336,10 @@ void func_8003E298(s32 a0)
     D_80069440 = D_80069450 + acc - 0x40;
     CdIntToPos(D_80069450, &D_80069444);
     CdReadyCallback(func_8003E680);
-    D_800694D0 = 0xCA;
-    CdControlB(0xE, &D_800694D0, 0);
+    D_800694D0 = CD_MODO_XA;
+    CdControlB(CdlSetmode, &D_800694D0, 0);
     func_8003E034(g->idioma);
-    CdControlF(0x15, (u8*)&D_80069444);
+    CdControlF(CdlSeekL, (u8*)&D_80069444);
     D_800694C8 = -1;
     D_80069501 = 0;
     D_8006AA87[0] = 2;
@@ -382,9 +380,9 @@ void func_8003E3C0(void)
     if (modo != 0) {
         if (modo == 1) {
         } else if (modo == 2) {
-            CdControlB(1, &D_800694D0, &D_80069540);
+            CdControlB(CdlNop, &D_800694D0, &D_80069540);
             if (D_80069540 & 2) {
-                CdControl(0x1B, (u8*)&D_80069444, 0);
+                CdControl(CdlReadS, (u8*)&D_80069444, 0);
                 D_8006AA70[0x17] = 4;
             }
         } else if (modo == 8) {
@@ -437,7 +435,7 @@ void func_8003E680(u8 intr, u8* resultado)
     s32 i;
 
     if (intr == 1) {
-        CdControlB(0x10, 0, resultado);
+        CdControlB(CdlGetlocL, 0, resultado);
         loc.minute = resultado[0];
         loc.second = resultado[1];
         loc.sector = 0;
@@ -472,7 +470,7 @@ void func_8003E680(u8 intr, u8* resultado)
             }
         }
     } else if (intr == 5) {
-        CdControlB(1, &D_800694D0, &D_80069540);
+        CdControlB(CdlNop, &D_800694D0, &D_80069540);
         if (D_80069540 & 0x10) {
             D_80069620 = 1;
             func_8003FC88();
@@ -488,13 +486,13 @@ void func_8003E88C(void)
     if (D_8006955E == 0) {
         do {
             VSync(0);
-            CdControlB(9, 0, 0);
-            CdControlB(1, 0, 0);
+            CdControlB(CdlPause, 0, 0);
+            CdControlB(CdlNop, 0, 0);
         } while (CdStatus() != 2);
         v = D_8006AA70[0xC];
         if (v == 1) {
             D_8006955E = v;
-            CdControlB(0x10, &D_800694D0, &D_80069540);
+            CdControlB(CdlGetlocL, &D_800694D0, &D_80069540);
             loc.minute = D_80069540;
             loc.second = D_80069541;
             loc.sector = 0;
@@ -514,9 +512,9 @@ void func_8003E948(void)
             func_8003DFE4();
         }
         CdIntToPos(D_80069454, &loc);
-        D_800694D0 = 0xCA;
-        CdControlB(0xE, &D_800694D0, &D_80069540);
-        CdControlB(0x1B, (u8*)&loc, 0);
+        D_800694D0 = CD_MODO_XA;
+        CdControlB(CdlSetmode, &D_800694D0, &D_80069540);
+        CdControlB(CdlReadS, (u8*)&loc, 0);
         D_8006955E = 0;
     }
 }
@@ -530,7 +528,7 @@ void func_8003E9E8(void)
     if (D_80069620 != 0) {
         do {
             VSync(0);
-            CdControlB(1, &D_800694D0, &D_80069540);
+            CdControlB(CdlNop, &D_800694D0, &D_80069540);
             if ((D_80069540 & 0x10) == 0) {
                 CdDiskReady(0);
                 if (CdGetDiskType() == 2) {
@@ -591,11 +589,11 @@ void func_8003EB88(Efecto* e)
         }
     }
     D_8006AEE0[D_80069568].id = e->id;
-    D_8006AEE0[D_80069568].vol_a = e->vol_a;
-    D_8006AEE0[D_80069568].vol_b = e->vol_b;
+    D_8006AEE0[D_80069568].grupo = e->grupo;
+    D_8006AEE0[D_80069568].fila = e->fila;
     D_8006AEE0[D_80069568].flags = e->flags;
     D_8006AEE0[D_80069568].cuenta = e->cuenta;
-    D_8006AEE0[D_80069568++].b7 = e->b7;
+    D_8006AEE0[D_80069568++].azar = e->azar;
 }
 
 void func_8003EC3C(u8* e)
@@ -880,7 +878,7 @@ void func_8003F528(s16 id)
             if (e->id != 0xD || !(D_80069698->flags14 & 0x1000000)) {
                 v->flags = f | 4;
                 v->cuenta = 0;
-                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol, e->flags);
+                v->voz = func_8003FDEC(e->grupo, e->fila, v->vol, e->flags);
             }
             if (v->voz < 0) {
                 goto liberar;
@@ -911,7 +909,7 @@ void func_8003F528(s16 id)
             }
             if ((fe & 4) && (s16)v->cuenta == e->cuenta) {
                 v->cuenta = 0;
-                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol, e->flags);
+                v->voz = func_8003FDEC(e->grupo, e->fila, v->vol, e->flags);
                 if (v->voz < 0) {
                     v->flags = 0;
                 } else {
@@ -920,7 +918,7 @@ void func_8003F528(s16 id)
                 }
             } else if ((e->flags & 8) && (s16)((s16)v->cuenta / 30) == e->cuenta) {
                 v->cuenta = 0;
-                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol, e->flags);
+                v->voz = func_8003FDEC(e->grupo, e->fila, v->vol, e->flags);
                 if (v->voz < 0) {
                     v->flags = 0;
                 } else {
@@ -939,7 +937,7 @@ void func_8003F528(s16 id)
                     v->vol.c.izq = v->vol.c.der;
                 }
             }
-            func_8003FEEC(v->voz, e->vol_a, e->vol_b, v->vol, e->flags);
+            func_8003FEEC(v->voz, e->grupo, e->fila, v->vol, e->flags);
         }
         continue;
     liberar:
