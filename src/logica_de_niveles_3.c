@@ -4,6 +4,9 @@
 #include "objetos.h"
 #include "niveles.h"
 
+/* Identificador del sonido de arrastre del bloque empujable: sh y lh de 16 bits (func_8002D68C). */
+extern s16 D_800695DE;
+
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 4383 con la configuracion versionada (g = 8 del archivo). Orden de instrucciones y reparto de registros: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV y la comprobacion del paso, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1. */
 void func_80026298(Objeto* o, u32 mascara)
@@ -740,7 +743,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002C1DC);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 510 con la configuracion versionada (g = 8 del archivo). Difiere el orden de las instrucciones del avance de cuadro: el original carga el intervalo (b05) antes de incrementar el cuadro y lo guarda en el hueco del salto tras comparar con el ultimo cuadro. */
+/* Pendiente: puntuacion 495 con la configuracion versionada (g = 8 del archivo). Difiere el avance de cuadro: el original suma uno al cuadro, lo recorta a 16 bits en un registro distinto del que guarda, compara con el ultimo cuadro cargando este despues y guarda el intervalo en el hueco del salto. */
 void func_8002CB8C(Objeto* o)
 {
     BloqueTrabajo* b;
@@ -802,11 +805,12 @@ void func_8002CB8C(Objeto* o)
     if (b->b08 == 0) {
         i = b->h02 + 1;
         b->h02 = i;
-        b->b08 = b->b05;
+        w = b->b05;
         if (b->h00 < i) {
             b->h02 = 0;
             b->actual = b->fotogramas;
         }
+        b->b08 = w;
         func_8001E528(o, b, 1, area);
     }
     b->b08 -= 1;
@@ -1071,7 +1075,371 @@ siguiente:
     }
 }
 
+#ifdef NON_MATCHING
+/* Pendiente: puntuacion 5244 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original guarda el objeto en s4, el scratchpad en s3, el area en s5 y el margen de la caja en s6, y el compilador usa menos registros salvados; la estructura de las ocho esquinas y de los dos modos coincide con el original. */
+/*
+ * Prueba de suelo bajo la posicion de prueba (t->py): si el bloque se despegaria mas de 0xC8
+ * unidades del terreno, se anula el desplazamiento pedido. Solo se aplica con el modo 0x80.
+ */
+#define BLOQUE_SIN_SUELO() \
+    { \
+        if (o->w17C & 0x80) { \
+            if (t->bits & 2) { \
+                if ((s16)t->altura + t->py - o->param.trans.vy >= 0xC9) { \
+                    t->bits |= 8; \
+                } \
+            } \
+            if (t->bits & 8) { \
+                t->dz = 0; \
+                t->dx = 0; \
+            } \
+        } \
+    }
+
+/* Prueba una esquina de la caja girada moviendo en X: avance t->dx contra el terreno. */
+#define BLOQUE_ESQUINA_X(ex, ez) \
+    { \
+        t->px = o->param.trans.vx + (s16)t->ex; \
+        t->py = o->param.trans.vy; \
+        t->vx = t->dx; \
+        t->vz = 0; \
+        t->vy = 0; \
+        t->pz = o->param.trans.vz + (s16)t->ez; \
+        *(s32*)area = 0; \
+        t->zona = o->w26; \
+        func_80019474(&t->px, &t->vx, t, area); \
+        t->dx = t->vx; \
+        BLOQUE_SIN_SUELO(); \
+    }
+
+/* Igual que BLOQUE_ESQUINA_X pero moviendo en Z: avance t->dz. */
+#define BLOQUE_ESQUINA_Z(ex, ez) \
+    { \
+        t->px = o->param.trans.vx + (s16)t->ex; \
+        t->py = o->param.trans.vy; \
+        t->vz = t->dz; \
+        t->vx = 0; \
+        t->vy = 0; \
+        t->pz = o->param.trans.vz + (s16)t->ez; \
+        *(s32*)area = 0; \
+        t->zona = o->w26; \
+        func_80019474(&t->px, &t->vx, t, area); \
+        t->dz = t->vz; \
+        BLOQUE_SIN_SUELO(); \
+    }
+
+/* Filtra el desplazamiento pedido d segun el eje (bit eje) y el sentido permitido (0x100, 0x200). */
+#define BLOQUE_FILTRAR(d, eje) \
+    { \
+        if (!(o->w17C & (eje))) { \
+            d = 0; \
+        } else { \
+            if ((o->w17C & 0x100) && d < 0) { \
+                d = 0; \
+            } else if ((o->w17C & 0x200) && d > 0) { \
+                d = 0; \
+            } \
+        } \
+    }
+
+void func_8002D68C(Objeto* o)
+{
+    TrabajoBloque* t;
+    NodoDisparador* n;
+    MATRIX* m;
+    void* area;
+    s32 margen;
+    s32 cuarto;
+    Objeto* jugador;
+    u8 flags;
+    s16 id;
+
+    t = TRABAJO_BLOQUE;
+    area = (void*)0x1F8000A8;
+    if (o->u78.p == 0) {
+        o->flags18 |= 0x80;
+        o->u78.ayudas = func_800363D4();
+        if (o->u78.ayudas == 0) {
+            for (;;) {
+            }
+        }
+        m = &t->m;
+        if (o->lista->def->wA & 2) {
+            o->u78.ayudas->flags8 |= 2;
+            GsInitCoordinate2(0, o->u78.ayudas->pcoord);
+            o->u78.ayudas->pcoord->super = &o->coord;
+            o->coord.param = PARAMETROS_SDK(o);
+            o->u78.ayudas->w14 = (s32)o->lista->def->tabla;
+        }
+        GEO_IDENTIDAD(m);
+        ScaleMatrix(m, (VECTOR*)&o->param);
+        ApplyMatrixSV(m, &o->min, &o->min);
+        ApplyMatrixSV(m, &o->max, &o->max);
+        func_8001CF50(o);
+        if (o->w17C & 0x20) {
+            o->flags14 |= 4;
+        }
+    }
+    if (o->w17C & 0x40) {
+        D_80069698->param.trans.vx -= o->h40;
+        D_80069698->param.trans.vz -= o->h44;
+        o->h40 = 0;
+        o->h44 = 0;
+        goto reposo;
+    }
+    if (!((o->flags14 & 0x8000) && !(D_80069698->flags14 & 0x4000))) {
+        if (func_80016C0C(o, 0x20000, area) == 0) {
+            goto sin_empuje;
+        }
+    }
+    m = &t->m;
+    margen = (s16)o->s20 >> 1;
+    RotMatrix(&o->param.giro.rotate, m);
+    margen = (s16)margen;
+    cuarto = (s16)margen >> 1;
+    GEO_CARGAR_WH(&o->min);
+    GEO_GUARDAR_WH(&t->mnx);
+    GEO_CARGAR_WH(&o->max);
+    GEO_GUARDAR_WH(&t->mxx);
+    t->mnx -= cuarto;
+    t->mnz -= cuarto;
+    t->mxx += cuarto;
+    t->mxz += cuarto;
+    ApplyMatrixSV(m, (SVECTOR*)&t->mnx, (SVECTOR*)&t->mnx);
+    ApplyMatrixSV(m, (SVECTOR*)&t->mxx, (SVECTOR*)&t->mxx);
+    t->dz = o->h44;
+    t->dy = 0;
+    t->dx = o->h40;
+    if (o->w17C & 4) {
+        t->px = o->param.trans.vx;
+        t->py = o->param.trans.vy;
+        t->pz = o->param.trans.vz;
+        if (!(o->w17C & 1)) {
+            t->dx = 0;
+        } else {
+            t->px += (s16)t->mnx;
+            if ((o->w17C & 0x100) && t->dx < 0) {
+                t->dx = 0;
+            } else if ((o->w17C & 0x200) && t->dx > 0) {
+                t->dx = 0;
+            }
+        }
+        if (!(o->w17C & 2)) {
+            t->dz = 0;
+        } else {
+            t->pz += (s16)t->mnz;
+            if ((o->w17C & 0x100) && t->dz < 0) {
+                t->dz = 0;
+            } else if ((o->w17C & 0x200) && t->dz > 0) {
+                t->dz = 0;
+            }
+        }
+        t->cx = t->dx;
+        t->cy = t->dy;
+        t->cz = t->dz;
+        t->chocado = func_80017478(o, &t->cx, area, 0x2690A);
+        if (t->chocado != 0) {
+            t->chocado->flags14 |= 0x40000000;
+            t->chocado->i34 = o->w1C;
+            o->i34 = t->chocado->w1C;
+            if (!(t->chocado->flags08 & 0x2000000)) {
+                if (o->w17C & 1) {
+                    t->dx = (s16)t->cx;
+                }
+                if (o->w17C & 2) {
+                    t->dz = (s16)t->cz;
+                }
+            }
+        }
+        *(s32*)area = 0;
+        t->zona = o->w26;
+        func_80019474(&t->px, &t->dx, t, area);
+        t->px = o->param.trans.vx;
+        t->py = o->param.trans.vy;
+        t->pz = o->param.trans.vz;
+        if (o->w17C & 1) {
+            t->px += (s16)t->mxx;
+        }
+        if (o->w17C & 2) {
+            t->pz += (s16)t->mxz;
+        }
+        *(s32*)area = 0;
+        t->zona = o->w26;
+        func_80019474(&t->px, &t->dx, t, area);
+        if (o->w17C & 0x80) {
+            t->px = o->param.trans.vx + t->dx;
+            t->py = o->param.trans.vy;
+            t->pz = o->param.trans.vz + t->dz;
+            t->zona = o->w26;
+            func_8001C134(&t->px, (ResultadoBaldosa*)t, (TrabajoBaldosa*)area);
+            if (t->bits & 2) {
+                if ((s16)t->altura + t->py - o->param.trans.vy >= 0xC9) {
+                    t->bits |= 8;
+                }
+            }
+            if (t->bits & 8) {
+                t->dz = 0;
+                t->dx = 0;
+            }
+        }
+        o->param.trans.vx += t->dx;
+        o->param.trans.vz += t->dz;
+        D_80069698->param.trans.vx -= o->h40 - t->dx;
+        D_80069698->param.trans.vz -= o->h44 - t->dz;
+        goto disparadores;
+    }
+    BLOQUE_FILTRAR(t->dx, 1);
+    BLOQUE_FILTRAR(t->dz, 2);
+    t->cx = t->dx;
+    t->cy = t->dy;
+    t->cz = t->dz;
+    o->p70 = D_80069698;
+    t->chocado = func_80017478(o, &t->cx, area, 0x2690A);
+    if (t->chocado != 0) {
+        t->chocado->flags14 |= 0x40000000;
+        t->chocado->i34 = o->w1C;
+        o->i34 = t->chocado->w1C;
+        if (!(t->chocado->flags08 & 0x2000000)) {
+            if (o->w17C & 1) {
+                t->dx = (s16)t->cx;
+            }
+            if (o->w17C & 2) {
+                t->dz = (s16)t->cz;
+            }
+        }
+    }
+    o->p70 = 0;
+    BLOQUE_ESQUINA_X(mnx, mnz);
+    BLOQUE_ESQUINA_Z(mnx, mnz);
+    BLOQUE_ESQUINA_X(mxx, mnz);
+    BLOQUE_ESQUINA_Z(mxx, mnz);
+    BLOQUE_ESQUINA_X(mnx, mxz);
+    BLOQUE_ESQUINA_Z(mxx, mxz);
+    BLOQUE_ESQUINA_X(mxx, mxz);
+    BLOQUE_ESQUINA_Z(mxx, mxz);
+    if (!(o->flags0C & 0x80)) {
+        if (t->dx != 0) {
+            t->py = o->param.trans.vy;
+            if (t->dx < 0) {
+                t->px = o->param.trans.vx + o->min.vx - margen;
+            } else {
+                t->px = o->param.trans.vx + o->max.vx + margen;
+            }
+            t->pz = o->param.trans.vz + o->min.vz - margen;
+            t->vx = 0;
+            t->vy = 0;
+            t->vz = o->max.vz - o->min.vz + margen;
+            *(s32*)area = 0;
+            t->zona = o->w26;
+            func_80019474(&t->px, &t->vx, t, area);
+            if (t->bits & 4) {
+                t->dx = 0;
+            }
+        }
+        if (t->dz != 0) {
+            t->px = o->param.trans.vx + o->min.vx - margen;
+            t->py = o->param.trans.vy;
+            if (t->dz < 0) {
+                t->pz = o->param.trans.vz + o->min.vz - margen;
+            } else {
+                t->pz = o->param.trans.vz + o->max.vz + margen;
+            }
+            t->vz = 0;
+            t->vy = 0;
+            t->vx = o->max.vx - o->min.vx + margen;
+            *(s32*)area = 0;
+            t->zona = o->w26;
+            func_80019474(&t->px, &t->vx, t, area);
+            if (t->bits & 4) {
+                t->dz = 0;
+            }
+        }
+    }
+    if (o->w17C & 0x80) {
+        t->px = o->param.trans.vx + t->dx;
+        t->py = o->param.trans.vy;
+        t->pz = o->param.trans.vz + t->dz;
+        t->zona = o->w26;
+        func_8001C134(&t->px, (ResultadoBaldosa*)t, (TrabajoBaldosa*)area);
+        if (t->bits & 2) {
+            if ((s16)t->altura + t->py - o->param.trans.vy >= 0xC9) {
+                t->bits |= 8;
+            }
+        }
+        if (t->bits & 8) {
+            t->dz = 0;
+            t->dx = 0;
+        }
+    }
+    o->param.trans.vz += t->dz;
+    id = o->s1E;
+    o->param.trans.vx += t->dx;
+    o->flags18 |= 0x8000;
+    D_800695DE = id;
+    if (t->dx != 0 || t->dz != 0) {
+        flags = D_800694F2;
+        if (!(flags & 1)) {
+            D_800694F2 = flags | 1;
+            func_8003F06C(o, id, 1, D_8006967C);
+        }
+    } else {
+        flags = D_800694F2;
+        if (flags & 1) {
+            D_800694F2 = flags & 0xFE;
+            func_8003F06C(o, id, 2, D_8006967C);
+        }
+    }
+    t->vx = t->dx - o->h40;
+    t->vy = 0;
+    t->vz = t->dz - o->h44;
+    jugador = D_80069698;
+    t->px = jugador->param.trans.vx;
+    t->py = jugador->param.trans.vy;
+    t->pz = jugador->param.trans.vz;
+    t->zona = o->w26;
+    func_80019474(&t->px, &t->vx, t, area);
+    D_80069698->param.trans.vx += t->vx;
+    D_80069698->param.trans.vz += t->vz;
+disparadores:
+    n = (NodoDisparador*)o->apoyos;
+    if (n != 0) {
+        do {
+            if (n->req14 == 0 || (o->flags14 & n->req14)) {
+                if (TestLogicCond(o, &n->cond) != 0) {
+                    RunLogicAction(o, &n->cond);
+                    o->p70 = 0;
+                    goto reposo;
+                }
+            }
+            n = n->sig;
+        } while (n != 0);
+    }
+    o->p70 = 0;
+    goto reposo;
+sin_empuje:
+    if (o->flags18 & 0x8000) {
+        o->flags18 &= 0xFFFF7FFF;
+        flags = D_800694F2;
+        if (flags & 1) {
+            D_800694F2 = flags & 0xFE;
+            func_8003F06C(o, D_800695DE, 2, D_8006967C);
+        }
+    }
+reposo:
+    ZONA_PONER_CERO_3W(&t->dx);
+    func_8001CBB8(o, &t->dx, t, area);
+    o->param.trans.vy += t->dy;
+    func_8001CF50(o);
+    o->h44 = 0;
+    o->h40 = 0;
+    o->flags14 &= 0xFFFF5FFF;
+    if (o->flags08 & 0x1000000) {
+        func_8001E1A4(o, area);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002D68C);
+#endif
 
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002EA9C);
 

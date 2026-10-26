@@ -154,7 +154,10 @@ typedef struct Objeto {
     u16 w3A;                /* menus_e_interfaz.c */
     u16 w3C;                /* las rutinas de creacion lo escriben con sh y el resto lo lee con lhu */
     u16 w3E;                /* func_800353B0 */
-    u8 pad40[0x48 - 0x40];
+    s16 h40;                /* empuje pedido en X por el jugador: lh en func_8002D68C (0x8002D814) y sh zero (0x8002D83C) */
+    u8 pad42[2];
+    s16 h44;                /* empuje pedido en Z: lh en func_8002D68C (0x8002D828) y sh zero (0x8002D844) */
+    u8 pad46[2];
     SVECTOR min;            /* caja del volumen (+0x48) y mitades de sprite que lee func_8001DF28 con lh */
     SVECTOR max;            /* +0x50 */
     u8 pad58[0x68 - 0x58];

@@ -241,6 +241,53 @@ typedef struct TrabajoEfecto {
 #define TRABAJO_EFECTO ((TrabajoEfecto*)0x1F800000)
 
 /*
+ * Memoria de trabajo del bloque empujable (scratchpad 0x1F800000): resultado de la consulta de
+ * baldosa en +2 (bit 1 = hay suelo, bit 3 = sin suelo) y altura en +6, zona en +0xA, desplazamiento
+ * pedido en +0x18..+0x20, posicion de prueba en +0x28, vector de avance en +0x58, caja girada en +0x68
+ * (minimo) y +0x70 (maximo), recorte en +0x78, matriz en +0x80, objeto chocado en +0xA4 y area de
+ * consultas en +0xA8. Las medias palabras se guardan con sh y se releen con lhu.
+ */
+typedef struct TrabajoBloque {
+    u8 pad00[2];
+    u16 bits;
+    u8 pad04[2];
+    u16 altura;
+    u8 pad08[2];
+    u16 zona;
+    u8 pad0C[0x18 - 0x0C];
+    s32 dx;
+    s32 dy;
+    s32 dz;
+    u8 pad24[4];
+    s32 px;
+    s32 py;
+    s32 pz;
+    u8 pad34[0x58 - 0x34];
+    s32 vx;
+    s32 vy;
+    s32 vz;
+    u8 pad64[4];
+    u16 mnx;
+    u16 mny;
+    u16 mnz;
+    u8 pad6E[2];
+    u16 mxx;
+    u16 mxy;
+    u16 mxz;
+    u8 pad76[2];
+    u16 cx;
+    u16 cy;
+    u16 cz;
+    u8 pad7E[2];
+    MATRIX m;
+    u8 pad_a0[4];
+    Objeto* chocado;
+    u8 area[0x20];
+} TrabajoBloque;
+
+#define TRABAJO_BLOQUE ((TrabajoBloque*)0x1F800000)
+
+/*
  * Macros de CPU de la zona de eventos: reproducen las secuencias del original con los
  * temporales fijos $8 (t0) y $9..$12 (t1..t4); la lista de registros destruidos es exactamente
  * la que cada cuerpo escribe.
@@ -291,6 +338,10 @@ extern s16 func_80018F80(Objeto* a, Objeto* b, void* area);
 extern s32 func_8001D75C(Objeto* o, s32 modo, void* area);
 extern Objeto* func_800171E4(Objeto* a, void* pos, u32 mascara, u32 excluir, void* area);
 extern Objeto* func_80016ED0(Objeto* a, u32 mascara, void* area);
+extern s32 func_80016C0C(Objeto* a, u32 mascara, void* area);
+extern Objeto* func_80017478(Objeto* a, void* v, void* w, u32 mascara);
+extern void func_8001CBB8(Objeto* o, void* d, void* r, void* w);
+extern void func_8001E1A4(Objeto* o, void* c);
 extern void func_8001D0FC(Objeto* o, s32 id, void* area);
 extern s32 func_8001E720(Objeto* o, BloqueTrabajo* b, u32 anim, u32 params, void* area);
 
