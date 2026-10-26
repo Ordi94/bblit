@@ -275,7 +275,7 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 7264 con la configuracion versionada (g = 8 del archivo). El marco de pila del original
+ * Pendiente: puntuacion 7254 con la configuracion versionada (g = 8 del archivo). El marco de pila del original
  * es 8 bytes mayor, el reparto de registros de la rama de grabacion es otro y GCC fusiona el xor de
  * (D_8006CFF2 ^ 0xFF) << 8 con el desplazamiento. Variantes probadas: 14 (switch con goto, if/else, copias).
  *
@@ -283,7 +283,7 @@ void func_80040430(s8* contador, u16 mascara)
  * entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma
  * los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS
  * (D_8006CFF1..7: id, botones invertidos y ejes) en botones logicos y ejes de +/-0x7F.
- * Puntuacion 7264 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
+ * Puntuacion 7254 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
  * saltos y casi todo el cuerpo coinciden; difieren el marco de pila (el original reserva 8
  * bytes mas, 0x28), el reparto de registros de la rama de grabacion, el orden de
  * (D_8006CFF2 ^ 0xFF) << 8 (el original no fusiona el xor con el desplazamiento) y la copia
