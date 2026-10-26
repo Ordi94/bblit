@@ -1,5 +1,6 @@
 #include "common.h"
 #include "globales.h"
+#include "audio.h"
 #include "psyq/LIBCD.H"
 #include "psyq/LIBSPU.H"
 #include "geometria.h"
@@ -96,52 +97,8 @@ typedef struct EstadoAudio {
     u8 volumen;
 } EstadoAudio;
 
-/*
- * Definicion de un efecto de sonido: 128 entradas de 8 bytes en D_8006AEE0. func_8003EB88 las
- * registra al cargar el nivel; func_8003F06C busca por identificador y func_8003F528 lee los
- * campos de la entrada que tiene asociada cada ranura de voz.
- *
- * grupo y fila indexan las tablas de sonidos que lee func_8003FDEC (lbu 2 y 3 de la entrada en
- * func_8003F528). cuenta (+6) es el tope de volumen cuando flags tiene el bit 2 (func_8003F06C,
- * func_8003F3F0) y el periodo de repeticion en cuadros cuando tiene los bits 4 y 8
- * (func_8003F528); azar (+7) es el umbral de la tirada de BugsRand cuando flags tiene el bit 7.
- */
-typedef struct Efecto {
-    u16 id;
-    u8 grupo;
-    u8 fila;
-    u16 flags;
-    u8 cuenta;
-    u8 azar;
-} Efecto;
-
-/* Volumen de una voz: un byte por canal. Se pasa por valor a las rutinas del SPU. */
-typedef struct Canales {
-    u8 izq;
-    u8 der;
-} Canales;
-
-typedef union VolVoz {
-    u16 w;
-    Canales c;
-} VolVoz;
-
-/* Ranura de voz de efecto: 24 entradas de 0x14 bytes en D_8006B378. */
-typedef struct Voz {
-    u16 flags;
-    s16 voz;
-    void* objeto;
-    Efecto* efecto;
-    VolVoz vol;
-    u8 id;
-    u8 pad0F;
-    u16 cuenta;
-    u8 pad12[2];
-} Voz;
-
 extern Efecto D_8006AEE0[];
 extern Pista D_8006AC58[];
-extern Voz D_8006B378[];
 extern s16 D_80069568;
 extern s16 D_800695D8;
 extern s32 func_8003F9C4(u8* a0, u32 a1);
@@ -826,7 +783,7 @@ void func_8003F3F0(void)
                         }
                     }
                 } else if ((e->flags & 0x20) || (s8)D_80069628 == 1) {
-                    v->vol.w = func_8003EDA8((Objeto*)v->objeto, e);
+                    v->vol.w = func_8003EDA8(v->objeto, e);
                 }
             }
         }

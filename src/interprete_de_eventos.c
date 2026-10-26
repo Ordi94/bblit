@@ -2,6 +2,7 @@
 #include "globales.h"
 #include "motor.h"
 #include "menus.h"
+#include "audio.h"
 
 
 /*
@@ -25,15 +26,6 @@ typedef struct Rango {
     s8 max;
 } Rango;
 
-/* Entrada de 20 bytes de la tabla de seguimiento D_8006B378 (24 entradas). */
-typedef struct Entrada {
-    u16 flags;
-    u8 pad02[2];
-    Objeto* objeto;
-    u16* valor;
-    u8 pad0C[8];
-} Entrada;
-
 /*
  * Vista de un byte como estructura de un campo, solo para func_80031D60. D_8006965A y D_8006965B
  * se declaran u8 en globales.h; con el escalar el planificador sube la lectura por puntero del
@@ -56,7 +48,6 @@ extern s32 D_80069554;
 
 /* Dato pequeno: el original lo direcciona como 0xC0($gp). */
 s32 D_800693E0;
-extern Entrada D_8006B378[];
 extern u32 D_8006D064;
 
 /*
@@ -586,12 +577,12 @@ s32 func_80030D60(void* a0, Rango* a1)
 s32 func_80030DA4(Objeto* a0, u8* a1)
 {
     s32 i;
-    Entrada* e;
+    Voz* e;
     u32 v;
     e = D_8006B378;
     v = a1[1];
     for (i = 0; i < 24; i++) {
-        if ((e->flags & 0x8000) && (e->flags & 5) && *e->valor == v) {
+        if ((e->flags & 0x8000) && (e->flags & 5) && e->efecto->id == v) {
             return a1[2] == 1;
         }
         e++;
@@ -602,12 +593,12 @@ s32 func_80030DA4(Objeto* a0, u8* a1)
 s32 func_80030E20(Objeto* a0, u8* a1)
 {
     s32 i;
-    Entrada* e;
+    Voz* e;
     u32 v;
     e = D_8006B378;
     v = a1[1];
     for (i = 0; i < 24; i++) {
-        if ((e->flags & 0x8000) && (e->flags & 5) && *e->valor == v && e->objeto == a0) {
+        if ((e->flags & 0x8000) && (e->flags & 5) && e->efecto->id == v && e->objeto == a0) {
             return a1[2] == 1;
         }
         e++;
