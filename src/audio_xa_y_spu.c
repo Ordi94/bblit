@@ -718,7 +718,7 @@ u32 func_8003EDA8(Objeto* o, Efecto* e)
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003EDA8);
 #endif
 
-/* Pendiente: puntuacion 2792 con la configuracion versionada (g = 8 del archivo). El flujo coincide; el original recorre la tabla de efectos con dos punteros que avanzan juntos (entrada y entrada + 4) y aqui la reduccion de fuerza del bucle exterior reparte un tercero para los accesos de +2 y +3, lo que desplaza los registros s. Variantes probadas: 9. */
+/* Pendiente: puntuacion 2792 con la configuracion versionada (g = 8 del archivo). El flujo coincide; el original recorre la tabla de efectos con dos punteros que avanzan juntos (entrada y entrada + 4) y aqui la reduccion de fuerza del bucle exterior reparte un tercero para los accesos de +2 y +3, lo que desplaza los registros s. Variantes probadas: 12. */
 #ifdef NON_MATCHING
 void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
 {
