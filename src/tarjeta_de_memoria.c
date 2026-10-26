@@ -1,24 +1,329 @@
 #include "common.h"
+#include "arranque.h"
 
 /* Nombre del archivo de partida en la tarjeta de memoria: unidad, serie del disco y titulo. */
 char D_8005E04C[] = "bu00:BASLUS-00838 BBLIT";
 
+/* Interior de D_8005E04C: nombre del archivo sin el prefijo "bu00:", tal como lo lista el directorio. */
+extern s8 D_8005E051[];
+
+/* Directorio de cada tarjeta: 15 entradas DIRENTRY de 0x28 bytes por ranura (0x258 bytes). */
+extern s8 D_800697B0[];
+
+/* Llamadas de la BIOS y de libapi. */
+extern s32 VSync(s32 modo);
+extern s32 open(char* nombre, u32 modo);
+extern s32 lseek(s32 fd, s32 desplazamiento, s32 origen);
+extern s32 read(s32 fd, void* destino, s32 cantidad);
+extern s32 write(s32 fd, void* origen, s32 cantidad);
+extern s32 close(s32 fd);
+extern s32 MemCardSync(s32 modo, s32* cmds, s32* rslt);
+
+/* Los contadores y resultados de libmcrd viven en la zona direccionada por $gp. */
+register u8* base_gp __asm__("$28");
+
+/*
+ * Cabecera del archivo de partida (0x168 bytes, en el desplazamiento 0x200 del archivo): una suma de
+ * control en la primera palabra, un byte en +4 y ocho registros de nivel de 0x2C bytes desde +8, cada
+ * uno con un valor de 16 bits y un extra de 16 bits.
+ */
+typedef struct RegistroNivel {
+    u16 valor;
+    u16 extra;
+    u8 resto[0x28];
+} RegistroNivel;
+
+typedef struct CabeceraGuardado {
+    u32 suma;
+    u8 b4;
+    u8 pad5[3];
+    RegistroNivel nivel[8];
+} CabeceraGuardado;
+
+/* La cabecera viaja en un bloque de 0x200 bytes; el resto no se inicializa. */
+typedef struct BloqueCabecera {
+    CabeceraGuardado c;
+    u8 relleno[0x200 - 0x168];
+} BloqueCabecera;
+
+extern CabeceraGuardado D_8006D060;
+extern u8 D_8006AA70[];
+extern u32 D_80010000;
+extern u8 D_80010076;
+extern u8 D_800100DF;
+extern u8* D_80069520;
+
+extern u32 func_80041238(void* datos, s32 cantidad);
+extern s32 func_80014BA0(void* destino, s32 cantidad, s32 desplazamiento);
+extern s32 func_80014EF8(void* origen, s32 cantidad, s32 desplazamiento);
+extern s32 func_80014FAC(void);
+
+#ifdef NON_MATCHING
+/*
+ * Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18
+ * caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
+ */
+s32 func_80014AC4(s16 ranura)
+{
+    s16 i;
+    s16 j;
+    s32 n;
+    s8* p;
+    s8* q;
+
+    n = ((s32*)(base_gp + 0x38))[ranura];
+    for (i = 0; i < n; i++) {
+        p = &D_800697B0[ranura * 0x258] + i * 0x28;
+        q = D_8005E051;
+        for (j = 0; j < 0x12; j++) {
+            if (*p++ != *q++) {
+                break;
+            }
+        }
+        if (j == 0x12) {
+            return i;
+        }
+    }
+    return -1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014AC4);
+#endif
 
+#ifdef NON_MATCHING
+/* Lee `cantidad` bytes del archivo de partida a partir de `desplazamiento`; 1 si se leyo completo. */
+s32 func_80014BA0(void* destino, s32 cantidad, s32 desplazamiento)
+{
+    s32 fd;
+
+    VSync(0);
+    fd = open(D_8005E04C, 1);
+    if (fd != -1 && lseek(fd, desplazamiento, 0) != -1) {
+        if (read(fd, destino, cantidad) == cantidad) {
+            close(fd);
+            return 1;
+        }
+        close(fd);
+    }
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014BA0);
+#endif
 
+#ifdef NON_MATCHING
+/*
+ * Lee y valida la cabecera del archivo de partida (hasta cinco intentos): comprueba la suma de
+ * control sobre los 0x200 bytes con la primera palabra a cero, la copia a D_8006D060 y, si el estado
+ * principal vale 0, vuelca los seis registros de nivel en el banco de registros del interprete.
+ */
+s32 func_80014C54(void)
+{
+    BloqueCabecera buf;
+    BloqueCabecera* p;
+    s32 i;
+    u32 suma;
+    s32 ok;
+
+    for (i = 0; i < 5; i++) {
+        if (func_80014BA0(&buf, 0x200, 0x200) != 0) {
+            p = &buf;
+            suma = p->c.suma;
+            p->c.suma = 0;
+            p->c.suma = func_80041238(p, 0x200);
+            if (p->c.suma == suma) {
+                D_8006D060 = p->c;
+                D_8006AA70[4] = D_8006D060.b4;
+                if (D_80010000 == 0) {
+                    D_8006AA70[0x2A] = D_8006D060.nivel[0].valor;
+                    D_8006AA70[0x2B] = D_8006D060.nivel[0].valor >> 8;
+                    D_8006AA70[0x3A] = D_8006D060.nivel[0].extra;
+                    D_8006AA70[0x2C] = D_8006D060.nivel[1].valor;
+                    D_8006AA70[0x2D] = D_8006D060.nivel[1].valor >> 8;
+                    D_8006AA70[0x3B] = D_8006D060.nivel[1].extra;
+                    D_8006AA70[0x2E] = D_8006D060.nivel[2].valor;
+                    D_8006AA70[0x2F] = D_8006D060.nivel[2].valor >> 8;
+                    D_8006AA70[0x3C] = D_8006D060.nivel[2].extra;
+                    D_8006AA70[0x30] = D_8006D060.nivel[3].valor;
+                    D_8006AA70[0x31] = D_8006D060.nivel[3].valor >> 8;
+                    D_8006AA70[0x3D] = D_8006D060.nivel[3].extra;
+                    D_8006AA70[0x32] = D_8006D060.nivel[4].valor;
+                    D_8006AA70[0x33] = D_8006D060.nivel[4].valor >> 8;
+                    D_8006AA70[0x3E] = D_8006D060.nivel[4].extra;
+                    D_8006AA70[0x34] = D_8006D060.nivel[5].valor;
+                    D_8006AA70[0x35] = D_8006D060.nivel[5].valor >> 8;
+                    D_8006AA70[0x3F] = D_8006D060.nivel[5].extra;
+                }
+                break;
+            }
+        }
+    }
+    ok = 0;
+    if (i != 5) {
+        ok = 1;
+        D_80010076 = 0;
+    }
+    return ok;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014C54);
+#endif
 
+#ifdef NON_MATCHING
+/*
+ * Lee la partida del slot D_800100DF (0x180 bytes a partir de 0x400 + (slot - 1) * 0x180) al
+ * buffer D_80069520, comprueba la suma de control de los primeros 0x140 bytes (palabra en +4 a cero
+ * durante el calculo) y los copia al estado principal; hasta cinco intentos. La reserva de 0x200
+ * bytes en la pila no se usa: el marco de pila del original la conserva.
+ */
+s32 func_80014E24(void)
+{
+    u8 reserva[0x200];
+    u8* buf;
+    u8* origen;
+    u8* destino;
+    s32 i;
+    u32 suma;
+    u32 calculada;
+
+    buf = D_80069520;
+    for (i = 0; i < 5; i++) {
+        if (func_80014BA0(buf, 0x180, (D_800100DF - 1) * 0x180 + 0x400) == 1) {
+            suma = *(u32*)(buf + 4);
+            *(u32*)(buf + 4) = 0;
+            calculada = func_80041238(buf, 0x140);
+            *(u32*)(buf + 4) = calculada;
+            if (calculada == suma) {
+                origen = buf;
+                destino = (u8*)0x80010000;
+                i = 0;
+                do {
+                    *destino++ = *origen++;
+                    i++;
+                } while (i < 0x140U);
+                D_80010076 = 0;
+                break;
+            }
+        }
+    }
+    return i != 5;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014E24);
+#endif
 
+#ifdef NON_MATCHING
+/* Escribe `cantidad` bytes en el archivo de partida a partir de `desplazamiento`; 1 si se escribio completo. */
+s32 func_80014EF8(void* origen, s32 cantidad, s32 desplazamiento)
+{
+    s32 fd;
+
+    VSync(0);
+    fd = open(D_8005E04C, 2);
+    if (fd != -1 && lseek(fd, desplazamiento, 0) != -1) {
+        if (write(fd, origen, cantidad) == cantidad) {
+            close(fd);
+            return 1;
+        }
+        close(fd);
+    }
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014EF8);
+#endif
 
+#ifdef NON_MATCHING
+/*
+ * Escribe la cabecera del archivo de partida: guarda el valor de 16 bits formado por los bytes
+ * 0x13C (alto) y 0x47 (bajo) del estado principal y el byte 0x45 en el registro del nivel que indica
+ * el byte 0xDF, recalcula la suma de control sobre el bloque de 0x200 bytes y lo graba (hasta cinco
+ * intentos).
+ */
+s32 func_80014FAC(void)
+{
+    BloqueCabecera buf;
+    EstadoPrincipal* estado;
+    s32 i;
+    u16 valor;
+    u8 nivel;
+
+    estado = ESTADO_PRINCIPAL;
+    D_8006D060.suma = 0;
+    valor = estado->f47 + (estado->f13C << 8);
+    nivel = estado->fDF;
+    if (nivel == 1) {
+        D_8006D060.nivel[0].valor = valor;
+        D_8006D060.nivel[0].extra = estado->f45;
+    } else if (nivel == 2) {
+        D_8006D060.nivel[1].valor = valor;
+        D_8006D060.nivel[1].extra = estado->f45;
+    } else if (nivel == 3) {
+        D_8006D060.nivel[2].valor = valor;
+        D_8006D060.nivel[2].extra = estado->f45;
+    } else if (nivel == 4) {
+        D_8006D060.nivel[3].valor = valor;
+        D_8006D060.nivel[3].extra = estado->f45;
+    } else if (nivel == 5) {
+        D_8006D060.nivel[4].valor = valor;
+        D_8006D060.nivel[4].extra = estado->f45;
+    } else if (nivel == 6) {
+        D_8006D060.nivel[5].valor = valor;
+        D_8006D060.nivel[5].extra = estado->f45;
+    }
+    buf.c = D_8006D060;
+    D_8006D060.suma = func_80041238(&buf, 0x200);
+    buf.c = D_8006D060;
+    for (i = 0; i < 5; i++) {
+        if (func_80014EF8(&buf, 0x200, 0x200) != 0) {
+            break;
+        }
+    }
+    return i != 5;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014FAC);
+#endif
 
+#ifdef NON_MATCHING
+/*
+ * Graba la partida: calcula la suma de control del estado principal (0x140 bytes con la palabra
+ * +4 a cero), actualiza la cabecera y escribe el bloque de 0x180 bytes del slot D_800100DF (hasta
+ * cinco intentos).
+ */
+s32 func_8001515C(void)
+{
+    EstadoPrincipal* estado;
+    s32 i;
+
+    estado = ESTADO_PRINCIPAL;
+    estado->suma = 0;
+    estado->suma = func_80041238(estado, 0x140);
+    if (func_80014FAC() != 0) {
+        for (i = 0; i < 5; i++) {
+            if (func_80014EF8((void*)0x80010000, 0x180, (D_800100DF - 1) * 0x180 + 0x400) == 1) {
+                break;
+            }
+        }
+    } else {
+        i = 5;
+    }
+    return i != 5;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_8001515C);
+#endif
 
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
 
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800156F4);
 
+#ifdef NON_MATCHING
+void func_80015E94(void)
+{
+    *(u8*)(base_gp + 0x3C) = 0;
+    MemCardSync(1, (s32*)(base_gp + 0x40), (s32*)(base_gp + 0x48));
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80015E94);
+#endif
