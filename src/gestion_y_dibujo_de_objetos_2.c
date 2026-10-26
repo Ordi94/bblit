@@ -61,7 +61,6 @@ u16 D_80069430;
 s32 D_80069434;
 s32 D_80069438;
 
-extern Ayuda* func_800363D4(void);
 extern s32 func_80038C2C(s32 idx, s32 valor, s32 modo);
 extern void func_80038884(s32 idx, s32 modo);
 extern void func_80037DB4(ObjetoEscena* o, s16 id, s16* pos, s16 modo);
@@ -220,112 +219,28 @@ void func_80037184(ObjetoEscena* lista)
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037184);
 #endif
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 160 con la configuracion versionada (g = 8 del archivo). Rutina de GTE
- * escrita a mano: carga ocho palabras en $t0..$t7 y las escribe en los registros de control 0 a
- * 7; la ultima escritura (ctc2 $t7,$7) va en el hueco de retardo del retorno, y GCC no mueve
- * una sentencia __asm__ a ese hueco. Variantes probadas: 2.
+ * Rutina de GTE escrita a mano en el original (marca Handwritten del particionador): carga ocho
+ * palabras en $t0..$t7 y las escribe en los registros de control 0 a 7; la ultima ctc2 va en el
+ * hueco de retardo del jr ra. Se conserva en ensamblador porque GCC 2.8.1 no coloca una sentencia
+ * en ese hueco ni reparte los temporales fijos del original.
  */
-void func_8003753C(s32* m)
-{
-    register s32 t0 __asm__("$8");
-    register s32 t1 __asm__("$9");
-    register s32 t2 __asm__("$10");
-    register s32 t3 __asm__("$11");
-    register s32 t4 __asm__("$12");
-    register s32 t5 __asm__("$13");
-    register s32 t6 __asm__("$14");
-    register s32 t7 __asm__("$15");
-
-    t0 = m[0];
-    t1 = m[1];
-    t2 = m[2];
-    t3 = m[3];
-    t4 = m[4];
-    t5 = m[5];
-    t6 = m[6];
-    t7 = m[7];
-    __asm__ volatile ("ctc2 %0, $0" : : "r"(t0));
-    __asm__ volatile ("ctc2 %0, $1" : : "r"(t1));
-    __asm__ volatile ("ctc2 %0, $2" : : "r"(t2));
-    __asm__ volatile ("ctc2 %0, $3" : : "r"(t3));
-    __asm__ volatile ("ctc2 %0, $4" : : "r"(t4));
-    __asm__ volatile ("ctc2 %0, $5" : : "r"(t5));
-    __asm__ volatile ("ctc2 %0, $6" : : "r"(t6));
-    __asm__ volatile ("ctc2 %0, $7" : : "r"(t7));
-}
-#else
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_8003753C);
-#endif
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 160 con la configuracion versionada (g = 8 del archivo). Rutina de GTE
- * escrita a mano: carga ocho palabras en $t0..$t7 y las escribe en los registros de control 0 a 4,
- * 24, 25 y 7; la ultima escritura (ctc2 $t7,$7) va en el hueco de retardo del retorno, y GCC no mueve
- * una sentencia __asm__ a ese hueco. Variantes probadas: 2.
+ * Rutina de GTE escrita a mano en el original (marca Handwritten del particionador): igual que la
+ * anterior pero escribe los registros de control 0 a 4, 24, 25 y 7, con la ultima ctc2 en el
+ * hueco de retardo del jr ra. Se conserva en ensamblador.
  */
-void func_80037580(s32* m)
-{
-    register s32 t0 __asm__("$8");
-    register s32 t1 __asm__("$9");
-    register s32 t2 __asm__("$10");
-    register s32 t3 __asm__("$11");
-    register s32 t4 __asm__("$12");
-    register s32 t5 __asm__("$13");
-    register s32 t6 __asm__("$14");
-    register s32 t7 __asm__("$15");
-
-    t0 = m[0];
-    t1 = m[1];
-    t2 = m[2];
-    t3 = m[3];
-    t4 = m[4];
-    t5 = m[5];
-    t6 = m[6];
-    t7 = m[7];
-    __asm__ volatile ("ctc2 %0, $0" : : "r"(t0));
-    __asm__ volatile ("ctc2 %0, $1" : : "r"(t1));
-    __asm__ volatile ("ctc2 %0, $2" : : "r"(t2));
-    __asm__ volatile ("ctc2 %0, $3" : : "r"(t3));
-    __asm__ volatile ("ctc2 %0, $4" : : "r"(t4));
-    __asm__ volatile ("ctc2 %0, $24" : : "r"(t5));
-    __asm__ volatile ("ctc2 %0, $25" : : "r"(t6));
-    __asm__ volatile ("ctc2 %0, $7" : : "r"(t7));
-}
-#else
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037580);
-#endif
 
 /*
- * Copia cinco palabras del bloque de datos que hay en 0x800375F8 (la matriz inicial de un
- * ayudante) usando $a1 como origen y $t0..$t4 como temporales, como la rutina manuscrita
- * original. La sentencia vacia con restriccion "+r" mantiene la direccion completa en $a1: sin
- * ella el compilador pliega el desplazamiento bajo en la primera carga.
+ * Rutina escrita a mano en el original: copia cinco palabras del bloque que hay en 0x800375F8 (la
+ * matriz inicial de un ayudante) usando $a1 como origen y $t0..$t4 como temporales fijos, sin
+ * prologo de pila. Se conserva en ensamblador: GCC elige otros temporales y pliega el
+ * desplazamiento bajo en la primera carga.
  */
-void func_800375C4(s32* destino)
-{
-    register s32* origen __asm__("$5");
-    register s32 t0 __asm__("$8");
-    register s32 t1 __asm__("$9");
-    register s32 t2 __asm__("$10");
-    register s32 t3 __asm__("$11");
-    register s32 t4 __asm__("$12");
-
-    origen = func_800375F8;
-    __asm__ volatile ("" : "+r"(origen));
-    t0 = origen[0];
-    t1 = origen[1];
-    t2 = origen[2];
-    t3 = origen[3];
-    t4 = origen[4];
-    destino[0] = t0;
-    destino[1] = t1;
-    destino[2] = t2;
-    destino[3] = t3;
-    destino[4] = t4;
-}
+INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375C4);
 
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375F8);
 
@@ -338,44 +253,19 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037B08);
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037C00);
 
 /*
- * Copia 32 bytes (una matriz de GTE) usando $t0..$t7 como temporales: carga las ocho palabras
- * antes de escribir ninguna, como la rutina manuscrita original. GCC solo reproduce esa forma
- * si los ocho temporales se fijan a sus registros.
+ * Rutina escrita a mano en el original: copia 32 bytes (una matriz de GTE) cargando las ocho
+ * palabras en $t0..$t7 antes de escribir ninguna, sin prologo de pila. Se conserva en
+ * ensamblador: GCC asigna otros temporales y entrelaza cargas y almacenes.
  */
-void func_80037CF8(s32* origen, s32* destino)
-{
-    register s32 t0 __asm__("$8");
-    register s32 t1 __asm__("$9");
-    register s32 t2 __asm__("$10");
-    register s32 t3 __asm__("$11");
-    register s32 t4 __asm__("$12");
-    register s32 t5 __asm__("$13");
-    register s32 t6 __asm__("$14");
-    register s32 t7 __asm__("$15");
-
-    t0 = origen[0];
-    t1 = origen[1];
-    t2 = origen[2];
-    t3 = origen[3];
-    t4 = origen[4];
-    t5 = origen[5];
-    t6 = origen[6];
-    t7 = origen[7];
-    destino[0] = t0;
-    destino[1] = t1;
-    destino[2] = t2;
-    destino[3] = t3;
-    destino[4] = t4;
-    destino[5] = t5;
-    destino[6] = t6;
-    destino[7] = t7;
-}
+INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037CF8);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 125 con la configuracion versionada (g = 8 del archivo). Convierte un
+ * Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). Convierte un
  * valor de 0 a 999 en tres digitos BCD (centenas, decenas, unidades); el original conserva las
- * centenas en $a1 hasta el final y GCC las deja en $v0. Variantes probadas: 4.
+ * centenas en $a1 hasta el final y calcula centenas << 8 justo despues de la multiplicacion,
+ * mientras que GCC las deja en $v0 y las desplaza mas tarde (reparto de registros y orden de
+ * evaluacion). Variantes probadas: 12.
  */
 u32 func_80037D3C(u16 valor)
 {
@@ -383,10 +273,10 @@ u32 func_80037D3C(u16 valor)
     u16 decenas;
 
     centenas = valor / 100;
-    valor = valor - centenas * 100;
+    valor -= centenas * 100;
     decenas = valor / 10;
-    valor = valor - decenas * 10;
-    return (centenas << 8) | (decenas << 4) | valor;
+    valor -= decenas * 10;
+    return (decenas << 4) | valor | (centenas << 8);
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037D3C);
