@@ -28,6 +28,11 @@ extern GsOT D_8006AEA0[];
 extern u16 D_800694F0;
 extern u32 D_800694FC;
 extern volatile u16 D_80069676;
+/*
+ * Estado de la maquina de `main`. Se declara s16 aqui: el asm compara con `lh` seis veces y solo el
+ * incremento carga con `lhu`; declarado u16 (como en camara_y_bucle_logico.c) main sube de 1135 a
+ * 2135. La discrepancia entre archivos se resuelve con una cabecera global unica de variables.
+ */
 extern s16 D_80069662;
 extern u8 D_800695DC;
 extern s32 D_8006CF68[];
@@ -95,6 +100,10 @@ extern void func_80037184(void* a);
 extern void func_8001020C(s32 a);
 
 #ifdef NON_MATCHING
+/*
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 295.
+ * (con g = 8 el diff marca 80, solo simbolizacion de direcciones absolutas).
+ */
 void func_80015EC0(void)
 {
     EstadoPrincipal* e;
@@ -128,6 +137,10 @@ INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80015EC0);
 #endif
 
 #ifdef NON_MATCHING
+/*
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 270.
+ * (con g = 8 el diff marca 65, solo simbolizacion de direcciones absolutas).
+ */
 void func_80015F38(void)
 {
     EstadoPrincipal* e;
@@ -159,6 +172,10 @@ INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80015F38);
 #endif
 
 #ifdef NON_MATCHING
+/*
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 10.
+ * (con g = 8 el diff marca 10, solo simbolizacion de direcciones absolutas).
+ */
 void func_80015FC8(s32 segundos, u16 mascara)
 {
     s32 i;
@@ -176,6 +193,9 @@ INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80015FC8);
 #endif
 
 #ifdef NON_MATCHING
+/*
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 0.
+ */
 void func_80016044(void)
 {
     RECT r;
@@ -198,6 +218,9 @@ INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80016044);
 #endif
 
 #ifdef NON_MATCHING
+/*
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 0.
+ */
 void func_800160A8(void)
 {
     SetDispMask(0);
@@ -213,6 +236,10 @@ INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_800160A8);
 #endif
 
 #ifdef NON_MATCHING
+/*
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 25.
+ * (con g = 8 el diff marca 25, solo simbolizacion de direcciones absolutas).
+ */
 void func_80016118(void)
 {
     EstadoPrincipal* e;
@@ -237,6 +264,10 @@ INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80016118);
 #endif
 
 #ifdef NON_MATCHING
+/*
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 20.
+ * (con g = 8 el diff marca 20, solo simbolizacion de direcciones absolutas).
+ */
 void func_800161A8(void)
 {
     EstadoPrincipal* e;
@@ -263,6 +294,8 @@ INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_800161A8);
  * La ordenacion corre con la pila en el bloque de memoria rapida (scratchpad): la pila se guarda en
  * 0x1F8003FC, se cambia a esa zona y se restaura al terminar. Las dos secuencias son ensamblador
  * porque el compilador no tiene forma de mover el puntero de pila.
+ *
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 3603.
  */
 void func_80016218(void)
 {
@@ -271,12 +304,9 @@ void func_80016218(void)
     D_80069638 = D_80069510;
     func_8004048C();
     func_800353B0(D_80069518);
-    __asm__ volatile ("move $8, %0
-"
-                      "sw $29, 0($8)
-"
-                      "addiu $8, $8, -4
-"
+    __asm__ volatile ("move $8, %0\n\t"
+                      "sw $29, 0($8)\n\t"
+                      "addiu $8, $8, -4\n\t"
                       "move $29, $8"
                       : : "r"(0x1F8003FC) : "$8");
     GsSetRefView2L(&D_8006D928);
@@ -295,10 +325,8 @@ void func_80016218(void)
         func_8003B5AC(D_800694D8);
         func_8001020C(0x1840);
     }
-    __asm__ volatile ("addiu $29, $29, 4
-"
-                      "lw $29, 0($29)
-"
+    __asm__ volatile ("addiu $29, $29, 4\n\t"
+                      "lw $29, 0($29)\n\t"
                       "nop");
 }
 #else
@@ -306,6 +334,9 @@ INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_80016218);
 #endif
 
 #ifdef NON_MATCHING
+/*
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 10.
+ */
 void func_800163E4(void)
 {
     func_8003E3C0();
@@ -326,8 +357,11 @@ INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", func_800163E4);
  * contador de cuadros D_80069676 es volatile u16); difieren el reparto de registros salvados de las
  * constantes 2 y 3 y de la tabla de tiempos D_8006CF68, y la base `lui` del estado se hoistea antes
  * que en el original.
+ *
+ * NON_MATCHING: sin cerrar. Puntuacion 15140 con la configuracion versionada (-G0) y 1135 con
+ * g = 8.
  */
-void main(void)
+s32 main(void)
 {
     EstadoPrincipal* e0;
     EstadoPrincipal* e;

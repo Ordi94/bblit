@@ -48,9 +48,8 @@ typedef struct BloqueCabecera {
 
 extern CabeceraGuardado D_8006D060;
 extern u8 D_8006AA70[];
-extern u32 D_80010000;
+/* D_80010076 se escribe como simbolo (cc1 -G8 emite `sb $0,D_80010076`): por un puntero cambiaria la secuencia. */
 extern u8 D_80010076;
-extern u8 D_800100DF;
 extern u8* D_80069520;
 
 extern u32 func_80041238(void* datos, s32 cantidad);
@@ -65,6 +64,9 @@ extern s32 func_80014FAC(void);
  *
  * Pendiente (895): el original accede a la cuenta de entradas por $gp (0x38($gp)) y el archivo se
  * compila con -G0; ademas el original calcula la base del nombre una sola vez antes del bucle.
+ *
+ * NON_MATCHING: usa $gp; pendiente de soporte -G8. Puntuacion 895 con la configuracion
+ * versionada (-G0) y 895 con g = 8.
  */
 s32 func_80014AC4(s16 ranura)
 {
@@ -94,7 +96,11 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014AC4);
 #endif
 
 #ifdef NON_MATCHING
-/* Lee `cantidad` bytes del archivo de partida a partir de `desplazamiento`; 1 si se leyo completo. */
+/*
+ * Lee `cantidad` bytes del archivo de partida a partir de `desplazamiento`; 1 si se leyo completo.
+ *
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 0.
+ */
 s32 func_80014BA0(void* destino, s32 cantidad, s32 desplazamiento)
 {
     s32 fd;
@@ -119,6 +125,9 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014BA0);
  * Lee y valida la cabecera del archivo de partida (hasta cinco intentos): comprueba la suma de
  * control sobre los 0x200 bytes con la primera palabra a cero, la copia a D_8006D060 y, si el estado
  * principal vale 0, vuelca los seis registros de nivel en el banco de registros del interprete.
+ *
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 20.
+ * (con g = 8 el diff marca 10, solo simbolizacion de direcciones absolutas).
  */
 s32 func_80014C54(void)
 {
@@ -137,7 +146,7 @@ s32 func_80014C54(void)
             if (p->c.suma == suma) {
                 D_8006D060 = p->c;
                 D_8006AA70[4] = D_8006D060.b4;
-                if (D_80010000 == 0) {
+                if (ESTADO_PRINCIPAL->nivel == 0) {
                     D_8006AA70[0x2A] = D_8006D060.nivel[0].valor;
                     D_8006AA70[0x2B] = D_8006D060.nivel[0].valor >> 8;
                     D_8006AA70[0x3A] = D_8006D060.nivel[0].extra;
@@ -174,10 +183,13 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014C54);
 
 #ifdef NON_MATCHING
 /*
- * Lee la partida del slot D_800100DF (0x180 bytes a partir de 0x400 + (slot - 1) * 0x180) al
+ * Lee la partida del slot ESTADO_PRINCIPAL->fDF (0x180 bytes a partir de 0x400 + (slot - 1) * 0x180) al
  * buffer D_80069520, comprueba la suma de control de los primeros 0x140 bytes (palabra en +4 a cero
  * durante el calculo) y los copia al estado principal; hasta cinco intentos. La reserva de 0x200
  * bytes en la pila no se usa: el marco de pila del original la conserva.
+ *
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 540.
+ * (con g = 8 el diff marca 25, solo simbolizacion de direcciones absolutas).
  */
 s32 func_80014E24(void)
 {
@@ -191,7 +203,7 @@ s32 func_80014E24(void)
 
     buf = D_80069520;
     for (i = 0; i < 5; i++) {
-        if (func_80014BA0(buf, 0x180, (D_800100DF - 1) * 0x180 + 0x400) == 1) {
+        if (func_80014BA0(buf, 0x180, (ESTADO_PRINCIPAL->fDF - 1) * 0x180 + 0x400) == 1) {
             suma = *(u32*)(buf + 4);
             *(u32*)(buf + 4) = 0;
             calculada = func_80041238(buf, 0x140);
@@ -216,7 +228,11 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014E24);
 #endif
 
 #ifdef NON_MATCHING
-/* Escribe `cantidad` bytes en el archivo de partida a partir de `desplazamiento`; 1 si se escribio completo. */
+/*
+ * Escribe `cantidad` bytes en el archivo de partida a partir de `desplazamiento`; 1 si se escribio completo.
+ *
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 0.
+ */
 s32 func_80014EF8(void* origen, s32 cantidad, s32 desplazamiento)
 {
     s32 fd;
@@ -242,6 +258,9 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014EF8);
  * 0x13C (alto) y 0x47 (bajo) del estado principal y el byte 0x45 en el registro del nivel que indica
  * el byte 0xDF, recalcula la suma de control sobre el bloque de 0x200 bytes y lo graba (hasta cinco
  * intentos).
+ *
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 50.
+ * (con g = 8 el diff marca 50, solo simbolizacion de direcciones absolutas).
  */
 s32 func_80014FAC(void)
 {
@@ -291,8 +310,11 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014FAC);
 #ifdef NON_MATCHING
 /*
  * Graba la partida: calcula la suma de control del estado principal (0x140 bytes con la palabra
- * +4 a cero), actualiza la cabecera y escribe el bloque de 0x180 bytes del slot D_800100DF (hasta
+ * +4 a cero), actualiza la cabecera y escribe el bloque de 0x180 bytes del slot ESTADO_PRINCIPAL->fDF (hasta
  * cinco intentos).
+ *
+ * coincide (0) con g = 8 y reordenando la salida del compilador por direccion; con la configuracion versionada da 25.
+ * (con g = 8 el diff marca 25, solo simbolizacion de direcciones absolutas).
  */
 s32 func_8001515C(void)
 {
@@ -304,7 +326,7 @@ s32 func_8001515C(void)
     estado->suma = func_80041238(estado, 0x140);
     if (func_80014FAC() != 0) {
         for (i = 0; i < 5; i++) {
-            if (func_80014EF8((void*)0x80010000, 0x180, (D_800100DF - 1) * 0x180 + 0x400) == 1) {
+            if (func_80014EF8((void*)0x80010000, 0x180, (ESTADO_PRINCIPAL->fDF - 1) * 0x180 + 0x400) == 1) {
                 break;
             }
         }
@@ -341,11 +363,20 @@ typedef struct Fragmento {
     u8 b[0x200];
 } Fragmento;
 
+/* El titulo ocupa 0x2F bytes de origen (dos vueltas de 16 y una cola de 15); el campo destino es de 0x40. */
+typedef struct TituloTarjeta {
+    u8 b[0x2F];
+} TituloTarjeta;
+
 extern u8 D_80067E34[];
 extern u8 D_8005DFA0[];
 extern u8 D_8005DFCC[];
 extern void* memset(void* destino, s32 valor, u32 cantidad);
 
+/*
+ * NON_MATCHING: intento sin cerrar. Puntuacion 17295 con la configuracion versionada (-G0) y
+ * 17285 con g = 8.
+ */
 s32 func_800151FC(void)
 {
     BloqueTarjeta blq;
@@ -360,7 +391,7 @@ s32 func_800151FC(void)
     blq.cab[1] = 0x43;
     blq.cab[2] = 0x13;
     blq.cab[3] = 1;
-    *(Fragmento*)blq.titulo = *(Fragmento*)D_80067E34;
+    *(TituloTarjeta*)blq.titulo = *(TituloTarjeta*)D_80067E34;
     memset(blq.reservado, 0, 0x1C);
     base = D_80069520;
     memset(&D_8006D060, 0, 0x168);
@@ -402,7 +433,7 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
 /*
  * Sondeo por cuadro de la tarjeta de memoria (maquina de estados sobre D_8006AA70[0x0A]: 0, 1, 2, 3,
  * 4, 5, 6 con MemCardAccept, MemCardFormat y MemCardSync). Usa $gp en 35 accesos (0x38..0x4C($gp)):
- * pendiente de soporte -G8; sin intento en C.
+ * pendiente de soporte -G8; sin intento en C, por lo que no hay puntuacion de diff que informar.
  */
 INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800156F4);
 
@@ -411,6 +442,9 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800156F4);
  * Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
  * Pendiente (120): usa $gp; con -G0 el compilador coloca el almacen en el hueco de retardo de la
  * llamada y el original lo coloca antes de cargar el modo; pendiente de soporte -G8.
+ *
+ * NON_MATCHING: usa $gp; pendiente de soporte -G8. Puntuacion 120 con la configuracion
+ * versionada (-G0) y 120 con g = 8.
  */
 void func_80015E94(void)
 {
