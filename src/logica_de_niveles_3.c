@@ -548,7 +548,7 @@ siguiente:
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 919 con la configuracion versionada (g = 8 del archivo). Prologo y busqueda del origen: el original deriva la matriz del scratchpad de la misma parte alta que la base (move y ori), relee las banderas del nodo en la rama contraria y sale de la busqueda por id con un salto directo al caso sin origen. */
+/* Pendiente: puntuacion 740 con la configuracion versionada (g = 8 del archivo). Prologo y busqueda del origen: el original calcula la parte alta de la camara antes de derivar la matriz del scratchpad de la misma base, relee las banderas del nodo en la rama contraria y sale de la busqueda por id con un salto directo al caso sin origen. */
 /*
  * Manejador del director de camara (clase 36): por cada disparador cuya condicion y distancia se
  * cumplen reescribe el destino de vista y de mira de la camara global, la distancia de acercamiento
@@ -570,11 +570,11 @@ void func_8002C1DC(Objeto* o)
     u16 fl;
 
     t = TRABAJO_CAMARA;
-    m = (MATRIX*)0x1F800050;
     t->nodo = (NodoDisparador*)o->apoyos;
     if (t->nodo == 0) {
         return;
     }
+    m = (MATRIX*)0x1F800050;
     do {
         t->flags = t->nodo->flags;
         if (t->nodo->cond != 0 && TestLogicCond(o, &t->nodo->cond) == 0) {
@@ -1121,7 +1121,7 @@ siguiente:
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 5244 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original guarda el objeto en s4, el scratchpad en s3, el area en s5 y el margen de la caja en s6, y el compilador usa menos registros salvados; la estructura de las ocho esquinas y de los dos modos coincide con el original. */
+/* Pendiente: puntuacion 4613 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original guarda el objeto en s4, el scratchpad en s3, el area en s5 y el margen de la caja en s6 y deja s0 a s2 para los punteros de la preparacion; el compilador los reparte un registro mas abajo. La estructura de las ocho esquinas y de los dos modos coincide. */
 /*
  * Prueba de suelo bajo la posicion de prueba (t->py): si el bloque se despegaria mas de 0xC8
  * unidades del terreno, se anula el desplazamiento pedido. Solo se aplica con el modo 0x80.
@@ -1206,6 +1206,7 @@ void func_8002D68C(Objeto* o)
     Objeto* jugador;
     u8 flags;
     s16 id;
+    s32 reserva[2];
 
     t = TRABAJO_BLOQUE;
     area = (void*)0x1F8000A8;
@@ -1248,8 +1249,7 @@ void func_8002D68C(Objeto* o)
     m = &t->m;
     margen = (s16)o->s20 >> 1;
     RotMatrix(&o->param.giro.rotate, m);
-    margen = (s16)margen;
-    cuarto = (s16)margen >> 1;
+    cuarto = margen >> 1;
     GEO_CARGAR_WH(&o->min);
     GEO_GUARDAR_WH(&t->mnx);
     GEO_CARGAR_WH(&o->max);
