@@ -179,11 +179,22 @@ def test_formatear_tabla_alinea_las_columnas() -> None:
 class EjecutorVariantes(EjecutorC):
     """Compila y puntua con puntuaciones por variante; una variante 'rota' no compila."""
 
-    PUNTUACIONES: ClassVar[dict[str, int]] = {"mejor.c": 0, "peor.c": 120}
+    PUNTUACIONES: ClassVar[dict[str, int]] = {"mejor.c": 0, "peor.c": 120, "otra.c": 9800, "vacia.c": 400}
+    TABLA_CON_FUNCION = (
+        "SYMBOL TABLE:\n"
+        "00000000 l    d  .text\t00000000 .text\n"
+        "00000000 g     F .text\t00000020 func_80036204\n"
+    )
+    TABLA_DE_OTRA_FUNCION = "SYMBOL TABLE:\n00000000 g     F .text\t00000020 func_80099999\n"
+    TABLA_VACIA = "SYMBOL TABLE:\n00000000 l    d  .text\t00000000 .text\n"
 
     def __call__(self, comando: Any, directorio: Any, timeout_s: Any) -> Any:
         salida = super().__call__(comando, directorio, timeout_s)
         nombre = Path(comando[0]).name
+        if nombre == "objdump.exe" and "-t" in comando:
+            if "otra.c" in comando[-1]:
+                return self.TABLA_DE_OTRA_FUNCION
+            return self.TABLA_VACIA if "vacia.c" in comando[-1] else self.TABLA_CON_FUNCION
         if nombre == "CC1PSX.EXE" and "rota" in comando[-3]:
             raise ProcesoError("CC1PSX.EXE: termino con codigo 33\nparse error")
         if "--format=json" in comando:
@@ -230,6 +241,49 @@ def test_probar_variantes_ordena_y_aisla_los_fallos_de_cada_variante(tmp_path: P
     ensamblados = [c for c in ejecutor.comandos if Path(c[0]).name == "as.exe"]
     assert len(ensamblados) == 1, "el objetivo se ensambla una sola vez"
     assert not (raiz / "src" / "mejor.c").exists()
+
+
+def test_probar_variantes_marca_como_error_la_variante_que_no_define_la_funcion(tmp_path: Path) -> None:
+    raiz = tmp_path / "repo"
+    crear_repo(raiz)
+    carpeta = crear_variantes(tmp_path / "v", ["peor.c", "otra.c", "mejor.c", "vacia.c"])
+    ejecutor = EjecutorVariantes(secciones=SALIDA_OBJDUMP)
+    resultados = variantes.probar_variantes(
+        raiz,
+        "func_80036204",
+        carpeta,
+        herramientas_compilacion(),
+        script_diff=Path("diff.py"),
+        ejecutar=ejecutor,
+    )
+    assert [(r.nombre, r.puntuacion, r.error) for r in resultados] == [
+        ("mejor.c", 0, None),
+        ("peor.c", 120, None),
+        ("otra.c", None, "la variante no define func_80036204"),
+        ("vacia.c", None, "la variante no define func_80036204"),
+    ]
+    assert variantes.formatear_tabla(resultados).splitlines()[-2:] == [
+        "otra.c    error: la variante no define func_80036204",
+        "vacia.c   error: la variante no define func_80036204",
+    ]
+    puntuadas = [c for c in ejecutor.comandos if "--format=json" in c]
+    assert len(puntuadas) == 2, "las variantes sin la funcion no llegan a asm-differ"
+
+
+def test_probar_variantes_con_la_unica_variante_sin_funcion_no_hay_mejor(tmp_path: Path) -> None:
+    raiz = tmp_path / "repo"
+    crear_repo(raiz)
+    carpeta = crear_variantes(tmp_path / "v", ["vacia.c"])
+    resultados = variantes.probar_variantes(
+        raiz,
+        "func_80036204",
+        carpeta,
+        herramientas_compilacion(),
+        script_diff=Path("diff.py"),
+        ejecutar=EjecutorVariantes(secciones=SALIDA_OBJDUMP),
+    )
+    assert resultados == [ResultadoVariante("vacia.c", None, "la variante no define func_80036204")]
+    assert not resultados[0].coincide
 
 
 def test_probar_variantes_valida_la_funcion_y_exige_que_figure_en_src(tmp_path: Path) -> None:

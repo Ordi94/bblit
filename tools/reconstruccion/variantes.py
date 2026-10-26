@@ -21,7 +21,7 @@ from tools.reconstruccion.diff import (
     puntuar_objeto,
     validar_funcion,
 )
-from tools.reconstruccion.enlace_diff import bytes_coinciden
+from tools.reconstruccion.enlace_diff import TIMEOUT_ENLACE_S, bytes_coinciden, funcion_en_objeto
 from tools.reconstruccion.infraestructura import (
     CARPETA_DIFF,
     Ejecutor,
@@ -151,6 +151,40 @@ def _primera_linea(mensaje: str) -> str:
     return (lineas[0] if lineas else "fallo sin mensaje")[:MAX_CARACTERES_ERROR]
 
 
+def _define_funcion(
+    raiz: Path, herramientas: HerramientasCompilacion, ejecutar: Ejecutor, objeto: str, funcion: str
+) -> bool:
+    """
+    Indica si un objeto compilado define la funcion pedida en ``.text``.
+
+    Contexto:
+        ``asm-differ`` compara lo que encuentre bajo el nombre pedido y, si el objeto no lo define,
+        puntua el hueco contra el original con un numero alto pero valido. Sin esta comprobacion
+        una variante vacia o de otra funcion pareceria una formulacion mediocre en lugar de un
+        error. Se consulta la tabla de simbolos del objeto, que es la misma fuente que usa la
+        comparacion por bytes.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        herramientas (HerramientasCompilacion): Herramientas de compilacion (``objdump``).
+        ejecutar (Ejecutor): Ejecutor de procesos.
+        objeto (str): Objeto compilado de la variante (ruta relativa a la raiz).
+        funcion (str): Nombre de la funcion esperada.
+
+    Returns:
+        bool: ``True`` si el objeto define ``funcion`` en ``.text`` con tamano mayor que cero.
+
+    Raises:
+        ProcesoError: Si ``objdump`` falla.
+
+    Ejemplo:
+        if not _define_funcion(raiz, herramientas, ejecutar, "build/diff/probar.a.c.o", "func_X"):
+            ...
+    """
+    tabla = ejecutar([str(herramientas.objdump), "-t", objeto], raiz, TIMEOUT_ENLACE_S)
+    return funcion_en_objeto(tabla, funcion) is not None
+
+
 def probar_variantes(
     raiz: Path,
     funcion: str,
@@ -166,8 +200,8 @@ def probar_variantes(
     Contexto:
         Implementa ``probar``. El objetivo se ensambla una vez; cada variante se compila con las
         mismas opciones que el archivo ``src/`` donde vive la funcion (incluido su ``-G``). Un
-        fallo de una variante (no compila, no define la funcion) se registra en su fila y no
-        detiene a las demas.
+        fallo de una variante (no compila, no define la funcion) se registra en su fila, sin
+        puntuacion, y no detiene a las demas.
 
     Args:
         raiz (Path): Raiz del repositorio.
@@ -211,6 +245,9 @@ def probar_variantes(
                 exigir_solo_texto=False,
                 valor_g=valor_g,
             )
+            if not _define_funcion(raiz, herramientas, ejecutar, objeto, funcion):
+                resultados.append(ResultadoVariante(variante.name, None, f"la variante no define {funcion}"))
+                continue
             salida = puntuar_objeto(
                 raiz,
                 herramientas,
