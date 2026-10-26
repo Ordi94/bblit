@@ -41,7 +41,6 @@ u8 D_800694A8;
 s32 D_800694AC;
 
 extern EntradaSector D_8005EE78[];
-extern u8 D_80069540;
 extern u8 D_8006933C[];
 extern u8 D_8006A928[];
 
@@ -355,7 +354,6 @@ extern u16 D_800695B4;
 extern void* D_80069648;
 extern u8 D_80010050;
 extern u8 D_8001004F;
-extern u8 D_800694D0;
 extern u32 D_80067E98[];
 extern u32 D_8006959C;
 extern s32 D_80069678;
@@ -369,12 +367,7 @@ extern u8* D_80069644;
 extern u8* D_80069528;
 extern u8* D_80069538;
 extern u8* D_8006966C;
-extern u8* D_80069550;
-extern u32 D_800695AC;
 extern u32 D_8006951C;
-extern u32 D_800694EC;
-extern u32 D_80069598;
-extern u32 D_800695FC;
 extern u32 D_800695E4;
 
 #ifdef NON_MATCHING
@@ -687,12 +680,12 @@ s32 func_800415A0(s16 archivo, void* destino)
                             }
                             D_800694A0 = compensacion;
                             aux = datos + desp_texturas;
-                            D_800694EC = (u32)aux;
-                            D_80069598 = (u32)aux;
-                            D_800695FC = (u32)(aux + 8);
+                            D_800694EC = aux;
+                            D_80069598 = (u32*)aux;
+                            D_800695FC = (s16*)(aux + 8);
                             cursor += 0x30;
-                            D_800694EC = (u32)aux + *(s32*)aux;
-                            D_80069598 = (u32)aux + *(s32*)(aux + 4);
+                            D_800694EC = aux + *(s32*)aux;
+                            D_80069598 = (u32*)(aux + *(s32*)(aux + 4));
                             reserva += D_800694A0;
                         } else if (etiqueta == 0x4D) {
                             func_80041264(cursor, campos, 0x30);
@@ -1678,7 +1671,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                 audio_cargado = 2;
                 D_8006966C = datos + tam_audio;
                 D_80069550 = datos + tam_audio;
-                D_800695AC = (u32)(datos + tam_audio) + 8;
+                D_800695AC = (s16*)(datos + tam_audio + 8);
             }
             func_8003652C();
             func_800365D0();

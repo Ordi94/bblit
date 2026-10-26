@@ -54,6 +54,9 @@ g = 8
 [archivos.menus_e_interfaz]
 g = 8
 
+[archivos.audio_xa_y_spu]
+g = 8
+
 # Enlace. gp: valor de $gp que fija el codigo de arranque del juego (lui gp,0x8007 ;
 # addiu gp,gp,-0x6CE0). build lo define como _gp en el enlace; las referencias relativas a $gp
 # de los objetos C se resuelven contra el. Es un simbolo absoluto: no cambia ningun byte.

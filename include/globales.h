@@ -584,6 +584,38 @@ extern s32 D_8006960C;
 /* D_80069614: accesos del ensamblador: sw x2, lw x3 */
 extern u32 D_80069614;
 
+/*
+ * D_800694C8: zona de la pista XA en curso. func_8003E3C0 la compara con la etiqueta de grupo del
+ * objeto controlado (lh) y la escribe con sh (lhu de esa etiqueta); func_8003E298 y el arranque del
+ * motor la ponen a -1 (sh).
+ */
+extern s16 D_800694C8;
+
+/*
+ * D_80069674: volumen de la musica XA que se envia al CD (CdlATV, un byte por canal). func_8003E068,
+ * func_8003E094, func_8003E0C8, func_8003E120 y func_8003E3C0 lo leen y escriben con lbu / sb; los
+ * eventos lo ponen a cero.
+ */
+extern u8 D_80069674;
+
+/*
+ * D_80069586: pista que pide el interprete de eventos (lbu / sb); func_8003E298 la lee como
+ * argumento (lbu) y func_8003E680 y func_8003E3C0 la ponen a cero (sb).
+ */
+extern u8 D_80069586;
+
+/*
+ * D_80069540: area de resultado de los comandos del CD (primer byte, estado del lector). Se pasa por
+ * direccion a CdControlB y CdSync y se lee con lbu (bits 0x2 y 0x10 en func_8003E3C0 y func_8003E680).
+ */
+extern u8 D_80069540;
+
+/*
+ * D_800694D0: parametro de un byte de CdlSetmode (0xCA para la musica XA, 0x80 para la carga de
+ * archivos). Se escribe con sb y su direccion se pasa a CdControlB.
+ */
+extern u8 D_800694D0;
+
 /* D_80069628: accesos del ensamblador: sb x4, lb x6 */
 extern u8 D_80069628;
 
@@ -756,6 +788,29 @@ extern u32 D_8006949C;
 
 /* D_80010000: nivel de EstadoPrincipal (arranque.h) que func_8001E1A4 escribe con la forma simbolica (evento de zona) */
 extern s32 D_80010000;
+
+/*
+ * Punteros a las tablas de la banda sonora que se cargan con el nivel. El cargador los escribe
+ * con sw (func_800415A0 0x80042060, 0x8004206C, 0x80042DA4, 0x80042DAC, 0x80042DB4, 0x80042DC8,
+ * 0x80042DE0) y el audio los lee como base de una tabla; el ensamblador solo fija el ancho (lw/sw
+ * de una palabra) y el tipo del elemento sale de como los indexa cada lector.
+ *
+ * El grupo con el bit 0x400 en los flags del efecto usa D_800694EC, D_800695FC y D_80069598; el
+ * resto, D_8006966C, D_800695AC y D_80069550 (func_8003FA2C, func_8003FDEC, func_8003FEEC).
+ *
+ * D_800694EC: base de bytes de las definiciones de sonido; func_8003FDEC y func_8003FEEC le suman
+ * desplazamientos en bytes.
+ * D_80069550: base de bytes; el cargador la avanza en bytes (func_800415A0 0x80044330 lw y
+ * 0x80044354 sw) y func_8003FA2C la lee como tabla de palabras.
+ * D_80069598: tabla de palabras indexada por el sonido (func_8003FA2C).
+ * D_800695AC y D_800695FC: tablas de s16 indexadas por el grupo del efecto (func_8003FDEC y
+ * func_8003FEEC leen un desplazamiento con lh).
+ */
+extern u8* D_800694EC;
+extern u8* D_80069550;
+extern u32* D_80069598;
+extern s16* D_800695AC;
+extern s16* D_800695FC;
 
 /*
  * Llamadas al sistema del kernel (syscall 0 con a0 = 1 y 2, 16 bytes escritos a mano cada una en
