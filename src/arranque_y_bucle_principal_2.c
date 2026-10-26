@@ -251,15 +251,15 @@ void func_800163E4(void)
 
 #ifdef NON_MATCHING
 /*
- * Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta
- * del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la
- * pausa y la maquina de estados D_80069662 (el estado 0x16 en adelante recarga el contenido).
- * Con el mando ocioso unos 900 cuadros entra en el ciclo de demostracion.
- *
  * Pendiente: puntuacion 1025 con la configuracion versionada (g = 8 del archivo). Variantes probadas: 11. El flujo y los tipos coinciden (pausa y demostracion son s16, el
  * contador de cuadros D_80069676 es volatile u16); difieren el reparto de registros salvados de las
  * constantes 2 y 3 y de la tabla de tiempos D_8006CF68, y la base `lui` del estado se hoistea antes
  * que en el original.
+ *
+ * Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta
+ * del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la
+ * pausa y la maquina de estados D_80069662 (el estado 0x16 en adelante recarga el contenido).
+ * Con el mando ocioso unos 900 cuadros entra en el ciclo de demostracion.
  */
 s32 main(void)
 {

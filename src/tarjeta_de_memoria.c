@@ -58,12 +58,12 @@ extern s32 func_80014FAC(void);
 
 #ifdef NON_MATCHING
 /*
- * Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18
- * caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
- *
  * Pendiente: puntuacion 895 con la configuracion versionada (g = 8 del archivo). El original direcciona la tabla de
  * cuentas con `addiu v0,gp,0x38`, que maspsx solo emite desde ASPSX 2.80 (hoy 2.79), y calcula la base del nombre
  * una sola vez antes del bucle. Variantes probadas: 8 (bucles por indice y por puntero).
+ *
+ * Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18
+ * caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
  */
 s32 func_80014AC4(s16 ranura)
 {
@@ -304,13 +304,13 @@ s32 func_8001515C(void)
 
 #ifdef NON_MATCHING
 /*
+ * Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). Variantes probadas: 1. No se reprodujo la disposicion de los bloques locales de la pila ni las copias
+ * de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento.
+ *
  * Da formato al archivo de partida: arma en la pila un bloque de 0x200 bytes con la cabecera de la
  * tarjeta ("SC", bandera de icono, un bloque, titulo, paleta e imagenes), lo copia con la cabecera de
  * D_8006D060 y su suma de control al buffer D_80069520 + 0x2000 y escribe 0x400 bytes con open/write
  * (hasta cinco intentos), comprobando despues la lectura.
- *
- * Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). Variantes probadas: 1. No se reprodujo la disposicion de los bloques locales de la pila ni las copias
- * de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento.
  */
 typedef struct BloqueTarjeta {
     u8 cab[4];
@@ -336,9 +336,6 @@ extern u8 D_8005DFA0[];
 extern u8 D_8005DFCC[];
 extern void* memset(void* destino, s32 valor, u32 cantidad);
 
-/*
- * NON_MATCHING: intento sin cerrar. Puntuacion 17285 (el archivo se compila con g = 8; 17295 con -G0).
- */
 s32 func_800151FC(void)
 {
     BloqueTarjeta blq;
@@ -401,10 +398,11 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800156F4);
 
 #ifdef NON_MATCHING
 /*
- * Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
  * Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). El original calcula las dos
  * direcciones de $gp con `addiu a1,gp,0x40` y `addiu a2,gp,0x48` (ASPSX 2.80) y coloca el almacen del byte antes de
  * cargar el modo; con 2.79 la forma no se emite. Variantes probadas: 3.
+ *
+ * Espera el resultado de la tarjeta: baja la bandera 0x3C($gp) y llama a MemCardSync(1, ...).
  */
 void func_80015E94(void)
 {
