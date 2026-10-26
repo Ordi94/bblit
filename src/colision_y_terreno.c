@@ -63,10 +63,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2135 con la configuracion versionada (g = 0 del archivo). El reparto de
+ * Pendiente: puntuacion 750 con la configuracion versionada (g = 0 del archivo). El reparto de
  * registros coincide con el original; difieren el orden de planificacion en los avances por
  * subcelda y por baldosa, el cierre compartido de resultados y una constante de indice que el
- * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 6800).
+ * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 5340).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -277,7 +277,6 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
     s32 px;
     s32 pz;
     s32 tx;
-    s32 ty;
     s32 tz;
 
     if (0x1F8003FFU < (u32)w + 0x1C8) {
@@ -487,26 +486,23 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             if (w->d_sz < w->d_sx) {
                                 if (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z) {
                                     tx = w->sz_x;
-                                    ty = w->sz_y;
-                                    tz = w->sz_z;
-                                    w->aux = ty;
-                                    w->rz = tz;
+                                    w->aux = w->sz_y;
+                                    w->rz = w->sz_z;
                                     w->sz_z = w->lim_z = w->lim_z + w->celda_z;
-                                    w->sz_x = tx + ((w->pend_z * w->celda_z) >> 12);
                                     w->rx = tx;
+                                    w->sz_x = tx + ((w->pend_z * w->celda_z) >> 12);
                                 } else {
                                     w->acc_x = w->dx;
                                 }
                             } else {
                                 if (w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x) {
                                     tx = w->sx_x;
-                                    ty = w->sx_y;
                                     tz = w->sx_z;
-                                    w->aux = ty;
+                                    w->aux = w->sx_y;
                                     w->rz = tz;
                                     w->sx_x = w->lim_x = w->lim_x + w->celda_x;
-                                    w->sx_z = tz + ((w->pend_x * w->celda_x) >> 12);
                                     w->rx = tx;
+                                    w->sx_z = tz + ((w->pend_x * w->celda_x) >> 12);
                                 } else {
                                     w->acc_z = w->dz;
                                 }
@@ -543,15 +539,18 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                         w->d_bz = SquareRoot0(w->ebz_x * w->ebz_x + w->ebz_z * w->ebz_z);
                         w->d_bx = SquareRoot0(w->ebx_x * w->ebx_x + w->ebx_z * w->ebx_z);
                         if (w->d_bz < w->d_bx) {
+                            tx = w->cbz_x;
                             w->bz = w->cbz_z;
                             w->cbz_z = w->lin_z = w->lin_z + w->paso_z;
-                            w->bx = w->cbz_x;
-                            w->cbz_x = w->cbz_x + ((w->pend_z * w->paso_z) >> 12);
+                            w->bx = tx;
+                            w->cbz_x = tx + ((w->pend_z * w->paso_z) >> 12);
                         } else {
-                            w->bz = w->cbx_z;
+                            tz = w->cbx_z;
+                            tx = w->cbx_x;
+                            w->bz = tz;
                             w->cbx_x = w->lin_x = w->lin_x + w->paso_x;
-                            w->bx = w->cbx_x;
-                            w->cbx_z = w->cbx_z + ((w->pend_x * w->paso_x) >> 12);
+                            w->bx = tx;
+                            w->cbx_z = tz + ((w->pend_x * w->paso_x) >> 12);
                         }
                     } while ((w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x)
                              || (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z));
