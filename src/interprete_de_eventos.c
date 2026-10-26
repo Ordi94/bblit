@@ -72,7 +72,7 @@ extern s32 D_8006961C;
 extern s32 D_80069624;
 extern u8 D_80069674;
 extern s32 D_80069690;
-extern u16 D_800695D0;
+extern vu16 D_800695D0;
 
 /* Dato pequeno: el original lo direcciona como 0xC0($gp). */
 s32 D_800693E0;
@@ -751,17 +751,20 @@ void func_80031384(Objeto* a0, Accion* a1)
     a0->flags14 |= 0x100;
 }
 
-/* No coincide (895): el original lee el contador dos veces, sin andi; volatile, u16 local y suma explicita no cambian */
-#ifdef NON_MATCHING
+/*
+ * Apila un valor en el banco D_8006B658 (ocho entradas de 16 bits) si queda espacio. El contador es volatile:
+ * el original lo lee dos veces, una para la comparacion y otra para el indice, y escribe la entrada antes
+ * de guardar el contador incrementado.
+ */
 void func_800313D4(Objeto* a0, Accion* a1)
 {
+    u16 i;
     if (D_800695D0 < 8) {
-        D_8006B658[D_800695D0++] = ACC_W4(a1);
+        i = D_800695D0;
+        D_8006B658[i] = ACC_W4(a1);
+        D_800695D0 = i + 1;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800313D4);
-#endif
 
 void func_8003141C(Objeto* a0, Accion* a1) { a0->w22 = 0; }
 
@@ -826,18 +829,17 @@ void func_80031554(Objeto* a0)
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031624(Objeto* a0, Accion* a1) { func_8003F06C(a0, ACC_W4(a1), 1, D_8006967C); }
 
-/* No coincide (795): el original carga D_80069554 en a0 */
-#ifdef NON_MATCHING
+/* Pide a func_8001D588 la pantalla D_80069554 o, si no hay ninguna, la de D_800694F8; la llamada es incondicional. */
 void func_80031650(Objeto* a0, Accion* a1)
 {
+    s32 v;
     D_80010041 = 0;
-    if (D_80069554 == 0) {
-        func_8001D588(D_800694F8, D_8006B558);
+    v = D_80069554;
+    if (v == 0) {
+        v = D_800694F8;
     }
+    func_8001D588(v, D_8006B558);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031650);
-#endif
 
 void ActionAddsi(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] += a1->b4; }
 
@@ -1036,8 +1038,7 @@ void func_80031CC4(void) {}
 
 void func_80031CCC(void) {}
 
-/* No coincide (15): reparto v0/v1 y orden de operandos del bne; 10 formulaciones */
-#ifdef NON_MATCHING
+/* Suelta el enlace del hijo p6C: lo marca con 0x100, borra su vuelta a este objeto si apuntaba a el y rompe el propio enlace. */
 void func_80031CD4(Objeto* a0, Accion* a1)
 {
     Objeto* o;
@@ -1045,15 +1046,12 @@ void func_80031CD4(Objeto* a0, Accion* a1)
     if (o != 0) {
         o->flags14 |= 0x100;
         o = a0->p6C;
-        if (a0 == o->p70) {
+        if (o->p70 == a0) {
             o->p70 = 0;
-            a0->p6C = 0;
         }
+        a0->p6C = 0;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031CD4);
-#endif
 
 void func_80031D1C(Objeto* a0, Accion* a1) { a0->w3C |= 0x40; }
 
@@ -1088,8 +1086,10 @@ void func_80031D60(Objeto* a0, Accion* a1)
     }
 }
 
-/* No coincide (330): la distancia va en a0 y los sh salen en otro orden */
-#ifdef NON_MATCHING
+/*
+ * Sacude la camara con una amplitud proporcional a la cercania de un objeto: si no hay sacudida en curso y la
+ * distancia al punto de vista es menor de 0x800, la amplitud es w6 * distancia / 2048 y la velocidad angular w4 * 11.
+ */
 void func_80031E24(Objeto* a0, Accion* a1)
 {
     s32 v[3];
@@ -1103,15 +1103,12 @@ void func_80031E24(Objeto* a0, Accion* a1)
             d = (a1->w6 * d) / 2048;
             if (d > 0) {
                 D_8006D928.s8A = 0;
-                D_8006D928.s88 = d;
                 D_8006D928.s86 = ACC_W4(a1) * 11;
+                D_8006D928.s88 = d;
             }
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031E24);
-#endif
 
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031EF8(Objeto* a0, Accion* a1)
@@ -1375,6 +1372,7 @@ void func_800326EC(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 4; }
 
 /* No coincide (5635): el flujo de busqueda con saltos no se reproduce con bucles do/while */
 #ifdef NON_MATCHING
+/* Mueve la seleccion del menu al siguiente elemento habilitado. */
 void func_80032708(Objeto* a0, Accion* a1)
 {
     s32 v;
@@ -1384,49 +1382,37 @@ void func_80032708(Objeto* a0, Accion* a1)
         return;
     }
     if (ESTADO->botones & 0x6000) {
-        i = v;
-        if (i < 7) {
-            do {
-                if (D_8006D064 & (1 << (i - 1))) {
-                    break;
-                }
-                i++;
-            } while (i < 7);
+        for (i = v; i < 7; i++) {
+            if (D_8006D064 & (1 << (i - 1))) {
+                break;
+            }
         }
         if (i >= 7) {
             if (ESTADO->botones & 0x2000) {
                 i = v - 3;
             } else {
-                i = 6;
-                do {
-                    if (D_8006D064 & (1 << (i - 1))) {
-                        break;
-                    }
-                    i--;
-                } while (i > 0);
+        for (i = 6; i > 0; i--) {
+            if (D_8006D064 & (1 << (i - 1))) {
+                break;
+            }
+        }
             }
         }
     } else {
-        i = v;
-        if (i > 0) {
-            do {
-                if (D_8006D064 & (1 << (i - 1))) {
-                    break;
-                }
-                i--;
-            } while (i > 0);
+        for (i = v; i > 0; i--) {
+            if (D_8006D064 & (1 << (i - 1))) {
+                break;
+            }
         }
         if (i <= 0) {
             if (ESTADO->botones & 0x8000) {
                 i = v + 3;
             } else {
-                i = 1;
-                do {
-                    if (D_8006D064 & (1 << (i - 1))) {
-                        break;
-                    }
-                    i++;
-                } while (i < 7);
+        for (i = 1; i < 7; i++) {
+            if (D_8006D064 & (1 << (i - 1))) {
+                break;
+            }
+        }
             }
         }
     }
