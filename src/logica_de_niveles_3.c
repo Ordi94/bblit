@@ -35,6 +35,9 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F970);
 
 #ifdef NON_MATCHING
 /*
+ * Pendiente: puntuacion 350 con la configuracion versionada. Dos 'lui' donde el original usa uno
+ * solo para los dos bytes (los simbolos son variables externas distintas).
+ *
  * Operacion aritmetica sobre un registro de 16 bits repartido en dos bytes (D_80010047 es el
  * bajo y D_8001013C el alto). Diferencias con el original: este lee ambos bytes con un unico
  * 'lui' (los dos simbolos comparten la parte alta) y conserva una copia del valor en el hueco de

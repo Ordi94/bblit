@@ -305,7 +305,7 @@ la copia salvo lo que se indica):
   entonces, con 5 funciones en C y 1101 funciones en la tabla (historico): `asm/` tenia 1096 `glabel` (2 de
   `boot`, 650 de `libs`, 444 de `nonmatchings`) y habia 5 funciones en C, es decir 1101; el texto
   desensamblado conserva las 13 palabras `.word`; `progreso` informaba 5 funciones en C de 449 (452 de 201416
-  bytes). Las cifras actuales (1102 funciones, 450 en el rango del juego, 231 en C) estan en «Cifras tras esta
+  bytes). Las cifras actuales (1102 funciones, 450 en el rango del juego; las funciones en C se cuentan en `docs/PROGRESO.md`) estan en «Cifras tras esta
   regla», mas abajo, y en `docs/PROGRESO.md`.
 
 **Hecho.** `config/simbolos_adicionales.txt` y su linea en `config/splat.yaml` se retiraron, las lineas
