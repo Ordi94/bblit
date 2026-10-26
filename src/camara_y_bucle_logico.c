@@ -471,7 +471,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
     }
 
 /*
- * Pendiente: puntuacion 4880 con la configuracion versionada (g = 8 del archivo). El flujo coincide; difiere el reparto de registros temporales y el orden del bloque de alturas.
+ * Pendiente: puntuacion 4485 con la configuracion versionada (g = 8 del archivo). El flujo coincide; difiere el reparto de registros temporales y el orden del bloque de alturas.
  *
  * Camara de seguimiento de tercera persona, una vez por cuadro. Determina la zona bajo el objeto y bajo la
  * camara y actualiza el modelo de la sala; despues atiende, por prioridad, la cuenta atras de cambio de
@@ -494,7 +494,7 @@ void func_80033358(Objeto* o, u32 reiniciar)
     s32 ang;
     s32 d;
     s32 hit;
-    s16 r;
+    s32 r;
     u16 c;
     u16 c8;
     u16 c6;
@@ -738,7 +738,7 @@ void func_80033358(Objeto* o, u32 reiniciar)
                 i = i + 0x1000;
             }
             c = D_80069402;
-            r = D_80069402 % 0x1000;
+            r = (s16)(D_80069402 % 0x1000);
             if (r < 0) {
                 r = r + 0x1000;
             }
@@ -817,7 +817,7 @@ aplicar_giro:
                 i = i + 0x1000;
             }
             c = w->rot.vy;
-            r = (s16)c % 0x1000;
+            r = (s16)((s16)c % 0x1000);
             if (r < 0) {
                 r = r + 0x1000;
             }
@@ -888,10 +888,14 @@ aplicar_giro:
         w->rot.vy = w->rot.vy + ((s16)w->rot28.y >> 2);
     }
     if (w->dist < w->p0 - 0x64) {
-        w->dist = w->dist + ((w->p0 - (w->dist + 0x64)) >> 3);
+        s32 t;
+        t = w->dist + 0x64;
+        w->dist = w->dist + ((w->p0 - t) >> 3);
     }
     if (w->p0 + 0x64 < w->dist) {
-        w->dist = w->dist + ((w->p0 - (w->dist - 0x64)) >> 1);
+        s32 t;
+        t = w->dist - 0x64;
+        w->dist = w->dist + ((w->p0 - t) >> 1);
     }
     w->dir.vy = 0;
     w->dir.vx = 0;
