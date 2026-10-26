@@ -140,15 +140,15 @@ Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 110
 - `func_80037580` (68 bytes)
 - `func_800375C4` (52 bytes)
 - `func_8003760C` (916 bytes)
+- `func_800379A0` (360 bytes)
+- `func_80037B08` (248 bytes)
+- `func_80037C00` (248 bytes)
 - `func_80037CF8` (68 bytes)
 - `func_8003BDD0` (580 bytes)
 - `func_800449E0` (36 bytes)
 
 ## `INCLUDE_ASM` sin comentario en archivos con funciones en C
 
-- `func_800379A0` (`src/gestion_y_dibujo_de_objetos_2.c`)
-- `func_80037B08` (`src/gestion_y_dibujo_de_objetos_2.c`)
-- `func_80037C00` (`src/gestion_y_dibujo_de_objetos_2.c`)
 - `func_80039094` (`src/gestion_y_dibujo_de_objetos_2.c`)
 - `func_80044904` (`src/inicializacion_de_motor.c`)
 - `func_80045498` (`src/inicializacion_de_motor.c`)

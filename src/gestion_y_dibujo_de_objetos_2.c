@@ -258,10 +258,27 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375F8);
  */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_8003760C);
 
+/*
+ * Rutina escrita a mano en el original (marca Handwritten del particionador): carga la matriz de a0 en los registros de
+ * control 0 a 4 del GTE con ctc2 desde $t0..$t4 fijos, transforma el vector de a1 con mvmva y reparte el resultado en
+ * a2, todo sin prologo de pila y con la rama de signo (bgez/negu/sra) intercalada con las cargas. Se conserva en
+ * ensamblador: GCC no emite ese reparto de temporales ni esa planificacion.
+ */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800379A0);
 
+/*
+ * Rutina escrita a mano en el original (marca Handwritten del particionador): compone dos matrices de GTE. Carga a0 en
+ * los registros de control con ctc2 desde $t0..$t4, mezcla medias palabras de a1 con la mascara 0xFFFF0000 en $t9 y
+ * multiplica con mvmva, sin prologo de pila. Se conserva en ensamblador: GCC elige otros temporales y no mezcla
+ * lhu, lw y mtc2 en ese orden.
+ */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037B08);
 
+/*
+ * Rutina escrita a mano en el original (marca Handwritten del particionador): variante de la anterior que compone dos
+ * matrices de GTE con los mismos temporales fijos ($t0..$t4 y $t9 para la mascara 0xFFFF0000) y mvmva, sin prologo de
+ * pila. Se conserva en ensamblador: GCC no reproduce ese reparto de registros.
+ */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037C00);
 
 /*
