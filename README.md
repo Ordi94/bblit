@@ -5,6 +5,34 @@ que, compilado con el toolchain original Psy-Q, reproduce byte a byte el ejecuta
 El objetivo final es contar con el codigo fuente completo del juego para preservarlo,
 estudiarlo y portarlo a plataformas modernas.
 
+<!-- progreso:inicio -->
+## Progreso
+
+Medido el 2026-10-26 sobre el commit `ea4ee18`. Generado por `python tools/build.py progreso`;
+no se edita a mano.
+
+| Estado | Cifra |
+|---|---:|
+| Funciones del juego | 450 |
+| Coincidentes byte a byte | 362 |
+| En C, pendientes de afinar (`NON_MATCHING`) | 60 |
+| Escritas a mano, conservadas en ensamblador | 16 |
+| Sin traducir | 12 |
+| Bytes coincidentes | 59692 de 201416 |
+| Porcentaje de bytes coincidentes | 29.64 % |
+
+Para reproducirlo (hace falta una copia propia del disco en `BBLIT_DISC`):
+
+```
+python tools/build.py clean
+python tools/build.py split
+python tools/build.py build
+python tools/build.py verify      # debe imprimir OK con SHA-256 0fad70d9b4cb324d78f113f7fd70c0aa954388fefad01af373509e0473c87df0
+python tools/build.py progreso
+python tools/build.py diff <funcion>   # comprueba una funcion (por ejemplo func_80036204)
+```
+<!-- progreso:fin -->
+
 Este repositorio **no contiene ningun dato del juego**: ni la imagen del disco, ni el
 ejecutable, ni texturas, modelos o audio. Para construir hace falta una copia propia del
 disco original. Todo lo que se deriva del disco (desensamblado, archivos extraidos,
