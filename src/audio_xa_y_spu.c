@@ -149,6 +149,14 @@ typedef struct PitchVoz {
     u16 pitch;
 } PitchVoz;
 
+/* Entrada de 16 bytes de las tablas de sonidos: volumen base en +2 (func_8003FDEC, func_8003FEEC). */
+typedef struct ParamSonido {
+    u8 prioridad;
+    u8 flags;
+    s16 vol;
+    u8 pad04[12];
+} ParamSonido;
+
 extern Sonido D_80069F28[];
 extern s8 D_8006B2E0[];
 extern s8 D_80069DD0[];
@@ -167,9 +175,9 @@ extern u8* D_800694EC;
 extern void SsUtReverbOff(void);
 extern void func_8004D860(s32 a0, s32 a1);
 extern s32 func_8003FB54(s8 a0);
-extern s32 func_8003FA2C(s32 a0, s32 a1);
-extern s16 func_8003FDEC(s16 a0, s16 a1, s16 a2, u16 a3);
-extern void func_8003FEEC(s16 a0, s16 a1, s16 a2, s16 a3, u16 a4);
+extern s32 func_8003FA2C(s32 a0, s16 a1);
+extern s16 func_8003FDEC(s16 a0, s16 a1, s32 a2, u16 a3);
+extern void func_8003FEEC(s16 a0, s16 a1, s16 a2, s32 a3, u16 a4);
 
 void func_8003DF84(void)
 {
@@ -248,7 +256,6 @@ void func_8003E16C(u8 track)
     s32 n;
     s32 acc;
     s32 pos;
-    CdlLOC* l;
 
     if (track >= 2) {
         acc = 0;
@@ -327,7 +334,7 @@ INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003E680);
 void func_8003E88C(void)
 {
     CdlLOC loc;
-    u8 v;
+    s32 v;
 
     if (D_8006955E == 0) {
         do {
@@ -495,27 +502,25 @@ INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003F3F0);
 
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003F528);
 
-/* Pendiente: puntuacion 360 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
-#ifdef NON_MATCHING
 void func_8003F900(void* a0)
 {
     s32 i;
     u16 f;
+    Voz* v;
 
+    v = D_8006B378;
     for (i = 0; i < 0x18; i++) {
-        f = D_8006B378[i].flags;
-        if ((f & 0x8000) && D_8006B378[i].objeto == a0 && (D_8006B378[i].efecto->flags & 0x10)) {
+        f = v->flags;
+        if ((f & 0x8000) && v->objeto == a0 && (v->efecto->flags & 0x10)) {
             if (f & 1) {
-                D_8006B378[i].flags = 0;
+                v->flags = 0;
             } else {
-                D_8006B378[i].flags = 0x8002;
+                v->flags = 0x8002;
             }
         }
+        v++;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003F900);
-#endif
 
 void func_8003F984(void)
 {
@@ -538,14 +543,14 @@ s32 func_8003F9C4(u8* a0, u32 a1)
     return ret;
 }
 
-/* Pendiente: puntuacion 1705 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
-#ifdef NON_MATCHING
-s32 func_8003FA2C(s32 a0, s32 a1)
+s32 func_8003FA2C(s32 a0, s16 a1)
 {
     Sonido* s;
+    Sonido* t;
     s32 v;
 
-    s = &D_80069F28[a0];
+    t = D_80069F28;
+    s = &t[a0];
     v = func_8003FB54(s->prioridad);
     if (v == -1) {
         return -1;
@@ -557,25 +562,24 @@ s32 func_8003FA2C(s32 a0, s32 a1)
     } else {
         SpuSetVoiceStartAddr(v, D_80069550[s->indice] + 0x1010);
     }
-    SpuSetReverbVoice((D_80069F28[a0].flags & 4) ? 1 : 0, 1 << v);
+    if (D_80069F28[a0].flags & 4) {
+        SpuSetReverbVoice(1, 1 << v);
+    } else {
+        SpuSetReverbVoice(0, 1 << v);
+    }
     return v;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003FA2C);
-#endif
 
-/* Pendiente: puntuacion 1620 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
-#ifdef NON_MATCHING
 s32 func_8003FB54(s8 a0)
 {
     s32 menor;
     s32 libre;
     s32 i;
     s32 p;
-    s8 orig;
+    s32 minimo;
 
-    orig = a0;
     menor = 0x19;
+    minimo = a0;
     libre = menor;
     for (i = 0; i < 0x18; i++) {
         if (D_8006B2E0[i] == 0) {
@@ -583,27 +587,22 @@ s32 func_8003FB54(s8 a0)
             break;
         }
         p = D_80069DD0[i];
-        if (p < a0) {
+        if (p < minimo) {
             menor = i;
-            a0 = p;
+            minimo = p;
         }
     }
-    if (libre == 0x19) {
-        if (menor == libre) {
-            return -1;
-        }
-        D_80069DD0[menor] = orig;
+    if (libre != 0x19) {
+        D_80069DD0[libre] = a0;
+        return libre;
+    }
+    if (menor != libre) {
+        D_80069DD0[menor] = a0;
         return menor;
     }
-    D_80069DD0[libre] = orig;
-    return libre;
+    return -1;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003FB54);
-#endif
 
-/* Pendiente: puntuacion 25 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
-#ifdef NON_MATCHING
 u32 func_8003FC04(void)
 {
     s32 i;
@@ -611,9 +610,10 @@ u32 func_8003FC04(void)
     u32 apagadas;
 
     SpuGetAllKeysStatus(D_8006B2E0);
+    i = 0;
     activas = 0;
     apagadas = 0;
-    for (i = 0; i < 0x18; i++) {
+    for (; i < 0x18; i++) {
         if (D_8006B2E0[i] == 1) {
             activas |= 1 << i;
         } else {
@@ -624,9 +624,6 @@ u32 func_8003FC04(void)
     SpuSetKey(0, apagadas);
     return activas;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003FC04);
-#endif
 
 void func_8003FC88(void)
 {
@@ -646,85 +643,72 @@ void func_8003FC88(void)
     D_800694F6 = 1;
 }
 
-/* Pendiente: puntuacion 225 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
-#ifdef NON_MATCHING
 void func_8003FD60(void)
 {
     s32 i;
-    PitchVoz* p;
 
-    i = 0;
-    if (D_800694CA > 0) {
-        p = D_8006D8C8;
-        do {
-            if (p->voz != -1) {
-                SpuSetVoicePitch(p->voz, p->pitch);
-            }
-            i++;
-            p++;
-        } while (i < D_800694CA);
+    for (i = 0; i < D_800694CA; i++) {
+        if (D_8006D8C8[i].voz != -1) {
+            SpuSetVoicePitch(D_8006D8C8[i].voz, D_8006D8C8[i].pitch);
+        }
     }
     D_800694CA = 0;
     D_800694F6 = 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003FD60);
-#endif
 
 /* Pendiente: puntuacion 1770 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
 #ifdef NON_MATCHING
-s16 func_8003FDEC(s16 a0, s16 a1, s16 a2, u16 a3)
+s16 func_8003FDEC(s16 a0, s16 a1, s32 a2, u16 a3)
 {
-    s16* idx;
+    s16* p;
     u8* base;
-    u8* e;
 
+
+    a2 >>= 16;
     if (a3 & 0x400) {
-        idx = D_800695FC;
+        p = D_800695FC + a0;
         base = D_800694EC;
     } else {
-        idx = D_800695AC;
+        p = D_800695AC + a0;
         base = D_8006966C;
     }
-    e = base + idx[a0] + (a1 << 4);
-    D_80069F28[0].prioridad = e[0];
-    D_80069F28[0].flags = e[1];
-    D_80069F28[0].vol_l = *(s16*)(e + 2) * (a2 & 0xFF);
-    D_80069F28[0].vol_r = *(s16*)(e + 2) * ((a2 >> 8) & 0xFF);
-    D_80069F28[0].s6 = e[4];
-    D_80069F28[0].pitch = *(u16*)(e + 8);
-    D_80069F28[0].wA = *(u16*)(e + 0xA);
-    D_80069F28[0].wC = *(u16*)(e + 0xC);
-    D_80069F28[0].indice = *(s16*)(e + 0xE);
+    base += *p;
+    base += a1 << 4;
+    D_80069F28[0].prioridad = base[0];
+    D_80069F28[0].flags = base[1];
+    D_80069F28[0].vol_l = *(s16*)(base + 2) * (a2 & 0xFF);
+    D_80069F28[0].vol_r = *(s16*)(base + 2) * (((u32)a2 >> 8) & 0xFF);
+    D_80069F28[0].s6 = base[4];
+    D_80069F28[0].pitch = *(u16*)(base + 8);
+    D_80069F28[0].wA = *(u16*)(base + 0xA);
+    D_80069F28[0].wC = *(u16*)(base + 0xC);
+    D_80069F28[0].indice = *(s16*)(base + 0xE);
     return func_8003FA2C(0, a3);
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003FDEC);
 #endif
 
-/* Pendiente: puntuacion 840 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
-#ifdef NON_MATCHING
-void func_8003FEEC(s16 a0, s16 a1, s16 a2, s16 a3, u16 a4)
+void func_8003FEEC(s16 a0, s16 a1, s16 a2, s32 a3, u16 a4)
 {
-    s16* idx;
+    s16* p;
     u8* base;
-    u8* e;
     s32 v;
+    u32 vol;
 
+    vol = a3 >> 16;
     if (a4 & 0x400) {
-        idx = D_800695FC;
+        p = D_800695FC + a1;
         base = D_800694EC;
     } else {
-        idx = D_800695AC;
+        p = D_800695AC + a1;
         base = D_8006966C;
     }
-    e = base + idx[a1] + (a2 << 4);
-    v = *(s16*)(e + 2);
-    SpuSetVoiceVolume(a0, v * (a3 & 0xFF), v * ((a3 >> 8) & 0xFF));
+    base += *p;
+    base += a2 << 4;
+    v = ((ParamSonido*)base)->vol;
+    SpuSetVoiceVolume(a0, v * (vol & 0xFF), v * ((vol >> 8) & 0xFF));
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003FEEC);
-#endif
 
 INCLUDE_RODATA("asm/nonmatchings/audio_xa_y_spu", D_80067EF0);
 
