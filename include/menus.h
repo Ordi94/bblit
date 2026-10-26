@@ -54,16 +54,17 @@ typedef struct ModeloDibujo {
 } ModeloDibujo;
 
 /*
- * Objeto de escena visto por las rutinas de dibujo (la misma memoria que Objeto): banderas en +4,
+ * Vista transitoria de Objeto para las rutinas de dibujo, pendiente de fundir con Objeto en la
+ * consolidacion de tipos (la misma memoria): banderas en +4,
  * +8 y +0xC, identificadores en +0x26..+0x3E, el nodo de jerarquia empotrado en +0x7C, un
  * contador en +0xC4, la profundidad en +0xD4 y la posicion en +0xE4..+0xEC.
  */
-typedef struct ObjetoEscena {
+typedef struct ObjetoDibujo {
     u8 pad00[0x04];
     u32 flags04;
     u32 flags08;
     u32 flags0C;
-    struct ObjetoEscena* sig;
+    struct ObjetoDibujo* sig;
     u32 flags14;
     u32 flags18;
     u8 pad1C[0x26 - 0x1C];
@@ -84,7 +85,7 @@ typedef struct ObjetoEscena {
     u16 h52;
     u16 h54;
     u8 pad56[0x70 - 0x56];
-    struct ObjetoEscena* p70;
+    struct ObjetoDibujo* p70;
     u8 pad74[4];
     struct ModeloDibujo* modelos;
     u8 nodo[4];
@@ -96,7 +97,7 @@ typedef struct ObjetoEscena {
     s32 xE4;
     s32 yE8;
     s32 zEC;
-} ObjetoEscena;
+} ObjetoDibujo;
 
 /* Pila de func_8003AF8C para func_8001CE64: puntero al nodo, vector de entrada y acumulador. */
 typedef struct PilaNodo {
@@ -123,8 +124,6 @@ typedef struct SpriteDibujo {
     u32 semitransparente;
 } SpriteDibujo;
 
-
-
 /* Vertice de la caja que func_8003DD70 prueba contra la pantalla: x en +8, y en +0xA, 12 bytes. */
 typedef struct VerticeCaja {
     u8 pad00[8];
@@ -147,14 +146,6 @@ typedef struct ObjetoCamara {
     u8 pad00[0x10];
     GsCOORDINATE2* coord;
 } ObjetoCamara;
-
-/*
- * Vector de tres palabras en t4..t6 guardado en memoria: el mismo estilo de macro de vector que
- * geometria.h (los temporales fijos $8 y $12..$14 y la direccion copiada a $8).
- */
-#define GEO_GUARDAR_W_T4(p) \
-    __asm__ volatile ("move $8, %0\n\tsw $12, 0($8)\n\tsw $13, 4($8)\n\tsw $14, 8($8)" \
-                      : : "r"(p) : "$8", "memory")
 
 /* Vertice fuente de 12 bytes: posicion en espacio objeto, coordenadas de textura, color y codigo. */
 typedef struct Vertice12 {
@@ -309,7 +300,7 @@ typedef struct PoligonoGT4 {
 } PoligonoGT4;
 
 /*
- * Zona sin nombre de la camara (D_8006D928, EstadoCamara.pad20): func_8003B5AC deja aqui tres copias
+ * Vista de EstadoCamara.pad20 (D_8006D928), pendiente de fundir con esa estructura: func_8003B5AC deja aqui tres copias
  * de la posicion del punto de vista (+0x68, +0x94, +0xB4) y de su punto de mira (+0x6C.., +0xA4..)
  * cuando el objeto en curso lo pide.
  */
@@ -332,12 +323,6 @@ typedef struct CopiasCamara {
     s32 cBC;
 } CopiasCamara;
 
-/* Estado principal en 0x80010000 visto por func_8003B5AC: solo el byte del telon de la pantalla (+0x76). */
-typedef struct EstadoPantalla {
-    u8 pad00[0x76];
-    u8 b76;
-} EstadoPantalla;
-
 /*
  * Estado que se pasa al dibujador de modelos del overlay (func_80010204/func_80010258): los
  * primeros bytes de la escena. +0..+2: bytes de estado (func_8003B26C y func_8003B354);
@@ -352,7 +337,7 @@ typedef struct EstadoDibujo {
     u8 pad03;
     s16 s4;
     s16 s6;
-    volatile u16 w8;
+    u16 w8;
     u8 pad0A[2];
     u16 w0C;
     u16 w0E;
@@ -376,7 +361,7 @@ typedef struct EscenaDibujo {
     u16* cuenta_b;
     s32 inicio;
     s32 limite;
-    ObjetoEscena* objeto;
+    ObjetoDibujo* objeto;
 } EscenaDibujo;
 
 /*

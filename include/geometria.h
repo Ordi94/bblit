@@ -83,6 +83,7 @@ typedef struct TrabajoBaldosa {
  *
  * GEO_CARGAR_W(p)        t1..t3 = vector de 3 palabras en p
  * GEO_RESTAR_W(p)        t4..t6 = t1..t3 - (vector de 3 palabras en p)
+ * GEO_GUARDAR_W_T4(p)    vector de 3 palabras en p = t4..t6 (tras GEO_RESTAR_W)
  * GEO_GUARDAR_H_T4(p)    vector de 3 medias palabras en p = t4..t6
  * GEO_GUARDAR_W_T1(p)    vector de 3 palabras en p = t1..t3
  * GEO_COMPLEMENTO(p)     t1..t3 = 0x1000 - vector de 3 medias palabras en p
@@ -101,6 +102,13 @@ typedef struct TrabajoBaldosa {
     __asm__ volatile ("move $8, %0\n\tlw $12, 0($8)\n\tlw $13, 4($8)\n\tlw $14, 8($8)\n\t" \
                       "sub $12, $9, $12\n\tsub $13, $10, $13\n\tsub $14, $11, $14" \
                       : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
+/*
+ * Guarda en p el vector de tres palabras de t4..t6 ($12..$14). Depende de que un GEO_RESTAR_W previo
+ * haya dejado ahi la resta; la direccion se copia a $8 como en el resto de macros del grupo.
+ */
+#define GEO_GUARDAR_W_T4(p) \
+    __asm__ volatile ("move $8, %0\n\tsw $12, 0($8)\n\tsw $13, 4($8)\n\tsw $14, 8($8)" \
+                      : : "r"(p) : "$8", "memory")
 #define GEO_GUARDAR_H_T4(p) \
     __asm__ volatile ("move $8, %0\n\tsh $12, 0($8)\n\tsh $13, 2($8)\n\tsh $14, 4($8)" \
                       : : "r"(p) : "$8", "memory")

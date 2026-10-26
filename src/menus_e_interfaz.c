@@ -2,6 +2,7 @@
 #include "globales.h"
 #include "gte.h"
 #include "geometria.h"
+#include "arranque.h"
 #include "menus.h"
 
 /*
@@ -65,12 +66,14 @@ extern u8 D_80069600;
 extern void* D_800694D8;
 extern void* D_800695C4;
 extern ModeloDibujo* D_8006B568[];
-extern ObjetoEscena* D_8006AD80[];
+/* Tabla de punteros a objetos visibles (palabras de 4 bytes: sw con indice * 4 en func_8003B5AC); el otro archivo que la usa la declara u8[]. */
+extern u8 D_8006AD80[];
 extern EntradaCola D_8006D1C8[];
 extern EntradaVisible D_8006A940[];
 
 /* Rutinas de otros archivos y del overlay (func_80010204 y func_80010258 dibujan un modelo). */
 extern void func_80039CD0(s32 cursor);
+/* Recibe en a0 la direccion de la pila local (addiu a0,sp,...); movimiento_y_objetos_de_escena_2.c la declara con Entidad*, tipo que este archivo no conoce. */
 extern void func_8001CE64(void* pila);
 extern ColorYDesplazamiento* func_8001DF28(void* objeto, void* vista);
 extern s32 func_8003760C(void* geometria, void* vista, void* vista_siguiente);
@@ -82,10 +85,10 @@ extern s32 func_80012AB0(s32 cursor, EstadoDibujo* estado);
 
 /* Rutinas de este archivo que se llaman antes de definirse. */
 extern void func_8003DF10(s32 cursor);
-extern /* Mayor profundidad de los tres vertices proyectados (SZ1..SZ3), dividida entre cuatro. */
-s32 func_8003D7C4(void);
-extern /* Igual que func_8003D7C4 para cuatro vertices (SZ0..SZ3). */
-s32 func_8003D814(void);
+/* Mayor profundidad de los tres vertices proyectados (SZ1..SZ3), dividida entre cuatro. */
+extern s32 func_8003D7C4(void);
+/* Igual que func_8003D7C4 para cuatro vertices (SZ0..SZ3). */
+extern s32 func_8003D814(void);
 extern void func_8003D880(VistaDibujo* ctx);
 extern void func_8003D904(Vertice12* dest, Vertice12* a, Vertice12* b);
 extern void func_8003D988(Vertice12* dest, Vertice12* a, Vertice12* b);
@@ -95,10 +98,10 @@ extern void func_8003CA5C(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
 extern void func_8003D0D4(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
 extern void func_8003C1C8(VistaDibujo* vista);
 extern s32 func_8003BDD0(ModeloDibujo* modelo);
-extern void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
+extern void func_8003C014(ObjetoDibujo* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
 
 /* Estado principal (solo el telon de pantalla) y copias de la camara que deja el dibujo por cuadro. */
-#define PANT ((EstadoPantalla*)0x80010000)
+#define PANT ESTADO_PRINCIPAL
 #define COPIAS ((CopiasCamara*)&D_8006D928)
 
 void func_8003AA38(void)
@@ -443,13 +446,14 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B354);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 160 con la configuracion versionada (g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el reparto v0/v1 del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado) y el orden de dos movimientos de argumentos antes de func_8003AE08. El almacen volatil de D_800694E2 y el campo w8 volatil del estado reproducen las cargas y almacenes del original. Variantes probadas: 80 (900 permutaciones de las escrituras del prologo, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). */
-void func_8003B5AC(ObjetoEscena* lista)
+/* Pendiente: puntuacion 1518 con la configuracion versionada (-G0 salvo g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el registro de la carga del desplazamiento geometrico (gte_SetGeomOffset usa t4/t5 y el original t2/t3), el reparto v0/v1 del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado, y el almacen de D_800694E2 se coloca antes que la relectura), el orden de las cargas de los limites del buffer en el prologo y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (900 permutaciones de las escrituras del prologo, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). Con D_8006AD80 declarada como ObjetoDibujo*[] la puntuacion baja a 1085; con el cast local sube a 1518 porque cambia el reparto de la base de la tabla. */
+void func_8003B5AC(ObjetoDibujo* lista)
 {
     EscenaDibujo* esc;
     VistaDibujo* vista = (VistaDibujo*)0x1F800038;
+    ObjetoDibujo** visibles = (ObjetoDibujo**)D_8006AD80; /* La tabla guarda punteros de 4 bytes: lui/addiu s7 con la base y sw indexado. */
     ModeloDibujo* modelo;
-    ObjetoEscena* obj;
+    ObjetoDibujo* obj;
     s32 color;
     s32 k;
     s32 rr;
@@ -463,18 +467,14 @@ void func_8003B5AC(ObjetoEscena* lista)
     s32 qz;
     s8 hecho;
     u16 nivel;
-    s32 cero;
-    s32 cero2;
 
     func_8003ABB4();
     esc = (EscenaDibujo*)0x1F800000;
-    cero = 0;
-    cero2 = cero;
     D_800695A2 = 0;
     D_800695A4 = 0;
     D_80069600 = 0;
     D_80069532 = 0;
-    __asm__ volatile ("ctc2 %0, $24\n\tctc2 %1, $25" : : "r"(cero), "r"(cero2));
+    gte_SetGeomOffset(0, 0);
     esc->cuenta_a = &D_800695A2;
     esc->cuenta_b = &D_800695A4;
     esc->inicio = D_80069680;
@@ -484,7 +484,7 @@ void func_8003B5AC(ObjetoEscena* lista)
     esc->ot2 = (u32*)D_8006AEA0[D_8006967C].org;
     esc->objeto = lista;
     D_8006D928.flags80 &= 0xFCFF;
-    if (PANT->b76 != 0) {
+    if (PANT->f76 != 0) {
         ((GsBOXF*)vista)->x = -0x100;
         ((GsBOXF*)vista)->y = -0x78;
         ((GsBOXF*)vista)->w = 0x200;
@@ -492,22 +492,22 @@ void func_8003B5AC(ObjetoEscena* lista)
         ((GsBOXF*)vista)->b = 0;
         ((GsBOXF*)vista)->g = 0;
         ((GsBOXF*)vista)->r = 0;
-        if ((s8)PANT->b76 > 0) {
+        if ((s8)PANT->f76 > 0) {
             D_8006D928.flags80 = D_8006D928.flags80 | 0x8000;
-            ((GsBOXF*)vista)->h = PANT->b76;
+            ((GsBOXF*)vista)->h = PANT->f76;
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
             ((GsBOXF*)vista)->y = 0x78 - ((GsBOXF*)vista)->h;
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
-            if (PANT->b76 < 0x1E) {
-                PANT->b76 += 2;
+            if (PANT->f76 < 0x1E) {
+                PANT->f76 += 2;
             }
         } else {
             D_8006D928.flags80 = D_8006D928.flags80 & 0x7CFF;
-            ((GsBOXF*)vista)->h = -(s8)PANT->b76;
+            ((GsBOXF*)vista)->h = -(s8)PANT->f76;
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
             ((GsBOXF*)vista)->y = 0x78 - ((GsBOXF*)vista)->h;
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
-            PANT->b76 += 2;
+            PANT->f76 += 2;
         }
     }
     if (D_8006966A != 0) {
@@ -517,7 +517,7 @@ void func_8003B5AC(ObjetoEscena* lista)
             nivel = D_80069668;
         }
         esc->estado.w8 = nivel;
-        *(volatile u16*)&D_800694E2 = nivel;
+        D_800694E2 = nivel;
         k = (s16)esc->estado.w8 / 16 - 1;
         if (k < 0) {
             color = 0;
@@ -566,7 +566,7 @@ void func_8003B5AC(ObjetoEscena* lista)
             if (esc->objeto->w3A != 0) {
                 if (D_80069532 < 0x28) {
                     if ((Objeto*)esc->objeto != D_80069698 || (D_8006D928.flags80 & 0x20) == 0) {
-                        D_8006AD80[D_80069532++] = esc->objeto;
+                        visibles[D_80069532++] = esc->objeto;
                     }
                 } else {
                     for (;;) {
@@ -640,95 +640,10 @@ void func_8003B5AC(ObjetoEscena* lista)
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B5AC);
 #endif
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 5924 con la configuracion versionada (g = 8 del archivo). Escrita a mano: carga las seis palabras de los tres vertices siguientes con lw mientras el GTE proyecta los actuales, usa mtc2 desde registros s0-s5, un rtpt sin nop previos y tres promedios con t4-t9 fijos; el compilador no reparte los registros ni ordena las cargas como el original. Variantes probadas: 3 (estructura con macros de ensamblador en linea, con y sin retardos, desenrollado manual). */
-/* Salida de la proyeccion: x e y empaquetados y z con signo en 8 bytes (D_8006B668). */
-typedef struct SalidaVertice {
-    u32 xy;
-    s16 z;
-    s16 pad06;
-} SalidaVertice;
-
-extern SalidaVertice D_8006B668[];
-
-/*
- * Promedio de dos coordenadas empaquetadas (x en la mitad baja, y en la alta): la mascara
- * 0xFFFEFFFE evita el arrastre entre mitades y el bit 15 se conserva fuera del desplazamiento.
- */
-#define MEDIA_XY(a, b) ((((s32)((a) & 0xFFFEFFFE) >> 1) | ((a) & 0x8000)) + (((s32)((b) & 0xFFFEFFFE) >> 1) | ((b) & 0x8000)))
-
-#define GUARDAR_VERTICE(sxy, zv, indice)     {         SalidaVertice* sal;         if ((s16)(indice) & 0x8000) {             sal = &D_8006B668[(indice) & 0x7FFF];             (sxy) = MEDIA_XY(sxy, sal->xy);             (zv) = ((zv) >> 1) + ((s32)(sal->z << 16) >> 17);         } else {             sal = &D_8006B668[(s16)(indice)];         }         sal->xy = (sxy);         sal->z = (zv);         cuenta = cuenta - 1;         if (cuenta == 0) {             return 1;         }     }
-
-s32 func_8003BDD0(ModeloDibujo* obj)
-{
-    DatosVertices* datos;
-    u32* p;
-    u32 w0;
-    u32 w1;
-    u32 w2;
-    u32 w3;
-    u32 w4;
-    u32 w5;
-    u32 i0;
-    u32 i1;
-    u32 i2;
-    s32 sxy0;
-    s32 sxy1;
-    s32 sxy2;
-    s32 z0;
-    s32 z1;
-    s32 z2;
-    s32 cuenta;
-
-    datos = obj->vertices;
-    cuenta = datos->cuenta;
-    if (cuenta == 0) {
-        return 0;
-    }
-    p = datos->vertices;
-    w0 = p[0];
-    w1 = p[1];
-    w2 = p[2];
-    w3 = p[3];
-    w4 = p[4];
-    w5 = p[5];
-    do {
-        __asm__ volatile ("mtc2 %0, $0
-	mtc2 %1, $1
-	mtc2 %2, $2
-	mtc2 %3, $3
-	mtc2 %4, $4
-	mtc2 %5, $5"
-                          : : "r"(w0), "r"(w1), "r"(w2), "r"(w3), "r"(w4), "r"(w5));
-        i0 = (s32)w1 >> 16;
-        i1 = w3 >> 16;
-        i2 = w5 >> 16;
-        gte_rtpt();
-        p += 6;
-        w0 = p[0];
-        w1 = p[-4];
-        w2 = p[-3];
-        w3 = p[-2];
-        w4 = p[-1];
-        w5 = p[0];
-        __asm__ volatile ("mfc2 %0, $12
-	mfc2 %1, $17
-	mfc2 %2, $13
-	mfc2 %3, $18
-	mfc2 %4, $14
-	mfc2 %5, $19"
-                          : "=r"(sxy0), "=r"(z0), "=r"(sxy1), "=r"(z1), "=r"(sxy2), "=r"(z2));
-        GUARDAR_VERTICE(sxy0, z0, i0)
-        GUARDAR_VERTICE(sxy1, z1, i1)
-        GUARDAR_VERTICE(sxy2, z2, i2)
-    } while (cuenta > 0);
-    return 1;
-}
-#else
+/* Rutina escrita a mano en el original: sin prologo de pila, registros temporales fijos y mtc2 desde s0-s5 con la lectura de los vertices siguientes adelantada. */
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003BDD0);
-#endif
 
-void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista)
+void func_8003C014(ObjetoDibujo* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista)
 {
     estado->w0C = D_8006969C;
     if (entidad->w3C & 2) {
