@@ -30,6 +30,18 @@ g = 8
 [archivos.interprete_de_eventos]
 g = 8
 
+[archivos.gestion_y_dibujo_de_objetos]
+g = 8
+
+[archivos.gestion_y_dibujo_de_objetos_2]
+g = 8
+
+[archivos.gestion_y_dibujo_de_objetos_3]
+g = 8
+
+[archivos.gestion_y_dibujo_de_objetos_4]
+g = 8
+
 # Enlace. gp: valor de $gp que fija el codigo de arranque del juego (lui gp,0x8007 ;
 # addiu gp,gp,-0x6CE0). build lo define como _gp en el enlace; las referencias relativas a $gp
 # de los objetos C se resuelven contra el. Es un simbolo absoluto: no cambia ningun byte.
