@@ -143,8 +143,13 @@ void func_800449E0(u8* a0)
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449E0);
 #endif
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). Mismas escrituras y mismo orden; el original coloca lui a0 de la primera llamada despues de la lectura de D_800695A6 y la planificacion del compilador la adelanta. Variantes probadas: 6. */
+/*
+ * Reinicia el estado del motor: banderas, indices de los tres buffers, tabla de punteros de datos
+ * del codigo superpuesto (D_8006B2F8) y camara. Los dos buffers del mando (D_8006CFF0 y
+ * D_8006D038) se pasan por direccion de un byte suelto: con -G8 la direccion de un objeto de
+ * hasta 8 bytes se emite como un solo `la`, que el planificador no parte ni usa para rellenar el
+ * hueco de retardo del `jal`, igual que el original.
+ */
 void func_80044A04(void)
 {
     s32 buffer;
@@ -171,8 +176,8 @@ void func_80044A04(void)
     D_800694BC = 0;
     D_80069602 = 0x80;
     D_80069628 = D_80069676;
-    func_800449E8(D_8006CFF0);
-    func_800449E8(D_8006D038);
+    func_800449E8(&D_8006CFF0);
+    func_800449E8(&D_8006D038);
     func_800400C0();
     D_800694C8 = -1;
     D_8006962C = 0x1E;
@@ -239,9 +244,6 @@ void func_80044A04(void)
     D_8006D928.vpx = 0;
     D_80069558 = NULL;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044A04);
-#endif
 
 void func_80044D44(void)
 {
@@ -474,8 +476,7 @@ s32 func_800453D0(u8** p)
         t = *p;
         n++;
         do {
-            n++;
-        } while ((t[n - 1] >> 4) == 3);
+        } while ((t[n++] >> 4) == 3);
         n--;
     }
     i = n - 1;

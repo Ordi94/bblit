@@ -39,9 +39,11 @@ extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
  * un vector fijo (0, 0, -100) da el desplazamiento del punto de vista, y la mira queda en la
  * posicion, 400 unidades por debajo. El resultado se copia a las cuatro copias del estado de
  * la camara y se marca la bandera 0x40 de seguimiento fijo.
+ *
+ * Las sumas de la posicion con el vector rotado se escriben una sola vez y las demas copias
+ * salen del campo ya escrito: con una variable temporal el compilador carga el vector rotado
+ * antes que la posicion y el reparto de v0/a0 queda invertido respecto al original.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 40 con la configuracion versionada (g = 8 del archivo). Mismas escrituras y orden; en la suma de la posicion con el vector rotado el original carga el operando de la posicion en v0 y el del vector en a0, el C los carga al reves. Variantes probadas: 9. */
 void func_8001CC68(VECTOR* p)
 {
     MATRIX m;
@@ -66,30 +68,25 @@ void func_8001CC68(VECTOR* p)
     t = p->vz;
     c->cAC = t;
     c->z = t;
-    t = p->vx + r.vx;
-    c->c68 = t;
-    c->c94 = t;
-    c->vpx = t;
-    c->cB4 = t;
+    c->c68 = p->vx + r.vx;
+    c->c94 = c->c68;
+    c->vpx = c->c68;
+    c->cB4 = c->c68;
     t = p->vy - 0x190;
     c->c6C = t;
     c->c98 = t;
     c->vpy = t;
     c->cB8 = t;
-    t = p->vz + r.vz;
     D_800693F8 = 0;
-    c->c70 = t;
-    c->c9C = t;
-    c->vpz = t;
-    c->cBC = t;
+    c->c70 = p->vz + r.vz;
+    c->c9C = c->c70;
+    c->vpz = c->c70;
+    c->cBC = c->c70;
     ang = D_80069698->param.giro.u.y + 0x800;
     c->flags80 |= 0x40;
     D_80069416 = ang;
     D_80069402 = ang;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001CC68);
-#endif
 
 /*
  * Cursor de animacion de un objeto: fotograma actual en +0, nodo de la secuencia elegida en

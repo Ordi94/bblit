@@ -634,11 +634,13 @@ extern s32 D_80069690;
 /* D_8006AA7C: accesos del ensamblador: lbu x17 */
 extern u8 D_8006AA7C;
 
-/* D_8006CFF0 */
-extern u8 D_8006CFF0[];
-
-/* D_8006D038 */
-extern u8 D_8006D038[];
+/*
+ * D_8006CFF0 y D_8006D038: buffers del mando. Se declaran como bytes sueltos y no como arreglos: el
+ * original los direcciona con un `la` indivisible (lui y addiu contiguos, sin relleno del hueco de
+ * retardo del jal), que solo se emite para objetos de hasta 8 bytes con -G8 (func_80044A04).
+ */
+extern u8 D_8006CFF0;
+extern u8 D_8006D038;
 
 /* D_80076130 */
 extern MATRIX D_80076130;

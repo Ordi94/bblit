@@ -741,20 +741,21 @@ void func_80031424(Objeto* a0, Accion* a1)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 190 con la configuracion versionada (g = 8 del archivo). El original deja el objeto controlado en a2 y el enlace p70 en a0 con una copia en v1; GCC los reparte en a0 y a1 sin esa copia. Variantes probadas: 8 (a0 reasignado, locales h y c, copia c = a0 antes y despues, puntero j al objeto controlado). */
+/* Pendiente: puntuacion 85 con la configuracion versionada (g = 8 del archivo). Las instrucciones coinciden; solo difiere el reparto de registros: el original deja el objeto controlado en a2 y el enlace p70 en a0 (copia en v1) y GCC los reparte en a0 y a1 porque la carga del puntero se planifica despues de la ultima lectura del parametro. */
 void func_8003147C(Objeto* a0, Accion* a1)
 {
     Objeto* c;
+    Objeto* p;
     D_80069698->param.giro.u.y = a0->param.giro.u.y + 0x800;
     D_80069698->w17E = 0;
     D_80069698->w17C = ACC_W4(a1);
     D_80069698->flags14 |= 0x2000000;
-    a0 = D_80069698->p70;
-    if (a0 != 0) {
+    p = D_80069698->p70;
+    if (p != 0) {
         D_80069698->coord.super = NULL;
         D_80069698->coord.param = PARAMETROS_SDK(D_80069698);
-        c = a0;
-        if (c->p6C == c) {
+        c = D_80069698->p70;
+        if (c->p6C == p) {
             c->p6C = 0;
         }
         D_80069698->p70 = 0;
