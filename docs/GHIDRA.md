@@ -272,7 +272,7 @@ instruccion es destino de un `switch` consumido por la anterior.
 | Simbolos de funcion | 908 antes, 1101 despues (908 - 1 + 194); 1102 con la regla del retorno intermedio |
 | Funciones nuevas | 194, de 8 a 424 bytes cada una (6 de 8 bytes): 92 salen de `func_8002F9F8` y 102 de `func_80030ECC` |
 | Bloques madre tras partir | `func_8002F9F8` y `func_80030ECC` quedan de `0x38` bytes (el despachador y los `jr ra` de las rutas por defecto) |
-| Funciones del juego en el rango | 449 (antes 256 con `symbols.txt` y 262 con el parche) |
+| Funciones del juego en el rango | 449 tras partir por tablas (antes 256 con `symbols.txt` y 262 con el parche); 450 con la regla del retorno intermedio |
 | Destinos no aplicados | 23, todos en el codigo de librerias (fuera del rango del juego); ninguno en el juego |
 
 `func_8002FA60`, `func_8002FB38` y `func_80030DA4`, que seguian fundidas con el parche, ya no lo estan: son
@@ -301,10 +301,12 @@ la copia salvo lo que se indica):
   sin ellas el codigo de las funciones nuevas desaparece del ejecutable. Se resolvio regenerando `src/` con la
   particion por subsistema (`docs/DESCOMPILACION.md`).
 - Con el parche retirado (archivo y linea de `symbol_addrs_path`) y las lineas de `src/` adaptadas:
-  `python tools/build.py clean && split && build && verify` da OK (SHA-256 `0fad70d9...c87df0`). Estado actual
-  con 5 funciones en C: `asm/` tiene 1096 `glabel` (2 de `boot`, 650 de `libs`, 444 de `nonmatchings`) y hay 5
-  funciones en C, es decir 1101, que es el total de la tabla; el texto desensamblado conserva las 13 palabras
-  `.word`; `progreso` informa 5 funciones en C de 449 (452 de 201416 bytes).
+  `python tools/build.py clean && split && build && verify` da OK (SHA-256 `0fad70d9...c87df0`). Estado de
+  entonces, con 5 funciones en C y 1101 funciones en la tabla (historico): `asm/` tenia 1096 `glabel` (2 de
+  `boot`, 650 de `libs`, 444 de `nonmatchings`) y habia 5 funciones en C, es decir 1101; el texto
+  desensamblado conserva las 13 palabras `.word`; `progreso` informaba 5 funciones en C de 449 (452 de 201416
+  bytes). Las cifras actuales (1102 funciones, 450 en el rango del juego, 231 en C) estan en «Cifras tras esta
+  regla», mas abajo, y en `docs/PROGRESO.md`.
 
 **Hecho.** `config/simbolos_adicionales.txt` y su linea en `config/splat.yaml` se retiraron, las lineas
 `INCLUDE_ASM` de `src/` se regeneraron con la particion por subsistema y la comprobacion de reparto del archivo
@@ -356,11 +358,11 @@ direcciones de funcion de `build`.
 **Cifras tras esta regla:** 1102 simbolos de funcion (908 - 1 + 194 + 1) y 66 de dato, es decir 1168 lineas en
 `config/symbols.txt`. Las funciones en el rango del juego son 450.
 
-**Pendiente para el dueno de `src/`:** la funcion nueva `func_8002FF58` necesita su linea
+**Linea de `src/` que exige la funcion nueva:** `func_8002FF58` necesita su linea
 `INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8002FF58);` justo despues del bloque de `func_8002FF38` en
-`src/interprete_de_eventos.c`; sin ella el cuerpo enlazado mide 32 bytes menos que la cabecera y `build` falla. Con esa
-unica linea (medido en una copia): `clean`, `split`, `build` y `verify` dan OK, 871 `glabel` en `asm/` mas 231 funciones
-en C suman las 1102 de la tabla. Despues de esa linea el criterio de la tabla de simbolos pasa de 1101 a 1102 funciones.
+`src/interprete_de_eventos.c`; sin ella el cuerpo enlazado mide 32 bytes menos que la cabecera y `build` falla. La
+linea ya esta en `src/interprete_de_eventos.c` y `clean`, `split`, `build` y `verify` dan OK con la tabla de 1102
+funciones (antes de esta regla eran 1101).
 
 ## Nombres de funciones
 

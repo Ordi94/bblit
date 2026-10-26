@@ -100,9 +100,10 @@ Debe salir `OK` para las tres variantes (`a`, `b` y `c`) y `split` debe informar
 por variante, sin palabras sin decodificar. Detalles en `docs/OVERLAY.md`.
 
 `clean` y `split` de `tools/build.py` no tocan `asm/overlay/`, `expected/overlay/` ni `build/overlay/`: el
-overlay sigue verificable con `python -m tools.overlay verify` sin volver a extraer. Si `build` falla,
-un `build/SLUS_008.38` anterior no se borra y `verify` lo daria por bueno: tras un error de compilacion,
-ejecutar `clean` antes de volver a verificar.
+overlay sigue verificable con `python -m tools.overlay verify` sin volver a extraer. Cada `build` borra antes
+de empezar el ejecutable de la construccion anterior: si falla, `build/SLUS_008.38` no existe y `verify`
+responde `FAIL el ejecutable reconstruido no existe` con codigo de salida 1, de modo que un ejecutable
+obsoleto nunca se da por bueno. No hace falta `clean` entre un error de compilacion y el siguiente intento.
 
 ## 7. Analisis derivado
 
@@ -117,4 +118,12 @@ fuera del repositorio:
 
 Resultado esperado: 1596 aristas y 262 de 262 llamadores coincidentes; 15 subsistemas; 256 funciones del
 juego con borrador, 0 fallidas (unos 70 s). Cifras calculadas con la tabla anterior de 908 simbolos; con la
-actual el rango del juego tiene 449 funciones.
+actual el rango del juego tiene 450 funciones.
+
+## 8. Opciones de compilacion por archivo
+
+`config/opciones_compilacion.toml` fija, por archivo `src/<nombre>.c`, las opciones del compilador (hoy el
+umbral de datos pequenos `-G`; los archivos que no figuran compilan con `-G0`). `build`, `diff` y `probar` leen
+ese mismo archivo, asi que compilan cada fuente con las mismas banderas. Si una funcion no coincide con `-G0`,
+se prueba con el `g` del archivo antes de reescribir el C. Formato, archivos que hoy usan `g = 8` y criterio
+para anadir uno nuevo: `docs/DESCOMPILACION.md`, seccion «Opciones de compilacion por archivo».

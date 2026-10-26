@@ -333,9 +333,9 @@ de relleno) y con la actual, y orden final de las funciones en `.text` del objet
 
 Con `-G8` y sin relleno todos los `.globl` salen primero y el `__asm__` de nivel superior cae antes
 de cualquier cuerpo de función C: el ensamblador original queda al principio del archivo. Con el
-relleno, el `__asm__` pasa a ser el cuerpo de una función más y sigue el orden de las demás. El ejemplo,
-las salidas de `cc1` y el listado completo están en `analisis/reconstruccion/orden_emision/`, fuera de
-este repositorio (`ejemplo.c`, `medir_orden.py`, `salidas/` y `orden_emision.txt`).
+relleno, el `__asm__` pasa a ser el cuerpo de una función más y sigue el orden de las demás. Para repetir la
+medición basta compilar un archivo como el del ejemplo con `-G0` y con `-G8` y comparar el orden de las
+etiquetas y de los cuerpos en la salida de `cc1`; la tabla resume ese resultado.
 
 ### Declarar una variable pequeña
 
@@ -404,11 +404,16 @@ d.c       1025
 rota.c    error: CC1PSX.EXE: termino con codigo 33
 ```
 
-Una variante que no compila o no define la función aparece con su error y no detiene a las demás.
+Una variante que no compila aparece con su error y no detiene a las demás.
 El código de salida es 0 solo si la mejor tiene puntuación 0. Límites: 200 variantes por carpeta, 256
 KiB cada una, nombres simples (`[A-Za-z0-9_.-]`). Todo el trabajo queda en `build/diff/`; no escribe
 en `src/`. Se usa antes de `diff`: se prueban muchas formulaciones, se copia la mejor a `src/` bajo
 `NON_MATCHING` y se sigue con `diff`.
+
+**Límite conocido (pendiente):** `probar` no comprueba que la variante defina la función. Una variante vacía, o
+con solo la declaración, no se marca como error: aparece en la tabla con una puntuación alta y distinta de cero
+(medido: 400 para `func_800306C0` y 9800 para `func_80035244`). Hay que comprobar que la variante realmente
+define la función antes de fiarse de su posición en la tabla.
 
 ## Invalidación de la salida
 
