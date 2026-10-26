@@ -29,6 +29,7 @@ RAIZ_REPOSITORIO = Path(__file__).resolve().parents[2]
 RUTA_LOCAL = Path("config") / "local.toml"
 VARIABLE_EMULADOR = "BBLIT_REDUX"
 VARIABLE_BIOS = "BBLIT_BIOS"
+VARIABLE_DISCO = "BBLIT_DISC"
 # Ubicacion de los componentes dentro del toolchain.
 EMULADOR_EN_TOOLCHAIN = "pcsx-redux/pcsx-redux.exe"
 BIOS_EN_TOOLCHAIN = "duckstation/bios/ps-22a.bin"
@@ -256,24 +257,26 @@ def _ejecutar_arrancar(argumentos: argparse.Namespace) -> None:
     _imprimir({"pid": pid, "puerto": argumentos.puerto, "segundosHastaRunning": round(segundos, 2)})
 
 
-def _ejecutar_guardado(argumentos: argparse.Namespace) -> None:
+def _ejecutar_guardado(argumentos: argparse.Namespace, entorno: Mapping[str, str]) -> None:
     """
     Guarda la RAM o la pantalla de un emulador ya arrancado.
 
     Contexto:
-        Subcomandos `volcar` y `capturar`.
+        Subcomandos `volcar` y `capturar`. La carpeta del disco original se toma de `BBLIT_DISC`
+        en el entorno inyectado, el mismo mapping que resuelve las rutas del resto del archivo.
 
     Args:
         argumentos (argparse.Namespace): Argumentos del subcomando.
+        entorno (Mapping[str, str]): Variables de entorno de la invocacion.
 
     Raises:
         EmuladorError: Si el emulador no responde o la respuesta no es valida.
         ValueError: Si el volcado no tiene el tamano de la RAM o la salida es invalida.
 
     Ejemplo:
-        _ejecutar_guardado(argumentos)
+        _ejecutar_guardado(argumentos, entorno)
     """
-    sesion.validar_salida(argumentos.salida, os.environ.get("BBLIT_DISC"))
+    sesion.validar_salida(argumentos.salida, entorno.get(VARIABLE_DISCO))
     cliente = ClienteRedux(argumentos.puerto)
     datos = cliente.volcar_ram() if argumentos.comando == "volcar" else cliente.capturar_pantalla()
     argumentos.salida.parent.mkdir(parents=True, exist_ok=True)
@@ -391,22 +394,23 @@ def main(
     Ejemplo:
         codigo = main(["comparar", "--volcado", "ram.bin", "--direccion", "0x80014A00", "--archivo", "x"])
     """
+    variables = os.environ if entorno is None else entorno
     ejecutores = {
         "arrancar": _ejecutar_arrancar,
-        "volcar": _ejecutar_guardado,
-        "capturar": _ejecutar_guardado,
         "comparar": _ejecutar_comparar,
         "apagar": _ejecutar_apagar,
         "sesion": _ejecutar_sesion,
     }
     try:
-        argumentos = construir_parser(entorno, raiz).parse_args(argv)
+        argumentos = construir_parser(variables, raiz).parse_args(argv)
         if argumentos.comando == "pausar":
             ClienteRedux(argumentos.puerto).pausar()
             _imprimir({"estado": "pausado"})
         elif argumentos.comando == "reanudar":
             ClienteRedux(argumentos.puerto).reanudar()
             _imprimir({"estado": "en marcha"})
+        elif argumentos.comando in ("volcar", "capturar"):
+            _ejecutar_guardado(argumentos, variables)
         else:
             ejecutores[argumentos.comando](argumentos)
     except (ValueError, EmuladorError) as error:

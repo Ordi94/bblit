@@ -240,7 +240,7 @@ def _comando_simbolos(args: argparse.Namespace, entorno: Mapping[str, str]) -> i
     """Ejecuta el subcomando ``simbolos``."""
     for ruta, opcion in ((args.salida, "--salida"), (args.tablas, "--tablas"), (args.nuevas, "--nuevas")):
         _exigir_archivo_de_salida(ruta, opcion)
-    segmento =leer_segmento(resolver_ejecutable(args.exe, entorno))
+    segmento = leer_segmento(resolver_ejecutable(args.exe, entorno))
     depuracion = depurar_funciones(leer_funciones_csv(args.funciones), segmento)
     inicios = [f.direccion for f in depuracion.funciones]
     corridas = detectar_corridas(

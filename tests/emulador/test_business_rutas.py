@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 from tools.emulador import cli
 
+from tests.emulador.dobles import ClienteFalso, ram_con
+
 
 @pytest.fixture
 def repositorio(tmp_path: Path) -> Path:
@@ -121,3 +123,39 @@ def test_un_local_toml_invalido_se_informa_sin_traza_y_con_codigo_uno(
     (repositorio / "config" / "local.toml").write_text("esto no es toml [", encoding="utf-8")
     assert cli.main(["apagar"], {}, repositorio) == 1
     assert capsys.readouterr().out == "error: config/local.toml no es un TOML valido\n"
+
+
+@pytest.mark.parametrize("subcomando", ["volcar", "capturar"])
+def test_guardado_toma_el_disco_del_entorno_inyectado_y_no_del_proceso(tmp_path, monkeypatch, subcomando):
+    """BBLIT_DISC sale del entorno que recibe `main`, no de `os.environ`."""
+    (tmp_path / "disc").mkdir()
+    disco = tmp_path / "disc" / "juego.bin"
+    disco.write_bytes(b"x")
+    monkeypatch.delenv("BBLIT_DISC", raising=False)
+    codigo = cli.main(
+        [subcomando, "--salida", str(tmp_path / "disc" / "salida.bin")], entorno={"BBLIT_DISC": str(disco)}
+    )
+    assert codigo == 1
+    assert not (tmp_path / "disc" / "salida.bin").exists()
+
+
+@pytest.mark.parametrize("subcomando", ["volcar", "capturar"])
+def test_guardado_ignora_el_disco_del_proceso_si_el_entorno_inyectado_difiere(
+    tmp_path, monkeypatch, subcomando
+):
+    """Un BBLIT_DISC real distinto no protege nada: manda el mapping inyectado."""
+    (tmp_path / "disc").mkdir()
+    disco = tmp_path / "disc" / "juego.bin"
+    disco.write_bytes(b"x")
+    monkeypatch.setenv("BBLIT_DISC", str(disco))
+    monkeypatch.setattr(
+        cli, "ClienteRedux", lambda puerto: ClienteFalso(pantallas=[b"p"], rams=[ram_con(0, b"x")])
+    )
+    destino = tmp_path / "disc" / "salida.bin"
+    assert (
+        cli.main(
+            [subcomando, "--salida", str(destino)], entorno={"BBLIT_DISC": str(tmp_path / "otro" / "x.bin")}
+        )
+        == 0
+    )
+    assert destino.is_file()
