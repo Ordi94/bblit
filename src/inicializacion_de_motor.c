@@ -71,7 +71,7 @@ extern u8 D_80069664[];
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044904);
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1460 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: neg y add con trampa de desbordamiento, registros fijos t0 a t2 y el temporal at en slt; GCC emite negu, addu y otro reparto de registros. Variantes probadas: 3. */
+/* Pendiente: puntuacion 1460 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: neg y add con trampa de desbordamiento, registros fijos t0 a t2 y el temporal at en slt; GCC emite negu, addu y otro reparto de registros. */
 u32 func_80044940(s32* v)
 {
     s32 x;
@@ -111,7 +111,7 @@ INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044940);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 960 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: registros fijos t0 y t1, nop explicito tras cada lw y el simbolo de la funcion vecina cargado con lui + lw; GCC reparte v0, v1 y a0. Variantes probadas: 2. */
+/* Pendiente: puntuacion 960 con la configuracion versionada (g = 8 del archivo). Ensamblador manuscrito: registros fijos t0 y t1, nop explicito tras cada lw y el simbolo de la funcion vecina cargado con lui + lw; GCC reparte v0, v1 y a0. */
 void func_800449B0(void)
 {
     u32* destino;
@@ -358,7 +358,7 @@ void func_800450E8(Glifo* a0, u8 a1, OrigenEntrada* a2)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 3641 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s6 al contador y s7 y fp a las dimensiones del glifo, el C los reparte al reves y desplaza el resto de la planificacion. Variantes probadas: 8. */
+/* Pendiente: puntuacion 3641 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s6 al contador y s7 y fp a las dimensiones del glifo, el C los reparte al reves y desplaza el resto de la planificacion. */
 void func_80045150(EntradaLista* e)
 {
     Glifo* g;
