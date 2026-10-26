@@ -21,7 +21,6 @@ extern void func_8001CBB8(Objeto* o, Movimiento* d, ResultadoBaldosa* r, void* w
 extern void func_8001D414(s16 accion);
 extern void func_8001D994(Objeto* o);
 extern void func_8001E1A4(Objeto* o, ConsultaPlano* c);
-extern void func_8001CFCC(GsCOORDINATE2* n);
 extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
 extern void func_8003AA7C(u8 modo, u16 duracion);
 extern void func_80032894(void);
