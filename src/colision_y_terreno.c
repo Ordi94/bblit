@@ -61,7 +61,822 @@ void func_80019364(s32* a0)
     }
 }
 
+/*
+ * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
+ * del barrido; la zona original es de solo lectura.
+ */
+#define COPIAR_ZONA(d, s) \
+    { \
+        (d)->grupo = grupo; \
+        (d)->pendiente = (s)->pendiente; \
+        (d)->columnas = (s)->columnas; \
+        (d)->pad06 = (s)->pad06; \
+        (d)->ancho_x = (s)->ancho_x; \
+        (d)->ancho_z = (s)->ancho_z; \
+        (d)->x = (s)->x; \
+        (d)->z = (s)->z; \
+        (d)->y_max = (s)->y_max; \
+        (d)->y_min = (s)->y_min; \
+    }
+
+/* Al llegar a 15 entradas el historial conserva las cuatro ultimas y vuelve al indice 3. */
+#define COMPACTAR_HISTORIAL \
+    { \
+        w->celdas[0] = w->celdas[w->n - 3]; \
+        w->celdas[1] = w->celdas[w->n - 2]; \
+        w->celdas[2] = w->celdas[w->n - 1]; \
+        w->celdas[3] = w->celdas[w->n]; \
+        w->zonas[0] = w->zonas[w->n - 3]; \
+        w->zonas[1] = w->zonas[w->n - 2]; \
+        w->zonas[2] = w->zonas[w->n - 1]; \
+        w->zonas[3] = w->zonas[w->n]; \
+        w->n = 3; \
+    }
+
+/* Indice de la celda previa: la anterior al indice de escritura, o la misma si es la primera. */
+#define INDICE_PREVIO \
+    { \
+        if (w->n > 0) { \
+            w->prev = w->n - 1; \
+        } else { \
+            w->prev = w->n; \
+        } \
+    }
+
+/*
+ * Cierre del barrido cuando el desplazamiento se recorrio entero: la celda final decide si el
+ * resultado es un plano de transicion (0x7E) o una pendiente.
+ */
+#define CIERRE_COMPLETO \
+    { \
+        INDICE_PREVIO; \
+        zona = w->zonas[w->n]; \
+        if (w->celdas[w->n] == 0x7E) { \
+            if (w->n < k) { \
+                w->n = 0; \
+            } \
+            if (w->celdas[w->n - k] == 0x7E) { \
+                pos[1] = zona->y_max; \
+                res->clase = w->celdas[0]; \
+                res->flags = 8; \
+                res->pendiente = 0; \
+                res->pendiente_abs = 0; \
+                res->grupo = zona->grupo; \
+                techo = zona->y_min; \
+                ret = 1; \
+                res->zona = zona; \
+                res->techo = techo; \
+                return ret; \
+            } \
+            pos[1] = zona->y_max; \
+            res->clase = w->celdas[0]; \
+            w->t0 = w->celdas[w->prev]; \
+            if (w->t0 == 0x7E) { \
+                w->t0 = 0; \
+                res->flags = 8; \
+            } else { \
+                res->flags = 2; \
+                if (w->t0 > 0) { \
+                    w->t0 = -w->t0; \
+                    res->flags = res->flags | 0x20; \
+                } \
+            } \
+            w->t0 = w->t0 * zona->pendiente; \
+            res->pendiente = w->t0; \
+            res->pendiente_abs = w->t0; \
+            res->grupo = zona->grupo; \
+            techo = zona->y_min; \
+            ret = 1; \
+            res->zona = zona; \
+            res->techo = techo; \
+            return ret; \
+        } \
+        pos[1] = zona->y_max; \
+        res->clase = w->celdas[0]; \
+        w->t0 = w->celdas[w->prev]; \
+        if (w->t0 == 0x7E) { \
+            w->t0 = 0; \
+            res->flags = 8; \
+        } else { \
+            res->flags = 2; \
+            if (w->t0 > 0) { \
+                w->t0 = -w->t0; \
+            } \
+        } \
+        res->pendiente = w->t0 * zona->pendiente; \
+        w->t0 = w->celdas[w->n]; \
+        if (w->t0 > 0) { \
+            w->t0 = -w->t0; \
+            res->flags = res->flags | 0x20; \
+        } \
+        res->pendiente_abs = w->t0 * zona->pendiente; \
+        res->grupo = zona->grupo; \
+        techo = zona->y_min; \
+        ret = 1; \
+        res->zona = zona; \
+        res->techo = techo; \
+        return ret; \
+    }
+
+#define CIERRE_COMPLETO_XZ \
+    { \
+        INDICE_PREVIO; \
+        zona = w->zonas[w->n]; \
+        if (w->celdas[w->n] == 0x7E) { \
+            if (w->n < k) { \
+                w->n = 0; \
+            } \
+            if (w->celdas[w->n - k] == 0x7E) { \
+                pos[1] = zona->y_max; \
+                res->clase = w->celdas[0]; \
+                res->flags = 8; \
+                res->pendiente = 0; \
+                res->pendiente_abs = 0; \
+                res->grupo = zona->grupo; \
+                techo = zona->y_min; \
+                ret = 1; \
+                res->zona = zona; \
+                res->techo = techo; \
+                return ret; \
+            } \
+            pos[1] = zona->y_max; \
+            res->clase = w->celdas[0]; \
+            w->t0 = w->celdas[w->prev]; \
+            if (w->t0 == 0x7E) { \
+                w->t0 = 0; \
+                res->flags = 8; \
+            } else { \
+                res->flags = 2; \
+                if (w->t0 > 0) { \
+                    w->t0 = -w->t0; \
+                    res->flags = res->flags | 0x20; \
+                } \
+            } \
+            w->t0 = w->t0 * zona->pendiente; \
+            res->pendiente = w->t0; \
+            res->pendiente_abs = w->t0; \
+            res->grupo = zona->grupo; \
+            techo = zona->y_min; \
+            ret = 1; \
+            res->zona = zona; \
+            res->techo = techo; \
+            return ret; \
+        } \
+        pos[1] = zona->y_max; \
+        res->clase = w->celdas[0]; \
+        w->t0 = w->celdas[w->prev]; \
+        if (w->t0 == 0x7E) { \
+            w->t0 = 0; \
+            res->flags = 8; \
+        } else { \
+            res->flags = 2; \
+            if (w->t0 > 0) { \
+                w->t0 = -w->t0; \
+            } \
+        } \
+        res->pendiente = w->t0 * zona->pendiente; \
+        w->t0 = w->celdas[w->n]; \
+        if (w->t0 == 0x7E) { \
+            w->t0 = 0; \
+            res->flags = 8; \
+        } else if (w->t0 > 0) { \
+            w->t0 = -w->t0; \
+            res->flags = res->flags | 0x20; \
+        } \
+        res->pendiente_abs = w->t0 * zona->pendiente; \
+        res->grupo = zona->grupo; \
+        techo = zona->y_min; \
+        ret = 1; \
+        res->zona = zona; \
+        res->techo = techo; \
+        return ret; \
+    }
+
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 710 con la configuracion versionada (g = 0 del archivo). Difieren el orden de
+ * las escrituras del avance por subcelda y por baldosa del recorrido general (rangos
+ * 0x8001A050-0x8001A563), el reparto de v0/v1 en las banderas de los planos 0x7E y 0x7F del caso
+ * estatico (0x8001BCD4-0x8001BF6B) y la posicion de dos instrucciones del prologo. diff solo compara
+ * las primeras 1024 instrucciones (completa: 2080).
+ */
+/*
+ * Barrido de un desplazamiento (desp) del punto pos contra el terreno por baldosas: avanza baldosa a
+ * baldosa (320 unidades) y subcelda a subcelda (40 unidades) hasta que una pared (celda 0x7F), un
+ * escalon de mas de 100 unidades o el final de las zonas lo detiene; recorta desp a lo recorrido,
+ * baja la altura de pos[1] a la base de la zona final y rellena res (clase, banderas, pendiente,
+ * grupo, techo y zona). Sin desplazamiento solo consulta la baldosa bajo el punto. Devuelve 0 si el
+ * punto sale de las zonas y 1 en los demas casos. w es el area de trabajo del scratchpad: si no cabe
+ * ahi (w + 0x1C8 > 0x1F8003FF) la rutina se queda en un bucle infinito a proposito.
+ *
+ * Tres recorridos casi gemelos segun las componentes no nulas de desp: ambas (caso general, con
+ * pendientes de 12 bits de fraccion), solo x y solo z. k es una constante de una sola asignacion
+ * (el desfase de partida del historial en el cierre): el compilador la deja como equivalente a 0 y
+ * no la pliega en las comparaciones del cierre. cl y f llevan el valor de la clase y de las banderas
+ * a la escritura comun de los planos 0x7E y 0x7F; tx y tz conservan el valor previo de un punto de
+ * cruce antes de sobrescribirlo.
+ */
+s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* w)
+{
+    ZonaColision* zona;
+    ZonaColision* cur;
+    u16 grupo;
+    s16 c;
+    s16 k = 0;
+    s32 techo;
+    s32 ret;
+    u16 cl;
+    u16 f;
+    s32 dx;
+    s32 dz;
+    s32 px;
+    s32 pz;
+    s32 tx;
+    s32 tz;
+
+    if (0x1F8003FFU < (u32)w + 0x1C8) {
+        for (;;) { }
+    }
+    GEO_CARGAR_W(pos);
+    GEO_GUARDAR_W_T1(w);
+    zona = func_8001BF9C((s32*)w, res->grupo);
+    res->zona = zona;
+    if (zona == NULL) {
+        res->clase = 1;
+        res->flags = 1;
+        res->pendiente = 0;
+        res->pendiente_abs = 0;
+        res->tipo = 0;
+        res->grupo = -1;
+        return 0;
+    }
+    w->n = 0;
+    w->cual = 0;
+    w->prev = 0;
+    w->celdas[w->n] = 0;
+    cur = &w->copia[w->cual];
+    w->zonas[w->n] = cur;
+    grupo = zona->grupo;
+    COPIAR_ZONA(cur, zona);
+    GEO_CARGAR_W(w);
+    GEO_GUARDAR_W_T1(&w->bx);
+    GEO_CARGAR_W(w);
+    GEO_GUARDAR_W_T1(&w->ax);
+    if (desp != NULL) {
+        dx = desp[0];
+        w->dx = dx;
+        dz = desp[2];
+        w->dz = dz;
+        if ((dx | dz) != 0) {
+            if (w->dx != 0) {
+                if (dz != 0) {
+                    /* Caso general: avanza en x y en z a la vez. */
+                    if (w->dx > 0) {
+                        w->paso_x = 0x140;
+                        w->celda_x = 0x28;
+                        w->lin_x = (w->x / 320) * 0x140 + 0x140;
+                    } else if (w->dx < 0) {
+                        w->paso_x = -0x140;
+                        w->celda_x = -0x28;
+                        w->lin_x = (w->x / 320) * 0x140 - 1;
+                    }
+                    if (w->dz > 0) {
+                        w->paso_z = 0x140;
+                        w->celda_z = 0x28;
+                        w->lin_z = (w->z / 320) * 0x140 + 0x140;
+                    } else if (w->dz < 0) {
+                        w->paso_z = -0x140;
+                        w->celda_z = -0x28;
+                        w->lin_z = (w->z / 320) * 0x140 - 1;
+                    }
+                    px = (w->dz << 12) / w->dx;
+                    w->pend_x = px;
+                    pz = (w->dx << 12) / w->dz;
+                    w->pend_z = pz;
+                    w->cbz_z = w->lin_z;
+                    w->cbx_x = w->lin_x;
+                    w->cbz_x = ((pz * (w->lin_z - w->z)) >> 12) + w->x;
+                    w->cbx_z = ((px * (w->lin_x - w->x)) >> 12) + w->z;
+                    do {
+                        if (w->bx < cur->x || w->bx >= cur->x + cur->ancho_x
+                            || w->bz < cur->z || w->bz >= cur->z + cur->ancho_z) {
+                            w->aux = w->by;
+                            w->by = w->y;
+                            zona = func_8001BF9C(&w->bx, res->grupo);
+                            if (zona == NULL) {
+                                INDICE_PREVIO;
+                                pos[1] = cur->y_max;
+                                desp[0] = w->ax - w->x;
+                                desp[2] = w->az - w->z;
+                                res->clase = w->celdas[0];
+                                res->flags = 2;
+                                w->t0 = w->celdas[w->prev];
+                                if (w->t0 == 0x7E) {
+                                    w->t0 = 0;
+                                } else if (w->t0 > 0) {
+                                    w->t0 = -w->t0;
+                                }
+                                res->pendiente = w->t0 * cur->pendiente;
+                                w->t0 = w->celdas[w->n];
+                                if (w->t0 == 0x7E) {
+                                    w->t0 = 0;
+                                } else if (w->t0 > 0) {
+                                    w->t0 = -w->t0;
+                                    res->flags = res->flags | 0x20;
+                                }
+                                res->pendiente_abs = w->t0 * cur->pendiente;
+                                res->grupo = grupo;
+                                techo = cur->y_min;
+                                ret = 0;
+                                res->zona = zona;
+                                res->techo = techo;
+                                return ret;
+                            }
+                            w->cual = 1;
+                            w->by = w->aux;
+                            grupo = zona->grupo;
+                            cur = &w->copia[w->cual];
+                            COPIAR_ZONA(cur, zona);
+                        }
+                        w->baldosa = zona->baldosas[(w->bx - cur->x) / 320
+                                                    + (w->bz - cur->z) / 320 * cur->columnas];
+                        res->tipo = w->baldosa & 0xF000;
+                        w->baldosa = w->baldosa & 0xFFF;
+                        w->rx = w->bx % 320;
+                        w->rz = w->bz % 320;
+                        w->bx = w->bx - w->rx;
+                        w->bz = w->bz - w->rz;
+                        if (w->celda_x > 0) {
+                            w->lim_x = (w->rx / 40) * 0x28 + 0x28;
+                        } else {
+                            w->lim_x = (w->rx / 40) * 0x28 - 1;
+                        }
+                        if (w->celda_z > 0) {
+                            w->lim_z = (w->rz / 40) * 0x28 + 0x28;
+                        } else {
+                            w->lim_z = (w->rz / 40) * 0x28 - 1;
+                        }
+                        w->sz_z = w->lim_z;
+                        w->sx_x = w->lim_x;
+                        w->sz_x = ((w->pend_z * (w->lim_z - w->rz)) >> 12) + w->rx;
+                        w->sx_z = ((w->pend_x * (w->lim_x - w->rx)) >> 12) + w->rz;
+                        do {
+                            w->n = w->n + 1;
+                            w->celdas[w->n] = (s8)((u8(*)[64])zona->subceldas)[w->baldosa][w->rx / 40 + (w->rz / 40) * 8];
+                            w->zonas[w->n] = cur;
+                            c = w->celdas[w->n];
+                            if (c == 0x7E) {
+                                c = 0;
+                            } else if (c > 0 && c < 0x7E) {
+                                c = -c;
+                            }
+                            if (w->n == 0xF) {
+                                COMPACTAR_HISTORIAL;
+                            }
+                            if ((c == 0x7F && w->n >= 2)
+                                || cur->y_max + c * cur->pendiente - w->y < -0x64) {
+                                if (w->n > 0) {
+                                    w->n = w->n - 1;
+                                }
+                                zona = w->zonas[w->n];
+                                pos[1] = zona->y_max;
+                                w->bx = w->ax - w->x;
+                                w->bz = w->az - w->z;
+                                if (w->dx > 0) {
+                                    if (w->bx < w->dx) {
+                                        w->dx = w->bx;
+                                    }
+                                } else {
+                                    if (w->dx < w->bx) {
+                                        w->dx = w->bx;
+                                    }
+                                }
+                                if (w->dz > 0) {
+                                    if (w->bz < w->dz) {
+                                        w->dz = w->bz;
+                                    }
+                                } else {
+                                    if (w->dz < w->bz) {
+                                        w->dz = w->bz;
+                                    }
+                                }
+                                desp[0] = w->dx;
+                                desp[2] = w->dz;
+                                res->clase = w->celdas[0];
+                                if (w->n == 0xE) {
+                                    res->flags = 2;
+                                } else {
+                                    res->flags = 0x16;
+                                }
+                                w->t0 = w->celdas[w->n];
+                                if (w->t0 == 0x7E) {
+                                    w->t0 = 0;
+                                    res->flags = 0x1C;
+                                } else if (w->t0 > 0) {
+                                    w->t0 = -w->t0;
+                                    res->flags = res->flags | 0x20;
+                                }
+                                w->t0 = w->t0 * zona->pendiente;
+                                res->pendiente = w->t0;
+                                res->pendiente_abs = w->t0;
+                                res->grupo = zona->grupo;
+                                techo = zona->y_min;
+                                ret = 1;
+                                res->zona = zona;
+                                res->techo = techo;
+                                return ret;
+                            }
+                            w->ax = w->rx + w->bx;
+                            w->dsz_x = w->rx - w->sz_x;
+                            w->az = w->rz + w->bz;
+                            w->ant_x = w->acc_x;
+                            w->dsz_z = w->rz - w->sz_z;
+                            w->ant_z = w->acc_z;
+                            w->acc_x = w->rx + w->bx - w->x;
+                            w->acc_z = w->rz + w->bz - w->z;
+                            w->dsx_x = w->rx - w->sx_x;
+                            w->dsx_z = w->rz - w->sx_z;
+                            w->d_sz = SquareRoot0(w->dsz_x * w->dsz_x + w->dsz_z * w->dsz_z);
+                            w->d_sx = SquareRoot0(w->dsx_x * w->dsx_x + w->dsx_z * w->dsx_z);
+                            if (w->d_sz < w->d_sx) {
+                                if (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z) {
+                                    tx = w->sz_x;
+                                    w->aux = w->sz_y;
+                                    w->rz = w->sz_z;
+                                    w->sz_z = w->lim_z = w->lim_z + w->celda_z;
+                                    w->rx = tx;
+                                    w->sz_x = tx + ((w->pend_z * w->celda_z) >> 12);
+                                } else {
+                                    w->acc_x = w->dx;
+                                }
+                            } else {
+                                if (w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x) {
+                                    tx = w->sx_x;
+                                    tz = w->sx_z;
+                                    w->aux = w->sx_y;
+                                    w->rz = tz;
+                                    w->sx_x = w->lim_x = w->lim_x + w->celda_x;
+                                    w->rx = tx;
+                                    w->sx_z = tz + ((w->pend_x * w->celda_x) >> 12);
+                                } else {
+                                    w->acc_z = w->dz;
+                                }
+                            }
+                            w->t0 = w->x + w->dx;
+                            w->t2 = w->rx + w->bx;
+                            w->t1 = w->z + w->dz;
+                            w->t3 = w->rz + w->bz;
+                            if (w->dx < 0) {
+                                if (w->t2 < w->t0) {
+                                    w->rx = w->rx + (w->t0 - w->t2);
+                                }
+                            } else {
+                                if (w->t0 < w->t2) {
+                                    w->rx = w->rx + (w->t0 - w->t2);
+                                }
+                            }
+                            if (w->dz < 0) {
+                                if (w->t3 < w->t1) {
+                                    w->rz = w->rz + (w->t1 - w->t3);
+                                }
+                            } else {
+                                if (w->t1 < w->t3) {
+                                    w->rz = w->rz + (w->t1 - w->t3);
+                                }
+                            }
+                        } while ((u32)w->rx < 0x140U && (u32)w->rz < 0x140U
+                                 && ((w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x)
+                                     || (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z)));
+                        w->ebz_x = w->x - w->cbz_x;
+                        w->ebz_z = w->z - w->cbz_z;
+                        w->ebx_x = w->x - w->cbx_x;
+                        w->ebx_z = w->z - w->cbx_z;
+                        w->d_bz = SquareRoot0(w->ebz_x * w->ebz_x + w->ebz_z * w->ebz_z);
+                        w->d_bx = SquareRoot0(w->ebx_x * w->ebx_x + w->ebx_z * w->ebx_z);
+                        if (w->d_bz < w->d_bx) {
+                            tx = w->cbz_x;
+                            w->bz = w->cbz_z;
+                            w->cbz_z = w->lin_z = w->lin_z + w->paso_z;
+                            w->bx = tx;
+                            w->cbz_x = tx + ((w->pend_z * w->paso_z) >> 12);
+                        } else {
+                            tz = w->cbx_z;
+                            tx = w->cbx_x;
+                            w->bz = tz;
+                            w->cbx_x = w->lin_x = w->lin_x + w->paso_x;
+                            w->bx = tx;
+                            w->cbx_z = tz + ((w->pend_x * w->paso_x) >> 12);
+                        }
+                    } while ((w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x)
+                             || (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z));
+                    CIERRE_COMPLETO;
+                }
+                /* Solo en x (dz == 0). */
+                if (w->dx > 0) {
+                    w->paso_x = 0x140;
+                    w->celda_x = 0x28;
+                    w->lin_x = (w->x / 320) * 0x140 + 0x140;
+                } else if (w->dx < 0) {
+                    w->paso_x = -0x140;
+                    w->celda_x = -0x28;
+                    w->lin_x = (w->x / 320) * 0x140 - 1;
+                }
+                w->t1 = (w->bz - cur->z) / 320 * cur->columnas;
+                w->rz = w->bz % 320;
+                w->t3 = w->rz / 40 * 8;
+                do {
+                    if (w->bx < cur->x || w->bx >= cur->x + cur->ancho_x) {
+                        w->aux = w->by;
+                        w->by = w->y;
+                        zona = func_8001BF9C(&w->bx, res->grupo);
+                        if (zona == NULL) {
+                            INDICE_PREVIO;
+                            pos[1] = cur->y_max;
+                            desp[0] = w->ax - w->x;
+                            res->clase = w->celdas[0];
+                            res->flags = 2;
+                            w->t0 = w->celdas[w->prev];
+                            if (w->t0 == 0x7E) {
+                                w->t0 = 0;
+                                res->flags = 8;
+                            } else if (w->t0 > 0) {
+                                w->t0 = -w->t0;
+                            }
+                            res->pendiente = w->t0 * cur->pendiente;
+                            w->t0 = w->celdas[w->n];
+                            if (w->t0 == 0x7E) {
+                                w->t0 = 0;
+                                res->flags = 8;
+                            } else if (w->t0 > 0) {
+                                w->t0 = -w->t0;
+                                res->flags = res->flags | 0x20;
+                            }
+                            res->pendiente_abs = w->t0 * cur->pendiente;
+                            res->grupo = grupo;
+                            techo = cur->y_min;
+                            ret = 0;
+                            res->zona = zona;
+                            res->techo = techo;
+                            return ret;
+                        }
+                        w->cual = 1;
+                        w->by = w->aux;
+                        grupo = zona->grupo;
+                        cur = &w->copia[w->cual];
+                        COPIAR_ZONA(cur, zona);
+                        w->t1 = (w->bz - cur->z) / 320 * cur->columnas;
+                    }
+                    w->baldosa = zona->baldosas[(w->bx - cur->x) / 320 + w->t1];
+                    res->tipo = w->baldosa & 0xF000;
+                    w->baldosa = w->baldosa & 0xFFF;
+                    w->rx = w->bx % 320;
+                    w->bx = w->bx - w->rx;
+                    if (w->celda_x > 0) {
+                        w->lim_x = (w->rx / 40) * 0x28 + 0x28;
+                    } else {
+                        w->lim_x = (w->rx / 40) * 0x28 - 1;
+                    }
+                    do {
+                        w->n = w->n + 1;
+                        w->celdas[w->n] = (s8)((u8(*)[64])zona->subceldas)[w->baldosa][w->rx / 40 + w->t3];
+                        w->zonas[w->n] = cur;
+                        c = w->celdas[w->n];
+                        if (c == 0x7E) {
+                            c = 0;
+                        } else if (c > 0 && c < 0x7E) {
+                            c = -c;
+                        }
+                        if (w->n == 0xF) {
+                            COMPACTAR_HISTORIAL;
+                        }
+                        if ((c == 0x7F && w->n >= 2)
+                            || cur->y_max + c * cur->pendiente - w->y < -0x64) {
+                            if (w->n > 0) {
+                                w->n = w->n - 1;
+                            }
+                            zona = w->zonas[w->n];
+                            pos[1] = zona->y_max;
+                            desp[0] = w->ax - w->x;
+                            res->clase = w->celdas[0];
+                            if (w->n == 0xE) {
+                                res->flags = 2;
+                            } else {
+                                res->flags = 6;
+                            }
+                            w->t0 = w->celdas[w->n];
+                            if (w->t0 == 0x7E) {
+                                w->t0 = 0;
+                                res->flags = 0xC;
+                            } else if (w->t0 > 0) {
+                                w->t0 = -w->t0;
+                                res->flags = res->flags | 0x20;
+                            }
+                            w->t0 = w->t0 * zona->pendiente;
+                            res->pendiente = w->t0;
+                            res->pendiente_abs = w->t0;
+                            res->grupo = zona->grupo;
+                            techo = zona->y_min;
+                            ret = 1;
+                            res->zona = zona;
+                            res->techo = techo;
+                            return ret;
+                        }
+                        w->acc_x = w->rx + w->bx - w->x;
+                        w->ax = w->rx + w->bx;
+                        w->rx = w->lim_x;
+                        w->lim_x = w->lim_x + w->celda_x;
+                    } while ((u32)w->rx < 0x140U
+                             && (w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x));
+                    w->bx = w->lin_x;
+                    w->lin_x = w->lin_x + w->paso_x;
+                } while (w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x);
+                CIERRE_COMPLETO_XZ;
+            }
+            if (dz != 0) {
+                /* Solo en z (dx == 0). */
+                if (w->dz > 0) {
+                    w->paso_z = 0x140;
+                    w->celda_z = 0x28;
+                    w->lin_z = (w->z / 320) * 0x140 + 0x140;
+                } else if (w->dz < 0) {
+                    w->paso_z = -0x140;
+                    w->celda_z = -0x28;
+                    w->lin_z = (w->z / 320) * 0x140 - 1;
+                }
+                w->t0 = (w->bx - cur->x) / 320;
+                w->rx = w->bx % 320;
+                w->t2 = w->rx / 40;
+                do {
+                    if (w->bz < cur->z || w->bz >= cur->z + cur->ancho_z) {
+                        w->aux = w->by;
+                        w->by = w->y;
+                        zona = func_8001BF9C(&w->bx, res->grupo);
+                        if (zona == NULL) {
+                            INDICE_PREVIO;
+                            pos[1] = cur->y_max;
+                            desp[2] = w->az - w->z;
+                            res->clase = w->celdas[0];
+                            res->flags = 2;
+                            w->t0 = w->celdas[w->prev];
+                            if (w->t0 == 0x7E) {
+                                w->t0 = 0;
+                                res->flags = 2;
+                            } else if (w->t0 > 0) {
+                                w->t0 = -w->t0;
+                            }
+                            res->pendiente = w->t0 * cur->pendiente;
+                            w->t0 = w->celdas[w->n];
+                            if (w->t0 == 0x7E) {
+                                w->t0 = 0;
+                                res->flags = 2;
+                            } else if (w->t0 > 0) {
+                                w->t0 = -w->t0;
+                                res->flags = res->flags | 0x20;
+                            }
+                            res->pendiente_abs = w->t0 * cur->pendiente;
+                            res->grupo = grupo;
+                            techo = cur->y_min;
+                            ret = 0;
+                            res->zona = zona;
+                            res->techo = techo;
+                            return ret;
+                        }
+                        w->cual = 1;
+                        w->by = w->aux;
+                        grupo = zona->grupo;
+                        cur = &w->copia[w->cual];
+                        COPIAR_ZONA(cur, zona);
+                        w->t0 = (w->bx - cur->x) / 320;
+                    }
+                    w->baldosa = zona->baldosas[w->t0 + (w->bz - cur->z) / 320 * cur->columnas];
+                    res->tipo = w->baldosa & 0xF000;
+                    w->baldosa = w->baldosa & 0xFFF;
+                    w->rz = w->bz % 320;
+                    w->bz = w->bz - w->rz;
+                    if (w->celda_z > 0) {
+                        w->lim_z = (w->rz / 40) * 0x28 + 0x28;
+                    } else {
+                        w->lim_z = (w->rz / 40) * 0x28 - 1;
+                    }
+                    do {
+                        w->n = w->n + 1;
+                        w->celdas[w->n] = (s8)((u8(*)[64])zona->subceldas)[w->baldosa][(w->rz / 40) * 8 + w->t2];
+                        w->zonas[w->n] = cur;
+                        c = w->celdas[w->n];
+                        if (c == 0x7E) {
+                            c = 0;
+                        } else if (c > 0 && c < 0x7E) {
+                            c = -c;
+                        }
+                        if (w->n == 0xF) {
+                            COMPACTAR_HISTORIAL;
+                        }
+                        if ((c == 0x7F && w->n >= 2)
+                            || cur->y_max + c * cur->pendiente - w->y < -0x64) {
+                            if (w->n > 0) {
+                                w->n = w->n - 1;
+                            }
+                            zona = w->zonas[w->n];
+                            pos[1] = zona->y_max;
+                            desp[2] = w->az - w->z;
+                            res->clase = w->celdas[0];
+                            if (w->n == 0xE) {
+                                res->flags = 2;
+                            } else {
+                                res->flags = 6;
+                            }
+                            w->t0 = w->celdas[w->n];
+                            if (w->t0 == 0x7E) {
+                                w->t0 = 0;
+                                res->flags = 0xC;
+                            } else if (w->t0 > 0) {
+                                w->t0 = -w->t0;
+                                res->flags = res->flags | 0x20;
+                            }
+                            w->t0 = w->t0 * zona->pendiente;
+                            res->pendiente = w->t0;
+                            res->pendiente_abs = w->t0;
+                            res->grupo = zona->grupo;
+                            techo = zona->y_min;
+                            ret = 1;
+                            res->zona = zona;
+                            res->techo = techo;
+                            return ret;
+                        }
+                        w->acc_z = w->rz + w->bz - w->z;
+                        w->az = w->rz + w->bz;
+                        w->rz = w->lim_z;
+                        w->lim_z = w->lim_z + w->celda_z;
+                    } while ((u32)w->rz < 0x140U
+                             && (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z));
+                    w->bz = w->lin_z;
+                    w->lin_z = w->lin_z + w->paso_z;
+                } while (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z);
+                CIERRE_COMPLETO_XZ;
+            }
+            /*
+             * Camino inalcanzable (con dx y dz nulos se despacha al caso estatico): el original sale
+             * sin asignar el valor de retorno, de modo que no se escribe aqui.
+             */
+            goto fin;
+        }
+    }
+    /* Sin desplazamiento: consulta de la baldosa bajo el punto. */
+    w->baldosa = zona->baldosas[(w->bx - cur->x) / 320 + (w->bz - cur->z) / 320 * cur->columnas];
+    res->tipo = w->baldosa & 0xF000;
+    w->rx = w->bx % 320;
+    w->rz = w->bz % 320;
+    w->baldosa = w->baldosa & 0xFFF;
+    w->celdas[++w->n] = (s8)((u8(*)[64])zona->subceldas)[w->baldosa][w->rx / 40 + w->rz / 40 * 8];
+    c = w->celdas[w->n];
+    if (c > 0 && c < 0x7E) {
+        c = -c;
+    }
+    if (c == 0x7E) {
+        pos[1] = cur->y_max;
+        cl = w->celdas[0];
+        f = 8;
+        goto plano;
+    }
+    if (c == 0x7F) {
+        pos[1] = cur->y_max;
+        cl = w->celdas[0];
+        f = 6;
+plano:
+        res->flags = f;
+        res->pendiente = 0;
+        res->pendiente_abs = 0;
+        res->clase = cl;
+        res->grupo = cur->grupo;
+        techo = cur->y_min;
+        ret = 1;
+        res->zona = zona;
+        res->techo = techo;
+        return ret;
+    }
+    pos[1] = cur->y_max;
+    res->clase = w->celdas[0];
+    res->flags = 2;
+    w->t0 = w->celdas[w->n];
+    if (w->t0 > 0) {
+        w->t0 = -w->t0;
+        res->flags = res->flags | 0x20;
+    }
+    w->t0 = w->t0 * cur->pendiente;
+    res->pendiente = w->t0;
+    res->pendiente_abs = w->t0;
+    res->grupo = cur->grupo;
+    techo = cur->y_min;
+    ret = 1;
+    res->zona = zona;
+    res->techo = techo;
+    return ret;
+fin:
+    ;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/colision_y_terreno", func_80019474);
+#endif
 
 /*
  * Busca la zona que contiene el punto (x, y, z): primero entre las del grupo indicado (si es

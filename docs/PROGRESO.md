@@ -13,7 +13,7 @@ construcción normal) y de la tabla de símbolos.
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
 Bytes de código del juego descompilados: 58740 de 201416 (29.16 %).
-Funciones marcadas `NON_MATCHING`: 63.
+Funciones marcadas `NON_MATCHING`: 64.
 Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
@@ -24,7 +24,7 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 | audio_xa_y_spu | 1 | 34 | 3 | 0 | 6316 | 8220 |
 | camara_y_bucle_logico | 1 | 7 | 4 | 0 | 2348 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 6 | 5 | 0 | 804 | 14264 |
-| colision_y_terreno | 1 | 2 | 1 | 1 | 680 | 12480 |
+| colision_y_terreno | 1 | 2 | 2 | 0 | 680 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
 | gestion_y_dibujo_de_objetos | 4 | 24 | 9 | 9 | 7448 | 18624 |
 | graficos_y_gte | 3 | 13 | 6 | 0 | 3316 | 11812 |
@@ -45,7 +45,7 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 | `src/camara_y_bucle_logico.c` | 7 | 4 | 0 | 2348 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 6 | 3 | 0 | 804 | 13592 |
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 2 | 0 | 0 | 672 |
-| `src/colision_y_terreno.c` | 2 | 1 | 1 | 680 | 12480 |
+| `src/colision_y_terreno.c` | 2 | 2 | 0 | 680 | 12480 |
 | `src/entrada_de_mando.c` | 5 | 1 | 0 | 1260 | 2784 |
 | `src/gestion_y_dibujo_de_objetos.c` | 12 | 3 | 0 | 1696 | 3812 |
 | `src/gestion_y_dibujo_de_objetos_2.c` | 7 | 4 | 9 | 3184 | 10604 |
@@ -76,6 +76,7 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 - `func_80018664`: Pendiente: puntuacion 2420 con la configuracion versionada (g = 8 del archivo). Reparto de registros del prologo (el original usa a0 como copia de la posicion de a) y cadena de comparaciones de las esquinas que el original comparte entre regiones. Variantes probadas: 3. Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
 - `func_80018D98`: Pendiente: puntuacion 108 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido.
 - `func_80018F80`: Pendiente: puntuacion 108 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido.
+- `func_80019474`: Pendiente: puntuacion 710 con la configuracion versionada (g = 0 del archivo). Difieren el orden de las escrituras del avance por subcelda y por baldosa del recorrido general (rangos 0x8001A050-0x8001A563), el reparto de v0/v1 en las banderas de los planos 0x7E y 0x7F del caso estatico (0x8001BCD4-0x8001BF6B) y la posicion de dos instrucciones del prologo. diff solo compara las primeras 1024 instrucciones (completa: 2080).
 - `func_8001C134`: Pendiente: puntuacion 1078 con la configuracion versionada (g = 0, no carga globales). El compilador asigna s0/s1 al reves (el original guarda la estructura de trabajo en s0 y el resultado en s1) y falta un `move t2,a3`. Variantes probadas: 9 (copias de z, orden de sentencias, barreras, copias locales de los punteros de trabajo). Consulta la baldosa bajo el punto pos: busca la zona del punto (con el grupo recordado en res), lee el valor de la baldosa de 320 unidades y la subcelda de 40 unidades, y rellena res con la clase de terreno. 0x7E y 0x7F de la subcelda son transiciones de zona; cualqui
 - `func_8001C424`: Pendiente: puntuacion 1135 con la configuracion versionada (-G0). Misma estructura de ramas y mismos almacenes; en el bloque de despegue el original conserva dos copias de las banderas (move v1,v0) y ordena los almacenes de h108 y w10E de otro modo. Variantes probadas: 14.
 - `func_8001C6CC`: Pendiente: puntuacion 498 con la configuracion versionada (-G0). Misma secuencia de llamadas y almacenes; el original reparte s1 al objeto y s0 al area de trabajo y ordena un almacen de d->z antes de la lectura de w->h18, el C los asigna al reves. Variantes probadas: 7.
@@ -144,7 +145,6 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 
 ## `INCLUDE_ASM` sin comentario en archivos con funciones en C
 
-- `func_80019474` (`src/colision_y_terreno.c`)
 - `func_8003760C` (`src/gestion_y_dibujo_de_objetos_2.c`)
 - `func_800379A0` (`src/gestion_y_dibujo_de_objetos_2.c`)
 - `func_80037B08` (`src/gestion_y_dibujo_de_objetos_2.c`)
