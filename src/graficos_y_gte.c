@@ -59,19 +59,20 @@ extern NodoVolumen* D_80069580;
  * lleva al sistema local del otro objeto con la inversa de sus angulos y se compara con su caja
  * ampliada por el radio. mascara filtra por indicadores; o es el area de trabajo.
  *
- * NON_MATCHING: puntuacion 456 (el archivo se compila con g = 8; 456 tambien con -G0).
- * Diferencia: el original no saca &o->m del bucle y el compilador si.
+ * La matriz se asigna a una variable que vale 0 antes del bucle y se vuelve a asignar dentro: con una sola
+ * asignacion el optimizador de bucles saca &o->m fuera del bucle, y el original lo calcula en cada vuelta.
  */
-#ifdef NON_MATCHING
 ObjetoVolumen* func_80016C0C(ObjetoVolumen* a, u32 mascara, ConsultaVolumen* o)
 {
     SVECTOR* dif;
     SVECTOR* rot;
+    MATRIX* m;
 
     o->actual = D_80069630;
     if (o->actual != 0) {
         dif = &o->dif;
         rot = &o->rot;
+        m = 0;
         do {
             if ((o->actual->indicadores & mascara) && o->actual->tipo == 2 && a != o->actual
                 && a->rel2 != o->actual && a->rel1 != o->actual && o->actual->rel2 != a) {
@@ -87,8 +88,11 @@ ObjetoVolumen* func_80016C0C(ObjetoVolumen* a, u32 mascara, ConsultaVolumen* o)
                         o->radio = o->actual->radio;
                         GEO_COMPLEMENTO(&o->actual->rot);
                         GEO_GUARDAR_H_T1(rot);
-                        RotMatrixZYX(rot, &o->m);
-                        ApplyMatrixSV(&o->m, dif, &o->res);
+                        /* Sin la barrera el compilador adelanta el calculo de &o->m; el original lo hace justo antes de la llamada. */
+                        GEO_BARRERA();
+                        m = &o->m;
+                        RotMatrixZYX(rot, m);
+                        ApplyMatrixSV(m, dif, &o->res);
                         if (o->res.vx >= o->actual->min.vx - o->radio
                             && o->res.vx <= o->actual->max.vx + o->radio
                             && o->res.vz >= o->actual->min.vz - o->radio
@@ -105,9 +109,6 @@ ObjetoVolumen* func_80016C0C(ObjetoVolumen* a, u32 mascara, ConsultaVolumen* o)
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80016C0C);
-#endif
 
 /*
  * Variante de func_80016C0C que copia antes del bucle la posicion y la caja del objeto a al
@@ -168,13 +169,16 @@ ObjetoVolumen* func_80016ED0(ObjetoVolumen* a, u32 mascara, ConsultaCaja* o)
  * que func_80016C0C con &o->m.
  */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 103 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Variantes probadas: 8. */
 ObjetoVolumen* func_800171E4(ObjetoVolumen* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o)
 {
     ObjetoVolumen* n;
     s32 r;
     SVECTOR* dif;
     SVECTOR* rot;
+    MATRIX* m;
 
+    m = 0;
     n = D_80069630;
     if (n != 0) {
         dif = &o->dif;
@@ -193,8 +197,11 @@ ObjetoVolumen* func_800171E4(ObjetoVolumen* a, VECTOR* p, u32 mascara, u32 exclu
                         r = n->radio + 4;
                         GEO_COMPLEMENTO(&n->rot);
                         GEO_GUARDAR_H_T1(rot);
-                        RotMatrixZYX(rot, &o->m);
-                        ApplyMatrixSV(&o->m, dif, &o->res);
+                        GEO_BARRERA();
+                        m = &o->m;
+                        RotMatrixZYX(rot, m);
+                        m = &o->m;
+                        ApplyMatrixSV(m, dif, &o->res);
                         if (o->res.vx >= n->min.vx - r
                             && o->res.vx <= n->max.vx + r
                             && o->res.vz >= n->min.vz - r
