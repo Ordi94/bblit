@@ -295,7 +295,7 @@ sigue:
         c->b09 = n->def->n_eventos;
         c->fotogramas = fot;
         c->b04 = 0;
-        c->flags18 = modo | 0x1200;
+        c->flags18 = modo | ANIM_RECIEN_INICIADA | ANIM_EN_CURSO;
         FLUJO_PISTAS(c) = (u32*)fot;
         c->w00 = n->def->n_cuadros - 1;
         c->duraciones = (ParCuadro*)n->def->tabla;
@@ -318,7 +318,7 @@ sigue:
             }
             t = c->duraciones->ticks;
             c->h02 = 0;
-            c->flags18 = c->flags18 | 0x1000;
+            c->flags18 = c->flags18 | ANIM_RECIEN_INICIADA;
             c->b08 = c->b05 = t;
         }
     }
@@ -477,7 +477,7 @@ siguiente:
     }
     c->b08 = c->b08 - 1;
     if ((u16)c->h02 == c->w00) {
-        c->flags18 = c->flags18 | 0x2000;
+        c->flags18 = c->flags18 | ANIM_ULTIMO_CUADRO;
     }
     return 0x200;
 }
