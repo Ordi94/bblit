@@ -27,7 +27,7 @@ typedef struct PedidoModelo {
 } PedidoModelo;
 
 /*
- * Vertices que func_8003BDD0 proyecta: tabla de pares (xy, z) de 8 bytes y su cuenta. El indice
+ * Vertices que func_8003BDD0 (rutina en ensamblador) proyecta: tabla de pares (xy, z) de 8 bytes y su cuenta. El indice
  * de salida de cada vertice viaja en la mitad alta de la segunda palabra de su par.
  */
 typedef struct DatosVertices {
