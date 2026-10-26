@@ -418,7 +418,7 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B354);
 #endif
 
-/* Pendiente: puntuacion 915 con la configuracion versionada (g = 8 del archivo). Las instrucciones, el reparto de registros del bucle de objetos y la tabla de costes coinciden; difieren el orden de las cargas de los limites del buffer en el prologo (el original carga D_80069680 antes que D_8006958C y guarda el limite primero), la relectura del nivel del fundido tras guardarlo (el compilador reutiliza el registro) y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (orden de las nueve escrituras del prologo con 900 permutaciones, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). */
+/* Pendiente: puntuacion 885 con la configuracion versionada (g = 8 del archivo). Las instrucciones, el reparto de registros del bucle de objetos y la tabla de costes coinciden; difieren el orden de las cargas de los limites del buffer en el prologo (el original carga D_80069680 antes que D_8006958C y guarda el limite primero), la relectura del nivel del fundido tras guardarlo (el compilador reutiliza el registro) y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (orden de las nueve escrituras del prologo con 900 permutaciones, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). */
 #ifdef NON_MATCHING
 void func_8003B5AC(ObjetoEscena* lista)
 {
@@ -453,8 +453,8 @@ void func_8003B5AC(ObjetoEscena* lista)
     __asm__ volatile ("ctc2 %0, $24\n\tctc2 %1, $25" : : "r"(cero), "r"(cero2));
     esc->cuenta_a = &D_800695A2;
     esc->cuenta_b = &D_800695A4;
-    esc->limite = D_8006958C;
     esc->inicio = D_80069680;
+    esc->limite = D_8006958C;
     esc->ot0 = (u32*)D_8006AE20[D_8006967C].org;
     esc->ot1 = (u32*)D_8006AE60[D_8006967C].org;
     esc->ot2 = (u32*)D_8006AEA0[D_8006967C].org;
@@ -616,7 +616,93 @@ void func_8003B5AC(ObjetoEscena* lista)
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B5AC);
 #endif
 
+/* Pendiente: puntuacion 5924 con la configuracion versionada (g = 8 del archivo). Escrita a mano: carga las seis palabras de los tres vertices siguientes con lw mientras el GTE proyecta los actuales, usa mtc2 desde registros s0-s5, un rtpt sin nop previos y tres promedios con t4-t9 fijos; el compilador no reparte los registros ni ordena las cargas como el original. Variantes probadas: 3 (estructura con macros de ensamblador en linea, con y sin retardos, desenrollado manual). */
+#ifdef NON_MATCHING
+/* Salida de la proyeccion: x e y empaquetados y z con signo en 8 bytes (D_8006B668). */
+typedef struct SalidaVertice {
+    u32 xy;
+    s16 z;
+    s16 pad06;
+} SalidaVertice;
+
+extern SalidaVertice D_8006B668[];
+
+/*
+ * Promedio de dos coordenadas empaquetadas (x en la mitad baja, y en la alta): la mascara
+ * 0xFFFEFFFE evita el arrastre entre mitades y el bit 15 se conserva fuera del desplazamiento.
+ */
+#define MEDIA_XY(a, b) ((((s32)((a) & 0xFFFEFFFE) >> 1) | ((a) & 0x8000)) + (((s32)((b) & 0xFFFEFFFE) >> 1) | ((b) & 0x8000)))
+
+#define GUARDAR_VERTICE(sxy, zv, indice)     {         SalidaVertice* sal;         if ((s16)(indice) & 0x8000) {             sal = &D_8006B668[(indice) & 0x7FFF];             (sxy) = MEDIA_XY(sxy, sal->xy);             (zv) = ((zv) >> 1) + ((s32)(sal->z << 16) >> 17);         } else {             sal = &D_8006B668[(s16)(indice)];         }         sal->xy = (sxy);         sal->z = (zv);         cuenta = cuenta - 1;         if (cuenta == 0) {             return 1;         }     }
+
+s32 func_8003BDD0(ModeloDibujo* obj)
+{
+    DatosVertices* datos;
+    u32* p;
+    u32 w0;
+    u32 w1;
+    u32 w2;
+    u32 w3;
+    u32 w4;
+    u32 w5;
+    u32 i0;
+    u32 i1;
+    u32 i2;
+    s32 sxy0;
+    s32 sxy1;
+    s32 sxy2;
+    s32 z0;
+    s32 z1;
+    s32 z2;
+    s32 cuenta;
+
+    datos = obj->vertices;
+    cuenta = datos->cuenta;
+    if (cuenta == 0) {
+        return 0;
+    }
+    p = datos->vertices;
+    w0 = p[0];
+    w1 = p[1];
+    w2 = p[2];
+    w3 = p[3];
+    w4 = p[4];
+    w5 = p[5];
+    do {
+        __asm__ volatile ("mtc2 %0, $0
+	mtc2 %1, $1
+	mtc2 %2, $2
+	mtc2 %3, $3
+	mtc2 %4, $4
+	mtc2 %5, $5"
+                          : : "r"(w0), "r"(w1), "r"(w2), "r"(w3), "r"(w4), "r"(w5));
+        i0 = (s32)w1 >> 16;
+        i1 = w3 >> 16;
+        i2 = w5 >> 16;
+        gte_rtpt();
+        p += 6;
+        w0 = p[0];
+        w1 = p[-4];
+        w2 = p[-3];
+        w3 = p[-2];
+        w4 = p[-1];
+        w5 = p[0];
+        __asm__ volatile ("mfc2 %0, $12
+	mfc2 %1, $17
+	mfc2 %2, $13
+	mfc2 %3, $18
+	mfc2 %4, $14
+	mfc2 %5, $19"
+                          : "=r"(sxy0), "=r"(z0), "=r"(sxy1), "=r"(z1), "=r"(sxy2), "=r"(z2));
+        GUARDAR_VERTICE(sxy0, z0, i0)
+        GUARDAR_VERTICE(sxy1, z1, i1)
+        GUARDAR_VERTICE(sxy2, z2, i2)
+    } while (cuenta > 0);
+    return 1;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003BDD0);
+#endif
 
 void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista)
 {

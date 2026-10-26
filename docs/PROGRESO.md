@@ -13,7 +13,7 @@ construcción normal) y de la tabla de símbolos.
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
 Bytes de código del juego descompilados: 28508 de 201416 (14.15 %).
-Funciones marcadas `NON_MATCHING`: 27.
+Funciones marcadas `NON_MATCHING`: 29.
 Coherencia con el ensamblador: correcta (849 `glabel` en `asm/` + 253 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
@@ -32,7 +32,7 @@ Coherencia con el ensamblador: correcta (849 `glabel` en `asm/` + 253 en C = 110
 | interprete_de_eventos | 1 | 183 | 11 | 3 | 10232 | 11900 |
 | logica_de_niveles | 3 | 0 | 1 | 20 | 0 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
-| menus_e_interfaz | 1 | 22 | 3 | 2 | 9256 | 13644 |
+| menus_e_interfaz | 1 | 22 | 5 | 0 | 9256 | 13644 |
 | movimiento_y_objetos_de_escena | 3 | 1 | 0 | 26 | 236 | 18284 |
 | tarjeta_de_memoria | 1 | 6 | 3 | 1 | 1628 | 5116 |
 
@@ -60,7 +60,7 @@ Coherencia con el ensamblador: correcta (849 `glabel` en `asm/` + 253 en C = 110
 | `src/logica_de_niveles_2.c` | 0 | 0 | 3 | 0 | 2016 |
 | `src/logica_de_niveles_3.c` | 0 | 1 | 16 | 0 | 38752 |
 | `src/manejadores_por_tabla.c` | 12 | 0 | 0 | 384 | 384 |
-| `src/menus_e_interfaz.c` | 22 | 3 | 2 | 9256 | 13644 |
+| `src/menus_e_interfaz.c` | 22 | 5 | 0 | 9256 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 0 | 0 | 4 | 0 | 2116 |
 | `src/movimiento_y_objetos_de_escena_2.c` | 1 | 0 | 14 | 236 | 6336 |
 | `src/movimiento_y_objetos_de_escena_3.c` | 0 | 0 | 8 | 0 | 9832 |
@@ -90,6 +90,8 @@ Coherencia con el ensamblador: correcta (849 `glabel` en `asm/` + 253 en C = 110
 - `func_8003AE08`
 - `func_8003AF8C`
 - `func_8003B354`
+- `func_8003B5AC`
+- `func_8003BDD0`: Salida de la proyeccion: x e y empaquetados y z con signo en 8 bytes (D_8006B668).
 - `func_80040240`: No coincide: puntuacion 240 (el archivo se compila con g = 8; 3210 con -G0). Vibracion del mando: mientras el mando 0 anuncia el modo extendido (PadInfoMode 1 = 7 y PadInfoMode 2 distinto de cero) descuenta los dos temporizadores de pulso (D_80069659 el pequeno, D_8006965A el grande) y fija los motores D_8006965C/D_8006965D si el estado global lo permite (bits 7 y 0 de 0x800100E7); si no, borra todo. Al reconectarse (estado 1) o mientras falte la alineacion, reenvia la vibracion con PadSetAct y PadSetActAlign. Puntuacion 240 con -G8: difiere solo el orden de las dos ultimas instrucciones antes
 - `func_8004048C`: No coincide: puntuacion 7264 (el archivo se compila con g = 8). Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS (D_8006CFF1..7: id, botones invertidos y ejes) en botones logicos y ejes de +/-0x7F. Puntuacion 7264 con -G8 (switch con goto, la formulacion mas cercana): la estructura de saltos y casi todo el cuerpo coinciden; difieren el marco de pila (el original reserva 8 bytes mas, 0x2
 - `func_8004443C`: No coincide: puntuacion 240 (el archivo se compila con g = 8 y define D_800694A8; era 555 con la variable declarada extern y 1254 con -G0). Reinicia el hardware grafico y muestra la pantalla de carga del archivo pedido: apaga los retornos de llamada, limpia la VRAM, carga la imagen asociada y reactiva la pantalla. Para el archivo 3 el numero de pantalla depende de D_80010065 (nivel). Puntuacion 555 con -G8: el cuerpo coincide salvo las cuatro escrituras de 0x188($gp) y el orden de la base de la tabla D_8005F200 frente al indice (el original calcula la base antes del desplazamiento).

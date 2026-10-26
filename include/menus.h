@@ -28,8 +28,17 @@ typedef struct PedidoModelo {
 } PedidoModelo;
 
 /*
+ * Vertices que func_8003BDD0 proyecta: tabla de pares (xy, z) de 8 bytes y su cuenta. El indice
+ * de salida de cada vertice viaja en la mitad alta de la segunda palabra de su par.
+ */
+typedef struct DatosVertices {
+    u32* vertices;
+    s32 cuenta;
+} DatosVertices;
+
+/*
  * Modelo de la tabla D_8006B568 y elemento de las cadenas de dibujo de func_8003C014: enlace al
- * siguiente en +0, banderas en +8 y +0xC, geometria en +0x10, un byte de visibilidad en +0xB4 y
+ * siguiente en +0, banderas en +8 y +0xC, geometria en +0x10, vertices a proyectar en +0x14, un byte de visibilidad en +0xB4 y
  * un byte de estado en +0xB5.
  */
 typedef struct ModeloDibujo {
@@ -39,7 +48,8 @@ typedef struct ModeloDibujo {
     u8 pad0A[2];
     u32 modo;
     void* geometria;
-    u8 pad14[0xB4 - 0x14];
+    DatosVertices* vertices;
+    u8 pad18[0xB4 - 0x18];
     s8 visible;
     u8 estado;
 } ModeloDibujo;
