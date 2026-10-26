@@ -105,7 +105,6 @@ extern void func_8005595C(s32 valor);
 /* Registro de la pantalla de la libreria grafica; el arreglo evita la forma simbolica de -G8 (lui + desplazamiento en el original). */
 extern u16 D_80075FFE[5];
 extern u16 D_8006D018[];
-extern s32 D_80076188;
 extern s32 D_8006958C;
 extern s32 D_80069680;
 extern u16 D_800694E2;
@@ -156,7 +155,6 @@ extern s16 D_80069526;
 extern s16 D_8006969E;
 extern s16 D_8006968A;
 extern s16 D_800695C0;
-extern s32 D_80069558;
 extern void func_800449E8(u8* tabla);
 extern void func_800400C0(void);
 
@@ -164,11 +162,8 @@ extern void func_800400C0(void);
 extern void* D_8006B2F8[27];
 extern u8 D_8006A940[];
 extern u8 D_800695B8[];
-extern u8 D_80069610[];
 extern u8 D_80069664[];
 extern u8 D_8006954C[];
-extern u8 D_800695D0[];
-extern u8 D_8006B658[];
 extern u8 D_8006969C[];
 extern u8 D_800694B0[];
 extern u8 D_800695F2[];
@@ -181,7 +176,6 @@ extern u8 D_800695A4[];
 
 extern EntradaLista* D_800694D4;
 extern s16 D_80069652;
-extern EntradaLista* D_800694B8;
 
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044904);
 
@@ -330,11 +324,11 @@ void func_80044A04(void)
     D_8006B2F8[6] = D_800695B8;
     D_8006B2F8[7] = &D_80069680;
     D_8006B2F8[8] = &D_8006958C;
-    D_8006B2F8[9] = D_80069610;
+    D_8006B2F8[9] = &D_80069610;
     D_8006B2F8[10] = (void*)&D_800695A6;
     D_8006B2F8[11] = D_80069664;
     D_8006B2F8[12] = D_8006954C;
-    D_8006B2F8[13] = D_800695D0;
+    D_8006B2F8[13] = &D_800695D0;
     D_8006B2F8[14] = D_8006B658;
     D_8006B2F8[15] = D_8006969C;
     D_8006B2F8[16] = D_800694B0;
@@ -352,7 +346,7 @@ void func_80044A04(void)
     D_8006D928.vpz = 0;
     D_8006D928.vpy = 0;
     D_8006D928.vpx = 0;
-    D_80069558 = 0;
+    D_80069558 = NULL;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044A04);

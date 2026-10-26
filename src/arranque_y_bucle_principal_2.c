@@ -9,9 +9,7 @@
 extern s32 D_80069534;
 extern s32 D_80069638;
 extern void* D_80069508;
-extern void* D_800694B8;
 extern void* D_800694D8;
-extern s32 D_80076188;
 extern u8 D_8006AD80[];
 
 extern u16 D_800694F0;

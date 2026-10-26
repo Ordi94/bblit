@@ -72,9 +72,6 @@ extern s32 D_8006961C;
 extern s32 D_80069624;
 extern u8 D_80069674;
 extern s32 D_80069690;
-extern u16 D_800695D0;
-extern u16 D_8006B658[];
-extern u8 D_8006B558[];
 extern Entrada D_8006B378[];
 extern u32 D_8006D064;
 

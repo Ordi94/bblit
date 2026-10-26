@@ -685,7 +685,6 @@ typedef struct PasoBusqueda {
 
 extern u16 D_8005E064[];
 extern u16 D_8005E078[];
-extern u16* D_80069558;
 
 /*
  * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
@@ -982,7 +981,6 @@ typedef struct EventoZona {
 
 extern s32 D_800694F8;
 extern s32 D_80010000;
-extern s32 D_8006B558[3];
 extern s32 TestLogicCond(void* o, void* item);
 extern void RunLogicAction(void* o, void* item);
 

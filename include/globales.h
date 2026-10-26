@@ -233,4 +233,55 @@ extern s8 D_8006966A;
 /* Cursor descendente de la demostracion: se carga y se guarda como puntero (lw / sw). */
 extern u16* D_800695B0;
 
+/* --- Motor e inicializacion ------------------------------------------------------------- */
+
+/*
+ * D_80076188: puntero a la siguiente primitiva libre del anillo de primitivas del motor. Todos
+ * los accesos son lw / sw de 32 bits (func_80016218, func_80045150, func_800415A0, func_800399C8);
+ * func_80045150 le suma 0x28 por glifo y lo compara con D_8006958C, y func_80016218 lo guarda en
+ * D_8006AD40[]. Se declara s32 y no como puntero porque asi lo comparan y lo suman los originales.
+ */
+extern s32 D_80076188;
+
+/*
+ * D_8006B558: vector de tres palabras (x, y, z) del evento de zona. func_8001E1A4 lo rellena con
+ * tres sw sobre +0, +4 y +8 desde los campos +0x18, +0x1C y +0x20 de la zona; func_80031650 solo
+ * pasa su direccion a func_8001D588.
+ */
+extern s32 D_8006B558[3];
+
+/*
+ * D_80069558: puntero a un u16 (el angulo que func_8001DA14 y func_80020B90 copian a +0x26 del
+ * objeto). Se guarda con sw (cero en func_80044A04, el valor leido de 0x1F8000BC en
+ * func_80033358) y se desreferencia con lhu 0(reg) en func_8001DA14 y func_80020B90.
+ */
+extern u16* D_80069558;
+
+/*
+ * D_800695D0: numero de entradas de la pila de datos de eventos D_8006B658. Se carga con lhu y se
+ * guarda con sh (func_800313D4, func_800353B0); func_80044A04 solo toma su direccion para la
+ * tabla de punteros D_8006B2F8[13].
+ */
+extern u16 D_800695D0;
+
+/*
+ * D_80069610: direccion del anillo de primitivas sobre la que espera func_80039CD0. lw / sw de 32
+ * bits (func_80039CD0, func_8003DF10, func_80040B8C, func_800415A0); la distancia a otro puntero
+ * se calcula con subu y se prueba con bgez, y func_80040B8C la sustituye por D_80069614.
+ */
+extern u32 D_80069610;
+
+/*
+ * D_8006B658: pila de ocho palabras de 16 bits de la que func_800313D4 apila con sh sobre
+ * D_800695D0 * 2; func_80044A04 solo toma su direccion para D_8006B2F8[14].
+ */
+extern u16 D_8006B658[8];
+
+/*
+ * D_800694B8: inicio de la tabla de entradas de ocho bytes de glifos (lw en func_80016218,
+ * func_80045368 y func_800353B0; sw en func_800415A0). Se pasa como puntero opaco a
+ * func_80045150 y func_80045368 lo indexa con (indice << 3) sumando la direccion.
+ */
+extern void* D_800694B8;
+
 #endif
