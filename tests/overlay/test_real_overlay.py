@@ -78,3 +78,33 @@ def test_cadena_real_extraer_split_build_verify(tmp_path: Path, capsys: pytest.C
     assert (raiz / "config" / "symbols_overlay.txt").read_text(encoding="utf-8") == (
         RAIZ / "config" / "symbols_overlay.txt"
     ).read_text(encoding="utf-8")
+
+
+@sin_herramientas
+def test_ciclo_real_build_con_fuente_roto_seguido_de_verify_da_fail(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz = tmp_path / "repo"
+    (raiz / "config").mkdir(parents=True)
+    for archivo in (
+        "symbols_overlay.txt",
+        "toolchain.lock.json",
+        *(f"splat_overlay_{v}.yaml" for v in "abc"),
+    ):
+        shutil.copy(RAIZ / "config" / archivo, raiz / "config" / archivo)
+    entorno = {"BBLIT_DISC": str(DISCO), "BBLIT_TOOLCHAIN": str(TOOLCHAIN)}
+    for orden in (["extraer"], ["split"], ["build"], ["verify"]):
+        assert cli.main(orden, entorno, raiz, ejecutar_proceso) == 0, orden
+    fuente = raiz / "asm" / "overlay" / "a" / "codigo.s"
+    fuente.write_text(
+        fuente.read_text(encoding="utf-8") + "\n    opcode_inexistente $zero\n", encoding="utf-8"
+    )
+    capsys.readouterr()
+    assert cli.main(["build", "--variante", "a"], entorno, raiz, ejecutar_proceso) == 1
+    assert "error:" in capsys.readouterr().err
+    assert not (raiz / "build" / "overlay" / "a.bin").exists()
+    assert not (raiz / "build" / "overlay" / "a.elf").exists()
+    assert cli.main(["verify"], entorno, raiz, ejecutar_proceso) == 1
+    lineas = capsys.readouterr().out.splitlines()
+    assert lineas[0] == "FAIL a el binario reconstruido no existe"
+    assert [linea.split()[:2] for linea in lineas[1:]] == [["OK", "b"], ["OK", "c"]]

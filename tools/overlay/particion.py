@@ -66,12 +66,61 @@ def _artefactos(identificador: str) -> tuple[str, ...]:
     )
 
 
-def _borrar(ruta: Path) -> None:
-    """Elimina un archivo o carpeta si existe."""
+def _borrar(ruta: Path) -> bool:
+    """Elimina un archivo o carpeta si existe; informa si habia algo que eliminar."""
     if ruta.is_dir():
         shutil.rmtree(ruta)
-    elif ruta.exists():
+        return True
+    if ruta.exists():
         ruta.unlink()
+        return True
+    return False
+
+
+def salidas_de_construccion(identificador: str) -> tuple[str, ...]:
+    """
+    Lista las rutas que ``build`` produce para una variante y que ``verify`` consume.
+
+    Contexto:
+        Son los objetos, el script de enlace propio, el ELF, el mapa y la imagen plana. No
+        incluye el script de splat (``<id>.ld``) ni las listas ``_undefined_*_auto.txt``:
+        son salida de ``split`` y entrada de ``build``, asi que borrarlas lo dejaria sin
+        poder ejecutarse.
+
+    Args:
+        identificador (str): Identificador de la variante.
+
+    Returns:
+        tuple[str, ...]: Rutas relativas a la raiz del repositorio.
+
+    Ejemplo:
+        rutas = salidas_de_construccion("a")
+    """
+    base = f"build/overlay/{identificador}"
+    return (base, f"{base}.enlace.ld", f"{base}.elf", f"{base}.map", f"{base}.bin")
+
+
+def invalidar_salida(raiz: Path, identificador: str) -> list[str]:
+    """
+    Elimina la salida de una construccion anterior de la variante.
+
+    Contexto:
+        Si ``build`` falla a mitad (fuente roto, herramienta ausente) no debe sobrevivir el
+        binario de la corrida anterior: ``verify`` lo aprobaria aunque ya no corresponda al
+        codigo. Con la salida invalidada, un build fallido deja ``verify`` en ``FAIL``.
+        Es idempotente: una variante sin salida previa no es un error.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        identificador (str): Identificador de la variante.
+
+    Returns:
+        list[str]: Rutas relativas que existian y se eliminaron.
+
+    Ejemplo:
+        eliminadas = invalidar_salida(Path("."), "a")
+    """
+    return [ruta for ruta in salidas_de_construccion(identificador) if _borrar(raiz / ruta)]
 
 
 def generar_simbolos(raiz: Path, variantes: list[VarianteExtraida]) -> list[int]:
@@ -177,7 +226,9 @@ def construir(
 
     Contexto:
         Orden ``build``. Los objetos salen del script de splat; el enlace usa un script propio
-        sin alineaciones (ver ``generar_script_enlace``).
+        sin alineaciones (ver ``generar_script_enlace``). Antes de ensamblar elimina la salida
+        de la construccion anterior de la variante (ver ``invalidar_salida``), de modo que un
+        fallo a mitad no deja un binario obsoleto que ``verify`` pueda aprobar.
 
     Args:
         raiz (Path): Raiz del repositorio.
@@ -201,6 +252,7 @@ def construir(
     script = raiz / f"{base}.ld"
     if not script.is_file():
         raise FileNotFoundError("falta el script del enlazador: ejecute primero 'split'")
+    invalidar_salida(raiz, identificador)
     entradas = dominio.entradas_del_enlazador(script.read_text(encoding="utf-8"))
     for objeto in dict.fromkeys(objeto for objeto, _ in entradas):
         fuente = dominio.fuente_de_objeto(objeto, identificador)
@@ -239,7 +291,9 @@ def verificar(raiz: Path, variante: VarianteExtraida) -> tuple[bool, str]:
 
     Contexto:
         Orden ``verify``: la comparacion es byte a byte y el mensaje de fallo incluye el
-        desplazamiento de la primera diferencia.
+        desplazamiento de la primera diferencia. Una variante sin binario reconstruido (no se
+        construyo o su construccion fallo) es un ``FAIL`` de esa variante y no una excepcion,
+        para que la orden siga con las demas y devuelva 1 al final.
 
     Args:
         raiz (Path): Raiz del repositorio.
@@ -249,7 +303,7 @@ def verificar(raiz: Path, variante: VarianteExtraida) -> tuple[bool, str]:
         tuple[bool, str]: Si coinciden y la linea a imprimir (``OK`` o ``FAIL``).
 
     Raises:
-        FileNotFoundError: Si falta el binario reconstruido (hay que ejecutar ``build``) o el extraido.
+        FileNotFoundError: Si falta el binario extraido (hay que ejecutar ``extraer``).
         ValueError: Si el binario extraido no coincide con su huella registrada.
 
     Ejemplo:
@@ -258,7 +312,7 @@ def verificar(raiz: Path, variante: VarianteExtraida) -> tuple[bool, str]:
     esperado = leer_binario(raiz, variante)
     construido = raiz / f"build/overlay/{variante.identificador}.bin"
     if not construido.is_file():
-        raise FileNotFoundError("no existe el binario reconstruido: ejecute primero 'build'")
+        return False, f"FAIL {variante.identificador} el binario reconstruido no existe"
     if construido.stat().st_size > dominio.TAMANO_HUECO:
         return False, f"FAIL {variante.identificador} el binario reconstruido excede el hueco del overlay"
     return dominio.resultado_verificacion(variante.identificador, construido.read_bytes(), esperado)

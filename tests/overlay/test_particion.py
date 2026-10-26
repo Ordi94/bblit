@@ -190,9 +190,7 @@ def test_verificar_fail_si_el_binario_es_mas_corto(raiz: Path) -> None:
     assert f"0x{len(A) - 4:X}" in mensaje
 
 
-def test_verificar_rechaza_binarios_enormes_y_ausentes(raiz: Path) -> None:
-    with pytest.raises(FileNotFoundError, match="ejecute primero 'build'"):
-        particion.verificar(raiz, VARIANTE_A)
+def test_verificar_rechaza_binarios_enormes(raiz: Path) -> None:
     enorme = raiz / "build" / "overlay" / "a.bin"
     enorme.parent.mkdir(parents=True)
     enorme.write_bytes(bytes(dominio.TAMANO_HUECO + 4))
@@ -209,3 +207,71 @@ def test_las_rutas_de_la_cadena_quedan_dentro_de_las_carpetas_del_overlay(raiz: 
     assert all(p.relative_to(raiz).parts[1] == "overlay" for p in (raiz / "build").rglob("*") if p.is_file())
     assert all(p.relative_to(raiz).parts[1] == "overlay" for p in (raiz / "asm").rglob("*") if p.is_file())
     assert extraccion.CARPETA_EXTRAIDOS == Path("expected") / "overlay"
+
+
+def test_verificar_sin_binario_reconstruido_es_fail_de_esa_variante(raiz: Path) -> None:
+    coincide, mensaje = particion.verificar(raiz, VARIANTE_A)
+    assert not coincide
+    assert mensaje == "FAIL a el binario reconstruido no existe"
+
+
+def test_verificar_sigue_exigiendo_el_binario_extraido(raiz: Path) -> None:
+    (raiz / "expected" / "overlay" / "a.bin").unlink()
+    with pytest.raises(FileNotFoundError, match=re.escape("falta expected/overlay/a.bin")):
+        particion.verificar(raiz, VARIANTE_A)
+
+
+def test_salidas_de_construccion_no_incluyen_la_salida_de_split() -> None:
+    assert particion.salidas_de_construccion("a") == (
+        "build/overlay/a",
+        "build/overlay/a.enlace.ld",
+        "build/overlay/a.elf",
+        "build/overlay/a.map",
+        "build/overlay/a.bin",
+    )
+
+
+def test_invalidar_salida_elimina_la_construccion_y_conserva_la_de_split(raiz: Path) -> None:
+    ejecutor = preparar_construccion(raiz, {"a": A})
+    particion.construir(raiz, VARIANTE_A, HERRAMIENTAS, ejecutor)
+    eliminadas = particion.invalidar_salida(raiz, "a")
+    assert eliminadas == [
+        "build/overlay/a",
+        "build/overlay/a.enlace.ld",
+        "build/overlay/a.elf",
+        "build/overlay/a.bin",
+    ]
+    assert not (raiz / "build" / "overlay" / "a").exists()
+    assert (raiz / "build" / "overlay" / "a.ld").is_file()
+    assert (raiz / "build" / "overlay" / "a_undefined_syms_auto.txt").is_file()
+    assert (raiz / "asm" / "overlay" / "a" / "codigo.s").is_file()
+
+
+def test_invalidar_salida_sin_construccion_previa_no_es_un_error(raiz: Path) -> None:
+    assert particion.invalidar_salida(raiz, "a") == []
+    preparar_construccion(raiz, {"a": A})
+    assert particion.invalidar_salida(raiz, "a") == []
+
+
+def test_construir_elimina_el_binario_anterior_antes_de_ensamblar(raiz: Path) -> None:
+    ejecutor = preparar_construccion(raiz, {"a": A})
+    particion.construir(raiz, VARIANTE_A, HERRAMIENTAS, ejecutor)
+    visto: list[bool] = []
+
+    def fallar_al_ensamblar(comando: object, directorio: Path, timeout_s: int) -> str:
+        visto.append((raiz / "build" / "overlay" / "a.bin").exists())
+        raise ProcesoError("opcode inexistente")
+
+    with pytest.raises(ProcesoError, match="opcode inexistente"):
+        particion.construir(raiz, VARIANTE_A, HERRAMIENTAS, fallar_al_ensamblar)
+    assert visto == [False]
+    assert particion.verificar(raiz, VARIANTE_A) == (False, "FAIL a el binario reconstruido no existe")
+
+
+def test_construir_sin_split_previo_conserva_la_salida_existente(raiz: Path) -> None:
+    binario = raiz / "build" / "overlay" / "a.bin"
+    binario.parent.mkdir(parents=True)
+    binario.write_bytes(A)
+    with pytest.raises(FileNotFoundError, match="ejecute primero 'split'"):
+        particion.construir(raiz, VARIANTE_A, HERRAMIENTAS, Registro({}))
+    assert binario.read_bytes() == A

@@ -221,7 +221,23 @@ archivo (1.581.056 bytes), que trae la variante `b`.
   Esas alineaciones desplazarían la tabla de saltos, que empieza justo donde acaba el código
   (`0x2954`, no múltiplo de 16).
 - `verify` compara `build/overlay/<variante>.bin` con `expected/overlay/<variante>.bin`:
-  `OK <variante> sha256=... bytes=...` o `FAIL <variante> primera diferencia en el desplazamiento 0x...`.
+  `OK <variante> sha256=... bytes=...` o `FAIL <variante> primera diferencia en el desplazamiento 0x...`;
+  si el binario reconstruido no existe, `FAIL <variante> el binario reconstruido no existe`.
+
+### Invalidación de la salida
+
+`build` elimina, antes de ensamblar, la salida de la construcción anterior de cada variante
+elegida: los objetos (`build/overlay/<variante>/`), el script de enlace propio, el ELF, el mapa y
+`build/overlay/<variante>.bin`. El script de splat (`<variante>.ld`) y las listas
+`_undefined_*_auto.txt` no se tocan: son salida de `split` y entrada de `build`. La invalidación
+alcanza a todas las variantes pedidas antes de construir la primera, así que un fallo a mitad (un
+opcode inexistente en `asm/overlay/<variante>/codigo.s`, una herramienta ausente) no deja ningún
+binario antiguo que `verify` pueda aprobar. Una variante sin binario reconstruido imprime
+`FAIL <variante> el binario reconstruido no existe`; `verify` informa igualmente las demás variantes
+y devuelve 1. Antes de este cambio sobrevivía el binario anterior y `verify` imprimía `OK`
+aunque ya no correspondiera al código. Es el mismo criterio que usa el ejecutable principal
+(ver `docs/DESCOMPILACION.md`, «Invalidación de la salida»). `split` también borra la salida de
+la variante.
 
 ## 10. Qué necesita la descompilación del overlay
 
