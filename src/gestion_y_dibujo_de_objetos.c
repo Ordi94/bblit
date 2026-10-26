@@ -295,10 +295,10 @@ void func_8003652C(void)
 }
 
 /*
- * Crea el objeto de la camara (D_800694B4) y los 47 objetos de la tabla D_8006AB70, que se
- * anaden a las listas D_80069518 y D_80069508. El objeto de la camara queda activo con la
- * rejilla vacia; los de la tabla, con el estado inicial 1 y la marca de identificador -1. Sin
- * salida de error: si el pozo se agota se detiene.
+ * Crea el primer objeto de la escena (D_800694B4) y los 47 objetos de la tabla D_8006AB70, y los
+ * anade a las listas D_80069518 y D_80069508. El primero queda activo sin ayudantes; los de la
+ * tabla, con el estado 1 y el identificador -1. Sin salida de error: si el pozo se agota se
+ * detiene.
  */
 void func_800365D0(void)
 {

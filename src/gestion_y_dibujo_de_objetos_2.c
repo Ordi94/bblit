@@ -609,11 +609,11 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037FE8);
 #endif
 
 /*
- * Actualiza el grupo de tres objetos 'idx'..'idx + 2' de la tabla D_8006AB70 segun el nivel de
- * fundido D_8006AA70[1]: lo acerca de uno en uno al valor pedido en D_800695F6, escala el segundo
- * objeto en proporcion y, si el grupo no estaba activo, lo reinicia con func_80037DB4 a partir
- * de las tablas de plantillas D_8005E830 y de posiciones D_8005E86C. Con el fundido en cero
- * y el nivel actual en cero desactiva los tres objetos.
+ * Actualiza el grupo de tres objetos 'idx'..'idx + 2' de la tabla D_8006AB70 segun el nivel
+ * pedido en D_8006AA70[1]: acerca de uno en uno el nivel actual (D_800695F6) al pedido, escala
+ * el segundo objeto en proporcion y, si el grupo no estaba activo, lo reinicia con func_80037DB4
+ * a partir de las tablas de plantillas D_8005E830 y de posiciones D_8005E86C. Con nivel pedido y
+ * actual en cero desactiva los tres objetos.
  */
 void func_8003861C(s32 idx)
 {

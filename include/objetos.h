@@ -60,7 +60,7 @@ typedef struct DescModelo {
  */
 typedef struct ObjetoEscena {
     NodoLista cab;               /* +0x00 enlace de la lista D_80069518 y bits de estado */
-    s32 w8;                      /* +0x08 puesto a cero al crear el objeto de la camara */
+    s32 w8;                      /* +0x08 puesto a cero al crear el primer objeto (func_800365D0) */
     s32 wC;                      /* +0x0C idem */
     struct ObjetoEscena* sig10;  /* +0x10 enlace de la lista de objetos solidos */
     u32 flags14;
