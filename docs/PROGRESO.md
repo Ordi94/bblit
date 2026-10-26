@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 345 | 46424 |
+| Código del juego | 450 | 201416 | 346 | 48100 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 46424 de 201416 (23.05 %).
-Funciones marcadas `NON_MATCHING`: 62.
-Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 48100 de 201416 (23.88 %).
+Funciones marcadas `NON_MATCHING`: 63.
+Coherencia con el ensamblador: correcta (756 `glabel` en `asm/` + 346 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -26,7 +26,7 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 | cargador_de_niveles_y_cd | 2 | 6 | 5 | 0 | 804 | 14264 |
 | colision_y_terreno | 1 | 2 | 1 | 1 | 680 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
-| gestion_y_dibujo_de_objetos | 4 | 23 | 7 | 12 | 5772 | 18624 |
+| gestion_y_dibujo_de_objetos | 4 | 24 | 8 | 10 | 7448 | 18624 |
 | graficos_y_gte | 3 | 13 | 6 | 0 | 3316 | 11812 |
 | inicializacion_de_motor | 1 | 6 | 8 | 2 | 1028 | 5276 |
 | interprete_de_eventos | 1 | 192 | 3 | 2 | 10868 | 11900 |
@@ -50,7 +50,7 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 | `src/gestion_y_dibujo_de_objetos.c` | 12 | 2 | 1 | 1696 | 3812 |
 | `src/gestion_y_dibujo_de_objetos_2.c` | 7 | 4 | 9 | 3184 | 10604 |
 | `src/gestion_y_dibujo_de_objetos_3.c` | 1 | 0 | 0 | 564 | 564 |
-| `src/gestion_y_dibujo_de_objetos_4.c` | 3 | 1 | 2 | 328 | 3644 |
+| `src/gestion_y_dibujo_de_objetos_4.c` | 4 | 2 | 0 | 2004 | 3644 |
 | `src/graficos_y_gte.c` | 3 | 6 | 0 | 1576 | 10072 |
 | `src/graficos_y_gte_10.c` | 6 | 0 | 0 | 1076 | 1076 |
 | `src/graficos_y_gte_12.c` | 4 | 0 | 0 | 664 | 664 |
@@ -108,6 +108,7 @@ Coherencia con el ensamblador: correcta (757 `glabel` en `asm/` + 345 en C = 110
 - `func_80037FE8`: Pendiente: puntuacion 3403 con la configuracion versionada (g = 8 del archivo). La estructura de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de otra forma. Variantes probadas: 6.
 - `func_80038884`: Pendiente: puntuacion 324 con la configuracion versionada (g = 8 del archivo). Coincide la estructura; difiere la asignacion de registros salvados (el original deja los tres identificadores en $s7, $s6 y $s5 y el parametro en $s4). Variantes probadas: 8.
 - `func_8003A3D0`: Pendiente: puntuacion 316 con la configuracion versionada (g = 8 del archivo). El cuerpo y los saltos coinciden; difiere solo el reparto de registros salvados: el original deja el area de trabajo en $s0, la salida en $s1, el objeto en $s2 y la direccion de la baldosa en $s3; GCC da $s0 a la salida y $s3 al objeto. Ni el orden de las declaraciones locales, ni izar la direccion de la baldosa o la constante -1 antes de la primera rama, ni un bucle con salida explicita cambian el reparto (las dos ultimas formas empeoran a 1144 y 1326). Variantes probadas: 17.
+- `func_8003A5C8`: Pendiente: puntuacion 930 con la configuracion versionada (g = 8 del archivo). Difiere el reparto de registros del prologo, el cierre del bucle de nodos (el original conserva el salto condicional hacia atras) y la direccion de la caja de relleno, que el original deriva de la base del scratchpad.
 - `func_8003AE08`: Pendiente: puntuacion 990 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de registros (la tabla de ordenacion y el cursor intercambian v1 y a1, y las constantes 1, 0x80000000 y 0x05000000 caen en t0/a3/a2 en lugar de t1/t0/a3) y la posicion de la carga del cursor en el segundo paquete. Variantes probadas: 40 (720 permutaciones de las escrituras del primer paquete, cursor volatile, macros, estructura de paquete).
 - `func_8003AF8C`: Pendiente: puntuacion 1680 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el desplazamiento de la textura cae en a0 y la plantilla en v1, en lugar de a2 y a0) y la posicion del almacen de la profundidad, que el original deja justo antes de indexar la lista de ordenacion. Variantes probadas: 160 (forma de la plantilla, orden de declaracion de los locales, acumulacion del color).
 - `func_8003B354`: Pendiente: puntuacion 485 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; solo difiere el reparto de v0/v1/a0 en la comparacion del numero de salas (la constante 0x10000 se carga antes del almacen de la profundidad) y en el puntero de la entrada visible. Variantes probadas: 60 (forma de la comparacion con shifts, orden de las escrituras previas al bucle, indexado frente a aritmetica de punteros, orden del cierre de la lista).

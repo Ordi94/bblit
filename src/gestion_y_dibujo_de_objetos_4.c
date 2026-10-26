@@ -262,6 +262,7 @@ s32 func_8003A3D0(Objeto* o, SalidaSonda* sal, Sonda* s)
     Ayuda* a;
     Ayuda* b;
     Objeto* p;
+    u16 i;
     TrabajoBaldosa* w;
     s32 sin_grupo;
 
@@ -356,7 +357,7 @@ extern void func_8003753C(void* m);
 extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1965 con la configuracion versionada (g = 8 del archivo). Difiere el reparto de registros del prologo, el orden de un almacen y la forma del salto de cierre del bucle de nodos (el original conserva el salto condicional hacia atras). */
+/* Pendiente: puntuacion 930 con la configuracion versionada (g = 8 del archivo). Difiere el reparto de registros del prologo, el cierre del bucle de nodos (el original conserva el salto condicional hacia atras) y la direccion de la caja de relleno, que el original deriva de la base del scratchpad. */
 void func_8003A5C8(Objeto** objetos)
 {
     ContextoSombras* c;
@@ -368,6 +369,7 @@ void func_8003A5C8(Objeto** objetos)
     NodoAnimacion* n;
     Objeto* s;
     Objeto* p;
+    u16 i;
 
     c = (ContextoSombras*)0x1F800000;
     area = (Sonda*)0x1F800148;
@@ -376,9 +378,9 @@ void func_8003A5C8(Objeto** objetos)
     c->ot0 = (u32*)D_8006AE20[D_8006967C].org;
     c->ot1 = (u32*)D_8006AE60[D_8006967C].org;
     c->ot2 = (u32*)D_8006AEA0[D_8006967C].org;
+    c->estado.w8 = D_80069668;
     c->estado.b1 = 1;
     c->estado.b2 = 1;
-    c->estado.w8 = D_80069668;
     if (D_80069532 != 0) {
         c->modelo.pcoord = (GsCOORDINATE2*)0x1F8000AC;
         c->modelo.cab.siguiente = 0;
@@ -393,8 +395,9 @@ void func_8003A5C8(Objeto** objetos)
             mat = (MATRIX*)0x1F800048;
             mod = (Ayuda*)0x1F800090;
             do {
-                c->obj = objetos[(s16)c->indice];
-                c->indice++;
+                i = c->indice;
+                c->indice = i + 1;
+                c->obj = objetos[(s16)i];
                 if (func_8003A3D0(c->obj, (SalidaSonda*)&c->param, area) != 0) {
                     if ((s16)c->obj->w26 == (s16)D_80069698->w26) {
                         if (c->obj->flags14 & 0x10) {
@@ -427,13 +430,13 @@ void func_8003A5C8(Objeto** objetos)
                                             c->param.escala.vz = (s16)c->escala;
                                             GEO_CARGAR_WH(&c->obj->p70->param.giro);
                                             GEO_GUARDAR_WH(&c->param.giro);
-                                            s = c->obj->p70;
+                                            c->estado.s6 += c->obj->p70->w28;
                                         } else {
                                             s = func_80039D44(c->obj, &c->param, 8, (SondaSombra*)area);
                                             c->hallado = s;
-                                        }
-                                        if (s != 0) {
-                                            c->estado.s6 += s->w28;
+                                            if (s != 0) {
+                                                c->estado.s6 += s->w28;
+                                            }
                                         }
                                         func_8001CFCC(&q->coord);
                                         func_8003760C(q->pcoord, mat, area);
