@@ -10,6 +10,7 @@
 #include "common.h"
 #include "motor.h"
 #include "objetos.h"
+#include "eventos.h"
 
 /*
  * Sonido de un cuadro (4 bytes): identificador en +0 y cuadro en el que suena en +1
@@ -124,13 +125,6 @@ typedef struct AreaCuadro {
 } AreaCuadro;
 
 /*
- * Rutinas de interpretacion de eventos que invoca el avance de animacion: la condicion devuelve
- * un valor de 16 bits (el llamador lo enmascara con 0xFFFF).
- */
-extern u32 TestLogicCond(Objeto* o, void* registro);
-extern void RunLogicAction(Objeto* o, void* registro);
-
-/*
  * Aplica un cuadro de la animacion (gestion_y_dibujo_de_objetos.c) y avanza el cursor
  * (movimiento_y_objetos_de_escena_3.c).
  */
@@ -139,13 +133,10 @@ extern u32 func_8001E720(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* ar
 
 /*
  * Rutinas que invoca el avance de animacion. func_8001E528 recibe el area de trabajo del llamador
- * como cuarto argumento y func_8003F06C recibe el cuadro del anillo sin recortar (lh): se llaman
- * con prototipos de palabra completa para que el llamador no normalice los argumentos.
+ * como cuarto argumento aunque la rutina solo declara tres: se llama a traves de este tipo.
  */
 typedef void (*DibujarSprite)(Objeto*, BloqueTrabajo*, u32, u8*);
-typedef void (*SonidoObjeto)(Objeto*, s32, s32, s32);
 extern void func_8003502C(Objeto* o);
-extern void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave);
 extern s32 func_80018D98(Objeto* a, VECTOR* p, void* area);
 
 /*

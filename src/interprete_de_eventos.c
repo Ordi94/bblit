@@ -66,7 +66,6 @@ extern void func_8003DFE4(void);
 extern void func_8003E094(void);
 extern void func_8003E3C0(void);
 extern void func_8003E88C(void);
-extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
 
 /* Acceso a la base de $gp: los datos pequenos del original se direccionan por registro. */
 

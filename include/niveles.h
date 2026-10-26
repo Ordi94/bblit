@@ -11,6 +11,7 @@
 #include "common.h"
 #include "arranque.h"
 #include "globales.h"
+#include "eventos.h"
 #include "geometria.h"
 #include "motor.h"
 
@@ -404,13 +405,10 @@ typedef struct ScratchJugador {
 } ScratchJugador;
 
 /* Transformacion del jugador relativa al apoyo (+0x18C) y la del objeto portado (Objeto.portado, +0x11C). */
-#define APOYO(o) ((ParametrosObjeto*)((u8*)(o) + 0x18C))
+#define APOYO(o) (&(o)->u18C.agarre)
 #define PORTADO(o) (&(o)->portado)
 
 extern s32 BugsRand(void);
-extern s32 TestLogicCond(void* o, void* registro);
-extern void RunLogicAction(void* o, void* registro);
-extern s32 func_8003F06C(void* o, s32 id, s32 modo, s32 voz);
 /* El original pasa el area de trabajo como cuarto argumento aunque la rutina solo declara tres. */
 extern void func_8001E528(Objeto* o, BloqueTrabajo* b, u32 modo, void* area);
 extern void func_8001E600(Objeto* o, BloqueTrabajo* b, u32 modo, void* area);

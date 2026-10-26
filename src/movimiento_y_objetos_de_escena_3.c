@@ -90,7 +90,7 @@ typedef struct SpritePlano {
  * de indices del conjunto.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1535 con la configuracion versionada (-G0). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0. Variantes probadas: 8. */
+/* Pendiente: puntuacion 1535 con la configuracion versionada (g = 8 del archivo). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0. */
 void func_8001E528(Objeto* o, ConjuntoSprites* c, u32 modo)
 {
     RegistroSprite* r;
@@ -144,7 +144,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E528);
  * bits) y fija la anchura de la textura y el modo del sprite.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2665 con la configuracion versionada (-G0). Mismos accesos y almacenes; el original calcula el desplazamiento de color en t2 y deja el puntero al sprite en v1, el C reparte otros registros y reordena las lecturas del registro del cuadro. Variantes probadas: 3. */
+/* Pendiente: puntuacion 2665 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; el original calcula el desplazamiento de color en t2 y deja el puntero al sprite en v1, el C reparte otros registros y reordena las lecturas del registro del cuadro. */
 void func_8001E600(Objeto* o, ConjuntoSprites* c, u32 modo)
 {
     RegistroSprite* r;
@@ -199,7 +199,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E600);
  * evento puede crear un hijo acoplado, un objeto suelto, agarrar o soltar al protagonista.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 570 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4 y la macro de escala 0x1000 que escribe $t4 lo declara destruido, con lo que GCC evita $t4), el reparto de $a0/$v1 en la lectura del estado y el orden de cuatro almacenes del bloque de parametros de agarre. */
+/* Pendiente: puntuacion 570 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5; la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera), el reparto de $a0/$v1 en la lectura del estado y el orden de cuatro almacenes del bloque de parametros de agarre. */
 u32 func_8001E720(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
 {
     NodoAnimacion* n;
@@ -327,7 +327,7 @@ sigue:
         if (c->b07 != 0) {
             for (i = 0; i < c->b07; i++) {
                 if ((u16)c->h02 == c->sonidos[i].cuadro) {
-                    ((SonidoObjeto)func_8003F06C)(o, c->sonidos[i].id, 1, D_8006967C);
+                    func_8003F06C(o, c->sonidos[i].id, 1, D_8006967C);
                 }
             }
         }
@@ -510,7 +510,7 @@ void func_80020210(Objeto* o, u16 paso, u16 amplitud)
  * las banderas de movimiento y marca 0x200 si el objeto no estaba en suelo.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 605 con la configuracion versionada (-G0). La condicion de continuar (bit 4 apagado o bit 0x10 activo) y la reunion de las dos ramas de la altura no se reproducen: el compilador adelanta la carga de las banderas y repite el almacen de h10A en cada rama. Variantes probadas: 10. */
+/* Pendiente: puntuacion 605 con la configuracion versionada (g = 8 del archivo). La condicion de continuar (bit 4 apagado o bit 0x10 activo) y la reunion de las dos ramas de la altura no se reproducen: el compilador adelanta la carga de las banderas y repite el almacen de h10A en cada rama. */
 void func_80020240(Objeto* o)
 {
     s32 v;
@@ -559,7 +559,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020354);
  * alcanzado (+0x13C). Si el apoyo es plano (bandera 0x400000) solo compara con su altura.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2360 con la configuracion versionada (-G0). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica. Variantes probadas: 4. */
+/* Pendiente: puntuacion 2360 con la configuracion versionada (g = 8 del archivo). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica. */
 u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
 {
     Objeto* t;

@@ -2,6 +2,7 @@
 #include "gte.h"
 #include "motor.h"
 #include "menus.h"
+#include "eventos.h"
 
 
 /*
@@ -33,7 +34,6 @@ extern InicioNivel D_8006ACD0;
  * 0x8001D3E8, 0x8001D750) y sin ella el acceso pasa a lui mas desplazamiento.
  */
 s16 D_800693B8;
-extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
 
 
 /*
@@ -815,8 +815,6 @@ typedef struct EventoZona {
 
 /* Definida en graficos_y_gte.c: devuelve el nodo de plano que toca el objeto (sin prototipo en las cabeceras, el retorno se tomaba como int). */
 extern NodoVolumen* func_80019180(Objeto* a, VECTOR* p, ConsultaPlano* o);
-extern s32 TestLogicCond(void* o, void* item);
-extern void RunLogicAction(void* o, void* item);
 
 /*
  * Recorre los eventos de la zona que toca el objeto (consulta de plano) y ejecuta los que le
