@@ -5,6 +5,34 @@ que, compilado con el toolchain original Psy-Q, reproduce byte a byte el ejecuta
 El objetivo final es contar con el codigo fuente completo del juego para preservarlo,
 estudiarlo y portarlo a plataformas modernas.
 
+<!-- progreso:inicio -->
+## Progreso
+
+Medido el 2026-10-26 sobre el commit `ea4ee18`. Generado por `python tools/build.py progreso`;
+no se edita a mano.
+
+| Estado | Cifra |
+|---|---:|
+| Funciones del juego | 450 |
+| Coincidentes byte a byte | 362 |
+| En C, pendientes de afinar (`NON_MATCHING`) | 60 |
+| Escritas a mano, conservadas en ensamblador | 16 |
+| Sin traducir | 12 |
+| Bytes coincidentes | 59692 de 201416 |
+| Porcentaje de bytes coincidentes | 29.64 % |
+
+Para reproducirlo (hace falta una copia propia del disco en `BBLIT_DISC`):
+
+```
+python tools/build.py clean
+python tools/build.py split
+python tools/build.py build
+python tools/build.py verify      # debe imprimir OK con SHA-256 0fad70d9b4cb324d78f113f7fd70c0aa954388fefad01af373509e0473c87df0
+python tools/build.py progreso
+python tools/build.py diff <funcion>   # comprueba una funcion (por ejemplo func_80036204)
+```
+<!-- progreso:fin -->
+
 Este repositorio **no contiene ningun dato del juego**: ni la imagen del disco, ni el
 ejecutable, ni texturas, modelos o audio. Para construir hace falta una copia propia del
 disco original. Todo lo que se deriva del disco (desensamblado, archivos extraidos,
@@ -35,7 +63,7 @@ volcados) se genera localmente y esta excluido del control de versiones.
 | `python tools/build.py build` | Compila los `src/*.c`, ensambla el resto y enlaza `build/SLUS_008.38` |
 | `python tools/build.py verify` | Compara el SHA-256 del ejecutable reconstruido con el original |
 | `python tools/build.py diff <funcion>` | Compara una funcion compilada desde C con su original (`asm-differ`) |
-| `python tools/build.py progreso` | Escribe `docs/PROGRESO.md` y `build/progreso.json` |
+| `python tools/build.py progreso` | Escribe `docs/PROGRESO.md`, `build/progreso.json` y la seccion de progreso de este README (`--sin-readme` la omite) |
 | `python tools/build.py probar <funcion> <carpeta>` | Compila cada variante `.c` de la carpeta para esa funcion y las ordena por puntuacion de `asm-differ` |
 | `python tools/build.py clean` | Elimina lo generado (`asm/`, `expected/`, artefactos de `build/`) |
 | `python -m tools.toolchain instalar` / `verificar` / `listar` / `ruta` | Instala y consulta los componentes del toolchain |

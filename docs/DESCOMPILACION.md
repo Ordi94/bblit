@@ -14,7 +14,7 @@ python toolchain/m2c/m2c.py ...        # borrador en C de la función (opcional)
 python tools/build.py diff <función>   # compara la función compilada con su original
 python tools/build.py build            # compila los .c, ensambla el resto y enlaza
 python tools/build.py verify           # el ejecutable completo debe ser idéntico (OK)
-python tools/build.py progreso         # actualiza docs/PROGRESO.md y build/progreso.json
+python tools/build.py progreso         # actualiza docs/PROGRESO.md, build/progreso.json y la seccion del README
 ```
 
 El criterio final es siempre `verify`: el ejecutable reconstruido debe tener el SHA-256 del
@@ -553,6 +553,30 @@ destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE
   por qué sigue en ensamblador. Los `INCLUDE_ASM` de la rama `#else` de un bloque `NON_MATCHING` son intentos
   pendientes y no se clasifican.
 
+### Sección de progreso del README
+
+`progreso` reescribe también la sección «Progreso» de `README.md`, entre los marcadores
+`<!-- progreso:inicio -->` y `<!-- progreso:fin -->`. Si no existen, los inserta tras el primer párrafo
+(un título no cuenta como párrafo); si hay marcadores repetidos, desparejados o en orden inverso, termina con
+error y no escribe nada. La tabla se refiere solo al código del juego:
+
+| Fila | Qué cuenta |
+|---|---|
+| Funciones del juego | Las de la tabla de símbolos en la zona del juego |
+| Coincidentes byte a byte | Las definidas en C en la construcción normal |
+| En C, pendientes de afinar | Las que están bajo `#ifdef NON_MATCHING` |
+| Escritas a mano, conservadas en ensamblador | Las marcadas como rutina manuscrita |
+| Sin traducir | El resto |
+| Bytes coincidentes y porcentaje | Tamaño de las coincidentes sobre el del código del juego |
+
+Debajo de la tabla va el bloque con los comandos exactos para reproducirla (`clean`, `split`, `build`,
+`verify` con el SHA-256 esperado, `progreso` y `diff <función>`). La escritura conserva los finales de línea
+del archivo (CRLF o LF) y solo cambia lo que hay entre los marcadores; dos ejecuciones seguidas el mismo día y
+sobre el mismo commit no cambian nada. Sin `README.md`, `progreso` avisa y sigue; `--sin-readme` lo omite.
+
+**Flujo:** regenerar con `progreso` antes de cada commit que cambie `src/`, y confirmar con `git diff README.md`
+que solo cambió la sección. El hash que muestra es el del commit anterior (el que estaba en `HEAD` al medir).
+
 Las funciones triviales vacías (`jr ra; nop`) también entran como `INCLUDE_ASM`: pasarlas a C es
 una decisión del desarrollador, así el progreso solo cuenta lo que alguien escribió.
 
@@ -565,7 +589,7 @@ una decisión del desarrollador, así el progreso solo cuenta lo que alguien esc
 | `verify` | Compara el SHA-256 con el del original. Imprime `OK` o `FAIL` con el desplazamiento de la primera diferencia; si no existe el ejecutable reconstruido imprime `FAIL ... no existe` y devuelve 1. |
 | `diff <función>` | Compila el `.c` que contiene la función con `NON_MATCHING`, ensambla el original y ejecuta `asm-differ`. Código 0 si la puntuación informada es 0: instrucciones iguales o bytes enlazados iguales (en ese caso informa 0 y añade una nota con las referencias en forma numérica y la puntuación de `asm-differ`). Una función que sigue solo en `INCLUDE_ASM` se rechaza: compararla consigo misma daría 0 sin significar nada. |
 | `probar <función> <carpeta>` | Compila y puntúa cada variante `.c` de la carpeta contra el original y muestra la tabla ordenada. Código 0 si la mejor coincide (puntuación 0 o bytes iguales). |
-| `progreso` | Escribe `docs/PROGRESO.md` y `build/progreso.json`. No necesita el disco ni el toolchain. Termina con error si algún bloque `NON_MATCHING` no lleva la línea `Pendiente: puntuacion N`. |
+| `progreso` | Escribe `docs/PROGRESO.md`, `build/progreso.json` y la sección «Progreso» del `README.md` (`--sin-readme` la omite). No necesita el disco ni el toolchain. Termina con error si algún bloque `NON_MATCHING` no lleva la línea `Pendiente: puntuacion N`. |
 | `verificar-config` | Avisa de las claves de `[datos_pequenos]` (`config/opciones_compilacion.toml`) cuya dirección ya declara `config/symbols.txt` (mismo nombre, otro nombre u otro tipo). Solo informa; `split` imprime los mismos avisos al terminar. No necesita el disco ni el toolchain. |
 | `clean` | Elimina `asm/`, `expected/` y los artefactos propios de `build/`. Conserva `asm/overlay/`, `expected/overlay/`, `build/overlay/`, `build/emulador/` y `build/bblit_prueba.*`, que son de otras herramientas. |
 

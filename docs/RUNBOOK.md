@@ -28,6 +28,20 @@ Resultado esperado: `OK` con SHA-256
 `0fad70d9b4cb324d78f113f7fd70c0aa954388fefad01af373509e0473c87df0`. Todos los subcomandos
 excepto `clean` necesitan la ubicacion del disco (incluido `verify`).
 
+### Progreso del README
+
+```
+.venv\Scripts\python.exe tools\build.py progreso
+```
+
+Mide el codigo del juego y reescribe, ademas de `docs/PROGRESO.md` y `build/progreso.json`, la
+seccion «Progreso» del `README.md`, delimitada por `<!-- progreso:inicio -->` y
+`<!-- progreso:fin -->` (si faltan, se inserta tras el primer parrafo). Lleva la fecha, el hash corto
+del commit (`git rev-parse --short HEAD`), la tabla de cifras y los comandos para reproducirla.
+La orden respeta los finales de linea del archivo y es idempotente. Con `--sin-readme` no toca el
+README. Regenerarla antes de cada commit que cambie `src/`; el hash que muestra es el del commit
+anterior, asi que el siguiente commit lo refresca.
+
 ## 3. Imagen de prueba
 
 ```

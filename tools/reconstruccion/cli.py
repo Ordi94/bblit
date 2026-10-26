@@ -6,9 +6,17 @@ import argparse
 import os
 import sys
 from collections.abc import Mapping, Sequence
+from datetime import date
 from pathlib import Path, PurePath
 
-from tools.reconstruccion import coherencia_pendientes, compilacion, diff, progreso, variantes
+from tools.reconstruccion import (
+    coherencia_pendientes,
+    compilacion,
+    diff,
+    progreso,
+    readme_progreso,
+    variantes,
+)
 from tools.reconstruccion import infraestructura as infra
 from tools.reconstruccion.dominio import EjecutableReferencia
 from tools.reconstruccion.infraestructura import Ejecutor, ProcesoError, listar_fuentes_c
@@ -55,7 +63,13 @@ def construir_parser() -> argparse.ArgumentParser:
     ensayar.add_argument(
         "carpeta", type=Path, help="carpeta con una variante completa de la funcion por archivo .c"
     )
-    sub.add_parser("progreso", help="mide la descompilacion y escribe docs/PROGRESO.md y build/progreso.json")
+    medir = sub.add_parser(
+        "progreso",
+        help="mide la descompilacion y escribe docs/PROGRESO.md, build/progreso.json y la seccion del README",
+    )
+    medir.add_argument(
+        "--sin-readme", action="store_true", help="no actualiza la seccion de progreso del README.md"
+    )
     sub.add_parser(
         "verificar-config",
         help="avisa de las claves de [datos_pequenos] que config/symbols.txt ya declara (solo informa)",
@@ -108,7 +122,74 @@ def _ejecutar_verificacion_configuracion(raiz: Path) -> int:
     return 0
 
 
-def _ejecutar_progreso(raiz: Path) -> int:
+def _fecha_actual() -> str:
+    """Da la fecha local de hoy como ``AAAA-MM-DD`` (sustituible en pruebas)."""
+    return date.today().isoformat()
+
+
+def _actualizar_readme(raiz: Path, medido: progreso.Progreso, ejecutar: Ejecutor) -> None:
+    """Reescribe la seccion de progreso del README e informa del resultado."""
+    referencia = infra.leer_referencia(raiz / RUTA_REFERENCIA)
+    cambio = readme_progreso.actualizar_readme(
+        raiz,
+        medido,
+        _fecha_actual(),
+        readme_progreso.obtener_hash_corto(raiz, ejecutar),
+        referencia.sha256,
+    )
+    print(f"README.md: seccion de progreso {'actualizada' if cambio else 'sin cambios'}")
+
+
+def _motivo_sin_rutas(error: Exception) -> str:
+    """
+    Da el motivo de un fallo sin las rutas de la maquina.
+
+    Contexto:
+        Lo usa ``_actualizar_readme_sin_abortar``; un ``OSError`` trae la ruta completa en su
+        texto, asi que solo se conserva la descripcion del sistema.
+
+    Args:
+        error (Exception): Fallo capturado.
+
+    Returns:
+        str: ``strerror`` si el error de entrada/salida nombra una ruta; el mensaje tal cual
+        en el resto (los del proyecto ya van redactados sin rutas).
+
+    Ejemplo:
+        motivo = _motivo_sin_rutas(PermissionError(13, "Acceso denegado", "C:/x"))
+    """
+    if isinstance(error, OSError) and error.filename is not None:
+        return error.strerror or type(error).__name__
+    return str(error)
+
+
+def _actualizar_readme_sin_abortar(raiz: Path, medido: progreso.Progreso, ejecutar: Ejecutor) -> None:
+    """
+    Actualiza la seccion del README y convierte cualquier fallo en un aviso.
+
+    Contexto:
+        La seccion del README es secundaria: ``docs/PROGRESO.md`` y ``build/progreso.json`` ya
+        estan escritos cuando se llega aqui, y abortar perderia los avisos de coherencia y de
+        rutinas sin explicar que ``progreso`` emite despues.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        medido (progreso.Progreso): Medicion ya calculada.
+        ejecutar (Ejecutor): Ejecutor de procesos usado para leer el hash del commit.
+
+    Ejemplo:
+        _actualizar_readme_sin_abortar(raiz, medido, ejecutar)
+    """
+    try:
+        _actualizar_readme(raiz, medido, ejecutar)
+    except (*ERRORES_PROPIOS, OSError) as error:
+        print(
+            f"aviso: no se pudo actualizar la seccion de progreso del README: {_motivo_sin_rutas(error)}",
+            file=sys.stderr,
+        )
+
+
+def _ejecutar_progreso(raiz: Path, ejecutar: Ejecutor, con_readme: bool = True) -> int:
     """Implementa ``progreso``; devuelve 1 si el ensamblador y el codigo C no cuadran con la tabla."""
     medido = progreso.generar_progreso(raiz)
     print(
@@ -116,6 +197,10 @@ def _ejecutar_progreso(raiz: Path) -> int:
         f"({medido.c_juego.bytes} de {medido.juego.bytes} bytes, {medido.porcentaje_bytes_juego:.2f} %); "
         f"{len(medido.no_coincidentes)} NON_MATCHING; docs/PROGRESO.md y build/progreso.json escritos"
     )
+    if con_readme and (raiz / readme_progreso.RUTA_README).is_file():
+        _actualizar_readme_sin_abortar(raiz, medido, ejecutar)
+    elif con_readme:
+        print("aviso: no existe README.md; seccion de progreso omitida", file=sys.stderr)
     if medido.manuscritas:
         print(f"manuscritas: {len(medido.manuscritas)} rutinas escritas a mano siguen en ensamblador")
     for archivo, funcion in medido.sin_comentario:
@@ -294,7 +379,7 @@ def main(
     variables = entorno if entorno is not None else os.environ
     try:
         if args.orden == "progreso":
-            return _ejecutar_progreso(raiz)
+            return _ejecutar_progreso(raiz, ejecutar, not args.sin_readme)
         if args.orden == "verificar-config":
             return _ejecutar_verificacion_configuracion(raiz)
         referencia = infra.leer_referencia(raiz / RUTA_REFERENCIA)
