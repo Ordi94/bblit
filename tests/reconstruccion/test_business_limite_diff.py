@@ -9,6 +9,7 @@ from tools.reconstruccion import cli, diff
 
 from .test_compilacion import herramientas_compilacion
 from .test_diff import ASM_FUNCION, EjecutorDiff, repo_diff  # noqa: F401 - fixture reutilizada
+from .test_gp import EjecutorEnlace, crear_repo_diff, herramientas_con_enlace
 
 
 def asm_sintetico(instrucciones: int) -> str:
@@ -151,3 +152,38 @@ def test_el_truncado_se_distingue_con_el_limite_real_de_una_funcion_de_mas_de_10
     assert exacto.truncado is True
     assert uno_menos.truncado is False
     assert con_el_minimo.truncado is False, "un candidato de 1024 filas cabe en el limite de 1564"
+
+
+def comparar_truncado_con_enlace(raiz: Path, *, difiere: bool) -> diff.ResultadoDiff:
+    """Compara con puntuacion parcial 0, candidato truncado y enlace byte a byte configurable."""
+    ejecutor = EjecutorEnlace(0, difiere=difiere)
+    ejecutor.filas = [fila("addiu")] * 1024
+    return diff.comparar_funcion(raiz, "func_80036204", herramientas_con_enlace(), Path("diff.py"), ejecutor)
+
+
+def test_puntuacion_cero_truncada_con_bytes_distintos_no_coincide(tmp_path: Path) -> None:
+    crear_repo_diff(tmp_path)
+    resultado = comparar_truncado_con_enlace(tmp_path, difiere=True)
+    assert (resultado.puntuacion, resultado.truncado, resultado.bytes_iguales) == (0, True, False)
+    assert resultado.coincide is False
+
+
+def test_puntuacion_cero_truncada_con_bytes_iguales_coincide_porque_el_enlace_es_la_prueba_definitiva(
+    tmp_path: Path,
+) -> None:
+    crear_repo_diff(tmp_path)
+    resultado = comparar_truncado_con_enlace(tmp_path, difiere=False)
+    assert (resultado.puntuacion, resultado.truncado, resultado.bytes_iguales) == (0, True, True)
+    assert resultado.coincide is True, "el enlace de la funcion completa es la prueba definitiva"
+
+
+def test_resultado_truncado_con_puntuacion_cero_no_coincide_sin_prueba_de_bytes() -> None:
+    assert diff.ResultadoDiff("f", "src/a.c", 0, "", truncado=True).coincide is False
+    assert diff.ResultadoDiff("f", "src/a.c", 0, "", truncado=False).coincide is True
+    assert diff.ResultadoDiff("f", "src/a.c", 0, "", False, truncado=True).coincide is False
+
+
+def test_puntuacion_cero_truncada_sin_poder_enlazar_no_coincide(repo_diff: Any) -> None:  # noqa: F811
+    resultado = comparar_con_filas(repo_diff, [fila("addiu")] * 1024)
+    assert (resultado.puntuacion, resultado.truncado, resultado.bytes_iguales) == (0, True, None)
+    assert resultado.coincide is False

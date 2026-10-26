@@ -171,7 +171,7 @@ def resumir_comparacion(resultado: diff.ResultadoDiff) -> list[str]:
 
 
 def _ejecutar_comparacion(raiz: Path, rutas: Rutas, funcion: str, python: str, ejecutar: Ejecutor) -> int:
-    """Implementa ``diff``; devuelve 0 solo si la puntuacion informada es cero."""
+    """Implementa ``diff``; devuelve 0 solo si la medicion es completa y coincide."""
     lock = leer_lock(raiz / RUTA_LOCK)
     herramientas = compilacion.resolver_herramientas_compilacion(lock, rutas.toolchain, python)
     script = resolver_herramienta(lock, rutas.toolchain, "asm-differ", "diff")

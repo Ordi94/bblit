@@ -69,7 +69,7 @@ class ResultadoDiff:
             coinciden con los del original; en otro caso la de ``asm-differ``.
         texto: Diferencias instruccion por instruccion, listas para imprimir.
         bytes_iguales: Si los bytes de la funcion enlazada coinciden con los del original (``None``
-            si no se pudo comparar o la puntuacion ya era cero).
+            si no se pudo comparar o la puntuacion ya era cero sin truncado).
         referencias_numericas: Filas cuya unica diferencia es una referencia escrita como numero.
         puntuacion_asm: Puntuacion que dio ``asm-differ`` antes de comparar los bytes (``None`` si
             no se registro).
@@ -88,8 +88,13 @@ class ResultadoDiff:
 
     @property
     def coincide(self) -> bool:
-        """Verdadero si la puntuacion es cero o si los bytes enlazados son iguales."""
-        return self.puntuacion == 0 or self.bytes_iguales is True
+        """
+        Verdadero si los bytes enlazados son iguales o si la medicion es completa y puntua cero.
+
+        Una medicion truncada solo cubre una ventana del candidato: su puntuacion cero no basta, y
+        solo el enlace byte a byte de la funcion completa puede darla por coincidente.
+        """
+        return self.bytes_iguales is True or (not self.truncado and self.puntuacion == 0)
 
 
 class FuncionSinCError(ValueError):
@@ -463,7 +468,9 @@ def comparar_funcion(
     iguales = None
     referencias = 0
     direccion = leer_direcciones_de_funciones(raiz).get(funcion)
-    if puntuacion != 0 and direccion is not None:
+    # Una medicion truncada solo cubre una ventana del candidato: aunque puntue 0, el enlace byte a
+    # byte de la funcion completa es la unica prueba definitiva de que la cola tambien coincide.
+    if (puntuacion != 0 or truncado) and direccion is not None:
         iguales = bytes_coinciden(
             raiz,
             herramientas,
