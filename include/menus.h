@@ -128,10 +128,9 @@ typedef struct ObjetoCamara {
  * Vector de tres palabras en t4..t6 guardado en memoria: el mismo estilo de macro de vector que
  * geometria.h (los temporales fijos $8 y $12..$14 y la direccion copiada a $8).
  */
-#define GEO_GUARDAR_W_T4(p)     __asm__ volatile ("move $8, %0
-	sw $12, 0($8)
-	sw $13, 4($8)
-	sw $14, 8($8)"                       : : "r"(p) : "$8", "memory")
+#define GEO_GUARDAR_W_T4(p) \
+    __asm__ volatile ("move $8, %0\n\tsw $12, 0($8)\n\tsw $13, 4($8)\n\tsw $14, 8($8)" \
+                      : : "r"(p) : "$8", "memory")
 
 /* Vertice fuente de 12 bytes: posicion en espacio objeto, coordenadas de textura, color y codigo. */
 typedef struct Vertice12 {
@@ -145,6 +144,11 @@ typedef struct Vertice12 {
     u8 b;
     u8 codigo;
 } Vertice12;
+
+/* Vistas de palabra del vertice de trabajo: x e y empaquetados, coordenadas de textura y color con codigo. */
+#define VERT_XY(v) (*(u32*)&(v)->x)
+#define VERT_UV(v) (*(u16*)&(v)->u)
+#define VERT_COLOR(v) (*(u32*)&(v)->r)
 
 /* Triangulo de color por vertice (POLY_G3, 0x1C bytes). */
 typedef struct PoligonoG3 {
@@ -188,6 +192,40 @@ typedef struct PoligonoGT3 {
     u16 uv2;
     u16 pad26;
 } PoligonoGT3;
+
+/*
+ * Definicion de un poligono de la cola de dibujo. Los 20 valores de 16 bits se leen como indices
+ * de vertice (con signo) o como coordenadas de textura y clut (sin signo) segun el tipo; los
+ * desplazamientos concretos de cada tipo estan en func_8003C1C8.
+ */
+typedef union PoligonoDef {
+    s16 s[20];
+    u16 u[20];
+} PoligonoDef;
+
+/* Vertice proyectado de la tabla del objeto: x e y empaquetados en una palabra, z aparte (8 bytes). */
+typedef struct VerticeObjeto {
+    u32 xy;
+    u16 z;
+    u16 pad06;
+} VerticeObjeto;
+
+/*
+ * Entrada de la cola de poligonos D_8006D1C8 (0x1C bytes) que llena el dibujador de modelos y
+ * consume func_8003C1C8: tipo de poligono, bandera, definicion, tabla de vertices del objeto y
+ * los colores de cada vertice. El byte alto del primer color es el codigo de primitiva.
+ */
+typedef struct EntradaCola {
+    u16 tipo;
+    u16 w2;
+    PoligonoDef* def;
+    VerticeObjeto* tabla;
+    u8 rgb0[3];
+    s8 codigo;
+    u32 color1;
+    u32 color2;
+    u32 color3;
+} EntradaCola;
 
 /*
  * Escena en curso (segundo argumento de las rutinas de modelos): +4..+6 son los bytes de estado

@@ -50,7 +50,7 @@ extern u8 D_80069600;
 extern s32 func_80010258(void* modelo, s32 cursor, void* vista, void* estado);
 extern s16 D_800695DA;
 extern void* D_800695C4;
-extern u8 D_8006D1C8[];
+extern EntradaCola D_8006D1C8[];
 extern EntradaVisible D_8006A940[];
 extern s16 D_80069588;
 extern s16 D_80069688;
@@ -60,7 +60,12 @@ extern ColorYDesplazamiento* func_8001DF28(void* objeto, void* vista);
 extern s32 func_8003760C(void* geometria, void* vista, void* vista_siguiente);
 extern void func_8003753C(void* vista);
 extern s32 func_80010204(void* modelo, s32 cursor, void* estado, void* vista);
-extern void func_8003C1C8(void* vista);
+extern void func_8003C1C8(VistaDibujo* vista);
+extern s16 D_80069530;
+extern s32 D_80076098;
+extern s32 D_8007609C;
+extern void func_8003CA5C(VistaDibujo* vista, s32 cero, Vertice12* trabajo);
+extern void func_8003D0D4(VistaDibujo* vista, s32 cero, Vertice12* trabajo);
 
 
 void func_8003AA38(void)
@@ -435,7 +440,169 @@ void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, VistaDibujo* vist
     }
 }
 
+/*
+ * Copia al vertice de trabajo la posicion y la profundidad del vertice de la tabla del objeto
+ * que indica el elemento i de la definicion. El indice se relee en cada acceso: las escrituras
+ * al vertice de trabajo pueden solapar la definicion.
+ */
+#define CARGAR_VERTICE(v, i) \
+    do { \
+        VERT_XY(v) = tabla[def->s[i]].xy; \
+        (v)->z = tabla[def->s[i]].z; \
+    } while (0)
+
+/* Pendiente: puntuacion 80 con la configuracion versionada (g = 8 del archivo). El despacho por tabla, los seis casos, las cuatro colas y el bucle coinciden con el original y la tabla de saltos migrada es identica (las 21 entradas); solo difiere el orden de dos movimientos de argumentos antes de cada llamada (el original carga a2 antes que a0). Variantes probadas: 40 (orden de las asignaciones iniciales, bucle for frente a do/while, signo del codigo, forma del tercer argumento, prototipos). */
+#ifdef NON_MATCHING
+void func_8003C1C8(VistaDibujo* base)
+{
+    VistaDibujo* vista;
+    EntradaCola* e;
+    PoligonoDef* def;
+    VerticeObjeto* tabla;
+    Vertice12* w;
+    u32 c;
+    s32 cod;
+    s32 i;
+
+    if (D_80069530 != 0) {
+        vista = base;
+        base = (VistaDibujo*)vista->trabajo;
+        vista->b1 = D_80069530;
+        vista->s4 = D_80076098 / 2;
+        vista->s6 = D_8007609C / 2;
+        w = (Vertice12*)base;
+        vista->ot0 = (u32*)D_8006AE20[D_8006967C].org;
+        vista->ot1 = (u32*)D_8006AE60[D_8006967C].org;
+        vista->ot2 = (u32*)D_8006AEA0[D_8006967C].org;
+        vista->cursor = D_80076188;
+        e = D_8006D1C8;
+        for (i = 0; i < D_800695DA; e++, i++) {
+            switch ((s16)(e->tipo - 8)) {
+            case 0:
+                def = e->def;
+                tabla = e->tabla;
+                vista->tipo = 8;
+                vista->w8 = e->w2;
+                CARGAR_VERTICE(&w[0], 8);
+                CARGAR_VERTICE(&w[1], 9);
+                CARGAR_VERTICE(&w[2], 10);
+                cod = e->codigo;
+                vista->b2 = cod;
+                VERT_COLOR(&w[0]) = *(u32*)e->rgb0;
+                VERT_COLOR(&w[1]) = e->color1;
+                VERT_COLOR(&w[2]) = e->color2;
+                func_8003CA5C(vista, 0, (Vertice12*)base);
+                break;
+            case 4:
+                def = e->def;
+                tabla = e->tabla;
+                vista->tipo = 0xC;
+                vista->w8 = e->w2;
+                CARGAR_VERTICE(&w[0], 10);
+                CARGAR_VERTICE(&w[1], 11);
+                CARGAR_VERTICE(&w[2], 12);
+                CARGAR_VERTICE(&w[3], 13);
+                cod = e->codigo;
+                vista->b2 = cod;
+                VERT_COLOR(&w[0]) = *(u32*)e->rgb0;
+                VERT_COLOR(&w[1]) = e->color1;
+                VERT_COLOR(&w[2]) = e->color2;
+                VERT_COLOR(&w[3]) = e->color3;
+                func_8003D0D4(vista, 0, (Vertice12*)base);
+                break;
+            case 8:
+                def = e->def;
+                tabla = e->tabla;
+                vista->tipo = 0x10;
+                vista->w8 = e->w2;
+                vista->clut = def->u[3];
+                vista->tpage = def->u[5];
+                CARGAR_VERTICE(&w[0], 10);
+                CARGAR_VERTICE(&w[1], 11);
+                CARGAR_VERTICE(&w[2], 7);
+                VERT_UV(&w[0]) = def->u[2];
+                VERT_UV(&w[1]) = def->u[4];
+                VERT_UV(&w[2]) = def->u[6];
+                cod = e->codigo;
+                vista->b2 = cod;
+                c = *(u32*)e->rgb0;
+                VERT_COLOR(&w[0]) = VERT_COLOR(&w[1]) = VERT_COLOR(&w[2]) = c;
+                func_8003CA5C(vista, 0, (Vertice12*)base);
+                break;
+            case 12:
+                def = e->def;
+                tabla = e->tabla;
+                vista->tipo = 0x14;
+                vista->w8 = e->w2;
+                vista->clut = def->u[3];
+                vista->tpage = def->u[5];
+                CARGAR_VERTICE(&w[0], 10);
+                CARGAR_VERTICE(&w[1], 11);
+                CARGAR_VERTICE(&w[2], 12);
+                CARGAR_VERTICE(&w[3], 13);
+                VERT_UV(&w[0]) = def->u[2];
+                VERT_UV(&w[1]) = def->u[4];
+                VERT_UV(&w[2]) = def->u[6];
+                VERT_UV(&w[3]) = def->u[7];
+                cod = e->codigo;
+                vista->b2 = cod;
+                c = *(u32*)e->rgb0;
+                VERT_COLOR(&w[0]) = VERT_COLOR(&w[1]) = VERT_COLOR(&w[2]) = VERT_COLOR(&w[3]) = c;
+                func_8003D0D4(vista, 0, (Vertice12*)base);
+                break;
+            case 16:
+                def = e->def;
+                tabla = e->tabla;
+                vista->tipo = 0x18;
+                vista->w8 = e->w2;
+                vista->clut = def->u[3];
+                vista->tpage = def->u[5];
+                CARGAR_VERTICE(&w[0], 14);
+                CARGAR_VERTICE(&w[1], 15);
+                CARGAR_VERTICE(&w[2], 7);
+                VERT_UV(&w[0]) = def->u[2];
+                VERT_UV(&w[1]) = def->u[4];
+                VERT_UV(&w[2]) = def->u[6];
+                cod = e->codigo;
+                vista->b2 = cod;
+                VERT_COLOR(&w[0]) = *(u32*)e->rgb0;
+                VERT_COLOR(&w[1]) = e->color1;
+                VERT_COLOR(&w[2]) = e->color2;
+                func_8003CA5C(vista, 0, (Vertice12*)base);
+                break;
+            case 20:
+                def = e->def;
+                tabla = e->tabla;
+                vista->tipo = 0x1C;
+                vista->w8 = e->w2;
+                vista->clut = def->u[3];
+                vista->tpage = def->u[5];
+                CARGAR_VERTICE(&w[0], 16);
+                CARGAR_VERTICE(&w[1], 17);
+                CARGAR_VERTICE(&w[2], 18);
+                CARGAR_VERTICE(&w[3], 19);
+                VERT_UV(&w[0]) = def->u[2];
+                VERT_UV(&w[1]) = def->u[4];
+                VERT_UV(&w[2]) = def->u[6];
+                VERT_UV(&w[3]) = def->u[7];
+                cod = e->codigo;
+                vista->b2 = cod;
+                VERT_COLOR(&w[0]) = *(u32*)e->rgb0;
+                VERT_COLOR(&w[1]) = e->color1;
+                VERT_COLOR(&w[2]) = e->color2;
+                VERT_COLOR(&w[3]) = e->color3;
+                func_8003D0D4(vista, 0, (Vertice12*)base);
+                break;
+            default:
+                break;
+            }
+        }
+        D_80076188 = vista->cursor;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003C1C8);
+#endif
 
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003CA5C);
 
