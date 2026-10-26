@@ -121,9 +121,11 @@ extern void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, Trabajo
  * pasando por los temporales fijos $8 y $9. El original la escribio como ensamblador en linea
  * con los mismos temporales que las macros vectoriales de geometria.h.
  */
-#define MOTOR_GUARDAR_MAC3(p)     __asm__ volatile ("move $9, %0
-	mfc2 $8, $27
-	nop
-	sw $8, 0($9)"                       : : "r"(p) : "$8", "$9", "memory")
+#define MOTOR_GUARDAR_MAC3(p) \
+    __asm__ volatile ("move $9, %0\n\t" \
+                      "mfc2 $8, $27\n\t" \
+                      "nop\n\t" \
+                      "sw $8, 0($9)" \
+                      : : "r"(p) : "$8", "$9", "memory")
 
 #endif
