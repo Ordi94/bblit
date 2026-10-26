@@ -58,6 +58,7 @@ extern s32 D_80069488;
 
 #ifdef NON_MATCHING
 /*
+ * Depende de $gp y de g = 8: 110 con g = 8; con la configuracion actual -G0 da 210.
  * Retorno de llamada de DrawSync: si hay un cuadro por presentar (cuenta de cuadros
  * positiva), ya pasaron al menos dos VSync y la GPU esta libre, lanza el dibujo.
  * Puntuacion 110 con -G8: solo difiere el acceso a la bandera D_80069338, que el original
@@ -76,6 +77,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte_10", func_80040A80);
 
 #ifdef NON_MATCHING
 /*
+ * Coincide con g = 8 (0); con la configuracion actual -G0 da 1600.
  * Retorno de llamada de VSync: cuenta el cuadro y, si la comprobacion de disco no esta
  * activa, intenta presentar el siguiente. Puntuacion 0 con -G8 (umbral de datos pequenos
  * de este archivo); con el -G0 por omision las escrituras no usan $at.
@@ -97,6 +99,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte_10", func_80040AF0);
 
 #ifdef NON_MATCHING
 /*
+ * Depende de $gp y de g = 8: 220 con g = 8; con la configuracion actual -G0 da 3978.
  * Presenta el cuadro: si la GPU esta ocupada deja la bandera de pendiente (y reinicia el
  * grafico si lleva cuatro VSync colgada); si no, avanza el anillo de buffers y envia las
  * tres listas de ordenacion del buffer activo. Puntuacion 220 con -G8: solo difiere el
@@ -166,6 +169,7 @@ void func_80040D98(CabeceraLista* a0, s16* a1)
 
 #ifdef NON_MATCHING
 /*
+ * Depende de $gp: 110 con g = 8 y tambien con -G0.
  * Copia de VRAM de la barra de progreso de carga si la pantalla de carga esta activa
  * (bit 0 de 0x800694A8). Puntuacion 110 con -G8: solo difiere la lectura de 0x188($gp).
  */
@@ -187,6 +191,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte_10", func_80040DDC);
 
 #ifdef NON_MATCHING
 /*
+ * Depende de $gp y de g = 8: 330 con g = 8; con la configuracion actual -G0 da 590.
  * Copia de VRAM de la barra de progreso de carga: el ancho es restante / (total / 300)
  * (0x80069488 y 0x800694A4, datos pequenos de $gp). Puntuacion 330 con -G8: solo difieren
  * las tres lecturas de $gp (0x188, 0x184 y 0x168).
