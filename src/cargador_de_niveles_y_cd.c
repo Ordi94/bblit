@@ -38,6 +38,46 @@ extern u8 D_8006A928[];
 
 extern void func_80040E30(void);
 
+typedef struct NodoA {
+    struct NodoA* sig;
+    u16 id;
+    u16 ref[5];
+} NodoA;
+
+typedef struct NodoB {
+    struct NodoB* sig;
+    u16 id;
+    u8 pad6[4];
+    u16 refC;
+    u8 padC[0x12];
+    s16 desplazamiento;
+} NodoB;
+
+typedef struct NodoC {
+    struct NodoC* sig;
+    u16 id;
+    u16 refA;
+    u8 pad8[0x10];
+    u32 banderas;
+    u32 refA1;
+    u32 refA2;
+} NodoC;
+
+typedef struct RefA {
+    u8 pad0[6];
+    u16 v;
+} RefA;
+
+typedef struct ContenedorCarga {
+    u8 pad0[0x2C];
+    u16 clase;
+    u8 pad2E[0xF4 - 0x2E];
+    NodoA* listaA;
+    NodoB* listaB;
+    NodoC* listaC;
+} ContenedorCarga;
+
+
 /*
  * Construye al arrancar los registros de archivo a partir de la tabla de sectores: pausa la
  * unidad, espera a que termine el comando y, para cada una de las 113 entradas, deja el tamano
@@ -196,9 +236,125 @@ void func_80041264(u8* origen, u8* destino, s16 n)
     }
 }
 
-INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd", func_80041298);
+/*
+ * Convierte, en un contenedor ya cargado, las referencias entre registros por identificador en
+ * desplazamientos dentro de cada lista, para que el codigo que las usa no tenga que buscar:
+ * las cinco referencias de cada nodo de la lista A apuntan a la lista B (desplazamiento en
+ * bytes, multiplo de 0x20), la de cada nodo de B apunta a la lista C (indice por 0x24), y la de
+ * cada nodo de C apunta a A (desplazamiento multiplo de 0x10, y los dos campos extra, que solo
+ * existen con la bandera 0x20, como indice por 0x10). Un identificador sin nodo se deja intacto.
+ * Solo actua sobre las clases 2, 0xE y 0x22. Los nodos empiezan con el enlace al siguiente (+0)
+ * y el identificador de 16 bits (+4).
+ */
+/* Pendiente: puntuacion 1115 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones
+   y mismo flujo que el original; difiere el reparto de registros (el original deja el puntero de
+   la lista A en v1 y el de busqueda en a1, aqui salen a2 y v1) y un nop de retardo que el
+   original rellena. Variantes probadas: 14 (indice o puntero en el bucle de cinco, tipo del
+   contador, temporales para el reparto, orden de declaracion). */
+#ifdef NON_MATCHING
+void func_80041298(ContenedorCarga* c)
+{
+    NodoA* a;
+    NodoB* b;
+    NodoC* k;
+    NodoA* na;
+    NodoB* nb;
+    RefA* r;
+    u16 id;
+    u32 i;
+    s32 idx;
+    u32 desp;
 
-INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd", func_8004153C);
+    if (c->clase == 0xE || c->clase == 2 || c->clase == 0x22) {
+        for (a = c->listaA; a != NULL; a = a->sig) {
+            for (i = 0; i < 5; i++) {
+                id = a->ref[i];
+                if (id == 0xFFF0) {
+                    break;
+                }
+                for (nb = c->listaB; nb != NULL; nb = nb->sig) {
+                    if (nb->id == id) {
+                        break;
+                    }
+                }
+                if (nb != NULL) {
+                    desp = ((u8*)nb - (u8*)c->listaB) & 0xFFE0;
+                    a->ref[i] = desp;
+                }
+            }
+        }
+        for (b = c->listaB; b != NULL; b = b->sig) {
+            id = b->refC;
+            if (id != 0) {
+                for (k = c->listaC; k != NULL; k = k->sig) {
+                    if (k->id == id) {
+                        break;
+                    }
+                }
+                if (k != NULL) {
+                    idx = k - c->listaC;
+                    b->desplazamiento = idx * 0x24;
+                }
+            }
+        }
+        for (k = c->listaC; k != NULL; k = k->sig) {
+            id = k->refA;
+            if (id != 0) {
+                for (na = c->listaA; na != NULL; na = na->sig) {
+                    if (na->id == id) {
+                        break;
+                    }
+                }
+                if (na != NULL) {
+                    desp = ((u8*)na - (u8*)c->listaA) & 0xFFF0;
+                    k->refA = desp;
+                }
+            }
+            if (k->banderas & 0x20) {
+                for (na = c->listaA; na != NULL; na = na->sig) {
+                    if (na->id == k->refA1) {
+                        break;
+                    }
+                }
+                if (na != NULL) {
+                    idx = na - c->listaA;
+                    k->refA1 = idx * 0x10;
+                }
+                for (na = c->listaA; na != NULL; na = na->sig) {
+                    if (na->id == k->refA2) {
+                        break;
+                    }
+                }
+                if (na != NULL) {
+                    idx = na - c->listaA;
+                    k->refA2 = idx * 0x10;
+                }
+            }
+        }
+    }
+}
+#else
+INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd", func_80041298);
+#endif
+
+void func_8004153C(u8* origen, u32 n, u8* destino)
+{
+    s32 i;
+
+    if (origen >= destino) {
+        i = 0;
+        while (i < n) {
+            destino[i] = origen[i];
+            i++;
+        }
+    } else {
+        i = n - 1;
+        while (i >= 0) {
+            destino[i] = origen[i];
+            i--;
+        }
+    }
+}
 
 INCLUDE_RODATA("asm/nonmatchings/cargador_de_niveles_y_cd", D_80067F18);
 
