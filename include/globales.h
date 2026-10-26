@@ -708,6 +708,14 @@ extern s32* D_80069640;
 /* D_80069652: accesos del ensamblador: sh x2, lh x3, lhu x4 */
 extern s16 D_80069652;
 
+/* D_80069532: numero de objetos con sombra. Accesos del ensamblador: lh en la comparacion y lhu en el total
+ (func_8003A5C8), sh en las escrituras de menus_e_interfaz.c */
+extern s16 D_80069532;
+
+/* D_80069600: bandera del fondo. La unica lectura es lb en 0x8003A97C (func_8003A5C8); el resto
+ son sb, que no fijan signo */
+extern s8 D_80069600;
+
 /* D_80069680: accesos del ensamblador: sw x1, lw x6 */
 extern s32 D_80069680;
 

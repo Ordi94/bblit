@@ -39,11 +39,9 @@ extern s32 D_8006D934[3];
 extern u8 D_8006AA89;
 
 /* Contadores y banderas del cuadro de dibujo, y tablas de modelos y de salas visibles. */
-extern s16 D_80069532;
 extern s16 D_80069688;
 extern s32 D_80076098;
 extern s32 D_8007609C;
-extern u8 D_80069600;
 extern EntradaCola D_8006D1C8[];
 
 /* Rutinas de otros archivos y del overlay (func_80010204 y func_80010258 dibujan un modelo). */

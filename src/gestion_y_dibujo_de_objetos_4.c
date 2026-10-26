@@ -351,10 +351,6 @@ typedef struct CuerpoSombra {
     GsCOORDINATE2 coord;
 } CuerpoSombra;
 
-/* Numero de objetos con sombra (lh y lhu en func_8003A5C8). menus_e_interfaz.c la declara tambien; la declaracion compartida pertenece a globales.h. */
-extern s16 D_80069532;
-/* Bandera del fondo: func_8003A5C8 la carga con lb (menus_e_interfaz.c solo la escribe y la declara u8). */
-extern s8 D_80069600;
 extern void func_8003753C(void* m);
 extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
 
