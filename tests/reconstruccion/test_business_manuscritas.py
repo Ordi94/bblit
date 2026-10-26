@@ -134,7 +134,9 @@ def test_sin_marcas_el_progreso_no_inventa_categorias() -> None:
 
 FUENTE = (
     "s32 func_80014AC4(void)\n{\n    return 0;\n}\n"
-    "/* Rutina escrita a mano en el original: copia una matriz. */\n" + asm("func_80014AD4") + "\n"
+    "/* Rutina escrita a mano en el original: copia una matriz. */\n"
+    + asm("func_80014AD4")
+    + "\n"
     + asm("func_80014B18")
 )
 
