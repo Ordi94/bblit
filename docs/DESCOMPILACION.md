@@ -398,7 +398,7 @@ preferible.
 
 - **Variable externa que debía ser pequeña**: el código sale con `lui` más desplazamiento. Se define en el
   archivo (pasos 1 y 2) en lugar de declararla `extern`.
-- **`addiu rX,$gp,desplazamiento` (dirección de una variable pequeña)**: ASPSX 2.79 no lo emite; hace falta
+- **`addiu rX,$gp,desplazamiento` (dirección de una variable pequeña)**: ASPSX 2.79 no lo emite; con la 2.80 fijada (`gp_allow_la` en `maspsx`) sí. Hace falta
   ASPSX 2.80 o posterior (`gp_allow_la` en `maspsx`). Las tres funciones de `tarjeta_de_memoria` que lo
   necesitan (`func_80014AC4`, `func_80015E94` y `func_800156F4`) se quedan en `NON_MATCHING`.
 
@@ -499,7 +499,7 @@ una decisión del desarrollador, así el progreso solo cuenta lo que alguien esc
 | Orden | Efecto |
 |---|---|
 | `split` | Copia el original a `expected/`, ejecuta el particionador y genera `asm/`, `src/` (los `.c` que falten) y el script del enlazador. No toca `asm/overlay/`. |
-| `build` | Para cada objeto del script del enlazador: ensambla el `.s` o compila el `.c` (preprocesador, `CC1PSX.EXE -O2 -G<g>`, `maspsx --aspsx-version=2.79`, `as`). Enlaza en el orden del script y escribe `build/SLUS_008.38`. Antes de empezar elimina la salida de la construcción anterior (ver «Invalidación de la salida»). |
+| `build` | Para cada objeto del script del enlazador: ensambla el `.s` o compila el `.c` (preprocesador, `CC1PSX.EXE -O2 -G<g>`, `maspsx --aspsx-version=2.80`, `as`). Enlaza en el orden del script y escribe `build/SLUS_008.38`. Antes de empezar elimina la salida de la construcción anterior (ver «Invalidación de la salida»). |
 | `verify` | Compara el SHA-256 con el del original. Imprime `OK` o `FAIL` con el desplazamiento de la primera diferencia; si no existe el ejecutable reconstruido imprime `FAIL ... no existe` y devuelve 1. |
 | `diff <función>` | Compila el `.c` que contiene la función con `NON_MATCHING`, ensambla el original y ejecuta `asm-differ`. Código 0 si la puntuación es 0 o si los bytes enlazados coinciden (con aviso del número de referencias en forma numérica). Una función que sigue solo en `INCLUDE_ASM` se rechaza: compararla consigo misma daría 0 sin significar nada. |
 | `probar <función> <carpeta>` | Compila y puntúa cada variante `.c` de la carpeta contra el original y muestra la tabla ordenada. Código 0 si la mejor coincide (puntuación 0 o bytes iguales). |
