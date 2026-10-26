@@ -161,7 +161,8 @@ typedef struct TrabajoBaldosa {
  * Puesta a cero de un vector de tres palabras (GEO_CERO_W) y de seis bytes, una palabra y una
  * media palabra (GEO_CERO_WH), y carga de tres medias palabras con signo en t1..t3
  * (GEO_CARGAR_H). El original las escribio con "move t0, puntero" y almacenes o cargas sobre t0
- * (func_80020B90: 0x80020CE4, 0x80020CF8 y 0x80023290).
+ * (func_80020B90): GEO_CERO_W en 0x80020CE4, 0x800251A4 y 0x80025690; GEO_CERO_WH en 0x80020CF8,
+ * 0x80024F1C y 0x800251C0; GEO_CARGAR_H en 0x80023290.
  */
 #define GEO_CERO_W(p) \
     __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsw $0, 4($8)\n\tsw $0, 8($8)" \
