@@ -211,8 +211,7 @@ void func_80041264(u8* origen, u8* destino, s16 n)
  * Pendiente: puntuacion 1115 con la configuracion versionada (g = 8 del archivo). Mismas
  * instrucciones y mismo flujo que el original; difiere el reparto de registros (el original deja el
  * puntero de la lista A en v1 y el de busqueda en a1, aqui salen a2 y v1) y un nop de retardo que el
- * original rellena. Variantes probadas: 14 (indice o puntero en el bucle de cinco, tipo del
- * contador, temporales para el reparto, orden de declaracion).
+ * original rellena.
  *
  * Convierte, en un contenedor ya cargado, las referencias entre registros por identificador en
  * desplazamientos dentro de cada lista, para que el codigo que las usa no tenga que buscar:

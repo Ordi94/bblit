@@ -164,6 +164,6 @@ la 2.79 deja `lui` + `addiu`. El original usa esa forma, así que la versión qu
 - **Fijada:** `VERSION_ASPSX = "2.80"` en `tools/reconstruccion/compilacion.py`. Cambiarla no exige tocar
   `config/toolchain.lock.json` (el hash de `maspsx` no cambia). Para volver a evaluarla se edita la constante y se
   ejecuta `clean`, `split`, `build`, `verify`, comparando la puntuación de `diff` de todas las funciones en C.
-- **Medida (2026-10-26, 370 funciones definidas en C):** `verify` sigue dando el SHA-256 original con 2.79 y con 2.80;
+- **Medida (2026-10-26, todas las funciones definidas en C; el total vigente está en `docs/PROGRESO.md`):** `verify` sigue dando el SHA-256 original con 2.79 y con 2.80;
   solo cambia `func_80040240` (puntuación 130 a 25, coincide en bytes). Ninguna otra función cambia de puntuación,
   porque `gp_allow_la` solo actúa donde el C declara el dato pequeño en el propio archivo.

@@ -927,7 +927,6 @@ ZonaColision* func_8001BF9C(s32* a0, s16 a1)
 /*
  * Pendiente: puntuacion 1078 con la configuracion versionada (g = 0, no carga globales). El compilador asigna s0/s1
  * al reves (el original guarda la estructura de trabajo en s0 y el resultado en s1) y falta un `move t2,a3`.
- * Variantes probadas: 9 (copias de z, orden de sentencias, barreras, copias locales de los punteros de trabajo).
  *
  * Consulta la baldosa bajo el punto pos: busca la zona del punto (con el grupo recordado en
  * res), lee el valor de la baldosa de 320 unidades y la subcelda de 40 unidades, y rellena res

@@ -506,6 +506,25 @@ su uso es un error de compilación a propósito. Las macros de carga y lectura d
 (`gte_ldv0`, `gte_stlvnl`, `gte_SetRotMatrix`...) son ensamblador directo y se usan tal cual:
 `func_8001CE64` coincide con puntuación 0.
 
+## Ensamblador en línea admitido
+
+Como estado final solo se admite ensamblador en línea que reproduce instrucciones que el original ejecuta y que
+el compilador no puede generar desde C, cada uno con comentario técnico en el código:
+
+- Instrucciones GTE sueltas sin macro de `INLINE_C.H` y las macros de `include/gte.h`.
+- Macros vectoriales de `include/geometria.h` y `include/motor.h`: emiten exactamente las instrucciones de rutinas
+  manuscritas del juego (temporales `$8..$12` fijos) en una sola sentencia, y su lista de registros destruidos
+  contiene solo los que el cuerpo escribe.
+- `register u8* base_gp __asm__("$28")` en `include/globales.h`: acceso por desplazamiento a los datos pequeños
+  de `$gp`, vigente mientras `-G8` por archivo no lo sustituya del todo.
+- Cambio de pila de `func_80016218` (`src/arranque_y_bucle_principal_2.c`, líneas 204 y 226): al entrar guarda `$sp`
+  en el scratchpad (`0x1F8003FC`) y pasa a usarlo como pila; al salir lo restaura. El original ejecuta esas
+  instrucciones sobre `$sp` y C no tiene forma de expresar una escritura en el registro de pila, así que no hay
+  alternativa sin ensamblador.
+
+Barreras vacías, sentencias partidas, `register __asm__("$N")` locales, `"+r"`, `volatile` sin respaldo y registros
+destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE_ASM` con su comentario.
+
 ## Medir el progreso
 
 `python tools/build.py progreso` escribe `docs/PROGRESO.md` (legible) y `build/progreso.json`

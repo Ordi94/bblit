@@ -61,7 +61,7 @@ s32 D_80069380;
  * La matriz se asigna a una variable que vale 0 antes del bucle y se vuelve a asignar dentro: con una sola
  * asignacion el optimizador de bucles saca &o->m fuera del bucle, y el original lo calcula en cada vuelta.
  * El original la calcula justo despues de cargar el primer argumento de RotMatrixZYX; el C la calcula una
- * instruccion antes y esa es toda la diferencia (70).
+ * instruccion antes y esa es toda la diferencia (10).
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 10 con la configuracion versionada (g = 8 del archivo). Solo difiere el registro del puntero de destino de la norma al cuadrado (v0 en lugar de a0). Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
@@ -227,7 +227,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_800171E4);
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 19749 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las
- * comparaciones de las regiones no se han ajustado al original. Variantes probadas: 1.
+ * comparaciones de las regiones no se han ajustado al original.
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con
  * mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la
@@ -576,7 +576,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 2420 con la configuracion versionada (g = 8 del archivo). Reparto de registros del prologo (el original usa a0 como
- * copia de la posicion de a) y cadena de comparaciones de las esquinas que el original comparte entre regiones. Variantes probadas: 3.
+ * copia de la posicion de a) y cadena de comparaciones de las esquinas que el original comparte entre regiones.
  *
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
  * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
