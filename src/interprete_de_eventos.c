@@ -932,7 +932,8 @@ void ActionGvcrt(Objeto* a0, Accion* a1)
     }
 }
 
-/* Guarda en el dato pequeno D_800693E0 el resultado de func_80045C4C; el original lo direcciona por $gp. */
+/* Guarda en el dato pequeno D_800693E0 el resultado de func_80045C4C; el original lo direcciona por $gp.
+ * Coincide en bytes (1 referencia en forma numerica; el diff puntua 5 por la forma simbolica). */
 void func_80031A0C(Objeto* a0, Accion* a1)
 {
     D_800693E0 = func_80045C4C(ACC_W4(a1), 0, 0);
@@ -960,13 +961,15 @@ void func_80031A34(Objeto* a0, Accion* a1)
     }
 }
 
-/* Guarda en el dato pequeno D_800693E0 el resultado de func_80045C4C; el original lo direcciona por $gp. */
+/* Guarda en el dato pequeno D_800693E0 el resultado de func_80045C4C; el original lo direcciona por $gp.
+ * Coincide en bytes (1 referencia en forma numerica; el diff puntua 5 por la forma simbolica). */
 void func_80031AE4(Objeto* a0, Accion* a1)
 {
     D_800693E0 = func_80045C4C(D_8006AA70[a1->w6], 0, 0);
 }
 
-/* Como func_80031AE4 pero con el valor del banco A de registros. */
+/* Como func_80031AE4 pero con el valor del banco A de registros. Coincide en bytes (3 referencias en forma
+ * numerica; el diff puntua 15 por la forma simbolica). */
 void func_80031B1C(Objeto* a0, Accion* a1)
 {
     D_800693E0 = func_80045C4C(RA[a1->w6], 0, 0);

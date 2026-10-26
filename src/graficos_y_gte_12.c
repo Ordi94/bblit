@@ -64,7 +64,8 @@ void func_800443CC(void)
  * los retornos de llamada, limpia la VRAM, carga la imagen asociada y reactiva la pantalla.
  * Para el archivo 3 el numero de pantalla depende de D_80010065 (nivel). La tabla de
  * registros se toma por un puntero local: asi el original calcula la base antes del
- * desplazamiento del indice.
+ * desplazamiento del indice. Coincide en bytes (3 referencias en forma numerica; el diff puntua 15
+ * por la forma simbolica).
  */
 void func_8004443C(s32 archivo)
 {
@@ -118,7 +119,8 @@ void func_8004443C(s32 archivo)
 /*
  * Carga la pantalla del archivo pedido sin reiniciar la pantalla. La tabla de registros se toma por un puntero
  * local y la maquina de estados de la carga (D_800694A8) pasa a 4 antes de leer el numero de pantalla: asi el
- * original reparte la tabla y el argumento en registros distintos.
+ * original reparte la tabla y el argumento en registros distintos. Coincide en bytes (1 referencia en forma
+ * numerica; el diff puntua 5 por la forma simbolica).
  */
 void func_80044588(s32 archivo)
 {
