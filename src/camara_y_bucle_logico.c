@@ -1,11 +1,165 @@
 #include "common.h"
 #include "globales.h"
+#include "geometria.h"
 
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", BugsRand);
+/*
+ * Vista del estado de la camara con los campos que EstadoCamara (globales.h) todavia no declara:
+ * las copias del punto de vista y de la mira que los eventos de camara reparten (0x68, 0x94, 0xB4
+ * y 0xA4) y los parametros de la sacudida (0x86 a 0x90). Es la misma memoria que D_8006D928.
+ */
+typedef struct VistaCamara {
+    s32 vpx;
+    s32 vpy;
+    s32 vpz;
+    s32 mx;
+    s32 my;
+    s32 mz;
+    u8 pad18[0x68 - 0x18];
+    s32 vp68[3];
+    u8 pad74[0x80 - 0x74];
+    u16 flags80;
+    u8 pad82[0x86 - 0x82];
+    s16 s86;
+    s16 s88;
+    s16 s8A;
+    s16 s8C;
+    s16 s8E;
+    s32 i90;
+    s32 vp94[3];
+    u8 padA0[0xA4 - 0xA0];
+    s32 m4[3];
+    u8 padB0[0xB4 - 0xB0];
+    s32 vpB4[3];
+} VistaCamara;
 
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80032894);
+#define CAMARA ((VistaCamara*)&D_8006D928)
 
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80032A24);
+typedef struct Vec3 {
+    s32 x;
+    s32 y;
+    s32 z;
+} Vec3;
+
+/* Campos de los objetos de escena que Objeto (globales.h) no declara. */
+#define OBJ_U32(o, off) (*(u32*)((u8*)(o) + (off)))
+#define OBJ_LISTA(o) ((void*)((u8*)(o) + 0x78))
+
+extern s32 rand(void);
+extern void ClearList(void* lista);
+extern Objeto* RemoveListNode(Objeto* lista, Objeto* nodo);
+extern void func_8001CC68(void* a0);
+extern void func_8001CF50(void* a0);
+extern void func_8001CFCC(void* a0);
+extern void func_8003F900(Objeto* a0);
+extern s32 D_80069560;
+extern s32 D_80069618;
+extern s32 D_8006961C;
+extern s32 D_80069624;
+extern u8 D_80010076;
+extern Vec3 D_80069DC0;
+
+/* Variables de datos pequenos: el original las direcciona con desplazamiento($gp). */
+u16 D_800693F4;
+u16 D_800693F6;
+u16 D_800693F8;
+s32 D_800693F0;
+u16 D_8006940C;
+u16 D_80069414;
+u16 D_80069416;
+
+
+/* Envoltorio de rand() del SDK: la logica del juego pide aleatorios por aqui. */
+s32 BugsRand(void)
+{
+    return rand();
+}
+
+/* Reinicia la camara y la sacudida al entrar en una escena. */
+void func_80032894(void)
+{
+    Vec3 vp;
+    Vec3 mira;
+
+    GEO_CARGAR_W(&CAMARA->vpx);
+    GEO_GUARDAR_W_T1(&vp);
+    GEO_CARGAR_W(&CAMARA->mx);
+    GEO_GUARDAR_W_T1(&mira);
+    D_80069414 = 0;
+    func_8001CC68(&D_80069698->xE4);
+    if (mira.x != 0) {
+        CAMARA->mx = mira.x;
+        CAMARA->m4[0] = mira.x;
+        CAMARA->my = mira.y;
+        CAMARA->m4[1] = mira.y;
+        CAMARA->mz = mira.z;
+        CAMARA->m4[2] = mira.z;
+    }
+    if (vp.x != 0) {
+        CAMARA->vpx = vp.x;
+        CAMARA->vp68[0] = vp.x;
+        CAMARA->vp94[0] = vp.x;
+        CAMARA->vpB4[0] = vp.x;
+        CAMARA->vpy = vp.y;
+        CAMARA->vp68[1] = vp.y;
+        CAMARA->vp94[1] = vp.y;
+        CAMARA->vpB4[1] = vp.y;
+        CAMARA->vpz = vp.z;
+        CAMARA->vp68[2] = vp.z;
+        CAMARA->vp94[2] = vp.z;
+        CAMARA->vpB4[2] = vp.z;
+    }
+    if (D_80069698 != NULL) {
+        D_80069DC0.x = D_80069698->xE4;
+        D_80069DC0.y = D_80069698->yE8;
+        D_80069DC0.z = D_80069698->zEC;
+    }
+    CAMARA->i90 = 0;
+    CAMARA->flags80 = 0x40;
+    D_80069624 = -200;
+    D_80069618 = 600;
+    D_800693F6 = 0;
+    D_800693F8 = 0;
+    D_8006961C = 1100;
+    D_800693F4 = 0;
+    D_80010076 = 0;
+    D_800693F0 = 1100;
+    D_80069416 = 0;
+    D_8006940C = 0;
+}
+
+/* Sacudida de la camara: oscila con seno y coseno y se amortigua. */
+void func_80032A24(void)
+{
+    s32 r;
+    s16 a;
+
+    if (CAMARA->s88 != 0) {
+        CAMARA->s8C = (rsin(CAMARA->s8A) * CAMARA->s88) >> 11;
+        r = rcos(CAMARA->s8A) * CAMARA->s88;
+        CAMARA->mx = CAMARA->mx + CAMARA->s8C;
+        CAMARA->s8A = CAMARA->s8A + CAMARA->s86;
+        CAMARA->s8E = r >> 12;
+        CAMARA->my = CAMARA->my + CAMARA->s8E;
+        a = CAMARA->s8A;
+        if (a >= 0x800) {
+            if (CAMARA->s88 >= 4) {
+                CAMARA->s88 = CAMARA->s88 - 3;
+            } else {
+                CAMARA->s88 = 0;
+            }
+        } else if (a >= 0x1000) {
+            CAMARA->s8A = a - 0x1000;
+            if (CAMARA->s88 >= 4) {
+                CAMARA->s88 = CAMARA->s88 - 3;
+            } else {
+                CAMARA->s88 = 0;
+            }
+        }
+    } else {
+        CAMARA->s8C = 0;
+        CAMARA->s8E = 0;
+    }
+}
 
 INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80032B2C);
 
@@ -13,11 +167,120 @@ INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_800330AC);
 
 INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80033358);
 
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80034E7C);
+/* Al dar de baja un objeto, libera a los que lo tenian como padre (p70) y deshace los enlaces cruzados. */
+void func_80034E7C(Objeto* o)
+{
+    Objeto* p;
+    Objeto* sig;
+    Objeto* a;
 
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_8003502C);
+    if ((o->flags18 & 0x800) != 0) {
+        p = D_80069518;
+        if (p != NULL) {
+            do {
+                if (p->p70 == o) {
+                    if ((p->flags18 & 0x400) != 0) {
+                        a = p->p6C;
+                        if (a != NULL && (a->flags18 & 0x400) == 0) {
+                            a->flags14 &= ~0x814;
+                            p->p6C->flags14 |= 0x1000;
+                            p->p6C->iC4 = 0;
+                            p->p6C->pC0 = (Objeto*)((u8*)p->p6C + 0xCC);
+                            p->p6C->w26 = p->w26;
+                            p->p6C->p70 = NULL;
+                            func_8001CF50(p->p6C);
+                            a = p->p6C;
+                            if (a->w2C == 0xE) {
+                                a->i158 = 0;
+                            }
+                        }
+                        sig = p->siguiente;
+                        ClearList(OBJ_LISTA(p));
+                        D_80069518 = RemoveListNode(D_80069518, p);
+                        func_8003F900(p);
+                        func_80034E7C(p);
+                        p = sig;
+                        continue;
+                    }
+                    p->pC0 = (Objeto*)((u8*)p + 0xCC);
+                    p->iC4 = 0;
+                    p->p70 = NULL;
+                    p->flags14 = (p->flags14 & ~0x14) | 0x1202;
+                    func_8001CFCC((u8*)p + 0x7C);
+                }
+                if (p->p6C == o) {
+                    p->p6C = NULL;
+                }
+                p = p->siguiente;
+            } while (p != NULL);
+        }
+    }
+}
 
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_800351B4);
+/* Da de baja un objeto de escena: lo suelta de sus enlaces, de la lista solida y de la lista de objetos. */
+void func_8003502C(Objeto* o)
+{
+    Objeto* p;
+    ObjetoVolumen* v;
+
+    if ((s32)o == D_80069560) {
+        D_80069560 = (s32)D_80069698;
+    }
+    if (D_80069698->p6C == o) {
+        D_80069698->p6C = NULL;
+    }
+    p = o->p70;
+    if (p != NULL) {
+        if (p->p6C == o) {
+            p->p6C = NULL;
+        }
+        o->p70 = NULL;
+    }
+    if (o->p6C != NULL) {
+        o->p6C->flags14 &= ~0x814;
+        o->p6C->iC4 = 0;
+        o->p6C->pC0 = (Objeto*)((u8*)o->p6C + 0xCC);
+        o->p6C->w26 = o->w26;
+        o->p6C->p70 = NULL;
+        func_8001CF50(o->p6C);
+        o->p6C->i158 = 0;
+        o->p6C = NULL;
+    }
+    if ((ObjetoVolumen*)o == D_80069630) {
+        D_80069630 = ((ObjetoVolumen*)o)->sig;
+    } else {
+        v = D_80069630;
+        while (v != NULL && v->sig != (ObjetoVolumen*)o) {
+            v = v->sig;
+        }
+        if (v != NULL) {
+            v->sig = ((ObjetoVolumen*)o)->sig;
+        }
+    }
+    ClearList(OBJ_LISTA(o));
+    D_80069518 = RemoveListNode(D_80069518, o);
+    func_8003F900(o);
+    func_80034E7C(o);
+}
+
+/* Prepara un objeto para su baja: limpia banderas y suelta la lista enlazada si ya no la usa nadie. */
+void func_800351B4(Objeto* o)
+{
+    OBJ_U32(o, 4) &= ~2;
+    o->flags18 |= 0x100;
+    if ((OBJ_U32(o, 8) & 0x1000) != 0) {
+        if ((o->flags15C & 0x4000) == 0) {
+            if (*(void**)OBJ_LISTA(o) != NULL) {
+                if (o->p70 == NULL) {
+                    o->flags15C |= 0x4000;
+                    o->i158 = 0;
+                    ClearList(OBJ_LISTA(o));
+                    *(void**)OBJ_LISTA(o) = NULL;
+                }
+            }
+        }
+    }
+}
 
 #ifdef NON_MATCHING
 /*
