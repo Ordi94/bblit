@@ -76,7 +76,8 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_80039D44);
  * trabajo en $s0, la salida en $s1, el objeto en $s2 y la direccion de la baldosa en $s3; GCC da
  * $s0 a la salida y $s3 al objeto. Ni el orden de las declaraciones locales, ni izar la direccion
  * de la baldosa o la constante -1 antes de la primera rama, ni un bucle con salida explicita
- * cambian el reparto (las dos ultimas formas empeoran a 1144 y 1326). Variantes probadas: 17.
+ * cambian el reparto (las dos ultimas formas empeoran a 1144 y 1326); prescindir de la variable de
+ * la baldosa (945) o calcularla dentro de la rama (748) tampoco mejora.
  */
 /*
  * Calcula la posicion de apoyo de 'o' en 'sal': parte de la posicion del primer ayudante

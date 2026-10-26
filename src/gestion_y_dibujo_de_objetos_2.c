@@ -263,7 +263,7 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037CF8);
  * valor de 0 a 999 en tres digitos BCD (centenas, decenas, unidades); el original conserva las
  * centenas en $a1 hasta el final y calcula centenas << 8 justo despues de la multiplicacion,
  * mientras que GCC las deja en $v0 y las desplaza mas tarde (reparto de registros y orden de
- * evaluacion). Variantes probadas: 12.
+ * evaluacion).
  */
 u32 func_80037D3C(u16 valor)
 {
@@ -560,9 +560,10 @@ void func_8003861C(s32 idx)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 324 con la configuracion versionada (g = 8 del archivo). Coincide la
- * estructura; difiere la asignacion de registros salvados (el original deja los tres
- * identificadores en $s7, $s6 y $s5 y el parametro en $s4). Variantes probadas: 8.
+ * Pendiente: puntuacion 170 con la configuracion versionada (g = 8 del archivo). Coincide la
+ * estructura y el marco de pila (la reserva de 8 bytes sin uso lo iguala); difiere la asignacion de
+ * registros salvados (el original deja los tres identificadores en $s7, $s6 y $s5, el parametro
+ * en $s4 y la tabla de posiciones en $s3) y el registro del indice j ($a2 en el original).
  */
 /*
  * Reinicia, de dos en dos, los objetos del grupo 'idx' (tres consecutivos de la tabla
@@ -573,6 +574,8 @@ void func_8003861C(s32 idx)
 void func_80038884(s32 idx, s32 modo)
 {
     Objeto* v[3];
+    /* Sin uso: el original deja 8 bytes de pila libres entre los argumentos y los registros salvados. */
+    s32 reserva[2];
     Objeto** p;
     Objeto* o;
     s16* ids;

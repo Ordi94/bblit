@@ -39,9 +39,11 @@ extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
  * un vector fijo (0, 0, -100) da el desplazamiento del punto de vista, y la mira queda en la
  * posicion, 400 unidades por debajo. El resultado se copia a las cuatro copias del estado de
  * la camara y se marca la bandera 0x40 de seguimiento fijo.
+ *
+ * Las sumas de la posicion con el vector rotado se escriben una sola vez y las demas copias
+ * salen del campo ya escrito: con una variable temporal el compilador carga el vector rotado
+ * antes que la posicion y el reparto de v0/a0 queda invertido respecto al original.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 40 con la configuracion versionada (g = 8 del archivo). Mismas escrituras y orden; en la suma de la posicion con el vector rotado el original carga el operando de la posicion en v0 y el del vector en a0, el C los carga al reves. Variantes probadas: 9. */
 void func_8001CC68(VECTOR* p)
 {
     MATRIX m;
@@ -66,30 +68,25 @@ void func_8001CC68(VECTOR* p)
     t = p->vz;
     c->cAC = t;
     c->z = t;
-    t = p->vx + r.vx;
-    c->c68 = t;
-    c->c94 = t;
-    c->vpx = t;
-    c->cB4 = t;
+    c->c68 = p->vx + r.vx;
+    c->c94 = c->c68;
+    c->vpx = c->c68;
+    c->cB4 = c->c68;
     t = p->vy - 0x190;
     c->c6C = t;
     c->c98 = t;
     c->vpy = t;
     c->cB8 = t;
-    t = p->vz + r.vz;
     D_800693F8 = 0;
-    c->c70 = t;
-    c->c9C = t;
-    c->vpz = t;
-    c->cBC = t;
+    c->c70 = p->vz + r.vz;
+    c->c9C = c->c70;
+    c->vpz = c->c70;
+    c->cBC = c->c70;
     ang = D_80069698->param.giro.u.y + 0x800;
     c->flags80 |= 0x40;
     D_80069416 = ang;
     D_80069402 = ang;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001CC68);
-#endif
 
 /*
  * Cursor de animacion de un objeto: fotograma actual en +0, nodo de la secuencia elegida en
@@ -212,30 +209,30 @@ typedef struct DesplazamientoObjetos {
  * Lleva el objeto destino a la posicion del origen mas el desplazamiento que permite la
  * colision: calcula la distancia entre ambos, la limita con la consulta y reescribe solo
  * x y z del destino (la altura no se toca).
+ *
+ * El argumento p se avanza 0x38 bytes justo despues de copiarlo a w: mientras p valga lo mismo que w
+ * el compilador usa uno solo de los dos registros para los almacenes; al cambiar p, los almacenes
+ * usan w (registro salvado) y la copia de p queda en el registro del cuarto argumento de la llamada,
+ * como en el original.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 300 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y mismo orden de almacenes; el original copia el tercer argumento a a3 al principio y lo reutiliza como cuarto argumento de la llamada, el C lo copia despues. Variantes probadas: 9. */
 void func_8001D028(Objeto* origen, Objeto* destino, u8* p)
 {
     DesplazamientoObjetos* w;
 
     w = (DesplazamientoObjetos*)p;
+    p += 0x38;
     w->d.vx = destino->param.trans.vx - origen->param.trans.vx;
     w->d.vy = destino->param.trans.vy - origen->param.trans.vy;
     w->d.vz = destino->param.trans.vz - origen->param.trans.vz;
     w->origen.vx = origen->param.trans.vx;
     w->origen.vy = origen->param.trans.vy;
     w->origen.vz = origen->param.trans.vz;
-    p += 0x38;
     *(s32*)p = 0;
     w->h2A = origen->w26;
     func_80019474(&w->origen, w, w->consulta, p);
     destino->param.trans.vx = origen->param.trans.vx + w->d.vx;
     destino->param.trans.vz = origen->param.trans.vz + w->d.vz;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D028);
-#endif
 
 /*
  * Estado de la busqueda de una secuencia de animacion del objeto controlado: fotograma elegido
@@ -826,7 +823,7 @@ extern void RunLogicAction(void* o, void* item);
  * secuencia de animacion, camara) y la lista continua solo si el evento lo permite (0x8000).
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 200 con la configuracion versionada (g = 8 del archivo). La unica diferencia es la carga del argumento de func_8003F06C: el original usa lw y el C con la conversion (s16) usa lh; sin la conversion el compilador iza la direccion de D_8006B558 fuera del bucle y la puntuacion sube a 692. Variantes probadas: 6. */
+/* Pendiente: puntuacion 200 con la configuracion versionada (g = 8 del archivo). La unica diferencia es la carga del argumento de func_8003F06C: el original usa lw y el C con la conversion (s16) usa lh; sin la conversion el bucle tiene menos instrucciones antes de la optimizacion de bucles y el compilador iza la direccion de D_8006B558 fuera de el, con lo que la puntuacion sube a 692. */
 void func_8001E1A4(Objeto* o, ConsultaPlano* c)
 {
     VECTOR destino;
