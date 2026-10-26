@@ -356,11 +356,9 @@ extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* es
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 930 con la configuracion versionada (g = 8 del archivo). Difiere el reparto de registros del prologo, el cierre del bucle de nodos (el original conserva el salto condicional hacia atras) y la direccion de la caja de relleno, que el original deriva de la base del scratchpad. */
-/* El parametro es el arreglo de punteros a objetos con sombra; se recibe como void* porque el llamador (arranque_y_bucle_principal_2.c) lo declara asi. */
-void func_8003A5C8(void* a0)
+void func_8003A5C8(Objeto** objetos)
 {
     ContextoSombras* c;
-    Objeto** objetos = (Objeto**)a0;
     Sonda* area;
     MATRIX* mat;
     Ayuda* mod;

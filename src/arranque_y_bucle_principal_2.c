@@ -49,7 +49,6 @@ extern void func_800160A8(void);
 extern void func_8003E3C0(void);
 extern void func_8003F3F0(s16 indice);
 extern void func_800353B0(Objeto* a);
-extern void func_8003A5C8(void* a);
 extern void func_8001020C(s32 a);
 
 void func_80015EC0(void)
