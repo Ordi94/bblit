@@ -165,7 +165,6 @@ typedef struct ParSonda {
 } ParSonda;
 
 extern ParSonda D_8005E728[];
-extern u16* D_800695B8;
 extern Objeto* D_8006D9B8[3];
 extern s32 D_8006D990[3];
 extern u32 D_80010008;

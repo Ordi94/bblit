@@ -64,7 +64,6 @@ extern void func_800449E8(u8* tabla);
 extern void func_800400C0(void);
 
 /* Tabla de veintisiete punteros a datos del motor que el overlay consulta. */
-extern u8 D_800695B8[];
 extern u8 D_80069664[];
 
 
@@ -212,7 +211,7 @@ void func_80044A04(void)
     D_8006B2F8[3] = &D_8006967C;
     D_8006B2F8[4] = D_8006A940;
     D_8006B2F8[5] = &D_80069588;
-    D_8006B2F8[6] = D_800695B8;
+    D_8006B2F8[6] = &D_800695B8;
     D_8006B2F8[7] = &D_80069680;
     D_8006B2F8[8] = &D_8006958C;
     D_8006B2F8[9] = &D_80069610;

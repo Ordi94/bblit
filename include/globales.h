@@ -452,6 +452,13 @@ extern s32 D_80069624;
 extern Objeto* D_800694DC;
 
 /*
+ * D_800695B8: zona bajo la camara (o la ultima zona valida del objeto). func_80033358 la escribe con sw
+ * y la relee con lw antes de probar si hay zona; el motor guarda su direccion en la tabla de datos del
+ * overlay (D_8006B2F8[6] = &D_800695B8). El apuntado es al grupo de la zona (u16 en +0).
+ */
+extern u16* D_800695B8;
+
+/*
  * D_80069608: indicadores de la camara de apuntado. func_80033358 limpia el bit 1 (and con -3) y lo
  * activa (ori 2); los eventos activan el bit 0. lw / sw de 32 bits.
  */
