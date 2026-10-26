@@ -121,8 +121,8 @@ typedef struct Objeto {
     u32 flags08;            /* func_8001CF50, func_8001D75C: lw con mascaras 0x200000 y 0x10000000; indicadores de volumen (graficos_y_gte.c) */
     u32 flags0C;            /* func_8001DF28, func_8001E1A4, func_80045C4C: lw / sw */
     struct Objeto* sig10;   /* lista de objetos solidos que recorren las consultas de volumen (D_80069630); func_80036734 enlaza al final */
-    u32 flags14;
-    u32 flags18;
+    u32 flags14;            /* func_80034E7C: lw / sw 0x14($a0) en 0x80034F04 y 0x80034F10 */
+    u32 flags18;            /* func_80034E7C: lw 0x18($s2) en 0x80034E94, andi con 0x800 */
     u16 w1C;                /* identificador de plantilla */
     /*
      * +0x1E: lectura con tres formas segun quien lo consulte. Los condicionales del interprete de
@@ -131,7 +131,7 @@ typedef struct Objeto {
      */
     s16 s1E;
     s16 s20;                /* radio del volumen: lh en las consultas de graficos_y_gte.c */
-    u16 w22;
+    u16 w22;                /* func_800353B0: lhu / sh 0x22($s0) en 0x8003610C y 0x80036118; func_80038C2C: lhu en 0x80038CF4 */
     u16 w24;                /* func_800353B0 */
     /*
      * +0x26: se copia como u16 (movimiento, interprete, menus) y el calculo de volumen y la sonda de
@@ -139,7 +139,7 @@ typedef struct Objeto {
      * un cast (s16) local.
      */
     u16 w26;
-    u16 w28;
+    u16 w28;                /* func_8003B5AC: lhu 0x28($t0) en 0x8003BA1C; func_80031960: sh 0x28($v1) en 0x80031970 */
     s16 s2A;                /* tipo del volumen (2 = solido): graficos_y_gte.c; func_8003652C lo pone a 0 y func_800365D0 a 5 */
     u16 w2C;                /* las rutinas de creacion lo escriben con sh y el resto lo lee con lhu */
     u16 w2E;                /* func_800353B0 */
@@ -154,8 +154,8 @@ typedef struct Objeto {
     SVECTOR max;            /* +0x50 */
     u8 pad58[0x68 - 0x58];
     s32 i68;                /* func_8001D0FC: sw zero */
-    struct Objeto* p6C;
-    struct Objeto* p70;
+    struct Objeto* p6C;     /* func_80034E7C: lw 0x6C($s1) en 0x80034EE0 */
+    struct Objeto* p70;     /* func_80034E7C: lw 0x70($s1) en 0x80034EBC, sw $zero en 0x80034F60 y 0x80034FDC */
     struct NodoAnimacion* lista;   /* func_80044EA8, func_80045C4C: lw, lista de animaciones; func_80037DB4 la usa como descriptor de modelo */
     /*
      * +0x78: la misma palabra se lee como lista de ayudantes (objetos con jerarquia, pozo
@@ -176,15 +176,15 @@ typedef struct Objeto {
     struct NodoSecuencia* apoyos;       /* func_8001D0FC: lw */
     s32 i100;               /* func_8001C424, func_8001C6CC, func_8001C998: lw / sw */
     s16 h104;               /* func_80020210, func_80020240: lh */
-    s16 h106;
+    s16 h106;               /* func_80020210: sh 0x106($a0) en 0x80020228; func_80020240: lhu 0x106($s0) en 0x8002030C; sin lectura con signo */
     s16 h108;               /* func_8001C424, func_8001C998, func_80020210, func_80020240 */
     s16 h10A;               /* func_8001C6CC, func_8001C998, func_80020210, func_80020240 */
     s16 h10C;               /* func_8001C424, func_8001C6CC, func_8001DA14 */
-    u16 w10E;               /* func_8001C424: lhu */
-    s16 h110;               /* func_8001C6CC: lh */
-    s16 h112;               /* func_8001C6CC: lh */
+    u16 w10E;               /* func_8001C424: solo sh 0x10E($s0) en 0x8001C65C; sin lectura que fije el signo */
+    s16 h110;               /* func_8001C6CC: solo sh $zero, 0x110($s1) en 0x8001C808 y 0x8001C8A8; sin lectura que fije el signo */
+    s16 h112;               /* func_8001C6CC: solo sh $zero, 0x112($s1) en 0x8001C86C y 0x8001C8AC; sin lectura que fije el signo */
     u8 pad114[0x116 - 0x114];
-    s16 h116;               /* func_8001C424: lh */
+    s16 h116;               /* func_8001C424: lh 0x116($s0) en 0x8001C558, sh en 0x8001C4E0 y 0x8001C604 */
     u8 pad118[0x13C - 0x118];
     s32 i13C;               /* func_80020A90: sw */
     u8 pad140[0x144 - 0x140];
@@ -203,11 +203,11 @@ typedef struct Objeto {
     struct RegistroAnim* registro184;   /* func_8001CD84, func_8001D75C: lw */
     struct NodoSecuencia* nodo188;      /* func_8001D0FC: sw */
     u8 pad18C[0x192 - 0x18C];
-    u16 w192;
+    u16 w192;               /* func_80031B78: solo sh $zero, 0x192($a0) en 0x80031B8C; sin lectura que fije el signo */
     u8 pad194[2];
-    u16 w196;
+    u16 w196;               /* func_80031B78: solo sh 0x196($a0) en 0x80031B94; sin lectura que fije el signo */
     u8 pad198[0x1A8 - 0x198];
-    s32 i1A8;               /* func_80020A90: sw */
+    s32 i1A8;               /* func_80020A90: lw 0x1A8($a0) en 0x80020AC0 y 0x80020AF8 */
     u8 pad1AC[0x1B4 - 0x1AC];
     u32 w1B4;               /* func_800353B0: lw, segundo argumento de func_80033358 */
     u8 pad1B8[0x1F4 - 0x1B8];
