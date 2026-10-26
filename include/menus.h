@@ -53,52 +53,6 @@ typedef struct ModeloDibujo {
     u8 estado;
 } ModeloDibujo;
 
-/*
- * Vista transitoria de Objeto para las rutinas de dibujo, pendiente de fundir con Objeto en la
- * consolidacion de tipos (la misma memoria): banderas en +4,
- * +8 y +0xC, identificadores en +0x26..+0x3E, el nodo de jerarquia empotrado en +0x7C, un
- * contador en +0xC4, la profundidad en +0xD4 y la posicion en +0xE4..+0xEC.
- */
-typedef struct ObjetoDibujo {
-    u8 pad00[0x04];
-    u32 flags04;
-    u32 flags08;
-    u32 flags0C;
-    struct ObjetoDibujo* sig;
-    u32 flags14;
-    u32 flags18;
-    u8 pad1C[0x26 - 0x1C];
-    u16 w26;
-    u16 w28;
-    u8 pad2A[2];
-    u16 w2C;
-    u8 pad2E[0x3A - 0x2E];
-    u16 w3A;
-    u16 w3C;
-    u16 w3E;
-    u8 pad40[0x48 - 0x40];
-    u16 h48;
-    u16 h4A;
-    u16 h4C;
-    u8 pad4E[2];
-    u16 h50;
-    u16 h52;
-    u16 h54;
-    u8 pad56[0x70 - 0x56];
-    struct ObjetoDibujo* p70;
-    u8 pad74[4];
-    struct ModeloDibujo* modelos;
-    u8 nodo[4];
-    u8 pad80[0xC4 - 0x80];
-    s32 iC4;
-    u8 padC8[0xD4 - 0xC8];
-    s32 iD4;
-    u8 padD8[0xE4 - 0xD8];
-    s32 xE4;
-    s32 yE8;
-    s32 zEC;
-} ObjetoDibujo;
-
 /* Pila de func_8003AF8C para func_8001CE64: puntero al nodo, vector de entrada y acumulador. */
 typedef struct PilaNodo {
     void* nodo;
@@ -361,7 +315,7 @@ typedef struct EscenaDibujo {
     u16* cuenta_b;
     s32 inicio;
     s32 limite;
-    ObjetoDibujo* objeto;
+    Objeto* objeto;
 } EscenaDibujo;
 
 /*
