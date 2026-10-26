@@ -65,6 +65,14 @@ toolchain\pcsx-redux\pcsx-redux.exe -portable -loadiso build/bblit_prueba.cue ^
     -bios toolchain/duckstation/bios/ps-22a.bin -run -webserver -webserver-port 8080
 ```
 
+`python -m tools.emulador` no necesita esos comandos a mano: resuelve el emulador y la BIOS igual que
+`tools/build.py` resuelve el toolchain. Orden de prioridad: argumento (`--emulador`, `--bios`), variables
+`BBLIT_REDUX` y `BBLIT_BIOS` (anulacion explicita), y por ultimo el toolchain: `BBLIT_TOOLCHAIN`, luego
+`[rutas] toolchain` de `config/local.toml`, luego `<raiz del repositorio>/toolchain`
+(`pcsx-redux/pcsx-redux.exe` y `duckstation/bios/ps-22a.bin`). Desde un worktree sin `toolchain/` basta con
+`BBLIT_TOOLCHAIN`. Las rutas por defecto cuelgan de la raiz del repositorio (tambien la imagen
+`build/bblit_prueba.cue` y la carpeta de trabajo `build/emulador`), no del directorio desde el que se lanza.
+
 1. Comprobar que el puerto 8080 esta libre y que no hay procesos `pcsx-redux` previos.
 2. `GET http://127.0.0.1:8080/api/v1/execution-flow` debe devolver `"running":true` (responde
    en menos de 1 s).

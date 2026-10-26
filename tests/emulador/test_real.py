@@ -3,17 +3,16 @@
 import hashlib
 import json
 import os
-from pathlib import Path
 
 import pytest
 from tools.emulador import cli, proceso
 from tools.emulador.dominio import RAM_TAMANO
 from tools.emulador.pantalla import es_pantalla_negra
 
-RAIZ = Path(__file__).resolve().parents[2]
-EMULADOR = Path(os.environ.get("BBLIT_REDUX", RAIZ / cli.EMULADOR_POR_DEFECTO))
-BIOS = Path(os.environ.get("BBLIT_BIOS", RAIZ / cli.BIOS_POR_DEFECTO))
-IMAGEN = RAIZ / cli.IMAGEN_POR_DEFECTO
+RUTAS = cli.resolver_rutas_emulador(os.environ)
+EMULADOR = RUTAS.emulador
+BIOS = RUTAS.bios
+IMAGEN = RUTAS.imagen
 PUERTO_PRUEBA = 8091
 
 pytestmark = pytest.mark.skipif(
