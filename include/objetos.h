@@ -16,6 +16,24 @@ typedef struct NodoLista {
 } NodoLista;
 
 /*
+ * Entrada de la tabla de identificadores D_800695D4 (0x58 bytes): 'id' en +0x0C y la marca de
+ * libre en +0x04.
+ */
+typedef struct EntradaId {
+    NodoLista cab;
+    s32 w8;
+    s32 id;
+    u8 pad10[0x58 - 0x10];
+} EntradaId;
+
+/* Entrada de la tabla D_8006B668 que lee el codigo superpuesto: dos medias palabras y un valor. */
+typedef struct EntradaPunto {
+    s16 x;
+    s16 y;
+    s32 z;
+} EntradaPunto;
+
+/*
  * Ayudante de un objeto (0xB8 bytes, pozo D_8006964C): un nodo de jerarquia con su propio
  * GsCOORDINATE2 y sus parametros de transformacion. 'clave' lo identifica dentro de la lista
  * del objeto dueno (func_800361CC lo busca por ella). Los campos citan la rutina que los usa.
@@ -85,5 +103,16 @@ void InitListPool(u8* base, s32 paso, s32 total);
 NodoLista* RemoveListNode(NodoLista* cab, NodoLista* nodo);
 NodoLista* ClearList(NodoLista* cab);
 NodoLista* AppendListNode(NodoLista* cab, NodoLista* nodo);
+
+/* Pozos de la escena compartidos por varios archivos. */
+
+/* D_800695D4: accesos del ensamblador: sw x1, lw x4 */
+extern EntradaId* D_800695D4;
+
+/* D_8006964C: accesos del ensamblador: sw x1, lw x3 */
+extern Ayuda* D_8006964C;
+
+/* D_8006B668 */
+extern EntradaPunto D_8006B668[];
 
 #endif

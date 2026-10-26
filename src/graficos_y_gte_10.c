@@ -20,9 +20,6 @@
  * Estado de presentacion de cuadros (zona 0x80069xxx). Las dos cuentas son volatile porque
  * el retorno de llamada de VSync las modifica mientras el bucle principal las lee.
  */
-extern vu16 D_800695A6;
-extern s16 D_800695BC;
-extern u32 D_80069614;
 extern u8 D_80069620;
 
 

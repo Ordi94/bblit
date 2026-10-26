@@ -41,13 +41,6 @@ typedef struct RayoCamara {
     Objeto* cur;
 } RayoCamara;
 
-/* Entrada de 12 bytes de la tabla de clases de objeto (D_8006A940): identificador y banderas. */
-typedef struct TablaEnt {
-    s16 id;
-    u16 fl;
-    u8 pad4[8];
-} TablaEnt;
-
 /* Memoria de trabajo de func_800353B0 en el scratchpad (0x1F800000). */
 typedef struct Scratch {
     s32 d0;
@@ -63,7 +56,7 @@ typedef struct Scratch {
     Objeto* l30;
     Objeto* l34;
     Objeto* l38;
-    TablaEnt* tp3C;
+    EntradaVisible* tp3C;
     s32 i40;
     s32 i44;
     u8 pad48[0x68 - 0x48];
@@ -87,14 +80,7 @@ typedef struct Scratch {
 #define GUARDAR_MAC3(p) \
     __asm__ volatile ("move $9, %0\n\tmfc2 $8, $27\n\tnop\n\tsw $8, 0($9)" : : "r"(p) : "$8", "$9", "memory")
 
-extern MATRIX D_80076130;
-extern VECTOR D_80076144;
-extern TablaEnt D_8006A940[];
-extern s16 D_80069588;
 extern void (*D_8005E35C[])(Objeto*);
-extern void* D_800694D4;
-extern u16 D_80069652;
-extern s32 D_800695EC;
 extern void func_80033358(void* a0, u32 a1);
 extern void func_80035244(void);
 extern void func_800351B4(Objeto* a0);
@@ -129,12 +115,12 @@ extern Vec3 D_80069DC0;
 
 /* Variables de datos pequenos: el original las direcciona con desplazamiento($gp). */
 u16 D_800693F4;
-u16 D_800693F6;
-u16 D_800693F8;
+s16 D_800693F6;
+s16 D_800693F8;
 s32 D_800693F0;
 u16 D_8006940C;
 u16 D_80069414;
-u16 D_80069416;
+s16 D_80069416;
 s16 D_80069424;
 
 
@@ -698,7 +684,7 @@ void func_800353B0(Objeto* a0)
                     sc->tp3C = D_8006A940;
                     if (sc->i40 < D_80069588) {
                         do {
-                            if ((s16)sc->cur->w26 == sc->tp3C->id) {
+                            if ((s16)sc->cur->w26 == sc->tp3C->modelo) {
                                 break;
                             }
                             sc->i40++;
@@ -706,7 +692,7 @@ void func_800353B0(Objeto* a0)
                         } while (sc->i40 < D_80069588);
                     }
                     if (sc->i40 < D_80069588) {
-                        if ((sc->tp3C->fl & 1) != 0 && (sc->cur->flags08 & 0x10000) != 0) {
+                        if ((sc->tp3C->bandera & 1) != 0 && (sc->cur->flags08 & 0x10000) != 0) {
                             goto sigue2;
                         }
                     } else if (D_80069588 != sc->i40) {

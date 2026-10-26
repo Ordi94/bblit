@@ -21,16 +21,7 @@ typedef struct EscritorioDibujo {
     Objeto* actual;
 } EscritorioDibujo;
 
-/* Entrada de la tabla D_8006B668 que lee el codigo superpuesto: dos medias palabras y un valor. */
-typedef struct EntradaPunto {
-    s16 x;
-    s16 y;
-    s32 z;
-} EntradaPunto;
-
-extern s32 D_80076188;
 extern u16 D_8005E948[];
-extern EntradaPunto D_8006B668[];
 
 /*
  * Dibuja la lista de escena 'lista' (enlazada por +0x00): para cada objeto activo fija el

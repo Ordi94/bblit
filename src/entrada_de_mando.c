@@ -29,19 +29,14 @@ extern EntradaTabla D_8005EE38[];
 /* Acceso a la zona 0x80069xxx con el ancho que usa el original. */
 extern u8 D_8006957C;
 extern u8 D_800695E0;
-extern u8 D_80069658;
 extern u8 D_8006965C;
 extern u8 D_8006965D;
-extern u8 D_8006CFF0[];
-extern u8 D_8006D038[];
 
 extern void func_8005A21C(s32 modo);
 
 /* Estado auxiliar del mando (zona 0x80069xxx y bufer de la BIOS). */
-extern u8 D_8006AA7C;
 extern u16 D_800695EA;
 extern s16 D_80069672;
-extern s16 D_8006952C;
 extern u8 D_8006CFF1;
 extern u8 D_8006CFF2;
 extern u8 D_8006CFF3;

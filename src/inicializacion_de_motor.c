@@ -1,34 +1,10 @@
 #include "common.h"
 #include "globales.h"
+#include "objetos.h"
 #include "psyq/LIBETC.H"
 #include "psyq/LIBCD.H"
 #include "psyq/LIBPRESS.H"
 #include "psyq/LIBSPU.H"
-
-/*
- * Glifo de la tabla de caracteres: coordenadas de textura (u, v) y tamano en +8, +9, +0xC y +0xE
- * (func_80045150), pagina de textura en +6 (func_80045150).
- */
-typedef struct Glifo {
-    u8 pad00[6];
-    u16 tpage;
-    u8 u;
-    u8 v;
-    u8 pad0A[2];
-    u16 w;
-    u16 h;
-} Glifo;
-
-/*
- * Entrada de ocho bytes de la lista de glifos pendientes de dibujar que recorre D_800694D4:
- * glifo (func_800450E8, func_80045150), posicion x (+4) e y (+6) en pantalla e indice de paleta (+7).
- */
-typedef struct EntradaLista {
-    Glifo* glifo;
-    u16 x;
-    u8 y;
-    s8 idx;
-} EntradaLista;
 
 /* Origen de una entrada: un u16 en +0 y un byte en +4. */
 typedef struct OrigenEntrada {
@@ -53,33 +29,19 @@ extern void func_8005595C(s32 valor);
 /* Registro de la pantalla de la libreria grafica; el arreglo evita la forma simbolica de -G8 (lui + desplazamiento en el original). */
 extern u16 D_80075FFE[5];
 extern u16 D_8006D018[];
-extern s32 D_8006958C;
-extern s32 D_80069680;
-extern u16 D_800694E2;
 extern void func_80039CD0(s32 prim);
-extern u16* D_80069590;
-extern u8 D_8006AA7C;
 extern u32 func_80045498(Objeto* objeto, void* guion, BloqueTrabajo* bloque);
 /*
  * Estado que func_80044A04 reinicia al empezar el nivel. Los de un tamano de dos o cuatro bytes se
  * declaran escalares: el original los escribe con la forma simbolica de -G8 (lui at).
  */
-extern vu16 D_800695A6;
-extern s16 D_800695BC;
 extern s16 D_80069650;
 extern s16 D_800694CC;
-extern u8 D_800695F6;
 extern s16 D_80069634;
-extern s16 D_8006952C;
-extern void* D_80069508;
 extern s16 D_80069584;
 extern s16 D_800694E4;
-extern s16 D_80069668;
 extern s16 D_800694BC;
 extern s16 D_80069602;
-extern u8 D_80069628;
-extern u8 D_8006CFF0[];
-extern u8 D_8006D038[];
 extern s16 D_800694C8;
 extern s32 D_8006962C;
 extern u8 D_800694B2;
@@ -90,14 +52,11 @@ extern u8 D_8006965F;
 extern u8 D_8006950C;
 extern u8 D_80069514;
 extern u8 D_80069525;
-extern u8 D_80069524;
 extern u8 D_80069500;
 extern u8 D_80069684;
-extern s16 D_80069588;
 extern s16 D_8006956A;
 extern s32 D_80069604;
 extern u8 D_800694F6;
-extern u8 D_800694F2;
 extern s16 D_80069526;
 extern s16 D_8006969E;
 extern s16 D_8006968A;
@@ -106,23 +65,9 @@ extern void func_800449E8(u8* tabla);
 extern void func_800400C0(void);
 
 /* Tabla de veintisiete punteros a datos del motor que el overlay consulta. */
-extern void* D_8006B2F8[27];
-extern u8 D_8006A940[];
 extern u8 D_800695B8[];
 extern u8 D_80069664[];
-extern u8 D_8006954C[];
-extern u8 D_8006969C[];
-extern u8 D_800694B0[];
-extern u8 D_800695F2[];
-extern u8 D_800695F4[];
-extern u8 D_8006B668[];
-extern u8 D_800695DA[];
-extern u8 D_800695C4[];
-extern u8 D_800695A2[];
-extern u8 D_800695A4[];
 
-extern EntradaLista* D_800694D4;
-extern s16 D_80069652;
 
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044904);
 
@@ -274,19 +219,19 @@ void func_80044A04(void)
     D_8006B2F8[9] = &D_80069610;
     D_8006B2F8[10] = (void*)&D_800695A6;
     D_8006B2F8[11] = D_80069664;
-    D_8006B2F8[12] = D_8006954C;
+    D_8006B2F8[12] = &D_8006954C;
     D_8006B2F8[13] = &D_800695D0;
     D_8006B2F8[14] = D_8006B658;
-    D_8006B2F8[15] = D_8006969C;
-    D_8006B2F8[16] = D_800694B0;
-    D_8006B2F8[17] = D_800695F2;
-    D_8006B2F8[18] = D_800695F4;
+    D_8006B2F8[15] = &D_8006969C;
+    D_8006B2F8[16] = &D_800694B0;
+    D_8006B2F8[17] = &D_800695F2;
+    D_8006B2F8[18] = &D_800695F4;
     D_8006B2F8[19] = D_8006B668;
     D_8006B2F8[20] = &D_8006956A;
-    D_8006B2F8[21] = D_800695DA;
-    D_8006B2F8[22] = D_800695C4;
-    D_8006B2F8[25] = D_800695A2;
-    D_8006B2F8[26] = D_800695A4;
+    D_8006B2F8[21] = &D_800695DA;
+    D_8006B2F8[22] = &D_800695C4;
+    D_8006B2F8[25] = &D_800695A2;
+    D_8006B2F8[26] = &D_800695A4;
     D_8006D928.z = 0;
     D_8006D928.y = 0;
     D_8006D928.x = 0;

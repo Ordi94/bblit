@@ -3,6 +3,7 @@
 #include "psyq/TYPES.H"
 #include "psyq/LIBCD.H"
 #include "globales.h"
+#include "objetos.h"
 
 /*
  * Cargador de contenedores del disco: tabla de posiciones, lectura de sectores por retorno de
@@ -41,7 +42,6 @@ s32 D_800694AC;
 
 extern EntradaSector D_8005EE78[];
 extern u8 D_80069540;
-extern vu8 D_8006955E;
 extern u8 D_8006933C[];
 extern u8 D_8006A928[];
 
@@ -338,12 +338,7 @@ INCLUDE_RODATA("asm/nonmatchings/cargador_de_niveles_y_cd", D_80067F18);
 #define EN(tipo, p, desp) (*(tipo*)((u8*)(p) + (desp)))
 
 extern void* memset(void* destino, s32 valor, u32 cantidad);
-extern void* AllocListNode(void* base, s32 paso, s32 total);
-extern void InitListPool(void* base, s32 paso, s32 total);
-extern void* AppendListNode(void* cabeza, void* nodo);
-extern void* RemoveListNode(void* cabeza, void* nodo);
 extern u8* func_80036164(u32 identificador);
-extern u8* func_800363D4(void);
 extern void func_800368E8(void);
 extern void func_8003ED6C(void);
 extern void func_8003EAEC(void);
@@ -360,57 +355,30 @@ extern void func_800443CC(void);
 extern s32 func_80044664(u8* entrada, u8* salida, void* contexto);
 
 extern u16 D_800695B4;
-extern void* D_80069504;
 extern void* D_80069648;
-extern void* D_80069580;
-extern void* D_80069590;
-extern u8 D_80010041;
 extern u8 D_80010050;
-extern u8 D_800100E6;
 extern u8 D_8001004F;
 extern u8 D_800694D0;
 extern u32 D_80067E98[];
-extern u32 D_8006B2F8[];
-extern u32 D_8006B568[];
-extern u32 D_8006954C;
 extern u32 D_8006959C;
-extern s16 D_8006955C;
 extern s32 D_80069678;
 extern s16 D_80069670;
-extern s16 D_80069660;
-extern s16 D_800694E6;
 extern s16 D_8006967E;
 extern s16 D_800695C2;
 extern s16 D_8006952E;
 extern s32 D_80069548;
-extern u8* D_8006968C;
 extern u8* D_80069570;
-extern u8* D_8006964C;
-extern u8* D_800695D4;
 extern u8* D_80069644;
 extern u8* D_80069528;
 extern u8* D_80069538;
-extern u8* D_80069520;
 extern u8* D_8006966C;
 extern u8* D_80069550;
-extern u32 D_80069680;
-extern u32 D_8006958C;
-extern u32 D_80069610;
-extern u32 D_80069614;
 extern u32 D_800695AC;
 extern u32 D_8006951C;
 extern u32 D_800694EC;
 extern u32 D_80069598;
 extern u32 D_800695FC;
 extern u32 D_800695E4;
-extern s32 D_8006960C;
-extern u16 D_80069530;
-extern s16 D_800694B0;
-extern s16 D_800695F2;
-extern s16 D_800695F4;
-extern s16 D_8006969C;
-extern void* D_80069640;
-extern u8 D_80069658;
 
 #ifdef NON_MATCHING
 /*
@@ -784,15 +752,15 @@ s32 func_800415A0(s16 archivo, void* destino)
                 case 0x07:
                 case 0x0A:
                     /* Entidad de escena: un nodo de 0x1F4 bytes con sus etiquetas (posicion, giro...). */
-                    nodo = AllocListNode(D_8006968C, 0x1F4, (s16)D_8006955C * 0x1F4);
+                    nodo = (u8*)AllocListNode((u8*)D_8006968C, 0x1F4, (s16)D_8006955C * 0x1F4);
                     if (nodo == NULL) {
                         for (;;) {
                         }
                     }
                     if (es_jugador != 0) {
-                        D_80069504 = AppendListNode(D_80069504, nodo);
+                        D_80069504 = (Objeto*)AppendListNode((NodoLista*)D_80069504, (NodoLista*)nodo);
                     } else {
-                        D_80069518 = AppendListNode(D_80069518, nodo);
+                        D_80069518 = (Objeto*)AppendListNode((NodoLista*)D_80069518, (NodoLista*)nodo);
                     }
                     EN(u16, nodo, 0x108) = 0xA00;
                     EN(u8*, nodo, 0xC0) = nodo + 0xCC;
@@ -827,13 +795,13 @@ s32 func_800415A0(s16 archivo, void* destino)
                                 for (;;) {
                                 }
                             }
-                            aux = AllocListNode(D_80069644, 0xC, D_8006967E * 0xC);
+                            aux = (u8*)AllocListNode((u8*)D_80069644, 0xC, D_8006967E * 0xC);
                             if (aux == NULL) {
                                 for (;;) {
                                 }
                             }
                             EN(u8*, aux, 8) = modelo;
-                            EN(u8*, nodo, 0x74) = AppendListNode(EN(u8*, nodo, 0x74), aux);
+                            EN(u8*, nodo, 0x74) = (u8*)AppendListNode((NodoLista*)EN(u8*, nodo, 0x74), (NodoLista*)aux);
                             cursor += 2;
                             break;
                         case 0x10:
@@ -862,7 +830,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             func_80041264(cursor, campos, 1);
                             EN(u16, nodo, 0x2C) = campos[0];
                             if (campos[0] == 1) {
-                                D_80069640 = nodo + 0xE4;
+                                D_80069640 = (s32*)(nodo + 0xE4);
                                 EN(u16, nodo, 0x3C) = 0x40;
                                 D_80069560 = nodo;
                                 D_80069698 = (Objeto*)nodo;
@@ -1190,12 +1158,12 @@ s32 func_800415A0(s16 archivo, void* destino)
 
                 case 0x09:
                     /* Volumen de escena (0x3C bytes): posicion, giro, tamano y lista de 0x24 bytes. */
-                    nodo = AllocListNode(D_80069528, 0x3C, D_800695C2 * 0x3C);
+                    nodo = (u8*)AllocListNode((u8*)D_80069528, 0x3C, D_800695C2 * 0x3C);
                     if (nodo == NULL) {
                         for (;;) {
                         }
                     }
-                    D_80069580 = AppendListNode(D_80069580, nodo);
+                    D_80069580 = (struct NodoVolumen*)AppendListNode((NodoLista*)D_80069580, (NodoLista*)nodo);
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
@@ -1280,12 +1248,12 @@ s32 func_800415A0(s16 archivo, void* destino)
 
                 case 0x20:
                     /* Modelo jerarquico (0x58 bytes): posicion, giro y escala de cada nodo de la jerarquia. */
-                    nodo = AllocListNode(D_800695D4, 0x58, D_800694E6 * 0x58);
+                    nodo = (u8*)AllocListNode((u8*)D_800695D4, 0x58, D_800694E6 * 0x58);
                     if (nodo == NULL) {
                         for (;;) {
                         }
                     }
-                    D_80069648 = AppendListNode(D_80069648, nodo);
+                    D_80069648 = AppendListNode((NodoLista*)D_80069648, (NodoLista*)nodo);
                     EN(u16, nodo, 0x10) = 0;
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
@@ -1305,12 +1273,12 @@ s32 func_800415A0(s16 archivo, void* destino)
                             cursor += 0xC;
                             TransMatrix((MATRIX*)(EN(u8*, hijo_matriz, 4) + 4),
                                         (VECTOR*)(EN(u8*, EN(u8*, hijo_matriz, 4), 0x44) + 0x18));
-                            D_8006B568[EN(s32, nodo, 0xC)] = (u32)hijo;
-                            D_80069648 = RemoveListNode(D_80069648, nodo);
+                            D_8006B568[EN(s32, nodo, 0xC)] = (struct ModeloDibujo*)hijo;
+                            D_80069648 = RemoveListNode((NodoLista*)D_80069648, (NodoLista*)nodo);
                             break;
                         case 0x11:
                             func_80041264(cursor, campos, 6);
-                            hijo = func_800363D4();
+                            hijo = (u8*)func_800363D4();
                             if (hijo == NULL) {
                                 for (;;) {
                                 }
@@ -1376,12 +1344,12 @@ s32 func_800415A0(s16 archivo, void* destino)
 
                 case 0x22:
                     /* Recurso (0x58 bytes): modelo, textura, animacion o color segun la etiqueta. */
-                    nodo = AllocListNode(D_800695D4, 0x58, D_800694E6 * 0x58);
+                    nodo = (u8*)AllocListNode((u8*)D_800695D4, 0x58, D_800694E6 * 0x58);
                     if (nodo == NULL) {
                         for (;;) {
                         }
                     }
-                    D_80069648 = AppendListNode(D_80069648, nodo);
+                    D_80069648 = AppendListNode((NodoLista*)D_80069648, (NodoLista*)nodo);
                     EN(u16, nodo, 0x10) = 0;
                     EN(u16, nodo, 0x12) = 0;
                     if (*cursor == 0x2E) {
@@ -1421,7 +1389,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             break;
                         case 0x25:
                             func_80041264(cursor, campos, 8);
-                            aux = AllocListNode(D_80069570, 0x14, D_80069670 * 0x14);
+                            aux = (u8*)AllocListNode((u8*)D_80069570, 0x14, D_80069670 * 0x14);
                             if (aux == NULL) {
                                 for (;;) {
                                 }
@@ -1696,14 +1664,14 @@ s32 func_800415A0(s16 archivo, void* destino)
             }
             if (datos_extra != NULL && tam_extra != 0) {
                 func_8004153C(datos_extra, tam_extra, reserva);
-                D_80069590 = reserva;
+                D_80069590 = (u16*)reserva;
                 datos_extra = NULL;
                 reserva += tam_extra;
             }
             InitListPool(D_8006968C, 0x1F4, (s16)D_8006955C * 0x1F4);
-            InitListPool(D_8006964C, 0xB8, (s16)D_80069660 * 0xB8);
+            InitListPool((u8*)D_8006964C, 0xB8, (s16)D_80069660 * 0xB8);
             InitListPool(D_80069570, 0x14, D_80069670 * 0x14);
-            InitListPool(D_800695D4, 0x58, (s16)D_800694E6 * 0x58);
+            InitListPool((u8*)D_800695D4, 0x58, (s16)D_800694E6 * 0x58);
             InitListPool(D_80069644, 0xC, D_8006967E * 0xC);
             InitListPool(D_80069528, 0x3C, D_800695C2 * 0x3C);
             memset(D_80069538, 0, D_80069548);
@@ -1737,7 +1705,7 @@ s32 func_800415A0(s16 archivo, void* destino)
             reserva += D_8006954C;
             if (datos_extra != NULL && tam_extra != 0) {
                 func_8004153C(datos_extra, tam_extra, reserva);
-                D_80069590 = reserva;
+                D_80069590 = (u16*)reserva;
                 datos_extra = NULL;
                 reserva += tam_extra;
             }

@@ -1,6 +1,8 @@
 #include "eventos.h"
 #include "globales.h"
 
+extern s16 D_800693F6;
+
 /*
  * Rutinas del interprete de eventos. Las tablas de saltos de condiciones (D_8005E3F0) y de
  * acciones (D_8005E560) apuntan a las rutinas hoja de este archivo; las dos entradas que las
@@ -48,26 +50,17 @@ typedef struct Byte {
     u8 v;
 } Byte;
 
-extern s32* D_80069640;
 extern s32 D_800693B4;
 extern s32 D_800693C0;
-extern s16 D_800693F6;
 /*
  * Variables sueltas del estado principal que el original lee con la forma simbolica (lui al
  * registro de destino): como simbolos externos reproducen esa forma; el acceso por la
  * estructura ESTADO_PRINCIPAL daria un lui compartido distinto.
  */
-extern u16 D_8001000A;
 extern u16 D_8001003E;
-extern u8 D_800100E6;
-extern u8 D_80010041;
-extern u8 D_800694F2;
-extern s32 D_800694F8;
 extern s32 D_80069554;
 extern u8 D_80069586;
-extern s32 D_8006960C;
 extern u8 D_80069674;
-extern s32 D_80069690;
 
 /* Dato pequeno: el original lo direcciona como 0xC0($gp). */
 s32 D_800693E0;

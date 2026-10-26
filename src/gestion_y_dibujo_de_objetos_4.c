@@ -2,11 +2,6 @@
 #include "geometria.h"
 #include "objetos.h"
 
-extern u32 D_80069610;
-extern u32 D_80069614;
-extern s32 D_8006954C;
-extern vu16 D_800695A6;
-extern s32 D_8006960C;
 
 /*
  * Area de trabajo de la sonda de altura: la entidad que transforma func_8001CE64 (nodo,

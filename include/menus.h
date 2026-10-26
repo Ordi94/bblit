@@ -9,13 +9,6 @@
 #include "common.h"
 #include "globales.h"
 
-/* Entrada de D_8006A940: sala o modelo visible con su bandera (12 bytes por entrada). */
-typedef struct EntradaVisible {
-    s16 modelo;
-    u16 bandera;
-    u8 pad04[8];
-} EntradaVisible;
-
 /*
  * Pedido de dibujo de un modelo (argumento de func_8003B26C): indice del modelo en D_8006B568,
  * nivel de recursion de la lista y grupo. func_8003B26C lee los dos ultimos campos como bytes (lbu).

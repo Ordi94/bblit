@@ -5,6 +5,9 @@
 #include "arranque.h"
 #include "menus.h"
 
+extern s32 D_800693F0;
+extern s16 D_80069416;
+
 /*
  * Estado del fundido de pantalla. Todas son variables de 2 bytes que el original escribe con
  * lui at (de ahi g = 8 para este archivo) y carga con lui + desplazamiento, sin $gp.
@@ -12,7 +15,6 @@
  * dibujo de la capa de oscurecimiento; D_80069686: paso por cuadro; D_8006966A (globales.h): fase.
  */
 extern s16 D_80069566;
-extern s16 D_80069668;
 extern u16 D_80069686;
 
 /*
@@ -20,56 +22,30 @@ extern u16 D_80069686;
  * reescribe el retorno de llamada de VSync, D_800695A6 cuenta los VSync desde el ultimo dibujo y
  * D_8006954C es la longitud del anillo.
  */
-extern s32 D_8006954C;
-extern u32 D_80069610;
-extern u32 D_80069614;
-extern vu16 D_800695A6;
 
 /*
  * Cursor de escritura de primitivas GPU: direccion de la siguiente primitiva libre del cuadro. Se
  * compara con signo contra los limites de la escena, por eso es s32 y no un puntero. D_8006958C y
  * D_80069680 son el limite del buffer y su inicio.
  */
-extern s32 D_80076188;
-extern s32 D_8006958C;
-extern s32 D_80069680;
 
 /* Camara: D_8006D934 es la mitad alta de D_8006D928 (+0xC); el original la direcciona con su propio lui. */
 extern s32 D_8006D934[3];
-extern s16 D_80069402;
-extern s16 D_80069416;
-extern s32 D_800693F0;
-extern u16 D_800694E2;
 
 /*
  * Dos bytes del banco B (D_8006AA70[0x19] detiene el paso del fundido y D_8006AA70[0xC] es el estado
  * de pausa): el original los direcciona con su propio lui, como simbolos distintos del banco.
  */
 extern u8 D_8006AA89;
-extern u8 D_8006AA7C;
 
 /* Contadores y banderas del cuadro de dibujo, y tablas de modelos y de salas visibles. */
-extern s16 D_800695A2;
-extern s16 D_800695A4;
 extern s16 D_80069532;
-extern s16 D_800695DA;
-extern s16 D_80069530;
-extern s16 D_80069588;
 extern s16 D_80069688;
 extern s32 D_80076098;
 extern s32 D_8007609C;
-extern u16 D_800695F2;
-extern u16 D_800695F4;
-extern u16 D_8006969C;
-extern u16 D_800694B0;
 extern u8 D_80069600;
-extern void* D_800694D8;
-extern void* D_800695C4;
-extern ModeloDibujo* D_8006B568[];
 /* Tabla de punteros a objetos visibles (palabras de 4 bytes: sw con indice * 4 en func_8003B5AC); el otro archivo que la usa la declara u8[]. */
-extern u8 D_8006AD80[];
 extern EntradaCola D_8006D1C8[];
-extern EntradaVisible D_8006A940[];
 
 /* Rutinas de otros archivos y del overlay (func_80010204 y func_80010258 dibujan un modelo). */
 extern void func_80039CD0(s32 cursor);

@@ -2,6 +2,10 @@
 #include "gte.h"
 #include "motor.h"
 
+extern s16 D_800693F6;
+extern s16 D_800693F8;
+extern s16 D_80069416;
+
 /*
  * Area de trabajo de func_8001CE64: nodo desde el que se acumula la traslacion en +0, vector de
  * entrada y de salida recortado a 16 bits en +4 y acumulador de 32 bits en +0xC. El llamador la
@@ -39,19 +43,10 @@ extern InicioNivel D_8006ACD0;
  * tentativa) para que el ensamblador lo reescriba a $gp, y el enlace lo coloca en 0x800693B8.
  */
 s16 D_800693B8;
-extern u8 D_80010076;
 extern u32 D_80069608;
-extern u8 D_800694F2;
-extern u8 D_80010041;
 extern void func_8003AA50(u32 modo, u32 duracion);
-extern s32 D_80069690;
-extern s16 D_800693F6;
-extern s16 D_80069402;
-extern s16 D_80069416;
-extern u16 D_8001000A;
 extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
 
-extern s16 D_800693F8;
 
 /*
  * Coloca la camara detras de la posicion indicada: la rotacion del objeto controlado aplicada a
@@ -768,8 +763,6 @@ typedef struct ProyeccionSprite {
     s16* coordenadas;
 } ProyeccionSprite;
 
-extern MATRIX D_80076130;
-extern VECTOR D_80076144;
 
 /*
  * Proyecta el objeto en pantalla y calcula las esquinas de su sprite: si esta mas cerca de 150
@@ -860,7 +853,6 @@ typedef struct EventoZona {
     s32 v20;
 } EventoZona;
 
-extern s32 D_800694F8;
 /* Definida en graficos_y_gte.c: devuelve el nodo de plano que toca el objeto (sin prototipo en las cabeceras, el retorno se tomaba como int). */
 extern NodoVolumen* func_80019180(Objeto* a, VECTOR* p, ConsultaPlano* o);
 extern s32 D_80010000;

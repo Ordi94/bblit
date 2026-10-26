@@ -16,11 +16,8 @@ typedef struct AyudaCuerpo {
 #define EST ((u8*)0x80010000)
 
 /* Lista de objetos ya dibujados (se encadena por +0x10) y contador de cuadros. */
-extern void* D_800694D8;
-extern s32 D_80069534;
 
 /* Objeto de referencia respecto del que func_80037184 refleja los demas. */
-extern Objeto* D_800695EC;
 
 /* Contadores de la interfaz del estado principal (bytes sueltos de 0x80010000). */
 extern u8 D_80010042;
@@ -32,8 +29,6 @@ extern u8 D_800100F9;
 extern u8 D_800100FA;
 
 /* Nivel de unidades mostrado por los indicadores y nivel de fundido pedido. */
-extern u8 D_80069524;
-extern u8 D_800695F6;
 
 /*
  * Tablas del archivo: identificadores de plantilla de los grupos de objetos (D_8005E830), de los

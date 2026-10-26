@@ -488,4 +488,210 @@ extern u16 D_8006B658[8];
  */
 extern void* D_800694B8;
 
+/*
+ * Glifo de la tabla de caracteres: coordenadas de textura (u, v) y tamano en +8, +9, +0xC y +0xE
+ * (func_80045150), pagina de textura en +6 (func_80045150).
+ */
+typedef struct Glifo {
+    u8 pad00[6];
+    u16 tpage;
+    u8 u;
+    u8 v;
+    u8 pad0A[2];
+    u16 w;
+    u16 h;
+} Glifo;
+
+/*
+ * Entrada de ocho bytes de la lista de glifos pendientes de dibujar que recorre D_800694D4:
+ * glifo (func_800450E8, func_80045150), posicion x (+4) e y (+6) en pantalla e indice de paleta (+7).
+ */
+typedef struct EntradaLista {
+    Glifo* glifo;
+    u16 x;
+    u8 y;
+    s8 idx;
+} EntradaLista;
+
+/* Entrada de D_8006A940: sala o modelo visible con su bandera (12 bytes por entrada). */
+typedef struct EntradaVisible {
+    s16 modelo;
+    u16 bandera;
+    u8 pad04[8];
+} EntradaVisible;
+
+struct NodoVolumen;
+
+/* --- Variables compartidas entre archivos (una sola declaracion por simbolo) ------------- */
+
+/* D_8001000A: Byte alto de botones_a que leen los eventos con la forma simbolica (un lui por acceso), ver EstadoPrincipal en arranque.h; accesos del ensamblador: lhu x16, sh x15 */
+extern u16 D_8001000A;
+
+/* D_80010041: Byte 0x01 del banco de registros del estado principal con la forma simbolica (salud, ver EstadoPrincipal en arranque.h); accesos del ensamblador: lbu x11, sb x12, lb x1 */
+extern u8 D_80010041;
+
+/* D_800100E6: Byte 0xA6 del banco de registros del estado principal con la forma simbolica; accesos del ensamblador: lbu x8, sb x9 */
+extern u8 D_800100E6;
+
+/* D_80069402: accesos del ensamblador: sh(gp) x6, lh(gp) x2, lhu(gp) x5, sh x5, lhu x1 */
+extern s16 D_80069402;
+
+/* D_800694D8: accesos del ensamblador: lw x4, sw x2 */
+extern void* D_800694D8;
+
+/* D_800694E2: accesos del ensamblador: lhu x2, sh x1 */
+extern u16 D_800694E2;
+
+/* D_800694E6: accesos del ensamblador: lh x5, sh x1 */
+extern s16 D_800694E6;
+
+/* D_800694F2: accesos del ensamblador: sb x5, lbu x9 */
+extern u8 D_800694F2;
+
+/* D_800694F8: accesos del ensamblador: lw x2, sw x1 */
+extern s32 D_800694F8;
+
+/* D_80069508: accesos del ensamblador: lw x6, sw x3 */
+extern void* D_80069508;
+
+/* D_80069520: accesos del ensamblador: sw x2, lw x2 */
+extern u8* D_80069520;
+
+/* D_80069524: accesos del ensamblador: lbu x3, sb x3 */
+extern u8 D_80069524;
+
+/* D_8006952C: accesos del ensamblador: lh x4, sh x1 */
+extern s16 D_8006952C;
+
+/* D_80069534: accesos del ensamblador: sw x4, lw x3 */
+extern s32 D_80069534;
+
+/* D_80069588: accesos del ensamblador: lh x5, sh x2, lhu x3 */
+extern s16 D_80069588;
+
+/* D_800695A6: accesos del ensamblador: sh x3, lhu x7 */
+extern vu16 D_800695A6;
+
+/* D_800695BC: accesos del ensamblador: sh x5, lhu x2, lh x6 */
+extern s16 D_800695BC;
+
+/* D_800695F6: accesos del ensamblador: sb x4, lbu x4 */
+extern u8 D_800695F6;
+
+/* D_8006960C: accesos del ensamblador: sw x3, lw x1 */
+extern s32 D_8006960C;
+
+/* D_80069614: accesos del ensamblador: sw x2, lw x3 */
+extern u32 D_80069614;
+
+/* D_80069628: accesos del ensamblador: sb x4, lb x6 */
+extern u8 D_80069628;
+
+/* D_80069658: accesos del ensamblador: sb x4, lbu x2 */
+extern u8 D_80069658;
+
+/* D_80069660: accesos del ensamblador: lh x3, sh x1 */
+extern s16 D_80069660;
+
+/* D_80069668: accesos del ensamblador: lhu x4, sh x9 */
+extern s16 D_80069668;
+
+/* D_80069690: accesos del ensamblador: lw x5, sw x8 */
+extern s32 D_80069690;
+
+/* D_8006AA7C: accesos del ensamblador: lbu x17 */
+extern u8 D_8006AA7C;
+
+/* D_8006CFF0 */
+extern u8 D_8006CFF0[];
+
+/* D_8006D038 */
+extern u8 D_8006D038[];
+
+/* D_80076130 */
+extern MATRIX D_80076130;
+
+/* D_80076144 */
+extern VECTOR D_80076144;
+
+
+
+
+
+
+
+
+
+
+
+
+/* D_800694B0: accesos del ensamblador: sh x1, lhu x4 */
+extern u16 D_800694B0;
+
+/* D_800694D4: accesos del ensamblador: sw x2, lw x3 */
+extern EntradaLista* D_800694D4;
+
+/* D_80069530: accesos del ensamblador: sh x1, lh x1, lbu x1 */
+extern s16 D_80069530;
+
+/* D_8006954C: Longitud del anillo de primitivas; las rutinas de dibujo la comparan con signo; accesos del ensamblador: lw x5, sw x1 */
+extern s32 D_8006954C;
+
+/* D_8006955E: Estado de la lectura del archivo. func_80044854 lo carga ademas con lhu (func_80044854.s): su cuerpo lo lee con un cast (u16) local; accesos del ensamblador: lbu x12, sb x5, lhu x1 */
+extern vu8 D_8006955E;
+
+/* D_80069580: accesos del ensamblador: sw x2, lw x2 */
+extern struct NodoVolumen* D_80069580;
+
+/* D_8006958C: accesos del ensamblador: sw x1, lw x6 */
+extern s32 D_8006958C;
+
+/* D_80069590: accesos del ensamblador: sw x3, lw x3 */
+extern u16* D_80069590;
+
+/* D_800695A2: accesos del ensamblador: sh x1 */
+extern s16 D_800695A2;
+
+/* D_800695A4: accesos del ensamblador: sh x1 */
+extern s16 D_800695A4;
+
+/* D_800695C4: accesos del ensamblador: sw x4 */
+extern void* D_800695C4;
+
+/* D_800695DA: accesos del ensamblador: sh x4, lh x4 */
+extern s16 D_800695DA;
+
+/* D_800695EC: accesos del ensamblador: sw x2, lw x1 */
+extern Objeto* D_800695EC;
+
+/* D_800695F2: accesos del ensamblador: sh x1, lhu x1 */
+extern u16 D_800695F2;
+
+/* D_800695F4: accesos del ensamblador: sh x1, lhu x1 */
+extern u16 D_800695F4;
+
+/* D_80069640: accesos del ensamblador: sw x1, lw x3 */
+extern s32* D_80069640;
+
+/* D_80069652: accesos del ensamblador: sh x2, lh x3, lhu x4 */
+extern s16 D_80069652;
+
+/* D_80069680: accesos del ensamblador: sw x1, lw x6 */
+extern s32 D_80069680;
+
+/* D_8006969C: accesos del ensamblador: sh x1, lhu x3 */
+extern u16 D_8006969C;
+
+/* D_8006A940: accesos del ensamblador: sh x1 */
+extern EntradaVisible D_8006A940[];
+
+/* D_8006AD80 */
+extern Objeto* D_8006AD80[];
+
+/* D_8006B2F8: accesos del ensamblador: sw x1 */
+extern void* D_8006B2F8[27];
+
+/* D_8006B568 */
+extern struct ModeloDibujo* D_8006B568[];
+
 #endif

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "globales.h"
 #include "psyq/TYPES.H"
 #include "psyq/LIBCD.H"
 
@@ -46,7 +47,6 @@ extern u32 D_8006947C;
 extern u32 D_80069480;
 extern u32 D_80069490;
 extern u32 D_8006949C;
-extern u16 D_8006955E;
 
 extern s32 func_80044904(void);
 /* Entrada y salida de seccion critica (llamadas al sistema de 16 bytes sin nombre en el simbolo). */
@@ -181,7 +181,8 @@ void func_80044854(FlujoEntrada* flujo)
             func_80044904();
             return;
         }
-        if (D_8006955E == 0) {
+        /* El original carga el estado con lhu (0x80044898): el campo es un byte y aqui se lee como media palabra. */
+        if (*(volatile u16*)&D_8006955E == 0) {
             flujo->operaciones = 0;
             flujo->restantes = 0x7FF;
             return;

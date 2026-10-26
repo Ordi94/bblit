@@ -2,17 +2,6 @@
 #include "objetos.h"
 #include "psyq/MEMORY.H"
 
-/*
- * Entrada de la tabla de identificadores D_800695D4 (0x58 bytes): 'id' en +0x0C y la marca de
- * libre en +0x04.
- */
-typedef struct EntradaId {
-    NodoLista cab;
-    s32 w8;
-    s32 id;
-    u8 pad10[0x58 - 0x10];
-} EntradaId;
-
 /* Nodo de una lista con clave de busqueda en +0x18 (la lista de ayudantes de un objeto). */
 typedef struct NodoClave {
     NodoLista cab;
@@ -20,13 +9,8 @@ typedef struct NodoClave {
     s32 clave;
 } NodoClave;
 
-extern s16 D_800694E6;
-extern EntradaId* D_800695D4;
-extern s16 D_80069660;
-extern Ayuda* D_8006964C;
 extern Objeto* D_800694DC;
 extern Objeto* D_800694B4;
-extern void* D_80069508;
 
 #ifdef NON_MATCHING
 /*

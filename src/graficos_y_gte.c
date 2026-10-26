@@ -52,7 +52,6 @@ s32 D_80069380;
 #define U16_2E(o) (*(u16*)((u8*)(o) + 0x2E))
 
 /* Cabeza de la lista de nodos de plano (enlace en +0). */
-extern NodoVolumen* D_80069580;
 
 /*
  * Busca el primer objeto solido cuyo volumen contiene a la caja del objeto a: el candidato se

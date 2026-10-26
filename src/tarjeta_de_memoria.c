@@ -47,7 +47,6 @@ typedef struct BloqueCabecera {
 } BloqueCabecera;
 
 extern CabeceraGuardado D_8006D060;
-extern u8* D_80069520;
 
 extern u32 func_80041238(void* datos, s32 cantidad);
 extern s32 func_80014BA0(void* destino, s32 cantidad, s32 desplazamiento);

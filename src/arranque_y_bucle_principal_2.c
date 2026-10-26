@@ -6,15 +6,10 @@
 #include "psyq/LIBGPU.H"
 #include "psyq/LIBGS.H"
 
-extern s32 D_80069534;
 extern s32 D_80069638;
-extern void* D_80069508;
-extern void* D_800694D8;
-extern u8 D_8006AD80[];
 
 extern u16 D_800694F0;
 extern s32 D_8006CF68[];
-extern u8 D_80069628;
 
 extern s32 SetRCnt(u32 canal, u16 destino, s32 modo);
 extern s32 StartRCnt(u32 canal);
