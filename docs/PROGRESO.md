@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 449 | 201416 | 25 | 3232 |
+| Código del juego | 449 | 201416 | 166 | 9704 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 3232 de 201416 (1.60 %).
-Funciones marcadas `NON_MATCHING`: 39.
-Coherencia con el ensamblador: correcta (1076 `glabel` en `asm/` + 25 en C = 1101; la tabla declara 1101).
+Bytes de código del juego descompilados: 9704 de 201416 (4.82 %).
+Funciones marcadas `NON_MATCHING`: 89.
+Coherencia con el ensamblador: correcta (935 `glabel` en `asm/` + 166 en C = 1101; la tabla declara 1101).
 
 ## Por subsistema
 
@@ -29,7 +29,7 @@ Coherencia con el ensamblador: correcta (1076 `glabel` en `asm/` + 25 en C = 110
 | gestion_y_dibujo_de_objetos | 4 | 1 | 0 | 41 | 76 | 18624 |
 | graficos_y_gte | 3 | 5 | 12 | 2 | 1484 | 11812 |
 | inicializacion_de_motor | 1 | 0 | 0 | 16 | 0 | 5276 |
-| interprete_de_eventos | 1 | 3 | 0 | 193 | 140 | 11900 |
+| interprete_de_eventos | 1 | 144 | 50 | 2 | 6612 | 11900 |
 | logica_de_niveles | 3 | 0 | 1 | 20 | 0 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 0 | 0 | 27 | 0 | 13644 |
@@ -55,7 +55,7 @@ Coherencia con el ensamblador: correcta (1076 `glabel` en `asm/` + 25 en C = 110
 | `src/graficos_y_gte_10.c` | 1 | 5 | 0 | 68 | 1076 |
 | `src/graficos_y_gte_12.c` | 1 | 3 | 0 | 112 | 664 |
 | `src/inicializacion_de_motor.c` | 0 | 0 | 16 | 0 | 5276 |
-| `src/interprete_de_eventos.c` | 3 | 0 | 193 | 140 | 11900 |
+| `src/interprete_de_eventos.c` | 144 | 50 | 2 | 6612 | 11900 |
 | `src/logica_de_niveles.c` | 0 | 0 | 1 | 0 | 19880 |
 | `src/logica_de_niveles_2.c` | 0 | 0 | 3 | 0 | 2016 |
 | `src/logica_de_niveles_3.c` | 0 | 1 | 16 | 0 | 38752 |
@@ -92,6 +92,56 @@ Coherencia con el ensamblador: correcta (1076 `glabel` en `asm/` + 25 en C = 110
 - `func_80019180`
 - `func_8001C134`
 - `func_8002F990`: Operacion aritmetica sobre un registro de 16 bits repartido en dos bytes (D_80010047 es el bajo y D_8001013C el alto). Diferencias con el original: este lee ambos bytes con un unico 'lui' (los dos simbolos comparten la parte alta) y conserva una copia del valor en el hueco de retardo del primer salto; el compilador genera dos 'lui' porque son variables externas distintas. Hay que declararlas como miembros de una misma estructura o arreglo.
+- `func_8002FF38`
+- `func_80030018`
+- `func_800300E4`
+- `func_800301E8`
+- `func_800302F8`
+- `func_80030404`
+- `func_8003088C`
+- `func_80030CB8`
+- `func_80030CE0`
+- `func_80030D08`
+- `func_80030D34`
+- `func_800313D4`
+- `func_8003147C`
+- `func_80031624`
+- `func_80031650`
+- `func_80031794`
+- `func_800317FC`
+- `func_800318F8`
+- `func_8003190C`
+- `func_8003192C`
+- `func_80031948`
+- `func_80031960`
+- `func_800319AC`
+- `func_80031A0C`
+- `func_80031A34`
+- `func_80031AE4`
+- `func_80031B1C`
+- `func_80031B78`
+- `func_80031B98`
+- `func_80031BAC`
+- `func_80031CD4`
+- `func_80031D38`
+- `func_80031D60`
+- `func_80031E24`
+- `func_80031EF8`
+- `func_80031FE0`
+- `func_80032110`
+- `func_8003213C`
+- `func_80032170`
+- `func_800321A4`
+- `func_800321D8`
+- `func_8003220C`
+- `func_8003222C`
+- `func_80032318`
+- `func_8003237C`
+- `func_800323A0`
+- `func_80032490`
+- `func_800324A4`
+- `func_80032694`
+- `func_80032708`
 - `func_80035244`: Lee los botones (D_80010010 sin los bits 0 y 3) y, si cambiaron, avanza siete secuencias de teclas de D_8005E768 (24 bytes cada una: caso, paso y diez teclas); al completar una ejecuta su caso con un switch de siete entradas. El archivo se compila con -G8 (config/opciones_compilacion.toml). Puntuacion 600: la tabla de saltos, los destinos de los casos, el reparto de registros del estado y la forma simbolica de D_80069662 coinciden; difieren la posicion del almacen en 0x104($gp) (el original no lo coloca en el hueco de retardo), las constantes 0x47 y 1, que el original carga antes del bucle, y 
 - `func_8003FFA0`: Coincide con g = 8 (25, solo marcas i); con la configuracion actual -G0 da 955. Arranque del mando: borra el estado de vibracion y de repeticion, inicia la tarjeta de memoria y el controlador directo, y espera hasta 30 cuadros a que el mando 0 este estable (PadStateStable); si admite el modo extendido lo fija en analogico (hasta 5 intentos). Puntuacion 25 con -G8: solo cambia la forma de las direcciones 0x8001000A..0x80010010 (simbolo en el objetivo, numero en el candidato); los bytes son los del original. Con el -G0 por omision las escrituras a 0x80069xxx usan un registro general en lugar de 
 - `func_800400C0`: No coincide en el diff (70 con g = 8 y con -G0), aunque los bytes son los del original (build y verify OK con este cuerpo): el objetivo usa los simbolos D_80010026..D_8001003C y D_80010051 y el candidato direcciones numericas con un lui compartido. Con un extern por dato el compilador emite un lui por simbolo (2435). Carga la configuracion de botones: fija las mascaras de las cuatro direcciones y copia a la tabla de salida los ocho valores de la configuracion elegida (16 bytes por entrada).
