@@ -1,10 +1,11 @@
 """Reglas de negocio del limite de lineas de ``diff``: la puntuacion cubre la funcion entera."""
 
+import json
 from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import diff
+from tools.reconstruccion import cli, diff
 
 from .test_compilacion import herramientas_compilacion
 from .test_diff import ASM_FUNCION, EjecutorDiff, repo_diff  # noqa: F401 - fixture reutilizada
@@ -80,3 +81,59 @@ def test_preparar_objetivo_informa_el_limite_de_la_funcion(repo_diff: Any) -> No
         repo_diff, "func_80036204", "src/code_a.c", herramientas_compilacion(), EjecutorDiff(0)
     )
     assert (objetivo, retornos, max_lineas) == ("build/diff/func_80036204.objetivo.o", 1, 1564)
+
+
+def fila(mnemonico: str | None) -> dict[str, Any]:
+    """Fila de la salida JSON de ``asm-differ`` cuya columna del candidato tiene ese mnemonico."""
+    columna: dict[str, Any] = {"text": []}
+    if mnemonico is not None:
+        columna["mnemonic"] = mnemonico
+    return {"base": {"text": []}, "current": columna}
+
+
+def comparar_con_filas(raiz: Path, filas: list[Any]) -> diff.ResultadoDiff:
+    return diff.comparar_funcion(
+        raiz, "func_80036204", herramientas_compilacion(), Path("diff.py"), EjecutorDiff(0, filas=filas)
+    )
+
+
+def test_si_el_candidato_llega_exactamente_al_limite_se_anota_el_truncado(repo_diff: Any) -> None:  # noqa: F811
+    resultado = comparar_con_filas(repo_diff, [fila("addiu")] * 1024)
+    assert resultado.truncado is True
+    guardado = json.loads((repo_diff / diff.ruta_resultado("func_80036204")).read_text(encoding="utf-8"))
+    assert guardado["truncado"] is True
+
+
+def test_si_el_candidato_cabe_por_una_instruccion_no_hay_truncado(repo_diff: Any) -> None:  # noqa: F811
+    resultado = comparar_con_filas(repo_diff, [fila("addiu")] * 1023)
+    assert resultado.truncado is False
+    guardado = json.loads((repo_diff / diff.ruta_resultado("func_80036204")).read_text(encoding="utf-8"))
+    assert guardado["truncado"] is False
+
+
+def test_la_fila_de_corte_de_asm_differ_basta_para_anotar_el_truncado(repo_diff: Any) -> None:  # noqa: F811
+    assert comparar_con_filas(repo_diff, [fila("addiu"), fila("...")]).truncado is True
+
+
+def test_etiquetas_referencias_a_datos_y_filas_sin_instruccion_no_cuentan_para_el_limite() -> None:
+    filas = [fila("addiu")] * 1020 + [fila("<label>"), fila("<data-ref>"), fila("ERROR"), fila(None)]
+    assert diff.salida_truncada(json.dumps({"rows": filas}), 1024) is False
+
+
+@pytest.mark.parametrize(
+    "salida",
+    [{}, {"rows": "no es una lista"}, {"rows": [1, "x", {"current": 3}, {"current": {"mnemonic": 7}}]}],
+)
+def test_una_salida_sin_filas_validas_no_se_considera_truncada(salida: dict[str, Any]) -> None:
+    assert diff.salida_truncada(json.dumps(salida), 1) is False
+
+
+def test_diff_imprime_un_aviso_claro_si_la_salida_esta_truncada() -> None:
+    parcial = diff.ResultadoDiff("f", "src/a.c", 70, "", truncado=True)
+    completo = diff.ResultadoDiff("f", "src/a.c", 70, "")
+    lineas = cli.resumir_comparacion(parcial)
+    assert lineas[0].startswith("aviso: asm-differ corto el desensamblado") and "parciales" in lineas[0]
+    assert lineas[-1] == "f (src/a.c): puntuacion 70"
+    assert cli.resumir_comparacion(completo) == ["f (src/a.c): puntuacion 70"]
+    con_bytes = diff.ResultadoDiff("f", "src/a.c", 0, "", True, 2, 70, True)
+    assert len(cli.resumir_comparacion(con_bytes)) == 3

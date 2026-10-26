@@ -38,11 +38,24 @@ from tools.reconstruccion.infraestructura import (
 TIMEOUT_DIFF_S = 300
 LIMITE_MINIMO_LINEAS = 1024
 MARGEN_LINEAS = 64
+"""Instrucciones que se suman a las del original para fijar el limite de ``asm-differ``.
+
+Cubre el caso en que el candidato en C es mas largo que el original. Medido con ``build/diff`` en
+93 funciones del juego (30 ya cerradas en C, repartidas por tamano de 2 a 198 instrucciones, y las
+63 ``NON_MATCHING``, de 12 a 4971): en las cerradas el candidato nunca supera al original (rango
+-3 a 0); en las ``NON_MATCHING`` la diferencia va de -405 a +41 instrucciones (mediana -1,
+percentil 90 en +4, percentil 99 y maximo en +41; las tres mayores: +41, +24 y +14). El menor
+margen que lo cubre todo es 41; se redondea hacia arriba a la potencia de 2 siguiente, 64, que deja
+23 instrucciones de holgura. Si un intento temprano aun asi lo supera, ``diff`` lo detecta y lo
+avisa (ver ``salida_truncada``) en lugar de informar una puntuacion parcial sin decirlo.
+"""
 CARPETA_ASM_COINCIDENTE = "asm/matchings"
 CARPETA_ASM_PENDIENTE = "asm/nonmatchings"
 _PATRON_FUNCION = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 _PATRON_RETORNO = re.compile(r"^\s*/\*.*?\*/\s+jr\s+\$ra\b", re.MULTILINE)
 _PATRON_INSTRUCCION = re.compile(r"^\s*/\*.*?\*/\s+[A-Za-z.]", re.MULTILINE)
+_MNEMONICOS_NO_INSTRUCCION = frozenset({"<label>", "<data-ref>", "ERROR"})
+_MNEMONICO_CORTE = "..."
 
 
 @dataclass(frozen=True)
@@ -60,6 +73,8 @@ class ResultadoDiff:
         referencias_numericas: Filas cuya unica diferencia es una referencia escrita como numero.
         puntuacion_asm: Puntuacion que dio ``asm-differ`` antes de comparar los bytes (``None`` si
             no se registro).
+        truncado: Si ``asm-differ`` corto el desensamblado del candidato en el limite de lineas, de
+            modo que la puntuacion y el texto son parciales.
     """
 
     funcion: str
@@ -69,6 +84,7 @@ class ResultadoDiff:
     bytes_iguales: bool | None = None
     referencias_numericas: int = 0
     puntuacion_asm: int | None = None
+    truncado: bool = False
 
     @property
     def coincide(self) -> bool:
@@ -306,6 +322,41 @@ def puntuacion_desde_json(salida: str) -> int:
     return puntos
 
 
+def salida_truncada(salida: str, max_lineas: int) -> bool:
+    """
+    Indica si ``asm-differ`` corto el desensamblado del candidato en el limite de lineas.
+
+    Contexto:
+        Si el candidato supera ``--max-lines`` instrucciones, ``asm-differ`` descarta el resto y
+        puntua solo lo que queda, sin avisar. ``comparar_funcion`` usa esta comprobacion para
+        anotar el resultado en lugar de dar una cifra parcial por completa. El corte se reconoce
+        por la fila ``...`` que ``asm-differ`` anade, o porque el candidato ya llega al limite.
+
+    Args:
+        salida (str): Texto JSON producido con ``--format=json`` (ya validado por
+            ``puntuacion_desde_json``).
+        max_lineas (int): Limite con que se lanzo ``asm-differ``.
+
+    Returns:
+        bool: Verdadero si hubo corte; falso si no, o si las filas no tienen la forma esperada.
+
+    Ejemplo:
+        truncado = salida_truncada(salida_json, 1024)
+    """
+    filas = json.loads(salida).get("rows")
+    if not isinstance(filas, list):
+        return False
+    instrucciones = 0
+    for fila in filas:
+        columna = fila.get("current") if isinstance(fila, dict) else None
+        mnemonico = columna.get("mnemonic") if isinstance(columna, dict) else None
+        if mnemonico == _MNEMONICO_CORTE:
+            return True
+        if isinstance(mnemonico, str) and mnemonico not in _MNEMONICOS_NO_INSTRUCCION:
+            instrucciones += 1
+    return instrucciones >= max_lineas
+
+
 def elegir_asm_objetivo(archivo: str, funcion: str, existe: Callable[[str], bool]) -> str:
     """
     Elige el ``.s`` original de una funcion.
@@ -405,7 +456,9 @@ def comparar_funcion(
             formato=formato,
         )
 
-    puntuacion = puntuacion_desde_json(lanzar("json"))
+    salida_json = lanzar("json")
+    puntuacion = puntuacion_desde_json(salida_json)
+    truncado = salida_truncada(salida_json, max_lineas)
     texto = lanzar("plain").rstrip("\n")
     iguales = None
     referencias = 0
@@ -422,8 +475,8 @@ def comparar_funcion(
         )
         referencias = contar_referencias_numericas(texto) if iguales else 0
     informada = 0 if iguales else puntuacion
-    guardar_resultado(raiz, funcion, informada, max_lineas)
-    return ResultadoDiff(funcion, archivo, informada, texto, iguales, referencias, puntuacion)
+    guardar_resultado(raiz, funcion, informada, max_lineas, truncado=truncado)
+    return ResultadoDiff(funcion, archivo, informada, texto, iguales, referencias, puntuacion, truncado)
 
 
 def ruta_resultado(funcion: str) -> str:
@@ -445,7 +498,9 @@ def ruta_resultado(funcion: str) -> str:
     return f"{CARPETA_DIFF}/{funcion}.resultado.json"
 
 
-def guardar_resultado(raiz: Path, funcion: str, puntuacion: int, max_lineas: int) -> None:
+def guardar_resultado(
+    raiz: Path, funcion: str, puntuacion: int, max_lineas: int, *, truncado: bool = False
+) -> None:
     """
     Registra la puntuacion informada por ``diff`` para que otras ordenes la contrasten sin repetirlo.
 
@@ -458,11 +513,13 @@ def guardar_resultado(raiz: Path, funcion: str, puntuacion: int, max_lineas: int
         funcion (str): Funcion comparada.
         puntuacion (int): Puntuacion informada.
         max_lineas (int): Limite de lineas con que se midio.
+        truncado (bool, opcional): Si la medicion es parcial porque ``asm-differ`` corto el
+            candidato en el limite.
 
     Ejemplo:
         guardar_resultado(Path("."), "func_80036204", 0, 1024)
     """
-    datos = {"funcion": funcion, "puntuacion": puntuacion, "maxLineas": max_lineas}
+    datos = {"funcion": funcion, "puntuacion": puntuacion, "maxLineas": max_lineas, "truncado": truncado}
     (raiz / ruta_resultado(funcion)).write_text(json.dumps(datos) + "\n", encoding="utf-8", newline="\n")
 
 

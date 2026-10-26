@@ -34,7 +34,8 @@ def leer_puntuacion_medida(raiz: Path, funcion: str, referencia_mtime: float) ->
 
     Returns:
         int | None: La puntuacion, o ``None`` si falta, es anterior a la edicion, es demasiado
-        grande, no es JSON, no es de esa funcion o la puntuacion no es un entero no negativo.
+        grande, no es JSON, no es de esa funcion, la puntuacion no es un entero no negativo o la
+        medicion fue parcial (``truncado``): una cifra parcial no se contrasta con el comentario.
 
     Ejemplo:
         medida = leer_puntuacion_medida(Path("."), "func_80036204", 0.0)
@@ -48,6 +49,8 @@ def leer_puntuacion_medida(raiz: Path, funcion: str, referencia_mtime: float) ->
     except (OSError, ValueError):
         return None
     if not isinstance(datos, dict) or datos.get("funcion") != funcion:
+        return None
+    if datos.get("truncado") is True:
         return None
     puntos = datos.get("puntuacion")
     if isinstance(puntos, bool) or not isinstance(puntos, int) or puntos < 0:

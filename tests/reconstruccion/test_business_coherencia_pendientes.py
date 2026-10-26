@@ -113,7 +113,7 @@ def test_diff_deja_la_puntuacion_informada_y_el_limite_para_el_aviso(repo_diff: 
         repo_diff, "func_80036204", herramientas_compilacion(), Path("diff.py"), EjecutorDiff(0)
     )
     datos = json.loads((repo_diff / diff.ruta_resultado("func_80036204")).read_text(encoding="utf-8"))
-    assert datos == {"funcion": "func_80036204", "puntuacion": 0, "maxLineas": 1024}
+    assert datos == {"funcion": "func_80036204", "puntuacion": 0, "maxLineas": 1024, "truncado": False}
 
 
 def leer_medicion_guardada(raiz: Path, funcion: str) -> dict[str, Any]:
@@ -152,3 +152,10 @@ def test_diff_guarda_cero_si_los_bytes_son_iguales_aunque_asm_differ_puntue_mas(
     datos = leer_medicion_guardada(tmp_path, "func_80036204")
     assert (resultado.bytes_iguales, resultado.puntuacion_asm) == (True, 5)
     assert (resultado.puntuacion, datos["puntuacion"]) == (0, 0)
+
+
+def test_una_medicion_truncada_no_se_contrasta_con_el_comentario(raiz: Path) -> None:
+    escribir_medicion(raiz, {**medicion(340), "truncado": True})
+    assert avisos(raiz) == []
+    escribir_medicion(raiz, {**medicion(340), "truncado": False})
+    assert len(avisos(raiz)) == 1

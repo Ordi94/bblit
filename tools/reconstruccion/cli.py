@@ -147,20 +147,27 @@ def resumir_comparacion(resultado: diff.ResultadoDiff) -> list[str]:
         resultado (diff.ResultadoDiff): Resultado de comparar una funcion.
 
     Returns:
-        list[str]: Nota de referencias numericas (solo si los bytes coinciden) y linea de veredicto.
+        list[str]: Aviso de truncado (solo si ``asm-differ`` corto el candidato), nota de
+        referencias numericas (solo si los bytes coinciden) y linea de veredicto.
 
     Ejemplo:
         for linea in resumir_comparacion(resultado):
             print(linea)
     """
     veredicto = f"{resultado.funcion} ({resultado.archivo}): puntuacion {resultado.puntuacion}"
+    lineas = []
+    if resultado.truncado:
+        lineas.append(
+            "aviso: asm-differ corto el desensamblado del candidato en el limite de lineas; "
+            "la puntuacion y las diferencias mostradas son parciales"
+        )
     if not resultado.bytes_iguales:
-        return [veredicto]
+        return [*lineas, veredicto]
     nota = (
         f"nota: {resultado.referencias_numericas} referencias en forma numerica "
         f"(asm-differ puntua {resultado.puntuacion_asm})"
     )
-    return [nota, f"{veredicto} (coincide en bytes)"]
+    return [*lineas, nota, f"{veredicto} (coincide en bytes)"]
 
 
 def _ejecutar_comparacion(raiz: Path, rutas: Rutas, funcion: str, python: str, ejecutar: Ejecutor) -> int:
