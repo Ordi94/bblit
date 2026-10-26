@@ -47,8 +47,6 @@ typedef struct BloqueCabecera {
 } BloqueCabecera;
 
 extern CabeceraGuardado D_8006D060;
-/* D_80010076 se escribe como simbolo (cc1 -G8 emite `sb $0,D_80010076`): por un puntero cambiaria la secuencia. */
-extern u8 D_80010076;
 extern u8* D_80069520;
 
 extern u32 func_80041238(void* datos, s32 cantidad);

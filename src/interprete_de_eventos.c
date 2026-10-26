@@ -64,15 +64,10 @@ extern u8 D_80010041;
 extern u8 D_800694F2;
 extern s32 D_800694F8;
 extern s32 D_80069554;
-extern s32 D_80069560;
 extern u8 D_80069586;
 extern s32 D_8006960C;
-extern s32 D_80069618;
-extern s32 D_8006961C;
-extern s32 D_80069624;
 extern u8 D_80069674;
 extern s32 D_80069690;
-extern vu16 D_800695D0;
 
 /* Dato pequeno: el original lo direcciona como 0xC0($gp). */
 s32 D_800693E0;

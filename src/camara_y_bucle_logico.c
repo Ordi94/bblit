@@ -154,75 +154,20 @@ typedef struct Scratch {
     SVECTOR* p144;
 } Scratch;
 
-/* Suma el vector de t1..t3 a las tres palabras de p (macro vectorial del juego, igual que las de geometria.h). */
-#define SUMAR_W(p)     __asm__ volatile ("move $8, %0
-	lw $12, 0($8)
-	lw $13, 4($8)
-	lw $14, 8($8)
-	"                       "add $12, $12, $9
-	add $13, $13, $10
-	add $14, $14, $11
-	"                       "sw $12, 0($8)
-	sw $13, 4($8)
-	sw $14, 8($8)"                       : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
-/* Guarda MAC3 del GTE (profundidad tras rtps) en la palabra apuntada. */
-#define GUARDAR_MAC3(p)     __asm__ volatile ("move $9, %0
-	mfc2 $8, $27
-	nop
-	sw $8, 0($9)" : : "r"(p) : "$8", "$9", "memory")
 /*
- * Distancia aproximada al vector de tres palabras de p (d0, d4, d8): maximo de |x|, |y|, |z| mas un cuarto de los
- * otros dos; el resultado, con el bit 0 activo, se guarda en p + 0x44. Macro del juego en ensamblador en linea:
- * incluye sus propios huecos de retardo, por eso se emite en noreorder.
+ * Guarda MAC3 del GTE (profundidad tras rtps) en la palabra apuntada. mfc2 lee un registro del
+ * coprocesador, el unico caso que el compilador no expresa en C.
  */
-#define DISTANCIA_APROX(p)     __asm__ volatile (".set push
-	.set noreorder
-	.set noat
-	addu $4, %0, $0
-	lw $8, 0($4)
-	lw $9, 4($4)
-	"                       "lw $10, 8($4)
-	bgez $8, 1f
-	nop
-	sub $8, $0, $8
-1:	bgez $9, 2f
-	nop
-	sub $9, $0, $9
-"                       "2:	addu $2, $8, $0
-	bgez $10, 3f
-	nop
-	sub $10, $0, $10
-"                       "3:	addu $3, $9, $0
-	slt $1, $8, $9
-	beqz $1, 4f
-	nop
-	addu $2, $9, $0
-	"                       "addu $3, $8, $0
-4:	addu $7, $10, $0
-	slt $1, $2, $10
-	beqz $1, 5f
-	nop
-	"                       "addu $7, $2, $0
-	addu $2, $10, $0
-5:	srl $3, $3, 2
-	srl $7, $7, 2
-	"                       "add $2, $2, $3
-	add $2, $2, $7
-	ori $2, $2, 1
-	addiu $5, %0, 0x44
-	addu $4, $5, $0
-	"                       "sw $2, 0($4)
-	.set pop"                       : : "r"(p) : "$1", "$2", "$3", "$4", "$5", "$7", "$8", "$9", "$10", "memory")
+#define GUARDAR_MAC3(p) \
+    __asm__ volatile ("move $9, %0\n\tmfc2 $8, $27\n\tnop\n\tsw $8, 0($9)" : : "r"(p) : "$8", "$9", "memory")
 
 extern MATRIX D_80076130;
 extern VECTOR D_80076144;
 extern TablaEnt D_8006A940[];
 extern s16 D_80069588;
 extern void (*D_8005E35C[])(ObjEsc*);
-extern void* D_800694B8;
 extern void* D_800694D4;
 extern u16 D_80069652;
-extern vu16 D_800695D0;
 extern s32 D_800695EC;
 extern void func_80033358(s32 a0, u32 a1);
 extern void func_80035244(void);
@@ -274,11 +219,6 @@ extern void func_8001CC68(void* a0);
 extern void func_8001CF50(void* a0);
 extern void func_8001CFCC(void* a0);
 extern void func_8003F900(Objeto* a0);
-extern s32 D_80069560;
-extern s32 D_80069618;
-extern s32 D_8006961C;
-extern s32 D_80069624;
-extern u8 D_80010076;
 extern Vec3 D_80069DC0;
 
 /* Variables de datos pequenos: el original las direcciona con desplazamiento($gp). */
@@ -757,8 +697,9 @@ INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80035244);
  * y las constantes coinciden; difieren el reparto de registros (el original conserva el scratchpad, &sx, &z6C y la
  * mascara -3 en s1..s4 y no hoistea &v80 ni &c104), el relleno de los huecos de retardo de la macro de distancia
  * (maspsx anade un nop extra tras dos de sus saltos) y la forma de la busqueda en la tabla D_8006A940 (el original
- * relee el puntero guardado en el scratchpad en cada vuelta). Variantes probadas: 10 (locales del objeto,
- * punteros hoisted, mascara en local, macro de distancia con salida por registro o por puntero).
+ * relee el puntero guardado en el scratchpad en cada vuelta). Variantes probadas: 12 (locales del objeto,
+ * punteros hoisted, mascara en local, macro de distancia con salida por registro o por puntero, y la suma de
+ * vectores y la distancia reescritas en C, que dan 9641 y 11566: ver GEO_SUMAR_W y GEO_DISTANCIA_APROX).
  */
 /*
  * Lista de comprobaciones del cuadro: recorre los objetos de escena, los clasifica en cuatro listas
@@ -835,7 +776,7 @@ void func_800353B0(ObjEsc* a0)
                     sc->d0 = sc->m18 - sc->cur->pos.vx;
                     sc->d4 = sc->m1C - sc->cur->pos.vy;
                     sc->d8 = sc->m20 - sc->cur->pos.vz;
-                    DISTANCIA_APROX(sc);
+                    GEO_DISTANCIA_APROX(sc);
                     if (sc->cur->w3E < sc->i44) {
                         if ((sc->cur->w3C & 0x40) == 0) {
                             sc->cur->w24 = (sc->i44 - sc->cur->w3E) >> 7;
@@ -919,7 +860,7 @@ sigue2:
                                     gte_rtv0();
                                     gte_stlvnl(sc->p100);
                                     GEO_CARGAR_W(sc);
-                                    SUMAR_W(sc->p100);
+                                    GEO_SUMAR_W(sc->p100);
                                     GEO_CARGAR_W(sc->p100);
                                     GEO_GUARDAR_H_T1(sc->p144);
                                     sc->i40++;
