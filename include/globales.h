@@ -92,9 +92,11 @@ typedef struct ParametrosObjeto {
  * animacion elegida; func_80045498 recibe su direccion.
  */
 typedef struct BloqueTrabajo {
-    u8 pad00[2];
+    u16 w00;                /* func_80020B90: lhu 0x144($s4) en 0x800255D0; lw / sw de la palabra entera sobre el apoyo (0x80022C18, 0x80022C24) */
     s16 h02;
-    u8 pad04[4];
+    u8 pad04;
+    u8 b05;                 /* func_80020B90: sb en 0x800213BC y lbu en 0x800255D8 (indice de paso 5 - acumulado / 32) */
+    u8 pad06[2];
     u8 b08;
     u8 pad09;
     s16 h0A;
@@ -149,10 +151,10 @@ typedef struct Objeto {
     u16 w3A;                /* menus_e_interfaz.c */
     u16 w3C;                /* las rutinas de creacion lo escriben con sh y el resto lo lee con lhu */
     u16 w3E;                /* func_800353B0 */
-    u8 pad40[0x48 - 0x40];
+    SVECTOR empuje;         /* +0x40: empuje externo que func_80020B90 suma al desplazamiento (lh x3 en 0x80021B24, 0x80021B38, 0x80021B4C) y borra (sh zero en 0x80021B60, 0x80021B64, 0x80021B68); w40 y w44 los escribe el objeto empujado con sh (0x80023CA0, 0x80023CB0) */
     SVECTOR min;            /* caja del volumen (+0x48) y mitades de sprite que lee func_8001DF28 con lh */
     SVECTOR max;            /* +0x50 */
-    u8 pad58[0x68 - 0x58];
+    VECTOR objetivo;        /* +0x58: punto de interaccion; func_80020B90 lo lee con lhu (0x80022A8C, 0x80022AAC) y lw (0x80022B4C) y pasa su direccion a func_800171E4 (0x800228C4) */
     s32 i68;                /* func_8001D0FC: sw zero */
     struct Objeto* p6C;     /* func_80034E7C: lw 0x6C($s1) en 0x80034EE0 */
     struct Objeto* p70;     /* func_80034E7C: lw 0x70($s1) en 0x80034EBC, sw $zero en 0x80034F60 y 0x80034FDC */
@@ -630,6 +632,15 @@ extern s16 D_80069668;
 
 /* D_80069690: accesos del ensamblador: lw x5, sw x8 */
 extern s32 D_80069690;
+
+/* D_8001004F: bandera de demostracion del estado principal; lbu en func_80020B90 (0x80020C08) y sb en func_800415A0 */
+extern u8 D_8001004F;
+
+/* D_80069608: indicadores del cuadro; lw en func_80020B90 (0x80020C7C, 0x80023444) y or en movimiento_y_objetos_de_escena_2.c */
+extern u32 D_80069608;
+
+/* D_80069584: animacion previa del objeto controlado; sh en func_80020B90 (0x80021048, 0x80024EF8) y sh zero en inicializacion_de_motor.c */
+extern s16 D_80069584;
 
 /* D_8006AA7C: accesos del ensamblador: lbu x17 */
 extern u8 D_8006AA7C;

@@ -38,7 +38,6 @@ extern u32 func_80045498(Objeto* objeto, void* guion, BloqueTrabajo* bloque);
 extern s16 D_80069650;
 extern s16 D_800694CC;
 extern s16 D_80069634;
-extern s16 D_80069584;
 extern s16 D_800694E4;
 extern s16 D_800694BC;
 extern s16 D_80069602;
