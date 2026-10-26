@@ -79,18 +79,20 @@ void func_80040EB4(void)
     }
 }
 
+#ifdef NON_MATCHING
 /*
+ * Pendiente: puntuacion 390 con la configuracion versionada (g = 8 del archivo). Mismas
+ * instrucciones que el original; solo difiere el reparto de registros de la ultima etapa (el
+ * original deja el puntero del bucle en a2 y la constante 4 en a3, el indice en t0 en todas las
+ * etapas). Variantes probadas: mas de 10 (orden de declaracion, puntero propio por etapa, bucles
+ * rotados, parametro de relleno).
+ *
  * Recorre la cabecera de secciones de un contenedor (n entradas de tipo, tamano y tamano alineado)
  * y calcula la posicion, en bytes desde el inicio del archivo, de los datos del banco que se pide:
  * devuelve la suma de los tamanos alineados de las secciones que hay entre la primera de tipo 6
  * y la de tipo `tipo`. Como efectos laterales deja el tamano alineado de la seccion `tipo` en
  * D_800694A0 y en D_80069478 la suma de las secciones siguientes hasta la de tipo 4.
  */
-/* Pendiente: puntuacion 390 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones
-   que el original; solo difiere el reparto de registros de la ultima etapa (el original deja el
-   puntero del bucle en a2 y la constante 4 en a3, el indice en t0 en todas las etapas). Variantes
-   probadas: mas de 10 (orden de declaracion, puntero propio por etapa, bucles rotados, parametro de relleno). */
-#ifdef NON_MATCHING
 s32 func_80040F78(EntradaSeccion* secciones, s32 n, s32 tipo)
 {
     s32 i;
@@ -206,7 +208,14 @@ void func_80041264(u8* origen, u8* destino, s16 n)
     }
 }
 
+#ifdef NON_MATCHING
 /*
+ * Pendiente: puntuacion 1115 con la configuracion versionada (g = 8 del archivo). Mismas
+ * instrucciones y mismo flujo que el original; difiere el reparto de registros (el original deja el
+ * puntero de la lista A en v1 y el de busqueda en a1, aqui salen a2 y v1) y un nop de retardo que el
+ * original rellena. Variantes probadas: 14 (indice o puntero en el bucle de cinco, tipo del
+ * contador, temporales para el reparto, orden de declaracion).
+ *
  * Convierte, en un contenedor ya cargado, las referencias entre registros por identificador en
  * desplazamientos dentro de cada lista, para que el codigo que las usa no tenga que buscar:
  * las cinco referencias de cada nodo de la lista A apuntan a la lista B (desplazamiento en
@@ -216,12 +225,6 @@ void func_80041264(u8* origen, u8* destino, s16 n)
  * Solo actua sobre las clases 2, 0xE y 0x22. Los nodos empiezan con el enlace al siguiente (+0)
  * y el identificador de 16 bits (+4).
  */
-/* Pendiente: puntuacion 1115 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones
-   y mismo flujo que el original; difiere el reparto de registros (el original deja el puntero de
-   la lista A en v1 y el de busqueda en a1, aqui salen a2 y v1) y un nop de retardo que el
-   original rellena. Variantes probadas: 14 (indice o puntero en el bucle de cinco, tipo del
-   contador, temporales para el reparto, orden de declaracion). */
-#ifdef NON_MATCHING
 void func_80041298(ContenedorCarga* c)
 {
     NodoA* a;
@@ -328,24 +331,6 @@ void func_8004153C(u8* origen, u32 n, u8* destino)
 INCLUDE_RODATA("asm/nonmatchings/cargador_de_niveles_y_cd", D_80067F18);
 
 /*
- * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `destino`.
- * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
- * comandos E piden, y despues interpreta el script: 0x2C reparte la memoria en listas y grupos y
- * lee las secciones de datos, 0x4B elige el banco del idioma y 0x2D abre una serie de chunks
- * (tipo y etiquetas de longitud fija) que construyen los recursos: sonido (0), parametros de
- * sonido (5), entidades (7, 8, 10), volumenes de escena (9), modelos jerarquicos (0x20), recursos
- * (0x22), imagenes (0x29), zonas de colision (0x36), camara y tamano de los grupos (0x3B),
- * demostracion (0x47) y textos (0x49). Devuelve 0 si todo salio bien y 1 si el disco falla, la
- * suma de control de la cabecera no coincide o una descompresion no termina.
- */
-/* Pendiente: puntuacion 285 con la configuracion versionada (g = 8 del archivo). La estructura (bloques,
-   bucles, llamadas, las cinco tablas de saltos) sigue el ensamblador completo y el marco de pila mide lo mismo
-   (0x210 bytes); difieren el reparto de registros (s1 y s8 intercambiados desde el prologo), el
-   orden de las cargas de la cabecera de secciones y el codigo de cada etiqueta, que GCC emite en otro orden.
-   Variantes probadas: 2 (tamano del bufer de campos y de la tabla de secciones). */
-#ifdef NON_MATCHING
-
-/*
  * Acceso por desplazamiento a los registros de la escena. Los nodos que el script de carga rellena
  * (entidades de 0x1F4 bytes, recursos de 0x58, volumenes de 0x3C...) solo se conocen por los
  * campos que esta rutina escribe; los que Objeto declara se usan en otros archivos y no se
@@ -431,6 +416,25 @@ extern void* D_80069640;
 extern void* D_80069560;
 extern u8 D_80069658;
 
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 285 con la configuracion versionada (g = 8 del archivo). La estructura
+ * (bloques, bucles, llamadas, las cinco tablas de saltos) sigue el ensamblador completo y el marco
+ * de pila mide lo mismo (0x210 bytes); difieren el reparto de registros (s1 y s8 intercambiados
+ * desde el prologo), el orden de las cargas de la cabecera de secciones y el codigo de cada
+ * etiqueta, que GCC emite en otro orden. Variantes probadas: 2 (tamano del bufer de campos y de la
+ * tabla de secciones).
+ *
+ * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `destino`.
+ * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
+ * comandos E piden, y despues interpreta el script: 0x2C reparte la memoria en listas y grupos y
+ * lee las secciones de datos, 0x4B elige el banco del idioma y 0x2D abre una serie de chunks
+ * (tipo y etiquetas de longitud fija) que construyen los recursos: sonido (0), parametros de
+ * sonido (5), entidades (7, 8, 10), volumenes de escena (9), modelos jerarquicos (0x20), recursos
+ * (0x22), imagenes (0x29), zonas de colision (0x36), camara y tamano de los grupos (0x3B),
+ * demostracion (0x47) y textos (0x49). Devuelve 0 si todo salio bien y 1 si el disco falla, la
+ * suma de control de la cabecera no coincide o una descompresion no termina.
+ */
 s32 func_800415A0(s16 archivo, void* destino)
 {
     s32 tamanos[15] = {

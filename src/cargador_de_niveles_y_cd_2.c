@@ -54,7 +54,14 @@ extern void func_8004E66C(void);
 extern void func_8004E67C(void);
 extern void func_80044854(FlujoEntrada* flujo);
 
+#ifdef NON_MATCHING
 /*
+ * Pendiente: puntuacion 13855 con la configuracion versionada (g = 0 del archivo). El original no
+ * usa marco de pila, guarda ra y s0..fp en el area de contexto que recibe en a2 y mantiene el flujo
+ * de entrada en a0, t4 y t0 durante todo el cuerpo, forma que GCC no emite. La descripcion en C
+ * sigue el algoritmo instruccion por instruccion. Variantes probadas: 1 (estado en estructura); las
+ * otras formas dependen de variables de registro, que no pueden ser los argumentos a0 a a2.
+ *
  * Descomprime el flujo `entrada` en `salida`. El primer byte fija k (bits 0-2) y la escala de
  * las longitudes largas (bits 3-4); los tres siguientes, en big endian, son el numero de
  * operaciones menos una. Cada grupo de ocho operaciones va precedido de un byte de banderas
@@ -63,12 +70,6 @@ extern void func_80044854(FlujoEntrada* flujo);
  * La tabla tiene (0x7F >> k) + 1 entradas; hasta el umbral crece de uno en uno desde 2 y
  * despues de 2^escala en 2^escala. Devuelve el final de la salida.
  */
-/* Pendiente: puntuacion 13855 con la configuracion versionada (g = 0 del archivo). El original
-   no usa marco de pila, guarda ra y s0..fp en el area de contexto que recibe en a2 y mantiene el flujo
-   de entrada en a0, t4 y t0 durante todo el cuerpo, forma que GCC no emite. La descripcion en C sigue
-   el algoritmo instruccion por instruccion. Variantes probadas: 1 (estado en estructura); las otras
-   formas dependen de variables de registro, que no pueden ser los argumentos a0 a a2. */
-#ifdef NON_MATCHING
 s32 func_80044664(u8* entrada, u8* salida, ContextoDescompresion* contexto)
 {
     FlujoEntrada flujo;
@@ -151,7 +152,14 @@ s32 func_80044664(u8* entrada, u8* salida, ContextoDescompresion* contexto)
 INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd_2", func_80044664);
 #endif
 
+#ifdef NON_MATCHING
 /*
+ * Pendiente: puntuacion 5145 con la configuracion versionada (g = 0 del archivo). El original guarda
+ * ra en el contexto del llamador (4(s1)), devuelve el flujo en a0, t4 y t0 y avanza s0, que son
+ * registros del llamador que GCC no deja usar sin marco; no es expresable como funcion C con
+ * parametros. Variantes probadas: 2 (estado en estructura, 5145; variables de registro globales en
+ * a0, t4, t0, s0 y s1, 3955).
+ *
  * Espera un sector completo en el anillo de lectura y deja el flujo apuntando a su primer byte.
  * Sondea el contador de bytes disponibles (D_80069480) hasta 0xFFFF veces; si la unidad informa
  * un error (estado & 0x15) abandona la descompresion con resultado 0, y si la lectura termino sin
@@ -159,12 +167,6 @@ INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd_2", func_80044664);
  * descuento del contador va entre las dos llamadas de seccion critica porque lo modifica tambien
  * el retorno de llamada de CD.
  */
-/* Pendiente: puntuacion 5145 con la configuracion versionada (g = 0 del archivo). El original
-   guarda ra en el contexto del llamador (4(s1)), devuelve el flujo en a0, t4 y t0 y avanza s0, que son
-   registros del llamador que GCC no deja usar sin marco; no es expresable como funcion C con
-   parametros. Variantes probadas: 2 (estado en estructura, 5145; variables de registro globales
-   en a0, t4, t0, s0 y s1, 3955). */
-#ifdef NON_MATCHING
 void func_80044854(FlujoEntrada* flujo)
 {
     s32 intentos;
