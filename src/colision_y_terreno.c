@@ -115,8 +115,9 @@ ZonaColision* func_8001BF9C(s32* a0, s16 a1)
  * con la clase de terreno. 0x7E y 0x7F de la subcelda son transiciones de zona; cualquier otro
  * valor es una pendiente (su signo marca el sentido, el bit 0x20 de flags lo recuerda).
  *
- * NON_MATCHING: 1078 con la configuracion versionada (-G0); no depende de -G8 (la funcion no
- * carga globales). Diferencia: el compilador asigna s0/s1 al reves y falta un `move t2,a3`.
+ * Pendiente: puntuacion 1078 con la configuracion versionada (g = 0, no carga globales). El compilador asigna s0/s1
+ * al reves (el original guarda la estructura de trabajo en s0 y el resultado en s1) y falta un `move t2,a3`.
+ * Variantes probadas: 9 (copias de z, orden de sentencias, barreras, copias locales de los punteros de trabajo).
  */
 #ifdef NON_MATCHING
 void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
