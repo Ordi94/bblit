@@ -9,7 +9,6 @@ typedef struct NodoClave {
     s32 clave;
 } NodoClave;
 
-extern Objeto* D_800694DC;
 extern Objeto* D_800694B4;
 
 #ifdef NON_MATCHING

@@ -30,7 +30,6 @@ extern InicioNivel D_8006ACD0;
  * tentativa) para que el ensamblador lo reescriba a $gp, y el enlace lo coloca en 0x800693B8.
  */
 s16 D_800693B8;
-extern u32 D_80069608;
 extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
 
 

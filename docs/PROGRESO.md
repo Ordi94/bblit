@@ -13,7 +13,7 @@ construcción normal) y de la tabla de símbolos.
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
 Bytes de código del juego descompilados: 48584 de 201416 (24.12 %).
-Funciones marcadas `NON_MATCHING`: 55.
+Funciones marcadas `NON_MATCHING`: 56.
 Coherencia con el ensamblador: correcta (751 `glabel` en `asm/` + 351 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
@@ -22,7 +22,7 @@ Coherencia con el ensamblador: correcta (751 `glabel` en `asm/` + 351 en C = 110
 |---|---:|---:|---:|---:|---:|---:|
 | arranque_y_bucle_principal | 1 | 9 | 1 | 0 | 1364 | 3404 |
 | audio_xa_y_spu | 1 | 34 | 3 | 0 | 6316 | 8220 |
-| camara_y_bucle_logico | 1 | 7 | 3 | 1 | 2348 | 14576 |
+| camara_y_bucle_logico | 1 | 7 | 4 | 0 | 2348 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 6 | 5 | 0 | 804 | 14264 |
 | colision_y_terreno | 1 | 2 | 1 | 1 | 680 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
@@ -42,7 +42,7 @@ Coherencia con el ensamblador: correcta (751 `glabel` en `asm/` + 351 en C = 110
 |---|---:|---:|---:|---:|---:|
 | `src/arranque_y_bucle_principal_2.c` | 9 | 1 | 0 | 1364 | 3404 |
 | `src/audio_xa_y_spu.c` | 34 | 3 | 0 | 6316 | 8220 |
-| `src/camara_y_bucle_logico.c` | 7 | 3 | 1 | 2348 | 14576 |
+| `src/camara_y_bucle_logico.c` | 7 | 4 | 0 | 2348 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 6 | 3 | 0 | 804 | 13592 |
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 2 | 0 | 0 | 672 |
 | `src/colision_y_terreno.c` | 2 | 1 | 1 | 680 | 12480 |
@@ -94,6 +94,7 @@ Coherencia con el ensamblador: correcta (751 `glabel` en `asm/` + 351 en C = 110
 - `func_8002F990`: Pendiente: puntuacion 60 con la configuracion versionada (g = 0 del archivo). Los dos bytes se leen y escriben con un unico lui y la copia del valor leido queda en el hueco del primer salto, como el original; difiere solo el reparto de registros: el original deja el resultado de la suma en a2 y GCC lo deja en v1 (los papeles de v1 y a2 estan invertidos). Operacion aritmetica sobre un registro de 16 bits repartido en dos bytes (D_80010047 es el bajo y D_8001013C el alto: r[7] y r[0xFC] del banco del estado principal de 0x80010000). El operando se trunca a un byte dentro de la rutina (andi 0xFF 
 - `func_8003147C`: Pendiente: puntuacion 85 con la configuracion versionada (g = 8 del archivo). Las instrucciones coinciden; solo difiere el reparto de registros: el original deja el objeto controlado en a2 y el enlace p70 en a0 (copia en v1) y GCC los reparte en a0 y a1 porque la carga del puntero se planifica despues de la ultima lectura del parametro.
 - `func_80032B2C`: Pendiente: puntuacion 774 con la configuracion versionada (g = 8 del archivo). El flujo y las macros vectoriales coinciden; difiere el reparto de los registros salvados (el original deja los argumentos en s5 y s2 y los punteros hoisted &w->i58, &w->rot, &w->v28, &w->d30 en s6, s4, s3, s1). Variantes probadas: 15 (punteros locales hoisted en distinto orden y subconjunto, asignacion al inicio o dentro del bloque). Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la mascara y cuya caja esta a menos de su alcance, lleva la posicion al siste
+- `func_80033358`: Pendiente: puntuacion 3065 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y las constantes coinciden; difieren el reparto de registros temporales y la planificacion de las cargas y los almacenes en las sondas de apuntado (0x80033700-0x80033888), la direccion normalizada del modo guiado (0x80033CB4-0x80033D64), el giro lateral (0x80033F00-0x80034160), los barridos contra el terreno (0x80034348-0x80034720), las ocho sondas de empuje (0x800348C8-0x80034A9C) y el bloque de alturas (0x80034B00-0x80034E34).
 - `func_80035244`: Pendiente: puntuacion 550 con la configuracion versionada (g = 8 del archivo). El original carga antes del bucle las constantes 0x47 y 1 de la ultima rama (t2 y t1) y por eso la tabla de saltos cae en t3; GCC las deja dentro de la rama. Variantes: indexado por D_8005E768[i], constantes en locales, paso++, puntero local al estado. Lee los botones (D_80010010 sin los bits 0 y 3) y, si cambiaron respecto al cuadro anterior (dato pequeno 0x104($gp)), avanza siete secuencias de teclas de D_8005E768 (24 bytes cada una: caso, paso y diez teclas); al completar una ejecuta su caso con un switch de siet
 - `func_800353B0`: Pendiente: puntuacion 7961 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y las constantes coinciden; difieren el reparto de registros (el original conserva el scratchpad, &sx, &z6C y la mascara -3 en s1..s4 y no hoistea &v80 ni &c104), el relleno de los huecos de retardo de la macro de distancia (maspsx anade un nop extra tras dos de sus saltos) y la forma de la busqueda en la tabla D_8006A940 (el original relee el puntero guardado en el scratchpad en cada vuelta). Variantes probadas: 12 (locales del objeto, punteros hoisted, mascara en local, macro de d
 - `func_80036164`: Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el original usa un solo puntero con desplazamientos 0x0C y 0x04. Ni el recorrido por indice sobre el arreglo ni la reordenacion de los incrementos eliminan el puntero derivado.
@@ -131,10 +132,10 @@ Coherencia con el ensamblador: correcta (751 `glabel` en `asm/` + 351 en C = 110
 - `func_800375C4` (52 bytes)
 - `func_80037CF8` (68 bytes)
 - `func_8003BDD0` (580 bytes)
+- `func_800449E0` (36 bytes)
 
 ## `INCLUDE_ASM` sin comentario en archivos con funciones en C
 
-- `func_80033358` (`src/camara_y_bucle_logico.c`)
 - `func_80019474` (`src/colision_y_terreno.c`)
 - `func_8003690C` (`src/gestion_y_dibujo_de_objetos.c`)
 - `func_8003760C` (`src/gestion_y_dibujo_de_objetos_2.c`)
