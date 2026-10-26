@@ -71,12 +71,10 @@ extern EntradaTabla D_8005EE38[];
 extern u8 D_8006957C;
 extern u8 D_800695E0;
 extern u8 D_80069658;
-extern u8 D_80069659;
 extern u8 D_8006965A;
 extern u8 D_8006965B;
 extern u8 D_8006965C;
 extern u8 D_8006965D;
-extern u8 D_8006965E;
 extern u8 D_8006CFF0[];
 extern u8 D_8006D038[];
 
@@ -84,15 +82,12 @@ extern void func_8005A21C(s32 modo);
 
 /* Estado auxiliar del mando (zona 0x80069xxx y bufer de la BIOS). */
 extern u8 D_8006AA7C;
-extern u8 D_8006AA70[];
 extern u16 D_800695EA;
 extern s8 D_800695A0;
 extern s8 D_80069595;
 extern s8 D_8006963C;
-extern u16* D_800695B0;
 extern s16 D_80069672;
 extern s16 D_8006952C;
-extern s8 D_8006966A;
 extern u32 D_8006D9A8;
 extern u8 D_8006CFF1;
 extern u8 D_8006CFF2;

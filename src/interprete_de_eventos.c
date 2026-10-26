@@ -58,33 +58,22 @@ extern s16 D_800693F6;
  * estructura de ESTADO daria un lui compartido distinto.
  */
 extern u16 D_8001000A;
-extern u16 D_80010010;
 extern u16 D_8001003E;
 extern u8 D_800100E6;
 extern u8 D_80010041;
-extern u8 D_800694E0;
-extern u8 D_800694E1;
-extern u8 D_800694E8;
 extern u8 D_800694F2;
 extern s32 D_800694F8;
 extern s32 D_80069554;
 extern s32 D_80069560;
 extern u8 D_80069586;
-extern u8 D_80069594;
 extern s32 D_8006960C;
 extern s32 D_80069618;
 extern s32 D_8006961C;
 extern s32 D_80069624;
-extern u8 D_80069659;
 extern Byte D_8006965A;
 extern Byte D_8006965B;
-extern u8 D_8006965E;
-/* Se lee con lh en func_80031FE0 y se escribe con sh: s16. */
-extern s8 D_8006966A;
 extern u8 D_80069674;
-extern s16 D_8006967C;
 extern s32 D_80069690;
-extern s32 D_80069694;
 extern u16 D_800695D0;
 extern u16 D_8006B658[];
 extern u8 D_8006B558[];
@@ -110,7 +99,6 @@ extern void func_8003E88C(void);
 extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
 extern s32 func_80044940(void* a0);
 extern s32 func_80045C4C(s32 a0, s32 a1, s32 a2);
-extern s32 ratan2(s32 a0, s32 a1);
 
 /* Acceso a la base de $gp: los datos pequenos del original se direccionan por registro. */
 

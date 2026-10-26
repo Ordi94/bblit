@@ -1,4 +1,5 @@
 #include "common.h"
+#include "globales.h"
 #include "psyq/TYPES.H"
 #include "psyq/LIBGTE.H"
 #include "psyq/LIBGPU.H"
@@ -32,7 +33,6 @@ typedef struct RegistroArchivo {
 } RegistroArchivo;
 extern RegistroArchivo D_8005F200[];
 
-extern DISPENV D_8006CF78;
 extern void* D_800694FC;
 extern u8 D_80010065;
 

@@ -2,6 +2,7 @@
 #define EVENTOS_H
 
 #include "common.h"
+#include "globales.h"
 
 /*
  * Tipos compartidos del interprete de eventos.
@@ -95,9 +96,6 @@ typedef struct EstadoCamara {
     s16 s8A;
 } EstadoCamara;
 extern EstadoCamara D_8006D928;
-
-/* Banco de registros de 8 bits de los eventos. */
-extern u8 D_8006AA70[];
 
 /* Objeto controlado (el protagonista). */
 extern Objeto* D_80069698;

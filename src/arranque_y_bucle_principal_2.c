@@ -6,11 +6,7 @@
 #include "psyq/LIBGPU.H"
 #include "psyq/LIBGS.H"
 
-extern u8 D_80069594;
-extern DISPENV D_8006CF78;
-extern s16 D_8006967C;
 extern s32 D_80069534;
-extern s32 D_80069694;
 extern s32 D_80069510;
 extern s32 D_80069638;
 extern u32 D_80069518;
@@ -29,26 +25,13 @@ extern GsOT D_8006AEA0[];
 extern u16 D_800694F0;
 extern u32 D_800694FC;
 extern volatile u16 D_80069676;
-/*
- * Estado de la maquina de `main`. Se declara s16 aqui: el asm compara con `lh` seis veces y solo el
- * incremento carga con `lhu`; declarado u16 main sube de 1135 a 2135. Los demas archivos usan la
- * declaracion comun de globales.h.
- */
-extern u8 D_800695DC;
 extern s32 D_8006CF68[];
-extern u8 D_8006AA70[];
-extern s8 D_8006966A;
 extern u16 D_8006D9A8;
 extern u8 D_8006965A;
-extern u8 D_80069659;
 extern u8 D_8006963C;
 extern u8 D_80069595;
 extern u8 D_800695A0;
 extern u8 D_80069628;
-extern u8 D_800694E0;
-extern u8 D_800694E1;
-extern u8 D_800694E8;
-extern u16* D_800695B0;
 
 extern s32 SetRCnt(u32 canal, u16 destino, s32 modo);
 extern s32 StartRCnt(u32 canal);

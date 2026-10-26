@@ -1,4 +1,5 @@
 #include "common.h"
+#include "globales.h"
 #include "psyq/TYPES.H"
 #include "psyq/LIBGTE.H"
 #include "psyq/LIBGPU.H"
@@ -22,11 +23,9 @@
 extern vu16 D_80069676;
 extern vu16 D_800695A6;
 extern s16 D_800695BC;
-extern s16 D_8006967C;
 extern u32 D_80069610;
 extern u32 D_80069614;
 extern u32 D_80069510;
-extern u8 D_800695DC;
 extern u8 D_80069620;
 extern u32 D_8006AD40[];
 
