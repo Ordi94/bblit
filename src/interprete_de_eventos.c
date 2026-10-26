@@ -4,6 +4,12 @@
  * Rutinas del interprete de eventos. Las tablas de saltos de condiciones (D_8005E3F0) y de
  * acciones (D_8005E560) apuntan a las rutinas hoja de este archivo; las dos entradas que las
  * recorren (func_8002F9F8 y func_80030ECC) son ensamblador manuscrito.
+ *
+ * Las rutinas bajo NON_MATCHING con cuerpo completo reproducen el original compiladas con -G8:
+ * el original escribe las variables globales con la forma simbolica (lui $at) y accede por
+ * $gp. Con -G distinto de cero el compilador emite todas las funciones C al final del archivo,
+ * despues del ensamblador incluido, de modo que no pueden estar activas mientras queden
+ * INCLUDE_ASM por delante en el mismo archivo.
  */
 
 #define RA ESTADO->r
@@ -39,6 +45,8 @@ extern s32 D_800693B4;
 extern s32 D_800693C0;
 extern s16 D_800693F6;
 extern u16 D_8001000A;
+extern u16 D_80010010;
+extern u16 D_8001003E;
 extern u8 D_800100E6;
 extern u8 D_80010041;
 extern u8 D_800694E0;
@@ -186,7 +194,17 @@ s32 func_8002FFD8(Objeto* a0, u8* a1) { u32 v; v = D_80069698->flags14 & 0x10; r
 
 s32 func_8002FFF8(Objeto* a0, u8* a1) { return D_80069698->w17C == a1[1]; }
 
+#ifdef NON_MATCHING
+s32 func_80030018(Objeto* a0, u8* a1)
+{
+    u16* p;
+    p = D_80069698->p180;
+    p += D_80069698->w17E;
+    return p[3] == a1[1];
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030018);
+#endif
 
 s32 func_8003004C(Objeto* a0, u8* a1) { u32 v; v = D_80069698->flags14 & 0x40; return v != 0; }
 
@@ -372,13 +390,26 @@ s32 func_80030504(Objeto* a0, u8* a1) { u32 v = a1[1] | (a1[2] << 8); return a0-
 
 s32 func_80030520(Objeto* a0, u8* a1) { u32 v = a1[1] | (a1[2] << 8); return v < a0->w22; }
 
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003053C);
+s32 func_8003053C(Objeto* a0, u8* a1)
+{
+    u32 v = a1[1];
+    v |= a1[2] << 8;
+    return a0->w22 == v;
+}
 
 s32 func_8003055C(Objeto* a0, u8* a1) { u32 v = a1[1] | (a1[2] << 8); return a0->w22 / 30 < v; }
 
 s32 func_80030590(Objeto* a0, u8* a1) { u32 v = a1[1] | (a1[2] << 8); return v < a0->w22 / 30; }
 
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800305C4);
+s32 func_800305C4(Objeto* a0, u8* a1)
+{
+    u32 v = a1[1];
+    v |= a1[2] << 8;
+    if (a0->w22 % 30 == 0 && (u16)(a0->w22 / 30) == v) {
+        return 1;
+    }
+    return 0;
+}
 
 s32 func_80030620(Objeto* a0, u8* a1) { u32 v = a1[1] | (a1[2] << 8); return a0->w22 / 1800 < v; }
 
@@ -427,9 +458,44 @@ s32 func_80030834(Objeto* a0, u8* a1)
 
 s32 func_80030874(Objeto* a0, u8* a1) { return (a1[1] & *(s32*)(base_gp + 0xC0)) != 0; }
 
+#ifdef NON_MATCHING
+s32 func_8003088C(Objeto* a0, u8* a1)
+{
+    u32 b;
+    b = ESTADO->botones;
+    if (RA[0xF] == 0) {
+        if (D_8006AA70[0xC] != 0 || RA[0x36] != 0) {
+            if (b & 0x800) {
+                b |= 0x40;
+            }
+        }
+    }
+    if (D_80069586 == 0x2F) {
+        if (a0->w22 < 0x4B) {
+            b &= ~0x40;
+        }
+    }
+    b = ((b & 0xF000) >> 8) | ((b & 0xF0) >> 4);
+    return (a1[1] & b) != 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003088C);
+#endif
 
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030924);
+s32 func_80030924(Objeto* a0, u8* a1)
+{
+    u32 b;
+    b = ESTADO->botones;
+    if (RA[0xF] == 0) {
+        if (D_8006AA70[0xC] != 0 || RA[0x36] != 0) {
+            if (b & 0x800) {
+                b |= 0x40;
+            }
+        }
+    }
+    b = ((b & 0xF000) >> 8) | ((b & 0xF0) >> 4);
+    return (a1[1] & b) == 0;
+}
 
 s32 func_80030990(Objeto* a0, u8* a1) { return a1[1] == a0->s1E; }
 
@@ -493,13 +559,53 @@ s32 func_80030B78(Objeto* a0, u8* a1)
     return 1;
 }
 
+#ifdef NON_MATCHING
+s32 func_80030CB8(Objeto* a0, u8* a1)
+{
+    u32 b;
+    b = D_80010010;
+    b = ((b & 0xF00) >> 4) | (b & 0xF);
+    return (a1[1] & b) != 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030CB8);
+#endif
 
+#ifdef NON_MATCHING
+s32 func_80030CE0(Objeto* a0, u8* a1)
+{
+    u32 b;
+    b = D_80010010;
+    b = ((b & 0xF00) >> 4) | (b & 0xF);
+    return (a1[1] & b) == 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030CE0);
+#endif
 
+#ifdef NON_MATCHING
+s32 func_80030D08(Objeto* a0, u8* a1)
+{
+    u32 b;
+    b = D_8001003E;
+    b = ((b & 0xF000) >> 8) | ((b & 0xF0) >> 4);
+    return (a1[1] & b) != 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030D08);
+#endif
 
+#ifdef NON_MATCHING
+s32 func_80030D34(Objeto* a0, u8* a1)
+{
+    u32 b;
+    b = D_8001003E;
+    b = ((b & 0xF000) >> 8) | ((b & 0xF0) >> 4);
+    return (a1[1] & b) == 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80030D34);
+#endif
 
 /*
  * Comprueba que la altura (Y >> 8) del objeto controlado D_80069698 este dentro del rango
@@ -650,7 +756,16 @@ void func_80031384(Objeto* a0, Accion* a1)
     a0->flags14 |= 0x100;
 }
 
+#ifdef NON_MATCHING
+void func_800313D4(Objeto* a0, Accion* a1)
+{
+    if (D_800695D0 < 8) {
+        D_8006B658[D_800695D0++] = ACC_W4(a1);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800313D4);
+#endif
 
 void func_8003141C(Objeto* a0, Accion* a1) { a0->w22 = 0; }
 
@@ -664,7 +779,29 @@ void func_80031424(Objeto* a0, Accion* a1)
     }
 }
 
+#ifdef NON_MATCHING
+void func_8003147C(Objeto* a0, Accion* a1)
+{
+    Objeto* c;
+    D_80069698->wDE = a0->wDE + 0x800;
+    D_80069698->w17E = 0;
+    D_80069698->w17C = ACC_W4(a1);
+    D_80069698->flags14 |= 0x2000000;
+    a0 = D_80069698->p70;
+    if (a0 != 0) {
+        D_80069698->iC4 = 0;
+        D_80069698->pC0 = (Objeto*)((u8*)D_80069698 + 0xCC);
+        c = a0;
+        if (c->p6C == c) {
+            c->p6C = 0;
+        }
+        D_80069698->p70 = 0;
+        D_80069698->flags14 &= ~0x14;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003147C);
+#endif
 
 void func_80031500(Objeto* a0, Accion* a1) { a0->flags14 = (a0->flags14 & 0xFFBFFFFF) | 0x200000; }
 
@@ -695,7 +832,17 @@ void func_80031624(Objeto* a0, Accion* a1) { func_8003F06C(a0, ACC_W4(a1), 1, D_
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031624);
 #endif
 
+#ifdef NON_MATCHING
+void func_80031650(Objeto* a0, Accion* a1)
+{
+    D_80010041 = 0;
+    if (D_80069554 == 0) {
+        func_8001D588(D_800694F8, D_8006B558);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031650);
+#endif
 
 void func_80031694(Objeto* a0, Accion* a1) { D_8006AA70[a1->w6] += a1->b4; }
 
@@ -814,7 +961,14 @@ void func_800319CC(Objeto* a0, Accion* a1)
     }
 }
 
+#ifdef NON_MATCHING
+void func_80031A0C(Objeto* a0, Accion* a1)
+{
+    *(s32*)(base_gp + 0xC0) = func_80045C4C(ACC_W4(a1), 0, 0);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031A0C);
+#endif
 
 #ifdef NON_MATCHING
 void func_80031A34(Objeto* a0, Accion* a1)
@@ -841,9 +995,23 @@ void func_80031A34(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031A34);
 #endif
 
+#ifdef NON_MATCHING
+void func_80031AE4(Objeto* a0, Accion* a1)
+{
+    *(s32*)(base_gp + 0xC0) = func_80045C4C(D_8006AA70[a1->w6], 0, 0);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031AE4);
+#endif
 
+#ifdef NON_MATCHING
+void func_80031B1C(Objeto* a0, Accion* a1)
+{
+    *(s32*)(base_gp + 0xC0) = func_80045C4C(RA[a1->w6], 0, 0);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031B1C);
+#endif
 
 void func_80031B50(Objeto* a0, Accion* a1) { a0->flags15C |= 0x10; }
 
@@ -914,7 +1082,23 @@ void func_80031CC4(void) {}
 
 void func_80031CCC(void) {}
 
+#ifdef NON_MATCHING
+void func_80031CD4(Objeto* a0, Accion* a1)
+{
+    Objeto* o;
+    o = a0->p6C;
+    if (o != 0) {
+        o->flags14 |= 0x100;
+        o = a0->p6C;
+        if (a0 == o->p70) {
+            o->p70 = 0;
+            a0->p6C = 0;
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031CD4);
+#endif
 
 void func_80031D1C(Objeto* a0, Accion* a1) { a0->w3C |= 0x40; }
 
@@ -954,7 +1138,29 @@ void func_80031D60(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031D60);
 #endif
 
+#ifdef NON_MATCHING
+void func_80031E24(Objeto* a0, Accion* a1)
+{
+    s32 v[3];
+    s32 d;
+    if (D_8006D928.s88 == 0) {
+        v[0] = a0->xE4 - D_8006D928.x;
+        v[1] = a0->yE8 - D_8006D928.y;
+        v[2] = a0->zEC - D_8006D928.z;
+        d = func_80044940(v);
+        if (d < 0x800) {
+            d = (a1->w6 * d) / 2048;
+            if (d > 0) {
+                D_8006D928.s8A = 0;
+                D_8006D928.s88 = d;
+                D_8006D928.s86 = ACC_W4(a1) * 11;
+            }
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031E24);
+#endif
 
 #ifdef NON_MATCHING
 void func_80031EF8(Objeto* a0, Accion* a1)
@@ -1156,7 +1362,88 @@ void func_80032490(Objeto* a0, Accion* a1) { D_80069554 = ACC_W4(a1); }
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80032490);
 #endif
 
+#ifdef NON_MATCHING
+void func_800324A4(Objeto* a0, Accion* a1)
+{
+    u32 v;
+    s32 a;
+    v = RA[ACC_W4(a1)];
+    if (D_8006D064 & 0x1) {
+        a = 0x36;
+        if (v != 1) {
+            a = 0x2E;
+        }
+    } else {
+        a = 0x3E;
+        if (v == 1) {
+            a = 0x46;
+        }
+    }
+    func_80045C4C(a, 0, 0);
+    if (D_8006D064 & 0x2) {
+        a = 0x37;
+        if (v != 2) {
+            a = 0x2F;
+        }
+    } else {
+        a = 0x3F;
+        if (v == 2) {
+            a = 0x47;
+        }
+    }
+    func_80045C4C(a, 0, 0);
+    if (D_8006D064 & 0x4) {
+        a = 0x38;
+        if (v != 3) {
+            a = 0x30;
+        }
+    } else {
+        a = 0x40;
+        if (v == 3) {
+            a = 0x48;
+        }
+    }
+    func_80045C4C(a, 0, 0);
+    if (D_8006D064 & 0x8) {
+        a = 0x39;
+        if (v != 4) {
+            a = 0x31;
+        }
+    } else {
+        a = 0x41;
+        if (v == 4) {
+            a = 0x49;
+        }
+    }
+    func_80045C4C(a, 0, 0);
+    if (D_8006D064 & 0x10) {
+        a = 0x3A;
+        if (v != 5) {
+            a = 0x32;
+        }
+    } else {
+        a = 0x42;
+        if (v == 5) {
+            a = 0x4A;
+        }
+    }
+    func_80045C4C(a, 0, 0);
+    if (D_8006D064 & 0x20) {
+        a = 0x3B;
+        if (v != 6) {
+            a = 0x33;
+        }
+    } else {
+        a = 0x43;
+        if (v == 6) {
+            a = 0x4B;
+        }
+    }
+    func_80045C4C(a, 0, 0);
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800324A4);
+#endif
 
 void func_8003264C(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 1; }
 
@@ -1176,4 +1463,64 @@ void func_800326D0(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFFDF; }
 
 void func_800326EC(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 4; }
 
+#ifdef NON_MATCHING
+void func_80032708(Objeto* a0, Accion* a1)
+{
+    s32 v;
+    s32 i;
+    v = RA[ACC_W4(a1)];
+    if (D_8006D064 & (1 << (v - 1))) {
+        return;
+    }
+    if (ESTADO->botones & 0x6000) {
+        i = v;
+        if (i < 7) {
+            do {
+                if (D_8006D064 & (1 << (i - 1))) {
+                    break;
+                }
+                i++;
+            } while (i < 7);
+        }
+        if (i >= 7) {
+            if (ESTADO->botones & 0x2000) {
+                i = v - 3;
+            } else {
+                i = 6;
+                do {
+                    if (D_8006D064 & (1 << (i - 1))) {
+                        break;
+                    }
+                    i--;
+                } while (i > 0);
+            }
+        }
+    } else {
+        i = v;
+        if (i > 0) {
+            do {
+                if (D_8006D064 & (1 << (i - 1))) {
+                    break;
+                }
+                i--;
+            } while (i > 0);
+        }
+        if (i <= 0) {
+            if (ESTADO->botones & 0x8000) {
+                i = v + 3;
+            } else {
+                i = 1;
+                do {
+                    if (D_8006D064 & (1 << (i - 1))) {
+                        break;
+                    }
+                    i++;
+                } while (i < 7);
+            }
+        }
+    }
+    RA[ACC_W4(a1)] = i;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80032708);
+#endif
