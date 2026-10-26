@@ -40,13 +40,15 @@ Con el ejecutable sin modificar: `0 de 249595 sectores modificados` y SHA-1
 ## 4. Simbolos
 
 ```
-.venv\Scripts\python.exe -m tools.ghidra simbolos --funciones <funciones.csv> --salida <destino>
+.venv\Scripts\python.exe -m tools.ghidra simbolos --funciones <funciones.csv> --nombres config/nombres_funciones.txt --salida <destino>
 ```
 
 `<funciones.csv>` es el que produce `python -m tools.ghidra exportar` (carpeta de exportacion de Ghidra,
-fuera del repositorio). Con `BBLIT_DISC` definida (cualquiera de las cinco formas: .bin, .cue, carpeta del .bin, carpeta superior o carpeta con fs/) o con `--exe`. Genera 1101 simbolos
-(908 de la depuracion mas 194 rutinas separadas por tablas de punteros, menos una fusion; ver
-`docs/GHIDRA.md`); el resultado debe ser identico a `config/symbols.txt`.
+fuera del repositorio). Con `BBLIT_DISC` definida (cualquiera de las cinco formas: .bin, .cue, carpeta del .bin, carpeta superior o carpeta con fs/) o con `--exe`. Genera 1168 lineas
+(1102 simbolos de funcion y 66 variables pequenas direccionadas por `$gp`; ver `docs/GHIDRA.md`) y aplica los
+76 nombres de `config/nombres_funciones.txt` (un nombre repetido aborta con `error: nombres linea N`; uno que
+choca con un nombre oficial del SDK se informa y no se aplica). El resultado debe ser identico a
+`config/symbols.txt`.
 
 ## 5. Arranque en emulador
 
