@@ -63,10 +63,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 710 con la configuracion versionada (g = 0 del archivo). Coinciden doce de
+ * Pendiente: puntuacion 710 con la configuracion versionada (g = 0 del archivo). Coinciden trece de
  * los dieciseis bloques; difieren el orden de las escrituras del avance por subcelda y por baldosa, el
  * reparto de v0/v1 en las banderas de los planos del caso estatico y la posicion de dos instrucciones
- * del prologo. diff solo compara las primeras 1024 instrucciones (completa: 3255).
+ * del prologo. diff solo compara las primeras 1024 instrucciones (completa: 2080).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -813,7 +813,11 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                 } while (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z);
                 CIERRE_COMPLETO_XZ;
             }
-            return 0;
+            /*
+             * Camino inalcanzable (con dx y dz nulos se despacha al caso estatico): el original sale
+             * sin asignar el valor de retorno, de modo que no se escribe aqui.
+             */
+            goto fin;
         }
     }
     /* Sin desplazamiento: consulta de la baldosa bajo el punto. */
@@ -866,6 +870,8 @@ plano:
     res->zona = zona;
     res->techo = techo;
     return ret;
+fin:
+    ;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/colision_y_terreno", func_80019474);
