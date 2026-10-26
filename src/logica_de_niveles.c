@@ -58,6 +58,11 @@ u8 D_80069390[8];
 s32 D_80069398;
 s32 D_800693AC;
 s32 D_800693B0;
+/*
+ * D_800693B8 se declara una vez en globales.h y este archivo la define ademas: func_80020B90 la
+ * direcciona con 0x98($gp) (sh en 0x80020E68, lhu en 0x80021750) y sin definicion local el
+ * acceso pasa a lui mas desplazamiento. El enlazador funde las definiciones tentativas.
+ */
 s16 D_800693B8;
 s32 D_800693BC;
 s32 D_800693C0;

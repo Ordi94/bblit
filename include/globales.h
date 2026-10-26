@@ -769,6 +769,9 @@ void func_80040D98(RECT* a0, s16* a1);
  * presentacion de cuadros lo lee; sin volatile en el cargador func_8004109C pasa de 105 a 705.
  */
 
+/* D_800693B8: dato pequeno de $gp (0x80069320 + 0x98) que declara config/symbols.txt; sh en 0x80020E68, 0x80021538, 0x8002166C, 0x80021774 y 0x80021784, lhu en 0x80021750 (todos 0x98($gp)). Se define en movimiento_y_objetos_de_escena_2.c y en logica_de_niveles.c: ambos lo direccionan con $gp. */
+extern s16 D_800693B8;
+
 /* D_800693F0: accesos del ensamblador: sw(gp) x3, lw(gp) x1, sw x1 */
 extern s32 D_800693F0;
 
