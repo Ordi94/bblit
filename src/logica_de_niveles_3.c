@@ -110,7 +110,7 @@ void func_80026298(Objeto* o, u32 mascara)
             paso = 0x20;
         }
         if (o->p6C == D_80069698 && o->p6C->p70 == o) {
-            num = o->p6C->i1A4;
+            num = o->p6C->u18C.agarre.trans.vx;
             if (num < 0) {
                 if (o->w17C & 1) {
                     goto decae;
@@ -826,7 +826,7 @@ void func_8002CB8C(Objeto* o)
             }
         }
         tb = a->def->tabla;
-        o->tabla = tb;
+        o->trabajo.tabla = tb;
         f = tb->fotogramas;
         b->fotogramas = f;
         b->actual = f;
@@ -918,7 +918,7 @@ void func_8002CEC4(Objeto* o)
             }
         }
         tb = a->def->tabla;
-        o->tabla = tb;
+        o->trabajo.tabla = tb;
         f = tb->fotogramas;
         b->fotogramas = f;
         b->actual = f;
@@ -1710,8 +1710,8 @@ void func_8002F018(Objeto* o)
         if (t->golpeado != 0) {
             o->s1E = 1;
             if (D_80069698 == t->golpeado && !(D_80069698->flags14 & 0x03000000)) {
-                if (func_8001D75C(o, 0, area) != 0 && (s16)o->w196 != 0) {
-                    func_8001D0FC(o, (s16)o->w196, area);
+                if (func_8001D75C(o, 0, area) != 0 && (s16)o->u18C.estado.w196 != 0) {
+                    func_8001D0FC(o, (s16)o->u18C.estado.w196, area);
                 }
             } else {
                 t->golpeado->i34 = (u16)o->w1C;
@@ -1837,7 +1837,7 @@ void func_8002F6B4(Objeto* o)
     z = (u16)D_8006D928.z - (u16)D_8006D928.vpz;
     t->cy = y;
     t->cz = z;
-    bits = o->w196;
+    bits = o->u18C.estado.w196;
     D_800695EC = o;
     if (bits & 1) {
         t->cy = -y;

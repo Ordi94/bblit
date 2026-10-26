@@ -288,7 +288,7 @@ void func_80044EA8(s32 a0, u32 a1, Objeto* a2)
         nodo = nodo->sig;
     }
     tabla = nodo->def->tabla;
-    a2->tabla = tabla;
+    a2->trabajo.tabla = tabla;
     f = &tabla->fotogramas[a1 & 0xFFFF];
     D_8006D018[(s16)a0] = f->h0A;
 }
@@ -507,7 +507,7 @@ u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
             nodo = nodo->sig;
         }
         tabla = nodo->def->tabla;
-        a2->tabla = tabla;
+        a2->trabajo.tabla = tabla;
         bloque->fotogramas = tabla->fotogramas;
         a2->w17E = a0 + 0x8000;
         a2->p180 = NULL;

@@ -125,6 +125,36 @@ extern void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, Trabajo
                       : : "r"(p) : "$8", "$9", "memory")
 
 /*
+ * Macros vectoriales de la animacion de objetos: reproducen rutinas manuscritas del original con
+ * los temporales fijos $8..$12, como las de geometria.h, y su lista de registros destruidos
+ * contiene exactamente los que el cuerpo escribe.
+ *
+ * MOTOR_UNOS_W(p): vector de tres palabras de p = 0x1000. El original (0x8001ECE8 a 0x8001ED00,
+ * func_8001E720) copia la direccion a $t0, carga 0x1000 en $t4 una sola vez, lo copia a $t1..$t3
+ * con addu y almacena las tres palabras; el cuerpo escribe $8 a $12, y todos los almacenes
+ * pasan por $9..$11.
+ */
+#define MOTOR_UNOS_W(p)     __asm__ volatile ("move $8, %0
+	"                       "addiu $12, $0, 0x1000
+	"                       "move $9, $12
+	"                       "move $10, $12
+	"                       "move $11, $12
+	"                       "sw $9, 0($8)
+	"                       "sw $10, 4($8)
+	"                       "sw $11, 8($8)"                       : : "r"(p) : "$8", "$9", "$10", "$11", "$12", "memory")
+
+/*
+ * MOTOR_DIAGONAL_CERO(p): pone a cero los elementos de la diagonal de la matriz de p (sw en +0,
+ * sw en +8 y sh en +0x10). El original (0x80036F90 a 0x80036FA0, func_8003690C) copia la direccion
+ * a $t0, pone $t1 a cero con addu y almacena tres veces; el cuerpo escribe $8 y $9.
+ */
+#define MOTOR_DIAGONAL_CERO(p)     __asm__ volatile ("move $8, %0
+	"                       "move $9, $0
+	"                       "sw $9, 0($8)
+	"                       "sw $9, 8($8)
+	"                       "sh $9, 16($8)"                       : : "r"(p) : "$8", "$9", "memory")
+
+/*
  * Proyeccion de un objeto sobre la pantalla: area de trabajo de la proyeccion de un sprite que
  * func_8001DF28 rellena a partir de la posicion (+0x38) y devuelve en +0x58: profundidad en
  * +0x54, escala en +0x90, esquinas del cuadro en +0x4C..+0x52 y puntero a las coordenadas

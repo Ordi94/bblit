@@ -644,7 +644,7 @@ void func_80020B90(Objeto* o)
                         if (o->p70->w2C == 5) {
                             vj = o->p70->s1E;
                         } else {
-                            vj = *(s16*)&o->p70->w196;
+                            vj = *(s16*)&o->p70->u18C.estado.w196;
                         }
                         if (vj == 0) {
                             vj = pj * 0x145 >> 9;
@@ -1267,7 +1267,7 @@ sin_rebote:
         if (sc->tocado != NULL && (sc->tocado->flags08 & 0x80000)) {
             sc->tmp_sv.vx = (u16)o->param.trans.vx - (u16)sc->tocado->param.trans.vx;
             sc->tmp_sv.vz = (u16)o->param.trans.vz - (u16)sc->tocado->param.trans.vz;
-            sc->tmp_sv.vz = ((s16)(0x1000 - (SquareRoot0((s16)sc->tmp_sv.vx * (s16)sc->tmp_sv.vx + (s16)sc->tmp_sv.vz * (s16)sc->tmp_sv.vz) << 12) / sc->tocado->max.vz) * *(s16*)&sc->tocado->w196) >> 12;
+            sc->tmp_sv.vz = ((s16)(0x1000 - (SquareRoot0((s16)sc->tmp_sv.vx * (s16)sc->tmp_sv.vx + (s16)sc->tmp_sv.vz * (s16)sc->tmp_sv.vz) << 12) / sc->tocado->max.vz) * *(s16*)&sc->tocado->u18C.estado.w196) >> 12;
             sc->tmp_sv.vy = 0;
             sc->tmp_sv.vx = 0;
             ApplyMatrix(&sc->tocado->coord.coord, &sc->tmp_sv, (VECTOR*)&sc->tmp_v);

@@ -13,7 +13,7 @@ construcción normal) y de la tabla de símbolos.
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
 Bytes de código del juego descompilados: 58740 de 201416 (29.16 %).
-Funciones marcadas `NON_MATCHING`: 61.
+Funciones marcadas `NON_MATCHING`: 63.
 Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
@@ -26,14 +26,14 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 | cargador_de_niveles_y_cd | 2 | 6 | 5 | 0 | 804 | 14264 |
 | colision_y_terreno | 1 | 2 | 1 | 1 | 680 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
-| gestion_y_dibujo_de_objetos | 4 | 24 | 8 | 10 | 7448 | 18624 |
+| gestion_y_dibujo_de_objetos | 4 | 24 | 9 | 9 | 7448 | 18624 |
 | graficos_y_gte | 3 | 13 | 6 | 0 | 3316 | 11812 |
 | inicializacion_de_motor | 1 | 7 | 6 | 3 | 1860 | 5276 |
 | interprete_de_eventos | 1 | 194 | 1 | 2 | 11656 | 11900 |
 | logica_de_niveles | 3 | 9 | 5 | 7 | 8480 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 22 | 4 | 1 | 9256 | 13644 |
-| movimiento_y_objetos_de_escena | 3 | 10 | 14 | 3 | 1896 | 18284 |
+| movimiento_y_objetos_de_escena | 3 | 10 | 15 | 2 | 1896 | 18284 |
 | tarjeta_de_memoria | 1 | 7 | 2 | 1 | 1672 | 5116 |
 
 ## Por archivo
@@ -47,7 +47,7 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 2 | 0 | 0 | 672 |
 | `src/colision_y_terreno.c` | 2 | 1 | 1 | 680 | 12480 |
 | `src/entrada_de_mando.c` | 5 | 1 | 0 | 1260 | 2784 |
-| `src/gestion_y_dibujo_de_objetos.c` | 12 | 2 | 1 | 1696 | 3812 |
+| `src/gestion_y_dibujo_de_objetos.c` | 12 | 3 | 0 | 1696 | 3812 |
 | `src/gestion_y_dibujo_de_objetos_2.c` | 7 | 4 | 9 | 3184 | 10604 |
 | `src/gestion_y_dibujo_de_objetos_3.c` | 1 | 0 | 0 | 564 | 564 |
 | `src/gestion_y_dibujo_de_objetos_4.c` | 4 | 2 | 0 | 2004 | 3644 |
@@ -63,7 +63,7 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 | `src/menus_e_interfaz.c` | 22 | 4 | 1 | 9256 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 1 | 3 | 0 | 176 | 2116 |
 | `src/movimiento_y_objetos_de_escena_2.c` | 8 | 7 | 0 | 1672 | 6336 |
-| `src/movimiento_y_objetos_de_escena_3.c` | 1 | 4 | 3 | 48 | 9832 |
+| `src/movimiento_y_objetos_de_escena_3.c` | 1 | 5 | 2 | 48 | 9832 |
 | `src/tarjeta_de_memoria.c` | 7 | 2 | 1 | 1672 | 5116 |
 
 ## Funciones `NON_MATCHING`
@@ -87,10 +87,11 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 - `func_8001DA14`: Pendiente: puntuacion 590 con la configuracion versionada (g = 8 del archivo). Mismo bucle de prueba de rumbos y mismas llamadas GTE; el original asigna s4 al area de consulta, s7 al vector rotado y s6 al resultado de baldosa, el C reparte esos tres punteros y el modo centrado de otro modo, y calcula la mascara ~6 en un registro. Variantes probadas: 7.
 - `func_8001DF28`: Pendiente: puntuacion 3500 con la configuracion versionada (g = 8 del archivo). Mismo codigo GTE (matriz de rotacion, vector de traslacion, rtps) y mismas operaciones; el original conserva el segundo argumento en a1 y copia solo el objeto a a2, y usa a3 como base de la matriz, el C copia ambos y usa t2. Variantes probadas: 8.
 - `func_8001E1A4`: Pendiente: puntuacion 200 con la configuracion versionada (g = 8 del archivo). La unica diferencia es la carga del argumento de func_8003F06C: el original usa lw y el C con la conversion (s16) usa lh; sin la conversion el bucle tiene menos instrucciones antes de la optimizacion de bucles y el compilador iza la direccion de D_8006B558 fuera de el, con lo que la puntuacion sube a 692.
-- `func_8001E528`: Pendiente: puntuacion 1535 con la configuracion versionada (-G0). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0. Variantes probadas: 8.
-- `func_8001E600`: Pendiente: puntuacion 2665 con la configuracion versionada (-G0). Mismos accesos y almacenes; el original calcula el desplazamiento de color en t2 y deja el puntero al sprite en v1, el C reparte otros registros y reordena las lecturas del registro del cuadro. Variantes probadas: 3.
-- `func_80020240`: Pendiente: puntuacion 605 con la configuracion versionada (-G0). La condicion de continuar (bit 4 apagado o bit 0x10 activo) y la reunion de las dos ramas de la altura no se reproducen: el compilador adelanta la carga de las banderas y repite el almacen de h10A en cada rama. Variantes probadas: 10.
-- `func_80020A90`: Pendiente: puntuacion 2360 con la configuracion versionada (-G0). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica. Variantes probadas: 4.
+- `func_8001E528`: Pendiente: puntuacion 1535 con la configuracion versionada (g = 8 del archivo). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0.
+- `func_8001E600`: Pendiente: puntuacion 2665 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; el original calcula el desplazamiento de color en t2 y deja el puntero al sprite en v1, el C reparte otros registros y reordena las lecturas del registro del cuadro.
+- `func_8001E720`: Pendiente: puntuacion 570 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5; la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera), el reparto de $a0/$v1 en la lectura del estado y el orden de cuatro almacenes del bloque de parametros de agarre.
+- `func_80020240`: Pendiente: puntuacion 605 con la configuracion versionada (g = 8 del archivo). La condicion de continuar (bit 4 apagado o bit 0x10 activo) y la reunion de las dos ramas de la altura no se reproducen: el compilador adelanta la carga de las banderas y repite el almacen de h10A en cada rama.
+- `func_80020A90`: Pendiente: puntuacion 2360 con la configuracion versionada (g = 8 del archivo). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica.
 - `func_80020B90`: Pendiente: puntuacion 1130 con la configuracion versionada (g = 8 del archivo; la salida de diff se trunca a 1024 lineas y la comparacion completa por bloques da 14350). Las diferencias son de reparto de registros (v0/v1/a0 y punteros s0-s2) y del orden en que el compilador planifica los almacenamientos de las transiciones de cada contacto; la logica coincide.
 - `func_80026298`: Pendiente: puntuacion 2925 con la configuracion versionada (g = 8 del archivo). Reparto de registros y orden de instrucciones: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1.
 - `func_8002C1DC`: Pendiente: puntuacion 365 con la configuracion versionada (g = 8 del archivo). Prologo y salida de la busqueda por id: el original deriva la matriz del scratchpad de la base despues de calcular la parte alta de la camara, y sale de la busqueda con un salto directo al caso sin origen en lugar de volver a probar el cursor.
@@ -103,6 +104,7 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 - `func_800353B0`: Pendiente: puntuacion 7961 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y las constantes coinciden; difieren el reparto de registros (el original conserva el scratchpad, &sx, &z6C y la mascara -3 en s1..s4 y no hoistea &v80 ni &c104), el relleno de los huecos de retardo de la macro de distancia (maspsx anade un nop extra tras dos de sus saltos) y la forma de la busqueda en la tabla D_8006A940 (el original relee el puntero guardado en el scratchpad en cada vuelta). Variantes probadas: 12 (locales del objeto, punteros hoisted, mascara en local, macro de d
 - `func_80036164`: Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el original usa un solo puntero con desplazamientos 0x0C y 0x04. Ni el recorrido por indice sobre el arreglo ni la reordenacion de los incrementos eliminan el puntero derivado.
 - `func_800363D4`: Pendiente: puntuacion 205 con la configuracion versionada (g = 8 del archivo). El original mantiene el nodo en $a0 y deriva el puntero inducido en $a1; GCC los intercambia. Las 0x2E escrituras de sw $zero,0($a2) del original son un bucle real de 0x2E vueltas (contador en $v1, sltiu/bnez, la escritura en el hueco de retardo), no una secuencia desenrollada; escritas como 0x2E sentencias explicitas el resultado empeora (895), porque GCC no las pliega a ese bucle.
+- `func_8003690C`: Pendiente: puntuacion 510 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difiere el reparto de registros callee-saved: el original deja el area de trabajo en $s1 y el puntero del flujo en $s2, GCC (prioridad de global-alloc por referencias y longitud de vida) los intercambia o adelanta el area a $s0 al copiar el parametro; ademas el sumando s20 de la caja cae en $a0 en lugar de $v1.
 - `func_80037184`: Pendiente: puntuacion 929 con la configuracion versionada (g = 8 del archivo). El cuerpo coincide instruccion por instruccion salvo el reparto de registros: GCC iza la constante 1 de la marca de visibilidad a $s5 fuera de los bucles y el original la carga junto al almacen. Variantes probadas: 9.
 - `func_80037D3C`: Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). Convierte un valor de 0 a 999 en tres digitos BCD (centenas, decenas, unidades); el original conserva las centenas en $a1 hasta el final y calcula centenas << 8 justo despues de la multiplicacion, mientras que GCC las deja en $v0 y las desplaza mas tarde (reparto de registros y orden de evaluacion).
 - `func_80037FE8`: Pendiente: puntuacion 3403 con la configuracion versionada (g = 8 del archivo). La estructura de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de otra forma. Variantes probadas: 6.
@@ -132,6 +134,7 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 
 ## Rutinas manuscritas (siguen en ensamblador por diseño)
 
+- `func_80020354` (1852 bytes)
 - `func_8003753C` (68 bytes)
 - `func_80037580` (68 bytes)
 - `func_800375C4` (52 bytes)
@@ -142,7 +145,6 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 ## `INCLUDE_ASM` sin comentario en archivos con funciones en C
 
 - `func_80019474` (`src/colision_y_terreno.c`)
-- `func_8003690C` (`src/gestion_y_dibujo_de_objetos.c`)
 - `func_8003760C` (`src/gestion_y_dibujo_de_objetos_2.c`)
 - `func_800379A0` (`src/gestion_y_dibujo_de_objetos_2.c`)
 - `func_80037B08` (`src/gestion_y_dibujo_de_objetos_2.c`)
@@ -156,9 +158,6 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 - `func_8002EA9C` (`src/logica_de_niveles_3.c`)
 - `func_8002F968` (`src/logica_de_niveles_3.c`)
 - `func_8002F970` (`src/logica_de_niveles_3.c`)
-- `func_8001E720` (`src/movimiento_y_objetos_de_escena_3.c`)
-- `func_8001F268` (`src/movimiento_y_objetos_de_escena_3.c`)
-- `func_80020354` (`src/movimiento_y_objetos_de_escena_3.c`)
 
 ## Menciones sin símbolo de función (datos incrustados en el código; no cuentan)
 

@@ -66,7 +66,6 @@ extern void func_8003DFE4(void);
 extern void func_8003E094(void);
 extern void func_8003E3C0(void);
 extern void func_8003E88C(void);
-extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
 
 /* Acceso a la base de $gp: los datos pequenos del original se direccionan por registro. */
 
@@ -960,8 +959,8 @@ void func_80031B78(Objeto* a0, Accion* a1)
     v = *(u16*)&a0->param.trans.vy;
     D_800693C0 = 0;
     D_800693B4 = 0;
-    a0->w192 = 0;
-    a0->w196 = v;
+    a0->u18C.estado.w192 = 0;
+    a0->u18C.estado.w196 = v;
 }
 
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */

@@ -12,6 +12,9 @@ struct NodoSecuencia;
 struct RegistroAnim;
 struct Ayuda;
 struct ModeloDibujo;
+struct RegistroSonido;
+struct RegistroEvento;
+struct ParCuadro;
 
 /*
  * Registro de dieciseis bytes de la tabla de fotogramas; solo se lee el u16 de +0xA
@@ -20,8 +23,8 @@ struct ModeloDibujo;
 typedef struct Fotograma {
     u8 pad00[0x0A];
     u16 h0A;
-    u16 w0C;                /* anchura del cuadro: lhu en func_8002CB8C (0x8002CC74) */
-    u16 w0E;                /* altura del cuadro: lhu en func_8002CB8C (0x8002CCAC) */
+    u16 w0C;                /* anchura del cuadro: lhu en func_8002CB8C (0x8002CC74) y en func_8001E720 (centro y caja del sprite) */
+    u16 w0E;                /* altura del cuadro: lhu en func_8002CB8C (0x8002CCAC) y en func_8001E720 */
 } Fotograma;
 
 typedef struct TablaFotogramas {
@@ -39,9 +42,16 @@ typedef struct TablaFotogramas {
 typedef struct DefinicionAnimacion {
     u8 pad00[0x0A];
     u16 wA;
-    u8 pad0C[0x4E - 0x0C];
+    u8 pad0C[0x10 - 0x0C];
+    u8 n_sonidos;           /* +0x10: func_8001E720 lbu, copia a BloqueTrabajo.b07 */
+    u8 pad11;
+    u8 n_eventos;           /* +0x12: func_8001E720 lbu, copia a BloqueTrabajo.b09 */
+    u8 pad13;
+    u8 sonidos[0x24 - 0x14];    /* +0x14: lista en linea de RegistroSonido; func_8001E720 toma su direccion */
+    u8 eventos[0x4E - 0x24];    /* +0x24: lista en linea de RegistroEvento; func_8001E720 toma su direccion */
     u16 tipo;
-    u8 pad50[4];
+    u16 n_cuadros;          /* +0x50: func_8001E720 lhu, ultimo cuadro = n_cuadros - 1 */
+    u8 pad52[2];
     TablaFotogramas* tabla;
 } DefinicionAnimacion;
 
@@ -88,26 +98,33 @@ typedef struct ParametrosObjeto {
 #define PARAMETROS_SDK(o) ((GsCOORD2PARAM*)&(o)->param)
 
 /*
- * Bloque de trabajo de la animacion del objeto (+0x144 del objeto): estado del fotograma en
- * curso. func_8001CD84 reinicia h02, b08, i14 y flags18 al cambiar de secuencia, func_80020A90
- * lee h0A (altura del peldano) y func_80045C4C guarda en +0x20 la tabla de fotogramas de la
- * animacion elegida; func_80045498 recibe su direccion.
+ * Cursor de animacion del objeto (+0x144 del objeto): estado del cuadro en curso. Es la unica
+ * definicion de esa memoria; los tipos de los registros que referencia estan en animacion.h.
+ * func_8001CD84 reinicia h02, b08, i14 y flags18 al cambiar de secuencia; func_80020A90 lee h0A
+ * (altura del peldano); func_80045C4C guarda en +0x20 la tabla de fotogramas de la animacion
+ * elegida y func_80045498 recibe su direccion; func_8001E720 rellena y avanza el resto al
+ * iniciar y avanzar una animacion de sprite, y func_8003690C lee el flujo de pistas de +0x24.
+ * La tabla activa (+0x28) queda dentro del cursor: func_8001E720 la escribe a traves de el y
+ * func_80044EA8 la guarda en el objeto, que es el mismo desplazamiento (+0x16C del objeto).
  */
 typedef struct BloqueTrabajo {
-    u16 w00;                /* ultimo cuadro (cuadros - 1): sh en func_8002CB8C (0x8002CC70), lhu en 0x8002CD68 y 0x800255D0 (func_80020B90); func_80020B90 tambien lee y escribe la palabra entera sobre el apoyo (lw / sw 0x80022C18, 0x80022C24) */
-    s16 h02;
-    u8 pad04;
-    u8 b05;                 /* cuadros de espera entre cuadros de la animacion: sb en func_8002CB8C (0x8002CC64) y lbu en 0x8002CD58; func_80020B90: sb en 0x800213BC y lbu en 0x800255D8 (indice de paso 5 - acumulado / 32) */
-    u8 pad06[2];
-    u8 b08;
-    u8 pad09;
+    u16 w00;                /* ultimo cuadro (cuadros - 1): sh en func_8002CB8C (0x8002CC70) y func_8001E720, lhu en 0x8002CD68 y 0x800255D0 (func_80020B90); func_80020B90 tambien lee y escribe la palabra entera sobre el apoyo (lw / sw 0x80022C18, 0x80022C24) */
+    s16 h02;                /* cuadro actual: sh (func_8001CD84); func_8001E720 lo carga siempre con lhu */
+    u8 b04;                 /* sb zero (func_8001E720) */
+    u8 b05;                 /* cuadros de espera entre cuadros de la animacion: sb en func_8002CB8C (0x8002CC64) y lbu en 0x8002CD58; func_80020B90: sb en 0x800213BC y lbu en 0x800255D8 (indice de paso 5 - acumulado / 32); func_8001E720: lbu / sb */
+    u8 pad06;
+    u8 b07;                 /* numero de sonidos: sb / lbu (func_8001E720) */
+    u8 b08;                 /* ticks restantes */
+    u8 b09;                 /* numero de eventos: sb / lbu (func_8001E720) */
     s16 h0A;
-    u8 pad0C[0x14 - 0x0C];
+    struct RegistroSonido* sonidos;     /* +0x0C: sw / lw (func_8001E720) */
+    struct RegistroEvento* eventos;     /* +0x10: sw / lw (func_8001E720) */
     s32 i14;
     u32 flags18;
-    u8 pad1C[4];
+    struct ParCuadro* duraciones;       /* +0x1C: sw / lw, lbu 1(par) (func_8001E720) */
     struct Fotograma* fotogramas;
-    struct Fotograma* actual;   /* cuadro en curso: sw en func_8002CB8C (0x8002CC54 y 0x8002CD84) */
+    struct Fotograma* actual;   /* +0x24: cuadro en curso; sw en func_8002CB8C (0x8002CC54 y 0x8002CD84); func_8001E720 guarda aqui el cuadro y func_8003690C lo recorre como flujo de pistas (lw / sw) */
+    struct TablaFotogramas* tabla;      /* +0x28: tabla de fotogramas activa; func_80044EA8 la guarda con sw y func_8001E720 la escribe con sw 0x28(cursor) */
 } BloqueTrabajo;
 
 /*
@@ -157,8 +174,8 @@ typedef struct Objeto {
     SVECTOR empuje;         /* +0x40: empuje externo que func_80020B90 suma al desplazamiento (lh x3 en 0x80021B24, 0x80021B38, 0x80021B4C) y borra (sh zero en 0x80021B60, 0x80021B64, 0x80021B68); vx y vz los escribe el objeto empujado con sh (0x80023CA0, 0x80023CB0). func_8002D68C (bloque empujable) lee el empuje pedido en X y en Z con lh (0x8002D814, 0x8002D828) y lo pone a cero con sh zero (0x8002D83C, 0x8002D844) */
     SVECTOR min;            /* caja del volumen (+0x48) y mitades de sprite que lee func_8001DF28 con lh */
     SVECTOR max;            /* +0x50 */
-    VECTOR objetivo;        /* +0x58: punto de interaccion; func_80020B90 lo lee con lhu (0x80022A8C, 0x80022AAC) y lw 0x5C($s4) (0x80022B44) y pasa su direccion a func_800171E4 (0x800228C4) */
-    s32 i68;                /* func_8001D0FC: sw zero */
+    VECTOR objetivo;        /* +0x58: punto de interaccion; func_80020B90 lo lee con lhu (0x80022A8C, 0x80022AAC) y lw 0x5C($s4) (0x80022B44) y pasa su direccion a func_800171E4 (0x800228C4); posicion de aparicion de los hijos y de salida de la animacion de posicion: func_8001E720 lee vx, vy y vz con lw y pasa su direccion a func_80036734, func_8003690C los escribe con sw */
+    GsCOORDINATE2* i68;     /* nodo raiz de la cadena de ayudantes (func_8003690C: sw del coord del ayudante; func_8001E720: lw 0x44 y 0x48 del nodo); func_8001D0FC: sw zero; los demas lo comparan con cero */
     struct Objeto* p6C;     /* func_80034E7C: lw 0x6C($s1) en 0x80034EE0 */
     struct Objeto* p70;     /* func_80034E7C: lw 0x70($s1) en 0x80034EBC, sw $zero en 0x80034F60 y 0x80034FDC */
     struct NodoAnimacion* lista;   /* func_80044EA8, func_80045C4C: lw, lista de animaciones; func_80037DB4 la usa como descriptor de modelo */
@@ -211,8 +228,7 @@ typedef struct Objeto {
      * en la coordenada Z de la traslacion (sw).
      */
     ParametrosObjeto portado;
-    BloqueTrabajo trabajo;  /* +0x144, ver BloqueTrabajo */
-    struct TablaFotogramas* tabla;      /* func_80044EA8: sw de la tabla activa */
+    BloqueTrabajo trabajo;  /* +0x144, ver BloqueTrabajo; incluye la tabla activa en +0x16C */
     u8 pad170[0x17C - 0x170];
     u16 w17C;
     u16 w17E;               /* lhu en func_80030018 y func_80020B90; las demas rutinas solo lo ponen a cero */
@@ -224,14 +240,25 @@ typedef struct Objeto {
     struct NodoSecuencia* p180;
     struct RegistroAnim* registro184;   /* func_8001CD84, func_8001D75C: lw */
     struct NodoSecuencia* nodo188;      /* func_8001D0FC: sw */
-    u8 pad18C[0x192 - 0x18C];
-    u16 w192;               /* func_80031B78: solo sh $zero, 0x192($a0) en 0x80031B8C; sin lectura que fije el signo */
-    u8 pad194[2];
-    u16 w196;               /* func_80031B78: solo sh 0x196($a0) en 0x80031B94; sin lectura que fije el signo */
-    u8 pad198[0x1A4 - 0x198];
-    s32 i1A4;               /* velocidad vertical del jugador: lw en func_80026298 (0x8002656C) */
-    s32 i1A8;               /* func_80020A90: lw 0x1A8($a0) en 0x80020AC0 y 0x80020AF8 */
-    u8 pad1AC[0x1B4 - 0x1AC];
+    /*
+     * +0x18C (0x28 bytes hasta +0x1B4): la misma memoria sirve a dos clases de objeto. En el objeto
+     * controlado es el bloque de parametros del objeto que sostiene (mismo diseno que param): al
+     * sostener, func_8001E720 guarda el desfase relativo en la traslacion con sw (0x1A4, 0x1A8, 0x1AC
+     * del bloque), y func_80020A90 (lw 0x1A8) y func_80026298 (lw 0x1A4 del objeto controlado cuando
+     * p70 apunta al objeto en curso) lo leen; el coord del hijo agarrado apunta a este bloque. En los
+     * demas objetos solo se usan dos medias palabras: func_80031B78 escribe sh zero en 0x192 y sh en
+     * 0x196, que en el objeto controlado caen dentro de la escala.
+     */
+    union {
+        ParametrosObjeto agarre;
+        struct {
+            u8 pad00[0x192 - 0x18C];
+            u16 w192;           /* func_80031B78: solo sh $zero, 0x192($a0) en 0x80031B8C; sin lectura que fije el signo */
+            u8 pad06[2];
+            u16 w196;           /* func_80031B78: solo sh 0x196($a0) en 0x80031B94; sin lectura que fije el signo */
+            u8 pad0C[0x28 - 0x0C];
+        } estado;
+    } u18C;
     u32 w1B4;               /* func_800353B0: lw, segundo argumento de func_80033358 */
     u8 pad1B8[0x1F4 - 0x1B8];
 } Objeto;
@@ -493,7 +520,7 @@ extern u16* D_800695B8;
 /*
  * D_80069608: indicadores de la camara de apuntado. func_80033358 limpia el bit 1 (and con -3) y lo
  * activa (ori 2); los eventos activan el bit 0. lw / sw de 32 bits; tambien lo leen func_80020B90
- * (0x80020C7C, 0x80023444) y lo modifica con or movimiento_y_objetos_de_escena_2.c.
+ * (0x80020C7C, 0x80023444) y lo modifica con or movimiento_y_objetos_de_escena_2.c; func_8001E720 lo activa con ori 1.
  */
 extern u32 D_80069608;
 
