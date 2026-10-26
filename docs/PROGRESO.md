@@ -134,6 +134,7 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 
 ## Rutinas manuscritas (siguen en ensamblador por diseño)
 
+- `func_80020354` (1852 bytes)
 - `func_8003753C` (68 bytes)
 - `func_80037580` (68 bytes)
 - `func_800375C4` (52 bytes)
@@ -157,8 +158,6 @@ Coherencia con el ensamblador: correcta (741 `glabel` en `asm/` + 361 en C = 110
 - `func_8002EA9C` (`src/logica_de_niveles_3.c`)
 - `func_8002F968` (`src/logica_de_niveles_3.c`)
 - `func_8002F970` (`src/logica_de_niveles_3.c`)
-- `func_8001F268` (`src/movimiento_y_objetos_de_escena_3.c`)
-- `func_80020354` (`src/movimiento_y_objetos_de_escena_3.c`)
 
 ## Menciones sin símbolo de función (datos incrustados en el código; no cuentan)
 
