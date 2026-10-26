@@ -316,12 +316,12 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * No coincide: puntuacion 7419 (el archivo se compila con g = 8; 10074 con -G0).
+ * No coincide: puntuacion 7264 (el archivo se compila con g = 8).
  * Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o
  * entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma
  * los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS
  * (D_8006CFF1..7: id, botones invertidos y ejes) en botones logicos y ejes de +/-0x7F.
- * Puntuacion 7419 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
+ * Puntuacion 7264 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
  * saltos y casi todo el cuerpo coinciden; difieren el marco de pila (el original reserva 8
  * bytes mas, 0x28), el reparto de registros de la rama de grabacion, el orden de
  * (D_8006CFF2 ^ 0xFF) << 8 (el original no fusiona el xor con el desplazamiento) y la copia

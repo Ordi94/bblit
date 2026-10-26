@@ -92,7 +92,7 @@ typedef struct EstadoCamara {
 
 /*
  * D_80069662: estado de la maquina de `main` y de los menus. El ensamblador lo compara con lh en
- * todas partes y solo lo incrementa cargando con lhu; declarado u16, `main` sube de 1135 a 2135.
+ * todas partes y solo lo incrementa cargando con lhu; declarado u16, `main` sube de 1025 a 2025.
  */
 extern s16 D_80069662;
 
@@ -106,13 +106,22 @@ register u8* base_gp __asm__("$28");
 
 /* --- Estado del bucle principal y de la presentacion de cuadros ------------------------- */
 
-/* Anillo de tres buffers de dibujo: indice mostrado (0 a 2). Las comparaciones cargan con lh; solo los incrementos de `main` usan lhu + sh. */
+/*
+ * Anillo de tres buffers de dibujo: indice mostrado (0 a 2). Las comparaciones cargan con lh;
+ * solo los incrementos de `main` usan lhu + sh.
+ */
 extern s16 D_8006967C;
 
-/* Diferencia de marcas de tiempo entre cuadros (D_80069510 - D_80069638); lw y sw de 32 bits, se resta con signo. */
+/*
+ * Diferencia de marcas de tiempo entre cuadros (D_80069510 - D_80069638): lw y sw de 32 bits,
+ * restada con signo.
+ */
 extern s32 D_80069694;
 
-/* Banco de registros de 8 bits que manejan los eventos y la pausa (lbu en la pausa, sb en la tarjeta de memoria). */
+/*
+ * Banco de registros de 8 bits que manejan los eventos y la pausa (lbu en la pausa, sb en la
+ * tarjeta de memoria).
+ */
 extern u8 D_8006AA70[];
 
 /* Pantalla activa. SetDefDispEnv y PutDispEnv lo rellenan y activan: es un DISPENV del SDK. */
