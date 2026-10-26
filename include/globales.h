@@ -44,6 +44,29 @@ extern u8 D_8006AA70[];
 /* Pantalla activa. SetDefDispEnv y PutDispEnv lo rellenan y activan: es un DISPENV del SDK. */
 extern DISPENV D_8006CF78;
 
+/*
+ * Marcas de tiempo del anillo de dibujo: D_80069694 = D_80069510 - D_80069638. Todos los
+ * accesos son lw / sw de 32 bits y la resta se interpreta con signo.
+ */
+extern s32 D_80069510;
+
+/* Tiempo por buffer de dibujo (tres palabras): lw / sw sin extension. */
+extern s32 D_8006AD40[];
+
+/*
+ * Cuadros pendientes de presentar. El retorno de llamada de VSync la modifica mientras el bucle
+ * principal la lee, y el original recarga con lhu en cada espera: debe ser volatile.
+ */
+extern vu16 D_80069676;
+
+/*
+ * Contadores de vibracion del mando. `sb` los pone a cero en `main`, y su direccion se pasa a
+ * func_80040430, que los lee con lb (prueba de cero) y lbu (decremento): el parametro es s8*.
+ */
+extern s8 D_800695A0;
+extern s8 D_80069595;
+extern s8 D_8006963C;
+
 /* --- Banderas de un byte -------------------------------------------------------------- */
 
 /* Botones del cuadro en el estado principal (0x80010010): lhu en los eventos y la camara, sh en el mando. */
@@ -56,6 +79,25 @@ extern u8 D_800694E8;
 extern u8 D_80069594;
 extern u8 D_800695DC;
 extern u8 D_80069659;
+
+/*
+ * Contadores de vibracion de los motores del mando: los eventos y el mando los escriben con sb y
+ * func_80040240 los lee con lbu.
+ */
+extern u8 D_8006965A;
+extern u8 D_8006965B;
+
+/*
+ * D_8006D9A8: palabra de estado del nivel. Casi todo el codigo la lee con lhu (mascaras 0x300 y
+ * 0x1) y la escribe con sh; func_8004048C y func_8001D31C la cargan entera con lw (quien necesite
+ * los 32 bits la lee como *(u32*)D_8006D9A8).
+ *
+ * Se declara como arreglo de cinco u16 (10 bytes) y no como escalar: con el umbral de datos
+ * pequenos de 8 bytes (-G8) un escalar se emite en forma simbolica y el original usa lui +
+ * desplazamiento, que es lo que produce un objeto mayor que el umbral. Como escalar,
+ * func_80032684 sube de 0 a 365 y func_80031FE0 de 20 a 130.
+ */
+extern u16 D_8006D9A8[5];
 extern u8 D_8006965E;
 
 /*

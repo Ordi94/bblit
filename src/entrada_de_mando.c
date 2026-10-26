@@ -71,8 +71,6 @@ extern EntradaTabla D_8005EE38[];
 extern u8 D_8006957C;
 extern u8 D_800695E0;
 extern u8 D_80069658;
-extern u8 D_8006965A;
-extern u8 D_8006965B;
 extern u8 D_8006965C;
 extern u8 D_8006965D;
 extern u8 D_8006CFF0[];
@@ -83,12 +81,8 @@ extern void func_8005A21C(s32 modo);
 /* Estado auxiliar del mando (zona 0x80069xxx y bufer de la BIOS). */
 extern u8 D_8006AA7C;
 extern u16 D_800695EA;
-extern s8 D_800695A0;
-extern s8 D_80069595;
-extern s8 D_8006963C;
 extern s16 D_80069672;
 extern s16 D_8006952C;
-extern u32 D_8006D9A8;
 extern u8 D_8006CFF1;
 extern u8 D_8006CFF2;
 extern u8 D_8006CFF3;
@@ -515,7 +509,8 @@ normal:
                 G->mando.w02 = 0x800;
             }
         } else if (D_80069672 >= 5) {
-            if (D_8006AA70[0] == 0 && D_8006966A == 0 && (D_8006D9A8 & 0x301) == 1 && G->mando.w6E == 0) {
+            /* El original carga D_8006D9A8 entera con lw; globales.h la declara u16[5] por el resto de usos. */
+            if (D_8006AA70[0] == 0 && D_8006966A == 0 && (*(u32*)D_8006D9A8 & 0x301) == 1 && G->mando.w6E == 0) {
                 D_80069672 = 5;
                 G->mando.w02 = G->mando.w02 & 0xF7FF;
             } else if (D_8006AA7C == 0) {

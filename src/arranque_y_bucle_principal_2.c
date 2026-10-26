@@ -7,7 +7,6 @@
 #include "psyq/LIBGS.H"
 
 extern s32 D_80069534;
-extern s32 D_80069510;
 extern s32 D_80069638;
 extern u32 D_80069518;
 extern void* D_80069630;
@@ -15,7 +14,6 @@ extern void* D_80069508;
 extern void* D_800694B8;
 extern void* D_800694D8;
 extern s32 D_80076188;
-extern s32 D_8006AD40[];
 extern u8 D_8006AD80[];
 extern GsRVIEW2 D_8006D928;
 extern GsOT D_8006AE20[];
@@ -24,13 +22,7 @@ extern GsOT D_8006AEA0[];
 
 extern u16 D_800694F0;
 extern u32 D_800694FC;
-extern volatile u16 D_80069676;
 extern s32 D_8006CF68[];
-extern u16 D_8006D9A8;
-extern u8 D_8006965A;
-extern u8 D_8006963C;
-extern u8 D_80069595;
-extern u8 D_800695A0;
 extern u8 D_80069628;
 
 extern s32 SetRCnt(u32 canal, u16 destino, s32 modo);
@@ -339,7 +331,7 @@ s32 main(void)
             }
         } else if (D_8006AA70[0] == 0) {
             if (regs[0xC] == 0 && D_80069662 == 0) {
-                if ((e->botones_a & 0x800) && D_8006966A == 0 && (!(D_8006D9A8 & 0x300) || (D_8006D9A8 & 1)) && e->f76 == 0) {
+                if ((e->botones_a & 0x800) && D_8006966A == 0 && (!(D_8006D9A8[0] & 0x300) || (D_8006D9A8[0] & 1)) && e->f76 == 0) {
                     contador = 0;
                     func_80037FB8(D_80069508);
                     func_80037FE8(D_80069508);

@@ -39,9 +39,10 @@ typedef struct Entrada {
 } Entrada;
 
 /*
- * Escalar de un byte declarado como estructura: el planificador del compilador solo mantiene el
- * orden entre estas escrituras y las lecturas por puntero del registro de accion si ambos
- * accesos son de campos de estructura.
+ * Vista de un byte como estructura de un campo, solo para func_80031D60. D_8006965A y D_8006965B
+ * se declaran u8 en globales.h; con el escalar el planificador sube la lectura por puntero del
+ * registro de accion por encima de la escritura al byte y la funcion sale 410 en lugar de 0. El
+ * orden del original solo se conserva si ambos accesos son de campos de estructura.
  */
 typedef struct Byte {
     u8 v;
@@ -70,8 +71,6 @@ extern s32 D_8006960C;
 extern s32 D_80069618;
 extern s32 D_8006961C;
 extern s32 D_80069624;
-extern Byte D_8006965A;
-extern Byte D_8006965B;
 extern u8 D_80069674;
 extern s32 D_80069690;
 extern u16 D_800695D0;
@@ -79,7 +78,6 @@ extern u16 D_8006B658[];
 extern u8 D_8006B558[];
 extern Entrada D_8006B378[];
 extern u32 D_8006D064;
-extern u16 D_8006D9A8[5];
 
 /*
  * Registro de 16 bits partido en bytes (indice 7 del banco A). Se declara sin prototipo: el
@@ -1014,10 +1012,10 @@ void func_80031BAC(Objeto* a0, Accion* a1)
 {
     u8 v;
     if (a0 != D_80069698 || a0->i158 != 0x25 || (D_800694F2 & 1)) {
-        D_8006965A.v = a1->b4;
+        D_8006965A = a1->b4;
         v = ((u8*)a1)[6];
         D_8006965E = 0;
-        D_8006965B.v = v;
+        D_8006965B = v;
     }
 }
 
@@ -1078,8 +1076,8 @@ void func_80031D30(void) {}
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031D38(Objeto* a0, Accion* a1)
 {
-    D_8006965B.v = 0;
-    D_8006965A.v = a1->b4;
+    D_8006965B = 0;
+    D_8006965A = a1->b4;
     D_8006965E = ((u8*)a1)[6];
 }
 
@@ -1093,12 +1091,12 @@ void func_80031D60(Objeto* a0, Accion* a1)
     v[2] = a0->zEC - D_8006D928.z;
     d = func_80044940(v);
     if (d < 0x800) {
-        D_8006965A.v = a1->b4;
+        ((Byte*)&D_8006965A)->v = a1->b4;
         d = (a1->w6 * d) / 2048;
         if (d <= 0) {
-            D_8006965B.v = 0;
+            ((Byte*)&D_8006965B)->v = 0;
         } else {
-            D_8006965B.v = d;
+            ((Byte*)&D_8006965B)->v = d;
         }
     }
 }

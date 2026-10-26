@@ -20,14 +20,11 @@
  * Estado de presentacion de cuadros (zona 0x80069xxx). Las dos cuentas son volatile porque
  * el retorno de llamada de VSync las modifica mientras el bucle principal las lee.
  */
-extern vu16 D_80069676;
 extern vu16 D_800695A6;
 extern s16 D_800695BC;
 extern u32 D_80069610;
 extern u32 D_80069614;
-extern u32 D_80069510;
 extern u8 D_80069620;
-extern u32 D_8006AD40[];
 
 /* Tres listas de ordenacion por buffer: cada entrada mide 0x14 bytes y su puntero esta en +0x10. */
 typedef struct EntradaOrden {
