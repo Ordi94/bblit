@@ -182,7 +182,7 @@ void func_8003ABB4(void)
     }
 }
 
-void func_8003ACA8(ObjetoCamara* objeto, void* sin_uso, MATRIX* m)
+void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
 {
     VECTOR v;
 
@@ -190,7 +190,7 @@ void func_8003ACA8(ObjetoCamara* objeto, void* sin_uso, MATRIX* m)
     v.vy = 0;
     v.vz = 0x3E8;
     D_8006D928.flags80 |= 0x100;
-    GsGetLw(objeto->coord, m);
+    GsGetLw(objeto->geometria, m);
     D_8006D928.vpx = m->t[0];
     D_8006D928.vpy = m->t[1];
     D_8006D928.vpz = m->t[2];
@@ -569,7 +569,7 @@ void func_8003B5AC(Objeto* lista)
                             if (esc->objeto->flags0C & 0x100) {
                                 D_8006D928.flags80 = D_8006D928.flags80 | 0x200;
                             }
-                            func_8003ACA8((ObjetoCamara*)modelo, (void*)esc, (MATRIX*)vista);
+                            func_8003ACA8(modelo, (void*)esc, (MATRIX*)vista);
                             if (esc->objeto->flags0C & 0x10000000) {
                                 px = D_8006D928.vpx;
                                 py = D_8006D928.vpy;

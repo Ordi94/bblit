@@ -39,7 +39,7 @@ typedef struct ModeloDibujo {
     u16 banderas;
     u8 pad0A[2];
     u32 modo;
-    void* geometria;
+    GsCOORDINATE2* geometria;   /* sistema de coordenadas del modelo: func_8003ACA8 calcula su matriz mundial con GsGetLw */
     DatosVertices* vertices;
     u8 pad18[0xB4 - 0x18];
     s8 visible;
@@ -77,15 +77,6 @@ typedef struct LimitesPantalla {
     s16 x;
     s16 y;
 } LimitesPantalla;
-
-/*
- * Objeto que func_8003ACA8 usa como camara: el puntero de +0x10 es el sistema de coordenadas
- * (GsCOORDINATE2) cuya matriz mundial se calcula con GsGetLw.
- */
-typedef struct ObjetoCamara {
-    u8 pad00[0x10];
-    GsCOORDINATE2* coord;
-} ObjetoCamara;
 
 /* Vertice fuente de 12 bytes: posicion en espacio objeto, coordenadas de textura, color y codigo. */
 typedef struct Vertice12 {
