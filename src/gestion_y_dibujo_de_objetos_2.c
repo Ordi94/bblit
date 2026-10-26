@@ -128,10 +128,10 @@ void func_80037048(Objeto* lista)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 929 con la configuracion versionada (g = 8 del archivo). El cuerpo
- * coincide instruccion por instruccion salvo el reparto de registros: GCC iza la constante 1 de
- * la marca de visibilidad a $s5 fuera de los bucles y el original la carga junto al almacen.
- * Variantes probadas: 9.
+ * Pendiente: puntuacion 105 con la configuracion versionada (g = 8 del archivo). El cuerpo coincide salvo una copia al final del
+ * bucle externo: el original guarda el objeto actual en $v1 (move v1,v0) antes de leer su enlace y GCC reutiliza $v0 sin copia.
+ * El recorrido de ayudantes usa una etiqueta y no un for: el optimizador de bucles iza la constante 1 de la marca de
+ * visibilidad a $s5 cuando el recorrido es un bucle interior de 29 instrucciones, y el original la carga junto al almacen.
  */
 /*
  * Dibuja la lista de escena 'lista': para cada objeto activo con la bandera de dibujo (bit 3 de
@@ -149,12 +149,12 @@ void func_80037184(Objeto* lista)
     Objeto* ref;
     Objeto* o;
 
+    aux = (void*)0x1F800038;
     sp = ESCRITORIO;
     D_80069534 += 10;
     sp->actual = lista;
     if (lista != 0) {
         m = (MATRIX*)0x1F800008;
-        aux = (void*)0x1F800038;
         do {
             if (!(sp->actual->flags04 & 2) || !(sp->actual->flags18 & 8)) {
                 sp->actual = sp->actual->sig10;
@@ -185,11 +185,10 @@ void func_80037184(Objeto* lista)
                 }
                 TransMatrix(&sp->actual->coord.coord, &sp->actual->coord.param->trans);
                 sp->actual->coord.flg = 0;
-                for (a = sp->actual->u78.ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
-                    if (a->flags8 & 8) {
-                        continue;
-                    }
-                    if (a->flags8 & 6) {
+                a = sp->actual->u78.ayudas;
+                if (a != 0) {
+                sig_ayuda:
+                    if (!(a->flags8 & 8) && (a->flags8 & 6)) {
                         e = (AyudaCuerpo*)((u8*)a + 0xC);
                         if (a->flags8 & 0x8000) {
                             e->visible = 0;
@@ -199,6 +198,10 @@ void func_80037184(Objeto* lista)
                         } else {
                             e->visible = 0;
                         }
+                    }
+                    a = (Ayuda*)a->cab.siguiente;
+                    if (a != 0) {
+                        goto sig_ayuda;
                     }
                 }
                 sp->actual->param.trans = sp->pos;
