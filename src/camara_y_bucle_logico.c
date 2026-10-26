@@ -158,7 +158,7 @@ s16 D_80069416;
 s16 D_80069424;
 
 extern ZonaColision* func_8001BF9C(s32* a0, s16 a1);
-/* Par de desplazamientos de una sonda de apuntado (x y z con signo, en unidades de la mitad): la tabla D_8005E728 trae ocho. */
+/* Desplazamiento de una sonda de apuntado en x y z (16 bits con signo; se aplica la mitad): la tabla D_8005E728 trae ocho pares. */
 typedef struct ParSonda {
     u16 x;
     u16 z;
