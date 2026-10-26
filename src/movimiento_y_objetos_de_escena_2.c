@@ -340,7 +340,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D0FC);
  * bandera 4 de la camara, anulando la bandera de seguimiento y encendiendo la de reinicio.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1764 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y mismo orden de almacenes; el original no conserva el puntero a la camara en un registro salvado y recalcula D_8006D928 en los dos caminos, el C lo mantiene en s0. Variantes probadas: 4. */
+/* Pendiente: puntuacion 1624 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y mismo orden de almacenes; el original no conserva el puntero a la camara en un registro salvado (recalcula D_8006D928 en los dos caminos y no reserva s0) y copia el primer argumento a a3 antes de cargar D_80069698, el C mantiene la camara en s0 y reparte v1 y a0 de otro modo en el prologo. Variantes probadas: 4. */
 void func_8001D31C(s32 x, s32 y, s32 z)
 {
     VECTOR destino;
