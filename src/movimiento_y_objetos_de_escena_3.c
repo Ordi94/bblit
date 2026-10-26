@@ -214,7 +214,7 @@ u32 func_8001E720(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
     s32 k;
     s32 t;
     s32 m;
-    s32 reserva[4];
+    s32 reserva[4];        /* sin uso: reserva los 16 bytes que el original deja antes del giro y desplaza el marco a 0x78 */
     SVECTOR giro;
     VECTOR pos;
     AcumuladorNodos acc;
