@@ -41,7 +41,6 @@ u8 D_800694A8;
 s32 D_800694AC;
 
 extern EntradaSector D_8005EE78[];
-extern u8 D_80069540;
 extern u8 D_8006933C[];
 extern u8 D_8006A928[];
 
@@ -355,7 +354,6 @@ extern u16 D_800695B4;
 extern void* D_80069648;
 extern u8 D_80010050;
 extern u8 D_8001004F;
-extern u8 D_800694D0;
 extern u32 D_80067E98[];
 extern u32 D_8006959C;
 extern s32 D_80069678;
