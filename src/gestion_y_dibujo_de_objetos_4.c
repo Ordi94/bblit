@@ -23,23 +23,6 @@ typedef struct SalidaSonda {
 extern void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w);
 
 /*
- * Descriptor de la sombra que func_8003A5C8 arma en el scratchpad (0x1F800000) y consumen el
- * dibujador de modelos y las rutinas de matriz: escala en +0, +4 y +8, giros en +0x10..+0x14
- * y altura de referencia (techo de la busqueda y, al volver, altura del apoyo) en +0x1C.
- */
-typedef struct DescSombra {
-    s32 escala_x;
-    s32 escala_y;
-    s32 escala_z;
-    u8 pad0C[4];
-    s16 giro_x;
-    s16 giro_y;
-    s16 giro_z;
-    u8 pad16[6];
-    s32 altura;
-} DescSombra;
-
-/*
  * Area de trabajo de func_80039D44 (0xB4 bytes). Entre +8 y +0x77 la misma memoria tiene dos
  * disposiciones segun la fase: 's' cuando el objeto cae dentro de un solido (matriz inversa del
  * solido, vectores de 16 bits y producto escalar) y 't' cuando se muestrea el terreno (centro,
@@ -122,13 +105,13 @@ void func_80039CD0(s32 limite)
 /*
  * Busca la superficie sobre la que se apoya 'o' para orientar y escalar su sombra. Primero
  * recorre los objetos solidos (D_80069630) y devuelve el primero cuyo plano superior queda entre
- * la altura del objeto y d->altura, casa con 'mascara' (o tiene la bandera 0x2000) y contiene al
+ * la altura del objeto y d->trans.vy, casa con 'mascara' (o tiene la bandera 0x2000) y contiene al
  * objeto en su caja local: rellena 'd' con la escala por distancia al plano, el giro del solido
  * y la altura del plano. Si ninguno sirve, muestrea el terreno en tres esquinas de la base del
  * objeto, descarta las alturas a mas de 0x23 de la de referencia, y deduce los giros X y Z de la
  * sombra con el producto vectorial de los dos lados del triangulo. Devuelve el solido o 0.
  */
-Objeto* func_80039D44(Objeto* o, DescSombra* d, u32 mascara, SondaSombra* w)
+Objeto* func_80039D44(Objeto* o, ParametrosObjeto* d, u32 mascara, SondaSombra* w)
 {
     Objeto* cur;
     TrabajoBaldosa* tb;
@@ -147,7 +130,7 @@ Objeto* func_80039D44(Objeto* o, DescSombra* d, u32 mascara, SondaSombra* w)
         } else {
             top += 0x50;
         }
-        if (top >= o->param.trans.vy && d->altura >= top &&
+        if (top >= o->param.trans.vy && d->trans.vy >= top &&
             ((cur->flags08 & mascara) || (cur->flags0C & 0x2000)) && !(cur->flags08 & 1) &&
             cur->s2A == 2 && o != cur) {
             w->u.s.giro.vx = 0x1000 - cur->param.giro.u.x;
@@ -178,16 +161,16 @@ Objeto* func_80039D44(Objeto* o, DescSombra* d, u32 mascara, SondaSombra* w)
                 y = cur->param.trans.vy +
                     (w->u.s.dot - w->u.s.n.vx * w->u.s.dif.vx - w->u.s.n.vz * w->u.s.dif.vz) /
                         (s16)(w->u.s.e.vy | 1);
-                d->altura = y;
+                d->trans.vy = y;
                 w->escala = (o->param.trans.vy - y) * 4 + 0x1000;
                 if (w->escala < 0x800) {
                     w->escala = 0x800;
                 }
-                d->escala_x = w->escala;
-                d->escala_y = 0x1000;
-                d->escala_z = w->escala;
+                d->escala.vx = w->escala;
+                d->escala.vy = 0x1000;
+                d->escala.vz = w->escala;
                 GEO_CARGAR_WH(&cur->param.giro);
-                GEO_GUARDAR_WH(&d->giro_x);
+                GEO_GUARDAR_WH(&d->giro);
                 return cur;
             }
         }
@@ -200,11 +183,11 @@ Objeto* func_80039D44(Objeto* o, DescSombra* d, u32 mascara, SondaSombra* w)
     w->u.t.p1.vz = w->u.t.c.vz + o->min.vz;
     func_8001C134((s32*)&w->u.t.p1, &w->r, tb);
     if (w->r.flags & 4) {
-        w->u.t.p1.vy = d->altura;
+        w->u.t.p1.vy = d->trans.vy;
     } else {
         w->u.t.p1.vy += (s16)w->r.pendiente_abs;
-        if (w->u.t.p1.vy >= d->altura + 0x23 || d->altura - 0x23 >= w->u.t.p1.vy) {
-            w->u.t.p1.vy = d->altura;
+        if (w->u.t.p1.vy >= d->trans.vy + 0x23 || d->trans.vy - 0x23 >= w->u.t.p1.vy) {
+            w->u.t.p1.vy = d->trans.vy;
         }
     }
     w->u.t.p2.vx = w->u.t.c.vx + o->max.vx;
@@ -212,11 +195,11 @@ Objeto* func_80039D44(Objeto* o, DescSombra* d, u32 mascara, SondaSombra* w)
     w->u.t.p2.vz = w->u.t.p1.vz;
     func_8001C134((s32*)&w->u.t.p2, &w->r, tb);
     if (w->r.flags & 4) {
-        w->u.t.p2.vy = d->altura;
+        w->u.t.p2.vy = d->trans.vy;
     } else {
         w->u.t.p2.vy += (s16)w->r.pendiente_abs;
-        if (w->u.t.p2.vy >= d->altura + 0x23 || d->altura - 0x23 >= w->u.t.p2.vy) {
-            w->u.t.p2.vy = d->altura;
+        if (w->u.t.p2.vy >= d->trans.vy + 0x23 || d->trans.vy - 0x23 >= w->u.t.p2.vy) {
+            w->u.t.p2.vy = d->trans.vy;
         }
     }
     w->u.t.p3.vx = w->u.t.p1.vx;
@@ -224,35 +207,35 @@ Objeto* func_80039D44(Objeto* o, DescSombra* d, u32 mascara, SondaSombra* w)
     w->u.t.p3.vz = w->u.t.c.vz + o->max.vz;
     func_8001C134((s32*)&w->u.t.p3, &w->r, tb);
     if (w->r.flags & 4) {
-        w->u.t.p3.vy = d->altura;
+        w->u.t.p3.vy = d->trans.vy;
     } else {
         w->u.t.p3.vy += (s16)w->r.pendiente_abs;
-        if (w->u.t.p3.vy >= d->altura + 0x23 || d->altura - 0x23 >= w->u.t.p3.vy) {
-            w->u.t.p3.vy = d->altura;
+        if (w->u.t.p3.vy >= d->trans.vy + 0x23 || d->trans.vy - 0x23 >= w->u.t.p3.vy) {
+            w->u.t.p3.vy = d->trans.vy;
         }
     }
-    if (d->altura < o->param.trans.vy) {
+    if (d->trans.vy < o->param.trans.vy) {
         w->escala = 0x1000;
     } else {
-        w->escala = (o->param.trans.vy - d->altura) * 4 + 0x1000;
+        w->escala = (o->param.trans.vy - d->trans.vy) * 4 + 0x1000;
         if (w->escala < 0x800) {
             w->escala = 0x800;
         }
     }
-    d->escala_x = w->escala;
-    d->escala_y = 0x1000;
-    d->escala_z = w->escala;
+    d->escala.vx = w->escala;
+    d->escala.vy = 0x1000;
+    d->escala.vz = w->escala;
     if (w->u.t.p1.vy == w->u.t.p2.vy && w->u.t.p1.vy == w->u.t.p3.vy) {
-        d->giro_z = 0;
-        d->giro_x = 0;
-        d->giro_y = o->param.giro.u.y;
+        d->giro.rotate.vz = 0;
+        d->giro.rotate.vx = 0;
+        d->giro.rotate.vy = o->param.giro.u.y;
     } else {
         func_80039BFC((s32*)&w->u.t.p1, (s32*)&w->u.t.p2, (s32*)&w->u.t.v1);
         func_80039BFC((s32*)&w->u.t.p1, (s32*)&w->u.t.p3, (s32*)&w->u.t.v2);
         func_80039C3C((s32*)&w->u.t.v1, (s32*)&w->u.t.v2, (s32*)&w->u.t.nrm);
-        d->giro_x = ratan2(w->u.t.nrm.vz, w->u.t.nrm.vy);
-        d->giro_y = 0;
-        d->giro_z = ratan2(w->u.t.nrm.vx, w->u.t.nrm.vy);
+        d->giro.rotate.vx = ratan2(w->u.t.nrm.vz, w->u.t.nrm.vy);
+        d->giro.rotate.vy = 0;
+        d->giro.rotate.vz = ratan2(w->u.t.nrm.vx, w->u.t.nrm.vy);
     }
     return 0;
 }
