@@ -79,6 +79,97 @@ typedef struct TrabajoBaldosa {
 } TrabajoBaldosa;
 
 /*
+ * Area de trabajo de func_80019474 (0x1C8 bytes en el scratchpad): el barrido avanza el punto por
+ * el plano baldosa a baldosa (320 unidades) y subcelda a subcelda (40 unidades). Todos los
+ * valores intermedios viven en esta estructura y no en registros: el original los relee de
+ * memoria en cada paso.
+ *
+ *  x, y, z           copia del punto de partida
+ *  dx, dz            desplazamiento pedido (se recorta al recorrido posible)
+ *  lim_x, lim_z      proximo limite de subcelda dentro de la baldosa
+ *  sz_*, sx_*        puntos de cruce con el limite en z y en x dentro de la baldosa
+ *  dsz_*, dsx_*      resto de la baldosa menos cada punto de cruce (para la distancia)
+ *  rx, rz            resto del punto de la baldosa (x % 320, z % 320)
+ *  bx, by, bz        baldosa actual; ax, ay, az: punto de llegada acumulado
+ *  ebz_*, ebx_*      punto de partida menos cada cruce de baldosa
+ *  cbz_*, cbx_*      cruces con la proxima linea de baldosa en z y en x
+ *  lin_x, lin_z      proxima linea de baldosa; paso_*: avance de baldosa; celda_*: de subcelda
+ *  acc_*, ant_*      desplazamiento acumulado y el anterior (16 bits)
+ *  pend_x, pend_z    pendientes (dz << 12) / dx y (dx << 12) / dz
+ *  copia[2]          las dos ultimas zonas visitadas (solo se copian los 0x1C primeros bytes)
+ *  zonas, celdas     historial de zonas y de celdas de subcelda; n es el indice de escritura
+ */
+typedef struct TrabajoRecorrido {
+    s32 x;
+    s32 y;
+    s32 z;
+    s32 pad0C;
+    s32 dx;
+    s32 dz;
+    s32 lim_x;
+    s32 lim_z;
+    s32 sz_x;
+    s32 sz_y;
+    s32 sz_z;
+    s32 pad2C;
+    s32 sx_x;
+    s32 sx_y;
+    s32 sx_z;
+    s32 pad3C;
+    s32 dsz_x;
+    s32 dsz_z;
+    s32 dsx_x;
+    s32 dsx_z;
+    s32 rx;
+    s32 aux;
+    s32 rz;
+    s32 pad5C;
+    s32 bx;
+    s32 by;
+    s32 bz;
+    s32 pad6C;
+    s32 ax;
+    s32 ay;
+    s32 az;
+    s32 pad7C;
+    s32 ebz_x;
+    s32 ebz_z;
+    s32 ebx_x;
+    s32 ebx_z;
+    s32 cbz_x;
+    s32 cbz_z;
+    s32 cbx_x;
+    s32 cbx_z;
+    s32 lin_x;
+    s32 lin_z;
+    s16 acc_x;
+    s16 acc_z;
+    s16 ant_x;
+    s16 ant_z;
+    s32 d_sz;
+    s32 d_sx;
+    s32 d_bz;
+    s32 d_bx;
+    s16 paso_x;
+    s16 paso_z;
+    s16 celda_x;
+    s16 celda_z;
+    s32 pend_x;
+    s32 pend_z;
+    ZonaColision copia[2];
+    ZonaColision* zonas[16];
+    s16 celdas[16];
+    s16 n;
+    s16 cual;
+    s16 prev;
+    u16 baldosa;
+    s16 t0;
+    s16 t1;
+    s16 t2;
+    s16 t3;
+} TrabajoRecorrido;
+
+/*
  * Este archivo contiene solo macros que reproducen las instrucciones del original, y la lista de
  * registros destruidos de cada una contiene unicamente los registros que su ensamblador escribe
  * (mas "memory" cuando almacena).
@@ -272,5 +363,6 @@ typedef struct ConsultaCaja {
     VECTOR pos;
 } ConsultaCaja;
 extern void func_80019364(s32* zonas);
+extern ZonaColision* func_8001BF9C(s32* punto, s16 grupo);
 
 #endif
