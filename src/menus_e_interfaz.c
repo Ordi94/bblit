@@ -1,6 +1,7 @@
 #include "common.h"
 #include "globales.h"
 #include "gte.h"
+#include "geometria.h"
 
 /*
  * Estado del fundido de pantalla (todas las variables son datos pequenos que el original
@@ -143,6 +144,30 @@ typedef struct LimitesPantalla {
     s16 y;
 } LimitesPantalla;
 
+/*
+ * Objeto que func_8003ACA8 usa como camara: el puntero de +0x10 es el sistema de coordenadas
+ * (GsCOORDINATE2) cuya matriz mundial se calcula con GsGetLw.
+ */
+typedef struct ObjetoCamara {
+    u8 pad00[0x10];
+    GsCOORDINATE2* coord;
+} ObjetoCamara;
+
+/*
+ * Vector de tres palabras en t4..t6 guardado en memoria: el mismo estilo de macro de vector que
+ * geometria.h (los temporales fijos $8 y $12..$14 y la direccion copiada a $8).
+ */
+#define GEO_GUARDAR_W_T4(p)     __asm__ volatile ("move $8, %0
+	sw $12, 0($8)
+	sw $13, 4($8)
+	sw $14, 8($8)"                       : : "r"(p) : "$8", "memory")
+
+/* D_8006D934 es la mitad alta de la camara (D_8006D928 + 0xC): el original la direcciona con su propio lui. */
+extern s32 D_8006D934[3];
+extern s16 D_80069402;
+extern s16 D_80069416;
+extern s32 D_800693F0;
+
 extern ModeloDibujo* D_8006B568[];
 extern u16 D_8006969C;
 extern u16 D_800694B0;
@@ -284,7 +309,29 @@ void func_8003ABB4(void)
     }
 }
 
-INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003ACA8);
+void func_8003ACA8(ObjetoCamara* objeto, void* sin_uso, MATRIX* m)
+{
+    VECTOR v;
+
+    v.vx = 0;
+    v.vy = 0;
+    v.vz = 0x3E8;
+    D_8006D928.flags80 |= 0x100;
+    GsGetLw(objeto->coord, m);
+    D_8006D928.vpx = m->t[0];
+    D_8006D928.vpy = m->t[1];
+    D_8006D928.vpz = m->t[2];
+    ApplyMatrixLV(m, &v, &v);
+    D_8006D928.x = D_8006D928.vpx + v.vx;
+    D_8006D928.y = D_8006D928.vpy + v.vy;
+    D_8006D928.z = D_8006D928.vpz + v.vz;
+    GEO_CARGAR_W(&D_8006D928);
+    GEO_RESTAR_W(D_8006D934);
+    GEO_GUARDAR_W_T4(&v);
+    D_80069402 = ratan2(v.vx, v.vz);
+    D_800693F0 = SquareRoot0(v.vx * v.vx + v.vz * v.vz) + 1;
+    D_80069416 = D_80069402;
+}
 
 /* Pendiente: puntuacion 1245 con la configuracion versionada (g = 8 del archivo). El cursor de primitivas se carga antes que en el original y los registros t0/t1/a1/v1 se reparten distinto; la estructura de las dos primitivas de 6 palabras coincide. Variantes probadas: 14 (orden de las 6 escrituras, 720 permutaciones del primer bloque, macro sobre D_80076188, estructura de paquete). */
 #ifdef NON_MATCHING
