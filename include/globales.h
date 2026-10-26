@@ -222,7 +222,8 @@ typedef struct Objeto {
     u16 w192;               /* func_80031B78: solo sh $zero, 0x192($a0) en 0x80031B8C; sin lectura que fije el signo */
     u8 pad194[2];
     u16 w196;               /* func_80031B78: solo sh 0x196($a0) en 0x80031B94; sin lectura que fije el signo */
-    u8 pad198[0x1A8 - 0x198];
+    u8 pad198[0x1A4 - 0x198];
+    s32 i1A4;               /* velocidad vertical del jugador: lw en func_80026298 (0x8002656C) */
     s32 i1A8;               /* func_80020A90: lw 0x1A8($a0) en 0x80020AC0 y 0x80020AF8 */
     u8 pad1AC[0x1B4 - 0x1AC];
     u32 w1B4;               /* func_800353B0: lw, segundo argumento de func_80033358 */

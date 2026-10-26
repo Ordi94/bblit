@@ -20,7 +20,8 @@ typedef struct NodoDisparador {
     struct NodoDisparador* sig;     /* func_8002D03C: lw 0x8002D568 */
     u16 id;                         /* func_8002D03C: lhu 0x8002D27C, grupo del fotograma */
     u16 desplazamiento;             /* func_8002D03C: lhu 0x8002D28C, posicion en la lista de secuencias */
-    u8 pad08[8];
+    u32 req14;                      /* func_80026298: lw 0x80026DF4, mascara que flags14 del objeto debe cumplir (0 = sin requisito) */
+    u32 req18;                      /* func_80026298: lw 0x80026E18, mascara que flags18 del objeto debe cumplir (0 = sin requisito) */
     u8 cond;                        /* func_8002D03C: lbu 0x8002D368, registro de condicion */
     u8 pad11[2];
     u8 accion;                      /* func_8002D03C: lbu 0x8002D38C, registro de accion */
@@ -52,6 +53,34 @@ typedef struct TrabajoDisparo {
 } TrabajoDisparo;
 
 #define TRABAJO_DISPARO ((TrabajoDisparo*)0x1F800000)
+
+/*
+ * Memoria de trabajo del objeto movil por mascara (scratchpad 0x1F800000): acumulador de la cadena
+ * de matrices en +0 (tres palabras), vector en +0x10 (tres medias palabras que el original guarda
+ * con sh y relee con lhu), cursor de la cadena en +0x18 y area de las rutinas de animacion y de
+ * solape en +0x1C.
+ */
+typedef struct TrabajoMovil {
+    s32 ax;
+    s32 ay;
+    s32 az;
+    u8 pad0C[4];
+    SVECTOR v;
+    GsCOORDINATE2* cursor;
+} TrabajoMovil;
+
+#define TRABAJO_MOVIL ((TrabajoMovil*)0x1F800000)
+
+/*
+ * Doble uso de +0x184..+0x198 del objeto: los actores animados lo leen como registro de fotograma
+ * y estado de giro (Objeto.registro184, w192, w196) y los objetos moviles por mascara como limites
+ * y origen del recorrido (tres palabras con signo). El campo declarado conserva el ancho del
+ * primer uso y el segundo se accede con estos cast, cada uno con la instruccion que lo fija.
+ */
+#define MOVIL_LIMITE_BAJO(o) (*(s32*)&(o)->registro184)
+#define MOVIL_ORIGEN_X(o) (*(s32*)((u8*)(o) + 0x190))
+#define MOVIL_LIMITE_ALTO(o) (*(s32*)((u8*)(o) + 0x194))
+#define MOVIL_ORIGEN_Z(o) (*(s32*)((u8*)(o) + 0x198))
 
 /*
  * Memoria de trabajo de la zona de eventos (scratchpad 0x1F800000): cursor del nodo en +0, nodo
@@ -144,6 +173,74 @@ typedef struct TrabajoSonda {
 #define TRABAJO_SONDA ((TrabajoSonda*)0x1F800000)
 
 /*
+ * Memoria de trabajo del proyectil (scratchpad 0x1F800000): resultado de la consulta de terreno en +2
+ * (el bit 4 indica pared), zona del objeto en +0xA, vector de avance en +0x18 (salida del GTE),
+ * posicion de prueba en +0x28, desplazamiento permitido en +0x38, velocidad local en +0x58,
+ * objeto alcanzado en +0x90 y area de las consultas en +0x98.
+ */
+typedef struct TrabajoProyectil {
+    u8 pad00[2];
+    u16 bits;
+    u8 pad04[6];
+    u16 zona;
+    u8 pad0C[0x18 - 0x0C];
+    s32 mx;
+    s32 my;
+    s32 mz;
+    u8 pad24[4];
+    s32 px;
+    s32 py;
+    s32 pz;
+    u8 pad34[4];
+    s32 dx;
+    s32 dy;
+    s32 dz;
+    u8 pad44[0x58 - 0x44];
+    s16 vx;
+    s16 vy;
+    s16 vz;
+    u8 pad5E[0x90 - 0x5E];
+    Objeto* golpeado;
+    u8 pad94[4];
+    u8 area[0x20];
+} TrabajoProyectil;
+
+#define TRABAJO_PROYECTIL ((TrabajoProyectil*)0x1F800000)
+
+/*
+ * Memoria de trabajo del efecto anclado (scratchpad 0x1F800000): fotograma en +0, nodo de la
+ * secuencia en +0xC, paso en +0x14, identificador buscado en +0x18, objeto alcanzado en +0x1C,
+ * vector local en +0x20, posicion acumulada en +0x28, copia de 16 bits en +0x38, cursor de la
+ * cadena de nodos en +0x40 y area de consultas en +0x44.
+ */
+typedef struct TrabajoEfecto {
+    RegistroAnim* fotograma;
+    u8 pad04[8];
+    NodoSecuencia* secuencia;
+    u8 pad10[4];
+    u16 paso;
+    u8 pad16[2];
+    s32 id;
+    Objeto* otro;
+    s16 vx;
+    s16 vy;
+    s16 vz;
+    u8 pad26[2];
+    s32 px;
+    s32 py;
+    s32 pz;
+    u8 pad34[4];
+    s16 ax;
+    s16 ay;
+    s16 az;
+    u8 pad3E[2];
+    GsCOORDINATE2* cursor;
+    u8 area[0x20];
+} TrabajoEfecto;
+
+#define TRABAJO_EFECTO ((TrabajoEfecto*)0x1F800000)
+
+/*
  * Macros de CPU de la zona de eventos: reproducen las secuencias del original con los
  * temporales fijos $8 (t0) y $9..$12 (t1..t4); la lista de registros destruidos es exactamente
  * la que cada cuerpo escribe.
@@ -186,10 +283,14 @@ extern void func_8001E528(Objeto* o, BloqueTrabajo* b, u32 modo, void* area);
 extern void func_8001E600(Objeto* o, BloqueTrabajo* b, u32 modo, void* area);
 extern u32 func_80045C4C(u32 a0, void* a1, Objeto* a2);
 extern u32 func_80045498(Objeto* objeto, void* guion, BloqueTrabajo* bloque);
-extern void func_8001F268(Objeto* o, BloqueTrabajo* b, u32 anim, u32 params, void* area);
+extern s32 func_8001F268(Objeto* o, BloqueTrabajo* b, u32 anim, u32 params, void* area);
 extern Objeto* func_80036734(s16 id, s32* pos, u16* ang);
 extern void func_8001CD84(Objeto* o, u32 id, void* area);
 extern void func_8001D31C(s32 x, s32 y, s32 z);
+extern s16 func_80018F80(Objeto* a, Objeto* b, void* area);
+extern s32 func_8001D75C(Objeto* o, s32 modo, void* area);
+extern Objeto* func_800171E4(Objeto* a, void* pos, u32 mascara, u32 excluir, void* area);
+extern Objeto* func_80016ED0(Objeto* a, u32 mascara, void* area);
 extern void func_8001D0FC(Objeto* o, s32 id, void* area);
 extern s32 func_8001E720(Objeto* o, BloqueTrabajo* b, u32 anim, u32 params, void* area);
 
