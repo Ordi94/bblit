@@ -64,6 +64,7 @@ def test_comando_diff_corta_en_tantos_retornos_como_el_original() -> None:
         "--ref-file",
         "t.o",
         "--no-pager",
+        "--max-lines=1024",
         "--format=json",
         "-s",
         "-s",

@@ -35,11 +35,14 @@ from tools.reconstruccion.infraestructura import (
     listar_fuentes_c,
 )
 
-TIMEOUT_DIFF_S = 120
+TIMEOUT_DIFF_S = 300
+LIMITE_MINIMO_LINEAS = 1024
+MARGEN_LINEAS = 64
 CARPETA_ASM_COINCIDENTE = "asm/matchings"
 CARPETA_ASM_PENDIENTE = "asm/nonmatchings"
 _PATRON_FUNCION = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 _PATRON_RETORNO = re.compile(r"^\s*/\*.*?\*/\s+jr\s+\$ra\b", re.MULTILINE)
+_PATRON_INSTRUCCION = re.compile(r"^\s*/\*.*?\*/\s+[A-Za-z.]", re.MULTILINE)
 
 
 @dataclass(frozen=True)
@@ -122,6 +125,52 @@ def contar_retornos(asm: str) -> int:
     return len(_PATRON_RETORNO.findall(asm))
 
 
+def contar_instrucciones(asm: str) -> int:
+    """
+    Cuenta las instrucciones de un ensamblador generado por el particionador.
+
+    Contexto:
+        ``asm-differ`` descarta lo que pasa de ``--max-lines`` instrucciones y puntua solo lo que
+        queda; ``diff`` usa este numero para que el limite cubra la funcion entera.
+
+    Args:
+        asm (str): Contenido del ``.s`` de la funcion objetivo.
+
+    Returns:
+        int: Numero de instrucciones, incluidas las de los huecos de salto (0 si no hay ninguna).
+
+    Ejemplo:
+        total = contar_instrucciones(texto)
+    """
+    return len(_PATRON_INSTRUCCION.findall(asm))
+
+
+def limite_lineas(instrucciones: int) -> int:
+    """
+    Calcula el ``--max-lines`` de ``asm-differ`` para una funcion de ``instrucciones`` instrucciones.
+
+    Contexto:
+        El candidato puede ser algo mas largo que el original; el margen evita que el corte caiga
+        justo en su ultima instruccion. Nunca baja del limite por omision de la herramienta, para
+        que las funciones pequenas se comporten como antes.
+
+    Args:
+        instrucciones (int): Instrucciones del original (no negativo).
+
+    Returns:
+        int: Instrucciones mas el margen, y como minimo ``LIMITE_MINIMO_LINEAS``.
+
+    Raises:
+        ValueError: Si ``instrucciones`` es negativo.
+
+    Ejemplo:
+        limite = limite_lineas(4971)
+    """
+    if instrucciones < 0:
+        raise ValueError("el numero de instrucciones no puede ser negativo")
+    return max(LIMITE_MINIMO_LINEAS, instrucciones + MARGEN_LINEAS)
+
+
 def envoltorio_objetivo(ruta_asm: str) -> str:
     """
     Genera el ensamblador que envuelve el ``.s`` de una funcion para producir un objeto.
@@ -171,7 +220,15 @@ def texto_diff_settings(objdump: Path) -> str:
 
 
 def comando_diff(
-    python: str, script: Path, candidato: str, objetivo: str, funcion: str, *, retornos: int, formato: str
+    python: str,
+    script: Path,
+    candidato: str,
+    objetivo: str,
+    funcion: str,
+    *,
+    retornos: int,
+    formato: str,
+    max_lineas: int = LIMITE_MINIMO_LINEAS,
 ) -> list[str]:
     """
     Devuelve los argumentos que ejecutan ``asm-differ`` sobre dos objetos.
@@ -188,18 +245,22 @@ def comando_diff(
         funcion (str): Funcion a comparar.
         retornos (int): Retornos tras los cuales se corta el desensamblado (al menos 1).
         formato (str): ``json`` o ``plain``.
+        max_lineas (int, opcional): Instrucciones que ``asm-differ`` compara como maximo; por
+            omision, el limite de la herramienta.
 
     Returns:
         list[str]: Lista de argumentos.
 
     Raises:
-        ValueError: Si el formato no es ``json`` ni ``plain``.
+        ValueError: Si el formato no es ``json`` ni ``plain``, o ``max_lineas`` no es positivo.
 
     Ejemplo:
         comando = comando_diff("python", Path("diff.py"), "c.o", "t.o", "func_X", retornos=1, formato="json")
     """
     if formato not in ("json", "plain"):
         raise ValueError("el formato debe ser 'json' o 'plain'")
+    if max_lineas < 1:
+        raise ValueError("el limite de lineas debe ser positivo")
     return [
         python,
         str(script),
@@ -209,6 +270,7 @@ def comando_diff(
         "--ref-file",
         objetivo,
         "--no-pager",
+        f"--max-lines={max_lineas}",
         f"--format={formato}",
         *(["-s"] * max(1, retornos)),
         funcion,
@@ -316,7 +378,7 @@ def comparar_funcion(
         raise FuncionSinCError(
             f"'{funcion}' sigue en INCLUDE_ASM: escriba su C (bajo NON_MATCHING si aun no coincide)"
         )
-    objetivo, retornos = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
+    objetivo, retornos, max_lineas = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
     candidato = f"{CARPETA_DIFF}/{Path(archivo).name}.o"
     compilar_fuente(
         raiz,
@@ -339,6 +401,7 @@ def comparar_funcion(
             objetivo=objetivo,
             funcion=funcion,
             retornos=retornos,
+            max_lineas=max_lineas,
             formato=formato,
         )
 
@@ -364,7 +427,7 @@ def comparar_funcion(
 
 def preparar_objetivo(
     raiz: Path, funcion: str, archivo: str, herramientas: HerramientasCompilacion, ejecutar: Ejecutor
-) -> tuple[str, int]:
+) -> tuple[str, int, int]:
     """
     Ensambla el asm original de una funcion como objetivo de comparacion.
 
@@ -380,17 +443,20 @@ def preparar_objetivo(
         ejecutar (Ejecutor): Ejecutor de procesos.
 
     Returns:
-        tuple[str, int]: Ruta relativa del objeto objetivo y numero de ``jr $ra`` del original.
+        tuple[str, int, int]: Ruta relativa del objeto objetivo, numero de ``jr $ra`` del original y
+        limite de lineas de ``asm-differ`` que cubre la funcion entera.
 
     Raises:
         FileNotFoundError: Si falta el asm original (hay que ejecutar ``split``).
         ProcesoError: Si el ensamblador falla.
 
     Ejemplo:
-        objetivo, retornos = preparar_objetivo(Path("."), "func_80036204", "src/a.c", herramientas, ejecutar)
+        objetivo, retornos, max_lineas = preparar_objetivo(Path("."), "func_80036204", "src/a.c", herramientas, ejecutar)
     """
     ruta_asm = elegir_asm_objetivo(archivo, funcion, lambda ruta: (raiz / ruta).is_file())
-    retornos = contar_retornos((raiz / ruta_asm).read_text(encoding="utf-8"))
+    asm = (raiz / ruta_asm).read_text(encoding="utf-8")
+    retornos = contar_retornos(asm)
+    max_lineas = limite_lineas(contar_instrucciones(asm))
     (raiz / CARPETA_DIFF).mkdir(parents=True, exist_ok=True)
     envoltorio = f"{CARPETA_DIFF}/{funcion}.objetivo.s"
     objetivo = f"{CARPETA_DIFF}/{funcion}.objetivo.o"
@@ -400,7 +466,7 @@ def preparar_objetivo(
         raiz,
         TIMEOUT_DIFF_S,
     )
-    return objetivo, retornos
+    return objetivo, retornos, max_lineas
 
 
 def puntuar_objeto(
@@ -413,6 +479,7 @@ def puntuar_objeto(
     objetivo: str,
     funcion: str,
     retornos: int,
+    max_lineas: int,
     formato: str,
 ) -> str:
     """
@@ -431,6 +498,7 @@ def puntuar_objeto(
         objetivo (str): Objeto objetivo (idem).
         funcion (str): Funcion a comparar.
         retornos (int): Retornos tras los cuales se corta el desensamblado.
+        max_lineas (int): Instrucciones que ``asm-differ`` compara como maximo (ver ``limite_lineas``).
         formato (str): ``json`` o ``plain``.
 
     Returns:
@@ -442,7 +510,7 @@ def puntuar_objeto(
 
     Ejemplo:
         salida = puntuar_objeto(Path("."), herramientas, script, ejecutar, candidato=c, objetivo=t,
-            funcion="f", retornos=1, formato="json")
+            funcion="f", retornos=1, max_lineas=1024, formato="json")
     """
     carpeta = raiz / CARPETA_DIFF
     (carpeta / "diff_settings.py").write_text(
@@ -456,5 +524,6 @@ def puntuar_objeto(
         funcion,
         retornos=retornos,
         formato=formato,
+        max_lineas=max_lineas,
     )
     return ejecutar(comando, carpeta, TIMEOUT_DIFF_S)

@@ -591,6 +591,13 @@ Los objetos intermedios (`.i`, `.s` y `.o` de cada compilación) quedan en `buil
   volcaría todo lo que sigue a la función. `diff` lo corta tras tantos `jr $ra` como tiene el
   original (opción `-s` repetida), y genera `diff_settings.py` en `build/diff/` con la ruta de
   `objdump` resuelta en ese momento.
+- **`asm-differ` y el límite de líneas.** `asm-differ` solo compara las primeras 1024 instrucciones de
+  cada lado (`--max-lines`); lo que pasa de ahí no puntúa. `diff` y `probar` cuentan las instrucciones del
+  original de la función (huecos de salto incluidos) y pasan `--max-lines` igual a ese número más 64 de
+  margen, nunca menos de 1024. La puntuación cubre, por tanto, la función entera: en las funciones de más
+  de 1024 instrucciones sube respecto a la que daba el corte antiguo (más instrucciones comparadas), y la
+  cifra anotada en un comentario `Pendiente` con el límite viejo deja de coincidir. Las funciones de 1024
+  instrucciones o menos puntúan igual que antes.
 - **Diferencias típicas entre el C y el original.** Los nombres de registro y el orden de
   instrucciones dependen de cómo se escriba el C; probar variantes (`while` por `for`, una variable
   intermedia, el tipo de una variable local) antes de concluir que la función no coincide. Los

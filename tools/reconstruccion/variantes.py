@@ -231,7 +231,7 @@ def probar_variantes(
     archivo, _ = fuentes_c.ubicar_funcion(estados, funcion)
     valor_g = leer_valores_g(raiz).get(Path(archivo).stem, 0)
     direccion = leer_direcciones_de_funciones(raiz).get(funcion)
-    objetivo, retornos = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
+    objetivo, retornos, max_lineas = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
     resultados: list[ResultadoVariante] = []
     for variante in variantes:
         objeto = f"{CARPETA_DIFF}/probar.{variante.name}.o"
@@ -257,6 +257,7 @@ def probar_variantes(
                 objetivo=objetivo,
                 funcion=funcion,
                 retornos=retornos,
+                max_lineas=max_lineas,
                 formato="json",
             )
             puntuacion = puntuacion_desde_json(salida)
