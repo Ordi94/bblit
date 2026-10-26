@@ -157,7 +157,6 @@ u16 D_80069414;
 s16 D_80069416;
 s16 D_80069424;
 
-extern ZonaColision* func_8001BF9C(s32* a0, s16 a1);
 /* Desplazamiento de una sonda de apuntado en x y z (16 bits con signo; se aplica la mitad): la tabla D_8005E728 trae ocho pares. */
 typedef struct ParSonda {
     u16 x;
