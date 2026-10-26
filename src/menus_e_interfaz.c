@@ -47,22 +47,116 @@ typedef struct PedidoModelo {
     u16 grupo;
 } PedidoModelo;
 
-/* Modelo de la tabla D_8006B568: solo se leen +0x10 (geometria) y +0xB5 (byte de estado). */
+/*
+ * Modelo de la tabla D_8006B568 y elemento de las cadenas de dibujo de func_8003C014: enlace al
+ * siguiente en +0, banderas en +8 y +0xC, geometria en +0x10, un byte de visibilidad en +0xB4 y
+ * un byte de estado en +0xB5.
+ */
 typedef struct ModeloDibujo {
-    u8 pad00[0x10];
+    struct ModeloDibujo* siguiente;
+    u8 pad04[4];
+    u16 banderas;
+    u8 pad0A[2];
+    u32 modo;
     void* geometria;
-    u8 pad14[0xB5 - 0x14];
+    u8 pad14[0xB4 - 0x14];
+    s8 visible;
     u8 estado;
 } ModeloDibujo;
 
+/*
+ * Objeto de escena visto por las rutinas de dibujo (la misma memoria que Objeto): banderas en +4,
+ * +8 y +0xC, identificadores en +0x26..+0x3E, el nodo de jerarquia empotrado en +0x7C, un
+ * contador en +0xC4, la profundidad en +0xD4 y la posicion en +0xE4..+0xEC.
+ */
+typedef struct ObjetoEscena {
+    u8 pad00[0x04];
+    u32 flags04;
+    u32 flags08;
+    u32 flags0C;
+    u8 pad10[0x26 - 0x10];
+    u16 w26;
+    u16 w28;
+    u8 pad2A[2];
+    u16 w2C;
+    u8 pad2E[0x3C - 0x2E];
+    u16 w3C;
+    u16 w3E;
+    u8 pad40[0x7C - 0x40];
+    u8 nodo[4];
+    u8 pad80[0xC4 - 0x80];
+    s32 iC4;
+    u8 padC8[0xD4 - 0xC8];
+    s32 iD4;
+    u8 padD8[0xE4 - 0xD8];
+    s32 xE4;
+    s32 yE8;
+    s32 zEC;
+} ObjetoEscena;
+
+/* Pila de func_8003AF8C para func_8001CE64: puntero al nodo, vector de entrada y acumulador (E-07). */
+typedef struct PilaNodo {
+    void* nodo;
+    SVECTOR v;
+    VECTOR acc;
+} PilaNodo;
+
+/* Resultado de func_8001DF28: color base del sprite proyectado y desplazamiento de su textura. */
+typedef struct ColorYDesplazamiento {
+    u32 color;
+    s32 desplazamiento;
+} ColorYDesplazamiento;
+
+/*
+ * Sprite de cuatro vertices que func_8003AF8C emite como POLY_FT4: +8 banderas (bit 4 = fijo),
+ * +0xC..+0x28 las ocho palabras de vertices y coordenadas de textura, +0x2C = semitransparente.
+ */
+typedef struct SpriteDibujo {
+    u8 pad00[0x08];
+    u16 banderas;
+    u8 pad0A[2];
+    u32 palabras[8];
+    u32 semitransparente;
+} SpriteDibujo;
+
+/* Vista que reciben las rutinas de dibujo: +4 desplazamiento, +0xC y +0xE limites de profundidad. */
+typedef struct VistaDibujo {
+    u8 pad00[0x04];
+    s16 s4;
+    u8 pad06[0x0C - 0x06];
+    u16 w0C;
+    u16 w0E;
+} VistaDibujo;
+
+
+/* Vertice de la caja que func_8003DD70 prueba contra la pantalla: x en +8, y en +0xA, 12 bytes. */
+typedef struct VerticeCaja {
+    u8 pad00[8];
+    s16 x;
+    s16 y;
+} VerticeCaja;
+
+/* Semi-ancho y semi-alto de la ventana de recorte (+4 y +6). */
+typedef struct LimitesPantalla {
+    u8 pad00[4];
+    s16 x;
+    s16 y;
+} LimitesPantalla;
 
 extern ModeloDibujo* D_8006B568[];
+extern u16 D_8006969C;
+extern u16 D_800694B0;
+extern u8 D_80069600;
+extern s32 func_80010258(void* modelo, s32 cursor, void* vista, void* estado);
 extern s16 D_800695DA;
 extern void* D_800695C4;
 extern u8 D_8006D1C8[];
 extern EntradaVisible D_8006A940[];
 extern s16 D_80069588;
 extern s16 D_80069688;
+extern u16 D_800694E2;
+extern void func_8001CE64(void* pila);
+extern ColorYDesplazamiento* func_8001DF28(void* objeto, void* vista);
 extern s32 func_8003760C(void* geometria, void* vista, void* vista_siguiente);
 extern void func_8003753C(void* vista);
 extern s32 func_80010204(void* modelo, s32 cursor, void* estado, void* vista);
@@ -70,7 +164,7 @@ extern void func_8003C1C8(void* vista);
 
 /*
  * Contexto de dibujo de la escena. +4..+6: bytes de estado que se pasan al dibujador de modelos
- * (func_8003B26C y func_8003B354); +8: paso de profundidad (func_8003D880); +0xA: desplazamiento
+ * (func_8003B26C y func_8003B354); +8: profundidad del objeto (func_8003AF8C) que func_8003D880 resta del indice; +0xA: desplazamiento
  * de profundidad; +0xC: indice de la lista de ordenacion; +0x1C/+0x20/+0x24: bases de las tres
  * listas de ordenacion, de resolucion decreciente; +0x28: entrada elegida; +0x2C/+0x30: inicio
  * y limite del buffer de primitivas; +0x34: objeto que fija la sala visible.
@@ -81,7 +175,7 @@ typedef struct ContextoDibujo {
     u8 b5;
     u8 b6;
     u8 pad07;
-    s16 paso;
+    s16 profundidad;
     s16 desplazamiento;
     s32 indice;
     u8 pad10[0x1C - 0x10];
@@ -91,7 +185,7 @@ typedef struct ContextoDibujo {
     u32* destino;
     s32 inicio;
     s32 limite;
-    Objeto* objeto;
+    ObjetoEscena* objeto;
 } ContextoDibujo;
 
 void func_8003AA38(void)
@@ -233,7 +327,90 @@ s32 func_8003AE08(u32* puntos, ContextoDibujo* ctx)
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
 #endif
 
+/* Pendiente: puntuacion 1680 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el desplazamiento de la textura cae en a0 y la plantilla en v1, en lugar de a2 y a0) y la posicion del almacen de la profundidad, que el original deja justo antes de indexar la lista de ordenacion. Variantes probadas: 160 (forma de la plantilla, orden de declaracion de los locales, acumulacion del color). */
+#ifdef NON_MATCHING
+void func_8003AF8C(SpriteDibujo* sprite, ContextoDibujo* ctx, u8* vista)
+{
+    u32 color;
+    s32 desplazamiento;
+    s32 k;
+    ColorYDesplazamiento* par;
+    PilaNodo pila;
+    u32* p;
+    u32* q;
+    u32* orden;
+    u32* ranura;
+    u32 palabra;
+    u32 modo;
+    s32 n;
+
+    func_80039CD0(D_80076188);
+    if (sprite->banderas & 0x10) {
+        if (D_8006966A != 0) {
+            k = 0x80 - ((s16)D_800694E2 >> 5);
+            color = (k << 16) + (k << 8) + k;
+        } else {
+            color = 0x808080;
+        }
+        desplazamiento = 0;
+        ctx->profundidad = 0;
+    } else {
+        if (ctx->objeto->iC4 != 0) {
+            pila.nodo = ctx->objeto->nodo;
+            func_8001CE64(&pila);
+            ctx->objeto->xE4 = pila.acc.vx;
+            ctx->objeto->yE8 = pila.acc.vy;
+            ctx->objeto->zEC = pila.acc.vz;
+        }
+        par = func_8001DF28(ctx->objeto, vista);
+        color = par->color;
+        desplazamiento = par->desplazamiento;
+        ctx->profundidad = (ctx->objeto->iD4 >> 2) - ctx->desplazamiento;
+    }
+    if ((ctx->objeto->flags04 & 2) && color != 0 && ctx->profundidad >= 0) {
+        q = sprite->palabras;
+        p = (u32*)D_80076188;
+        p[2] = sprite->palabras[0];
+        p[3] = q[1] + desplazamiento;
+        p[4] = q[2];
+        p[5] = q[3];
+        p[6] = q[4];
+        p[7] = q[5];
+        p[8] = q[6];
+        p[9] = q[7];
+        if (ctx->profundidad < 0x200) {
+            orden = (u32*)D_8006AE20[D_8006967C].org;
+        } else {
+            if (ctx->profundidad < 0x400) {
+                n = (s16)((u16)ctx->profundidad - 0x200) >> 1;
+                orden = (u32*)D_8006AE60[D_8006967C].org;
+            } else {
+                n = (s16)((u16)ctx->profundidad - 0x400) >> 5;
+                orden = (u32*)D_8006AEA0[D_8006967C].org;
+            }
+            ctx->profundidad = n;
+        }
+        ranura = orden + ctx->profundidad;
+        palabra = *ranura | 0x09000000;
+        if (sprite->semitransparente != 0) {
+            modo = 0x2E000000;
+        } else {
+            modo = 0x2C000000;
+        }
+        color |= modo;
+        color |= 0x2C000000;
+        p[0] = palabra;
+        p[1] = color;
+        *ranura = (s32)((s32)p << 8) >> 8;
+        D_80076188 += 0x28;
+        if (ctx->limite < D_80076188) {
+            D_80076188 = ctx->inicio;
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AF8C);
+#endif
 
 void func_8003B26C(PedidoModelo* pedido, ContextoDibujo* escena, u8* vista)
 {
@@ -321,7 +498,45 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B5AC);
 
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003BDD0);
 
-INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003C014);
+void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, VistaDibujo* vista, void* estado)
+{
+    vista->w0C = D_8006969C;
+    if (entidad->w3C & 2) {
+        vista->w0E = entidad->w3E;
+    } else {
+        vista->w0E = D_800694B0;
+    }
+    if (entidad->flags0C & 0x02000000) {
+        vista->s4 = entidad->w28 - 0x80;
+        if (D_800694B0 < vista->w0E) {
+            vista->w0E = D_800694B0;
+        }
+        if (entidad->w2C == 9 || (entidad->flags0C & 0x20000000)) {
+            D_80069600 = 1;
+            vista->w0C = 0x3FFF;
+            vista->w0E = 0x3FFF;
+        }
+    }
+    if (lista != NULL) {
+        do {
+            if ((lista->banderas & 6) && lista->visible != 0) {
+                if (entidad->flags08 & 0x40) {
+                    lista->modo = 0x40000000;
+                } else {
+                    lista->modo = 0;
+                }
+                if (entidad->flags0C & 0x02000000) {
+                    D_800695DA = 0;
+                    D_800695C4 = D_8006D1C8;
+                    D_80076188 = func_80010204(lista, D_80076188, vista, estado);
+                } else {
+                    D_80076188 = func_80010258(lista, D_80076188, vista, estado);
+                }
+            }
+            lista = lista->siguiente;
+        } while (lista != NULL);
+    }
+}
 
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003C1C8);
 
@@ -369,10 +584,10 @@ void func_8003D880(ContextoDibujo* ctx)
     s32 n;
     s32 m;
 
-    if (ctx->indice < ctx->paso) {
+    if (ctx->indice < ctx->profundidad) {
         ctx->indice = 0;
     } else {
-        ctx->indice = ctx->indice - ctx->paso;
+        ctx->indice = ctx->indice - ctx->profundidad;
     }
     n = ctx->indice;
     if (n < 0x200) {
@@ -412,7 +627,53 @@ void func_8003D988(u8* dest, u8* a, u8* b)
 
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003DA4C);
 
-INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003DD70);
+s32 func_8003DD70(VerticeCaja* v, LimitesPantalla* lim)
+{
+    u16 min;
+    u16 max;
+
+    if (v[0].x > v[1].x) {
+        max = v[0].x;
+        min = v[1].x;
+    } else {
+        min = v[0].x;
+        max = v[1].x;
+    }
+    if ((s16)max < v[2].x) {
+        max = v[2].x;
+    } else if (v[2].x < (s16)min) {
+        min = v[2].x;
+    }
+    if ((s16)max < v[3].x) {
+        max = v[3].x;
+    } else if (v[3].x < (s16)min) {
+        min = v[3].x;
+    }
+    if ((s16)min > lim->x || (s16)max < -lim->x) {
+        return 1;
+    }
+    if (v[0].y > v[1].y) {
+        max = v[0].y;
+        min = v[1].y;
+    } else {
+        min = v[0].y;
+        max = v[1].y;
+    }
+    if ((s16)max < v[2].y) {
+        max = v[2].y;
+    } else if (v[2].y < (s16)min) {
+        min = v[2].y;
+    }
+    if ((s16)max < v[3].y) {
+        max = v[3].y;
+    } else if (v[3].y < (s16)min) {
+        min = v[3].y;
+    }
+    if ((s16)min > lim->y || (s16)max < -lim->y) {
+        return 1;
+    }
+    return 0;
+}
 
 void func_8003DF10(s32 limite)
 {
