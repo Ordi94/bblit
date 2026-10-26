@@ -2,6 +2,7 @@
 #include "globales.h"
 #include "gte.h"
 #include "geometria.h"
+#include "menus.h"
 
 /*
  * Estado del fundido de pantalla (todas las variables son datos pequenos que el original
@@ -30,143 +31,17 @@ extern vu16 D_800695A6;
 extern s32 D_80076188;
 extern void func_80039CD0(s32 cursor);
 
-/* Entrada de D_8006A940: sala o modelo visible con su bandera (12 bytes por entrada). */
-typedef struct EntradaVisible {
-    s16 modelo;
-    u16 bandera;
-    u8 pad04[8];
-} EntradaVisible;
-
-/*
- * Entrada de la lista de dibujo de modelos (D_8006A940, 12 bytes por entrada) y argumento de
- * func_8003B26C: indice del modelo, nivel de profundidad y grupo. Los accesos de func_8003B26C
- * leen los dos ultimos campos como bytes (lbu).
- */
-typedef struct PedidoModelo {
-    s16 modelo;
-    s16 profundidad;
-    u16 grupo;
-} PedidoModelo;
-
-/*
- * Modelo de la tabla D_8006B568 y elemento de las cadenas de dibujo de func_8003C014: enlace al
- * siguiente en +0, banderas en +8 y +0xC, geometria en +0x10, un byte de visibilidad en +0xB4 y
- * un byte de estado en +0xB5.
- */
-typedef struct ModeloDibujo {
-    struct ModeloDibujo* siguiente;
-    u8 pad04[4];
-    u16 banderas;
-    u8 pad0A[2];
-    u32 modo;
-    void* geometria;
-    u8 pad14[0xB4 - 0x14];
-    s8 visible;
-    u8 estado;
-} ModeloDibujo;
-
-/*
- * Objeto de escena visto por las rutinas de dibujo (la misma memoria que Objeto): banderas en +4,
- * +8 y +0xC, identificadores en +0x26..+0x3E, el nodo de jerarquia empotrado en +0x7C, un
- * contador en +0xC4, la profundidad en +0xD4 y la posicion en +0xE4..+0xEC.
- */
-typedef struct ObjetoEscena {
-    u8 pad00[0x04];
-    u32 flags04;
-    u32 flags08;
-    u32 flags0C;
-    u8 pad10[0x26 - 0x10];
-    u16 w26;
-    u16 w28;
-    u8 pad2A[2];
-    u16 w2C;
-    u8 pad2E[0x3C - 0x2E];
-    u16 w3C;
-    u16 w3E;
-    u8 pad40[0x7C - 0x40];
-    u8 nodo[4];
-    u8 pad80[0xC4 - 0x80];
-    s32 iC4;
-    u8 padC8[0xD4 - 0xC8];
-    s32 iD4;
-    u8 padD8[0xE4 - 0xD8];
-    s32 xE4;
-    s32 yE8;
-    s32 zEC;
-} ObjetoEscena;
-
-/* Pila de func_8003AF8C para func_8001CE64: puntero al nodo, vector de entrada y acumulador (E-07). */
-typedef struct PilaNodo {
-    void* nodo;
-    SVECTOR v;
-    VECTOR acc;
-} PilaNodo;
-
-/* Resultado de func_8001DF28: color base del sprite proyectado y desplazamiento de su textura. */
-typedef struct ColorYDesplazamiento {
-    u32 color;
-    s32 desplazamiento;
-} ColorYDesplazamiento;
-
-/*
- * Sprite de cuatro vertices que func_8003AF8C emite como POLY_FT4: +8 banderas (bit 4 = fijo),
- * +0xC..+0x28 las ocho palabras de vertices y coordenadas de textura, +0x2C = semitransparente.
- */
-typedef struct SpriteDibujo {
-    u8 pad00[0x08];
-    u16 banderas;
-    u8 pad0A[2];
-    u32 palabras[8];
-    u32 semitransparente;
-} SpriteDibujo;
-
-/* Vista que reciben las rutinas de dibujo: +4 desplazamiento, +0xC y +0xE limites de profundidad. */
-typedef struct VistaDibujo {
-    u8 pad00[0x04];
-    s16 s4;
-    u8 pad06[0x0C - 0x06];
-    u16 w0C;
-    u16 w0E;
-} VistaDibujo;
-
-
-/* Vertice de la caja que func_8003DD70 prueba contra la pantalla: x en +8, y en +0xA, 12 bytes. */
-typedef struct VerticeCaja {
-    u8 pad00[8];
-    s16 x;
-    s16 y;
-} VerticeCaja;
-
-/* Semi-ancho y semi-alto de la ventana de recorte (+4 y +6). */
-typedef struct LimitesPantalla {
-    u8 pad00[4];
-    s16 x;
-    s16 y;
-} LimitesPantalla;
-
-/*
- * Objeto que func_8003ACA8 usa como camara: el puntero de +0x10 es el sistema de coordenadas
- * (GsCOORDINATE2) cuya matriz mundial se calcula con GsGetLw.
- */
-typedef struct ObjetoCamara {
-    u8 pad00[0x10];
-    GsCOORDINATE2* coord;
-} ObjetoCamara;
-
-/*
- * Vector de tres palabras en t4..t6 guardado en memoria: el mismo estilo de macro de vector que
- * geometria.h (los temporales fijos $8 y $12..$14 y la direccion copiada a $8).
- */
-#define GEO_GUARDAR_W_T4(p)     __asm__ volatile ("move $8, %0
-	sw $12, 0($8)
-	sw $13, 4($8)
-	sw $14, 8($8)"                       : : "r"(p) : "$8", "memory")
-
 /* D_8006D934 es la mitad alta de la camara (D_8006D928 + 0xC): el original la direcciona con su propio lui. */
 extern s32 D_8006D934[3];
 extern s16 D_80069402;
 extern s16 D_80069416;
 extern s32 D_800693F0;
+
+extern s32 D_8006958C;
+extern s32 D_80069680;
+extern void func_8003DF10(s32 cursor);
+extern s32 func_8003D7C4(void);
+extern void func_8003D880(ContextoDibujo* ctx);
 
 extern ModeloDibujo* D_8006B568[];
 extern u16 D_8006969C;
@@ -187,31 +62,6 @@ extern void func_8003753C(void* vista);
 extern s32 func_80010204(void* modelo, s32 cursor, void* estado, void* vista);
 extern void func_8003C1C8(void* vista);
 
-/*
- * Contexto de dibujo de la escena. +4..+6: bytes de estado que se pasan al dibujador de modelos
- * (func_8003B26C y func_8003B354); +8: profundidad del objeto (func_8003AF8C) que func_8003D880 resta del indice; +0xA: desplazamiento
- * de profundidad; +0xC: indice de la lista de ordenacion; +0x1C/+0x20/+0x24: bases de las tres
- * listas de ordenacion, de resolucion decreciente; +0x28: entrada elegida; +0x2C/+0x30: inicio
- * y limite del buffer de primitivas; +0x34: objeto que fija la sala visible.
- */
-typedef struct ContextoDibujo {
-    u8 pad00[0x04];
-    u8 b4;
-    u8 b5;
-    u8 b6;
-    u8 pad07;
-    s16 profundidad;
-    s16 desplazamiento;
-    s32 indice;
-    u8 pad10[0x1C - 0x10];
-    u32* ot0;
-    u32* ot1;
-    u32* ot2;
-    u32* destino;
-    s32 inicio;
-    s32 limite;
-    ObjetoEscena* objeto;
-} ContextoDibujo;
 
 void func_8003AA38(void)
 {
@@ -672,7 +522,84 @@ void func_8003D988(u8* dest, u8* a, u8* b)
     dest[10] = (a[10] + b[10]) >> 1;
 }
 
+/* Pendiente: puntuacion 65 con la configuracion versionada (g = 8 del archivo). Solo difiere el orden de dos instrucciones en la rama de textura con color por vertice: el original carga el cursor de primitivas antes del almacen del codigo (el li del codigo queda en el hueco del salto) y el compilador deja el almacen primero. Variantes probadas: 8 (orden de las dos sentencias, variable intermedia para el codigo, condicion de la rama). */
+#ifdef NON_MATCHING
+void func_8003DA4C(Vertice12* a, Vertice12* b, Vertice12* c, ContextoDibujo* ctx)
+{
+    PoligonoG3* g3;
+    PoligonoFT3* ft3;
+    PoligonoGT3* gt3;
+
+    func_8003DF10(ctx->cursor);
+    gte_ldv3(a, b, c);
+    gte_rtpt();
+    if (ctx->tipo == 8 || ctx->tipo == 12) {
+        g3 = (PoligonoG3*)ctx->cursor;
+        a->codigo = 0x30;
+        g3->c0 = *(u32*)&a->r;
+        g3->c1 = *(u32*)&b->r;
+        g3->c2 = *(u32*)&c->r;
+        gte_stflg(&ctx->bandera);
+        if (ctx->bandera >= 0) {
+            gte_stsxy3_g3(g3);
+            ctx->indice = func_8003D7C4();
+            func_8003D880(ctx);
+            g3->tag = (*ctx->destino & 0xFFFFFF) | 0x06000000;
+            *ctx->destino = (u32)g3 & 0xFFFFFF;
+            ctx->cursor = ctx->cursor + 0x1C;
+            if (ctx->cursor > D_8006958C) {
+                ctx->cursor = D_80069680;
+            }
+        }
+    } else if (ctx->tipo == 16 || ctx->tipo == 20) {
+        ft3 = (PoligonoFT3*)ctx->cursor;
+        a->codigo = 0x24;
+        ft3->c0 = *(u32*)&a->r;
+        ft3->uv0 = *(u16*)&a->u;
+        ft3->uv1 = *(u16*)&b->u;
+        ft3->uv2 = *(u16*)&c->u;
+        gte_stflg(&ctx->bandera);
+        if (ctx->bandera >= 0) {
+            ft3->clut = ctx->clut;
+            ft3->tpage = ctx->tpage;
+            gte_stsxy3_g3(ft3);
+            ctx->indice = func_8003D7C4();
+            func_8003D880(ctx);
+            ft3->tag = (*ctx->destino & 0xFFFFFF) | 0x07000000;
+            *ctx->destino = (u32)ft3 & 0xFFFFFF;
+            ctx->cursor = ctx->cursor + 0x20;
+            if (ctx->cursor > D_8006958C) {
+                ctx->cursor = D_80069680;
+            }
+        }
+    } else {
+        a->codigo = 0x34;
+        gt3 = (PoligonoGT3*)ctx->cursor;
+        gt3->c0 = *(u32*)&a->r;
+        gt3->c1 = *(u32*)&b->r;
+        gt3->c2 = *(u32*)&c->r;
+        gt3->uv0 = *(u16*)&a->u;
+        gt3->uv1 = *(u16*)&b->u;
+        gt3->uv2 = *(u16*)&c->u;
+        gte_stflg(&ctx->bandera);
+        if (ctx->bandera >= 0) {
+            gt3->clut = ctx->clut;
+            gt3->tpage = ctx->tpage;
+            gte_stsxy3_gt3(gt3);
+            ctx->indice = func_8003D7C4();
+            func_8003D880(ctx);
+            gt3->tag = (*ctx->destino & 0xFFFFFF) | 0x09000000;
+            *ctx->destino = (u32)gt3 & 0xFFFFFF;
+            ctx->cursor = ctx->cursor + 0x28;
+            if (ctx->cursor > D_8006958C) {
+                ctx->cursor = D_80069680;
+            }
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003DA4C);
+#endif
 
 s32 func_8003DD70(VerticeCaja* v, LimitesPantalla* lim)
 {
