@@ -48,7 +48,13 @@ extern s32 D_80069554;
 
 /* Dato pequeno: el original lo direcciona como 0xC0($gp). */
 s32 D_800693E0;
-extern u32 D_8006D064;
+
+/*
+ * Mascara de opciones habilitadas del menu. Se declara como arreglo y se lee como D_8006D064[0]: con
+ * el escalar el compilador emite la carga como una sola macro (lui y lw pegados) y no puede subir el
+ * lui por encima de las demas lecturas, como hace el original en func_800324A4 y func_80032708.
+ */
+extern u32 D_8006D064[];
 
 /*
  * Registro de 16 bits partido en bytes (indice 7 del banco A). Se declara sin prototipo: el
@@ -1237,14 +1243,17 @@ void func_80032474(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFCFF; }
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80032490(Objeto* a0, Accion* a1) { D_80069554 = ACC_W4(a1); }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 265 con la configuracion versionada (g = 8 del archivo). Solo difiere el prologo: el original reparte a0 (base del banco A), v1 (D_8006D064) y v0 (indice) y GCC los asigna en otro orden; las seis ramas siguientes coinciden. Con el banco A como `extern u8 D_80010040[]` el lui de la base sale simbolico y en el mismo orden que el original, pero la puntuacion sube a 360 por el reparto de v0 y a0. */
+/*
+ * Para cada una de las seis opciones (un bit de D_8006D064 cada una) elige el grafico que pasa a
+ * func_80045C4C segun este habilitada (bit activo) y sea la seleccionada (el valor del registro del
+ * banco A que indica la accion): 0x36 + k o 0x2E + k habilitada, 0x46 + k o 0x3E + k deshabilitada.
+ */
 void func_800324A4(Objeto* a0, Accion* a1)
 {
     u32 v;
     s32 a;
     v = RA[ACC_W4(a1)];
-    if (D_8006D064 & 0x1) {
+    if (D_8006D064[0] & 0x1) {
         a = 0x36;
         if (v != 1) {
             a = 0x2E;
@@ -1256,7 +1265,7 @@ void func_800324A4(Objeto* a0, Accion* a1)
         }
     }
     func_80045C4C(a, 0, 0);
-    if (D_8006D064 & 0x2) {
+    if (D_8006D064[0] & 0x2) {
         a = 0x37;
         if (v != 2) {
             a = 0x2F;
@@ -1268,7 +1277,7 @@ void func_800324A4(Objeto* a0, Accion* a1)
         }
     }
     func_80045C4C(a, 0, 0);
-    if (D_8006D064 & 0x4) {
+    if (D_8006D064[0] & 0x4) {
         a = 0x38;
         if (v != 3) {
             a = 0x30;
@@ -1280,7 +1289,7 @@ void func_800324A4(Objeto* a0, Accion* a1)
         }
     }
     func_80045C4C(a, 0, 0);
-    if (D_8006D064 & 0x8) {
+    if (D_8006D064[0] & 0x8) {
         a = 0x39;
         if (v != 4) {
             a = 0x31;
@@ -1292,7 +1301,7 @@ void func_800324A4(Objeto* a0, Accion* a1)
         }
     }
     func_80045C4C(a, 0, 0);
-    if (D_8006D064 & 0x10) {
+    if (D_8006D064[0] & 0x10) {
         a = 0x3A;
         if (v != 5) {
             a = 0x32;
@@ -1304,7 +1313,7 @@ void func_800324A4(Objeto* a0, Accion* a1)
         }
     }
     func_80045C4C(a, 0, 0);
-    if (D_8006D064 & 0x20) {
+    if (D_8006D064[0] & 0x20) {
         a = 0x3B;
         if (v != 6) {
             a = 0x33;
@@ -1317,9 +1326,6 @@ void func_800324A4(Objeto* a0, Accion* a1)
     }
     func_80045C4C(a, 0, 0);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_800324A4);
-#endif
 
 void func_8003264C(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 1; }
 
@@ -1336,20 +1342,18 @@ void func_800326D0(Objeto* a0, Accion* a1) { D_8006D928.flags80 &= 0xFFDF; }
 
 void func_800326EC(Objeto* a0, Accion* a1) { D_8006D928.flags80 |= 4; }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 600 con la configuracion versionada (g = 8 del archivo). Los cuatro bucles de busqueda coinciden con la forma for/while; difiere el reparto de a0, a2 y v1 del prologo (el original comparte con a2 la base de D_80010040 y D_80010010). Variantes probadas: 9 (do/while con guarda, for, while y copias locales de la mascara). */
 /* Mueve la seleccion del menu al siguiente elemento habilitado de los seis posibles, hacia delante o hacia atras segun la direccion pulsada. */
 void func_80032708(Objeto* a0, Accion* a1)
 {
     s32 v;
     s32 i;
     v = RA[ACC_W4(a1)];
-    if (D_8006D064 & (1 << (v - 1))) {
+    if (D_8006D064[0] & (1 << (v - 1))) {
         return;
     }
     if (ESTADO_PRINCIPAL->mando.botones & 0x6000) {
         for (i = v; i < 7; i++) {
-            if (D_8006D064 & (1 << (i - 1))) {
+            if (D_8006D064[0] & (1 << (i - 1))) {
                 break;
             }
         }
@@ -1358,7 +1362,7 @@ void func_80032708(Objeto* a0, Accion* a1)
                 i = v - 3;
             } else {
         for (i = 6; i > 0; i--) {
-            if (D_8006D064 & (1 << (i - 1))) {
+            if (D_8006D064[0] & (1 << (i - 1))) {
                 break;
             }
         }
@@ -1366,7 +1370,7 @@ void func_80032708(Objeto* a0, Accion* a1)
         }
     } else {
         for (i = v; i > 0; i--) {
-            if (D_8006D064 & (1 << (i - 1))) {
+            if (D_8006D064[0] & (1 << (i - 1))) {
                 break;
             }
         }
@@ -1375,7 +1379,7 @@ void func_80032708(Objeto* a0, Accion* a1)
                 i = v + 3;
             } else {
         for (i = 1; i < 7; i++) {
-            if (D_8006D064 & (1 << (i - 1))) {
+            if (D_8006D064[0] & (1 << (i - 1))) {
                 break;
             }
         }
@@ -1384,6 +1388,3 @@ void func_80032708(Objeto* a0, Accion* a1)
     }
     RA[ACC_W4(a1)] = i;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80032708);
-#endif
