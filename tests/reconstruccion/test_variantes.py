@@ -187,6 +187,7 @@ class EjecutorVariantes(EjecutorC):
     )
     TABLA_DE_OTRA_FUNCION = "SYMBOL TABLE:\n00000000 g     F .text\t00000020 func_80099999\n"
     TABLA_VACIA = "SYMBOL TABLE:\n00000000 l    d  .text\t00000000 .text\n"
+    FILAS: ClassVar[dict[str, int]] = {}
 
     def __call__(self, comando: Any, directorio: Any, timeout_s: Any) -> Any:
         salida = super().__call__(comando, directorio, timeout_s)
@@ -201,7 +202,11 @@ class EjecutorVariantes(EjecutorC):
             variante = comando[comando.index("--file") + 1].split("probar.")[1].removesuffix(".o")
             if variante == "ilegible.c":
                 return "no es json"
-            return json.dumps({"current_score": self.PUNTUACIONES[variante]})
+            salida_json: dict[str, Any] = {"current_score": self.PUNTUACIONES[variante]}
+            if variante in self.FILAS:
+                filas = [{"current": {"mnemonic": "addiu"}}] * self.FILAS[variante]
+                salida_json["rows"] = filas
+            return json.dumps(salida_json)
         return salida
 
 
