@@ -186,11 +186,6 @@ void func_8001CE64(AcumuladorNodos* e)
  * rotacion y escala). No actua si el objeto no tiene matriz propia o si la bandera 0x200000
  * indica que otra rutina la mantiene.
  */
-/*
- * Reconstruye la matriz de transformacion del objeto desde su transformacion (traslacion,
- * rotacion y escala). No actua si el objeto no tiene matriz propia o si la bandera 0x200000
- * indica que otra rutina la mantiene.
- */
 void func_8001CF50(Objeto* o)
 {
     if (o->p78 != NULL) {
@@ -281,20 +276,6 @@ typedef struct BusquedaAnim {
  * el objeto controlado lleva otro objeto en brazos (p6C) y no es del tipo 0x22 lo coloca
  * delante, le copia orientacion y rotacion y lo enlaza a su propia lista. Anula el seguimiento.
  */
-/*
- * Asigna al objeto controlado la animacion de identificador `id` (secuencia, fotograma y apoyo
- * localizados en las tres listas del objeto) salvo que este bloqueado por la bandera
- * 0x1000000. Si el fotograma pide soltar la carga (bit 0x800) apaga las banderas 0x209, y si
- * el objeto controlado lleva otro objeto en brazos (p6C) y no es del tipo 0x22 lo coloca
- * delante, le copia orientacion y rotacion y lo enlaza a su propia lista. Anula el seguimiento.
- */
-/*
- * Asigna al objeto controlado la animacion de identificador `id` (secuencia, fotograma y apoyo
- * localizados en las tres listas del objeto) salvo que este bloqueado por la bandera
- * 0x1000000. Si el fotograma pide soltar la carga (bit 0x800) apaga las banderas 0x209, y si
- * el objeto controlado lleva otro objeto en brazos (p6C) y no es del tipo 0x22 lo coloca
- * delante, le copia orientacion y rotacion y lo enlaza a su propia lista. Anula el seguimiento.
- */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 670 con la configuracion versionada (g = 8 del archivo). Mismas busquedas y almacenes; el original conserva el argumento b en a3 y deriva b + 0x10 en s1 desde el principio, el C usa b en s1 y calcula b + 0x10 al final. Variantes probadas: 4. */
 void func_8001D0FC(Objeto* otro, u32 id, BusquedaAnim* b)
@@ -351,13 +332,6 @@ void func_8001D0FC(Objeto* otro, u32 id, BusquedaAnim* b)
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D0FC);
 #endif
 
-/*
- * Coloca al objeto controlado en (x, y, z): suelta lo que lleve en brazos (el objeto enlazado
- * en +0x70 vuelve a la lista de su propietario y se apagan las banderas 0x14), actualiza la
- * posicion y, salvo que el estado del nivel lo impida (mascara 0x304) o el contador de
- * guardado este activo, recoloca la camara detras de la nueva posicion. Termina apagando la
- * bandera 4 de la camara, anulando la bandera de seguimiento y encendiendo la de reinicio.
- */
 /*
  * Coloca al objeto controlado en (x, y, z): suelta lo que lleve en brazos (el objeto enlazado
  * en +0x70 vuelve a la lista de su propietario y se apagan las banderas 0x14), actualiza la
@@ -438,30 +412,6 @@ void func_8001D414(s16 accion)
     }
 }
 
-/*
- * Deja al objeto controlado listo para una escena guionizada: borra los contadores de
- * vibracion, fija el modo de la maquina de estados (a0), activa 0x1000004 y quita 0x10000 de
- * las banderas, suelta lo que lleve en brazos y al objeto que lo acompana (con la bandera
- * 0x100 si es del tipo 0x22), y si se da una posicion coloca al objeto y a la camara en ella
- * mirando hacia delante. Termina refrescando las banderas de situacion y anulando el
- * seguimiento.
- */
-/*
- * Deja al objeto controlado listo para una escena guionizada: borra los contadores de
- * vibracion, fija el modo de la maquina de estados (a0), activa 0x1000004 y quita 0x10000 de
- * las banderas, suelta lo que lleve en brazos y al objeto que lo acompana (con la bandera
- * 0x100 si es del tipo 0x22), y si se da una posicion coloca al objeto y a la camara en ella
- * mirando hacia delante. Termina refrescando las banderas de situacion y anulando el
- * seguimiento.
- */
-/*
- * Deja al objeto controlado listo para una escena guionizada: borra los contadores de
- * vibracion, fija el modo de la maquina de estados (a0), activa 0x1000004 y quita 0x10000 de
- * las banderas, suelta lo que lleve en brazos y al objeto que lo acompana (con la bandera
- * 0x100 si es del tipo 0x22), y si se da una posicion coloca al objeto y a la camara en ella
- * mirando hacia delante. Termina refrescando las banderas de situacion y anulando el
- * seguimiento.
- */
 /*
  * Deja al objeto controlado listo para una escena guionizada: borra los contadores de
  * vibracion, fija el modo de la maquina de estados (a0), activa 0x1000004 y quita 0x10000 de
@@ -624,16 +574,6 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D75C);
  * banderas, copia posicion y orientacion, coloca la camara detras, fija 30 cuadros de
  * invulnerabilidad y la salud a 6, y lanza el efecto de fundido 1 de 0x200 cuadros.
  */
-/*
- * Reinicia al objeto controlado en el punto de reaparicion guardado (D_8006ACD0): borra sus
- * banderas, copia posicion y orientacion, coloca la camara detras, fija 30 cuadros de
- * invulnerabilidad y la salud a 6, y lanza el efecto de fundido 1 de 0x200 cuadros.
- */
-/*
- * Reinicia al objeto controlado en el punto de reaparicion guardado (D_8006ACD0): borra sus
- * banderas, copia posicion y orientacion, coloca la camara detras, fija 30 cuadros de
- * invulnerabilidad y la salud a 6, y lanza el efecto de fundido 1 de 0x200 cuadros.
- */
 void func_8001D994(Objeto* o)
 {
     /* El original reserva 0x38 bytes de pila que el codigo no llega a usar. */
@@ -683,62 +623,6 @@ typedef struct PasoBusqueda {
 extern u16 D_8005E064[];
 extern u16 D_8005E078[];
 
-/*
- * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
- * angulos (D_8005E064, o D_8005E078 con el bit 0x80000 de a3) hasta que el desplazamiento rotado
- * no choque (func_80019474) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
- * el borde de los precipicios y 0x40000000 fija la orientacion del objeto al resultado. El
- * desplazamiento realizado queda en `mov`.
- */
-/*
- * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
- * angulos (D_8005E064, o D_8005E078 con el bit 0x80000 de a3) hasta que el desplazamiento rotado
- * no choque (func_80019474) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
- * el borde de los precipicios y 0x40000000 fija la orientacion del objeto al resultado. El
- * desplazamiento realizado queda en `mov`.
- */
-/*
- * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
- * angulos (D_8005E064, o D_8005E078 con el bit 0x80000 de a3) hasta que el desplazamiento rotado
- * no choque (func_80019474) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
- * el borde de los precipicios y 0x40000000 fija la orientacion del objeto al resultado. El
- * desplazamiento realizado queda en `mov`.
- */
-/*
- * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
- * angulos (D_8005E064, o D_8005E078 con el bit 0x80000 de a3) hasta que el desplazamiento rotado
- * no choque (func_80019474) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
- * el borde de los precipicios y 0x40000000 fija la orientacion del objeto al resultado. El
- * desplazamiento realizado queda en `mov`.
- */
-/*
- * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
- * angulos (D_8005E064, o D_8005E078 con el bit 0x80000 de a3) hasta que el desplazamiento rotado
- * no choque (func_80019474) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
- * el borde de los precipicios y 0x40000000 fija la orientacion del objeto al resultado. El
- * desplazamiento realizado queda en `mov`.
- */
-/*
- * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
- * angulos (D_8005E064, o D_8005E078 con el bit 0x80000 de a3) hasta que el desplazamiento rotado
- * no choque (func_80019474) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
- * el borde de los precipicios y 0x40000000 fija la orientacion del objeto al resultado. El
- * desplazamiento realizado queda en `mov`.
- */
-/*
- * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
- * angulos (D_8005E064, o D_8005E078 con el bit 0x80000 de a3) hasta que el desplazamiento rotado
- * no choque (func_80019474) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
- * el borde de los precipicios y 0x40000000 fija la orientacion del objeto al resultado. El
- * desplazamiento realizado queda en `mov`.
- */
-/*
- * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
- * angulos (D_8005E064, o D_8005E078 con el bit 0x80000 de a3) hasta que el desplazamiento rotado
- * no choque (func_80019474) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
- * el borde de los precipicios y 0x40000000 fija la orientacion del objeto al resultado. El
- * desplazamiento realizado queda en `mov`.
- */
 /*
  * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
  * angulos (D_8005E064, o D_8005E078 con el bit 0x80000 de a3) hasta que el desplazamiento rotado

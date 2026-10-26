@@ -7,12 +7,6 @@
  * seno, si sube o cae poco lo amortigua o lo limita a +-70, y fija o limpia las banderas de
  * suelo (0x2), salto (0x200) y caida libre segun toque el suelo o empiece un salto.
  */
-/*
- * Movimiento vertical del objeto: gravedad y salto. Decide la altura del siguiente cuadro a
- * partir del desplazamiento pedido: si cae mas de 200 unidades acelera la caida con una curva
- * seno, si sube o cae poco lo amortigua o lo limita a +-70, y fija o limpia las banderas de
- * suelo (0x2), salto (0x200) y caida libre segun toque el suelo o empiece un salto.
- */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 1135 con la configuracion versionada (-G0). Misma estructura de ramas y mismos almacenes; en el bloque de despegue el original conserva dos copias de las banderas (move v1,v0) y ordena los almacenes de h108 y w10E de otro modo. Variantes probadas: 14. */
 void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* orden)
@@ -278,12 +272,6 @@ calcular:
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C998);
 #endif
 
-/*
- * Paso de movimiento de un objeto: el desplazamiento horizontal (func_8001C6CC), el vertical
- * contra el suelo (func_8001C998) y la gravedad y el salto (func_8001C424), en ese orden. La
- * orientacion del objeto se copia al resultado de la baldosa antes y se recupera despues
- * salvo que el terreno la invalide con -1.
- */
 /*
  * Paso de movimiento de un objeto: el desplazamiento horizontal (func_8001C6CC), el vertical
  * contra el suelo (func_8001C998) y la gravedad y el salto (func_8001C424), en ese orden. La

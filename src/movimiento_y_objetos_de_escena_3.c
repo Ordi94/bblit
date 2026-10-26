@@ -88,12 +88,6 @@ typedef struct SpritePlano {
  * func_8001E600. `modo` con el bit 0 activo toma el cuadro tal cual; si no, pasa por la tabla
  * de indices del conjunto.
  */
-/*
- * Asigna al sprite del objeto las coordenadas de textura del cuadro actual de un conjunto
- * (formato plano). Si el objeto usa el formato escalado (bandera 0x20) delega en
- * func_8001E600. `modo` con el bit 0 activo toma el cuadro tal cual; si no, pasa por la tabla
- * de indices del conjunto.
- */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 1535 con la configuracion versionada (-G0). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0. Variantes probadas: 8. */
 void func_8001E528(Objeto* o, ConjuntoSprites* c, u32 modo)
@@ -143,11 +137,6 @@ void func_8001E528(Objeto* o, ConjuntoSprites* c, u32 modo)
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E528);
 #endif
 
-/*
- * Igual que func_8001E528 para el formato escalado: la profundidad de color del cuadro (bits
- * 7 y 8 de la pagina) desplaza las coordenadas horizontales (2 = 4 bits, 1 = 8 bits, 0 = 16
- * bits) y fija la anchura de la textura y el modo del sprite.
- */
 /*
  * Igual que func_8001E528 para el formato escalado: la profundidad de color del cuadro (bits
  * 7 y 8 de la pagina) desplaza las coordenadas horizontales (2 = 4 bits, 1 = 8 bits, 0 = 16
