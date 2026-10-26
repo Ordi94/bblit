@@ -63,10 +63,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3457 con la configuracion versionada (g = 0 del archivo). El reparto de
+ * Pendiente: puntuacion 2570 con la configuracion versionada (g = 0 del archivo). El reparto de
  * registros coincide con el original; difieren el orden de planificacion en los avances por
  * subcelda y por baldosa, el cierre compartido de resultados y una constante de indice que el
- * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 13287).
+ * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 9980).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -270,8 +270,8 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
     s16 k = 0;
     s32 techo;
     s32 ret;
-    u16 f;
     u16 cl;
+    u16 f;
     s32 dx;
     s32 dz;
     s32 px;
@@ -354,8 +354,8 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                 pos[1] = cur->y_max;
                                 desp[0] = w->ax - w->x;
                                 desp[2] = w->az - w->z;
-                                res->flags = 2;
                                 res->clase = w->celdas[0];
+                                res->flags = 2;
                                 w->t0 = w->celdas[w->prev];
                                 if (w->t0 == 0x7E) {
                                     w->t0 = 0;
@@ -370,8 +370,8 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                     w->t0 = -w->t0;
                                     res->flags = res->flags | 0x20;
                                 }
-                                res->grupo = grupo;
                                 res->pendiente_abs = w->t0 * cur->pendiente;
+                                res->grupo = grupo;
                                 techo = cur->y_min;
                                 ret = 0;
                                 res->zona = zona;
@@ -408,7 +408,7 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                         w->sx_z = ((w->pend_x * (w->lim_x - w->rx)) >> 12) + w->rz;
                         do {
                             w->n = w->n + 1;
-                            w->celdas[w->n] = (s8)((u8(*)[64])zona->subceldas)[w->baldosa][(w->rz / 40) * 8 + w->rx / 40];
+                            w->celdas[w->n] = (s8)((u8(*)[64])zona->subceldas)[w->baldosa][w->rx / 40 + (w->rz / 40) * 8];
                             w->zonas[w->n] = cur;
                             c = w->celdas[w->n];
                             if (c == 0x7E) {
@@ -449,11 +449,15 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                 desp[0] = w->dx;
                                 desp[2] = w->dz;
                                 res->clase = w->celdas[0];
-                                res->flags = w->n == 0xE ? 2 : 0x16;
+                                if (w->n == 0xE) {
+                                    res->flags = 2;
+                                } else {
+                                    res->flags = 0x16;
+                                }
                                 w->t0 = w->celdas[w->n];
                                 if (w->t0 == 0x7E) {
-                                    res->flags = 0x1C;
                                     w->t0 = 0;
+                                    res->flags = 0x1C;
                                 } else if (w->t0 > 0) {
                                     w->t0 = -w->t0;
                                     res->flags = res->flags | 0x20;
@@ -579,8 +583,8 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             INDICE_PREVIO;
                             pos[1] = cur->y_max;
                             desp[0] = w->ax - w->x;
-                            res->flags = 2;
                             res->clase = w->celdas[0];
+                            res->flags = 2;
                             w->t0 = w->celdas[w->prev];
                             if (w->t0 == 0x7E) {
                                 w->t0 = 0;
@@ -591,14 +595,14 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             res->pendiente = w->t0 * cur->pendiente;
                             w->t0 = w->celdas[w->n];
                             if (w->t0 == 0x7E) {
-                                res->flags = 8;
                                 w->t0 = 0;
+                                res->flags = 8;
                             } else if (w->t0 > 0) {
                                 w->t0 = -w->t0;
                                 res->flags = res->flags | 0x20;
                             }
-                            res->grupo = grupo;
                             res->pendiente_abs = w->t0 * cur->pendiente;
+                            res->grupo = grupo;
                             techo = cur->y_min;
                             ret = 0;
                             res->zona = zona;
@@ -644,11 +648,15 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             pos[1] = zona->y_max;
                             desp[0] = w->ax - w->x;
                             res->clase = w->celdas[0];
-                            res->flags = w->n == 0xE ? 2 : 6;
+                            if (w->n == 0xE) {
+                                res->flags = 2;
+                            } else {
+                                res->flags = 6;
+                            }
                             w->t0 = w->celdas[w->n];
                             if (w->t0 == 0x7E) {
-                                res->flags = 0xC;
                                 w->t0 = 0;
+                                res->flags = 0xC;
                             } else if (w->t0 > 0) {
                                 w->t0 = -w->t0;
                                 res->flags = res->flags | 0x20;
@@ -697,8 +705,8 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             INDICE_PREVIO;
                             pos[1] = cur->y_max;
                             desp[2] = w->az - w->z;
-                            res->flags = 2;
                             res->clase = w->celdas[0];
+                            res->flags = 2;
                             w->t0 = w->celdas[w->prev];
                             if (w->t0 == 0x7E) {
                                 w->t0 = 0;
@@ -715,8 +723,8 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                 w->t0 = -w->t0;
                                 res->flags = res->flags | 0x20;
                             }
-                            res->grupo = grupo;
                             res->pendiente_abs = w->t0 * cur->pendiente;
+                            res->grupo = grupo;
                             techo = cur->y_min;
                             ret = 0;
                             res->zona = zona;
@@ -762,11 +770,15 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             pos[1] = zona->y_max;
                             desp[2] = w->az - w->z;
                             res->clase = w->celdas[0];
-                            res->flags = w->n == 0xE ? 2 : 6;
+                            if (w->n == 0xE) {
+                                res->flags = 2;
+                            } else {
+                                res->flags = 6;
+                            }
                             w->t0 = w->celdas[w->n];
                             if (w->t0 == 0x7E) {
-                                res->flags = 0xC;
                                 w->t0 = 0;
+                                res->flags = 0xC;
                             } else if (w->t0 > 0) {
                                 w->t0 = -w->t0;
                                 res->flags = res->flags | 0x20;
@@ -802,7 +814,7 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
     w->rz = w->bz % 320;
     w->n = w->n + 1;
     w->rx = w->bx % 320;
-    w->celdas[w->n] = (s8)((u8(*)[64])zona->subceldas)[w->baldosa][w->rz / 40 * 8 + w->rx / 40];
+    w->celdas[w->n] = (s8)((u8(*)[64])zona->subceldas)[w->baldosa][w->rx / 40 + w->rz / 40 * 8];
     c = w->celdas[w->n];
     if (c > 0 && c < 0x7E) {
         c = -c;
@@ -830,8 +842,8 @@ plano:
         return ret;
     }
     pos[1] = cur->y_max;
-    res->flags = 2;
     res->clase = w->celdas[0];
+    res->flags = 2;
     w->t0 = w->celdas[w->n];
     if (w->t0 > 0) {
         w->t0 = -w->t0;
