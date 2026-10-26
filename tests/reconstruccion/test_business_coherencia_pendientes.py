@@ -11,6 +11,7 @@ from tools.reconstruccion import cli, coherencia_pendientes, diff, fuentes_c
 from .test_business_pendientes import PENDIENTE, bloque, preparar_repositorio
 from .test_compilacion import herramientas_compilacion
 from .test_diff import EjecutorDiff, repo_diff  # noqa: F401 - fixture reutilizada
+from .test_gp import EjecutorEnlace, crear_repo_diff, herramientas_con_enlace
 
 FUNCION = "func_80014AC4"
 
@@ -113,3 +114,41 @@ def test_diff_deja_la_puntuacion_informada_y_el_limite_para_el_aviso(repo_diff: 
     )
     datos = json.loads((repo_diff / diff.ruta_resultado("func_80036204")).read_text(encoding="utf-8"))
     assert datos == {"funcion": "func_80036204", "puntuacion": 0, "maxLineas": 1024}
+
+
+def leer_medicion_guardada(raiz: Path, funcion: str) -> dict[str, Any]:
+    ruta = raiz / diff.ruta_resultado(funcion)
+    datos: dict[str, Any] = json.loads(ruta.read_text(encoding="utf-8"))
+    return datos
+
+
+def test_diff_guarda_la_puntuacion_de_asm_differ_si_los_bytes_no_son_iguales(repo_diff: Any) -> None:  # noqa: F811
+    resultado = diff.comparar_funcion(
+        repo_diff, "func_NM", herramientas_compilacion(), Path("diff.py"), EjecutorDiff(505)
+    )
+    datos = leer_medicion_guardada(repo_diff, "func_NM")
+    assert (resultado.puntuacion, datos["puntuacion"]) == (505, 505)
+
+
+def test_diff_guarda_la_puntuacion_enlazada_si_los_bytes_difieren(tmp_path: Path) -> None:
+    crear_repo_diff(tmp_path)
+    resultado = diff.comparar_funcion(
+        tmp_path,
+        "func_80036204",
+        herramientas_con_enlace(),
+        Path("diff.py"),
+        EjecutorEnlace(505, difiere=True),
+    )
+    datos = leer_medicion_guardada(tmp_path, "func_80036204")
+    assert resultado.bytes_iguales is False
+    assert (resultado.puntuacion, datos["puntuacion"]) == (505, 505)
+
+
+def test_diff_guarda_cero_si_los_bytes_son_iguales_aunque_asm_differ_puntue_mas(tmp_path: Path) -> None:
+    crear_repo_diff(tmp_path)
+    resultado = diff.comparar_funcion(
+        tmp_path, "func_80036204", herramientas_con_enlace(), Path("diff.py"), EjecutorEnlace(5)
+    )
+    datos = leer_medicion_guardada(tmp_path, "func_80036204")
+    assert (resultado.bytes_iguales, resultado.puntuacion_asm) == (True, 5)
+    assert (resultado.puntuacion, datos["puntuacion"]) == (0, 0)
