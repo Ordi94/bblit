@@ -64,6 +64,7 @@ def test_comando_diff_corta_en_tantos_retornos_como_el_original() -> None:
         "--ref-file",
         "t.o",
         "--no-pager",
+        "--max-lines=1024",
         "--format=json",
         "-s",
         "-s",
@@ -111,15 +112,21 @@ def test_resultado_diff_coincide_solo_con_puntuacion_cero() -> None:
 class EjecutorDiff(EjecutorC):
     """Simula el ensamblador, el compilador y asm-differ con una puntuacion configurable."""
 
-    def __init__(self, puntuacion: int, json_valido: bool = True) -> None:
+    def __init__(self, puntuacion: int, json_valido: bool = True, filas: list[Any] | None = None) -> None:
         super().__init__(secciones=SALIDA_OBJDUMP)
         self.puntuacion = puntuacion
         self.json_valido = json_valido
+        self.filas = filas
 
     def __call__(self, comando: Any, directorio: Any, timeout_s: Any) -> Any:
         super().__call__(comando, directorio, timeout_s)
         if "--format=json" in comando:
-            return json.dumps({"current_score": self.puntuacion}) if self.json_valido else "basura"
+            if not self.json_valido:
+                return "basura"
+            salida: dict[str, Any] = {"current_score": self.puntuacion}
+            if self.filas is not None:
+                salida["rows"] = self.filas
+            return json.dumps(salida)
         if "--format=plain" in comando:
             return "TARGET   CURRENT\nfila\n\n"
         return ""

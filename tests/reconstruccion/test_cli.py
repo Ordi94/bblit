@@ -441,3 +441,31 @@ def test_un_error_nativo_sin_nombre_de_archivo_informa_solo_tipo_y_motivo(
     monkeypatch.setattr(infra, "limpiar", fallo)
     assert ejecutar_cli(raiz, variables, "clean") == 1
     assert capsys.readouterr().err == "error: error de entrada/salida: OSError\n"
+
+
+def test_diff_con_medicion_truncada_sale_con_uno_si_los_bytes_difieren_y_con_cero_si_coinciden(
+    entorno_completo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_completo
+    assert ejecutar_cli(raiz, variables, "split") == 0
+    (raiz / "src").mkdir()
+    (raiz / "src" / "code_a.c").write_text(
+        "s32 func_80036204(s32 x)\n{\n    return x;\n}\n", encoding="utf-8"
+    )
+    (raiz / "asm" / "matchings" / "code_a").mkdir(parents=True)
+    (raiz / "asm" / "matchings" / "code_a" / "func_80036204.s").write_text(ASM_FUNCION, encoding="utf-8")
+    (raiz / "build" / "diff").mkdir(parents=True, exist_ok=True)
+    (raiz / "build" / "SLUS_008.elf").write_bytes(b"elf")
+    (raiz / "config" / "symbols.txt").write_text(
+        "func_80036204 = 0x80036204; // type:func size:0x4c\n", encoding="utf-8"
+    )
+    filas = [{"base": {"text": []}, "current": {"text": [], "mnemonic": "addiu"}}] * 1024
+    distintos = EjecutorEnlace(0, difiere=True)
+    distintos.filas = filas
+    capsys.readouterr()
+    assert ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=distintos) == 1
+    salida = capsys.readouterr().out
+    assert "aviso: asm-differ corto" in salida and salida.endswith("puntuacion 0\n")
+    iguales = EjecutorEnlace(0)
+    iguales.filas = filas
+    assert ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=iguales) == 0
