@@ -632,7 +632,7 @@ void func_8003ED94(void)
     D_800695D8 = -1;
 }
 
-/* Pendiente: puntuacion 590 con la configuracion versionada (g = 8 del archivo). El reparto de registros ya coincide (el resultado, una union de dos bytes, queda en s2); difieren la lectura inicial del volumen maestro (el original la repite en la rama de retorno anticipado y aqui GCC la comparte) y la posicion de un sll entre el mult y el mflo. Variantes probadas: 16. */
+/* Pendiente: puntuacion 85 con la configuracion versionada (g = 8 del archivo). Las instrucciones y los registros coinciden (el resultado, una union de dos bytes, queda en s2); difiere solo la posicion de un sll (x << 8) respecto al mflo en la rama de angulo positivo. Variantes probadas: 20. */
 #ifdef NON_MATCHING
 u32 func_8003EDA8(Objeto* o, Efecto* e)
 {
@@ -644,14 +644,12 @@ u32 func_8003EDA8(Objeto* o, Efecto* e)
     s32 x;
     s32 y;
     s32 t;
-    u8 g;
 
     if (D_80069458 == 0) {
         return 0;
     }
     if (o == D_80069698 || o == 0) {
-        g = D_80069458;
-        return g | (g << 8);
+        return D_80069458 | (D_80069458 << 8);
     }
     if ((e->flags & 0x100) && o->u78.p != 0 && *(u32*)o->u78.p != 0) {
         acc.nodo = (GsCOORDINATE2*)(*(u32*)o->u78.p + 0x1C);
