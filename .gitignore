@@ -29,3 +29,12 @@ CLAUDE.md
 *.rep
 /ghidra/
 /.ghidra_project/
+
+# Configuracion local de cada maquina
+/config/local.toml
+
+# Archivos que el emulador escribe en el directorio de trabajo cuando se lanza desde la raiz
+pcsx.json
+memcard1.mcd
+memcard2.mcd
+.sentry-native/

@@ -1,0 +1,58 @@
+# Particion del ejecutable principal del juego (PlayStation, SLUS_008.38).
+#
+# La ruta del ejecutable es relativa a la raiz del repositorio: 'python tools/build.py split'
+# lo copia a expected/ (carpeta ignorada por git) tras comprobar su SHA-256, de modo que esta
+# configuracion no contiene ninguna ruta de la maquina.
+sha1: 3b091486c2463f4dbe82e045072c390e226caa37
+
+options:
+  platform: psx
+  basename: SLUS_008
+  base_path: ..
+  target_path: expected/SLUS_008.38
+  compiler: GCC
+  asm_path: asm
+  build_path: build
+  ld_script_path: build/SLUS_008.ld
+  undefined_funcs_auto_path: build/undefined_funcs_auto.txt
+  undefined_syms_auto_path: build/undefined_syms_auto.txt
+  # Las macros del ensamblador (macro.inc, gte_macros.inc) se generan junto al asm para que
+  # 'clean' deje el repositorio sin archivos sueltos.
+  generated_asm_macros_directory: asm/include
+  # Nombres unicos de la fuente de verdad de simbolos. El archivo del proyecto puede no
+  # existir todavia; el segundo lo genera 'split' con la funcion de entrada.
+  symbol_addrs_path:
+    - config/symbols.txt
+    - build/simbolos_entrada.txt
+  find_file_boundaries: false
+  create_asm_dependencies: false
+
+segments:
+  # El cuerpo del ejecutable (0x800..0x55800) es un unico segmento cargado en 0x80014A00
+  # (t_addr = 0x80014A00, t_size = 0x55000); la cabecera de 0x800 bytes se regenera aparte
+  # a partir de config/ejecutable.json y no forma parte de la particion.
+  - name: main
+    type: code
+    start: 0x800
+    vram: 0x80014A00
+    # Cota inferior de la zona de ceros que sigue al segmento cargado: el codigo referencia
+    # direcciones hasta 0x80077000 (b_size de la cabecera es 0, la zona la limpia el propio juego).
+    bss_size: 0xE000
+    subsegments:
+      # Codigo. Termina en 0x8005DEA0 (offset 0x49CA0): la ultima funcion cierra con 'jr ra'
+      # en 0x8005DE84, seguida de un ultimo gancho de la BIOS (salto a la tabla B0) y de un
+      # 'nop' de relleno hasta la alineacion de 16 bytes; a partir de ahi solo hay tablas y cadenas.
+      - [0x800, asm, text]
+      # Datos inicializados. El enlazador agrupa 'data' antes que 'rodata' (orden fijo del
+      # script generado), asi que la frontera se coloca donde empiezan los literales de
+      # cadena propios del juego ("Error: Can't push matrix..." en 0x80067C7C). Las tablas
+      # de punteros y de lookup que le anteceden son datos escritos por el programa.
+      - [0x49CA0, data, data]
+      # Datos de solo lectura: literales y tablas de saltos. Las tablas de salto
+      # (jumptables) aparecen a partir de 0x80067E64. La frontera es provisional y se
+      # afinara cuando se identifiquen los archivos objeto originales.
+      - [0x53A70, rodata, rodata]
+      # Zona de ceros posterior al segmento cargado (no ocupa bytes en el archivo).
+      - { start: 0x55800, type: bss, name: bss, vram: 0x80069A00 }
+  # Fin del archivo: 0x55800 = 0x800 de cabecera + 0x55000 de cuerpo.
+  - [0x55800]

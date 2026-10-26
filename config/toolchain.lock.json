@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "componentes": {
+    "psyq-4.4": {
+      "url": "https://archive.org/download/ps1_sdks/Runtime%20Library%204.4.7z",
+      "sha256": "75d20b9d31372ff0629482f30ee27edd726eaa57d8be39fa0d93e583144063f7",
+      "fecha_registro": "2026-10-25",
+      "formato": "7z",
+      "extraer": [
+        "pssn/bin/*",
+        "psx/lib/*",
+        "psx/include/*",
+        "psx/bin/dmpsx.exe"
+      ],
+      "archivos_clave": {
+        "cc1psx": "pssn/bin/CC1PSX.EXE",
+        "ccpsx": "pssn/bin/CCPSX.EXE",
+        "cpppsx": "pssn/bin/CPPPSX.EXE",
+        "aspsx": "pssn/bin/ASPSX.EXE",
+        "psylink": "pssn/bin/PSYLINK.EXE",
+        "dmpsx": "psx/bin/DMPSX.EXE",
+        "libapi": "psx/lib/LIBAPI.LIB",
+        "libgpu_h": "psx/include/LIBGPU.H"
+      },
+      "notas": "Psy-Q Runtime Library 4.4 (octubre de 1998), espejo ps1_sdks de archive.org. CC1PSX.EXE es GCC 2.8.1 SN32 build 4.0.0010 (ejecutable Win32). Trae ASPSX 2.86 del SDK, PSYLINK, DMPSX, bibliotecas LIB e INCLUDE de la misma version."
+    },
+    "psyq-4.1": {
+      "url": "https://archive.org/download/ps1_sdks/Programmer%20Tools%20Runtime%20Library%204.1%20DTL-S2002%20CD%20Release%202.1%20Dec1997.rar",
+      "sha256": "de0e9de0178aba886912bd8f9e434c2201e2cc331f0d0c67136e811711785c7c",
+      "fecha_registro": "2026-10-25",
+      "formato": "rar_iso",
+      "extraer": [
+        "gnu/cc1psx.exe",
+        "gnu/cc1plpsx.exe",
+        "gnu/ccpsx.exe",
+        "gnu/sngnuver.txt",
+        "pssn/bin/aspsx.exe",
+        "pssn/bin/psylink.exe",
+        "psx/bin/dmpsx.exe"
+      ],
+      "archivos_clave": {
+        "cc1psx": "GNU/CC1PSX.EXE",
+        "ccpsx": "GNU/CCPSX.EXE",
+        "aspsx": "PSSN/BIN/ASPSX.EXE",
+        "psylink": "PSSN/BIN/PSYLINK.EXE",
+        "dmpsx": "PSX/BIN/DMPSX.EXE"
+      },
+      "notas": "Psy-Q Runtime Library 4.1 (diciembre de 1997), imagen de CD dentro de un rar en el espejo ps1_sdks de archive.org. CC1PSX.EXE es GCC cygnus-2.7.2-970404 SN32.3.7.0004 (Win32). Unica fuente conocida de GCC 2.7.2 de Psy-Q ejecutable de forma nativa."
+    },
+    "binutils-mipsel": {
+      "url": "https://github.com/Lameguy64/PSn00bSDK/releases/download/v0.24/gcc-mipsel-none-elf-12.3.0-windows.zip",
+      "sha256": "51df48145d5ef4b396d3932b72ccba538cc605c7c7745b32c58c277aa00523c5",
+      "fecha_registro": "2026-10-25",
+      "formato": "zip",
+      "extraer": [
+        "bin/mipsel-none-elf-as.exe",
+        "bin/mipsel-none-elf-ld.exe",
+        "bin/mipsel-none-elf-objcopy.exe",
+        "bin/mipsel-none-elf-objdump.exe",
+        "bin/mipsel-none-elf-readelf.exe",
+        "bin/mipsel-none-elf-nm.exe"
+      ],
+      "archivos_clave": {
+        "as": "bin/mipsel-none-elf-as.exe",
+        "ld": "bin/mipsel-none-elf-ld.exe",
+        "objcopy": "bin/mipsel-none-elf-objcopy.exe",
+        "objdump": "bin/mipsel-none-elf-objdump.exe"
+      },
+      "notas": "GNU binutils 2.40 para mipsel-none-elf (Windows x64) publicado con PSn00bSDK v0.24. Solo se instalan ensamblador, enlazador, objcopy, objdump, readelf y nm; el GCC 12.3 del paquete no se usa."
+    },
+    "maspsx": {
+      "url": "https://github.com/mkst/maspsx/archive/4ffa8b5106f9780d5d4aa7609f184949433ddbbc.zip",
+      "sha256": "ef60294812d9e4bf6f97ccac973102ebedcc233b8afbccab770be6eac104713c",
+      "fecha_registro": "2026-10-25",
+      "formato": "zip",
+      "quitar_raiz": true,
+      "archivos_clave": {
+        "maspsx": "maspsx.py"
+      },
+      "notas": "mkst/maspsx en el commit 4ffa8b5 (21 de octubre de 2026). Preprocesador de ensamblador que imita a ASPSX para que GNU as genere objetos compatibles."
+    },
+    "m2c": {
+      "url": "https://github.com/matt-kempster/m2c/archive/c632946b8cfbe8fce442b522dba92dfa72f1f317.zip",
+      "sha256": "503714b92b14ba0e1affcc6decf4ad5763b37035cca66247858298cdf1b38971",
+      "fecha_registro": "2026-10-25",
+      "formato": "zip",
+      "quitar_raiz": true,
+      "archivos_clave": {
+        "m2c": "m2c.py"
+      },
+      "notas": "matt-kempster/m2c en el commit c632946 (22 de octubre de 2026). Traductor de ensamblador MIPS a C borrador."
+    },
+    "asm-differ": {
+      "url": "https://github.com/simonlindholm/asm-differ/archive/0dd09af8f8008f1f880327cf0aca3b26d2562ea2.zip",
+      "sha256": "87db719b97bc97f206a35df9758fbba8a6e7e460ce0dd676bfb01933cf18adee",
+      "fecha_registro": "2026-10-25",
+      "formato": "zip",
+      "quitar_raiz": true,
+      "archivos_clave": {
+        "diff": "diff.py"
+      },
+      "notas": "simonlindholm/asm-differ en el commit 0dd09af (6 de septiembre de 2026). Comparador de funciones objetivo contra compiladas."
+    }
+  }
+}

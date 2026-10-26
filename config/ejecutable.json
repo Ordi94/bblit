@@ -1,0 +1,19 @@
+{
+  "nombre": "SLUS_008.38",
+  "sha256": "0fad70d9b4cb324d78f113f7fd70c0aa954388fefad01af373509e0473c87df0",
+  "sha1": "3b091486c2463f4dbe82e045072c390e226caa37",
+  "tamano": 350208,
+  "cabecera": {
+    "pc0": "0x80014A08",
+    "gp0": "0x00000000",
+    "t_addr": "0x80014A00",
+    "t_size": "0x00055000",
+    "d_addr": "0x00000000",
+    "d_size": "0x00000000",
+    "b_addr": "0x00000000",
+    "b_size": "0x00000000",
+    "s_addr": "0x801FFFF0",
+    "s_size": "0x00000000",
+    "region": "Sony Computer Entertainment Inc. for North America area"
+  }
+}

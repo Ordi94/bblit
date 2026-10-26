@@ -1,0 +1,277 @@
+"""Depuracion de candidatos a funcion contra las instrucciones reales del ejecutable.
+
+Ghidra etiqueta como funcion puntos de entrada secundarios de las librerias (destinos de salto
+dentro de una rutina) y el descubrimiento por prologo puede partir una funcion. Emitirlos como
+simbolos hace que el desensamblador deje de tratar como codigo la region que sigue, asi que se
+filtran aqui, con reglas puras sobre las palabras del segmento.
+"""
+
+from dataclasses import dataclass, replace
+
+from tools.ghidra.dominio import (
+    ALINEACION_FUNCION,
+    DIRECCION_BASE,
+    DIRECCION_ENTRADA,
+    DIRECCION_FIN,
+    FIN_CODIGO,
+    TAMANO_MINIMO_FUNCION,
+    Funcion,
+    asignar_nombres,
+)
+from tools.ghidra.ejecutable import instruccion_valida, palabra_en
+
+
+@dataclass(frozen=True, slots=True)
+class Depuracion:
+    """Resultado de filtrar los candidatos a funcion contra el codigo real.
+
+    Contexto:
+        Lo produce ``depurar_funciones`` y lo consume ``construir_simbolos``; el comando
+        ``simbolos`` imprime los conteos.
+
+    Attributes:
+        funciones (list[Funcion]): Funciones validas, con el tamano ampliado si absorbieron fragmentos.
+        fusionadas (list[int]): Direcciones de fragmentos absorbidos por la funcion anterior.
+        descartadas (list[int]): Direcciones de candidatos que no son una funcion completa y de un
+            tramo final de codigo sin salto (el codigo no se emite y queda registrado).
+        huerfanos (list[tuple[int, int]]): Direccion y tamano de tramos de codigo de menos de 8
+            bytes, sin salto, que preceden a una funcion con nombre oficial: no pueden ser una
+            funcion ni unirse a ella (el nombre pertenece a su direccion), asi que no se emiten.
+        rescatadas (list[int]): Inicios de codigo que ningun candidato cubria y que se anaden.
+    """
+
+    funciones: list[Funcion]
+    fusionadas: list[int]
+    descartadas: list[int]
+    rescatadas: list[int]
+    huerfanos: list[tuple[int, int]]
+
+
+def es_terminador(instruccion: int) -> bool:
+    """
+    Indica si una instruccion MIPS cierra el flujo de una funcion.
+
+    Contexto:
+        Una funcion termina en un salto incondicional: ``jr`` (incluido ``jr ra``) o ``j``.
+
+    Args:
+        instruccion (int): Palabra de 32 bits.
+
+    Returns:
+        bool: Verdadero para ``jr rs`` y ``j destino``.
+
+    Ejemplo:
+        es_terminador(0x03E00008)  # True (jr ra)
+    """
+    es_salto = instruccion >> 26 == 2
+    es_jr = instruccion & 0xFC1FFFFF == 0x08
+    return es_salto or es_jr
+
+
+def es_transferencia(instruccion: int) -> bool:
+    """
+    Indica si una instruccion MIPS siempre desvia el flujo y nunca sigue a la siguiente.
+
+    Contexto:
+        Una funcion puede cerrar con un salto de retorno (``jr``, ``j``) o con un salto
+        incondicional hacia atras (un bucle final: ``b`` es ``beq zero,zero``). Una rama
+        condicional (``bne``, ``blez``...) no cierra nada: si no se toma, el flujo cae en la
+        instruccion siguiente, que pertenece a la misma funcion. ``jal``, ``jalr`` y las ramas
+        con enlace vuelven y tampoco cuentan.
+
+    Args:
+        instruccion (int): Palabra de 32 bits.
+
+    Returns:
+        bool: Verdadero para ``jr``, ``j`` y las ramas que se toman siempre: ``beq`` y
+            ``beql`` con ambos registros iguales, ``bgez`` y ``bgezl`` sobre ``zero``.
+
+    Ejemplo:
+        es_transferencia(0x1000FFFE)  # True (b hacia atras)
+    """
+    if es_terminador(instruccion):
+        return True
+    operacion = instruccion >> 26
+    rs = (instruccion >> 21) & 0x1F
+    rt = (instruccion >> 16) & 0x1F
+    if operacion in (4, 0x14):
+        return rs == rt
+    return operacion == 1 and rs == 0 and rt in (1, 3)
+
+
+def _cierra(segmento: bytes, inicio: int, fin: int) -> bool:
+    """
+    Comprueba que el tramo ``[inicio, fin)`` acabe como una funcion completa.
+
+    Su ultima instruccion real (antes de la ranura de retardo) debe ser una transferencia de
+    control y el tramo debe contener una salida real: un ``jr`` o un ``j``. Mirar solo la
+    existencia de un salto aceptaria fragmentos que contienen un retorno en medio.
+    """
+    ultima = min(fin, DIRECCION_FIN) - TAMANO_MINIMO_FUNCION
+    if ultima < inicio or not es_transferencia(palabra_en(segmento, ultima)):
+        return False
+    return any(
+        es_terminador(palabra_en(segmento, direccion))
+        for direccion in range(inicio, ultima + 1, ALINEACION_FUNCION)
+    )
+
+
+def _cuerpo_termina(segmento: bytes, funcion: Funcion) -> bool:
+    """Comprueba que el cuerpo de la funcion cierre como una funcion completa."""
+    return _cierra(segmento, funcion.direccion, funcion.direccion + funcion.tamano)
+
+
+def _anterior_termina(segmento: bytes, previa: Funcion, frontera: int) -> bool:
+    """Comprueba que la funcion previa, hasta la frontera, cierre como una funcion completa."""
+    return _cierra(segmento, previa.direccion, frontera)
+
+
+def _prolongar(segmento: bytes, funcion: Funcion, limite: int) -> Funcion:
+    """
+    Alarga el cuerpo hasta el primer cierre valido antes del siguiente candidato.
+
+    Ghidra corta el cuerpo de las funciones con tabla de saltos en el ultimo destino que
+    encuentra, y el epilogo queda fuera. Si el tramo hasta el limite no cierra, se devuelve
+    la funcion sin cambios.
+    """
+    for fin in range(
+        funcion.direccion + funcion.tamano + ALINEACION_FUNCION, min(limite, DIRECCION_FIN) + 1, 4
+    ):
+        if _cierra(segmento, funcion.direccion, fin):
+            return replace(funcion, tamano=fin - funcion.direccion)
+    return funcion
+
+
+def _recortar_solapes(funciones: list[Funcion]) -> list[Funcion]:
+    """Recorta cada funcion al inicio de la siguiente: dos funciones nunca comparten bytes."""
+    ordenadas = sorted(funciones, key=lambda f: f.direccion)
+    limites = [f.direccion for f in ordenadas[1:]] + [DIRECCION_FIN] * bool(ordenadas)
+    return [
+        replace(f, tamano=min(f.tamano, limite - f.direccion))
+        for f, limite in zip(ordenadas, limites, strict=True)
+    ]
+
+
+def _primer_no_cero(segmento: bytes, inicio: int, fin: int) -> int | None:
+    """Primera direccion del hueco cuya palabra no es relleno de ceros."""
+    direccion = inicio
+    while direccion < fin and palabra_en(segmento, direccion) == 0:
+        direccion += ALINEACION_FUNCION
+    return direccion if direccion < fin else None
+
+
+def _completar_huecos(
+    validas: list[Funcion], segmento: bytes
+) -> tuple[list[Funcion], list[int], list[int], list[tuple[int, int]]]:
+    """
+    Cubre el codigo que queda entre funciones o lo deja registrado.
+
+    Cada tramo entre funciones (tras saltar el relleno de ceros) acaba en exactamente un
+    destino: datos incrustados (primera palabra que no decodifica) y tramos finales sin salto,
+    a ``huerfanos``; rutina completa, a una funcion nueva; cabecera de la funcion siguiente, unida
+    a ella si no tiene nombre oficial (el nombre pertenece a su direccion) o, si lo tiene, rutina
+    propia que continua en ella, salvo que mida menos de 8 bytes, que va a ``huerfanos``.
+    """
+    completas: list[Funcion] = []
+    rescatadas: list[int] = []
+    perdidas: list[int] = []
+    huerfanos: list[tuple[int, int]] = []
+    cursor = DIRECCION_BASE
+    for siguiente in [*validas, None]:
+        limite = FIN_CODIGO if siguiente is None else siguiente.direccion
+        inicio = _primer_no_cero(segmento, cursor, limite) if limite > cursor else None
+        actual = siguiente
+        if inicio is not None:
+            tamano = limite - inicio
+            termina = _cierra(segmento, inicio, limite)
+            if not instruccion_valida(palabra_en(segmento, inicio), inicio):
+                huerfanos.append((inicio, tamano))
+            elif siguiente is not None and not termina and not siguiente.nombre_oficial:
+                actual = replace(siguiente, direccion=inicio, tamano=siguiente.tamano + tamano)
+                rescatadas.append(inicio)
+            elif siguiente is None and not termina:
+                perdidas.append(inicio)
+                huerfanos.append((inicio, tamano))
+            elif not termina and tamano < TAMANO_MINIMO_FUNCION:
+                huerfanos.append((inicio, tamano))
+            else:
+                completas.append(_funcion_nueva(inicio, tamano))
+                rescatadas.append(inicio)
+        if actual is not None:
+            completas.append(actual)
+            cursor = max(cursor, actual.direccion + actual.tamano)
+    return completas, rescatadas, perdidas, huerfanos
+
+
+def _funcion_nueva(direccion: int, tamano: int) -> Funcion:
+    """Funcion del juego sin identificar para un hueco de codigo."""
+    return Funcion(direccion, f"FUN_{direccion:08x}", tamano, False, "", 0, False, "")
+
+
+def depurar_funciones(funciones: list[Funcion], segmento: bytes) -> Depuracion:
+    """
+    Separa las funciones reales de los fragmentos interiores que Ghidra etiqueta como funcion.
+
+    Contexto:
+        Las firmas de libreria marcan puntos de entrada secundarios (destinos de salto dentro de
+        una rutina) y el descubrimiento por prologo puede partir una funcion. Un candidato
+        pegado al final de una funcion que no termina en salto es continuacion de ella: se
+        fusiona ampliando su tamano. Un candidato de menos de ``TAMANO_MINIMO_FUNCION`` bytes que
+        sigue a una funcion terminada se descarta. Los demas quedan abiertos hasta el final:
+        pueden absorber los fragmentos que les siguen, y solo se emiten si su cuerpo definitivo
+        contiene un terminador con su ranura de retardo; si no, se descartan junto con lo que
+        absorbieron. La unica excepcion es el punto de entrada de la cabecera, cuyo codigo de
+        arranque llama a ``main`` y no retorna. Emitir fragmentos como funciones hace que el
+        desensamblador deje de tratar como codigo la region que sigue.
+
+    Args:
+        funciones (list[Funcion]): Candidatos en cualquier orden.
+        segmento (bytes): Segmento cargado, de ``leer_segmento``.
+
+    Returns:
+        Depuracion: Funciones validas ordenadas por direccion y las direcciones fusionadas
+            y descartadas.
+
+    Raises:
+        ValueError: Si hay direcciones duplicadas o el segmento no tiene el tamano esperado.
+
+    Ejemplo:
+        limpias = depurar_funciones(funciones, leer_segmento(ruta)).funciones
+    """
+    asignar_nombres(funciones)
+    abiertas: list[Funcion] = []
+    absorbidas: dict[int, list[int]] = {}
+    descartadas: list[int] = []
+    for candidata in sorted(funciones, key=lambda f: f.direccion):
+        previa = abiertas[-1] if abiertas else None
+        pegada = previa is not None and candidata.direccion <= previa.direccion + previa.tamano
+        if previa is not None and pegada and not _anterior_termina(segmento, previa, candidata.direccion):
+            fin = max(previa.direccion + previa.tamano, candidata.direccion + candidata.tamano)
+            abiertas[-1] = replace(previa, tamano=fin - previa.direccion)
+            absorbidas.setdefault(previa.direccion, []).append(candidata.direccion)
+        elif candidata.tamano >= TAMANO_MINIMO_FUNCION:
+            abiertas.append(candidata)
+        else:
+            descartadas.append(candidata.direccion)
+    validas: list[Funcion] = []
+    fusionadas: list[int] = []
+    for indice, original in enumerate(abiertas):
+        siguiente = abiertas[indice + 1].direccion if indice + 1 < len(abiertas) else DIRECCION_FIN
+        recortada = replace(original, tamano=min(original.tamano, siguiente - original.direccion))
+        funcion = (
+            recortada if _cuerpo_termina(segmento, recortada) else _prolongar(segmento, recortada, siguiente)
+        )
+        propias = absorbidas.get(funcion.direccion, [])
+        if funcion.direccion == DIRECCION_ENTRADA or _cuerpo_termina(segmento, funcion):
+            validas.append(funcion)
+            fusionadas.extend(propias)
+        else:
+            descartadas.extend([funcion.direccion, *propias])
+    completas, rescatadas, perdidas, huerfanos = _completar_huecos(validas, segmento)
+    return Depuracion(
+        _recortar_solapes(completas),
+        sorted(fusionadas),
+        sorted({*descartadas, *perdidas}),
+        rescatadas,
+        huerfanos,
+    )

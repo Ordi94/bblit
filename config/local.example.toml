@@ -1,0 +1,13 @@
+# Copie este archivo a config/local.toml (ignorado por git) y ajuste las rutas de su maquina.
+# BBLIT_DISC lo leen tools/build.py y tools.ghidra. tools.disco y tools.bzz reciben las rutas
+# por argumento explicito (ver docs/TOOLCHAIN.md). Formas aceptadas para el disco: el .bin, el
+# .cue, la carpeta del .bin o una carpeta con fs/.
+# Cada valor tiene un equivalente en variable de entorno que tiene prioridad sobre este archivo.
+
+[rutas]
+# Disco original: la carpeta con el .bin, el propio .bin/.cue, o una carpeta con fs/SLUS_008.38. BBLIT_DISC
+disc = "D:/ruta/al/disco"
+# Carpeta de instalacion del toolchain (por defecto ./toolchain). BBLIT_TOOLCHAIN
+# toolchain = "D:/ruta/al/toolchain"
+# Ejecutable de 7-Zip, necesario para los formatos 7z y rar. BBLIT_7ZIP
+# siete_zip = "C:/Program Files/7-Zip/7z.exe"
