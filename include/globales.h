@@ -7,18 +7,81 @@
 #include "psyq/LIBGPU.H"
 #include "psyq/LIBGS.H"
 
+/* Tipos de datos de animacion que referencia el objeto; sus campos se definen donde se leen. */
+struct NodoSecuencia;
+struct RegistroAnim;
+struct NodoAnimacion;
+struct Fotograma;
+struct TablaFotogramas;
+
+/*
+ * Transformacion que cada objeto o nodo referencia: escala en +0 (VECTOR), rotacion en +0x10
+ * (SVECTOR) y traslacion en +0x18 (VECTOR). Alimenta ScaleMatrix, RotMatrix y TransMatrix
+ * (func_8001CF50, func_8001CFCC). Cada objeto lleva una propia en +0xCC (ver Objeto) y su
+ * puntero transf apunta a ella salvo cuando el objeto va en brazos de otro.
+ */
+typedef struct Transformacion {
+    VECTOR escala;
+    SVECTOR rot;
+    VECTOR trans;
+} Transformacion;
+
+/*
+ * Nodo de matriz de un objeto (+0x7C del objeto; el modelo de un objeto lleva otro en +0x1C):
+ * una palabra que las rutinas de reconstruccion ponen a cero (func_8001CF50, func_8001CFCC), la
+ * matriz de transformacion en +4, la transformacion de origen en +0x44 y el nodo padre en +0x48,
+ * que func_8001CE64 recorre acumulando la traslacion de cada matriz hasta la raiz.
+ */
+typedef struct Nodo {
+    s32 w00;
+    MATRIX mtx;
+    u8 pad24[0x44 - 0x24];
+    Transformacion* transf;
+    struct Nodo* padre;
+} Nodo;
+
+/*
+ * Bloque de trabajo de la animacion del objeto (+0x144 del objeto): estado del fotograma en
+ * curso. func_8001CD84 reinicia h02, b08, i14 y flags18 al cambiar de secuencia, func_80020A90
+ * lee h0A (altura del peldano) y func_80045C4C guarda en +0x20 la tabla de fotogramas de la
+ * animacion elegida; func_80045498 recibe su direccion.
+ */
+typedef struct BloqueTrabajo {
+    u8 pad00[2];
+    s16 h02;
+    u8 pad04[4];
+    u8 b08;
+    u8 pad09;
+    s16 h0A;
+    u8 pad0C[0x14 - 0x0C];
+    s32 i14;
+    u32 flags18;
+    u8 pad1C[4];
+    struct Fotograma* fotogramas;
+} BloqueTrabajo;
+
 /*
  * Objeto de escena. Solo se declaran los campos que el codigo traducido usa; los huecos son
  * relleno. D_80069698 (el objeto controlado) y la lista de D_80069518 apuntan a esta estructura.
  * Los calculos de volumen de la colision la ven como ObjetoVolumen (geometria.h): ambas vistas
  * coinciden en los angulos de +0xDC y la posicion de +0xE4.
+ *
+ * Cada campo cita una funcion cuyo ensamblador fija su desplazamiento y su ancho.
  */
 typedef struct Objeto {
     struct Objeto* siguiente;
-    u8 pad04[0x14 - 0x04];
+    u32 flags04;            /* func_8001DF28: lw / sw, bit 2 = sprite visible */
+    u32 flags08;            /* func_8001CF50, func_8001D75C: lw con mascaras 0x200000 y 0x10000000 */
+    u32 flags0C;            /* func_8001DF28, func_8001E1A4, func_80045C4C: lw / sw */
+    u8 pad10[0x14 - 0x10];
     u32 flags14;
     u32 flags18;
     u16 w1C;
+    /*
+     * +0x1E: lectura con tres formas segun quien lo consulte. Los condicionales del interprete de
+     * eventos lo comparan con lh (func_80030990) y el dano del golpe lo carga con lhu y con lbu
+     * (func_8001D75C). El campo es s16; func_8001D75C usa casts locales comentados.
+     */
     s16 s1E;
     u8 pad20[2];
     u16 w22;
@@ -27,42 +90,86 @@ typedef struct Objeto {
     u16 w28;
     u8 pad2A[0x2C - 0x2A];
     u16 w2C;
-    u8 pad2E[0x38 - 0x2E];
-    u16 w38;
+    u8 pad2E[0x34 - 0x2E];
+    s32 i34;                /* func_8001D75C: sw con w1C del atacante */
+    u16 w38;                /* func_8001D75C, func_80031FE0: solo sh; sin lectura que fije el signo */
     u8 pad3A[2];
     u16 w3C;
-    u8 pad3E[0x6C - 0x3E];
+    u8 pad3E[0x48 - 0x3E];
+    s16 h48;                /* func_8001DF28: lh */
+    u8 pad4A[0x50 - 0x4A];
+    s16 h50;                /* func_8001DF28: lh */
+    s16 h52;                /* func_8001C998, func_8001DF28: lh */
+    u8 pad54[0x68 - 0x54];
+    s32 i68;                /* func_8001D0FC: sw zero */
     struct Objeto* p6C;
     struct Objeto* p70;
-    u8 pad74[0xC0 - 0x74];
-    struct Objeto* pC0;
-    s32 iC4;
-    u8 padC8[0xDC - 0xC8];
-    u16 wDC;
+    struct NodoAnimacion* lista;   /* func_80044EA8, func_80045C4C: lw, lista de animaciones */
+    /*
+     * +0x78: puntero al modelo del objeto. func_8001CF50 solo lo compara con cero, func_8001DF28
+     * suma 0xC para llegar a las coordenadas del sprite y func_80020A90 lo recorre como lista de
+     * peldanos (NodoPeldano en motor.h); void* porque cada rutina lo lee con otro tipo.
+     */
+    void* p78;
+    Nodo nodo;              /* +0x7C: func_8001CF50, func_8001CFCC, func_8001D0FC (lw / sw sobre +0xC0 y +0xC4) */
+    u8 padC8[0xCC - 0xC8];
+    s32 iCC;                /* escala de la transformacion propia (+0xCC): func_8001DF28 */
+    s32 iD0;                /* func_8001DF28 */
+    s32 iD4;                /* func_8001DF28: profundidad del sprite, nunca negativa */
+    u8 padD8[0xDC - 0xD8];
+    u16 wDC;                /* rotacion de la transformacion propia (+0xDC) */
     u16 wDE;
     u16 wE0;
     u8 padE2[0xE4 - 0xE2];
-    s32 xE4;
+    s32 xE4;                /* traslacion de la transformacion propia (+0xE4) */
     s32 yE8;
     s32 zEC;
-    u8 padF0[0x158 - 0xF0];
-    s32 i158;
-    u32 flags15C;
-    u8 pad160[0x17C - 0x160];
+    u8 padF0[0xF4 - 0xF0];
+    struct NodoSecuencia* secuencias;   /* func_8001CD84, func_8001D0FC: lw */
+    u8* bloque;             /* func_8001CD84: base del bloque de animacion */
+    struct NodoSecuencia* apoyos;       /* func_8001D0FC: lw */
+    s32 i100;               /* func_8001C424, func_8001C6CC, func_8001C998: lw / sw */
+    s16 h104;               /* func_80020210, func_80020240: lh */
+    s16 h106;
+    s16 h108;               /* func_8001C424, func_8001C998, func_80020210, func_80020240 */
+    s16 h10A;               /* func_8001C6CC, func_8001C998, func_80020210, func_80020240 */
+    s16 h10C;               /* func_8001C424, func_8001C6CC, func_8001DA14 */
+    u16 w10E;               /* func_8001C424: lhu */
+    s16 h110;               /* func_8001C6CC: lh */
+    s16 h112;               /* func_8001C6CC: lh */
+    u8 pad114[0x116 - 0x114];
+    s16 h116;               /* func_8001C424: lh */
+    u8 pad118[0x13C - 0x118];
+    s32 i13C;               /* func_80020A90: sw */
+    u8 pad140[0x144 - 0x140];
+    BloqueTrabajo trabajo;  /* +0x144, ver BloqueTrabajo */
+    u8 pad168[0x16C - 0x168];
+    struct TablaFotogramas* tabla;      /* func_80044EA8: sw de la tabla activa */
+    u8 pad170[0x17C - 0x170];
     u16 w17C;
-    u16 w17E;
-    u16* p180;
-    u8 pad184[0x192 - 0x184];
+    u16 w17E;               /* lhu en func_80030018 y func_80020B90; las demas rutinas solo lo ponen a cero */
+    /*
+     * +0x180: nodo de la secuencia de animacion en curso (func_8001CD84 lo guarda con sw). El
+     * interprete de eventos lo lee como tabla de u16 indexada por w17E (func_80030018) y
+     * func_80045C4C lo pasa como guion a func_80045498.
+     */
+    struct NodoSecuencia* p180;
+    struct RegistroAnim* registro184;   /* func_8001CD84, func_8001D75C: lw */
+    struct NodoSecuencia* nodo188;      /* func_8001D0FC: sw */
+    u8 pad18C[0x192 - 0x18C];
     u16 w192;
     u8 pad194[2];
     u16 w196;
+    u8 pad198[0x1A8 - 0x198];
+    s32 i1A8;               /* func_80020A90: sw */
 } Objeto;
 
 /*
  * Estado de la camara y de la escena en 0x8006D928. Los primeros 0x20 bytes son un GsRVIEW2 del
  * SDK (punto de vista, punto de mira, rz y coordenada padre): GsSetRefView2L recibe la
  * direccion de la estructura entera. Detras vienen los indicadores y los parametros de
- * seguimiento que mueven los eventos de camara.
+ * seguimiento que mueven los eventos de camara. func_8001CC68 escribe el punto de vista en
+ * cuatro copias (+0x0, +0x68, +0x94 y +0xB4) y el punto de mira en dos (+0xC y +0xA4).
  */
 typedef struct EstadoCamara {
     s32 vpx;
@@ -73,12 +180,30 @@ typedef struct EstadoCamara {
     s32 z;
     s32 rz;
     GsCOORDINATE2* super;
-    u8 pad20[0x80 - 0x20];
+    u8 pad20[0x68 - 0x20];
+    s32 c68;                /* func_8001CC68: sw, copia del punto de vista */
+    s32 c6C;
+    s32 c70;
+    u8 pad74[0x80 - 0x74];
     u16 flags80;
     u8 pad82[0x86 - 0x82];
     s16 s86;
     s16 s88;
     s16 s8A;
+    s16 h8C;                /* func_8001D588: sh zero */
+    s16 h8E;                /* func_8001D588: sh zero */
+    u8 pad90[0x94 - 0x90];
+    s32 c94;                /* func_8001CC68: sw, copia del punto de vista */
+    s32 c98;
+    s32 c9C;
+    u8 padA0[0xA4 - 0xA0];
+    s32 cA4;                /* func_8001CC68: sw, copia del punto de mira */
+    s32 cA8;
+    s32 cAC;
+    u8 padB0[0xB4 - 0xB0];
+    s32 cB4;                /* func_8001CC68: sw, copia del punto de vista */
+    s32 cB8;
+    s32 cBC;
 } EstadoCamara;
 
 /*

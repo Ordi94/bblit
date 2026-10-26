@@ -62,43 +62,16 @@ typedef struct NodoAnimacion {
     DefinicionAnimacion* def;
 } NodoAnimacion;
 
-/* Bloque de trabajo del objeto en +0x144; func_80045C4C escribe la tabla de fotogramas en +0x20. */
-typedef struct BloqueTrabajo {
-    u8 pad00[0x20];
-    Fotograma* fotogramas;
-} BloqueTrabajo;
-
-/*
- * Vista del objeto que usan las rutinas de animacion: banderas en +0xC, componente de rotacion en +0x26,
- * lista de animaciones en +0x74, bloque de trabajo en +0x144, tabla activa en +0x16C, marca en +0x17E y
- * puntero al guion en curso en +0x180.
- */
-typedef struct ObjetoAnimado {
-    u8 pad00[0x0C];
-    u32 flags0C;
-    u8 pad10[0x26 - 0x10];
-    u16 w26;
-    u8 pad28[0x74 - 0x28];
-    NodoAnimacion* lista;
-    u8 pad78[0x144 - 0x78];
-    BloqueTrabajo bloque;
-    u8 pad168[0x16C - 0x144 - sizeof(BloqueTrabajo)];
-    TablaFotogramas* tabla;
-    u8 pad170[0x17E - 0x170];
-    s16 s17E;
-    void* p180;
-} ObjetoAnimado;
-
 extern void func_800449E0(u8* destino);
 extern void* memset(void* destino, s32 valor, u32 cantidad);
 extern void FlushCache(void);
 extern void func_8003ED6C(void);
 extern void func_8003FFA0(void);
-extern void func_8003502C(ObjetoAnimado* objeto);
-extern ObjetoAnimado* func_80036734(s32 tipo, void* a, void* b);
+extern void func_8003502C(Objeto* objeto);
+extern Objeto* func_80036734(s32 tipo, void* a, void* b);
 extern void func_8004BBF0(s32 valor);
 extern void func_8004E584(s32 valor);
-extern void func_80044EA8(s32 a0, u32 a1, ObjetoAnimado* a2);
+extern void func_80044EA8(s32 a0, u32 a1, Objeto* a2);
 extern void func_80055AFC(s32 valor);
 extern void func_8005595C(s32 valor);
 
@@ -111,7 +84,7 @@ extern u16 D_800694E2;
 extern void func_80039CD0(s32 prim);
 extern u16* D_80069590;
 extern u8 D_8006AA7C;
-extern u32 func_80045498(ObjetoAnimado* objeto, void* guion, BloqueTrabajo* bloque);
+extern u32 func_80045498(Objeto* objeto, void* guion, BloqueTrabajo* bloque);
 /*
  * Estado que func_80044A04 reinicia al empezar el nivel. Los de un tamano de dos o cuatro bytes se
  * declaran escalares: el original los escribe con la forma simbolica de -G8 (lui at).
@@ -395,7 +368,7 @@ void func_80044E58(void)
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). Misma estructura que el original; difiere la planificacion de la carga de la direccion de D_8006D018 (lui) y de la mascara andi 0xFFFF. Variantes probadas: 9. */
-void func_80044EA8(s32 a0, u32 a1, ObjetoAnimado* a2)
+void func_80044EA8(s32 a0, u32 a1, Objeto* a2)
 {
     NodoAnimacion* nodo;
     TablaFotogramas* tabla;
@@ -416,7 +389,7 @@ INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044EA8);
 
 void func_80044F20(void)
 {
-    ObjetoAnimado* o;
+    Objeto* o;
 
     o = func_80036734(0x44, NULL, NULL);
     if (o == NULL) {
@@ -603,7 +576,7 @@ INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045498);
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Mismo flujo y mismas escrituras; el original conserva una copia de a2 en v0 para la primera comparacion y emite el sh de +0x26 despues de la carga del byte de D_8006AA7C. Variantes probadas: 12. */
-u32 func_80045C4C(u32 a0, void* a1, ObjetoAnimado* a2)
+u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
 {
     BloqueTrabajo* bloque;
     NodoAnimacion* nodo;
@@ -613,7 +586,7 @@ u32 func_80045C4C(u32 a0, void* a1, ObjetoAnimado* a2)
 
     if (a2 != NULL) {
         a1 = a2->p180;
-        bloque = &a2->bloque;
+        bloque = &a2->trabajo;
         a2->p180 = NULL;
     } else {
         a2 = func_80036734(0x44, NULL, NULL);
@@ -621,14 +594,14 @@ u32 func_80045C4C(u32 a0, void* a1, ObjetoAnimado* a2)
             return 0;
         }
         nodo = a2->lista;
-        bloque = &a2->bloque;
+        bloque = &a2->trabajo;
         while (nodo != NULL && nodo->def->tipo != 8) {
             nodo = nodo->sig;
         }
         tabla = nodo->def->tabla;
         a2->tabla = tabla;
         bloque->fotogramas = tabla->fotogramas;
-        a2->s17E = a0 + 0x8000;
+        a2->w17E = a0 + 0x8000;
         a2->p180 = NULL;
         a1 = (u8*)D_80069590 + D_80069590[a0];
         a2->w26 = D_80069698->w26;

@@ -2,20 +2,16 @@
 #include "gte.h"
 #include "motor.h"
 
-typedef struct Nodo Nodo;
-struct Nodo {
-    s32 pad0;
-    MATRIX mtx;
-    u8 pad24[0x44 - 0x24];
-    Transformacion* transf;
-    Nodo* padre;
-};
-
-typedef struct Entidad {
+/*
+ * Area de trabajo de func_8001CE64: nodo desde el que se acumula la traslacion en +0, vector de
+ * entrada y de salida recortado a 16 bits en +4 y acumulador de 32 bits en +0xC. El llamador la
+ * reserva en la pila o en la memoria rapida; no forma parte de ningun objeto.
+ */
+typedef struct AcumuladorNodos {
     Nodo* nodo;
     SVECTOR v;
     VECTOR acc;
-} Entidad;
+} AcumuladorNodos;
 
 /*
  * Datos de golpe del atacante: banderas en +0xC (0x200000 = golpe leve, siempre resta 1) y
@@ -70,7 +66,7 @@ void func_8001CC68(VECTOR* p)
     MATRIX m;
     SVECTOR v;
     VECTOR r;
-    CamaraMotor* c;
+    EstadoCamara* c;
     s32 t;
     u16 ang;
 
@@ -79,7 +75,7 @@ void func_8001CC68(VECTOR* p)
     v.vz = -0x64;
     RotMatrix((SVECTOR*)&D_80069698->wDC, &m);
     ApplyMatrix(&m, &v, &r);
-    c = CAMARA_MOTOR;
+    c = &D_8006D928;
     t = p->vx;
     c->cA4 = t;
     c->x = t;
@@ -133,7 +129,7 @@ typedef struct CursorAnim {
  * cursor en su primer fotograma. Si el fotograma nuevo no conserva el estado del salto (bit 0x40)
  * o es otra secuencia, se reinician los acumuladores de movimiento del objeto.
  */
-void func_8001CD84(ObjetoMotor* o, u32 id, CursorAnim* c)
+void func_8001CD84(Objeto* o, u32 id, CursorAnim* c)
 {
     if (o->registro184 != NULL) {
         c->anterior = o->registro184->w06;
@@ -146,15 +142,15 @@ void func_8001CD84(ObjetoMotor* o, u32 id, CursorAnim* c)
         c->nodo = c->nodo->sig;
     }
     c->actual = (RegistroAnim*)(o->bloque + c->nodo->desplazamiento);
-    o->nodo180 = c->nodo;
+    o->p180 = c->nodo;
     o->registro184 = c->actual;
     o->flags14 = o->flags14 & 0xF9FFFDF6;
     if ((c->actual->w08 & 0x40) == 0 || c->actual->w06 != c->anterior) {
-        o->i158 = 0;
-        o->h146 = 0;
-        o->b14C = 0;
+        o->trabajo.i14 = 0;
+        o->trabajo.h02 = 0;
+        o->trabajo.b08 = 0;
         o->w17C = 0;
-        o->flags15C = 0;
+        o->trabajo.flags18 = 0;
     }
 }
 
@@ -163,7 +159,7 @@ void func_8001CD84(ObjetoMotor* o, u32 id, CursorAnim* c)
  * rota el vector con la matriz del nodo en el GTE, suma la traslacion del nodo, recorta el
  * resultado a 16 bits y sube al nodo padre hasta llegar al raiz.
  */
-void func_8001CE64(Entidad* e)
+void func_8001CE64(AcumuladorNodos* e)
 {
     e->v.vx = 0;
     e->v.vy = 0;
@@ -195,14 +191,14 @@ void func_8001CE64(Entidad* e)
  * rotacion y escala). No actua si el objeto no tiene matriz propia o si la bandera 0x200000
  * indica que otra rutina la mantiene.
  */
-void func_8001CF50(ObjetoMotor* o)
+void func_8001CF50(Objeto* o)
 {
     if (o->p78 != NULL) {
         if ((o->flags08 & 0x200000) == 0) {
-            o->w7C = 0;
-            TransMatrix(&o->mtx, &o->transf->trans);
-            RotMatrix(&o->transf->rot, &o->mtx);
-            ScaleMatrix(&o->mtx, &o->transf->escala);
+            o->nodo.w00 = 0;
+            TransMatrix(&o->nodo.mtx, &o->nodo.transf->trans);
+            RotMatrix(&o->nodo.transf->rot, &o->nodo.mtx);
+            ScaleMatrix(&o->nodo.mtx, &o->nodo.transf->escala);
         }
     }
 }
@@ -216,7 +212,7 @@ void func_8001CFCC(Nodo* n)
     MATRIX* m;
 
     m = &n->mtx;
-    n->pad0 = 0;
+    n->w00 = 0;
     RotMatrix(&n->transf->rot, m);
     ScaleMatrix(m, &n->transf->escala);
     TransMatrix(m, &n->transf->trans);
@@ -243,7 +239,7 @@ typedef struct DesplazamientoObjetos {
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 300 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y mismo orden de almacenes; el original copia el tercer argumento a a3 al principio y lo reutiliza como cuarto argumento de la llamada, el C lo copia despues. Variantes probadas: 9. */
-void func_8001D028(ObjetoMotor* origen, ObjetoMotor* destino, u8* p)
+void func_8001D028(Objeto* origen, Objeto* destino, u8* p)
 {
     DesplazamientoObjetos* w;
 
@@ -301,43 +297,43 @@ typedef struct BusquedaAnim {
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 670 con la configuracion versionada (g = 8 del archivo). Mismas busquedas y almacenes; el original conserva el argumento b en a3 y deriva b + 0x10 en s1 desde el principio, el C usa b en s1 y calcula b + 0x10 al final. Variantes probadas: 4. */
-void func_8001D0FC(ObjetoMotor* otro, u32 id, BusquedaAnim* b)
+void func_8001D0FC(Objeto* otro, u32 id, BusquedaAnim* b)
 {
-    ObjetoMotor* j;
-    ObjetoMotor* llevado;
+    Objeto* j;
+    Objeto* llevado;
     NodoSecuencia* n;
 
-    if (!(((ObjetoMotor*)D_80069698)->flags14 & 0x1000000)) {
-        b->nodo = ((ObjetoMotor*)D_80069698)->secuencias;
+    if (!(D_80069698->flags14 & 0x1000000)) {
+        b->nodo = D_80069698->secuencias;
         while (b->nodo != NULL && b->nodo->id != id) {
             b->nodo = b->nodo->sig;
         }
         b->desplazamiento = b->nodo->desplazamiento;
-        b->fotograma = (NodoSecuencia*)((ObjetoMotor*)D_80069698)->bloque;
+        b->fotograma = (NodoSecuencia*)D_80069698->bloque;
         while (b->fotograma != NULL && b->fotograma->id != b->desplazamiento) {
             b->fotograma = b->fotograma->sig;
         }
-        b->apoyo = ((ObjetoMotor*)D_80069698)->apoyos;
+        b->apoyo = D_80069698->apoyos;
         while (b->apoyo != NULL && b->apoyo->id != b->fotograma->w0A) {
             b->apoyo = b->apoyo->sig;
         }
-        j = (ObjetoMotor*)D_80069698;
+        j = D_80069698;
         j->w17C = id;
-        j->nodo180 = b->nodo;
+        j->p180 = b->nodo;
         j->registro184 = (RegistroAnim*)b->fotograma;
         j->nodo188 = b->apoyo;
-        j->i158 = 0;
+        j->trabajo.i14 = 0;
         j->i68 = 0;
         if ((b->fotograma->w10 & 0x800)) {
-            ((ObjetoMotor*)D_80069698)->flags14 &= ~0x209;
+            D_80069698->flags14 &= ~0x209;
         }
-        j = (ObjetoMotor*)D_80069698;
+        j = D_80069698;
         llevado = j->p6C;
-        j->h17E = 0;
+        j->w17E = 0;
         j->wE0 = 0;
         if (llevado != NULL && llevado->w2C != 0x22) {
-            llevado->transf = (Transformacion*)((u8*)llevado + 0xCC);
-            llevado->iC4 = 0;
+            llevado->nodo.transf = (Transformacion*)((u8*)llevado + 0xCC);
+            llevado->nodo.padre = NULL;
             llevado->flags14 = (llevado->flags14 & ~0x800) | 0x1000;
             llevado->w26 = otro->w26;
             llevado->wDC = j->wDC;
@@ -345,8 +341,8 @@ void func_8001D0FC(ObjetoMotor* otro, u32 id, BusquedaAnim* b)
             llevado->p70 = NULL;
             llevado->wE0 = j->wE0;
             j->p6C = NULL;
-            func_8001CFCC((Nodo*)((u8*)llevado + 0x7C));
-            func_8001D028((ObjetoMotor*)D_80069698, llevado, (u8*)b + 0x10);
+            func_8001CFCC(&llevado->nodo);
+            func_8001D028(D_80069698, llevado, (u8*)b + 0x10);
         }
         D_800693B8 = -1;
     }
@@ -374,24 +370,24 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D0FC);
 void func_8001D31C(s32 x, s32 y, s32 z)
 {
     VECTOR destino;
-    ObjetoMotor* tenido;
-    CamaraMotor* camara;
+    Objeto* tenido;
+    EstadoCamara* camara;
 
-    tenido = (ObjetoMotor*)((ObjetoMotor*)D_80069698)->p70;
+    tenido = D_80069698->p70;
     if (tenido != NULL) {
-        ((ObjetoMotor*)D_80069698)->iC4 = 0;
-        ((ObjetoMotor*)D_80069698)->transf = (Transformacion*)((u8*)D_80069698 + 0xCC);
-        tenido->p6C = (ObjetoMotor*)D_80069698;
+        D_80069698->nodo.padre = NULL;
+        D_80069698->nodo.transf = (Transformacion*)((u8*)D_80069698 + 0xCC);
+        tenido->p6C = D_80069698;
         if (D_80069698 != NULL) {
-            ((ObjetoMotor*)D_80069698)->p70->p6C = NULL;
+            D_80069698->p70->p6C = NULL;
         }
-        ((ObjetoMotor*)D_80069698)->p70 = NULL;
-        ((ObjetoMotor*)D_80069698)->flags14 &= ~0x14;
+        D_80069698->p70 = NULL;
+        D_80069698->flags14 &= ~0x14;
     }
-    ((ObjetoMotor*)D_80069698)->xE4 = x;
-    ((ObjetoMotor*)D_80069698)->yE8 = y;
-    ((ObjetoMotor*)D_80069698)->zEC = z;
-    camara = CAMARA_MOTOR;
+    D_80069698->xE4 = x;
+    D_80069698->yE8 = y;
+    D_80069698->zEC = z;
+    camara = &D_8006D928;
     if (!(*(u32*)D_8006D9A8 & 0x304)) {
         if ((s8)D_80010076 <= 0) {
             destino.vx = x;
@@ -417,7 +413,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D31C);
  */
 void func_8001D414(s16 accion)
 {
-    if (((ObjetoMotor*)D_80069698)->flags14 & 0x10000) {
+    if (D_80069698->flags14 & 0x10000) {
         if (!(D_800694F2 & 8)) {
             D_800694F2 = D_800694F2 | 8;
             func_8003F06C(D_80069698, 0xD, 1, D_8006967C);
@@ -426,7 +422,7 @@ void func_8001D414(s16 accion)
         D_800694F2 = D_800694F2 & 0xF7;
         func_8003F06C(D_80069698, 0xD, 2, D_8006967C);
     }
-    if (((ObjetoMotor*)D_80069698)->flags18 & 4) {
+    if (D_80069698->flags18 & 4) {
         if ((D_8001000A & 0xF000) && accion == 0x8B) {
             if (!(D_800694F2 & 0x10)) {
                 D_800694F2 = D_800694F2 | 0x10;
@@ -478,57 +474,57 @@ void func_8001D414(s16 accion)
 /* Pendiente: puntuacion 840 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y almacenes; el original ejecuta los dos almacenes de bytes de D_8006965A y D_80069659 antes de leer la lista del objeto, el planificador del C adelanta la lectura de p70. Variantes probadas: 3. */
 void func_8001D588(s32 modo, VECTOR* p)
 {
-    ObjetoMotor* e;
-    ObjetoMotor* j;
-    CamaraMotor* c;
-    ObjetoMotor* t;
+    Objeto* e;
+    Objeto* j;
+    EstadoCamara* c;
+    Objeto* t;
     u16 ang;
 
-    j = (ObjetoMotor*)D_80069698;
+    j = D_80069698;
     D_8006965A = 0;
     D_80069659 = 0;
-    j->h17E = 0;
+    j->w17E = 0;
     j->w17C = modo;
     j->flags14 = (j->flags14 | 0x1000004) & 0xFFFEFFFF;
-    c = CAMARA_MOTOR;
-    c->h88 = 0;
+    c = &D_8006D928;
+    c->s88 = 0;
     c->h8C = 0;
     c->h8E = 0;
     t = j->p70;
     D_80069690 = 0;
     D_800693F6 = 0;
     if (t != NULL) {
-        j->iC4 = 0;
-        j->transf = (Transformacion*)((u8*)j + 0xCC);
+        j->nodo.padre = NULL;
+        j->nodo.transf = (Transformacion*)((u8*)j + 0xCC);
         t->p6C = NULL;
         j->p70 = NULL;
         j->flags14 &= ~0x14;
     }
-    e = ((ObjetoMotor*)D_80069698)->p6C;
+    e = D_80069698->p6C;
     if (e != NULL) {
         if (e->w2C == 0x22) {
             e->flags14 |= 0x100;
         }
-        e->transf = (Transformacion*)((u8*)e + 0xCC);
-        e->iC4 = 0;
+        e->nodo.transf = (Transformacion*)((u8*)e + 0xCC);
+        e->nodo.padre = NULL;
         e->p70 = NULL;
         e->flags14 = (e->flags14 & ~0x800) | 0x1000;
-        ((ObjetoMotor*)D_80069698)->p6C = NULL;
-        func_8001CFCC((Nodo*)((u8*)e + 0x7C));
+        D_80069698->p6C = NULL;
+        func_8001CFCC(&e->nodo);
     }
     if (p != NULL) {
-        ((ObjetoMotor*)D_80069698)->xE4 = p->vx;
-        ((ObjetoMotor*)D_80069698)->yE8 = p->vy;
-        ((ObjetoMotor*)D_80069698)->wDE = 0;
-        ((ObjetoMotor*)D_80069698)->zEC = p->vz;
+        D_80069698->xE4 = p->vx;
+        D_80069698->yE8 = p->vy;
+        D_80069698->wDE = 0;
+        D_80069698->zEC = p->vz;
         D_80069402 = 0;
-        CAMARA_MOTOR->vpx = p->vx;
-        CAMARA_MOTOR->vpy = p->vy;
-        CAMARA_MOTOR->vpz = p->vz;
-        CAMARA_MOTOR->x = p->vx;
-        CAMARA_MOTOR->y = p->vy;
-        CAMARA_MOTOR->z = p->vz;
-        ang = ((ObjetoMotor*)D_80069698)->wDE + 0x800;
+        D_8006D928.vpx = p->vx;
+        D_8006D928.vpy = p->vy;
+        D_8006D928.vpz = p->vz;
+        D_8006D928.x = p->vx;
+        D_8006D928.y = p->vy;
+        D_8006D928.z = p->vz;
+        ang = D_80069698->wDE + 0x800;
         D_80069416 = ang;
         D_80069402 = ang;
     }
@@ -548,9 +544,9 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D588);
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 8935 con la configuracion versionada (g = 8 del archivo). Misma logica de condiciones y mismos almacenes, primer borrador sin igualar el orden de bloques: el original reparte el dano por defecto (1) y el de la rama con atacante en bloques compartidos con saltos distintos y dos formas de cerrar el llamador. Variantes probadas: 1. */
-s32 func_8001D75C(ObjetoMotor* otro, DatosGolpe* a1)
+s32 func_8001D75C(Objeto* otro, DatosGolpe* a1)
 {
-    ObjetoMotor* j;
+    Objeto* j;
     u32 estado;
     s32 danio;
     u32 v1;
@@ -568,10 +564,10 @@ s32 func_8001D75C(ObjetoMotor* otro, DatosGolpe* a1)
         return 0;
     }
     estado = D_8006D9A8[0];
-    if (((estado & 0x100) || ((ObjetoMotor*)D_80069698)->flags14 < 0) && (estado & 0x200) == 0) {
+    if (((estado & 0x100) || D_80069698->flags14 < 0) && (estado & 0x200) == 0) {
         return 0;
     }
-    j = (ObjetoMotor*)D_80069698;
+    j = D_80069698;
     if (j->flags14 & 0x1000000) {
         return 0;
     }
@@ -585,9 +581,10 @@ s32 func_8001D75C(ObjetoMotor* otro, DatosGolpe* a1)
     j->i34 = otro->w1C;
     otro->i34 = 1;
     if (otro->w2C == 0x1F) {
-        j->h38 = otro->w1E;
+        /* 0x8001D860: lhu 0x1E(a3) y 0x8001D870: lbu 0x1E(a3); el campo es s16 para el interprete de eventos (lh), asi que el dano se lee sin signo con la conversion. */
+        j->w38 = (u16)otro->s1E;
         D_80069690 = 0x1E;
-        D_80010041 -= (u8)otro->w1E;
+        D_80010041 -= (u8)otro->s1E;
         goto marcar;
     }
     if (a1 != NULL) {
@@ -597,7 +594,7 @@ s32 func_8001D75C(ObjetoMotor* otro, DatosGolpe* a1)
                 if (danio >= 3) {
                     danio = 2;
                 }
-                j->h38 = danio;
+                j->w38 = danio;
                 D_80069690 = 0x1E;
                 D_80010041 -= danio;
 marcar:
@@ -606,10 +603,10 @@ marcar:
             goto fin;
         }
     }
-    ((ObjetoMotor*)D_80069698)->h38 = 1;
+    D_80069698->w38 = 1;
     D_80069690 = 0x1E;
     D_80010041 -= 1;
-    ((ObjetoMotor*)D_80069698)->flags14 |= 0x2000000;
+    D_80069698->flags14 |= 0x2000000;
 fin:
     v1 = otro->flags18;
     otro->flags18 = v1 | 0x4000;
@@ -637,7 +634,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D75C);
  * banderas, copia posicion y orientacion, coloca la camara detras, fija 30 cuadros de
  * invulnerabilidad y la salud a 6, y lanza el efecto de fundido 1 de 0x200 cuadros.
  */
-void func_8001D994(ObjetoMotor* o)
+void func_8001D994(Objeto* o)
 {
     /* El original reserva 0x38 bytes de pila que el codigo no llega a usar. */
     u8 reserva[0x38];
@@ -751,7 +748,7 @@ extern u16 D_8005E078[];
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 590 con la configuracion versionada (g = 8 del archivo). Mismo bucle de prueba de rumbos y mismas llamadas GTE; el original asigna s4 al area de consulta, s7 al vector rotado y s6 al resultado de baldosa, el C reparte esos tres punteros y el modo centrado de otro modo, y calcula la mascara ~6 en un registro. Variantes probadas: 7. */
-void func_8001DA14(ObjetoMotor* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
+void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
 {
     u16* tabla;
     s32 i;
@@ -836,7 +833,7 @@ void func_8001DA14(ObjetoMotor* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda
         i++;
     } while (i < 9);
     if (a2 & 0x40000000) {
-        if (o->p70 == (ObjetoMotor*)D_80069698) {
+        if (o->p70 == D_80069698) {
             o->w26 = *D_80069558;
         } else {
             o->w26 = w->w8C;
@@ -898,7 +895,7 @@ extern VECTOR D_80076144;
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 3500 con la configuracion versionada (g = 8 del archivo). Mismo codigo GTE (matriz de rotacion, vector de traslacion, rtps) y mismas operaciones; el original conserva el segundo argumento en a1 y copia solo el objeto a a2, y usa a3 como base de la matriz, el C copia ambos y usa t2. Variantes probadas: 8. */
-void* func_8001DF28(ObjetoMotor* o, ProyeccionSprite* b)
+void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
 {
     s32 t;
     s16* p;
@@ -992,12 +989,12 @@ extern void RunLogicAction(void* o, void* item);
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 200 con la configuracion versionada (g = 8 del archivo). La unica diferencia es la carga del argumento de func_8003F06C: el original usa lw y el C con la conversion (s16) usa lh; sin la conversion el compilador iza la direccion de D_8006B558 fuera del bucle y la puntuacion sube a 692. Variantes probadas: 6. */
-void func_8001E1A4(ObjetoMotor* o, ConsultaPlano* c)
+void func_8001E1A4(Objeto* o, ConsultaPlano* c)
 {
     VECTOR destino;
     EventoZona* z;
     NodoVolumen* nodo;
-    ObjetoMotor* soltar;
+    Objeto* soltar;
     s32 f;
     s32* ref;
 
@@ -1039,11 +1036,11 @@ void func_8001E1A4(ObjetoMotor* o, ConsultaPlano* c)
                     if (soltar->p6C == o) {
                         soltar->p6C = NULL;
                     }
-                    o->transf = (Transformacion*)((u8*)o + 0xCC);
-                    o->iC4 = 0;
+                    o->nodo.transf = (Transformacion*)((u8*)o + 0xCC);
+                    o->nodo.padre = NULL;
                     o->p70 = NULL;
                     o->flags14 = (o->flags14 & ~0x14) | 0x202;
-                    func_8001CFCC((Nodo*)((u8*)o + 0x7C));
+                    func_8001CFCC(&o->nodo);
                 }
             }
             if (z->flags & 0x80000) {

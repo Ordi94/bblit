@@ -37,7 +37,7 @@ typedef struct ConjuntoSprites {
     u16 c32;
 } ConjuntoSprites;
 
-extern void func_8001E600(ObjetoMotor* o, ConjuntoSprites* c, u32 modo);
+extern void func_8001E600(Objeto* o, ConjuntoSprites* c, u32 modo);
 
 /*
  * Sprite del objeto en formato escalado: el bloque que sigue a los doce primeros bytes del
@@ -96,7 +96,7 @@ typedef struct SpritePlano {
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 1535 con la configuracion versionada (-G0). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0. Variantes probadas: 8. */
-void func_8001E528(ObjetoMotor* o, ConjuntoSprites* c, u32 modo)
+void func_8001E528(Objeto* o, ConjuntoSprites* c, u32 modo)
 {
     RegistroSprite* r;
     SpritePlano* p;
@@ -155,7 +155,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E528);
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 2665 con la configuracion versionada (-G0). Mismos accesos y almacenes; el original calcula el desplazamiento de color en t2 y deja el puntero al sprite en v1, el C reparte otros registros y reordena las lecturas del registro del cuadro. Variantes probadas: 3. */
-void func_8001E600(ObjetoMotor* o, ConjuntoSprites* c, u32 modo)
+void func_8001E600(Objeto* o, ConjuntoSprites* c, u32 modo)
 {
     RegistroSprite* r;
     SpriteEscalado* p;
@@ -206,7 +206,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001F268);
  * de fase `paso` y amplitud `amplitud`; enciende la bandera 1 y apaga las que dependen del
  * movimiento anterior (mascara 0xEFFFF9F1).
  */
-void func_80020210(ObjetoMotor* o, u16 paso, u16 amplitud)
+void func_80020210(Objeto* o, u16 paso, u16 amplitud)
 {
     o->h10A = 0;
     o->h108 = 0x400;
@@ -223,7 +223,7 @@ void func_80020210(ObjetoMotor* o, u16 paso, u16 amplitud)
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 605 con la configuracion versionada (-G0). La condicion de continuar (bit 4 apagado o bit 0x10 activo) y la reunion de las dos ramas de la altura no se reproducen: el compilador adelanta la carga de las banderas y repite el almacen de h10A en cada rama. Variantes probadas: 10. */
-void func_80020240(ObjetoMotor* o)
+void func_80020240(Objeto* o)
 {
     s32 v;
     s32 t;
@@ -268,9 +268,9 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020354);
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 2360 con la configuracion versionada (-G0). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica. Variantes probadas: 4. */
-u8 func_80020A90(ObjetoMotor* o, Movimiento* d, ObjetoMotor** apoyo)
+u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
 {
-    ObjetoMotor* t;
+    Objeto* t;
     NodoPeldano* nodo;
     s32 altura;
     s32 acc;
@@ -280,18 +280,18 @@ u8 func_80020A90(ObjetoMotor* o, Movimiento* d, ObjetoMotor** apoyo)
     t = o->p70;
     *apoyo = t;
     if (o->p70 != NULL) {
-        nodo = t->p78;
+        nodo = (NodoPeldano*)t->p78; /* lw 0x78(t): cabeza de la lista de peldanos */
         if (t->flags08 & 0x400000) {
             altura = o->i1A8 + d->dy - 0x12C;
             if (altura <= 0) {
                 return 2;
             }
-            return altura >= t->h14E;
+            return altura >= t->trabajo.h0A;
         }
         altura = o->i1A8 + d->dy - 0x12C;
         acc = 0;
         if (nodo != NULL) {
-            paso = (u16)t->h14E;
+            paso = (u16)t->trabajo.h0A;
             v = acc + paso;
             do {
                 acc = v;
@@ -306,7 +306,7 @@ u8 func_80020A90(ObjetoMotor* o, Movimiento* d, ObjetoMotor** apoyo)
             t->i13C = nodo->w10;
             return 0;
         }
-        (*apoyo)->i13C = (*apoyo)->p78->w10;
+        (*apoyo)->i13C = ((NodoPeldano*)(*apoyo)->p78)->w10;
         if (altura > 0) {
             return 1;
         }

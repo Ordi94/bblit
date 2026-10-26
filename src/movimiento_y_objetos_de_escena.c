@@ -15,7 +15,7 @@
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 1135 con la configuracion versionada (-G0). Misma estructura de ramas y mismos almacenes; en el bloque de despegue el original conserva dos copias de las banderas (move v1,v0) y ordena los almacenes de h108 y w10E de otro modo. Variantes probadas: 14. */
-void func_8001C424(ObjetoMotor* o, Movimiento* m, ResultadoBaldosa* orden)
+void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* orden)
 {
     s32 dy;
     s32 nuevo;
@@ -113,7 +113,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C424);
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 498 con la configuracion versionada (-G0). Misma secuencia de llamadas y almacenes; el original reparte s1 al objeto y s0 al area de trabajo y ordena un almacen de d->z antes de la lectura de w->h18, el C los asigna al reves. Variantes probadas: 7. */
-void func_8001C6CC(ObjetoMotor* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
+void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
 {
     s32* pos;
     u8* area;
@@ -168,7 +168,7 @@ void func_8001C6CC(ObjetoMotor* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMo
         o->flags14 = o->flags14 | 0x100000;
     }
     if (r->flags & 8) {
-        if (o == (ObjetoMotor*)D_80069698 || !(o->flags14 & 1)) {
+        if (o == D_80069698 || !(o->flags14 & 1)) {
             o->yE8 = o->yE8 + 1;
             w->w1C = r->grupo;
             func_8001C134(&o->xE4, r, (TrabajoBaldosa*)area);
@@ -196,7 +196,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C6CC);
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 3636 con la configuracion versionada (-G0). Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a la altura nueva y s2 al suelo anterior, y precalcula area + 0x28 al principio, el C asigna los registros en otro orden y cambia el reparto de los saltos. Variantes probadas: 2. */
-void func_8001C998(ObjetoMotor* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* area)
+void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* area)
 {
     TrabajoSuelo* w;
     s32 base;
@@ -290,7 +290,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C998);
  * orientacion del objeto se copia al resultado de la baldosa antes y se recupera despues
  * salvo que el terreno la invalide con -1.
  */
-void func_8001CBB8(ObjetoMotor* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
+void func_8001CBB8(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
 {
     r->grupo = o->w26;
     func_8001C6CC(o, d, r, w);

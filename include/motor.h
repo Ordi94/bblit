@@ -2,26 +2,12 @@
 #define MOTOR_H
 
 /*
- * Vista de los objetos de escena para el movimiento, la animacion de matrices y los eventos de
- * zona. Cada campo corresponde a un acceso del ensamblador original (ancho y signo de la
- * instruccion de carga y de almacen); los huecos son relleno. Es la misma memoria que Objeto
- * (globales.h), que solo declara los campos que usan los demas archivos: los desplazamientos
- * comunes se comprueban en tiempo de compilacion al final de este archivo, de modo que una
- * discrepancia entre las dos vistas rompe la compilacion en lugar de generar codigo distinto.
+ * Tipos auxiliares del movimiento, la animacion de matrices y los eventos de zona. El objeto de
+ * escena y el estado de la camara viven en globales.h (Objeto, EstadoCamara).
  */
 #include "common.h"
 #include "globales.h"
 #include "geometria.h"
-
-/*
- * Transformacion que cada objeto o nodo referencia: escala en +0 (VECTOR), rotacion en +0x10
- * (SVECTOR) y traslacion en +0x18 (VECTOR). Alimenta ScaleMatrix, RotMatrix y TransMatrix.
- */
-typedef struct Transformacion {
-    VECTOR escala;
-    SVECTOR rot;
-    VECTOR trans;
-} Transformacion;
 
 extern MATRIX* TransMatrix(MATRIX* m, VECTOR* v);
 
@@ -125,133 +111,10 @@ typedef struct NodoPeldano {
     s32 w10;
 } NodoPeldano;
 
-/*
- * Objeto de escena con los campos del movimiento. Posicion en +0xE4 (s32 x, y, z), angulos en
- * +0xDC, matriz de transformacion en +0x80 (func_8001CF50) y transformacion en +0xC0.
- */
-typedef struct ObjetoMotor {
-    struct ObjetoMotor* siguiente;
-    u32 flags04;
-    u32 flags08;
-    u32 flags0C;
-    u8 pad10[0x14 - 0x10];
-    u32 flags14;
-    u32 flags18;
-    u16 w1C;
-    u16 w1E;
-    u8 pad20[0x26 - 0x20];
-    u16 w26;
-    u8 pad28[0x2C - 0x28];
-    u16 w2C;
-    u8 pad2E[0x34 - 0x2E];
-    s32 i34;
-    s16 h38;
-    u8 pad3A[0x48 - 0x3A];
-    s16 h48;
-    u8 pad4A[0x50 - 0x4A];
-    s16 h50;
-    s16 h52;
-    u8 pad54[0x68 - 0x54];
-    s32 i68;
-    struct ObjetoMotor* p6C;
-    struct ObjetoMotor* p70;
-    u8 pad74[0x78 - 0x74];
-    NodoPeldano* p78;
-    s32 w7C;
-    MATRIX mtx;
-    u8 padA0[0xC0 - 0xA0];
-    Transformacion* transf;
-    s32 iC4;
-    u8 padC8[0xCC - 0xC8];
-    s32 iCC;
-    s32 iD0;
-    s32 iD4;
-    u8 padD8[0xDC - 0xD8];
-    u16 wDC;
-    u16 wDE;
-    u16 wE0;
-    u8 padE2[0xE4 - 0xE2];
-    s32 xE4;
-    s32 yE8;
-    s32 zEC;
-    u8 padF0[0xF4 - 0xF0];
-    NodoSecuencia* secuencias;
-    u8* bloque;
-    NodoSecuencia* apoyos;
-    s32 i100;
-    s16 h104;
-    s16 h106;
-    s16 h108;
-    s16 h10A;
-    s16 h10C;
-    u16 w10E;
-    s16 h110;
-    s16 h112;
-    u8 pad114[0x116 - 0x114];
-    s16 h116;
-    u8 pad118[0x13C - 0x118];
-    s32 i13C;
-    u8 pad140[0x146 - 0x140];
-    s16 h146;
-    u8 pad148[0x14C - 0x148];
-    u8 b14C;
-    u8 pad14D[0x14E - 0x14D];
-    s16 h14E;
-    u8 pad150[0x158 - 0x150];
-    s32 i158;
-    u32 flags15C;
-    u8 pad160[0x17C - 0x160];
-    u16 w17C;
-    u16 h17E;
-    NodoSecuencia* nodo180;
-    RegistroAnim* registro184;
-    NodoSecuencia* nodo188;
-    u8 pad18C[0x1A8 - 0x18C];
-    s32 i1A8;
-} ObjetoMotor;
-
-/*
- * Estado de la camara y de la escena (D_8006D928) con los campos de posicionamiento: la vista
- * de EstadoCamara en globales.h solo declara los primeros 0x20 bytes y las banderas de +0x80.
- * Los dos puntos de vista (vp) y de mira (x, y, z) se repiten en cuatro copias que la
- * rutina de seguimiento interpola (+0x68, +0x94, +0xA4 y +0xB4).
- */
-typedef struct CamaraMotor {
-    s32 vpx;
-    s32 vpy;
-    s32 vpz;
-    s32 x;
-    s32 y;
-    s32 z;
-    u8 pad18[0x68 - 0x18];
-    s32 c68;
-    s32 c6C;
-    s32 c70;
-    u8 pad74[0x80 - 0x74];
-    u16 flags80;
-    u8 pad82[0x88 - 0x82];
-    s16 h88;
-    u8 pad8A[0x8C - 0x8A];
-    s16 h8C;
-    s16 h8E;
-    u8 pad90[0x94 - 0x90];
-    s32 c94;
-    s32 c98;
-    s32 c9C;
-    u8 padA0[0xA4 - 0xA0];
-    s32 cA4;
-    s32 cA8;
-    s32 cAC;
-    u8 padB0[0xB4 - 0xB0];
-    s32 cB4;
-    s32 cB8;
-    s32 cBC;
-} CamaraMotor;
-
 /* Rutinas de movimiento de movimiento_y_objetos_de_escena.c que se llaman entre si. */
-extern void func_8001C424(ObjetoMotor* o, Movimiento* m, ResultadoBaldosa* r);
-extern void func_8001C6CC(ObjetoMotor* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w);
-extern void func_8001C998(ObjetoMotor* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w);
+extern void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* r);
+extern void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w);
+extern void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w);
 
 /*
  * Macro de lectura del GTE del juego: guarda MAC3 (registro 27 de datos) en la palabra de p
@@ -262,36 +125,5 @@ extern void func_8001C998(ObjetoMotor* o, Movimiento* d, ResultadoBaldosa* r, Tr
 	mfc2 $8, $27
 	nop
 	sw $8, 0($9)"                       : : "r"(p) : "$8", "$9", "memory")
-
-/* Comprobacion de coherencia con Objeto (globales.h): el arreglo tiene tamano negativo si difiere. */
-#define MOTOR_MISMO_OFFSET(campo_motor, campo_objeto) \
-    typedef char motor_offset_##campo_motor[ \
-        ((u32)&((ObjetoMotor*)0)->campo_motor == (u32)&((Objeto*)0)->campo_objeto) ? 1 : -1]
-MOTOR_MISMO_OFFSET(flags14, flags14);
-MOTOR_MISMO_OFFSET(flags18, flags18);
-MOTOR_MISMO_OFFSET(w1C, w1C);
-MOTOR_MISMO_OFFSET(w26, w26);
-MOTOR_MISMO_OFFSET(w2C, w2C);
-MOTOR_MISMO_OFFSET(wDC, wDC);
-MOTOR_MISMO_OFFSET(wDE, wDE);
-MOTOR_MISMO_OFFSET(wE0, wE0);
-MOTOR_MISMO_OFFSET(xE4, xE4);
-MOTOR_MISMO_OFFSET(yE8, yE8);
-MOTOR_MISMO_OFFSET(zEC, zEC);
-MOTOR_MISMO_OFFSET(w17C, w17C);
-MOTOR_MISMO_OFFSET(flags15C, flags15C);
-MOTOR_MISMO_OFFSET(i158, i158);
-
-#define MOTOR_CAMARA_MISMO_OFFSET(campo)     typedef char motor_camara_offset_##campo[         ((u32)&((CamaraMotor*)0)->campo == (u32)&((EstadoCamara*)0)->campo) ? 1 : -1]
-MOTOR_CAMARA_MISMO_OFFSET(vpx);
-MOTOR_CAMARA_MISMO_OFFSET(vpy);
-MOTOR_CAMARA_MISMO_OFFSET(vpz);
-MOTOR_CAMARA_MISMO_OFFSET(x);
-MOTOR_CAMARA_MISMO_OFFSET(y);
-MOTOR_CAMARA_MISMO_OFFSET(z);
-MOTOR_CAMARA_MISMO_OFFSET(flags80);
-
-/* Estado de la camara visto con los campos del movimiento (misma memoria que D_8006D928). */
-#define CAMARA_MOTOR ((CamaraMotor*)&D_8006D928)
 
 #endif

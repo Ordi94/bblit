@@ -217,7 +217,7 @@ s32 func_8002FFF8(Objeto* a0, u8* a1) { return D_80069698->w17C == a1[1]; }
 s32 func_80030018(Objeto* a0, u8* a1)
 {
     u16* p;
-    p = D_80069698->p180;
+    p = (u16*)D_80069698->p180; /* lw 0x180(reg): el nodo de la secuencia se lee como tabla de u16 */
     p += D_80069698->w17E;
     return p[3] == a1[1];
 }
@@ -784,8 +784,8 @@ void func_8003147C(Objeto* a0, Accion* a1)
     D_80069698->flags14 |= 0x2000000;
     a0 = D_80069698->p70;
     if (a0 != 0) {
-        D_80069698->iC4 = 0;
-        D_80069698->pC0 = (Objeto*)((u8*)D_80069698 + 0xCC);
+        D_80069698->nodo.padre = NULL;
+        D_80069698->nodo.transf = (Transformacion*)((u8*)D_80069698 + 0xCC);
         c = a0;
         if (c->p6C == c) {
             c->p6C = 0;
@@ -809,8 +809,8 @@ void func_80031554(Objeto* a0)
     if (a0->p6C != 0) {
         a0->p6C->flags14 &= ~0x814;
         a0->p6C->flags14 |= 0x1000;
-        a0->p6C->iC4 = 0;
-        a0->p6C->pC0 = (Objeto*)((u8*)a0->p6C + 0xCC);
+        a0->p6C->nodo.padre = NULL;
+        a0->p6C->nodo.transf = (Transformacion*)((u8*)a0->p6C + 0xCC);
         a0->p6C->w26 = a0->w26;
         a0->p6C->wDC = a0->wDC;
         a0->p6C->wDE = a0->wDE;
@@ -864,8 +864,8 @@ void ActionSubgi(Objeto* a0, Accion* a1)
 /* Coincide en bytes (el diff marca 10 por direccion absoluta); el archivo se compila con -G8 */
 void func_80031794(Objeto* a0, Accion* a1)
 {
-    Objeto* p;
-    p = a0->pC0;
+    Transformacion* p;
+    p = a0->nodo.transf;
     *(u16*)((u8*)p + 0x12) += (u32)(((ACC_W4(a1) << 4) + a1->w6) * D_80069694 * ESTADO->s12) >> 7;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
@@ -873,26 +873,26 @@ void func_80031794(Objeto* a0, Accion* a1)
 /* Coincide en bytes (el diff marca 10 por direccion absoluta); el archivo se compila con -G8 */
 void func_800317FC(Objeto* a0, Accion* a1)
 {
-    Objeto* p;
-    p = a0->pC0;
+    Transformacion* p;
+    p = a0->nodo.transf;
     *(u16*)((u8*)p + 0x12) += (u32)((s8)D_8006AA70[a1->w6] * D_80069694 * ESTADO->s12) >> 7;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
 
 void func_8003186C(Objeto* a0, Accion* a1)
 {
-    Objeto* p;
-    p = a0->pC0;
+    Transformacion* p;
+    p = a0->nodo.transf;
     *(u16*)((u8*)p + 0x12) += (ACC_W4(a1) << 4) + a1->w6;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
 
 void func_800318AC(Objeto* a0, Accion* a1)
 {
-    Objeto* p;
+    Transformacion* p;
     s8 v;
     v = D_8006AA70[a1->w6];
-    p = a0->pC0;
+    p = a0->nodo.transf;
     *(u16*)((u8*)p + 0x12) += v;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
@@ -985,9 +985,9 @@ void func_80031B1C(Objeto* a0, Accion* a1)
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031B1C);
 #endif
 
-void func_80031B50(Objeto* a0, Accion* a1) { a0->flags15C |= 0x10; }
+void func_80031B50(Objeto* a0, Accion* a1) { a0->trabajo.flags18 |= 0x10; }
 
-void func_80031B64(Objeto* a0, Accion* a1) { a0->flags15C &= ~0x10; }
+void func_80031B64(Objeto* a0, Accion* a1) { a0->trabajo.flags18 &= ~0x10; }
 
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031B78(Objeto* a0, Accion* a1)
@@ -1007,7 +1007,7 @@ void func_80031B98(Objeto* a0, Accion* a1) { D_80069659 = a1->b4; }
 void func_80031BAC(Objeto* a0, Accion* a1)
 {
     u8 v;
-    if (a0 != D_80069698 || a0->i158 != 0x25 || (D_800694F2 & 1)) {
+    if (a0 != D_80069698 || a0->trabajo.i14 != 0x25 || (D_800694F2 & 1)) {
         D_8006965A = a1->b4;
         v = ((u8*)a1)[6];
         D_8006965E = 0;
