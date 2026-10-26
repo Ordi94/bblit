@@ -23,8 +23,19 @@ options:
   # existir todavia; el segundo lo genera 'split' con la funcion de entrada.
   symbol_addrs_path:
     - config/symbols.txt
+    - config/simbolos_adicionales.txt
     - build/simbolos_entrada.txt
   find_file_boundaries: false
+  # Cada objeto C aporta su propio .text; con el relleno a 16 bytes por defecto el enlazador
+  # separaria los objetos (el arranque mide 196 bytes) y el cuerpo ya no seria byte a byte.
+  subalign: 4
+  # Tambien genera el asm de las funciones ya escritas en C (asm/matchings/): es el objetivo
+  # contra el que compara el diff de una funcion.
+  disassemble_all: true
+  src_path: src
+  # Las rutinas vacias tambien entran como INCLUDE_ASM: pasarlas a C es decision del
+  # desarrollador, y asi el progreso solo cuenta lo que alguien escribio.
+  auto_decompile_empty_functions: false
   create_asm_dependencies: false
 
 segments:
@@ -42,7 +53,16 @@ segments:
       # Codigo. Termina en 0x8005DEA0 (offset 0x49CA0): la ultima funcion cierra con 'jr ra'
       # en 0x8005DE84, seguida de un ultimo gancho de la BIOS (salto a la tabla B0) y de un
       # 'nop' de relleno hasta la alineacion de 16 bytes; a partir de ahi solo hay tablas y cadenas.
-      - [0x800, asm, text]
+      - [0x800, asm, boot]
+      - [0x8C4, c, code_80014AC4]
+      - [0x7D9C, c, code_8001BF9C]
+      - [0x11738, c, code_80025938]
+      - [0x17880, c, code_8002BA80]
+      - [0x1E674, c, code_80032874]
+      - [0x24684, c, code_80038884]
+      - [0x2A480, c, code_8003E680]
+      - [0x30388, c, code_80044588]
+      - [0x31BA0, asm, libs]
       # Datos inicializados. El enlazador agrupa 'data' antes que 'rodata' (orden fijo del
       # script generado), asi que la frontera se coloca donde empiezan los literales de
       # cadena propios del juego ("Error: Can't push matrix..." en 0x80067C7C). Las tablas

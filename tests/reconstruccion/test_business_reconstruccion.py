@@ -52,11 +52,11 @@ def test_splat_describe_un_ejecutable_psx_con_un_unico_segmento_cargado(configur
 def test_splat_ordena_texto_datos_rodata_y_bss_como_los_agrupa_el_enlazador(configuracion: Any) -> None:
     subsegmentos = configuracion["segments"][0]["subsegments"]
     tipos = [s[1] if isinstance(s, list) else s["type"] for s in subsegmentos]
-    assert tipos == ["asm", "data", "rodata", "bss"]
+    assert tipos == ["asm", *["c"] * 8, "asm", "data", "rodata", "bss"]
     inicios = [s[0] if isinstance(s, list) else s["start"] for s in subsegmentos]
     assert inicios == sorted(inicios)
     assert inicios[0] == 0x800
-    assert (inicios[1] - 0x800) % 16 == 0
+    assert (inicios[-4] - 0x800) % 16 == 0
     bss = subsegmentos[-1]
     assert bss["start"] == 0x55800
     assert bss["vram"] == 0x80014A00 + 0x55000
@@ -65,6 +65,7 @@ def test_splat_ordena_texto_datos_rodata_y_bss_como_los_agrupa_el_enlazador(conf
 def test_splat_consume_symbols_txt_del_proyecto_y_el_simbolo_de_entrada(configuracion: Any) -> None:
     assert configuracion["options"]["symbol_addrs_path"] == [
         "config/symbols.txt",
+        "config/simbolos_adicionales.txt",
         "build/simbolos_entrada.txt",
     ]
     assert configuracion["sha1"] == "3b091486c2463f4dbe82e045072c390e226caa37"
@@ -86,8 +87,12 @@ def entorno_real(tmp_path: Path) -> Any:
         pytest.skip("requiere el disco original (BBLIT_DISC o config/local.toml)")
     try:
         lock = leer_lock(RAIZ_REPO / "config" / "toolchain.lock.json")
-        for alias in ("as", "ld", "objcopy"):
+        for alias in ("as", "ld", "objcopy", "objdump"):
             resolver_herramienta(lock, rutas.toolchain, "binutils-mipsel", alias)
+        resolver_herramienta(lock, rutas.toolchain, "psyq-4.4", "cc1psx")
+        resolver_herramienta(lock, rutas.toolchain, "psyq-4.4", "cpppsx")
+        resolver_herramienta(lock, rutas.toolchain, "maspsx", "maspsx")
+        resolver_herramienta(lock, rutas.toolchain, "asm-differ", "diff")
     except FileNotFoundError:
         pytest.skip("requiere el toolchain instalado (python -m tools.toolchain instalar)")
     return rutas, original
@@ -97,9 +102,8 @@ def entorno_real(tmp_path: Path) -> Any:
 def repo_aislado(tmp_path: Path) -> Any:
     rutas, _ = entorno_real(tmp_path)
     raiz = tmp_path / "repo con espacios (prueba)"
-    shutil.copytree(
-        RAIZ_REPO / "config", raiz / "config", ignore=shutil.ignore_patterns("local.toml", "symbols.txt")
-    )
+    shutil.copytree(RAIZ_REPO / "config", raiz / "config", ignore=shutil.ignore_patterns("local.toml"))
+    shutil.copytree(RAIZ_REPO / "include", raiz / "include")
     variables = {"BBLIT_DISC": str(rutas.disc), "BBLIT_TOOLCHAIN": str(rutas.toolchain)}
     return raiz, variables
 
@@ -114,12 +118,18 @@ def test_ciclo_real_split_build_verify_clean_reproduce_el_ejecutable_byte_a_byte
     raiz, variables = repo_aislado
     assert cli.main(["split"], variables, raiz) == 0
     assert (raiz / "expected" / "SLUS_008.38").stat().st_size == 350208
-    texto = raiz / "asm" / "text.s"
-    primera = sha256(texto)
+    texto = raiz / "asm" / "boot.s"
+
+    def huella_de_asm() -> list[str]:
+        return [sha256(p) for p in sorted((raiz / "asm").rglob("*.s"))]
+
+    primera = huella_de_asm()
+    fuentes = {p.name: sha256(p) for p in (raiz / "src").glob("*.c")}
+    assert len(fuentes) == 8
     assert cli.main(["split"], variables, raiz) == 0
-    assert sha256(texto) == primera, "split debe ser idempotente"
+    assert huella_de_asm() == primera, "split debe ser idempotente"
+    assert {p.name: sha256(p) for p in (raiz / "src").glob("*.c")} == fuentes
     assert "glabel func_80014A08" in texto.read_text(encoding="utf-8")
-    assert texto.read_text(encoding="utf-8").count("glabel func_") > 900
 
     assert cli.main(["build"], variables, raiz) == 0
     construido = raiz / "build" / "SLUS_008.38"
@@ -131,7 +141,7 @@ def test_ciclo_real_split_build_verify_clean_reproduce_el_ejecutable_byte_a_byte
     assert capsys.readouterr().out == f"OK esperado={SHA256_ORIGINAL} obtenido={SHA256_ORIGINAL}\n"
 
     assert cli.main(["clean"], variables, raiz) == 0
-    assert sorted(p.name for p in raiz.iterdir()) == ["config"]
+    assert sorted(p.name for p in raiz.iterdir()) == ["config", "include", "src"]
 
 
 def test_ciclo_real_con_symbols_txt_que_renombra_la_entrada_sigue_siendo_identico(repo_aislado: Any) -> None:
@@ -140,7 +150,7 @@ def test_ciclo_real_con_symbols_txt_que_renombra_la_entrada_sigue_siendo_identic
         "inicio_del_juego = 0x80014A08; // type:func\n", encoding="utf-8"
     )
     assert cli.main(["split"], variables, raiz) == 0
-    texto = (raiz / "asm" / "text.s").read_text(encoding="utf-8")
+    texto = (raiz / "asm" / "boot.s").read_text(encoding="utf-8")
     assert "glabel inicio_del_juego" in texto
     assert "func_80014A08" not in texto.replace("D_80014A08", "")
     assert (raiz / "build" / "simbolos_entrada.txt").read_text(encoding="utf-8") == ""

@@ -1,0 +1,43 @@
+# Particion de la variante 'a' del overlay de codigo (PlayStation, cargado en 0x80010200).
+#
+# Variante mas comun: la traen 48 contenedores (niveles 1 a 5, Cartoon Castle, bonus, titulo y creditos).
+#
+# El overlay no tiene cabecera PS-X EXE: es un binario crudo de 17076 bytes que el juego
+# descomprime de la seccion de tipo 2 de un contenedor BZZ. 'python -m tools.overlay extraer'
+# lo deja en expected/overlay/a.bin y 'python -m tools.overlay split' ejecuta esta particion.
+# Las funciones se declaran en config/symbols_overlay.txt, comun a las tres variantes.
+sha1: 4b90fd64b70a0573fd8cbeeea3b0283345384464
+
+options:
+  platform: psx
+  basename: overlay_a
+  base_path: ..
+  target_path: expected/overlay/a.bin
+  compiler: GCC
+  asm_path: asm/overlay/a
+  build_path: build/overlay/a
+  ld_script_path: build/overlay/a.ld
+  undefined_funcs_auto_path: build/overlay/a_undefined_funcs_auto.txt
+  undefined_syms_auto_path: build/overlay/a_undefined_syms_auto.txt
+  generated_asm_macros_directory: asm/overlay/a/include
+  symbol_addrs_path:
+    - config/symbols_overlay.txt
+  find_file_boundaries: false
+  create_asm_dependencies: false
+
+segments:
+  - name: overlay_a
+    type: code
+    start: 0x0
+    vram: 0x80010200
+    subsegments:
+      # Codigo. La primera palabra es la ranura donde el cargador escribe un puntero; en el
+      # archivo vale cero y se ensambla como 'nop'. El codigo termina con el 'jr ra' de la
+      # ultima funcion y su ranura de retardo.
+      - [0x0, asm, codigo]
+      # Tabla de 56 punteros a rutinas del propio overlay (destinos de un salto indirecto).
+      - [0x2954, data, saltos]
+      # Reserva de ceros y tablas de busqueda (rampas y saturaciones de color). Va hasta el
+      # final del archivo; los ceros son bytes reales del binario, no un bss.
+      - [0x2A34, data, tablas]
+  - [0x42B4]

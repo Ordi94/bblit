@@ -98,9 +98,11 @@ Notas de procedencia:
 ```text
 python -m tools.toolchain instalar        # descarga y verifica; idempotente
 python -m tools.toolchain verificar       # OK o FALTA por componente
-python tools/build.py split               # particiona con splat: genera asm/ y el script del enlazador
-python tools/build.py build               # ensambla, enlaza y genera build/SLUS_008.38
+python tools/build.py split               # particiona con splat: genera asm/, src/ y el script del enlazador
+python tools/build.py build               # compila los src/*.c, ensambla el resto, enlaza y genera build/SLUS_008.38
 python tools/build.py verify              # compara por SHA-256 con el original: OK o FAIL
+python tools/build.py diff <función>      # compara una función compilada desde C con su original
+python tools/build.py progreso            # escribe docs/PROGRESO.md y build/progreso.json
 python tools/build.py clean               # elimina asm/, expected/ y los artefactos de build/
 ```
 
@@ -111,14 +113,18 @@ python tools/build.py clean               # elimina asm/, expected/ y los artefa
   soportada (`config/ejecutable.json`), lo copia a `expected/` y ejecuta `splat`. Es
   idempotente: borra su salida anterior antes de generar. Con `PYTHONUTF8=1`, porque la consola
   de Windows no usa UTF-8 por defecto.
-- `build` ensambla cada archivo `.s` que referencia el script del enlazador, enlaza con
-  `mipsel-none-elf-ld` y extrae la imagen plana con `objcopy`. La cabecera PS-X EXE de 0x800
-  bytes se regenera desde `config/ejecutable.json` (no se copia del original).
+- `build` recorre los objetos que referencia el script del enlazador: ensambla cada `.s` y
+  compila cada `src/*.c` (preprocesador `CPPPSX.EXE`, `CC1PSX.EXE -O2 -G0`, `maspsx` con ASPSX 2.79 y
+  `as`; ver `docs/DESCOMPILACION.md`). Después enlaza con `mipsel-none-elf-ld` y extrae la imagen
+  plana con `objcopy`. La cabecera PS-X EXE de 0x800 bytes se regenera desde
+  `config/ejecutable.json` (no se copia del original). El orden de enlace lo fija el script, así que
+  es el mismo con o sin C.
 - `verify` imprime `OK esperado=<huella> obtenido=<huella>` y devuelve 0, o `FAIL ...` con
   el desplazamiento de la primera diferencia y devuelve 1.
-- `clean` elimina `asm/`, `expected/` y lo que `split` y `build` generan dentro de `build/`.
-  La carpeta `build/` se borra entera solo si queda vacía, porque otras herramientas del
-  repositorio dejan allí sus propias salidas.
+- `clean` elimina `asm/`, `expected/` y lo que `split`, `build`, `diff` y `progreso` generan
+  dentro de `build/`. Conserva `asm/overlay/`, `expected/overlay/`, `build/overlay/`,
+  `build/emulador/` y `build/bblit_prueba.*`, que pertenecen a otras herramientas. La carpeta
+  `build/` se borra entera solo si queda vacía.
 
 El ejecutable original nunca se modifica: se lee desde `BBLIT_DISC` y se trabaja sobre la
 copia de `expected/`.
@@ -127,13 +133,15 @@ copia de `expected/`.
 
 - El cuerpo del ejecutable (`0x800..0x55800`) es un único segmento cargado en `0x80014A00`
   (`t_addr`, `t_size = 0x55000`). `config/splat.yaml` lo describe con los subsegmentos
-  `asm` (código), `data`, `rodata` y `bss`. El enlazador agrupa siempre `data` antes que
+  `asm` (arranque y librerías), `c` (ocho archivos `src/code_*.c` para el código del juego),
+  `data`, `rodata` y `bss`. El enlazador agrupa siempre `data` antes que
   `rodata`, y la frontera entre ambos es provisional: se afinará al identificar los objetos
   originales.
 - `splat` solo reconoce como función lo que es destino de un `jal` o está declarado. La
   dirección de entrada (`pc0 = 0x80014A08`) no lo es, así que `split` la declara en
-  `build/simbolos_entrada.txt` (salvo que `config/symbols.txt` ya la defina). Con ese único
-  símbolo `splat` detecta unas 978 funciones por sus `jr $ra`.
+  `build/simbolos_entrada.txt` (salvo que `config/symbols.txt` ya la defina). El proyecto
+  declara 914 símbolos de función (`config/symbols.txt` más `config/simbolos_adicionales.txt`);
+  sin tabla de símbolos, `splat` detectaría unas 978 funciones por sus `jr $ra`.
 - El ensamblador es GNU `as` con `-EL -march=r3000 -mips1 -G0`. Las instrucciones del
   coprocesador GTE se expanden con las macros que genera `splat` en `asm/include/`
   (`gte_macros.inc`).

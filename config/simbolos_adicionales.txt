@@ -1,0 +1,16 @@
+// Funciones que la tabla config/symbols.txt tiene fundidas dentro de otra.
+//
+// func_8002F9F8 (0x14D4 bytes) agrupa decenas de rutinas hoja que solo se alcanzan por tabla,
+// asi que ninguna instruccion 'jal' delata su inicio. Para poder pasar a C las que ya
+// coinciden con el compilador original hay que aislarlas como simbolos propios. Este archivo
+// va DESPUES de symbols.txt en splat.yaml: su primera linea reduce func_8002F9F8 a los 0x40
+// bytes que realmente le corresponden y las demas particionan el resto del bloque. Los tramos
+// func_8002FA60, func_8002FB38 y func_80030DA4 siguen siendo bloques fundidos (varias rutinas
+// hoja cada uno) hasta que se identifiquen una a una.
+func_8002F9F8 = 0x8002F9F8; // type:func size:0x40
+func_8002FA38 = 0x8002FA38; // type:func size:0x28
+func_8002FA60 = 0x8002FA60; // type:func size:0xB8
+func_8002FB18 = 0x8002FB18; // type:func size:0x20
+func_8002FB38 = 0x8002FB38; // type:func size:0x1228
+func_80030D60 = 0x80030D60; // type:func size:0x44
+func_80030DA4 = 0x80030DA4; // type:func size:0x128

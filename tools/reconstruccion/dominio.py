@@ -375,25 +375,29 @@ def objetos_del_enlazador(script: str) -> list[str]:
 
 def fuente_de_objeto(objeto: str) -> str:
     """
-    Deduce la ruta del ensamblador fuente de un objeto.
+    Deduce la ruta del fuente (ensamblador o C) de un objeto.
 
     Contexto:
-        ``build/asm/text.s.o`` proviene de ``asm/text.s``.
+        ``build/asm/boot.s.o`` proviene de ``asm/boot.s`` y ``build/src/a.c.o`` de ``src/a.c``.
 
     Args:
         objeto (str): Ruta relativa del objeto.
 
     Returns:
-        str: Ruta relativa del ``.s``.
+        str: Ruta relativa del ``.s`` o del ``.c``.
 
     Raises:
-        ValueError: Si el objeto no sigue el patron ``build/<ruta>.s.o``.
+        ValueError: Si el objeto no sigue el patron ``build/<ruta>.s.o`` o ``build/<ruta>.c.o``.
 
     Ejemplo:
-        fuente = fuente_de_objeto("build/asm/text.s.o")
+        fuente = fuente_de_objeto("build/asm/boot.s.o")
     """
-    if not (objeto.startswith("build/") and objeto.endswith(".s.o")) or ".." in objeto.split("/"):
-        raise ValueError(f"objeto '{objeto}' no corresponde a un ensamblador fuente conocido")
+    valido = objeto.startswith("build/") and objeto.endswith((".s.o", ".c.o"))
+    if not valido or ".." in objeto.split("/"):
+        raise ValueError(
+            f"objeto '{objeto}' no corresponde a un ensamblador fuente conocido ni a un archivo C "
+            "(build/<ruta>.s.o o build/<ruta>.c.o)"
+        )
     return objeto[len("build/") : -len(".o")]
 
 

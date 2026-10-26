@@ -64,6 +64,20 @@ completas que ningun candidato cubria = 908 (detalle en `docs/GHIDRA.md`). Por o
 libreria identificada por firma (400 con nombre oficial), 277 del juego y 32 tienen una direccion que no figura entre los candidatos (rutinas nuevas o funciones cuyo inicio se adelanto). Dentro de la zona de librerias hay 52 simbolos
 que ninguna firma reconoce (rutinas internas de libreria).
 
+**Nota sobre las cifras de funciones.** Cada numero cuenta una cosa distinta:
+
+- **914** simbolos de funcion en el ejecutable: 908 de `config/symbols.txt` mas 6 nuevos de
+  `config/simbolos_adicionales.txt` (el archivo tiene 7 lineas; una redefine `func_8002F9F8` a 0x40 bytes).
+  650 de ellos estan en la zona de librerias de Sony (`0x80045DA0..0x8005DEA0`), 2 son de arranque y el resto es
+  codigo del juego.
+- **256** simbolos en el rango de codigo del juego `0x80014AC4..0x80045DA0` segun `symbols.txt`; **262** con los
+  adicionales (256 + 6; es la cifra que usa `docs/PROGRESO.md`).
+- **282** funciones "del juego" segun las firmas de Ghidra (`es_libreria` en 0 en `funciones.csv`); 23 de ellas
+  caen en la zona de librerias, y por eso no coincide con 256.
+- **309** rutinas en el ambito de los borradores en C (`m2c`): las 256 del rango, las 52 de la zona de librerias
+  que ninguna firma reconoce y la entrada `func_80014A08`. Los analisis de grafo y subsistemas usan
+  `symbols.txt` solo (908), de modo que ven 258 funciones del juego con `__main` y `start`.
+
 ## Datos
 
 Deduccion a partir de 1570 direcciones de datos referenciadas desde el codigo (lecturas y

@@ -190,9 +190,12 @@ def test_objetos_del_enlazador_sin_repetidos_y_en_orden() -> None:
 
 def test_fuente_de_objeto() -> None:
     assert dominio.fuente_de_objeto("build/asm/data/data.data.s.o") == "asm/data/data.data.s"
+    assert dominio.fuente_de_objeto("build/src/code_80014AC4.c.o") == "src/code_80014AC4.c"
 
 
-@pytest.mark.parametrize("objeto", ["asm/text.s.o", "build/src/main.c.o", "build/../x.s.o", "build/a.s"])
+@pytest.mark.parametrize(
+    "objeto", ["asm/text.s.o", "src/main.c.o", "build/../x.s.o", "build/a.s", "build/src/a.c"]
+)
 def test_fuente_de_objeto_desconocida(objeto: Any) -> None:
     with pytest.raises(ValueError, match="no corresponde a un ensamblador fuente conocido"):
         dominio.fuente_de_objeto(objeto)

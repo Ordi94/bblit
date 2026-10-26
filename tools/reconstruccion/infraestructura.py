@@ -20,6 +20,7 @@ from typing import Any
 
 from tools.reconstruccion import dominio
 from tools.reconstruccion.dominio import EjecutableReferencia
+from tools.reconstruccion.fuentes_c import MAX_BYTES_FUENTE
 from tools.toolchain import iso9660
 from tools.toolchain.dominio import Componente
 from tools.toolchain.instalacion import resolver_herramienta
@@ -38,9 +39,19 @@ ELF_SALIDA = "build/SLUS_008.elf"
 MAPA_SALIDA = "build/SLUS_008.map"
 BINARIO_SALIDA = "build/SLUS_008.bin"
 OBJETOS_SALIDA = "build/asm"
+OBJETOS_C_SALIDA = "build/src"
+CARPETA_DIFF = "build/diff"
+PROGRESO_JSON = "build/progreso.json"
+# Subcarpetas de asm/ y expected/ que pertenecen a otras herramientas del repositorio
+# (reconstruccion de superposiciones): 'split' y 'clean' no las tocan. Lo mismo vale para
+# build/overlay, build/emulador y build/bblit_prueba.*, que no figuran en artefactos_de_build.
+SUBCARPETAS_AJENAS = ("overlay",)
 
 Ejecutor = Callable[[Sequence[str], Path, int], str]
 """Funcion que ejecuta un comando en un directorio con tiempo limite y devuelve su salida."""
+
+CompiladorC = Callable[[str, str], None]
+"""Funcion que compila un archivo C (ruta relativa) a un objeto (ruta relativa)."""
 
 
 class ProcesoError(RuntimeError):
@@ -332,6 +343,63 @@ def _borrar_arbol(ruta: Path) -> bool:
     return True
 
 
+def _borrar_conservando_ajenos(ruta: Path) -> list[str]:
+    """
+    Elimina una carpeta propia conservando las subcarpetas de ``SUBCARPETAS_AJENAS``.
+
+    Contexto:
+        ``asm/`` y ``expected/`` los regenera esta herramienta, pero otras herramientas del
+        repositorio guardan ahi sus propias subcarpetas; borrarlas rompe su trabajo en curso.
+
+    Args:
+        ruta (Path): Carpeta (o archivo) a eliminar.
+
+    Returns:
+        list[str]: Nombres eliminados relativos al padre de ``ruta``: la propia carpeta si no
+        tenia contenido ajeno, o ``<carpeta>/<hijo>`` por cada hijo propio si lo tenia.
+
+    Ejemplo:
+        eliminados = _borrar_conservando_ajenos(Path("asm"))
+    """
+    if ruta.is_dir() and any((ruta / ajena).is_dir() for ajena in SUBCARPETAS_AJENAS):
+        propios = sorted(h for h in ruta.iterdir() if h.name not in SUBCARPETAS_AJENAS)
+        return [f"{ruta.name}/{h.name}" for h in propios if _borrar_arbol(h)]
+    return [ruta.name] if _borrar_arbol(ruta) else []
+
+
+def listar_fuentes_c(raiz: Path) -> dict[str, str]:
+    """
+    Lee el texto de todos los archivos ``src/*.c``.
+
+    Contexto:
+        Los estados de las funciones (progreso y diff) se derivan del texto real de estos
+        archivos. Se leen con una cota de tamano porque su contenido lo edita una persona y no
+        debe poder agotar la memoria de la herramienta.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+
+    Returns:
+        dict[str, str]: Texto por ruta relativa (``src/<archivo>.c``), ordenado por ruta; vacio
+        si no existe ``src/``.
+
+    Raises:
+        ValueError: Si algun archivo excede ``MAX_BYTES_FUENTE``.
+
+    Ejemplo:
+        textos = listar_fuentes_c(Path("."))
+    """
+    carpeta = raiz / "src"
+    textos: dict[str, str] = {}
+    if not carpeta.is_dir():
+        return textos
+    for ruta in sorted(carpeta.glob("*.c")):
+        if ruta.stat().st_size > MAX_BYTES_FUENTE:
+            raise ValueError(f"src/{ruta.name} excede el tamano permitido")
+        textos[f"src/{ruta.name}"] = ruta.read_text(encoding="utf-8")
+    return textos
+
+
 def artefactos_de_build(nombre_ejecutable: str) -> tuple[str, ...]:
     """
     Lista las rutas dentro de ``build/`` que producen ``split`` y ``build``.
@@ -351,6 +419,9 @@ def artefactos_de_build(nombre_ejecutable: str) -> tuple[str, ...]:
     """
     return (
         OBJETOS_SALIDA,
+        OBJETOS_C_SALIDA,
+        CARPETA_DIFF,
+        PROGRESO_JSON,
         SCRIPT_ENLAZADOR,
         *SIMBOLOS_AUTOMATICOS,
         SIMBOLOS_ENTRADA,
@@ -367,7 +438,8 @@ def limpiar(raiz: Path, nombre_ejecutable: str) -> list[str]:
 
     Contexto:
         Implementa ``clean``: devuelve el repositorio al estado de recien clonado. ``build/``
-        solo se elimina si queda vacia, para no destruir salidas de otras herramientas.
+        solo se elimina si queda vacia, y de ``asm/`` y ``expected/`` se conservan las
+        subcarpetas de ``SUBCARPETAS_AJENAS``, para no destruir salidas de otras herramientas.
 
     Args:
         raiz (Path): Raiz del repositorio.
@@ -379,8 +451,10 @@ def limpiar(raiz: Path, nombre_ejecutable: str) -> list[str]:
     Ejemplo:
         eliminadas = limpiar(Path("."), "SLUS_008.38")
     """
-    candidatas = ("asm", "expected", *artefactos_de_build(nombre_ejecutable))
-    eliminadas = [nombre for nombre in candidatas if _borrar_arbol(raiz / nombre)]
+    eliminadas: list[str] = []
+    for nombre in ("asm", "expected"):
+        eliminadas += _borrar_conservando_ajenos(raiz / nombre)
+    eliminadas += [n for n in artefactos_de_build(nombre_ejecutable) if _borrar_arbol(raiz / n)]
     carpeta_build = raiz / "build"
     if carpeta_build.is_dir() and not any(carpeta_build.iterdir()):
         carpeta_build.rmdir()
@@ -421,7 +495,8 @@ def dividir(
         raise ValueError("el ejecutable de origen no coincide con la edicion soportada (SHA-256 distinto)")
     # Solo se borra lo que esta orden produce: 'build/' puede contener salidas de otras
     # herramientas del repositorio.
-    for nombre in ("asm", *artefactos_de_build(referencia.nombre)):
+    _borrar_conservando_ajenos(raiz / "asm")
+    for nombre in artefactos_de_build(referencia.nombre):
         _borrar_arbol(raiz / nombre)
     expected = raiz / "expected"
     expected.mkdir(exist_ok=True)
@@ -449,9 +524,11 @@ def construir(
     Ensambla, enlaza y genera el ejecutable completo con su cabecera.
 
     Contexto:
-        Implementa ``build``. Los objetos a ensamblar salen del script del enlazador, de modo
-        que cualquier segmento que el particionador agregue entra solo en la construccion.
-        El cuerpo enlazado debe medir exactamente ``t_size``; la cabecera se regenera.
+        Implementa ``build`` cuando todo el codigo es ensamblador. Los objetos a ensamblar salen
+        del script del enlazador, de modo que cualquier segmento que el particionador agregue
+        entra solo en la construccion. Si el script incluye archivos C hay que usar
+        ``construir_con_compilador``. El cuerpo enlazado debe medir exactamente ``t_size``; la
+        cabecera se regenera.
 
     Args:
         raiz (Path): Raiz del repositorio.
@@ -464,11 +541,48 @@ def construir(
 
     Raises:
         FileNotFoundError: Si falta el script del enlazador o un fuente (hay que ejecutar ``split``).
-        ValueError: Si el cuerpo enlazado no mide ``t_size``.
+        ValueError: Si el cuerpo enlazado no mide ``t_size`` o el script incluye archivos C.
         ProcesoError: Si una herramienta falla.
 
     Ejemplo:
         ejecutable = construir(Path("."), referencia, herramientas)
+    """
+    return construir_con_compilador(raiz, referencia, herramientas, None, ejecutar)
+
+
+def construir_con_compilador(
+    raiz: Path,
+    referencia: EjecutableReferencia,
+    herramientas: Herramientas,
+    compilar_c: CompiladorC | None,
+    ejecutar: Ejecutor = ejecutar_proceso,
+) -> Path:
+    """
+    Ensambla o compila cada objeto del script, enlaza y genera el ejecutable con su cabecera.
+
+    Contexto:
+        Nucleo comun de ``construir`` (solo ensamblador) y de la construccion mixta C + asm.
+        El orden de los objetos lo fija el script del enlazador, no esta funcion: asi el orden
+        de enlace es identico al de la particion y el resultado no depende de como se compilen.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        referencia (EjecutableReferencia): Hechos del ejecutable.
+        herramientas (Herramientas): Ensamblador, enlazador y objcopy.
+        compilar_c (CompiladorC, opcional): Compila un ``src/*.c`` a su objeto; ``None`` si no
+            se dispone de compilador.
+        ejecutar (Ejecutor, opcional): Ejecutor de procesos, sustituible en pruebas.
+
+    Returns:
+        Path: Ruta del ejecutable generado (``build/<nombre>``).
+
+    Raises:
+        FileNotFoundError: Si falta el script del enlazador o un fuente (hay que ejecutar ``split``).
+        ValueError: Si el script incluye C sin compilador o el cuerpo enlazado no mide ``t_size``.
+        ProcesoError: Si una herramienta falla.
+
+    Ejemplo:
+        ejecutable = construir_con_compilador(Path("."), referencia, herramientas, compilar)
     """
     script = raiz / SCRIPT_ENLAZADOR
     if not script.is_file():
@@ -478,6 +592,11 @@ def construir(
         if not (raiz / fuente).is_file():
             raise FileNotFoundError(f"falta el fuente '{fuente}': ejecute primero 'split'")
         (raiz / objeto).parent.mkdir(parents=True, exist_ok=True)
+        if fuente.endswith(".c"):
+            if compilar_c is None:
+                raise ValueError(f"el fuente '{fuente}' es C y no hay compilador disponible")
+            compilar_c(fuente, objeto)
+            continue
         ejecutar(
             dominio.comando_ensamblar(herramientas.ensamblador, fuente, objeto, CARPETA_MACROS),
             raiz,

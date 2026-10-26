@@ -457,3 +457,59 @@ def test_construir_incluye_ambos_archivos_de_simbolos_automaticos(raiz: Path, or
         "-T",
         "build/undefined_syms_auto.txt",
     ]
+
+
+AJENOS = (
+    "asm/overlay/a/codigo.s",
+    "expected/overlay/a.bin",
+    "build/overlay/a/salida.o",
+    "build/emulador/captura.png",
+    "build/bblit_prueba.bin",
+    "build/bblit_prueba.cue",
+)
+
+
+def crear_ajenos(raiz: Any) -> None:
+    for relativa in AJENOS:
+        (raiz / relativa).parent.mkdir(parents=True, exist_ok=True)
+        (raiz / relativa).write_text("ajeno", encoding="utf-8")
+
+
+def test_split_y_clean_respetan_lo_que_pertenece_a_otras_herramientas(raiz: Any, original: Any) -> None:
+    crear_ajenos(raiz)
+    (raiz / "asm" / "viejo.s").write_text("propio", encoding="utf-8")
+    preparar_split(raiz, original)
+    assert not (raiz / "asm" / "viejo.s").exists(), "split regenera lo propio"
+    for relativa in AJENOS:
+        assert (raiz / relativa).read_text(encoding="utf-8") == "ajeno", relativa
+    (raiz / "build" / "PRUEBA.EXE").write_bytes(b"x")
+    (raiz / "build" / "src").mkdir()
+    (raiz / "build" / "diff").mkdir()
+    eliminadas = infra.limpiar(raiz, "PRUEBA.EXE")
+    assert "asm/text.s" in eliminadas and "expected/PRUEBA.EXE" in eliminadas
+    assert "build/PRUEBA.EXE" in eliminadas and "build/src" in eliminadas and "build/diff" in eliminadas
+    assert "build" not in eliminadas
+    for relativa in AJENOS:
+        assert (raiz / relativa).read_text(encoding="utf-8") == "ajeno", relativa
+    assert not (raiz / "asm" / "text.s").exists() and not (raiz / "expected" / "PRUEBA.EXE").exists()
+    assert infra.limpiar(raiz, "PRUEBA.EXE") == []
+
+
+def test_listar_fuentes_c(raiz: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert infra.listar_fuentes_c(raiz) == {}
+    (raiz / "src").mkdir()
+    (raiz / "src" / "b.c").write_text("b", encoding="utf-8")
+    (raiz / "src" / "a.c").write_text("a", encoding="utf-8")
+    (raiz / "src" / "nota.txt").write_text("x", encoding="utf-8")
+    assert infra.listar_fuentes_c(raiz) == {"src/a.c": "a", "src/b.c": "b"}
+    monkeypatch.setattr(infra, "MAX_BYTES_FUENTE", 0)
+    with pytest.raises(ValueError, match=r"src/a.c excede el tamano permitido"):
+        infra.listar_fuentes_c(raiz)
+
+
+def test_localizar_imagen_con_bin_en_subcarpetas_distintas_es_ambigua(tmp_path: Path) -> None:
+    for carpeta, nombre in (("a", "x.bin"), ("b", "y.bin")):
+        (tmp_path / carpeta).mkdir()
+        (tmp_path / carpeta / nombre).write_bytes(b"")
+    with pytest.raises(ValueError, match=r"hay varias imagenes .bin"):
+        infra.localizar_imagen(tmp_path)

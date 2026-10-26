@@ -1,0 +1,44 @@
+# Particion de la variante 'b' del overlay de codigo (PlayStation, cargado en 0x80010200).
+#
+# Variante de 24 contenedores. Frente a la variante a pierde una palabra dentro de la ultima funcion
+# (desplazamiento 0x28FC), por lo que la tabla de saltos y las de busqueda empiezan 4 bytes antes.
+#
+# El overlay no tiene cabecera PS-X EXE: es un binario crudo de 17072 bytes que el juego
+# descomprime de la seccion de tipo 2 de un contenedor BZZ. 'python -m tools.overlay extraer'
+# lo deja en expected/overlay/b.bin y 'python -m tools.overlay split' ejecuta esta particion.
+# Las funciones se declaran en config/symbols_overlay.txt, comun a las tres variantes.
+sha1: 83ca1bee87236c24bc5ac9e354cba306235c1525
+
+options:
+  platform: psx
+  basename: overlay_b
+  base_path: ..
+  target_path: expected/overlay/b.bin
+  compiler: GCC
+  asm_path: asm/overlay/b
+  build_path: build/overlay/b
+  ld_script_path: build/overlay/b.ld
+  undefined_funcs_auto_path: build/overlay/b_undefined_funcs_auto.txt
+  undefined_syms_auto_path: build/overlay/b_undefined_syms_auto.txt
+  generated_asm_macros_directory: asm/overlay/b/include
+  symbol_addrs_path:
+    - config/symbols_overlay.txt
+  find_file_boundaries: false
+  create_asm_dependencies: false
+
+segments:
+  - name: overlay_b
+    type: code
+    start: 0x0
+    vram: 0x80010200
+    subsegments:
+      # Codigo. La primera palabra es la ranura donde el cargador escribe un puntero; en el
+      # archivo vale cero y se ensambla como 'nop'. El codigo termina con el 'jr ra' de la
+      # ultima funcion y su ranura de retardo.
+      - [0x0, asm, codigo]
+      # Tabla de 56 punteros a rutinas del propio overlay (destinos de un salto indirecto).
+      - [0x2950, data, saltos]
+      # Reserva de ceros y tablas de busqueda (rampas y saturaciones de color). Va hasta el
+      # final del archivo; los ceros son bytes reales del binario, no un bss.
+      - [0x2A30, data, tablas]
+  - [0x42B0]

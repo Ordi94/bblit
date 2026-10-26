@@ -20,8 +20,9 @@ fecha del juego (mayo de 1999).
 
 ## Método
 
-1. `splat` genera `asm/text.s` con el código objetivo. De ahí se extrae cada función a su
-   propio archivo y se ensambla con `mipsel-none-elf-as` a un objeto ELF (el objetivo).
+1. `splat` genera el ensamblador de cada función en `asm/nonmatchings/<archivo>/<función>.s`
+   (o en `asm/matchings/` si ya está en C). Cada uno se ensambla con `mipsel-none-elf-as` a un
+   objeto ELF (el objetivo); `python tools/build.py diff <función>` automatiza este paso.
 2. `m2c --target mipsel-gcc-c` produce un borrador en C de la función; se reescribe a mano.
 3. El C se compila con `CC1PSX.EXE -quiet -O2 -G0` (y `-O1` cuando `-O2` no coincide). Se usa
    `-G0` porque la cabecera declara `gp0 = 0`: el programa no usa el registro `$gp`.

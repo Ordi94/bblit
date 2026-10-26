@@ -173,7 +173,8 @@ oficial ni ultimo tramo sin salto. Entre los fundidos estan dos nombres de `2MBY
 
 Tramos sin codigo registrados (datos incrustados entre rutinas, 13 palabras que no decodifican
 como instruccion): `0x80014AB4` (16 bytes), `0x800375F8` (20), `0x8004E5CC` (8) y `0x8004F69C` (8).
-Son las unicas palabras de `asm/text.s` que quedan como `.word`.
+Son las unicas palabras del codigo desensamblado (el segmento `asm` de arranque y de librerias y los
+subsegmentos por archivo bajo `asm/nonmatchings/`, ver `docs/DESCOMPILACION.md`) que quedan como `.word`.
 
 ## Reglas de nombres de `config/symbols.txt`
 
@@ -223,3 +224,23 @@ merecen cautela:
   ejecucion. Ghidra lo ve como funciones sin cuerpo.
 - Los grandes bloques de codigo (`0x80020B90`, `0x80026FEC`, `0x80019474`) son funciones de
   decenas de kilobytes; el decompilador las produce, pero requieren partirse a mano.
+
+## Simbolos adicionales
+
+`config/simbolos_adicionales.txt` se lee despues de `config/symbols.txt` y aisla como simbolos propios rutinas
+que la tabla principal tiene fundidas dentro de otra, para poder pasar a C las que ya coinciden. Hoy reduce
+`func_8002F9F8` a los `0x40` bytes que le corresponden (el despachador por codigo de operacion). La tabla
+principal no se modifica en esa tarea, de modo que las dos tablas suman 914 simbolos de funcion (908 mas 6).
+
+Pendiente: los tramos `func_8002FA60`, `func_8002FB38` y `func_80030DA4` siguen fundidos (cada uno agrupa varias
+rutinas hoja alcanzadas solo por la tabla de saltos de `0x8005E3F0`) a la espera de separarse en la tabla
+principal. `func_80030ECC` tiene la misma forma con su tabla de `0x8005E560`.
+
+## Analisis derivado de la exportacion
+
+Los comandos `borradores`, `grafo`, `subsistemas` y `limites` de `python -m tools.ghidra` producen, fuera del
+repositorio, borradores en C con `m2c` (con un contexto de tipos que sale de las firmas de Ghidra y de los
+tamanos de `xrefs_datos.csv`), el grafo de llamadas y de datos compartidos y la caracterizacion de subsistemas.
+Trabajan sobre una copia propia del desensamblado generada con `splat` a partir de `config/symbols.txt`, no
+sobre `asm/`; por eso no ven `config/simbolos_adicionales.txt` (la copia propia trata `func_8002F9F8` completa).
+Los resultados y su lectura estan en `docs/SUBSISTEMAS.md` y `docs/ARCHIVOS_ORIGEN.md`.

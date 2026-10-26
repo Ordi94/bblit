@@ -11,6 +11,8 @@ from tools.reconstruccion import infraestructura as infra
 
 from tests.toolchain.ayudantes import bloque_componente, lock_de
 
+from .test_compilacion import SALIDA_OBJDUMP, EjecutorC
+from .test_diff import ASM_FUNCION, EjecutorDiff
 from .test_infraestructura import EJECUTABLE, REFERENCIA, Registro, referencia_json
 
 
@@ -157,3 +159,153 @@ def test_script_tools_build_expone_main_y_agrega_la_raiz_al_camino(monkeypatch: 
 
 def test_modulo_build_reexporta_main() -> None:
     assert importlib.import_module("tools.build").main is cli.main
+
+
+@pytest.fixture
+def entorno_completo(entorno_repo: Any, tmp_path: Path) -> Any:
+    """Entorno con todos los componentes que usan build con C y diff."""
+    raiz, variables = entorno_repo
+    sdk = bloque_componente(
+        b"s", archivos_clave={"cpppsx": "pssn/bin/CPPPSX.EXE", "cc1psx": "pssn/bin/CC1PSX.EXE"}
+    )
+    mas = bloque_componente(b"m", archivos_clave={"maspsx": "maspsx.py"})
+    diferencias = bloque_componente(b"d", archivos_clave={"diff": "diff.py"})
+    binutils = bloque_componente(
+        b"b",
+        archivos_clave={
+            "as": "bin/as.exe",
+            "ld": "bin/ld.exe",
+            "objcopy": "bin/objcopy.exe",
+            "objdump": "bin/objdump.exe",
+        },
+    )
+    (raiz / "config" / "toolchain.lock.json").write_text(
+        json.dumps(
+            lock_de(
+                **{"psyq-4.4": sdk, "maspsx": mas, "asm-differ": diferencias, "binutils-mipsel": binutils}
+            )
+        ),
+        encoding="utf-8",
+    )
+    toolchain = tmp_path / "tc"
+    for relativa in (
+        "psyq-4.4/pssn/bin/CPPPSX.EXE",
+        "psyq-4.4/pssn/bin/CC1PSX.EXE",
+        "maspsx/maspsx.py",
+        "asm-differ/diff.py",
+        "binutils-mipsel/bin/objdump.exe",
+    ):
+        (toolchain / relativa).parent.mkdir(parents=True, exist_ok=True)
+        (toolchain / relativa).write_bytes(b"")
+    return raiz, variables
+
+
+def test_build_compila_los_archivos_c_del_script_y_diff_informa_la_puntuacion(
+    entorno_completo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_completo
+    assert ejecutar_cli(raiz, variables, "split") == 0
+    (raiz / "build" / "SLUS_008.ld").write_text(
+        "main\n{\n    build/asm/text.s.o(.text);\n    build/src/code_a.c.o(.text);\n}\n", encoding="utf-8"
+    )
+    (raiz / "src").mkdir()
+    (raiz / "src" / "code_a.c").write_text(
+        "s32 func_80036204(s32 x)\n{\n    return x;\n}\n", encoding="utf-8"
+    )
+    (raiz / "asm" / "matchings" / "code_a").mkdir(parents=True)
+    (raiz / "asm" / "matchings" / "code_a" / "func_80036204.s").write_text(ASM_FUNCION, encoding="utf-8")
+    capsys.readouterr()
+    assert (
+        ejecutar_cli(
+            raiz,
+            variables,
+            "build",
+            ejecutor=EjecutorC(secciones=SALIDA_OBJDUMP.replace("0000001d", "00000000")),
+        )
+        == 0
+    )
+    assert capsys.readouterr().out == f"build completado: build/PRUEBA.EXE sha256={REFERENCIA.sha256}\n"
+    assert ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=EjecutorDiff(0)) == 0
+    assert capsys.readouterr().out == "TARGET   CURRENT\nfila\nfunc_80036204 (src/code_a.c): puntuacion 0\n"
+    assert ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=EjecutorDiff(120)) == 1
+    assert capsys.readouterr().out.endswith("puntuacion 120\n")
+
+
+def test_build_con_c_y_sin_sdk_instalado_explica_la_causa(
+    entorno_completo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_completo
+    assert ejecutar_cli(raiz, variables, "split") == 0
+    (raiz / "build" / "SLUS_008.ld").write_text(
+        "main\n{\n    build/src/code_a.c.o(.text);\n}\n", encoding="utf-8"
+    )
+    (raiz / "src").mkdir()
+    (raiz / "src" / "code_a.c").write_text("int x;\n", encoding="utf-8")
+    (Path(variables["BBLIT_TOOLCHAIN"]) / "psyq-4.4" / "pssn" / "bin" / "CC1PSX.EXE").unlink()
+    capsys.readouterr()
+    assert ejecutar_cli(raiz, variables, "build") == 1
+    assert "'cc1psx' no esta instalado" in capsys.readouterr().err
+
+
+def test_diff_de_una_funcion_en_include_asm_sale_con_error(
+    entorno_completo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_completo
+    (raiz / "src").mkdir()
+    (raiz / "src" / "code_a.c").write_text(
+        'INCLUDE_ASM("asm/nonmatchings/code_a", func_X);\n', encoding="utf-8"
+    )
+    assert ejecutar_cli(raiz, variables, "diff", "func_X") == 1
+    assert "'func_X' sigue en INCLUDE_ASM" in capsys.readouterr().err
+
+
+def test_progreso_escribe_los_archivos_y_resume_en_una_linea(
+    entorno_repo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+    (raiz / "config" / "symbols.txt").write_text(
+        "func_80014AC4 = 0x80014AC4; // type:func size:0x10\n", encoding="utf-8"
+    )
+    (raiz / "src").mkdir()
+    (raiz / "src" / "code_a.c").write_text("s32 func_80014AC4(void)\n{\n    return 0;\n}\n", encoding="utf-8")
+    assert ejecutar_cli(raiz, variables, "progreso") == 0
+    assert capsys.readouterr().out == (
+        "progreso: 1 funciones del juego en C de 1 (16 de 16 bytes, 100.00 %); 0 NON_MATCHING; "
+        "docs/PROGRESO.md y build/progreso.json escritos\n"
+    )
+    assert (raiz / "docs" / "PROGRESO.md").is_file() and (raiz / "build" / "progreso.json").is_file()
+
+
+def test_progreso_con_ensamblador_desactualizado_devuelve_uno(
+    entorno_repo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+    (raiz / "config" / "symbols.txt").write_text(
+        "func_80014AC4 = 0x80014AC4; // type:func size:0x10\n", encoding="utf-8"
+    )
+    (raiz / "asm").mkdir()
+    (raiz / "asm" / "x.s").write_text("glabel a\nglabel b\n", encoding="utf-8")
+    capsys.readouterr()
+    assert ejecutar_cli(raiz, variables, "progreso") == 1
+    assert "2 glabel en asm/ + 0 funciones en C no suman las 1 de la tabla" in capsys.readouterr().err
+
+
+def test_progreso_sin_tabla_de_simbolos(entorno_repo: Any, capsys: pytest.CaptureFixture[str]) -> None:
+    raiz, variables = entorno_repo
+    assert ejecutar_cli(raiz, variables, "progreso") == 1
+    assert capsys.readouterr().err == "error: falta config/symbols.txt\n"
+
+
+def test_un_error_de_permisos_se_informa_sin_traza_y_devuelve_uno(
+    entorno_repo: Any, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+
+    def denegado(*_: Any) -> Any:
+        raise PermissionError("acceso denegado")
+
+    monkeypatch.setattr(infra, "limpiar", denegado)
+    assert ejecutar_cli(raiz, variables, "clean") == 1
+    capturado = capsys.readouterr()
+    assert capturado.err == "error: acceso denegado\n"
+    assert "Traceback" not in capturado.err
