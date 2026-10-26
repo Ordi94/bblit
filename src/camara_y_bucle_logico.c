@@ -6,12 +6,6 @@
 #include "objetos.h"
 #include "motor.h"
 
-typedef struct Vec3 {
-    s32 x;
-    s32 y;
-    s32 z;
-} Vec3;
-
 /* Area de trabajo de la sonda de camara (func_800330AC): direccion, matriz, resultado y consulta de colision. */
 typedef struct SondaCamara {
     SVECTOR rot;

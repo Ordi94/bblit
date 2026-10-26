@@ -10,6 +10,13 @@
 #include "psyq/TYPES.H"
 #include "psyq/LIBGTE.H"
 
+/* Vector de tres s32 del juego (x, y, z); distinto de VECTOR del SDK, cuyos campos son vx, vy, vz. */
+typedef struct Vec3 {
+    s32 x;
+    s32 y;
+    s32 z;
+} Vec3;
+
 /*
  * Zona de colision: bloque de 0x44 bytes de la tabla que carga func_80019364. El primer campo
  * es el grupo (indice de la tabla de cabezas D_80069C18, 0..59). La caja de una zona es

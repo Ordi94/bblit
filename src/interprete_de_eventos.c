@@ -25,13 +25,6 @@ typedef struct Rango {
     s8 max;
 } Rango;
 
-/* Vector de tres componentes del que solo se rellenan x y z antes de llamar a ratan2. */
-typedef struct Vec3 {
-    s32 x;
-    s32 y;
-    s32 z;
-} Vec3;
-
 /* Entrada de 20 bytes de la tabla de seguimiento D_8006B378 (24 entradas). */
 typedef struct Entrada {
     u16 flags;
