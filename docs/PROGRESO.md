@@ -9,19 +9,19 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 343 | 45184 |
+| Código del juego | 450 | 201416 | 344 | 45440 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 45184 de 201416 (22.43 %).
-Funciones marcadas `NON_MATCHING`: 64.
-Coherencia con el ensamblador: correcta (759 `glabel` en `asm/` + 343 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 45440 de 201416 (22.56 %).
+Funciones marcadas `NON_MATCHING`: 63.
+Coherencia con el ensamblador: correcta (758 `glabel` en `asm/` + 344 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
 | Subsistema | Archivos | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |
 |---|---:|---:|---:|---:|---:|---:|
 | arranque_y_bucle_principal | 1 | 9 | 1 | 0 | 1364 | 3404 |
-| audio_xa_y_spu | 1 | 32 | 5 | 0 | 5076 | 8220 |
+| audio_xa_y_spu | 1 | 33 | 4 | 0 | 5332 | 8220 |
 | camara_y_bucle_logico | 1 | 7 | 3 | 1 | 2348 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 6 | 5 | 0 | 804 | 14264 |
 | colision_y_terreno | 1 | 2 | 1 | 1 | 680 | 12480 |
@@ -41,7 +41,7 @@ Coherencia con el ensamblador: correcta (759 `glabel` en `asm/` + 343 en C = 110
 | Archivo | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |
 |---|---:|---:|---:|---:|---:|
 | `src/arranque_y_bucle_principal_2.c` | 9 | 1 | 0 | 1364 | 3404 |
-| `src/audio_xa_y_spu.c` | 32 | 5 | 0 | 5076 | 8220 |
+| `src/audio_xa_y_spu.c` | 33 | 4 | 0 | 5332 | 8220 |
 | `src/camara_y_bucle_logico.c` | 7 | 3 | 1 | 2348 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 6 | 3 | 0 | 804 | 13592 |
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 2 | 0 | 0 | 672 |
@@ -116,7 +116,6 @@ Coherencia con el ensamblador: correcta (759 `glabel` en `asm/` + 343 en C = 110
 - `func_8003EDA8`
 - `func_8003F06C`
 - `func_8003F528`
-- `func_8003FDEC`
 - `func_8004048C`: Pendiente: puntuacion 7254 con la configuracion versionada (g = 8 del archivo). El marco de pila del original es 8 bytes mayor, el reparto de registros de la rama de grabacion es otro y GCC fusiona el xor de (D_8006CFF2 ^ 0xFF) << 8 con el desplazamiento. Variantes probadas: 14 (switch con goto, if/else, copias). Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS (D_8006CFF1..7: id, boton
 - `func_80040F78`: Pendiente: puntuacion 390 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones que el original; solo difiere el reparto de registros de la ultima etapa (el original deja el puntero del bucle en a2 y la constante 4 en a3, el indice en t0 en todas las etapas). Variantes probadas: mas de 10 (orden de declaracion, puntero propio por etapa, bucles rotados, parametro de relleno). Recorre la cabecera de secciones de un contenedor (n entradas de tipo, tamano y tamano alineado) y calcula la posicion, en bytes desde el inicio del archivo, de los datos del banco que se pide: devuelve
 - `func_80041298`: Pendiente: puntuacion 1115 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y mismo flujo que el original; difiere el reparto de registros (el original deja el puntero de la lista A en v1 y el de busqueda en a1, aqui salen a2 y v1) y un nop de retardo que el original rellena. Variantes probadas: 14 (indice o puntero en el bucle de cinco, tipo del contador, temporales para el reparto, orden de declaracion). Convierte, en un contenedor ya cargado, las referencias entre registros por identificador en desplazamientos dentro de cada lista, para que el codigo que las usa no 

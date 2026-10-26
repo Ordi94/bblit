@@ -123,12 +123,15 @@ typedef struct EfectoCola {
 
 
 /* Ranura de voz de efecto: 24 entradas de 0x14 bytes en D_8006B378. */
+/* Volumen de una voz: un byte por canal. Se pasa por valor a las rutinas del SPU. */
+typedef struct Canales {
+    u8 izq;
+    u8 der;
+} Canales;
+
 typedef union VolVoz {
     u16 w;
-    struct {
-        u8 izq;
-        u8 der;
-    } c;
+    Canales c;
 } VolVoz;
 
 typedef struct Voz {
@@ -206,8 +209,8 @@ extern void SsUtReverbOff(void);
 extern void func_8004D860(s32 a0, s32 a1);
 extern s32 func_8003FB54(s8 a0);
 extern s32 func_8003FA2C(s32 a0, s16 a1);
-extern s16 func_8003FDEC(s16 a0, s16 a1, s32 a2, u16 a3);
-extern void func_8003FEEC(s16 a0, s16 a1, s16 a2, s32 a3, u16 a4);
+extern s16 func_8003FDEC(s16 a0, s16 a1, VolVoz a2, u16 a3);
+extern void func_8003FEEC(s16 a0, s16 a1, s16 a2, VolVoz a3, u16 a4);
 
 void func_8003DF84(void)
 {
@@ -834,7 +837,7 @@ void func_8003F3F0(void)
     }
 }
 
-/* Pendiente: puntuacion 635 con la configuracion versionada (g = 8 del archivo). El flujo coincide; difiere el reparto del temporal de la mascara de voz (a0 en lugar de v1), el orden de las cargas previas a la llamada de func_8003FEEC y la posicion de una carga de voz. Variantes probadas: 10. */
+/* Pendiente: puntuacion 290 con la configuracion versionada (g = 8 del archivo). El flujo coincide; difiere el reparto del temporal de la mascara de voz en la baja de efectos (a0 en lugar de v1) y el orden de dos cargas en la rama de repeticion. Variantes probadas: 14. */
 #ifdef NON_MATCHING
 void func_8003F528(s16 id)
 {
@@ -877,7 +880,7 @@ void func_8003F528(s16 id)
             if (e->id != 0xD || !(D_80069698->flags14 & 0x1000000)) {
                 v->flags = f | 4;
                 v->cuenta = 0;
-                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol.w << 16, e->flags);
+                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol, e->flags);
             }
             if (v->voz < 0) {
                 goto liberar;
@@ -908,7 +911,7 @@ void func_8003F528(s16 id)
             }
             if ((fe & 4) && (s16)v->cuenta == e->cuenta) {
                 v->cuenta = 0;
-                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol.w << 16, e->flags);
+                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol, e->flags);
                 if (v->voz < 0) {
                     v->flags = 0;
                 } else {
@@ -917,7 +920,7 @@ void func_8003F528(s16 id)
                 }
             } else if ((e->flags & 8) && (s16)((s16)v->cuenta / 30) == e->cuenta) {
                 v->cuenta = 0;
-                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol.w << 16, e->flags);
+                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol, e->flags);
                 if (v->voz < 0) {
                     v->flags = 0;
                 } else {
@@ -936,7 +939,7 @@ void func_8003F528(s16 id)
                     v->vol.c.izq = v->vol.c.der;
                 }
             }
-            func_8003FEEC(v->voz, e->vol_a, e->vol_b, v->vol.w << 16, e->flags);
+            func_8003FEEC(v->voz, e->vol_a, e->vol_b, v->vol, e->flags);
         }
         continue;
     liberar:
@@ -1110,15 +1113,11 @@ void func_8003FD60(void)
     D_800694F6 = 0;
 }
 
-/* Pendiente: puntuacion 180 con la configuracion versionada (g = 8 del archivo). Las instrucciones coinciden; el original normaliza el parametro de volumen empaquetado con sra antes de reservar el marco de pila y el resultado coloca ese desplazamiento tras el addiu del marco. Variantes probadas: 7. */
-#ifdef NON_MATCHING
-s16 func_8003FDEC(s16 a0, s16 a1, s32 a2, u16 a3)
+s16 func_8003FDEC(s16 a0, s16 a1, VolVoz a2, u16 a3)
 {
     s16* p;
     u8* base;
 
-
-    a2 >>= 16;
     if (a3 & 0x400) {
         p = D_800695FC + a0;
         base = D_800694EC;
@@ -1130,8 +1129,8 @@ s16 func_8003FDEC(s16 a0, s16 a1, s32 a2, u16 a3)
     base += a1 << 4;
     D_80069F28[0].prioridad = base[0];
     D_80069F28[0].flags = base[1];
-    D_80069F28[0].vol_l = *(s16*)(base + 2) * (a2 & 0xFF);
-    D_80069F28[0].vol_r = *(s16*)(base + 2) * (((u32)a2 >> 8) & 0xFF);
+    D_80069F28[0].vol_l = *(s16*)(base + 2) * a2.c.izq;
+    D_80069F28[0].vol_r = *(s16*)(base + 2) * a2.c.der;
     D_80069F28[0].s6 = base[4];
     D_80069F28[0].pitch = *(u16*)(base + 8);
     D_80069F28[0].wA = *(u16*)(base + 0xA);
@@ -1139,18 +1138,13 @@ s16 func_8003FDEC(s16 a0, s16 a1, s32 a2, u16 a3)
     D_80069F28[0].indice = *(s16*)(base + 0xE);
     return func_8003FA2C(0, a3);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003FDEC);
-#endif
 
-void func_8003FEEC(s16 a0, s16 a1, s16 a2, s32 a3, u16 a4)
+void func_8003FEEC(s16 a0, s16 a1, s16 a2, VolVoz a3, u16 a4)
 {
     s16* p;
     u8* base;
     s32 v;
-    u32 vol;
 
-    vol = a3 >> 16;
     if (a4 & 0x400) {
         p = D_800695FC + a1;
         base = D_800694EC;
@@ -1161,7 +1155,7 @@ void func_8003FEEC(s16 a0, s16 a1, s16 a2, s32 a3, u16 a4)
     base += *p;
     base += a2 << 4;
     v = ((ParamSonido*)base)->vol;
-    SpuSetVoiceVolume(a0, v * (vol & 0xFF), v * ((vol >> 8) & 0xFF));
+    SpuSetVoiceVolume(a0, v * a3.c.izq, v * a3.c.der);
 }
 
 INCLUDE_RODATA("asm/nonmatchings/audio_xa_y_spu", D_80067EF0);
