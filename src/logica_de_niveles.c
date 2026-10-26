@@ -117,14 +117,14 @@ void func_80020B90(Objeto* o)
     D_800693D4 = fl;
     fl &= 0xFFF9BFFF;
     o->flags14 = fl;
-    if (MANDO->demo == 0 && ((D_8006D9A8[0] & 0x100) || (s32)fl < 0)) {
+    if (ESTADO_PRINCIPAL->r[BANCO_DEMO] == 0 && ((D_8006D9A8[0] & 0x100) || (s32)fl < 0)) {
         D_80069D30[2] = 0;
         D_80069D30[0] = 0;
         D_80069D40[2] = 0;
         D_80069398 = 0x800;
         D_80069D40[0] = 0;
         if (!(D_8006D9A8[0] & 0x200)) {
-            MANDO->botones_a &= 0x800;
+            ESTADO_PRINCIPAL->mando.botones_a &= 0x800;
         }
     }
     if (D_80069608 & 2) {
@@ -251,13 +251,13 @@ void func_80020B90(Objeto* o)
         o->flags18 &= ~4;
     }
     if (sc->reg->flags10 >= 0) {
-        if (!(o->flags14 & 0x80000000) || MANDO->demo != 0) {
-            if ((sc->reg->flags0C & 2) && (!(o->flags14 & 0x80000000) || MANDO->demo != 0)) {
+        if (!(o->flags14 & 0x80000000) || ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
+            if ((sc->reg->flags0C & 2) && (!(o->flags14 & 0x80000000) || ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0)) {
                 if ((o->flags14 & 0x209) == 0) {
                     D_800694F4 = ratan2(D_8006D928.x - D_8006D928.vpx, D_8006D928.z - D_8006D928.vpz);
                 }
-                if ((s16)MANDO->eje_x != 0 || MANDO->eje_y != 0) {
-                    a = ((s16)SquareRoot0((s16)MANDO->eje_x * (s16)MANDO->eje_x + (s16)MANDO->eje_y * (s16)MANDO->eje_y) - D_8006952C) * (0x80 / D_8006952C);
+                if ((s16)ESTADO_PRINCIPAL->mando.eje_x != 0 || ESTADO_PRINCIPAL->mando.eje_y != 0) {
+                    a = ((s16)SquareRoot0((s16)ESTADO_PRINCIPAL->mando.eje_x * (s16)ESTADO_PRINCIPAL->mando.eje_x + (s16)ESTADO_PRINCIPAL->mando.eje_y * (s16)ESTADO_PRINCIPAL->mando.eje_y) - D_8006952C) * (0x80 / D_8006952C);
                     if (a > 0x80) {
                         a = 0x80;
                     }
@@ -293,7 +293,7 @@ void func_80020B90(Objeto* o)
                         }
                         sc->tmp = ratan2((s16)sc->tmp_sv.vx, (s16)sc->tmp_sv.vz);
                         o->param.giro.u.y = sc->tmp;
-                        ang = D_800694F4 + ratan2((s16)MANDO->eje_x, (s16)MANDO->eje_y);
+                        ang = D_800694F4 + ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
                         sc->tmp = sc->tmp - ang % 0x1000;
                         if (sc->tmp > 0x800) {
                             sc->tmp -= 0x1000;
@@ -309,7 +309,7 @@ void func_80020B90(Objeto* o)
                         lo = sc->tmp * a;
                     } else {
                         sc->tmp = a;
-                        a = ratan2((s16)MANDO->eje_x, (s16)MANDO->eje_y);
+                        a = ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
                         if (!(sc->reg->flags0C & 0x8000)) {
                             a = (u16)D_800694F4 + a;
                         }
@@ -390,15 +390,15 @@ void func_80020B90(Objeto* o)
         if (!(o->flags14 & 2)) {
             o->param.giro.u.z = 0;
         }
-        if ((sc->reg->flags0C & 0x10) && !(sc->reg->flags10 & 0x40000000) && !(MANDO->botones_c & 0x40) && !(o->flags14 & 8)) {
+        if ((sc->reg->flags0C & 0x10) && !(sc->reg->flags10 & 0x40000000) && !(ESTADO_PRINCIPAL->mando.botones_c & 0x40) && !(o->flags14 & 8)) {
             if (o->h108 > 0x600) {
                 if (o->h108 < 0x800) {
                     o->h108 = 0x800;
                 }
             }
         }
-        if ((sc->reg->flags0C & 0xC00) && ((s16)MANDO->eje_x != 0 || MANDO->eje_y != 0)) {
-            a = SquareRoot0((s16)MANDO->eje_x * (s16)MANDO->eje_x + (s16)MANDO->eje_y * (s16)MANDO->eje_y);
+        if ((sc->reg->flags0C & 0xC00) && ((s16)ESTADO_PRINCIPAL->mando.eje_x != 0 || ESTADO_PRINCIPAL->mando.eje_y != 0)) {
+            a = SquareRoot0((s16)ESTADO_PRINCIPAL->mando.eje_x * (s16)ESTADO_PRINCIPAL->mando.eje_x + (s16)ESTADO_PRINCIPAL->mando.eje_y * (s16)ESTADO_PRINCIPAL->mando.eje_y);
             if (a > 0x7F) {
                 a = 0x7F;
             }
@@ -443,7 +443,7 @@ void func_80020B90(Objeto* o)
         sc->resp.x = sc->desp.x;
         sc->resp.y = sc->desp.y;
         sc->resp.z = sc->desp.z;
-        if ((s32)o->flags14 >= 0 || MANDO->demo != 0) {
+        if ((s32)o->flags14 >= 0 || ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
             if (o->flags14 & 2) {
                 sc->tmp_v.vz = 0;
                 sc->tmp_v.vy = 0;
@@ -695,7 +695,7 @@ llamar_salto:
                 func_80020210(o, pj, rg->s16);
             }
         }
-        if ((o->flags14 & 1) && (o->flags14 & 0x600) != 0x200 && ((s32)o->flags14 >= 0 || MANDO->demo != 0)) {
+        if ((o->flags14 & 1) && (o->flags14 & 0x600) != 0x200 && ((s32)o->flags14 >= 0 || ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0)) {
             func_80020240(o);
         }
         if (sc->reg->flags0C & 0x810000) {
@@ -792,7 +792,7 @@ llamar_salto:
             o->alcance2 = 0x1900;
             }
         }
-        if ((sc->reg->flags0C & 0x200) && (MANDO->botones_a & 8)) {
+        if ((sc->reg->flags0C & 0x200) && (ESTADO_PRINCIPAL->mando.botones_a & 8)) {
             if (o->p70 != NULL && !(o->p70->flags08 & 0x400000)) {
                 *(s32*)&o->p70->trabajo = *(s32*)&o->p70->trabajo + 4;
             }
@@ -972,7 +972,7 @@ llamar_salto:
         func_80019474(pt, &sc->tmp_v, &sc->res, w);
         sc->desp.x = a;
         sc->desp.z = sc->tmp_v.vz;
-        if (!(o->flags14 & 0x81000000) || MANDO->demo != 0 || (D_80069608 & 2)) {
+        if (!(o->flags14 & 0x81000000) || ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0 || (D_80069608 & 2)) {
             func_8001CBB8(o, (Movimiento*)&sc->desp, &sc->res, w);
         }
         if (sc->tmp != sc->desp.x + sc->desp.z) {
@@ -1402,7 +1402,7 @@ sin_rebote:
                             continue;
                         }
                     }
-                    if ((sc->cand->w8 == 0 || (sc->cand->w8 & MANDO->botones_a)) && ((sc->cand->w6 == (MANDO->botones_a & sc->cand->w6)) || sc->cand->w6 == 0xFFF1) && TestLogicCond(o, sc->cand->item)) {
+                    if ((sc->cand->w8 == 0 || (sc->cand->w8 & ESTADO_PRINCIPAL->mando.botones_a)) && ((sc->cand->w6 == (ESTADO_PRINCIPAL->mando.botones_a & sc->cand->w6)) || sc->cand->w6 == 0xFFF1) && TestLogicCond(o, sc->cand->item)) {
                         RunLogicAction(o, sc->cand->item);
                         if (sc->cand->wA != 0xFFF3) {
                             sc->estado_sig = sc->cand->wA;
