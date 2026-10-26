@@ -35,7 +35,6 @@ u8 D_80069458;
 
 /* Atributos comunes del SPU: volumen maestro, volumen del CD y mezcla del CD. */
 extern SpuCommonAttr D_8006AD08;
-extern u8 D_80069674;
 
 extern void func_8003E680(u8 a0, u8* a1);
 /*
@@ -56,8 +55,6 @@ extern CdlLOC D_8005F8FC[];
 /* Modo de CdlSetmode para la musica XA: velocidad doble, ADPCM activo, filtro de canal y pausa automatica (0xCA). */
 #define CD_MODO_XA (CdlModeSpeed | CdlModeRT | CdlModeSF | CdlModeAP)
 
-/* Parametro de CdlSetmode que se envia antes de leer la pista. */
-extern u8 D_800694D0;
 extern void func_8003E034(s32 a0);
 extern void func_8003E88C(void);
 extern u16 D_8005E9B8[];
@@ -65,11 +62,8 @@ extern u16 D_8005EA38[];
 extern CdlLOC D_8005F90C[];
 extern u8 D_8006AA87[];
 extern u8 D_80069501;
-extern s16 D_800694C8;
 extern s16 D_800694CE;
-extern u8 D_80069540;
 extern u8 D_80069541;
-extern u8 D_80069586;
 extern u8 D_80069620;
 extern void func_8003E068(void);
 extern void func_8003E094(void);
@@ -638,7 +632,7 @@ void func_8003ED94(void)
     D_800695D8 = -1;
 }
 
-/* Pendiente: puntuacion 1565 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de registros: el original usa s0..s4 (el resultado queda en s2 y la base de la camara en s3) y aqui el resultado cae en un temporal. Variantes probadas: 6. */
+/* Pendiente: puntuacion 590 con la configuracion versionada (g = 8 del archivo). El reparto de registros ya coincide (el resultado, una union de dos bytes, queda en s2); difieren la lectura inicial del volumen maestro (el original la repite en la rama de retorno anticipado y aqui GCC la comparte) y la posicion de un sll entre el mult y el mflo. Variantes probadas: 16. */
 #ifdef NON_MATCHING
 u32 func_8003EDA8(Objeto* o, Efecto* e)
 {
@@ -646,9 +640,10 @@ u32 func_8003EDA8(Objeto* o, Efecto* e)
     s32 w[3];
     s32 pos[3];
     AcumuladorNodos acc;
-    u32 r;
+    VolVoz r;
     s32 x;
     s32 y;
+    s32 t;
     u8 g;
 
     if (D_80069458 == 0) {
@@ -684,34 +679,42 @@ u32 func_8003EDA8(Objeto* o, Efecto* e)
         if (y < -0x800) {
             y += 0x1000;
         }
-        x = ((0x7F - ((x << 7) >> 12)) * D_80069458) >> 7;
+        x = 0x7F - ((x << 7) >> 12);
+        x = (x * D_80069458) >> 7;
         if (y >= 0) {
+            t = x * y;
             if (y > 0x400) {
                 y = 0x800 - y;
+                t = x * y;
             }
-            r = (x << 8) | ((x - ((x * y) >> 10)) & 0xFF);
+            r.c.der = x;
+            y = t >> 10;
+            r.c.izq = x - y;
         } else {
             if (y < -0x400) {
                 y = -0x800 - y;
             }
-            r = ((x + ((x * y) >> 10)) << 8) | (x & 0xFF);
+            t = x * y;
+            y = t >> 10;
+            r.c.der = x + y;
+            r.c.izq = x;
         }
     } else {
-        r = 0;
+        r.w = 0;
     }
     if (e->flags & 0x200) {
-        x = (r & 0xFF) + e->cuenta;
+        x = r.c.izq + e->cuenta;
         if (D_80069458 < x) {
             x = D_80069458;
         }
-        r = (r & 0xFF00) | (x & 0xFF);
-        x = (r >> 8) + e->cuenta;
+        r.c.izq = x;
+        x = r.c.der + e->cuenta;
         if (D_80069458 < x) {
             x = D_80069458;
         }
-        r = (x << 8) | (r & 0xFF);
+        r.c.der = x;
     }
-    return r & 0xFFFF;
+    return r.w;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003EDA8);

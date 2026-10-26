@@ -584,6 +584,38 @@ extern s32 D_8006960C;
 /* D_80069614: accesos del ensamblador: sw x2, lw x3 */
 extern u32 D_80069614;
 
+/*
+ * D_800694C8: zona de la pista XA en curso. func_8003E3C0 la compara con la etiqueta de grupo del
+ * objeto controlado (lh) y la escribe con sh (lhu de esa etiqueta); func_8003E298 y el arranque del
+ * motor la ponen a -1 (sh).
+ */
+extern s16 D_800694C8;
+
+/*
+ * D_80069674: volumen de la musica XA que se envia al CD (CdlATV, un byte por canal). func_8003E068,
+ * func_8003E094, func_8003E0C8, func_8003E120 y func_8003E3C0 lo leen y escriben con lbu / sb; los
+ * eventos lo ponen a cero.
+ */
+extern u8 D_80069674;
+
+/*
+ * D_80069586: pista que pide el interprete de eventos (lbu / sb); func_8003E298 la lee como
+ * argumento (lbu) y func_8003E680 y func_8003E3C0 la ponen a cero (sb).
+ */
+extern u8 D_80069586;
+
+/*
+ * D_80069540: area de resultado de los comandos del CD (primer byte, estado del lector). Se pasa por
+ * direccion a CdControlB y CdSync y se lee con lbu (bits 0x2 y 0x10 en func_8003E3C0 y func_8003E680).
+ */
+extern u8 D_80069540;
+
+/*
+ * D_800694D0: parametro de un byte de CdlSetmode (0xCA para la musica XA, 0x80 para la carga de
+ * archivos). Se escribe con sb y su direccion se pasa a CdControlB.
+ */
+extern u8 D_800694D0;
+
 /* D_80069628: accesos del ensamblador: sb x4, lb x6 */
 extern u8 D_80069628;
 
