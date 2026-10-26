@@ -22,6 +22,58 @@ typedef struct SalidaSonda {
 
 extern void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w);
 
+/*
+ * Descriptor de la sombra que func_8003A5C8 arma en el scratchpad (0x1F800000) y consumen el
+ * dibujador de modelos y las rutinas de matriz: escala en +0, +4 y +8, giros en +0x10..+0x14
+ * y altura de referencia (techo de la busqueda y, al volver, altura del apoyo) en +0x1C.
+ */
+typedef struct DescSombra {
+    s32 escala_x;
+    s32 escala_y;
+    s32 escala_z;
+    u8 pad0C[4];
+    s16 giro_x;
+    s16 giro_y;
+    s16 giro_z;
+    u8 pad16[6];
+    s32 altura;
+} DescSombra;
+
+/*
+ * Area de trabajo de func_80039D44 (0xB4 bytes). Entre +8 y +0x77 la misma memoria tiene dos
+ * disposiciones segun la fase: 's' cuando el objeto cae dentro de un solido (matriz inversa del
+ * solido, vectores de 16 bits y producto escalar) y 't' cuando se muestrea el terreno (centro,
+ * tres esquinas de 12 bytes y los dos vectores de plano con su producto vectorial). La consulta
+ * de baldosa usa r en +0x78 y tb en +0x90.
+ */
+typedef struct SondaSombra {
+    u8 pad00[4];
+    s32 escala;
+    union {
+        struct {
+            MATRIX m;
+            SVECTOR giro;
+            SVECTOR local;
+            SVECTOR dif;
+            SVECTOR n;
+            SVECTOR e;
+            s32 dot;
+            u8 pad54[0x70 - 0x4C];
+        } s;
+        struct {
+            VECTOR c;
+            VECTOR p1;
+            VECTOR p2;
+            VECTOR p3;
+            VECTOR v1;
+            VECTOR v2;
+            VECTOR nrm;
+        } t;
+    } u;
+    ResultadoBaldosa r;
+    TrabajoBaldosa tb;
+} SondaSombra;
+
 /* Resta de vectores de tres componentes: resultado = b - a. */
 void func_80039BFC(s32* a, s32* b, s32* resultado)
 {
@@ -67,7 +119,143 @@ void func_80039CD0(s32 limite)
     }
 }
 
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_80039D44);
+/*
+ * Busca la superficie sobre la que se apoya 'o' para orientar y escalar su sombra. Primero
+ * recorre los objetos solidos (D_80069630) y devuelve el primero cuyo plano superior queda entre
+ * la altura del objeto y d->altura, casa con 'mascara' (o tiene la bandera 0x2000) y contiene al
+ * objeto en su caja local: rellena 'd' con la escala por distancia al plano, el giro del solido
+ * y la altura del plano. Si ninguno sirve, muestrea el terreno en tres esquinas de la base del
+ * objeto, descarta las alturas a mas de 0x23 de la de referencia, y deduce los giros X y Z de la
+ * sombra con el producto vectorial de los dos lados del triangulo. Devuelve el solido o 0.
+ */
+Objeto* func_80039D44(Objeto* o, DescSombra* d, u32 mascara, SondaSombra* w)
+{
+    Objeto* cur;
+    TrabajoBaldosa* tb;
+    s32 h;
+    s32 top;
+    s32 y;
+    s32 r;
+
+    cur = D_80069630;
+    tb = &w->tb;
+    for (; cur != 0; cur = cur->sig10) {
+        h = cur->max.vy;
+        top = cur->param.trans.vy + h;
+        if (h < 0x47) {
+            top += 0x28;
+        } else {
+            top += 0x50;
+        }
+        if (top >= o->param.trans.vy && d->altura >= top &&
+            ((cur->flags08 & mascara) || (cur->flags0C & 0x2000)) && !(cur->flags08 & 1) &&
+            cur->s2A == 2 && o != cur) {
+            w->u.s.giro.vx = 0x1000 - cur->param.giro.u.x;
+            w->u.s.giro.vy = 0x1000 - cur->param.giro.u.y;
+            w->u.s.giro.vz = 0x1000 - cur->param.giro.u.z;
+            w->u.s.dif.vx = o->param.trans.vx - cur->param.trans.vx;
+            w->u.s.dif.vy = o->param.trans.vy - cur->param.trans.vy;
+            w->u.s.dif.vz = o->param.trans.vz - cur->param.trans.vz;
+            GEO_IDENTIDAD(&w->u.s.m);
+            RotMatrixX(w->u.s.giro.vx, &w->u.s.m);
+            RotMatrixY(w->u.s.giro.vy, &w->u.s.m);
+            RotMatrixZ(w->u.s.giro.vz, &w->u.s.m);
+            ApplyMatrixSV(&w->u.s.m, &w->u.s.dif, &w->u.s.local);
+            /* El radio se extiende a 32 bits en esta sentencia (variable s32): el original carga s20 antes que la caja del solido. */
+            r = cur->s20;
+            if (w->u.s.local.vx >= cur->min.vx - r && cur->max.vx + r >= w->u.s.local.vx &&
+                w->u.s.local.vz >= cur->min.vz - r && cur->max.vz + r >= w->u.s.local.vz) {
+                w->u.s.giro.vx = 0;
+                w->u.s.giro.vy = cur->max.vy;
+                w->u.s.giro.vz = 0;
+                ApplyMatrixSV(&cur->coord.coord, &w->u.s.giro, &w->u.s.local);
+                w->u.s.giro.vy = 0x1000;
+                ApplyMatrixSV(&cur->coord.coord, &w->u.s.giro, &w->u.s.n);
+                w->u.s.giro.vy = cur->param.escala.vy;
+                ApplyMatrixSV(&cur->coord.coord, &w->u.s.giro, &w->u.s.e);
+                w->u.s.dot = w->u.s.n.vx * w->u.s.local.vx + w->u.s.n.vy * w->u.s.local.vy +
+                             w->u.s.n.vz * w->u.s.local.vz;
+                y = cur->param.trans.vy +
+                    (w->u.s.dot - w->u.s.n.vx * w->u.s.dif.vx - w->u.s.n.vz * w->u.s.dif.vz) /
+                        (s16)(w->u.s.e.vy | 1);
+                d->altura = y;
+                w->escala = (o->param.trans.vy - y) * 4 + 0x1000;
+                if (w->escala < 0x800) {
+                    w->escala = 0x800;
+                }
+                d->escala_x = w->escala;
+                d->escala_y = 0x1000;
+                d->escala_z = w->escala;
+                GEO_CARGAR_WH(&cur->param.giro);
+                GEO_GUARDAR_WH(&d->giro_x);
+                return cur;
+            }
+        }
+    }
+    GEO_CARGAR_W(&o->param.trans);
+    GEO_GUARDAR_W_T1(&w->u.t.c);
+    w->r.grupo = o->w26;
+    w->u.t.p1.vx = w->u.t.c.vx + o->min.vx;
+    w->u.t.p1.vy = w->u.t.c.vy;
+    w->u.t.p1.vz = w->u.t.c.vz + o->min.vz;
+    func_8001C134((s32*)&w->u.t.p1, &w->r, tb);
+    if (w->r.flags & 4) {
+        w->u.t.p1.vy = d->altura;
+    } else {
+        w->u.t.p1.vy += (s16)w->r.pendiente_abs;
+        if (w->u.t.p1.vy >= d->altura + 0x23 || d->altura - 0x23 >= w->u.t.p1.vy) {
+            w->u.t.p1.vy = d->altura;
+        }
+    }
+    w->u.t.p2.vx = w->u.t.c.vx + o->max.vx;
+    w->u.t.p2.vy = w->u.t.c.vy;
+    w->u.t.p2.vz = w->u.t.p1.vz;
+    func_8001C134((s32*)&w->u.t.p2, &w->r, tb);
+    if (w->r.flags & 4) {
+        w->u.t.p2.vy = d->altura;
+    } else {
+        w->u.t.p2.vy += (s16)w->r.pendiente_abs;
+        if (w->u.t.p2.vy >= d->altura + 0x23 || d->altura - 0x23 >= w->u.t.p2.vy) {
+            w->u.t.p2.vy = d->altura;
+        }
+    }
+    w->u.t.p3.vx = w->u.t.p1.vx;
+    w->u.t.p3.vy = w->u.t.c.vy;
+    w->u.t.p3.vz = w->u.t.c.vz + o->max.vz;
+    func_8001C134((s32*)&w->u.t.p3, &w->r, tb);
+    if (w->r.flags & 4) {
+        w->u.t.p3.vy = d->altura;
+    } else {
+        w->u.t.p3.vy += (s16)w->r.pendiente_abs;
+        if (w->u.t.p3.vy >= d->altura + 0x23 || d->altura - 0x23 >= w->u.t.p3.vy) {
+            w->u.t.p3.vy = d->altura;
+        }
+    }
+    if (d->altura < o->param.trans.vy) {
+        w->escala = 0x1000;
+    } else {
+        w->escala = (o->param.trans.vy - d->altura) * 4 + 0x1000;
+        if (w->escala < 0x800) {
+            w->escala = 0x800;
+        }
+    }
+    d->escala_x = w->escala;
+    d->escala_y = 0x1000;
+    d->escala_z = w->escala;
+    if (w->u.t.p1.vy == w->u.t.p2.vy && w->u.t.p1.vy == w->u.t.p3.vy) {
+        d->giro_z = 0;
+        d->giro_x = 0;
+        d->giro_y = o->param.giro.u.y;
+    } else {
+        func_80039BFC((s32*)&w->u.t.p1, (s32*)&w->u.t.p2, (s32*)&w->u.t.v1);
+        func_80039BFC((s32*)&w->u.t.p1, (s32*)&w->u.t.p3, (s32*)&w->u.t.v2);
+        func_80039C3C((s32*)&w->u.t.v1, (s32*)&w->u.t.v2, (s32*)&w->u.t.nrm);
+        d->giro_x = ratan2(w->u.t.nrm.vz, w->u.t.nrm.vy);
+        d->giro_y = 0;
+        d->giro_z = ratan2(w->u.t.nrm.vx, w->u.t.nrm.vy);
+    }
+    return 0;
+}
 
 #ifdef NON_MATCHING
 /*
