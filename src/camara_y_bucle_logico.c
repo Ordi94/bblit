@@ -67,6 +67,33 @@ typedef struct Giro {
     u16 z;
 } Giro;
 
+/* Secuencia de teclas de los trucos: caso a ejecutar, paso actual y hasta diez teclas (0 termina). */
+typedef struct Secuencia {
+    s16 caso;
+    s16 paso;
+    s16 teclas[10];
+} Secuencia;
+
+typedef struct EstadoPrincipal {
+    s32 modo;
+    u8 pad04[0x41 - 0x04];
+    u8 f41;
+    u8 pad42;
+    u8 f43;
+    u8 pad44;
+    u8 f45;
+    u8 pad46;
+    u8 f47;
+    u8 f48;
+    u8 pad49[0x64 - 0x49];
+    u8 f64;
+    u8 pad65[0x13C - 0x65];
+    u8 f13C;
+} EstadoPrincipal;
+
+extern Secuencia D_8005E768[];
+#define PRINCIPAL ((EstadoPrincipal*)0x80010000)
+
 extern u16 D_8005E6F8[];
 extern s16 D_80069D90[];
 extern void func_80019474(void* pos, void* res, void* f50, void* i68);
@@ -93,6 +120,7 @@ s32 D_800693F0;
 u16 D_8006940C;
 u16 D_80069414;
 u16 D_80069416;
+s16 D_80069424;
 
 
 /* Envoltorio de rand() del SDK: la logica del juego pide aleatorios por aqui. */
@@ -392,32 +420,6 @@ void func_800351B4(Objeto* o)
  * retardo), las constantes 0x47 y 1, que el original carga antes del bucle, y el orden de los
  * incrementos de los punteros del bucle.
  */
-typedef struct Secuencia {
-    s16 caso;
-    s16 paso;
-    s16 teclas[10];
-} Secuencia;
-
-typedef struct EstadoPrincipal {
-    s32 modo;
-    u8 pad04[0x41 - 0x04];
-    u8 f41;
-    u8 pad42;
-    u8 f43;
-    u8 pad44;
-    u8 f45;
-    u8 pad46;
-    u8 f47;
-    u8 f48;
-    u8 pad49[0x64 - 0x49];
-    u8 f64;
-    u8 pad65[0x13C - 0x65];
-    u8 f13C;
-} EstadoPrincipal;
-
-extern Secuencia D_8005E768[];
-#define PRINCIPAL ((EstadoPrincipal*)0x80010000)
-
 void func_80035244(void)
 {
     s32 i;
@@ -426,8 +428,8 @@ void func_80035244(void)
 
     estado = D_80010010;
     estado &= 0xFFF6;
-    if (*(s16*)(base_gp + 0x104) != estado) {
-        *(s16*)(base_gp + 0x104) = estado;
+    if (D_80069424 != estado) {
+        D_80069424 = estado;
         if (estado != 0) {
             e = D_8005E768;
             for (i = 0; i < 7; i++, e++) {
