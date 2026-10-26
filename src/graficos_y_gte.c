@@ -63,6 +63,9 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80016C0C);
  * Variante de func_80016C0C que copia antes del bucle la posicion y la caja del objeto a al
  * area de trabajo y compara contra esas copias; devuelve el primer objeto solido que la
  * contiene.
+ * Coincide (puntuacion 0) con -G8 en config/opciones_compilacion.toml, que carga el puntero
+ * global directamente en el registro $s0; con -G0 el compilador carga la parte alta en otro
+ * registro. Se mantiene bajo NON_MATCHING porque un archivo mixto con -G8 reordena el codigo.
  */
 #ifdef NON_MATCHING
 ObjetoVolumen* func_80016ED0(ObjetoVolumen* a, u32 mascara, ConsultaCaja* o)
@@ -192,7 +195,6 @@ s32 func_80018C68(ObjetoVolumen* a, ConsultaMatriz* o)
  * Prueba si el punto p cae dentro del volumen del objeto a ampliado por su radio. Descarta antes
  * por distancia al cuadrado en el plano.
  */
-#ifdef NON_MATCHING
 s32 func_80018D98(ObjetoVolumen* a, VECTOR* p, ConsultaVolumen* o)
 {
     GEO_CARGAR_W(p);
@@ -218,15 +220,11 @@ s32 func_80018D98(ObjetoVolumen* a, VECTOR* p, ConsultaVolumen* o)
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80018D98);
-#endif
 
 /*
  * Igual que func_80018D98 pero la posicion a probar es la del objeto b y la caja de b
  * (extensiones en y) se suma al margen vertical.
  */
-#ifdef NON_MATCHING
 s32 func_80018F80(ObjetoVolumen* a, ObjetoVolumen* b, ConsultaVolumen* o)
 {
     GEO_CARGAR_W(&b->pos);
@@ -252,14 +250,14 @@ s32 func_80018F80(ObjetoVolumen* a, ObjetoVolumen* b, ConsultaVolumen* o)
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80018F80);
-#endif
 
 /*
  * Recorre la lista de nodos de plano y devuelve el primero que contiene el punto p visto desde
  * el objeto a: pasa al sistema local del nodo (con rotacion si el bit 0 de sus indicadores esta
  * apagado) y acota x y z por sus limites; en y lo acota por el margen del objeto.
+ * Coincide (puntuacion 0) con -G8 en config/opciones_compilacion.toml, que carga el puntero
+ * global directamente en el registro $s0; con -G0 el compilador carga la parte alta en otro
+ * registro. Se mantiene bajo NON_MATCHING porque un archivo mixto con -G8 reordena el codigo.
  */
 #ifdef NON_MATCHING
 NodoVolumen* func_80019180(ObjetoVolumen* a, VECTOR* p, ConsultaPlano* o)

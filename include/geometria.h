@@ -110,14 +110,12 @@ typedef struct TrabajoBaldosa {
     __asm__ volatile ("move $8, %0\n\taddi $12, $0, 0x1000\n\tlh $9, 0($8)\n\tlh $10, 2($8)\n\t" \
                       "lh $11, 4($8)\n\tsub $9, $12, $9\n\tsub $10, $12, $10\n\tsub $11, $12, $11" \
                       : : "r"(p) : "$8", "$9", "$10", "$11", "$12", "memory")
-#define GEO_GUARDAR_H_T1(p) \
-    __asm__ volatile ("move $8, %0\n\tsh $9, 0($8)\n\tsh $10, 2($8)\n\tsh $11, 4($8)" \
-                      : : "r"(p) : "$8", "memory")
-#define GEO_IDENTIDAD(p) \
-    __asm__ volatile ("move $8, %0\n\tori $9, $0, 0x1000\n\tsw $9, 0($8)\n\tsw $0, 4($8)\n\t" \
-                      "sw $9, 8($8)\n\tsw $0, 12($8)\n\tsh $9, 16($8)\n\tsw $0, 20($8)\n\t" \
-                      "sw $0, 24($8)\n\tsw $0, 28($8)" \
-                      : : "r"(p) : "$8", "$9", "memory")
+#define GEO_GUARDAR_H_T1(p)     do {         __asm__ volatile ("move $8, %0
+	sh $9, 0($8)" : : "r"(p) : "$8", "memory");         __asm__ volatile ("sh $10, 2($8)
+	sh $11, 4($8)" : : : "memory");     } while (0)
+#define GEO_BARRERA() __asm__ volatile ("" : : : "memory")
+#define GEO_IDENTIDAD(p)     do {         __asm__ volatile ("move $8, %0
+	ori $9, $0, 0x1000" : : "r"(p) : "$8", "$9", "memory");         __asm__ volatile ("sw $9, 0($8)" : : : "memory");         __asm__ volatile ("sw $0, 4($8)" : : : "memory");         __asm__ volatile ("sw $9, 8($8)" : : : "memory");         __asm__ volatile ("sw $0, 12($8)" : : : "memory");         __asm__ volatile ("sh $9, 16($8)" : : : "memory");         __asm__ volatile ("sw $0, 20($8)" : : : "memory");         __asm__ volatile ("sw $0, 24($8)" : : : "memory");         __asm__ volatile ("sw $0, 28($8)" : : : "memory");         GEO_BARRERA();         GEO_BARRERA();     } while (0)
 #define GEO_CARGAR_WH(p) \
     __asm__ volatile ("move $8, %0\n\tlw $9, 0($8)\n\tlh $10, 4($8)" \
                       : : "r"(p) : "$8", "$9", "$10", "memory")
