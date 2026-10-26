@@ -1,0 +1,31 @@
+# Material del disco original: nunca se versiona (propiedad de terceros)
+/disc/
+/assets/
+/asm/
+/build/
+/toolchain/
+/expected/
+*.bin
+*.cue
+*.iso
+*.chd
+SLUS_*
+*.BZZ
+*.bzz
+*.XA
+
+# Herramientas y entornos locales
+.venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+*.pyc
+/pipeline/
+/.claude/
+CLAUDE.md
+*.log
+*.rep
+/ghidra/
+/.ghidra_project/

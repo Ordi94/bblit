@@ -1,0 +1,31 @@
+[project]
+name = "bblit"
+version = "0.1.0"
+description = "Descompilacion de Bugs Bunny: Lost in Time (PlayStation, SLUS-00838) a C"
+requires-python = ">=3.13"
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+src = ["tools", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "D", "ANN", "S", "PL", "RUF"]
+ignore = ["D203", "D212", "D213", "PLR0913", "PLR2004", "S603", "S607"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "D", "ANN", "PLR"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
+packages = ["tools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
