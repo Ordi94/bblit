@@ -13,10 +13,6 @@ extern void* D_800694B8;
 extern void* D_800694D8;
 extern s32 D_80076188;
 extern u8 D_8006AD80[];
-extern GsRVIEW2 D_8006D928;
-extern GsOT D_8006AE20[];
-extern GsOT D_8006AE60[];
-extern GsOT D_8006AEA0[];
 
 extern u16 D_800694F0;
 extern s32 D_8006CF68[];
@@ -225,7 +221,7 @@ void func_80016218(void)
                       "addiu $8, $8, -4\n\t"
                       "move $29, $8"
                       : : "r"(0x1F8003FC) : "$8");
-    GsSetRefView2L(&D_8006D928);
+    GsSetRefView2L((GsRVIEW2*)&D_8006D928);
     GsClearOt(0, 0, &D_8006AE20[D_8006967C]);
     GsClearOt(0, 0, &D_8006AE60[D_8006967C]);
     GsClearOt(0, 0, &D_8006AEA0[D_8006967C]);

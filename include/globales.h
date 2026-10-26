@@ -59,6 +59,29 @@ typedef struct Objeto {
 } Objeto;
 
 /*
+ * Estado de la camara y de la escena en 0x8006D928. Los primeros 0x20 bytes son un GsRVIEW2 del
+ * SDK (punto de vista, punto de mira, rz y coordenada padre): GsSetRefView2L recibe la
+ * direccion de la estructura entera. Detras vienen los indicadores y los parametros de
+ * seguimiento que mueven los eventos de camara.
+ */
+typedef struct EstadoCamara {
+    s32 vpx;
+    s32 vpy;
+    s32 vpz;
+    s32 x;
+    s32 y;
+    s32 z;
+    s32 rz;
+    GsCOORDINATE2* super;
+    u8 pad20[0x80 - 0x20];
+    u16 flags80;
+    u8 pad82[0x86 - 0x82];
+    s16 s86;
+    s16 s88;
+    s16 s8A;
+} EstadoCamara;
+
+/*
  * Variables globales que mas de un archivo del juego declara. Una sola declaracion por simbolo:
  * el tipo sale del ensamblador original (el ancho de la instruccion de carga y de almacen) y
  * cambiarlo cambia el codigo generado, asi que no se retoca sin repetir diff y verify.
@@ -144,6 +167,20 @@ extern struct ObjetoVolumen* D_80069630;
  * archivo y se pasa tal cual a func_80019364(void*); no se indexa ni se desplaza.
  */
 extern void* D_800694FC;
+
+/* --- Camara y listas de ordenacion -------------------------------------------------- */
+
+extern EstadoCamara D_8006D928;
+
+/*
+ * Tres listas de ordenacion por buffer de dibujo (D_8006AE20, D_8006AE60, D_8006AEA0), cada una
+ * un arreglo de tres GsOT: entradas de 0x14 bytes con el puntero a la lista en +0x10 (GsOT.tag).
+ * El arranque las limpia con GsClearOt, que recibe un GsOT*, y func_80040B8C envia cada
+ * lista con DrawOTag.
+ */
+extern GsOT D_8006AE20[];
+extern GsOT D_8006AE60[];
+extern GsOT D_8006AEA0[];
 
 /* --- Banderas de un byte -------------------------------------------------------------- */
 
