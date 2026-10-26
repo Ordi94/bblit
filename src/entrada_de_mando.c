@@ -71,12 +71,8 @@ extern EntradaTabla D_8005EE38[];
 extern u8 D_8006957C;
 extern u8 D_800695E0;
 extern u8 D_80069658;
-extern u8 D_80069659;
-extern u8 D_8006965A;
-extern u8 D_8006965B;
 extern u8 D_8006965C;
 extern u8 D_8006965D;
-extern u8 D_8006965E;
 extern u8 D_8006CFF0[];
 extern u8 D_8006D038[];
 
@@ -84,28 +80,14 @@ extern void func_8005A21C(s32 modo);
 
 /* Estado auxiliar del mando (zona 0x80069xxx y bufer de la BIOS). */
 extern u8 D_8006AA7C;
-extern u8 D_8006AA70[];
 extern u16 D_800695EA;
-extern s8 D_800695A0;
-extern s8 D_80069595;
-extern s8 D_8006963C;
-extern u16* D_800695B0;
 extern s16 D_80069672;
 extern s16 D_8006952C;
-extern s8 D_8006966A;
-extern u32 D_8006D9A8;
 extern u8 D_8006CFF1;
 extern u8 D_8006CFF2;
 extern u8 D_8006CFF3;
 extern u8 D_8006CFF6;
 extern u8 D_8006CFF7;
-
-/* Entidad en curso (D_80069698): solo se lee su palabra de banderas en +0x14. */
-typedef struct EntidadActual {
-    u8 pad0[0x14];
-    u32 banderas;
-} EntidadActual;
-extern EntidadActual* D_80069698;
 
 /*
  * Solo la usa el cuerpo de func_80040240 bajo NON_MATCHING; la declaracion no emite codigo ni datos,
@@ -334,12 +316,12 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * No coincide: puntuacion 7419 (el archivo se compila con g = 8; 10074 con -G0).
+ * No coincide: puntuacion 7264 (el archivo se compila con g = 8).
  * Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o
  * entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma
  * los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS
  * (D_8006CFF1..7: id, botones invertidos y ejes) en botones logicos y ejes de +/-0x7F.
- * Puntuacion 7419 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
+ * Puntuacion 7264 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
  * saltos y casi todo el cuerpo coinciden; difieren el marco de pila (el original reserva 8
  * bytes mas, 0x28), el reparto de registros de la rama de grabacion, el orden de
  * (D_8006CFF2 ^ 0xFF) << 8 (el original no fusiona el xor con el desplazamiento) y la copia
@@ -362,7 +344,7 @@ void func_8004048C(void)
     s32 centro;
     s32 eje;
 
-    if (D_80069662 == 0 && (D_80069698 == 0 || (D_80069698->banderas & 0x01000000) == 0)) {
+    if (D_80069662 == 0 && (D_80069698 == 0 || (D_80069698->flags14 & 0x01000000) == 0)) {
         goto normal;
     }
     if (D_8006AA7C == 0) {
@@ -520,7 +502,8 @@ normal:
                 G->mando.w02 = 0x800;
             }
         } else if (D_80069672 >= 5) {
-            if (D_8006AA70[0] == 0 && D_8006966A == 0 && (D_8006D9A8 & 0x301) == 1 && G->mando.w6E == 0) {
+            /* El original carga D_8006D9A8 entera con lw; globales.h la declara u16[5] por el resto de usos. */
+            if (D_8006AA70[0] == 0 && D_8006966A == 0 && (*(u32*)D_8006D9A8 & 0x301) == 1 && G->mando.w6E == 0) {
                 D_80069672 = 5;
                 G->mando.w02 = G->mando.w02 & 0xF7FF;
             } else if (D_8006AA7C == 0) {

@@ -39,15 +39,15 @@ typedef struct Entrada {
 } Entrada;
 
 /*
- * Escalar de un byte declarado como estructura: el planificador del compilador solo mantiene el
- * orden entre estas escrituras y las lecturas por puntero del registro de accion si ambos
- * accesos son de campos de estructura.
+ * Vista de un byte como estructura de un campo, solo para func_80031D60. D_8006965A y D_8006965B
+ * se declaran u8 en globales.h; con el escalar el planificador sube la lectura por puntero del
+ * registro de accion por encima de la escritura al byte y la funcion sale 410 en lugar de 0. El
+ * orden del original solo se conserva si ambos accesos son de campos de estructura.
  */
 typedef struct Byte {
     u8 v;
 } Byte;
 
-extern Objeto* D_80069518;
 extern s32* D_80069640;
 extern s32 D_800693B4;
 extern s32 D_800693C0;
@@ -58,39 +58,25 @@ extern s16 D_800693F6;
  * estructura de ESTADO daria un lui compartido distinto.
  */
 extern u16 D_8001000A;
-extern u16 D_80010010;
 extern u16 D_8001003E;
 extern u8 D_800100E6;
 extern u8 D_80010041;
-extern u8 D_800694E0;
-extern u8 D_800694E1;
-extern u8 D_800694E8;
 extern u8 D_800694F2;
 extern s32 D_800694F8;
 extern s32 D_80069554;
 extern s32 D_80069560;
 extern u8 D_80069586;
-extern u8 D_80069594;
 extern s32 D_8006960C;
 extern s32 D_80069618;
 extern s32 D_8006961C;
 extern s32 D_80069624;
-extern u8 D_80069659;
-extern Byte D_8006965A;
-extern Byte D_8006965B;
-extern u8 D_8006965E;
-/* Se lee con lh en func_80031FE0 y se escribe con sh: s16. */
-extern s8 D_8006966A;
 extern u8 D_80069674;
-extern s16 D_8006967C;
 extern s32 D_80069690;
-extern s32 D_80069694;
 extern u16 D_800695D0;
 extern u16 D_8006B658[];
 extern u8 D_8006B558[];
 extern Entrada D_8006B378[];
 extern u32 D_8006D064;
-extern u16 D_8006D9A8[5];
 
 /*
  * Registro de 16 bits partido en bytes (indice 7 del banco A). Se declara sin prototipo: el
@@ -110,7 +96,6 @@ extern void func_8003E88C(void);
 extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
 extern s32 func_80044940(void* a0);
 extern s32 func_80045C4C(s32 a0, s32 a1, s32 a2);
-extern s32 ratan2(s32 a0, s32 a1);
 
 /* Acceso a la base de $gp: los datos pequenos del original se direccionan por registro. */
 
@@ -1026,10 +1011,10 @@ void func_80031BAC(Objeto* a0, Accion* a1)
 {
     u8 v;
     if (a0 != D_80069698 || a0->i158 != 0x25 || (D_800694F2 & 1)) {
-        D_8006965A.v = a1->b4;
+        D_8006965A = a1->b4;
         v = ((u8*)a1)[6];
         D_8006965E = 0;
-        D_8006965B.v = v;
+        D_8006965B = v;
     }
 }
 
@@ -1090,8 +1075,8 @@ void func_80031D30(void) {}
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031D38(Objeto* a0, Accion* a1)
 {
-    D_8006965B.v = 0;
-    D_8006965A.v = a1->b4;
+    D_8006965B = 0;
+    D_8006965A = a1->b4;
     D_8006965E = ((u8*)a1)[6];
 }
 
@@ -1105,12 +1090,13 @@ void func_80031D60(Objeto* a0, Accion* a1)
     v[2] = a0->zEC - D_8006D928.z;
     d = func_80044940(v);
     if (d < 0x800) {
-        D_8006965A.v = a1->b4;
+        /* 0x80031DD0, 0x80031E00 y 0x80031E10: sb a D_8006965A / D_8006965B con lui $at; el escalar u8 cambia el orden de la lectura de a1. */
+        ((Byte*)&D_8006965A)->v = a1->b4;
         d = (a1->w6 * d) / 2048;
         if (d <= 0) {
-            D_8006965B.v = 0;
+            ((Byte*)&D_8006965B)->v = 0;
         } else {
-            D_8006965B.v = d;
+            ((Byte*)&D_8006965B)->v = d;
         }
     }
 }

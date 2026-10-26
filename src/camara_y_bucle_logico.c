@@ -54,7 +54,6 @@ typedef struct EstadoPrincipal {
 } EstadoPrincipal;
 
 extern Secuencia D_8005E768[];
-extern u16 D_80010010;
 #define PRINCIPAL ((EstadoPrincipal*)0x80010000)
 
 void func_80035244(void)

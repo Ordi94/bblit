@@ -1,4 +1,5 @@
 #include "common.h"
+#include "globales.h"
 #include "psyq/TYPES.H"
 #include "psyq/LIBGTE.H"
 #include "psyq/LIBGPU.H"
@@ -32,11 +33,13 @@ typedef struct RegistroArchivo {
 } RegistroArchivo;
 extern RegistroArchivo D_8005F200[];
 
-extern DISPENV D_8006CF78;
-extern void* D_800694FC;
 extern u8 D_80010065;
 
-/* Dato pequeno de $gp (+0x188): maquina de estados de la pantalla de carga (0, 2, 4; bit 0 = activa). */
+/*
+ * Dato pequeno de $gp (+0x188): maquina de estados de la pantalla de carga (0, 2, 4; bit 0 = activa).
+ * Es la misma variable que define graficos_y_gte_10.c: ambas son definiciones tentativas (sin extern)
+ * y el enlazador funde los simbolos comunes en uno solo. Con -fno-common se duplicaria.
+ */
 u8 D_800694A8;
 
 /* Pone a negro dos veces, con un cuadro de espera, el rectangulo de 512x512 de la VRAM en (512, 0). */

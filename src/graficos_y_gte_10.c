@@ -1,4 +1,5 @@
 #include "common.h"
+#include "globales.h"
 #include "psyq/TYPES.H"
 #include "psyq/LIBGTE.H"
 #include "psyq/LIBGPU.H"
@@ -19,25 +20,12 @@
  * Estado de presentacion de cuadros (zona 0x80069xxx). Las dos cuentas son volatile porque
  * el retorno de llamada de VSync las modifica mientras el bucle principal las lee.
  */
-extern vu16 D_80069676;
 extern vu16 D_800695A6;
 extern s16 D_800695BC;
-extern s16 D_8006967C;
 extern u32 D_80069610;
 extern u32 D_80069614;
-extern u32 D_80069510;
-extern u8 D_800695DC;
 extern u8 D_80069620;
-extern u32 D_8006AD40[];
 
-/* Tres listas de ordenacion por buffer: cada entrada mide 0x14 bytes y su puntero esta en +0x10. */
-typedef struct EntradaOrden {
-    u8 pad0[0x10];
-    u_long* ot;
-} EntradaOrden;
-extern EntradaOrden D_8006AE20[];
-extern EntradaOrden D_8006AE60[];
-extern EntradaOrden D_8006AEA0[];
 
 /* Alias no cacheado (0xA0000000) de func_80040A80, registrado como retorno de DrawSync. */
 extern u8 D_A0040A80[];
@@ -108,9 +96,10 @@ void func_80040B8C(void)
         }
         GsSwapDispBuff();
         func_8003F528(D_800695BC);
-        DrawOTag(D_8006AEA0[D_800695BC].ot);
-        DrawOTag(D_8006AE60[D_800695BC].ot);
-        DrawOTag(D_8006AE20[D_800695BC].ot);
+        /* 0x80040C74, 0x80040CA0 y 0x80040CCC: lw a0,0x10(v0) carga GsOT.tag (+0x10) y lo pasa a DrawOTag, que espera u_long*. */
+        DrawOTag((u_long*)D_8006AEA0[D_800695BC].tag);
+        DrawOTag((u_long*)D_8006AE60[D_800695BC].tag);
+        DrawOTag((u_long*)D_8006AE20[D_800695BC].tag);
         DrawSyncCallback((void (*)())D_A0040A80);
         D_800695A6 = 0;
         D_80069610 = D_80069614;

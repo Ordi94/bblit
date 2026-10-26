@@ -6,49 +6,17 @@
 #include "psyq/LIBGPU.H"
 #include "psyq/LIBGS.H"
 
-extern u8 D_80069594;
-extern DISPENV D_8006CF78;
-extern s16 D_8006967C;
 extern s32 D_80069534;
-extern s32 D_80069694;
-extern s32 D_80069510;
 extern s32 D_80069638;
-extern u32 D_80069518;
-extern void* D_80069630;
 extern void* D_80069508;
 extern void* D_800694B8;
 extern void* D_800694D8;
 extern s32 D_80076188;
-extern s32 D_8006AD40[];
 extern u8 D_8006AD80[];
-extern GsRVIEW2 D_8006D928;
-extern GsOT D_8006AE20[];
-extern GsOT D_8006AE60[];
-extern GsOT D_8006AEA0[];
 
 extern u16 D_800694F0;
-extern u32 D_800694FC;
-extern volatile u16 D_80069676;
-/*
- * Estado de la maquina de `main`. Se declara s16 aqui: el asm compara con `lh` seis veces y solo el
- * incremento carga con `lhu`; declarado u16 main sube de 1135 a 2135. Los demas archivos usan la
- * declaracion comun de globales.h.
- */
-extern u8 D_800695DC;
 extern s32 D_8006CF68[];
-extern u8 D_8006AA70[];
-extern s8 D_8006966A;
-extern u16 D_8006D9A8;
-extern u8 D_8006965A;
-extern u8 D_80069659;
-extern u8 D_8006963C;
-extern u8 D_80069595;
-extern u8 D_800695A0;
 extern u8 D_80069628;
-extern u8 D_800694E0;
-extern u8 D_800694E1;
-extern u8 D_800694E8;
-extern u16* D_800695B0;
 
 extern s32 SetRCnt(u32 canal, u16 destino, s32 modo);
 extern s32 StartRCnt(u32 canal);
@@ -90,7 +58,7 @@ extern void func_80016044(void);
 extern void func_800160A8(void);
 extern void func_8003E3C0(void);
 extern void func_8003F3F0(s16 indice);
-extern void func_800353B0(u32 a);
+extern void func_800353B0(Objeto* a);
 extern void func_80037048(void* a);
 extern void func_800399C8(void* a);
 extern void func_8003B5AC(void* a);
@@ -253,7 +221,8 @@ void func_80016218(void)
                       "addiu $8, $8, -4\n\t"
                       "move $29, $8"
                       : : "r"(0x1F8003FC) : "$8");
-    GsSetRefView2L(&D_8006D928);
+    /* 0x80016288: lui a0,%hi(D_8006D928) ; jal GsSetRefView2L ; addiu a0,a0,%lo(D_8006D928): se pasa la base de la estructura, que empieza por un GsRVIEW2. */
+    GsSetRefView2L((GsRVIEW2*)&D_8006D928);
     GsClearOt(0, 0, &D_8006AE20[D_8006967C]);
     GsClearOt(0, 0, &D_8006AE60[D_8006967C]);
     GsClearOt(0, 0, &D_8006AEA0[D_8006967C]);
@@ -287,12 +256,12 @@ void func_800163E4(void)
  * pausa y la maquina de estados D_80069662 (el estado 0x16 en adelante recarga el contenido).
  * Con el mando ocioso unos 900 cuadros entra en el ciclo de demostracion.
  *
- * Pendiente (1135, 11 variantes): el flujo y los tipos coinciden (pausa y demostracion son s16, el
+ * Pendiente (1025, 11 variantes): el flujo y los tipos coinciden (pausa y demostracion son s16, el
  * contador de cuadros D_80069676 es volatile u16); difieren el reparto de registros salvados de las
  * constantes 2 y 3 y de la tabla de tiempos D_8006CF68, y la base `lui` del estado se hoistea antes
  * que en el original.
  *
- * NON_MATCHING: sin cerrar. Puntuacion 1135 (el archivo se compila con g = 8; 15140 con -G0).
+ * NON_MATCHING: sin cerrar. Puntuacion 1025 (el archivo se compila con g = 8).
  */
 s32 main(void)
 {
@@ -356,7 +325,7 @@ s32 main(void)
             }
         } else if (D_8006AA70[0] == 0) {
             if (regs[0xC] == 0 && D_80069662 == 0) {
-                if ((e->botones_a & 0x800) && D_8006966A == 0 && (!(D_8006D9A8 & 0x300) || (D_8006D9A8 & 1)) && e->f76 == 0) {
+                if ((e->botones_a & 0x800) && D_8006966A == 0 && (!(D_8006D9A8[0] & 0x300) || (D_8006D9A8[0] & 1)) && e->f76 == 0) {
                     contador = 0;
                     func_80037FB8(D_80069508);
                     func_80037FE8(D_80069508);
