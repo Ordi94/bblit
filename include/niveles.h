@@ -298,24 +298,17 @@ typedef struct TrabajoBloque {
 #define ZONA_PONER_CERO_WH(p) \
     __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsh $0, 4($8)" \
                       : : "r"(p) : "$8", "memory")
-#define ZONA_GUARDAR_H_T1(p)     __asm__ volatile ("move $8, %0
-	sh $9, 0($8)
-	sh $10, 2($8)
-	sh $11, 4($8)"                       : : "r"(p) : "$8", "memory")
-#define ZONA_CARGAR_H(p)     __asm__ volatile ("move $8, %0
-	lh $9, 0($8)
-	lh $10, 2($8)
-	lh $11, 4($8)"                       : : "r"(p) : "$8", "$9", "$10", "$11", "memory")
-#define ZONA_SUMAR_H(p)     __asm__ volatile ("move $8, %0
-	lh $12, 0($8)
-	lh $13, 2($8)
-	lh $14, 4($8)
-	"                       "add $12, $12, $9
-	add $13, $13, $10
-	add $14, $14, $11
-	"                       "sh $12, 0($8)
-	sh $13, 2($8)
-	sh $14, 4($8)"                       : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
+#define ZONA_GUARDAR_H_T1(p) \
+    __asm__ volatile ("move $8, %0\n\tsh $9, 0($8)\n\tsh $10, 2($8)\n\tsh $11, 4($8)" \
+                      : : "r"(p) : "$8", "memory")
+#define ZONA_CARGAR_H(p) \
+    __asm__ volatile ("move $8, %0\n\tlh $9, 0($8)\n\tlh $10, 2($8)\n\tlh $11, 4($8)" \
+                      : : "r"(p) : "$8", "$9", "$10", "$11", "memory")
+#define ZONA_SUMAR_H(p) \
+    __asm__ volatile ("move $8, %0\n\tlh $12, 0($8)\n\tlh $13, 2($8)\n\tlh $14, 4($8)\n\t" \
+                      "add $12, $12, $9\n\tadd $13, $13, $10\n\tadd $14, $14, $11\n\t" \
+                      "sh $12, 0($8)\n\tsh $13, 2($8)\n\tsh $14, 4($8)" \
+                      : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
 #define ZONA_RELLENAR_1000(p) \
     __asm__ volatile ("move $8, %0\n\taddiu $12, $0, 0x1000\n\tmove $9, $12\n\tmove $10, $12\n\t" \
                       "move $11, $12\n\tsw $9, 0($8)\n\tsw $10, 4($8)\n\tsw $11, 8($8)" \

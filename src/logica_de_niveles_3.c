@@ -9,6 +9,13 @@ extern s16 D_800695DE;
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 4383 con la configuracion versionada (g = 8 del archivo). Orden de instrucciones y reparto de registros: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV y la comprobacion del paso, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1. */
+/*
+ * Manejador de los objetos moviles por mascara (clases 12, 13, 18, 19 y 22 a 29): una sola rutina
+ * atiende doce modos, uno por bit de la mascara (balancin, giro, bajar o subir con el jugador,
+ * oscilacion senoidal, recorrido entre limites, rampa), arrastra al jugador cuando lo lleva encima,
+ * recorre los disparadores y aplica dano al contacto. Los limites y el origen del recorrido
+ * comparten memoria con +0x184..+0x198 del objeto (MOVIL_*).
+ */
 void func_80026298(Objeto* o, u32 mascara)
 {
     TrabajoMovil* t;
@@ -339,6 +346,15 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_80026298);
 
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_80026FEC);
 
+/*
+ * Manejador de la zona de eventos (clase 16). Se anuncia como objeto activo cercano en D_8006D9B8
+ * cuando lo pide la bandera 0x10 o el jugador esta a menos de 0x7D0 unidades en el plano. Cada
+ * cuadro recorre los disparadores: filtra por azar, evalua la condicion (si falla salta al nodo
+ * cuyo identificador indica el disparador) y por distancia al objeto o punto de referencia, y al
+ * cumplirse ejecuta la accion y los efectos que pide flags (sonido, hijo, mover al jugador,
+ * destruir otro objeto, cambiar de nivel, animar al jugador). Sin la bandera 0x8000 el recorrido
+ * termina en el primer disparador ejecutado.
+ */
 void func_8002BA80(Objeto* o)
 {
     TrabajoZona* t;
@@ -531,6 +547,13 @@ siguiente:
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 3551 con la configuracion versionada (g = 8 del archivo). Reparto de registros y orden de las cargas: el original conserva en s5 la parte alta de D_8006D928 y en s3 la matriz del scratchpad derivada de la misma base, relee las banderas del nodo de memoria tras cada almacen y planifica las cargas del giro del origen de otro modo. */
+/*
+ * Manejador del director de camara (clase 36): por cada disparador cuya condicion y distancia se
+ * cumplen reescribe el destino de vista y de mira de la camara global, la distancia de acercamiento
+ * y las banderas de seguimiento (flags80), o corta la camara de golpe copiando la vista actual a
+ * todas sus copias. El origen del destino puede ser el jugador, otro objeto buscado por
+ * identificador, este mismo objeto o constantes del disparador.
+ */
 void func_8002C1DC(Objeto* o)
 {
     TrabajoCamara* t;
@@ -742,8 +765,15 @@ siguiente:
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002C1DC);
 #endif
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 495 con la configuracion versionada (g = 8 del archivo). Difiere el avance de cuadro: el original suma uno al cuadro, lo recorta a 16 bits en un registro distinto del que guarda, compara con el ultimo cuadro cargando este despues y guarda el intervalo en el hueco del salto. */
+/*
+ * Manejador del sprite animado con caja de colision y disparadores (clase 4 de D_8005E35C). En el
+ * primer cuadro reserva el ayudante, busca el descriptor de tipo 8 en la lista de animaciones,
+ * deriva la caja del objeto del tamano del primer cuadro y arma la matriz del nodo. Despues avanza
+ * un cuadro cada b05 cuadros de juego y recorre los disparadores hasta el primero cuya condicion se
+ * cumple: ejecuta su accion, avisa el sonido de inicio o fin y destruye el objeto si el disparador
+ * lo pide y la animacion llego al ultimo cuadro. Si no hay ayudante disponible el original se queda
+ * en un bucle sin salida.
+ */
 void func_8002CB8C(Objeto* o)
 {
     BloqueTrabajo* b;
@@ -752,7 +782,6 @@ void func_8002CB8C(Objeto* o)
     Fotograma* f;
     void* area;
     TablaFotogramas* tb;
-    u16 i;
     s32 k;
     u8 w;
 
@@ -803,14 +832,13 @@ void func_8002CB8C(Objeto* o)
         func_8001E528(o, b, 1, area);
     }
     if (b->b08 == 0) {
-        i = b->h02 + 1;
-        b->h02 = i;
         w = b->b05;
-        if (b->h00 < i) {
+        b->h02 = b->h02 + 1;
+        b->b08 = w;
+        if ((u16)b->h02 > b->h00) {
             b->h02 = 0;
             b->actual = b->fotogramas;
         }
-        b->b08 = w;
         func_8001E528(o, b, 1, area);
     }
     b->b08 -= 1;
@@ -838,10 +866,12 @@ void func_8002CB8C(Objeto* o)
         } while (n != 0);
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002CB8C);
-#endif
 
+/*
+ * Manejador del sprite decorativo (clase 20): igual que el de sprite con caja pero sin disparadores
+ * ni caja de colision. Toma el intervalo y el cuadro inicial de la caja del objeto, anima con la
+ * variante de formato escalado y en cada cuadro vuelve a pedir el dibujo del objeto.
+ */
 void func_8002CEC4(Objeto* o)
 {
     BloqueTrabajo* b;
@@ -1142,6 +1172,14 @@ siguiente:
         } \
     }
 
+/*
+ * Manejador del bloque empujable (clase 5). El jugador deja en h40 y h44 el desplazamiento que
+ * intenta hacer contra el bloque; w17C fija los ejes y sentidos permitidos (0x01 X, 0x02 Z, 0x100 y
+ * 0x200 anulan el sentido negativo o positivo, 0x04 prueba en dos pasadas, 0x40 modo plataforma,
+ * 0x80 no cae). El avance se prueba contra otros objetos y contra el terreno desde las cuatro
+ * esquinas de la caja girada, se aplica al bloque, la parte que no pudo absorber vuelve al jugador y
+ * se controla el sonido de arrastre. Termina con la gravedad del bloque.
+ */
 void func_8002D68C(Objeto* o)
 {
     TrabajoBloque* t;
@@ -1443,6 +1481,13 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002D68C);
 
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002EA9C);
 
+/*
+ * Manejador del efecto anclado a un nodo de otro objeto (clase 34). Elige la secuencia de animacion
+ * (la de w17E; al acabar vuelve a la de identificador 1), reparte el dano a un objeto cercano si el
+ * fotograma lo pide, anima y, si el objeto cuelga de un nodo, acumula la posicion global recorriendo
+ * la cadena de matrices con el GTE. Se destruye al terminar la animacion si el fotograma lo pide y
+ * cuando pierde a su portador.
+ */
 void func_8002EAA4(Objeto* o)
 {
     TrabajoEfecto* t;
@@ -1560,6 +1605,13 @@ void func_8002EAA4(Objeto* o)
     }
 }
 
+/*
+ * Manejador del proyectil balistico (clase 31): en el primer cuadro orienta el proyectil hacia el
+ * jugador y crea el hijo de la plantilla 0x14. Durante 0x3C cuadros avanza segun la velocidad del
+ * objeto rotada por su matriz, resuelve el choque contra el terreno y contra los objetos: si
+ * alcanza al jugador le hace dano, si alcanza a otro objeto le deja el identificador del atacante;
+ * al impactar o chocar con una pared crea el efecto 0x13 y se destruye.
+ */
 void func_8002F018(Objeto* o)
 {
     TrabajoProyectil* t;
@@ -1671,6 +1723,12 @@ matriz:
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 878 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original deja el objeto en s1 y la edad del efecto en s0, el compilador los intercambia, y no adelanta la suma del guion al hueco del salto compartido. */
+/*
+ * Manejador de la animacion de modelo por guion (clase 32). w17C es el tiempo de vida y w17E el
+ * indice del guion con el bit 15 como marca de guion ya lanzado: al cumplirse la edad reanuda el
+ * guion en curso o destruye el objeto; si no, lanza el guion que indica D_80069590 y repone la edad
+ * del objeto, que la rutina del guion sobrescribe.
+ */
 void func_8002F510(Objeto* o)
 {
     s16 vida;
@@ -1716,6 +1774,11 @@ void func_8002F510(Objeto* o)
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F510);
 #endif
 
+/*
+ * Manejador del objeto pegado a la camara (clase 9): en el primer cuadro destruye el objeto si no
+ * tiene modelo y arma su animacion; en cada cuadro copia la posicion de la camara (la altura mas el
+ * desplazamiento propio) y reconstruye la matriz del nodo.
+ */
 void func_8002F614(Objeto* o)
 {
     if (o->u78.p == 0) {
@@ -1731,6 +1794,11 @@ void func_8002F614(Objeto* o)
     func_8001CF50(o);
 }
 
+/*
+ * Manejador de la zona sonda (clase 10): gira la caja del objeto con el desplazamiento de la camara
+ * y marca con el bit 8 de flags18 los objetos solidos cuyo punto, visto desde la camara, cae dentro
+ * de la caja. w196 invierte el signo de los ejes del desplazamiento.
+ */
 void func_8002F6B4(Objeto* o)
 {
     TrabajoSonda* t;
