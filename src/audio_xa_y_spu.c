@@ -2,6 +2,7 @@
 #include "globales.h"
 #include "psyq/LIBCD.H"
 #include "psyq/LIBSPU.H"
+#include "geometria.h"
 
 /*
  * Audio: musica y voces en streaming XA, efectos por SPU y comprobacion del disco.
@@ -73,6 +74,9 @@ extern void func_8003FC88(void);
 extern void func_8003FD60(void);
 /* Volumen maestro de los efectos en el estado principal (0x80010000 + 0xE5). */
 extern u8 D_800100E5;
+/* Banderas de audio del estado principal (0x80010000 + 0xE8): el bit 0 fuerza el mismo volumen en ambos canales. */
+extern u8 D_800100E8;
+extern s32 BugsRand(void);
 
 /* Tabla de nombres de archivo del disco: el primero es \LEVEL5\MERLIN.BZZ;1 (rodata D_80067EF0). */
 typedef struct Lista4 {
@@ -107,14 +111,32 @@ typedef struct Efecto {
     u8 b7;
 } Efecto;
 
+/*
+ * Vista de un efecto a partir de +4 (banderas, tope de volumen y umbral de azar). func_8003F06C
+ * recorre la tabla con un puntero a la entrada y otro a esta vista, que avanzan juntos.
+ */
+typedef struct EfectoCola {
+    u16 flags;
+    u8 cuenta;
+    u8 b7;
+} EfectoCola;
+
 
 /* Ranura de voz de efecto: 24 entradas de 0x14 bytes en D_8006B378. */
+typedef union VolVoz {
+    u16 w;
+    struct {
+        u8 izq;
+        u8 der;
+    } c;
+} VolVoz;
+
 typedef struct Voz {
     u16 flags;
     s16 voz;
     void* objeto;
     Efecto* efecto;
-    u16 vol;
+    VolVoz vol;
     u8 id;
     u8 pad0F;
     u16 cuenta;
@@ -127,7 +149,7 @@ extern Voz D_8006B378[];
 extern s16 D_80069568;
 extern s16 D_800695D8;
 extern s32 func_8003F9C4(u8* a0, u32 a1);
-extern u32 func_8003EDA8(void* objeto, Efecto* e);
+extern u32 func_8003EDA8(Objeto* o, Efecto* e);
 extern void func_8003F984(void);
 
 /* Parametros de reverberacion que recibe func_8003ECF8 (profundidad en +8). */
@@ -285,7 +307,7 @@ void func_8003E16C(u8 track)
     }
 }
 
-/* Pendiente: puntuacion 130 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
+/* Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el orden de los dos lui iniciales (la base de la tabla de posiciones se emite antes que la del estado principal en el original). Variantes probadas: 14. */
 #ifdef NON_MATCHING
 void func_8003E298(s32 a0)
 {
@@ -614,9 +636,169 @@ void func_8003ED94(void)
     D_800695D8 = -1;
 }
 
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003EDA8);
+/* Pendiente: puntuacion 1565 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de registros: el original usa s0..s4 (el resultado queda en s2 y la base de la camara en s3) y aqui el resultado cae en un temporal. Variantes probadas: 6. */
+#ifdef NON_MATCHING
+u32 func_8003EDA8(Objeto* o, Efecto* e)
+{
+    s32 d[3];
+    s32 w[3];
+    s32 pos[3];
+    AcumuladorNodos acc;
+    u32 r;
+    s32 x;
+    s32 y;
+    u8 g;
 
+    if (D_80069458 == 0) {
+        return 0;
+    }
+    if (o == D_80069698 || o == 0) {
+        g = D_80069458;
+        return g | (g << 8);
+    }
+    if ((e->flags & 0x100) && o->u78.p != 0 && *(u32*)o->u78.p != 0) {
+        acc.nodo = (GsCOORDINATE2*)(*(u32*)o->u78.p + 0x1C);
+        func_8001CE64(&acc);
+        GEO_CARGAR_W(&acc.acc);
+        GEO_GUARDAR_W_T1(pos);
+    } else {
+        GEO_CARGAR_W(&o->param.trans);
+        GEO_GUARDAR_W_T1(pos);
+    }
+    d[0] = pos[0] - D_8006D928.x;
+    d[1] = pos[1] - D_8006D928.y;
+    d[2] = pos[2] - D_8006D928.z;
+    x = func_80044940(d);
+    if (x < 0x1000) {
+        d[0] = pos[0] - D_8006D928.vpx;
+        d[2] = pos[2] - D_8006D928.vpz;
+        w[0] = D_8006D928.x - D_8006D928.vpx;
+        w[2] = D_8006D928.z - D_8006D928.vpz;
+        y = ratan2(d[0], d[2]);
+        y -= ratan2(w[0], w[2]);
+        if (y > 0x800) {
+            y -= 0x1000;
+        }
+        if (y < -0x800) {
+            y += 0x1000;
+        }
+        x = ((0x7F - ((x << 7) >> 12)) * D_80069458) >> 7;
+        if (y >= 0) {
+            if (y > 0x400) {
+                y = 0x800 - y;
+            }
+            r = (x << 8) | ((x - ((x * y) >> 10)) & 0xFF);
+        } else {
+            if (y < -0x400) {
+                y = -0x800 - y;
+            }
+            r = ((x + ((x * y) >> 10)) << 8) | (x & 0xFF);
+        }
+    } else {
+        r = 0;
+    }
+    if (e->flags & 0x200) {
+        x = (r & 0xFF) + e->cuenta;
+        if (D_80069458 < x) {
+            x = D_80069458;
+        }
+        r = (r & 0xFF00) | (x & 0xFF);
+        x = (r >> 8) + e->cuenta;
+        if (D_80069458 < x) {
+            x = D_80069458;
+        }
+        r = (x << 8) | (r & 0xFF);
+    }
+    return r & 0xFFFF;
+}
+#else
+INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003EDA8);
+#endif
+
+/* Pendiente: puntuacion 2792 con la configuracion versionada (g = 8 del archivo). El flujo coincide; el original recorre la tabla de efectos con dos punteros (entrada y entrada + 4) y GCC reparte un tercero para los bytes de la entrada, lo que desplaza todos los registros s. Variantes probadas: 6. */
+#ifdef NON_MATCHING
+void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
+{
+    Voz* v;
+    Efecto* e;
+    u8* pf;
+    s16 i;
+    s16 j;
+    u16 libre;
+
+    e = D_8006AEE0;
+    D_80069458 = D_800100E5;
+    if (modo & 1) {
+        v = D_8006B378;
+        pf = (u8*)&e->flags;
+        for (i = 0; i < 0x18; i++, v++) {
+            libre = v->flags & 0x8000;
+            if (libre == 0) {
+                for (j = 0; j < D_80069568; j++) {
+                    if (e->id == id) {
+                        break;
+                    }
+                    e++;
+                    pf += 8;
+                }
+                if (j != D_80069568 && (!(*(u16*)pf & 0x80) || (BugsRand() >> 7) >= pf[3])) {
+                    if (*(u16*)pf & 2) {
+                        if (D_80069458 < pf[2]) {
+                            v->vol.w = D_80069458 + (D_80069458 << 8);
+                        } else {
+                            v->vol.w = pf[2] + (pf[2] << 8);
+                        }
+                    } else {
+                        v->vol.w = func_8003EDA8(objeto, e);
+                    }
+                    if (v->vol.w != 0 || (*(u16*)pf & 0x820) == 0x20) {
+                        if ((*(u16*)pf & 1) || (D_800100E8 & 1)) {
+                            if (v->vol.c.der < v->vol.c.izq) {
+                                v->vol.c.der = v->vol.c.izq;
+                            } else {
+                                v->vol.c.izq = v->vol.c.der;
+                            }
+                        }
+                        v->objeto = objeto;
+                        v->efecto = e;
+                        v->flags = modo | 0x8000;
+                        v->id = clave;
+                    }
+                }
+                return;
+            }
+        }
+    } else if (modo & 2) {
+        v = D_8006B378;
+        for (i = 0; i < 0x18; i++, v++) {
+            if ((*(u32*)&v->flags & 0x8002) == 0x8000 && v->efecto->id == id && v->objeto == objeto) {
+                if (!(v->flags & 1)) {
+                    v->id = clave;
+                    v->flags = 0x8002;
+                } else {
+                    v->flags = 0;
+                }
+                break;
+            }
+        }
+        if (i == 0x18) {
+            v = D_8006B378;
+            for (i = 0; i < 0x18; i++, v++) {
+                if ((*(u32*)&v->flags & 0x8002) == 0x8000 && v->efecto->id == id) {
+                    if (!(v->flags & 1)) {
+                        v->id = clave;
+                        v->flags = 0x8002;
+                        return;
+                    }
+                    v->flags = 0;
+                }
+            }
+        }
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003F06C);
+#endif
 
 void func_8003F3F0(void)
 {
@@ -635,13 +817,13 @@ void func_8003F3F0(void)
                 if (e->flags & 2) {
                     if ((s8)D_80069628 == 1) {
                         if (e->cuenta > D_80069458) {
-                            v->vol = (D_80069458 << 8) + D_80069458;
+                            v->vol.w = (D_80069458 << 8) + D_80069458;
                         } else {
-                            v->vol = (e->cuenta << 8) + e->cuenta;
+                            v->vol.w = (e->cuenta << 8) + e->cuenta;
                         }
                     }
                 } else if ((e->flags & 0x20) || (s8)D_80069628 == 1) {
-                    v->vol = func_8003EDA8(v->objeto, e);
+                    v->vol.w = func_8003EDA8((Objeto*)v->objeto, e);
                 }
             }
         }
@@ -652,7 +834,127 @@ void func_8003F3F0(void)
     }
 }
 
+/* Pendiente: puntuacion 635 con la configuracion versionada (g = 8 del archivo). El flujo coincide; difiere el reparto del temporal de la mascara de voz (a0 en lugar de v1), el orden de las cargas previas a la llamada de func_8003FEEC y la posicion de una carga de voz. Variantes probadas: 10. */
+#ifdef NON_MATCHING
+void func_8003F528(s16 id)
+{
+    Voz* v;
+    Efecto* e;
+    s32 i;
+    s32 activas;
+    u32 encender;
+    u32 apagar;
+    u32 m;
+    s32 vz;
+    u16 f;
+    u16 fe;
+    u8 g;
+
+    apagar = 0;
+    activas = func_8003FC04();
+    g = D_800100E5;
+    D_80069458 = g;
+    encender = 0;
+    if (g != 0) {
+        D_80069458 = g - 1;
+    }
+    v = D_8006B378;
+    for (i = 0; i < 0x18; v++, i++) {
+        f = v->flags;
+        if (!(f & 0x8000)) {
+            continue;
+        }
+        e = v->efecto;
+        if (f & 1) {
+            if (v->id != id) {
+                continue;
+            }
+            f &= 0xFFFE;
+            v->flags = f;
+            if (v->objeto == 0) {
+                goto liberar;
+            }
+            if (e->id != 0xD || !(D_80069698->flags14 & 0x1000000)) {
+                v->flags = f | 4;
+                v->cuenta = 0;
+                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol.w << 16, e->flags);
+            }
+            if (v->voz < 0) {
+                goto liberar;
+            }
+            encender |= 1 << v->voz;
+            D_8006B2E0[v->voz] = 1;
+        } else if (f & 2) {
+            if (v->id != id) {
+                continue;
+            }
+            v->flags = 0;
+            m = 1 << v->voz;
+            if (activas & m) {
+                apagar |= m;
+            }
+        } else if (f & 4) {
+            v->cuenta++;
+            m = 1 << v->voz;
+            if (!(activas & m)) {
+                goto liberar;
+            }
+            if (v->objeto == 0) {
+                goto liberar;
+            }
+            fe = e->flags;
+            if ((fe & 2) && (s8)D_80069628 != 2) {
+                continue;
+            }
+            if ((fe & 4) && (s16)v->cuenta == e->cuenta) {
+                v->cuenta = 0;
+                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol.w << 16, e->flags);
+                if (v->voz < 0) {
+                    v->flags = 0;
+                } else {
+                    encender |= 1 << v->voz;
+                    D_8006B2E0[v->voz] = 1;
+                }
+            } else if ((e->flags & 8) && (s16)((s16)v->cuenta / 30) == e->cuenta) {
+                v->cuenta = 0;
+                v->voz = func_8003FDEC(e->vol_a, e->vol_b, v->vol.w << 16, e->flags);
+                if (v->voz < 0) {
+                    v->flags = 0;
+                } else {
+                    encender |= 1 << v->voz;
+                    D_8006B2E0[v->voz] = 1;
+                }
+            }
+            fe = e->flags;
+            if (!(fe & 0x20) && (s8)D_80069628 != 2) {
+                continue;
+            }
+            if ((fe & 1) || (D_800100E8 & 1)) {
+                if (v->vol.c.izq > v->vol.c.der) {
+                    v->vol.c.der = v->vol.c.izq;
+                } else {
+                    v->vol.c.izq = v->vol.c.der;
+                }
+            }
+            func_8003FEEC(v->voz, e->vol_a, e->vol_b, v->vol.w << 16, e->flags);
+        }
+        continue;
+    liberar:
+        v->flags = 0;
+    }
+    if (encender != 0) {
+        SpuSetKey(1, encender);
+    }
+    if (apagar != 0) {
+        SpuSetKey(0, apagar);
+    }
+    if ((s8)D_80069628 == 2) {
+        D_80069628 = 0;
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003F528);
+#endif
 
 void func_8003F900(void* a0)
 {
@@ -808,7 +1110,7 @@ void func_8003FD60(void)
     D_800694F6 = 0;
 }
 
-/* Pendiente: puntuacion 1770 con la configuracion versionada (g = 8 del archivo). Por medir el motivo exacto. Variantes probadas: 0. */
+/* Pendiente: puntuacion 180 con la configuracion versionada (g = 8 del archivo). Las instrucciones coinciden; el original normaliza el parametro de volumen empaquetado con sra antes de reservar el marco de pila y el resultado coloca ese desplazamiento tras el addiu del marco. Variantes probadas: 7. */
 #ifdef NON_MATCHING
 s16 func_8003FDEC(s16 a0, s16 a1, s32 a2, u16 a3)
 {
