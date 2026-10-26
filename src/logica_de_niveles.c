@@ -171,8 +171,8 @@ void func_80020B90(Objeto* o)
         o->nodo188 = (NodoSecuencia*)sc->trans;
         D_80069398 = 0x800;
         D_800693B8 = -1;
-        o->flags14 = 0;
         o->w17C = sc->sec->id;
+        o->flags14 = 0;
         D_80069D30[2] = 0;
         D_80069D30[0] = 0;
         D_80069D40[2] = 0;
@@ -1313,8 +1313,8 @@ sin_rebote:
             }
             if (o->flags14 & 0x10) {
                 if (func_80018664(o, o->p70, w) == 0 || (o->flags14 & 2)) {
-                    sc->rel.vy = 0;
                     sc->rel.vx = o->param.trans.vx - o->p70->param.trans.vx;
+                    sc->rel.vy = 0;
                     sc->rel.vz = o->param.trans.vz - o->p70->param.trans.vz;
                     GEO_CARGAR_W(&o->p70->param.trans);
                     GEO_GUARDAR_W_T1(&sc->punto);
@@ -1549,8 +1549,9 @@ sin_rebote:
     }
     func_8001D414(sc->reg->id);
     if (sc->reg->flags10 & 0x2000) {
-        sc->tocado = o->p6C;
-        if (o->p6C != NULL) {
+        t2 = o->p6C;
+        sc->tocado = t2;
+        if (t2 != NULL) {
             o->min.vx = (u16)sc->tocado->min.vx;
             o->min.vy = (u16)sc->tocado->min.vy;
             o->min.vz = (u16)sc->tocado->min.vz;
@@ -1561,9 +1562,10 @@ sin_rebote:
             o->alcance2 = o->p6C->alcance2;
         }
     } else {
-        sc->tocado = o->p6C;
-        if (o->p6C != NULL) {
-            if ((sc->tocado->flags08 & 0x2000) && !(sc->reg->flags0C & 0x40)) {
+        t2 = o->p6C;
+        sc->tocado = t2;
+        if (t2 != NULL) {
+            if ((t2->flags08 & 0x2000) && !(sc->reg->flags0C & 0x40)) {
                 o->max.vx = 0x46;
                 o->min.vx = -0x46;
                 o->min.vz = -0x28;
