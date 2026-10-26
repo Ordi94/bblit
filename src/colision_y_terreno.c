@@ -63,10 +63,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2570 con la configuracion versionada (g = 0 del archivo). El reparto de
+ * Pendiente: puntuacion 2540 con la configuracion versionada (g = 0 del archivo). El reparto de
  * registros coincide con el original; difieren el orden de planificacion en los avances por
  * subcelda y por baldosa, el cierre compartido de resultados y una constante de indice que el
- * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 9980).
+ * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 9950).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -491,8 +491,7 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                     tz = w->sz_z;
                                     w->aux = ty;
                                     w->rz = tz;
-                                    w->lim_z = w->lim_z + w->celda_z;
-                                    w->sz_z = w->lim_z;
+                                    w->sz_z = w->lim_z = w->lim_z + w->celda_z;
                                     w->rx = tx;
                                     w->sz_x = tx + ((w->pend_z * w->celda_z) >> 12);
                                 } else {
@@ -505,8 +504,7 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                     tz = w->sx_z;
                                     w->aux = ty;
                                     w->rz = tz;
-                                    w->lim_x = w->lim_x + w->celda_x;
-                                    w->sx_x = w->lim_x;
+                                    w->sx_x = w->lim_x = w->lim_x + w->celda_x;
                                     w->rx = tx;
                                     w->sx_z = tz + ((w->pend_x * w->celda_x) >> 12);
                                 } else {
@@ -540,20 +538,18 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                      || (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z)));
                         w->ebz_x = w->x - w->cbz_x;
                         w->ebz_z = w->z - w->cbz_z;
-                        w->ebx_z = w->z - w->cbx_z;
                         w->ebx_x = w->x - w->cbx_x;
+                        w->ebx_z = w->z - w->cbx_z;
                         w->d_bz = SquareRoot0(w->ebz_x * w->ebz_x + w->ebz_z * w->ebz_z);
                         w->d_bx = SquareRoot0(w->ebx_x * w->ebx_x + w->ebx_z * w->ebx_z);
                         if (w->d_bz < w->d_bx) {
                             w->bz = w->cbz_z;
-                            w->lin_z = w->lin_z + w->paso_z;
-                            w->cbz_z = w->lin_z;
+                            w->cbz_z = w->lin_z = w->lin_z + w->paso_z;
                             w->bx = w->cbz_x;
                             w->cbz_x = w->cbz_x + ((w->pend_z * w->paso_z) >> 12);
                         } else {
                             w->bz = w->cbx_z;
-                            w->lin_x = w->lin_x + w->paso_x;
-                            w->cbx_x = w->lin_x;
+                            w->cbx_x = w->lin_x = w->lin_x + w->paso_x;
                             w->bx = w->cbx_x;
                             w->cbx_z = w->cbx_z + ((w->pend_x * w->paso_x) >> 12);
                         }
