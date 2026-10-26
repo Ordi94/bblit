@@ -40,8 +40,12 @@ Con el ejecutable sin modificar: `0 de 249595 sectores modificados` y SHA-1
 ## 4. Simbolos
 
 ```
-.venv\Scripts\python.exe -m tools.ghidra simbolos --funciones <funciones.csv> --nombres config/nombres_funciones.txt --salida <destino>
+.venv\Scripts\python.exe -m tools.ghidra simbolos --funciones <funciones.csv> --nombres config/nombres_funciones.txt --salida <archivo symbols.txt>
 ```
+
+`--salida` (igual que `--tablas` y `--nuevas`) es un **archivo**, no una carpeta: se reemplaza de forma
+atomica y su carpeta se crea si falta. Si la ruta indicada es una carpeta existente el comando termina con
+`error: --salida debe ser un archivo, no una carpeta` y codigo 2, sin escribir nada.
 
 `<funciones.csv>` es el que produce `python -m tools.ghidra exportar` (carpeta de exportacion de Ghidra,
 fuera del repositorio). Con `BBLIT_DISC` definida (cualquiera de las cinco formas: .bin, .cue, carpeta del .bin, carpeta superior o carpeta con fs/) o con `--exe`. Genera 1168 lineas

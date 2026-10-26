@@ -268,6 +268,31 @@ def test_simbolos_con_archivo_inexistente_no_vuelca_la_ruta(
     assert capsys.readouterr().err == "error de entrada/salida: FileNotFoundError\n"
 
 
+@pytest.mark.parametrize("opcion", ["--salida", "--tablas", "--nuevas"])
+def test_simbolos_rechaza_una_carpeta_donde_se_espera_un_archivo_y_nombra_la_opcion(
+    opcion: str, tmp_path: Path, funciones_csv: Path, ejecutable: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    carpeta = tmp_path / "destino"
+    carpeta.mkdir()
+    argumentos = ["simbolos", "--funciones", str(funciones_csv), "--exe", str(ejecutable)]
+    argumentos += ["--salida", str(tmp_path / "symbols.txt")] if opcion != "--salida" else []
+    argumentos += [opcion, str(carpeta)]
+    assert main(argumentos) == 2
+    assert capsys.readouterr().err == f"error: {opcion} debe ser un archivo, no una carpeta\n"
+    assert list(carpeta.iterdir()) == []
+    assert not (tmp_path / "symbols.txt").exists()
+
+
+def test_simbolos_sigue_reemplazando_un_archivo_existente_en_salida(
+    tmp_path: Path, funciones_csv: Path, ejecutable: Path
+) -> None:
+    destino = tmp_path / "symbols.txt"
+    destino.write_text("viejo\n", encoding="utf-8")
+    argumentos = ["simbolos", "--funciones", str(funciones_csv), "--salida", str(destino)]
+    assert main([*argumentos, "--exe", str(ejecutable)]) == 0
+    assert destino.read_text(encoding="utf-8").startswith("__main = 0x80014A00;")
+
+
 def test_informe_imprime_conteos_y_cobertura(funciones_csv: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["informe", "--funciones", str(funciones_csv)]) == 0
     assert capsys.readouterr().out == (

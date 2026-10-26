@@ -113,9 +113,9 @@ def test_si_falla_la_escritura_de_las_listas_la_tabla_anterior_no_se_toca(
 ) -> None:
     destino = tmp_path / "symbols.txt"
     destino.write_text("anterior\n", encoding="utf-8")
-    carpeta = tmp_path / "es_una_carpeta"
-    carpeta.mkdir()
-    assert main(_simbolos(entradas, destino, "--tablas", str(carpeta))) == 2
+    padre = tmp_path / "es_un_archivo"
+    padre.write_text("x", encoding="utf-8")
+    assert main(_simbolos(entradas, destino, "--tablas", str(padre / "tablas.csv"))) == 2
     assert destino.read_text(encoding="utf-8") == "anterior\n"
     assert capsys.readouterr().err.startswith("error de entrada/salida:")
 
