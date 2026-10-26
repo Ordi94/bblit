@@ -494,7 +494,7 @@ INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800453D0);
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045498);
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Mismo flujo y mismas escrituras; el original conserva una copia de a2 en v0 para la primera comparacion y emite el sh de +0x26 despues de la carga del byte de D_8006AA7C. */
+/* Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Mismo flujo, mismas escrituras y mismo orden; el estado del lector se lee como D_8006AA70[0xC] (arreglo) para que el lui de la base pueda separarse de la carga, como en el original. Solo difiere la primera comparacion: el original la hace sobre una copia de a2 en v0 (move v0,a2 ; beqz v0) y GCC compara a2 directamente. */
 u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
 {
     BloqueTrabajo* bloque;
@@ -524,7 +524,7 @@ u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
         a2->p180 = NULL;
         a1 = (u8*)D_80069590 + D_80069590[a0];
         a2->w26 = D_80069698->w26;
-        if (D_8006AA7C == 1) {
+        if (D_8006AA70[0xC] == 1) {
             a2->flags0C |= 0x40000000;
         }
     }
