@@ -424,9 +424,10 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3390 con la configuracion versionada (g = 8 del archivo). Flujo y estructura de bloques iguales al original;
- * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en las cuentas de bloques y en los
- * bucles del directorio, y el reparto de las divisiones por 0x2000.
+ * Pendiente: puntuacion 3175 con la configuracion versionada (g = 8 del archivo). Flujo y distribucion de bloques iguales al original;
+ * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
+ * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
+ * original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante.
  *
  * Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de registros (D_8006AA70[0xA]: 1 aceptar,
  * 2 formatear, 3 crear el archivo, 4 grabar con sonido, 5 cargar, 6 grabar) y la limpia; despues sondea con MemCardSync(1) la ultima
