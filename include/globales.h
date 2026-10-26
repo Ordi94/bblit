@@ -790,6 +790,29 @@ extern u32 D_8006949C;
 extern s32 D_80010000;
 
 /*
+ * Punteros a las tablas de la banda sonora que se cargan con el nivel. El cargador los escribe
+ * con sw (func_800415A0 0x80042060, 0x8004206C, 0x80042DA4, 0x80042DAC, 0x80042DB4, 0x80042DC8,
+ * 0x80042DE0) y el audio los lee como base de una tabla; el ensamblador solo fija el ancho (lw/sw
+ * de una palabra) y el tipo del elemento sale de como los indexa cada lector.
+ *
+ * El grupo con el bit 0x400 en los flags del efecto usa D_800694EC, D_800695FC y D_80069598; el
+ * resto, D_8006966C, D_800695AC y D_80069550 (func_8003FA2C, func_8003FDEC, func_8003FEEC).
+ *
+ * D_800694EC: base de bytes de las definiciones de sonido; func_8003FDEC y func_8003FEEC le suman
+ * desplazamientos en bytes.
+ * D_80069550: base de bytes; el cargador la avanza en bytes (func_800415A0 0x80044330 lw y
+ * 0x80044354 sw) y func_8003FA2C la lee como tabla de palabras.
+ * D_80069598: tabla de palabras indexada por el sonido (func_8003FA2C).
+ * D_800695AC y D_800695FC: tablas de s16 indexadas por el grupo del efecto (func_8003FDEC y
+ * func_8003FEEC leen un desplazamiento con lh).
+ */
+extern u8* D_800694EC;
+extern u8* D_80069550;
+extern u32* D_80069598;
+extern s16* D_800695AC;
+extern s16* D_800695FC;
+
+/*
  * Llamadas al sistema del kernel (syscall 0 con a0 = 1 y 2, 16 bytes escritos a mano cada una en
  * 0x8004E66C y 0x8004E67C). LIBAPI.H las declara, pero incluye kernel.h, que necesita cabeceras
  * del sistema que el proyecto no trae; se repiten aqui con la misma firma.

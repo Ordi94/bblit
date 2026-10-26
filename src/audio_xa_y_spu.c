@@ -147,13 +147,8 @@ extern s16 D_800694CA;
 extern u8 D_800694F6;
 extern PitchVoz D_8006D8C8[];
 extern u32 D_8006951C;
-extern u32* D_80069598;
-extern u32* D_80069550;
 extern u32 D_800695E4;
-extern s16* D_800695AC;
 extern u8* D_8006966C;
-extern s16* D_800695FC;
-extern u8* D_800694EC;
 /* LIBSND.H necesita <sys/types.h>, que el SDK incluido no trae: se declara solo lo que se usa. */
 extern void SsUtReverbOff(void);
 extern void func_8004D860(s32 a0, s32 a1);
@@ -970,7 +965,8 @@ s32 func_8003FA2C(s32 a0, s16 a1)
     if (a1 & 0x400) {
         SpuSetVoiceStartAddr(v, D_800695E4 + D_80069598[s->indice]);
     } else {
-        SpuSetVoiceStartAddr(v, D_80069550[s->indice] + 0x1010);
+        /* D_80069550 es base de bytes en globales.h; aqui se lee como tabla de palabras. */
+        SpuSetVoiceStartAddr(v, ((u32*)D_80069550)[s->indice] + 0x1010);
     }
     if (D_80069F28[a0].flags & 4) {
         SpuSetReverbVoice(1, 1 << v);
