@@ -77,8 +77,9 @@ typedef struct TrabajoBaldosa {
  * ordinario; las llamadas a libgte se hacen con sus prototipos de LIBGTE.H.
  *
  * Las que reciben una direccion la copian a $t0 al principio; las listas de registros
- * destruidos son las del original: GEO_NORMA2_XZ declara tambien $v0 y $v1, lo que desplaza el
- * puntero de destino a $a0 (sin ellos GCC lo deja en $v0).
+ * destruidos reproducen el efecto sobre la asignacion de registros: GEO_NORMA2_XZ declara tambien
+ * $v0 y $v1, lo que desplaza el puntero de destino a $a0 (sin ellos GCC lo deja en $v0); no se
+ * sabe que lista declaraba el original.
  *
  * GEO_CARGAR_W(p)        t1..t3 = vector de 3 palabras en p
  * GEO_RESTAR_W(p)        t4..t6 = t1..t3 - (vector de 3 palabras en p)
@@ -110,12 +111,35 @@ typedef struct TrabajoBaldosa {
     __asm__ volatile ("move $8, %0\n\taddi $12, $0, 0x1000\n\tlh $9, 0($8)\n\tlh $10, 2($8)\n\t" \
                       "lh $11, 4($8)\n\tsub $9, $12, $9\n\tsub $10, $12, $10\n\tsub $11, $12, $11" \
                       : : "r"(p) : "$8", "$9", "$10", "$11", "$12", "memory")
-#define GEO_GUARDAR_H_T1(p)     do {         __asm__ volatile ("move $8, %0
-	sh $9, 0($8)" : : "r"(p) : "$8", "memory");         __asm__ volatile ("sh $10, 2($8)
-	sh $11, 4($8)" : : : "memory");     } while (0)
+#define GEO_GUARDAR_H_T1(p) \
+    do { \
+        __asm__ volatile ("move $8, %0\n\tsh $9, 0($8)" : : "r"(p) : "$8", "memory"); \
+        __asm__ volatile ("sh $10, 2($8)\n\tsh $11, 4($8)" : : : "memory"); \
+    } while (0)
+/*
+ * Barrera vacia: no emite codigo. Cada sentencia asm cuenta como una instruccion para el
+ * asignador de registros; las barreras alargan la vida de los punteros de trabajo.
+ */
 #define GEO_BARRERA() __asm__ volatile ("" : : : "memory")
-#define GEO_IDENTIDAD(p)     do {         __asm__ volatile ("move $8, %0
-	ori $9, $0, 0x1000" : : "r"(p) : "$8", "$9", "memory");         __asm__ volatile ("sw $9, 0($8)" : : : "memory");         __asm__ volatile ("sw $0, 4($8)" : : : "memory");         __asm__ volatile ("sw $9, 8($8)" : : : "memory");         __asm__ volatile ("sw $0, 12($8)" : : : "memory");         __asm__ volatile ("sh $9, 16($8)" : : : "memory");         __asm__ volatile ("sw $0, 20($8)" : : : "memory");         __asm__ volatile ("sw $0, 24($8)" : : : "memory");         __asm__ volatile ("sw $0, 28($8)" : : : "memory");         GEO_BARRERA();         GEO_BARRERA();     } while (0)
+/*
+ * La matriz identidad se parte en una sentencia por almacen (mas dos barreras). El binario es el
+ * mismo que con una sola sentencia; la particion es un recurso de asignacion de registros, no
+ * un dato del original: con una sentencia, func_80018D98 y func_80018F80 asignan s2 y s3 al reves.
+ */
+#define GEO_IDENTIDAD(p) \
+    do { \
+        __asm__ volatile ("move $8, %0\n\tori $9, $0, 0x1000" : : "r"(p) : "$8", "$9", "memory"); \
+        __asm__ volatile ("sw $9, 0($8)" : : : "memory"); \
+        __asm__ volatile ("sw $0, 4($8)" : : : "memory"); \
+        __asm__ volatile ("sw $9, 8($8)" : : : "memory"); \
+        __asm__ volatile ("sw $0, 12($8)" : : : "memory"); \
+        __asm__ volatile ("sh $9, 16($8)" : : : "memory"); \
+        __asm__ volatile ("sw $0, 20($8)" : : : "memory"); \
+        __asm__ volatile ("sw $0, 24($8)" : : : "memory"); \
+        __asm__ volatile ("sw $0, 28($8)" : : : "memory"); \
+        GEO_BARRERA(); \
+        GEO_BARRERA(); \
+    } while (0)
 #define GEO_CARGAR_WH(p) \
     __asm__ volatile ("move $8, %0\n\tlw $9, 0($8)\n\tlh $10, 4($8)" \
                       : : "r"(p) : "$8", "$9", "$10", "memory")

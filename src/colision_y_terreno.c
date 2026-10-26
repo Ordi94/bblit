@@ -5,7 +5,8 @@ extern ZonaColision* D_80069C18[];
 
 /*
  * La cuenta de zonas y el puntero a la tabla viven en $gp+0x58 y $gp+0x5C; el original los
- * accede con desplazamiento fijo sobre $gp aunque el archivo se compila con -G0.
+ * accede con desplazamiento fijo sobre $gp aunque el archivo se compila con -G0. Depende de que
+ * nada reasigne $gp (el arranque lo fija a 0x80069320 y no cambia).
  */
 register u8* base_gp __asm__("$28");
 
@@ -113,6 +114,9 @@ ZonaColision* func_8001BF9C(s32* a0, s16 a1)
  * res), lee el valor de la baldosa de 320 unidades y la subcelda de 40 unidades, y rellena res
  * con la clase de terreno. 0x7E y 0x7F de la subcelda son transiciones de zona; cualquier otro
  * valor es una pendiente (su signo marca el sentido, el bit 0x20 de flags lo recuerda).
+ *
+ * NON_MATCHING: 1078 con la configuracion versionada (-G0); no depende de -G8 (la funcion no
+ * carga globales). Diferencia: el compilador asigna s0/s1 al reves y falta un `move t2,a3`.
  */
 #ifdef NON_MATCHING
 void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
