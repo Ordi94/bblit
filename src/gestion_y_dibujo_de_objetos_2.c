@@ -5,8 +5,7 @@
  * Vista del ayudante (Ayuda, objetos.h) a partir de +0x0C: el puntero a su GsCOORDINATE2 (+0x10
  * del nodo) y la bandera de visibilidad (+0xB4 del nodo). Es una vista aparte de Ayuda a proposito:
  * el original recorre la lista con un puntero desplazado 0xC (addiu sobre el nodo) distinto del
- * propio nodo. Accediendo por los campos de Ayuda func_80037048 sube de 0 a 604 puntos y
- * func_80037184 de 929 a 1464.
+ * propio nodo. Accediendo por los campos de Ayuda func_80037048 sube de 0 a 604 puntos.
  */
 typedef struct AyudaCuerpo {
     s32 w0;
@@ -122,18 +121,16 @@ void func_80037048(Objeto* lista)
     }
 }
 
-#ifdef NON_MATCHING
-/*
- * Pendiente: puntuacion 929 con la configuracion versionada (g = 8 del archivo). El cuerpo
- * coincide instruccion por instruccion salvo el reparto de registros: GCC iza la constante 1 de
- * la marca de visibilidad a $s5 fuera de los bucles y el original la carga junto al almacen.
- * Variantes probadas: 9.
- */
 /*
  * Dibuja la lista de escena 'lista': para cada objeto activo con la bandera de dibujo (bit 3 de
  * flags18) lo refleja respecto del objeto de referencia D_800695EC segun los bits de s1E de este
  * (eje X, Y o Z), recalcula su matriz, decide la visibilidad de sus ayudantes, restaura su
  * posicion original y lo anade a la lista de dibujo D_800694D8 (que se encadena por +0x10).
+ *
+ * El recorrido de ayudantes usa una etiqueta y no un for: el optimizador de bucles saca la constante 1 de la marca de
+ * visibilidad a un registro guardado cuando el recorrido es un bucle interior de 29 instrucciones, y el original la carga
+ * junto al almacen. La constante del area de trabajo se asigna antes que el puntero al escritorio para que cada una tenga
+ * su propio lui, y el enlace del objeto en curso se guarda antes de releerlo para que el original conserve la copia.
  */
 void func_80037184(Objeto* lista)
 {
@@ -145,12 +142,12 @@ void func_80037184(Objeto* lista)
     Objeto* ref;
     Objeto* o;
 
+    aux = (void*)0x1F800038;
     sp = ESCRITORIO;
     D_80069534 += 10;
     sp->actual = lista;
     if (lista != 0) {
         m = (MATRIX*)0x1F800008;
-        aux = (void*)0x1F800038;
         do {
             if (!(sp->actual->flags04 & 2) || !(sp->actual->flags18 & 8)) {
                 sp->actual = sp->actual->sig10;
@@ -181,11 +178,10 @@ void func_80037184(Objeto* lista)
                 }
                 TransMatrix(&sp->actual->coord.coord, &sp->actual->coord.param->trans);
                 sp->actual->coord.flg = 0;
-                for (a = sp->actual->u78.ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
-                    if (a->flags8 & 8) {
-                        continue;
-                    }
-                    if (a->flags8 & 6) {
+                a = sp->actual->u78.ayudas;
+                if (a != 0) {
+                sig_ayuda:
+                    if (!(a->flags8 & 8) && (a->flags8 & 6)) {
                         e = (AyudaCuerpo*)((u8*)a + 0xC);
                         if (a->flags8 & 0x8000) {
                             e->visible = 0;
@@ -196,6 +192,10 @@ void func_80037184(Objeto* lista)
                             e->visible = 0;
                         }
                     }
+                    a = (Ayuda*)a->cab.siguiente;
+                    if (a != 0) {
+                        goto sig_ayuda;
+                    }
                 }
                 sp->actual->param.trans = sp->pos;
                 sp->actual->flags18 &= ~8;
@@ -205,17 +205,14 @@ void func_80037184(Objeto* lista)
                 } else {
                     sp->previo->sig10 = sp->actual;
                 }
+                sp->previo = sp->actual;
                 o = sp->actual;
-                sp->previo = o;
                 sp->actual = o->sig10;
                 sp->previo->sig10 = 0;
             }
         } while (sp->actual != 0);
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037184);
-#endif
 
 /*
  * Rutina de GTE escrita a mano en el original (marca Handwritten del particionador): carga ocho
@@ -240,14 +237,48 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037580);
  */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375C4);
 
+/*
+ * Dato, no funcion: cinco palabras (20 bytes, 0x800375F8..0x8003760B) incrustadas en .text entre func_800375C4 y
+ * func_8003760C. Son la matriz inicial de un ayudante (nueve valores de 16 bits y relleno) que func_800375C4 copia. El
+ * desensamblador las marca como instrucciones invalidas. Se conserva como bloque de palabras con INCLUDE_ASM: pasarlo a un
+ * dato de C obligaria a mover su contenido a otra seccion y a cambiar el reparto del script de particion, y el bloque no
+ * tiene tamano en config/symbols.txt. Se declara extern s32 func_800375F8[] mas arriba solo para direccionar el origen.
+ */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375F8);
 
+/*
+ * Rutina escrita a mano en el original: calcula la matriz mundo de un nodo GsCOORDINATE2 recorriendo la jerarquia hacia la
+ * raiz y componiendola de vuelta con las rutinas manuscritas que siguen. El particionador no la marca Handwritten, pero el
+ * ensamblador tiene cuatro formas que GCC 2.8.1 no emite: constantes con `ori` en lugar de `addiu` (ori a1,zero,0x64 y ori
+ * t0,zero,0x64 en 0x80037648 y 0x8003764C; ori a0,zero,4 en 0x800378F0; ori v0,zero,1 en 0x80037974); registros guardados
+ * s4 (0xC), s5 (0x24) y s6 (0x8) fuera del orden de numeracion (0x80037624..0x8003762C); copias de matriz con ocho
+ * cargas seguidas de ocho almacenes (0x80037864..0x800378A0 y 0x800378B0..0x800378EC); y marcos de pila abiertos a mitad de
+ * la funcion (addiu sp,-0x18 en 0x80037808 y addiu sp,-0x20 en 0x80037920) alrededor de las llamadas a las rutinas de
+ * rotacion y traslacion. Se conserva en ensamblador.
+ */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_8003760C);
 
+/*
+ * Rutina escrita a mano en el original (marca Handwritten del particionador): carga la matriz de a0 en los registros de
+ * control 0 a 4 del GTE con ctc2 desde $t0..$t4 fijos, transforma el vector de a1 con mvmva y reparte el resultado en
+ * a2, todo sin prologo de pila y con la rama de signo (bgez/negu/sra) intercalada con las cargas. Se conserva en
+ * ensamblador: GCC no emite ese reparto de temporales ni esa planificacion.
+ */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800379A0);
 
+/*
+ * Rutina escrita a mano en el original (marca Handwritten del particionador): compone dos matrices de GTE. Carga a0 en
+ * los registros de control con ctc2 desde $t0..$t4, mezcla medias palabras de a1 con la mascara 0xFFFF0000 en $t9 y
+ * multiplica con mvmva, sin prologo de pila. Se conserva en ensamblador: GCC elige otros temporales y no mezcla
+ * lhu, lw y mtc2 en ese orden.
+ */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037B08);
 
+/*
+ * Rutina escrita a mano en el original (marca Handwritten del particionador): variante de la anterior que compone dos
+ * matrices de GTE con los mismos temporales fijos ($t0..$t4 y $t9 para la mascara 0xFFFF0000) y mvmva, sin prologo de
+ * pila. Se conserva en ensamblador: GCC no reproduce ese reparto de registros.
+ */
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037C00);
 
 /*
