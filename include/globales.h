@@ -893,6 +893,10 @@ extern s16* D_800695FC;
 /*
  * D_8006D9B8: objeto activo cercano al jugador. Lo escriben con sw las zonas de eventos
  * (func_8002BA80: sw 0x8002BAC8 y 0x8002BB24) y el personaje animado.
+ *
+ * Se declara como arreglo sin tamano (D_8006D9B8[0]) y no como escalar: con el umbral de datos pequenos
+ * de -G8 un puntero escalar se emite en la forma simbolica con $at, que el original no usa (func_8002BA80
+ * baja de 935 a 590 puntos con el arreglo); el arreglo da el lui y el desplazamiento del original.
  */
 extern Objeto* D_8006D9B8[];
 
