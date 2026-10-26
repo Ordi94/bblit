@@ -303,8 +303,8 @@ void func_8003E16C(u8 track)
     }
 }
 
-/* Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere solo el orden de los dos lui iniciales (el original emite la base de la tabla de posiciones antes que la del estado principal). Variantes probadas: 17. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere solo el orden de los dos lui iniciales (el original emite la base de la tabla de posiciones antes que la del estado principal). */
 void func_8003E298(s32 a0)
 {
     EstadoAudio* g;
@@ -632,8 +632,8 @@ void func_8003ED94(void)
     D_800695D8 = -1;
 }
 
-/* Pendiente: puntuacion 85 con la configuracion versionada (g = 8 del archivo). Las instrucciones y los registros coinciden (el resultado, una union de dos bytes, queda en s2); difiere solo la posicion de un sll (x << 8) respecto al mflo en la rama de angulo positivo. Variantes probadas: 20. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 85 con la configuracion versionada (g = 8 del archivo). Las instrucciones y los registros coinciden (el resultado, una union de dos bytes, queda en s2); difiere solo la posicion de un sll (x << 8) respecto al mflo en la rama de angulo positivo. */
 u32 func_8003EDA8(Objeto* o, Efecto* e)
 {
     s32 d[3];
@@ -718,8 +718,8 @@ u32 func_8003EDA8(Objeto* o, Efecto* e)
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003EDA8);
 #endif
 
-/* Pendiente: puntuacion 2792 con la configuracion versionada (g = 8 del archivo). El flujo coincide; el original recorre la tabla de efectos con dos punteros que avanzan juntos (entrada y entrada + 4) y aqui la reduccion de fuerza del bucle exterior reparte un tercero para los accesos de +2 y +3, lo que desplaza los registros s. Variantes probadas: 12. */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 2792 con la configuracion versionada (g = 8 del archivo). El flujo coincide; el original recorre la tabla de efectos con dos punteros que avanzan juntos (entrada y entrada + 4) y aqui la reduccion de fuerza del bucle exterior reparte un tercero para los accesos de +2 y +3, lo que desplaza los registros s. */
 void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
 {
     Voz* v;
