@@ -99,14 +99,6 @@ typedef struct SpriteDibujo {
     u32 semitransparente;
 } SpriteDibujo;
 
-/* Vista que reciben las rutinas de dibujo: +4 desplazamiento, +0xC y +0xE limites de profundidad. */
-typedef struct VistaDibujo {
-    u8 pad00[0x04];
-    s16 s4;
-    u8 pad06[0x0C - 0x06];
-    u16 w0C;
-    u16 w0E;
-} VistaDibujo;
 
 
 /* Vertice de la caja que func_8003DD70 prueba contra la pantalla: x en +8, y en +0xA, 12 bytes. */
@@ -198,25 +190,46 @@ typedef struct PoligonoGT3 {
 } PoligonoGT3;
 
 /*
- * Contexto de dibujo de la escena. +0: tipo de primitiva (8 y 12 sin textura, 16 y 20 con
- * textura plana, el resto con textura y color por vertice: func_8003DA4C); +4..+6: bytes de estado
- * que se pasan al dibujador de modelos (func_8003B26C y func_8003B354); +8: profundidad del
- * objeto (func_8003AF8C) que func_8003D880 resta del indice; +0xA: desplazamiento de
- * profundidad; +0xC: indice de la lista de ordenacion; +0x10: registro de banderas del GTE
- * (negativo si el triangulo se descarta); +0x18: cursor de la primitiva siguiente; +0x1C/+0x20/
- * +0x24: bases de las tres listas de ordenacion, de resolucion decreciente; +0x28: entrada
- * elegida; +0x2C/+0x30: inicio y limite del buffer de primitivas; +0x34: objeto que fija la sala
- * visible; +0x3A y +0x46: clut y pagina de textura de las primitivas texturadas.
+ * Escena en curso (segundo argumento de las rutinas de modelos): +4..+6 son los bytes de estado
+ * que se pasan al dibujador de modelos (func_8003B26C, func_8003B354); +8 la profundidad del
+ * objeto que func_8003AF8C calcula; +0xA el desplazamiento de profundidad; +0x2C y +0x30 el
+ * inicio y el limite del buffer de primitivas (func_8003AE08, func_8003AF8C); +0x34 el objeto
+ * que fija la sala visible.
  */
-typedef struct ContextoDibujo {
-    s8 tipo;
-    u8 pad01[3];
+typedef struct EscenaDibujo {
+    u8 pad00[0x04];
     u8 b4;
     u8 b5;
     u8 b6;
     u8 pad07;
     s16 profundidad;
     s16 desplazamiento;
+    u8 pad0C[0x2C - 0x0C];
+    s32 inicio;
+    s32 limite;
+    ObjetoEscena* objeto;
+} EscenaDibujo;
+
+/*
+ * Vista de dibujo (tercer argumento de las rutinas de modelos y contexto de la cola de poligonos).
+ * Sus campos se reutilizan por fases: func_8003C014 fija +4, +0xC y +0xE como limites de
+ * profundidad del modelo y func_8003C1C8 los reescribe como centro de pantalla (+4, +6), banderas
+ * (+8) y datos del poligono en curso; por eso +0xC y +0xE comparten memoria con el indice de la
+ * lista de ordenacion de func_8003DA4C. +0: tipo de primitiva (8 y 12 sin textura, 16 y 20 con
+ * textura y color plano, 24 y 28 con textura y color por vertice); +0x10: registro de banderas del
+ * GTE (negativo si el poligono se descarta); +0x18: cursor de la primitiva siguiente; +0x1C,
+ * +0x20 y +0x24: bases de las tres listas de ordenacion, de resolucion decreciente; +0x28:
+ * entrada elegida; +0x3A y +0x46: clut y pagina de textura; +0x60: cuatro vertices de trabajo.
+ */
+typedef struct VistaDibujo {
+    s8 tipo;
+    u8 b1;
+    s8 b2;
+    u8 pad03;
+    s16 s4;
+    s16 s6;
+    s16 w8;
+    u8 pad0A[2];
     s32 indice;
     s32 bandera;
     u8 pad14[4];
@@ -225,13 +238,16 @@ typedef struct ContextoDibujo {
     u32* ot1;
     u32* ot2;
     u32* destino;
-    s32 inicio;
-    s32 limite;
-    ObjetoEscena* objeto;
-    u8 pad38[2];
+    u8 pad2C[0x3A - 0x2C];
     u16 clut;
     u8 pad3C[0x46 - 0x3C];
     u16 tpage;
-} ContextoDibujo;
+    u8 pad48[0x60 - 0x48];
+    Vertice12 trabajo[4];
+} VistaDibujo;
+
+/* Los limites de profundidad del modelo ocupan las dos mitades de VistaDibujo.indice. */
+#define VISTA_W0C(v) (*(u16*)&(v)->indice)
+#define VISTA_W0E(v) (*((u16*)&(v)->indice + 1))
 
 #endif

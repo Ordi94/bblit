@@ -41,7 +41,7 @@ extern s32 D_8006958C;
 extern s32 D_80069680;
 extern void func_8003DF10(s32 cursor);
 extern s32 func_8003D7C4(void);
-extern void func_8003D880(ContextoDibujo* ctx);
+extern void func_8003D880(VistaDibujo* ctx);
 
 extern ModeloDibujo* D_8006B568[];
 extern u16 D_8006969C;
@@ -185,7 +185,7 @@ void func_8003ACA8(ObjetoCamara* objeto, void* sin_uso, MATRIX* m)
 
 /* Pendiente: puntuacion 1245 con la configuracion versionada (g = 8 del archivo). El cursor de primitivas se carga antes que en el original y los registros t0/t1/a1/v1 se reparten distinto; la estructura de las dos primitivas de 6 palabras coincide. Variantes probadas: 14 (orden de las 6 escrituras, 720 permutaciones del primer bloque, macro sobre D_80076188, estructura de paquete). */
 #ifdef NON_MATCHING
-s32 func_8003AE08(u32* puntos, ContextoDibujo* ctx)
+s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
 {
     u32* tabla;
     s32 actual;
@@ -226,7 +226,7 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
 
 /* Pendiente: puntuacion 1680 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el desplazamiento de la textura cae en a0 y la plantilla en v1, en lugar de a2 y a0) y la posicion del almacen de la profundidad, que el original deja justo antes de indexar la lista de ordenacion. Variantes probadas: 160 (forma de la plantilla, orden de declaracion de los locales, acumulacion del color). */
 #ifdef NON_MATCHING
-void func_8003AF8C(SpriteDibujo* sprite, ContextoDibujo* ctx, u8* vista)
+void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
 {
     u32 color;
     s32 desplazamiento;
@@ -309,12 +309,12 @@ void func_8003AF8C(SpriteDibujo* sprite, ContextoDibujo* ctx, u8* vista)
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AF8C);
 #endif
 
-void func_8003B26C(PedidoModelo* pedido, ContextoDibujo* escena, u8* vista)
+void func_8003B26C(PedidoModelo* pedido, EscenaDibujo* escena, VistaDibujo* vista)
 {
     ModeloDibujo* modelo;
 
     modelo = D_8006B568[pedido->modelo];
-    if (func_8003760C(modelo->geometria, vista, vista + 0x20) != 0) {
+    if (func_8003760C(modelo->geometria, vista, (u8*)vista + 0x20) != 0) {
         func_8003753C(vista);
         escena->b4 = (u8)pedido->grupo;
         escena->b5 = modelo->estado;
@@ -330,7 +330,7 @@ void func_8003B26C(PedidoModelo* pedido, ContextoDibujo* escena, u8* vista)
 
 /* Pendiente: puntuacion 485 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; solo difiere el reparto de v0/v1/a0 en la comparacion del numero de salas (la constante 0x10000 se carga antes del almacen de la profundidad) y en el puntero de la entrada visible. Variantes probadas: 60 (forma de la comparacion con shifts, orden de las escrituras previas al bucle, indexado frente a aritmetica de punteros, orden del cierre de la lista). */
 #ifdef NON_MATCHING
-void func_8003B354(ModeloDibujo* modelo, ContextoDibujo* escena, u8* vista)
+void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vista)
 {
     PedidoModelo pedido;
     s16 actual;
@@ -397,21 +397,21 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003BDD0);
 
 void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, VistaDibujo* vista, void* estado)
 {
-    vista->w0C = D_8006969C;
+    VISTA_W0C(vista) = D_8006969C;
     if (entidad->w3C & 2) {
-        vista->w0E = entidad->w3E;
+        VISTA_W0E(vista) = entidad->w3E;
     } else {
-        vista->w0E = D_800694B0;
+        VISTA_W0E(vista) = D_800694B0;
     }
     if (entidad->flags0C & 0x02000000) {
         vista->s4 = entidad->w28 - 0x80;
-        if (D_800694B0 < vista->w0E) {
-            vista->w0E = D_800694B0;
+        if (D_800694B0 < VISTA_W0E(vista)) {
+            VISTA_W0E(vista) = D_800694B0;
         }
         if (entidad->w2C == 9 || (entidad->flags0C & 0x20000000)) {
             D_80069600 = 1;
-            vista->w0C = 0x3FFF;
-            vista->w0E = 0x3FFF;
+            VISTA_W0C(vista) = 0x3FFF;
+            VISTA_W0E(vista) = 0x3FFF;
         }
     }
     if (lista != NULL) {
@@ -476,15 +476,15 @@ s32 func_8003D814(void)
     return mayor >> 2;
 }
 
-void func_8003D880(ContextoDibujo* ctx)
+void func_8003D880(VistaDibujo* ctx)
 {
     s32 n;
     s32 m;
 
-    if (ctx->indice < ctx->profundidad) {
+    if (ctx->indice < ctx->w8) {
         ctx->indice = 0;
     } else {
-        ctx->indice = ctx->indice - ctx->profundidad;
+        ctx->indice = ctx->indice - ctx->w8;
     }
     n = ctx->indice;
     if (n < 0x200) {
@@ -524,7 +524,7 @@ void func_8003D988(u8* dest, u8* a, u8* b)
 
 /* Pendiente: puntuacion 65 con la configuracion versionada (g = 8 del archivo). Solo difiere el orden de dos instrucciones en la rama de textura con color por vertice: el original carga el cursor de primitivas antes del almacen del codigo (el li del codigo queda en el hueco del salto) y el compilador deja el almacen primero. Variantes probadas: 8 (orden de las dos sentencias, variable intermedia para el codigo, condicion de la rama). */
 #ifdef NON_MATCHING
-void func_8003DA4C(Vertice12* a, Vertice12* b, Vertice12* c, ContextoDibujo* ctx)
+void func_8003DA4C(Vertice12* a, Vertice12* b, Vertice12* c, VistaDibujo* ctx)
 {
     PoligonoG3* g3;
     PoligonoFT3* ft3;
