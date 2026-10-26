@@ -81,7 +81,9 @@ typedef struct TrabajoBaldosa {
 /*
  * Este archivo contiene solo macros que reproducen ensamblador del original, instruccion por
  * instruccion; ninguna se usa para forzar el reparto de registros ni la planificacion del
- * compilador (no hay sentencias vacias ni sentencias partidas con ese fin).
+ * compilador (no hay sentencias vacias ni sentencias partidas con ese fin). La unica lista de
+ * registros destruidos que excede lo que escribe el ensamblador es la de GEO_NORMA2_XZ, descrita
+ * mas abajo.
  *
  * Macros de vector del motor. El original las escribio como sentencias de ensamblador en linea
  * con los temporales fijos $8..$14 (t0..t6): el ejecutable las delata porque cada vector entra
