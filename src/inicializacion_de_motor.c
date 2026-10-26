@@ -1,4 +1,119 @@
 #include "common.h"
+#include "globales.h"
+#include "psyq/LIBETC.H"
+#include "psyq/LIBCD.H"
+#include "psyq/LIBPRESS.H"
+#include "psyq/LIBSPU.H"
+
+/*
+ * Glifo de la tabla de caracteres: coordenadas de textura (u, v) y tamano en +8, +9, +0xC y +0xE
+ * (func_80045150), pagina de textura en +6 (func_80045150).
+ */
+typedef struct Glifo {
+    u8 pad00[6];
+    u16 tpage;
+    u8 u;
+    u8 v;
+    u8 pad0A[2];
+    u16 w;
+    u16 h;
+} Glifo;
+
+/*
+ * Entrada de ocho bytes de la lista de glifos pendientes de dibujar que recorre D_800694D4:
+ * glifo (func_800450E8, func_80045150), posicion x (+4) e y (+6) en pantalla e indice de paleta (+7).
+ */
+typedef struct EntradaLista {
+    Glifo* glifo;
+    u16 x;
+    u8 y;
+    s8 idx;
+} EntradaLista;
+
+/* Origen de una entrada: un u16 en +0 y un byte en +4. */
+typedef struct OrigenEntrada {
+    u16 h0;
+    u8 pad2[2];
+    u8 b4;
+} OrigenEntrada;
+
+/* Registro de dieciseis bytes de la tabla de fotogramas; solo se lee el u16 de +0xA. */
+typedef struct Fotograma {
+    u8 pad00[0x0A];
+    u16 h0A;
+    u8 pad0C[4];
+} Fotograma;
+
+typedef struct TablaFotogramas {
+    u8 pad00[0x10];
+    Fotograma* fotogramas;
+} TablaFotogramas;
+
+typedef struct DefinicionAnimacion {
+    u8 pad00[0x4E];
+    u16 tipo;
+    u8 pad50[4];
+    TablaFotogramas* tabla;
+} DefinicionAnimacion;
+
+typedef struct NodoAnimacion {
+    struct NodoAnimacion* sig;
+    u8 pad04[4];
+    DefinicionAnimacion* def;
+} NodoAnimacion;
+
+/* Bloque de trabajo del objeto en +0x144; func_80045C4C escribe la tabla de fotogramas en +0x20. */
+typedef struct BloqueTrabajo {
+    u8 pad00[0x20];
+    Fotograma* fotogramas;
+} BloqueTrabajo;
+
+/*
+ * Vista del objeto que usan las rutinas de animacion: banderas en +0xC, componente de rotacion en +0x26,
+ * lista de animaciones en +0x74, bloque de trabajo en +0x144, tabla activa en +0x16C, marca en +0x17E y
+ * puntero al guion en curso en +0x180.
+ */
+typedef struct ObjetoAnimado {
+    u8 pad00[0x0C];
+    u32 flags0C;
+    u8 pad10[0x26 - 0x10];
+    u16 w26;
+    u8 pad28[0x74 - 0x28];
+    NodoAnimacion* lista;
+    u8 pad78[0x144 - 0x78];
+    BloqueTrabajo bloque;
+    u8 pad168[0x16C - 0x144 - sizeof(BloqueTrabajo)];
+    TablaFotogramas* tabla;
+    u8 pad170[0x17E - 0x170];
+    s16 s17E;
+    void* p180;
+} ObjetoAnimado;
+
+extern void* memset(void* destino, s32 valor, u32 cantidad);
+extern void FlushCache(void);
+extern void func_8003ED6C(void);
+extern void func_8003FFA0(void);
+extern void func_8003502C(ObjetoAnimado* objeto);
+extern ObjetoAnimado* func_80036734(s32 tipo, void* a, void* b);
+extern void func_8004BBF0(s32 valor);
+extern void func_8004E584(s32 valor);
+extern void func_80055AFC(s32 valor);
+extern void func_8005595C(s32 valor);
+
+/* Registro de la pantalla de la libreria grafica; el arreglo evita la forma simbolica de -G8 (lui + desplazamiento en el original). */
+extern u16 D_80075FFE[5];
+extern u16 D_8006D018[];
+extern s32 D_80076188;
+extern s32 D_8006958C;
+extern s32 D_80069680;
+extern u16 D_800694E2;
+extern void func_80039CD0(s32 prim);
+extern u16* D_80069590;
+extern u8 D_8006AA7C;
+extern u32 func_80045498(ObjetoAnimado* objeto, void* guion, BloqueTrabajo* bloque);
+extern EntradaLista* D_800694D4;
+extern s16 D_80069652;
+extern EntradaLista* D_800694B8;
 
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044904);
 
@@ -10,24 +125,307 @@ INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449E0);
 
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044A04);
 
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044D44);
+void func_80044D44(void)
+{
+    FlushCache();
+    ResetGraph(0);
+    SetGraphDebug(0);
+    func_8003ED6C();
+    func_8003FFA0();
+    CdInit();
+    CdSetDebug(0);
+    func_8004E584(0);
+    GsInitGraph(0x200, 0xF0, 4, 1, 0);
+    GsDefDispBuff(0x200, 0, 0x200, 0x100);
+    D_80075FFE[0] = 0xF0;
+    GsInit3D();
+    InitGeom();
+    ResetCallback();
+    CdDataCallback(NULL);
+    CdReadCallback(NULL);
+    CdReadyCallback(NULL);
+    CdSyncCallback(NULL);
+    VSyncCallback(NULL);
+    DrawSyncCallback(NULL);
+    DecDCTinCallback(NULL);
+    DecDCToutCallback(NULL);
+    func_8004BBF0(0);
+    SpuSetIRQCallback(NULL);
+    SpuStSetPreparationFinishedCallback(NULL);
+    SpuStSetTransferFinishedCallback(NULL);
+    SpuStSetStreamFinishedCallback(NULL);
+    DecDCTReset(0);
+}
 
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044E58);
+void func_80044E58(void)
+{
+    memset(&D_8006D928, 0, 0xE8);
+    D_8006D928.super = NULL;
+    GsSetRefView2L((GsRVIEW2*)&D_8006D928);
+    func_80055AFC(0x190);
+    func_8005595C(0x64);
+}
 
+/* Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). Misma estructura que el original; difiere la planificacion de la carga de la direccion de D_8006D018 (lui) y de la mascara andi 0xFFFF. Variantes probadas: 9. */
+#ifdef NON_MATCHING
+void func_80044EA8(s32 a0, u32 a1, ObjetoAnimado* a2)
+{
+    NodoAnimacion* nodo;
+    TablaFotogramas* tabla;
+    Fotograma* f;
+
+    nodo = a2->lista;
+    while (nodo != NULL && nodo->def->tipo != 8) {
+        nodo = nodo->sig;
+    }
+    tabla = nodo->def->tabla;
+    a2->tabla = tabla;
+    f = &tabla->fotogramas[a1 & 0xFFFF];
+    D_8006D018[(s16)a0] = f->h0A;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044EA8);
+#endif
 
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044F20);
+void func_80044F20(void)
+{
+    ObjetoAnimado* o;
 
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800450E8);
+    o = func_80036734(0x44, NULL, NULL);
+    if (o == NULL) {
+        D_8006D018[0] = 0;
+    } else {
+        func_80044EA8(0, 0, o);
+        func_80044EA8(5, 0x66, o);
+        func_80044EA8(6, 0x67, o);
+        func_80044EA8(7, 0x68, o);
+        func_80044EA8(8, 0x69, o);
+        func_80044EA8(9, 0x6B, o);
+        func_80044EA8(0xA, 0x6A, o);
+        func_80044EA8(0xB, 0x6C, o);
+        func_80044EA8(0xC, 0x6D, o);
+        func_8003502C(o);
+    }
+    o = func_80036734(0x303, NULL, NULL);
+    if (o == NULL) {
+        D_8006D018[1] = 0;
+    } else {
+        func_80044EA8(1, 0, o);
+        func_8003502C(o);
+    }
+    o = func_80036734(0x302, NULL, NULL);
+    if (o == NULL) {
+        D_8006D018[2] = 0;
+    } else {
+        func_80044EA8(2, 0, o);
+        func_8003502C(o);
+    }
+    o = func_80036734(0x312, NULL, NULL);
+    if (o == NULL) {
+        D_8006D018[3] = 0;
+    } else {
+        func_80044EA8(3, 0, o);
+        func_8003502C(o);
+    }
+    o = func_80036734(0x301, NULL, NULL);
+    if (o == NULL) {
+        D_8006D018[4] = 0;
+        return;
+    }
+    func_80044EA8(4, 0, o);
+    func_8003502C(o);
+}
 
+void func_800450E8(Glifo* a0, u8 a1, OrigenEntrada* a2)
+{
+    D_800694D4->glifo = a0;
+    D_800694D4->x = a2->h0;
+    D_800694D4->y = a2->b4;
+    D_800694D4->idx = a1;
+    D_800694D4++;
+    D_80069652++;
+}
+
+/* Pendiente: puntuacion 3641 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s6 al contador y s7 y fp a las dimensiones del glifo, el C los reparte al reves y desplaza el resto de la planificacion. Variantes probadas: 8. */
+#ifdef NON_MATCHING
+void func_80045150(EntradaLista* e)
+{
+    Glifo* g;
+    u8* p;
+    s32 i;
+    u16 x;
+    s32 y;
+    u8 u;
+    u8 v;
+    s32 w;
+    s32 h;
+    s32 c;
+    s32 color;
+    u32* cabeza;
+
+    i = 0;
+    if (D_80069652 > 0) {
+        do {
+            g = e->glifo;
+            x = e->x;
+            y = (s8)e->y;
+            u = g->u;
+            v = g->v;
+            w = g->w - 1;
+            h = g->h - 1;
+            func_80039CD0(D_80076188);
+            if (D_8006966A != 0) {
+                c = 0x80 - ((s16)D_800694E2 >> 5);
+                color = c + ((c << 16) + ((c << 8) + 0x2C000000));
+            } else {
+                color = 0x2C808080;
+            }
+            cabeza = (u32*)D_8006AE20[D_8006967C].org;
+            p = (u8*)D_80076188;
+            *(s32*)(p + 4) = color;
+            *(u32*)p = *cabeza | 0x09000000;
+            *cabeza = ((s32)p << 8) >> 8;
+            *(s16*)(p + 0x10) = x + w;
+            *(s16*)(p + 0x20) = x + w;
+            *(s16*)(p + 0x22) = y + h;
+            *(s16*)(p + 0x1A) = y + h;
+            p[0x24] = u + w;
+            p[0x14] = u + w;
+            *(s16*)(p + 0x18) = x;
+            *(s16*)(p + 8) = x;
+            *(s16*)(p + 0x12) = y;
+            *(s16*)(p + 0xA) = y;
+            p[0x1C] = u;
+            p[0xC] = u;
+            p[0x15] = v;
+            p[0xD] = v;
+            p[0x25] = v + h;
+            p[0x1D] = v + h;
+            *(u16*)(p + 0x16) = e->glifo->tpage;
+            D_80076188 += 0x28;
+            *(u16*)(p + 0xE) = D_8006D018[e->idx];
+            if (D_8006958C < D_80076188) {
+                D_80076188 = D_80069680;
+            }
+            i++;
+            e++;
+        } while (i < D_80069652);
+    }
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045150);
+#endif
 
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045368);
+void func_80045368(s16 a0, s16 a1)
+{
+    EntradaLista* e;
+    s16 i;
+    s16 n;
+    s32 d;
 
+    d = a1 >> 1;
+    i = a0;
+    n = D_80069652;
+    if (i < n) {
+        do {
+            e = (EntradaLista*)((i << 3) + (s32)D_800694B8);
+            i++;
+            e->x -= d;
+        } while (i < n);
+    }
+}
+
+/* Pendiente: puntuacion 230 con la configuracion versionada (g = 8 del archivo). El bucle de digitos incrementa el indice antes de leer en el original (li a1 frente a addiu a1,a1,1 y desplazamiento 0 frente a -1). Variantes probadas: 16. */
+#ifdef NON_MATCHING
+s32 func_800453D0(u8** p)
+{
+    s32 signo;
+    s32 valor;
+    s32 n;
+    s32 i;
+    u8* t;
+
+    signo = 1;
+    if (**p == 0x2D) {
+        signo = -1;
+        *p = *p + 1;
+    }
+    valor = 0;
+    n = 0;
+    if ((**p >> 4) == 3) {
+        t = *p;
+        n++;
+        do {
+            n++;
+        } while ((t[n - 1] >> 4) == 3);
+        n--;
+    }
+    i = n - 1;
+    for (; i >= 0; i--) {
+        valor += ((*p)[i] & 0xF) * signo;
+        signo *= 10;
+    }
+    *p = *p + n;
+    return valor;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800453D0);
+#endif
 
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045498);
 
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045C4C);
+/* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Mismo flujo y mismas escrituras; el original conserva una copia de a2 en v0 para la primera comparacion y emite el sh de +0x26 despues de la carga del byte de D_8006AA7C. Variantes probadas: 12. */
+#ifdef NON_MATCHING
+u32 func_80045C4C(u32 a0, void* a1, ObjetoAnimado* a2)
+{
+    BloqueTrabajo* bloque;
+    NodoAnimacion* nodo;
+    TablaFotogramas* tabla;
+    u32 r;
+    u32 v;
 
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045D98);
+    if (a2 != NULL) {
+        a1 = a2->p180;
+        bloque = &a2->bloque;
+        a2->p180 = NULL;
+    } else {
+        a2 = func_80036734(0x44, NULL, NULL);
+        if (a2 == NULL) {
+            return 0;
+        }
+        nodo = a2->lista;
+        bloque = &a2->bloque;
+        while (nodo != NULL && nodo->def->tipo != 8) {
+            nodo = nodo->sig;
+        }
+        tabla = nodo->def->tabla;
+        a2->tabla = tabla;
+        bloque->fotogramas = tabla->fotogramas;
+        a2->s17E = a0 + 0x8000;
+        a2->p180 = NULL;
+        a1 = (u8*)D_80069590 + D_80069590[a0];
+        a2->w26 = D_80069698->w26;
+        if (D_8006AA7C == 1) {
+            a2->flags0C |= 0x40000000;
+        }
+    }
+    r = func_80045498(a2, a1, bloque);
+    v = (r >> 4) & 8;
+    if (r & 0x20) {
+        v |= 2;
+    }
+    if (r & 0x10) {
+        v |= 1;
+    }
+    if (r & 0x40) {
+        v |= 4;
+    }
+    return v;
+}
+#else
+INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045C4C);
+#endif
+
+void func_80045D98(void)
+{
+}
