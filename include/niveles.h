@@ -12,6 +12,7 @@
 #include "arranque.h"
 #include "globales.h"
 #include "eventos.h"
+#include "animacion.h"
 #include "geometria.h"
 #include "motor.h"
 
@@ -427,6 +428,5 @@ extern Objeto* func_80017478(Objeto* a, SVECTOR* v, void* w, u32 mascara);
 extern void func_8001CBB8(Objeto* o, Movimiento* d, ResultadoBaldosa* r, void* w);
 extern void func_8001E1A4(Objeto* o, ConsultaPlano* c);
 extern void func_8001D0FC(Objeto* o, s32 id, void* area);
-extern s32 func_8001E720(Objeto* o, BloqueTrabajo* b, u32 anim, u32 params, void* area);
 
 #endif
