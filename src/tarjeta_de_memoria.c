@@ -166,7 +166,7 @@ s32 func_80014C54(void)
 }
 
 /*
- * Lee la partida del slot ESTADO_PRINCIPAL->fDF (0x180 bytes a partir de 0x400 + (slot - 1) * 0x180) al
+ * Lee la partida del slot ESTADO_PRINCIPAL->r[BANCO_PARTIDA] (0x180 bytes a partir de 0x400 + (slot - 1) * 0x180) al
  * buffer D_80069520, comprueba la suma de control de los primeros 0x140 bytes (palabra en +4 a cero
  * durante el calculo) y los copia al estado principal; hasta cinco intentos. La reserva de 0x200
  * bytes en la pila no se usa: el marco de pila del original la conserva.
@@ -184,7 +184,7 @@ s32 func_80014E24(void)
 
     buf = D_80069520;
     for (i = 0; i < 5; i++) {
-        if (func_80014BA0(buf, 0x180, (ESTADO_PRINCIPAL->fDF - 1) * 0x180 + 0x400) == 1) {
+        if (func_80014BA0(buf, 0x180, (ESTADO_PRINCIPAL->r[BANCO_PARTIDA] - 1) * 0x180 + 0x400) == 1) {
             suma = *(u32*)(buf + 4);
             *(u32*)(buf + 4) = 0;
             calculada = func_80041238(buf, 0x140);
@@ -242,26 +242,26 @@ s32 func_80014FAC(void)
 
     estado = ESTADO_PRINCIPAL;
     D_8006D060.suma = 0;
-    valor = estado->f47 + (estado->f13C << 8);
-    nivel = estado->fDF;
+    valor = estado->r[0x07] + (estado->r[0xFC] << 8);
+    nivel = estado->r[BANCO_PARTIDA];
     if (nivel == 1) {
         D_8006D060.nivel[0].valor = valor;
-        D_8006D060.nivel[0].extra = estado->f45;
+        D_8006D060.nivel[0].extra = estado->r[0x05];
     } else if (nivel == 2) {
         D_8006D060.nivel[1].valor = valor;
-        D_8006D060.nivel[1].extra = estado->f45;
+        D_8006D060.nivel[1].extra = estado->r[0x05];
     } else if (nivel == 3) {
         D_8006D060.nivel[2].valor = valor;
-        D_8006D060.nivel[2].extra = estado->f45;
+        D_8006D060.nivel[2].extra = estado->r[0x05];
     } else if (nivel == 4) {
         D_8006D060.nivel[3].valor = valor;
-        D_8006D060.nivel[3].extra = estado->f45;
+        D_8006D060.nivel[3].extra = estado->r[0x05];
     } else if (nivel == 5) {
         D_8006D060.nivel[4].valor = valor;
-        D_8006D060.nivel[4].extra = estado->f45;
+        D_8006D060.nivel[4].extra = estado->r[0x05];
     } else if (nivel == 6) {
         D_8006D060.nivel[5].valor = valor;
-        D_8006D060.nivel[5].extra = estado->f45;
+        D_8006D060.nivel[5].extra = estado->r[0x05];
     }
     buf.c = D_8006D060;
     D_8006D060.suma = func_80041238(&buf, 0x200);
@@ -276,7 +276,7 @@ s32 func_80014FAC(void)
 
 /*
  * Graba la partida: calcula la suma de control del estado principal (0x140 bytes con la palabra
- * +4 a cero), actualiza la cabecera y escribe el bloque de 0x180 bytes del slot ESTADO_PRINCIPAL->fDF (hasta
+ * +4 a cero), actualiza la cabecera y escribe el bloque de 0x180 bytes del slot ESTADO_PRINCIPAL->r[BANCO_PARTIDA] (hasta
  * cinco intentos).
  *
  */
@@ -290,7 +290,7 @@ s32 func_8001515C(void)
     estado->suma = func_80041238(estado, 0x140);
     if (func_80014FAC() != 0) {
         for (i = 0; i < 5; i++) {
-            if (func_80014EF8((void*)0x80010000, 0x180, (ESTADO_PRINCIPAL->fDF - 1) * 0x180 + 0x400) == 1) {
+            if (func_80014EF8((void*)0x80010000, 0x180, (ESTADO_PRINCIPAL->r[BANCO_PARTIDA] - 1) * 0x180 + 0x400) == 1) {
                 break;
             }
         }

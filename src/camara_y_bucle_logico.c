@@ -2,6 +2,7 @@
 #include "globales.h"
 #include "geometria.h"
 #include "gte.h"
+#include "arranque.h"
 
 /*
  * Vista del estado de la camara con los campos que EstadoCamara (globales.h) todavia no declara:
@@ -188,25 +189,7 @@ typedef struct Secuencia {
     s16 teclas[10];
 } Secuencia;
 
-typedef struct EstadoPrincipal {
-    s32 modo;
-    u8 pad04[0x41 - 0x04];
-    u8 f41;
-    u8 pad42;
-    u8 f43;
-    u8 pad44;
-    u8 f45;
-    u8 pad46;
-    u8 f47;
-    u8 f48;
-    u8 pad49[0x64 - 0x49];
-    u8 f64;
-    u8 pad65[0x13C - 0x65];
-    u8 f13C;
-} EstadoPrincipal;
-
 extern Secuencia D_8005E768[];
-#define PRINCIPAL ((EstadoPrincipal*)0x80010000)
 
 extern u16 D_8005E6F8[];
 extern s16 D_80069D90[];
@@ -652,30 +635,30 @@ void func_80035244(void)
                     if (e->teclas[e->paso] == 0) {
                         switch (e->caso) {
                         case 0:
-                            PRINCIPAL->f64 |= 1;
+                            ESTADO_PRINCIPAL->r[0x24] |= 1;
                             break;
                         case 1:
-                            PRINCIPAL->f43 = 0x63;
-                            PRINCIPAL->f64 |= 2;
+                            ESTADO_PRINCIPAL->r[0x03] = 0x63;
+                            ESTADO_PRINCIPAL->r[0x24] |= 2;
                             break;
                         case 2:
-                            PRINCIPAL->f48 |= 0x1F;
-                            PRINCIPAL->f64 |= 4;
+                            ESTADO_PRINCIPAL->r[0x08] |= 0x1F;
+                            ESTADO_PRINCIPAL->r[0x24] |= 4;
                             break;
                         case 3:
-                            PRINCIPAL->f41 = 6;
-                            PRINCIPAL->f64 |= 8;
+                            ESTADO_PRINCIPAL->r[0x01] = 6;
+                            ESTADO_PRINCIPAL->r[0x24] |= 8;
                             break;
                         case 4:
-                            PRINCIPAL->f48 |= 0x80;
-                            PRINCIPAL->f64 |= 0x10;
+                            ESTADO_PRINCIPAL->r[0x08] |= 0x80;
+                            ESTADO_PRINCIPAL->r[0x24] |= 0x10;
                             break;
                         case 5:
-                            PRINCIPAL->f47 = 0x4D;
-                            PRINCIPAL->f13C = 1;
-                            PRINCIPAL->f45 = 0x7C;
+                            ESTADO_PRINCIPAL->r[0x07] = 0x4D;
+                            ESTADO_PRINCIPAL->r[0xFC] = 1;
+                            ESTADO_PRINCIPAL->r[0x05] = 0x7C;
                         case 6:
-                            PRINCIPAL->modo = 0x47;
+                            ESTADO_PRINCIPAL->nivel = 0x47;
                             D_80069662 = 1;
                             break;
                         }

@@ -484,7 +484,7 @@ void func_8003B5AC(ObjetoDibujo* lista)
     esc->ot2 = (u32*)D_8006AEA0[D_8006967C].org;
     esc->objeto = lista;
     D_8006D928.flags80 &= 0xFCFF;
-    if (PANT->f76 != 0) {
+    if (PANT->r[BANCO_PAUSA] != 0) {
         ((GsBOXF*)vista)->x = -0x100;
         ((GsBOXF*)vista)->y = -0x78;
         ((GsBOXF*)vista)->w = 0x200;
@@ -492,22 +492,22 @@ void func_8003B5AC(ObjetoDibujo* lista)
         ((GsBOXF*)vista)->b = 0;
         ((GsBOXF*)vista)->g = 0;
         ((GsBOXF*)vista)->r = 0;
-        if ((s8)PANT->f76 > 0) {
+        if ((s8)PANT->r[BANCO_PAUSA] > 0) {
             D_8006D928.flags80 = D_8006D928.flags80 | 0x8000;
-            ((GsBOXF*)vista)->h = PANT->f76;
+            ((GsBOXF*)vista)->h = PANT->r[BANCO_PAUSA];
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
             ((GsBOXF*)vista)->y = 0x78 - ((GsBOXF*)vista)->h;
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
-            if (PANT->f76 < 0x1E) {
-                PANT->f76 += 2;
+            if (PANT->r[BANCO_PAUSA] < 0x1E) {
+                PANT->r[BANCO_PAUSA] += 2;
             }
         } else {
             D_8006D928.flags80 = D_8006D928.flags80 & 0x7CFF;
-            ((GsBOXF*)vista)->h = -(s8)PANT->f76;
+            ((GsBOXF*)vista)->h = -(s8)PANT->r[BANCO_PAUSA];
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
             ((GsBOXF*)vista)->y = 0x78 - ((GsBOXF*)vista)->h;
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
-            PANT->f76 += 2;
+            PANT->r[BANCO_PAUSA] += 2;
         }
     }
     if (D_8006966A != 0) {

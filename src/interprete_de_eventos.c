@@ -13,7 +13,7 @@
  * INCLUDE_ASM por delante en el mismo archivo.
  */
 
-#define RA ESTADO->r
+#define RA ESTADO_PRINCIPAL->r
 
 /* Registro de condicion de rango: min y max con signo en los bytes 1 y 2. */
 typedef struct Rango {
@@ -55,7 +55,7 @@ extern s16 D_800693F6;
 /*
  * Variables sueltas del estado principal que el original lee con la forma simbolica (lui al
  * registro de destino): como simbolos externos reproducen esa forma; el acceso por la
- * estructura de ESTADO daria un lui compartido distinto.
+ * estructura ESTADO_PRINCIPAL daria un lui compartido distinto.
  */
 extern u16 D_8001000A;
 extern u16 D_8001003E;
@@ -421,7 +421,7 @@ s32 func_800306C0(Objeto* a0, u8* a1) { return D_800693F6 != 0; }
 s32 CondTisxz(Objeto* a0, u8* a1) { return D_8006AA70[a1[2]] == a1[1]; }
 
 /* Coincide en bytes; diff puntua la forma simbolica. */
-s32 CondTigxz(Objeto* a0, u8* a1) { return ESTADO->r[a1[2]] == a1[1]; }
+s32 CondTigxz(Objeto* a0, u8* a1) { return ESTADO_PRINCIPAL->r[a1[2]] == a1[1]; }
 
 s32 CondTbdact(Objeto* a0, u8* a1) { u32 v; v = D_8001000A & 8; return v != 0; }
 
@@ -462,7 +462,7 @@ s32 func_80030874(Objeto* a0, u8* a1) { return (a1[1] & D_800693E0) != 0; }
 s32 func_8003088C(Objeto* a0, u8* a1)
 {
     u32 b;
-    b = ESTADO->botones;
+    b = ESTADO_PRINCIPAL->mando.botones;
     if (RA[0xF] == 0) {
         if (D_8006AA70[0xC] != 0 || RA[0x36] != 0) {
             if (b & 0x800) {
@@ -483,7 +483,7 @@ s32 func_8003088C(Objeto* a0, u8* a1)
 s32 func_80030924(Objeto* a0, u8* a1)
 {
     u32 b;
-    b = ESTADO->botones;
+    b = ESTADO_PRINCIPAL->mando.botones;
     if (RA[0xF] == 0) {
         if (D_8006AA70[0xC] != 0 || RA[0x36] != 0) {
             if (b & 0x800) {
@@ -863,7 +863,7 @@ void func_80031794(Objeto* a0, Accion* a1)
 {
     Transformacion* p;
     p = a0->nodo.transf;
-    *(u16*)((u8*)p + 0x12) += (u32)(((ACC_W4(a1) << 4) + a1->w6) * D_80069694 * ESTADO->s12) >> 7;
+    *(u16*)((u8*)p + 0x12) += (u32)(((ACC_W4(a1) << 4) + a1->w6) * D_80069694 * (s16)ESTADO_PRINCIPAL->mando.eje_x) >> 7;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
 
@@ -872,7 +872,7 @@ void func_800317FC(Objeto* a0, Accion* a1)
 {
     Transformacion* p;
     p = a0->nodo.transf;
-    *(u16*)((u8*)p + 0x12) += (u32)((s8)D_8006AA70[a1->w6] * D_80069694 * ESTADO->s12) >> 7;
+    *(u16*)((u8*)p + 0x12) += (u32)((s8)D_8006AA70[a1->w6] * D_80069694 * (s16)ESTADO_PRINCIPAL->mando.eje_x) >> 7;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
 
@@ -903,7 +903,7 @@ void func_8003190C(Objeto* a0, Accion* a1) { D_80069698->flags14 |= 0x80000000; 
 /* Coincide en bytes (el diff marca 15 por direccion absoluta); el archivo se compila con -G8 */
 void func_8003192C(Objeto* a0, Accion* a1)
 {
-    ESTADO->modo = ESTADO->r[0xE];
+    ESTADO_PRINCIPAL->nivel = ESTADO_PRINCIPAL->r[0xE];
     D_80069662 = 1;
 }
 
@@ -1377,14 +1377,14 @@ void func_80032708(Objeto* a0, Accion* a1)
     if (D_8006D064 & (1 << (v - 1))) {
         return;
     }
-    if (ESTADO->botones & 0x6000) {
+    if (ESTADO_PRINCIPAL->mando.botones & 0x6000) {
         for (i = v; i < 7; i++) {
             if (D_8006D064 & (1 << (i - 1))) {
                 break;
             }
         }
         if (i >= 7) {
-            if (ESTADO->botones & 0x2000) {
+            if (ESTADO_PRINCIPAL->mando.botones & 0x2000) {
                 i = v - 3;
             } else {
         for (i = 6; i > 0; i--) {
@@ -1401,7 +1401,7 @@ void func_80032708(Objeto* a0, Accion* a1)
             }
         }
         if (i <= 0) {
-            if (ESTADO->botones & 0x8000) {
+            if (ESTADO_PRINCIPAL->mando.botones & 0x8000) {
                 i = v + 3;
             } else {
         for (i = 1; i < 7; i++) {

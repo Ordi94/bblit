@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "globales.h"
+#include "arranque.h"
 
 /*
  * Tipos compartidos del interprete de eventos.
@@ -20,22 +21,6 @@ typedef struct Accion {
     u16 w6;
 } Accion;
 #define ACC_W4(a) (*(u16*)&(a)->b4)
-
-/*
- * Estado principal del juego en 0x80010000 (RAM previa al ejecutable): el original lo
- * direcciona con un unico lui, es decir, con una direccion constante y no con simbolos
- * externos separados.
- */
-typedef struct EstadoPrincipal {
-    u32 modo;
-    u8 pad04[0x10 - 0x04];
-    u16 botones;
-    s16 s12;
-    u8 pad14[0x40 - 0x14];
-    u8 r[0x100];
-} EstadoPrincipal;
-#define ESTADO ((EstadoPrincipal*)0x80010000)
-
 
 /* Objeto controlado (el protagonista). */
 
