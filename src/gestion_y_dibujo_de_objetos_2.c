@@ -338,7 +338,7 @@ s32 func_8003760C(GsCOORDINATE2* c, MATRIX* salida, void* aux)
     }
     return 0;
 no_nula:
-    func_800379A0(&D_80076130, salida->t, (s32*)&tmp);
+    func_800379A0(&D_80076130, (s32*)salida->t, (s32*)&tmp);
     func_80037C00(&D_80076130, salida);
     salida->t[0] = tmp.vx + D_80076130.t[0];
     salida->t[1] = tmp.vy + D_80076130.t[1];
