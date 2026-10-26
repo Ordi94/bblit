@@ -73,6 +73,9 @@ extern s32 D_80069624;
 extern u8 D_80069674;
 extern s32 D_80069690;
 extern u16 D_800695D0;
+
+/* Dato pequeno: el original lo direcciona como 0xC0($gp). */
+s32 D_800693E0;
 extern u16 D_8006B658[];
 extern u8 D_8006B558[];
 extern Entrada D_8006B378[];
@@ -196,15 +199,11 @@ s32 CondTigaz(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) == 0; }
 /* Coincide en bytes; diff puntua la forma simbolica. */
 s32 CondTigmz(void* a0, u8* a1) { return (RA[a1[2]] & a1[1]) == 0; }
 
-/* Simbolo fundido: cubre dos rutinas de 0x20 bytes (esta, flags14 & 0x2000020 == 0, y func_8002FF58, flags14 & 0x8000 == 0); el C reproduce la primera mitad; con -G0 da 800 */
-#ifdef NON_MATCHING
+/* Comprueba que ni flags14 & 0x2000000 ni flags14 & 0x20 esten activos en el objeto controlado. */
 s32 func_8002FF38(Objeto* a0, u8* a1) { return (D_80069698->flags14 & 0x2000020) == 0; }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8002FF38);
-#endif
 
-/* Segunda rutina del antiguo simbolo fundido: comprueba flags14 & 0x8000 == 0. */
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8002FF58);
+/* Comprueba que el bit 15 de flags14 del objeto controlado este apagado. */
+s32 func_8002FF58(Objeto* a0, u8* a1) { u32 v; v = D_80069698->flags14 & 0x8000; return v == 0; }
 
 s32 func_8002FF78(Objeto* a0, u8* a1) { return (D_80069698->flags14 & 0x2000020) != 0; }
 
@@ -460,11 +459,11 @@ s32 func_80030834(Objeto* a0, u8* a1)
 {
     s32 v;
     v = func_80045C4C(*(u16*)(a1 + 4), 0, 0);
-    *(s32*)(base_gp + 0xC0) = v;
+    D_800693E0 = v;
     return (a1[1] & v) != 0;
 }
 
-s32 func_80030874(Objeto* a0, u8* a1) { return (a1[1] & *(s32*)(base_gp + 0xC0)) != 0; }
+s32 func_80030874(Objeto* a0, u8* a1) { return (a1[1] & D_800693E0) != 0; }
 
 /* Coincide en bytes (el diff marca 30 por direccion absoluta); el archivo se compila con -G8 */
 s32 func_8003088C(Objeto* a0, u8* a1)
@@ -936,15 +935,11 @@ void ActionGvcrt(Objeto* a0, Accion* a1)
     }
 }
 
-/* Usa $gp; pendiente de soporte -G8. No coincide (160): el original coloca el sw tras el lw $ra */
-#ifdef NON_MATCHING
+/* Guarda en el dato pequeno D_800693E0 el resultado de func_80045C4C; el original lo direcciona por $gp. */
 void func_80031A0C(Objeto* a0, Accion* a1)
 {
-    *(s32*)(base_gp + 0xC0) = func_80045C4C(ACC_W4(a1), 0, 0);
+    D_800693E0 = func_80045C4C(ACC_W4(a1), 0, 0);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031A0C);
-#endif
 
 /* Almacenes en forma simbolica: el archivo se compila con -G8 (config/opciones_compilacion.toml) */
 void func_80031A34(Objeto* a0, Accion* a1)
@@ -968,25 +963,17 @@ void func_80031A34(Objeto* a0, Accion* a1)
     }
 }
 
-/* Usa $gp; pendiente de soporte -G8. No coincide (160): el original coloca el sw tras el lw $ra */
-#ifdef NON_MATCHING
+/* Guarda en el dato pequeno D_800693E0 el resultado de func_80045C4C; el original lo direcciona por $gp. */
 void func_80031AE4(Objeto* a0, Accion* a1)
 {
-    *(s32*)(base_gp + 0xC0) = func_80045C4C(D_8006AA70[a1->w6], 0, 0);
+    D_800693E0 = func_80045C4C(D_8006AA70[a1->w6], 0, 0);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031AE4);
-#endif
 
-/* Usa $gp; pendiente de soporte -G8. No coincide (170): el original coloca el sw tras el lw $ra */
-#ifdef NON_MATCHING
+/* Como func_80031AE4 pero con el valor del banco A de registros. */
 void func_80031B1C(Objeto* a0, Accion* a1)
 {
-    *(s32*)(base_gp + 0xC0) = func_80045C4C(RA[a1->w6], 0, 0);
+    D_800693E0 = func_80045C4C(RA[a1->w6], 0, 0);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_80031B1C);
-#endif
 
 void func_80031B50(Objeto* a0, Accion* a1) { a0->flags15C |= 0x10; }
 
