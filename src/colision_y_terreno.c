@@ -254,11 +254,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 710 con la configuracion versionada (g = 0 del archivo). Difieren el orden de
+ * Pendiente: puntuacion 2080 con la configuracion versionada (g = 0 del archivo). Difieren el orden de
  * las escrituras del avance por subcelda y por baldosa del recorrido general (rangos
  * 0x8001A050-0x8001A563), el reparto de v0/v1 en las banderas de los planos 0x7E y 0x7F del caso
- * estatico (0x8001BCD4-0x8001BF6B) y la posicion de dos instrucciones del prologo. diff solo compara
- * las primeras 1024 instrucciones (completa: 2080).
+ * estatico (0x8001BCD4-0x8001BF6B) y la posicion de dos instrucciones del prologo.
  */
 /*
  * Barrido de un desplazamiento (desp) del punto pos contra el terreno por baldosas: avanza baldosa a

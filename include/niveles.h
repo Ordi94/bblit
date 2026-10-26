@@ -117,13 +117,13 @@ typedef struct TrabajoZona {
 #define TRABAJO_ZONA ((TrabajoZona*)0x1F800000)
 
 /*
- * Memoria de trabajo del director de camara (scratchpad 0x1F800000): nodo en +0, objeto de
- * origen en +4, vector de distancia en +8..+0x10, modulo en +0x18, banderas del nodo en +0x1C,
+ * Memoria de trabajo del director de camara de func_8002C1DC (scratchpad 0x1F800000; la de
+ * func_80033358 es TrabajoCamara, en geometria.h): nodo en +0, objeto de origen en +4, vector de distancia en +8..+0x10, modulo en +0x18, banderas del nodo en +0x1C,
  * vector camara - destino en +0x20..+0x28, vector de giro en +0x30 (tres u16: el original los
  * guarda con sh y los relee con lhu), angulo en +0x38, escala en +0x40, matriz en +0x50 y
  * resultado en +0x70..+0x78.
  */
-typedef struct TrabajoCamara {
+typedef struct TrabajoDirectorCamara {
     NodoDisparador* nodo;
     Objeto* origen;
     s32 dx;
@@ -147,9 +147,9 @@ typedef struct TrabajoCamara {
     VECTOR escala;
     MATRIX m;
     VECTOR r;
-} TrabajoCamara;
+} TrabajoDirectorCamara;
 
-#define TRABAJO_CAMARA ((TrabajoCamara*)0x1F800000)
+#define TRABAJO_DIRECTOR_CAMARA ((TrabajoDirectorCamara*)0x1F800000)
 
 /*
  * Memoria de trabajo de la zona sonda (scratchpad 0x1F800000): angulos de la matriz en +0 (tres
@@ -410,9 +410,6 @@ typedef struct ScratchJugador {
 #define PORTADO(o) (&(o)->portado)
 
 extern s32 BugsRand(void);
-/* El original pasa el area de trabajo como cuarto argumento aunque la rutina solo declara tres. */
-extern void func_8001E528(Objeto* o, BloqueTrabajo* b, u32 modo, void* area);
-extern void func_8001E600(Objeto* o, BloqueTrabajo* b, u32 modo, void* area);
 extern u32 func_80045C4C(u32 a0, void* a1, Objeto* a2);
 extern u32 func_80045498(Objeto* objeto, void* guion, BloqueTrabajo* bloque);
 extern s32 func_8001F268(Objeto* o, BloqueTrabajo* b, s32 id, s32 arg, void* w);

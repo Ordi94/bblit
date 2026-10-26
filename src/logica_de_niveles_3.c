@@ -347,6 +347,11 @@ fin:
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_80026298);
 #endif
 
+/*
+ * Pendiente de traducir: manejador de 0x4A94 bytes con 104 llamadas; la marca Handwritten del
+ * particionador procede de instrucciones GTE sueltas, tiene marco de pila (0x58) y no es una rutina
+ * manuscrita.
+ */
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_80026FEC);
 
 /*
@@ -559,7 +564,7 @@ siguiente:
  */
 void func_8002C1DC(Objeto* o)
 {
-    TrabajoCamara* t;
+    TrabajoDirectorCamara* t;
     MATRIX* m;
     s32 paso;
     s32 ca;
@@ -571,7 +576,7 @@ void func_8002C1DC(Objeto* o)
     u16 fl;
     s32 cond;
 
-    t = TRABAJO_CAMARA;
+    t = TRABAJO_DIRECTOR_CAMARA;
     t->nodo = (NodoDisparador*)o->apoyos;
     if (t->nodo == 0) {
         return;
@@ -847,7 +852,7 @@ void func_8002CB8C(Objeto* o)
         o->w2E = f->w0C >> 1;
         o->alcance2 = o->w2E * o->w2E + o->s20 * o->s20;
         func_8001CFCC(&o->coord);
-        func_8001E528(o, b, 1, area);
+        ((DibujarSprite)func_8001E528)(o, b, 1, area);
     }
     if (b->b08 == 0) {
         w = b->b05;
@@ -857,7 +862,7 @@ void func_8002CB8C(Objeto* o)
             b->h02 = 0;
             b->actual = b->fotogramas;
         }
-        func_8001E528(o, b, 1, area);
+        ((DibujarSprite)func_8001E528)(o, b, 1, area);
     }
     b->b08 -= 1;
     n = (NodoDisparador*)o->apoyos;
@@ -926,7 +931,7 @@ void func_8002CEC4(Objeto* o)
         b->h02 = (u16)o->max.vx;
         b->b05 = (u8)o->max.vz;
         b->b08 = (u8)o->max.vz;
-        func_8001E600(o, b, 1, area);
+        ((DibujarSprite)func_8001E600)(o, b, 1, area);
     }
     if (b->b08 == 0) {
         b->b08 = b->b05;
@@ -934,7 +939,7 @@ void func_8002CEC4(Objeto* o)
         if (b->w00 < (u16)b->h02) {
             b->h02 = 0;
         }
-        func_8001E600(o, b, 1, area);
+        ((DibujarSprite)func_8001E600)(o, b, 1, area);
     }
     b->b08 -= 1;
     o->flags04 |= 2;
@@ -1124,7 +1129,7 @@ siguiente:
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 4613 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original guarda el objeto en s4, el scratchpad en s3, el area en s5 y el margen de la caja en s6 y deja s0 a s2 para los punteros de la preparacion; el compilador los reparte un registro mas abajo. La estructura de las ocho esquinas y de los dos modos coincide. */
+/* Pendiente: puntuacion 14728 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original guarda el objeto en s4, el scratchpad en s3, el area en s5 y el margen de la caja en s6 y deja s0 a s2 para los punteros de la preparacion; el compilador los reparte un registro mas abajo. La estructura de las ocho esquinas y de los dos modos coincide. */
 /*
  * Prueba de suelo bajo la posicion de prueba (t->py): si el bloque se despegaria mas de 0xC8
  * unidades del terreno, se anula el desplazamiento pedido. Solo se aplica con el modo 0x80.
@@ -1497,6 +1502,10 @@ reposo:
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002D68C);
 #endif
 
+/*
+ * Pendiente de traducir: manejador vacio (jr ra; nop) que equivale a una funcion C sin cuerpo; se
+ * traduce con el resto de los manejadores de la tabla de objetos.
+ */
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002EA9C);
 
 /*
@@ -1608,7 +1617,7 @@ void func_8002EAA4(Objeto* o)
                 GEO_CARGAR_W(&t->cursor->coord.t[0]);
                 GEO_SUMAR_W(&t->px);
                 GEO_CARGAR_W(&t->px);
-                GEO_GUARDAR_H_T1_UNICA(&t->ax);
+                GEO_GUARDAR_H_T1(&t->ax);
                 t->cursor = t->cursor->super;
             } while (t->cursor != 0);
         }
@@ -1850,7 +1859,7 @@ void func_8002F6B4(Objeto* o)
         t->cy = -y;
     }
     GEO_COMPLEMENTO(&o->param.giro.rotate);
-    GEO_GUARDAR_H_T1_UNICA(t);
+    GEO_GUARDAR_H_T1(t);
     GEO_CARGAR_H(&t->cx);
     GEO_SUMAR_H(t);
     GEO_IDENTIDAD(&t->m);
@@ -1876,8 +1885,16 @@ void func_8002F6B4(Objeto* o)
     }
 }
 
+/*
+ * Pendiente de traducir: manejador vacio (jr ra; nop) que equivale a una funcion C sin cuerpo; se
+ * traduce con el resto de los manejadores de la tabla de objetos.
+ */
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F968);
 
+/*
+ * Pendiente de traducir: envoltorio de func_80039094 (jal sin tocar a0, marco 0x18); se traduce junto
+ * con ella.
+ */
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F970);
 
 #ifdef NON_MATCHING

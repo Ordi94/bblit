@@ -17,12 +17,20 @@ struct RegistroEvento;
 struct ParCuadro;
 
 /*
- * Registro de dieciseis bytes de la tabla de fotogramas; solo se lee el u16 de +0xA
- * (func_80044EA8).
+ * Registro de dieciseis bytes de la tabla de fotogramas (cuadro de sprite). func_8001E528 y
+ * func_8001E600 leen: banderas en +2 (bit 3 = espejo, lbu 0x8001E5E0), pagina de textura en +6 (bits 0
+ * a 3 = columna de 64, bits 7 y 8 = profundidad de color; lhu 0x8001E640), origen u en +8 y v en +9
+ * (lbu 0x8001E648 y 0x8001E644), paleta en +0xA (lhu 0x8001E6AC; bits 0 a 5 = x en 16, bits 6 y
+ * siguientes = y; func_80044EA8 tambien la lee) y tamano en +0xC y +0xE.
  */
 typedef struct Fotograma {
-    u8 pad00[0x0A];
-    u16 h0A;
+    u8 pad00[2];
+    u8 flags;
+    u8 pad03[3];
+    u16 pagina;
+    u8 u;
+    u8 v;
+    u16 h0A;                /* paleta del cuadro */
     u16 w0C;                /* anchura del cuadro: lhu en func_8002CB8C (0x8002CC74) y en func_8001E720 (centro y caja del sprite) */
     u16 w0E;                /* altura del cuadro: lhu en func_8002CB8C (0x8002CCAC) y en func_8001E720 */
 } Fotograma;
@@ -122,9 +130,13 @@ typedef struct BloqueTrabajo {
     s32 i14;
     u32 flags18;
     struct ParCuadro* duraciones;       /* +0x1C: sw / lw, lbu 1(par) (func_8001E720) */
-    struct Fotograma* fotogramas;
+    struct Fotograma* fotogramas;       /* +0x20: registros de los cuadros; func_8001E528 y func_8001E600 indexan por el indice de la tabla de duraciones (lw 0x20) */
     struct Fotograma* actual;   /* +0x24: cuadro en curso; sw en func_8002CB8C (0x8002CC54 y 0x8002CD84); func_8001E720 guarda aqui el cuadro y func_8003690C lo recorre como flujo de pistas (lw / sw) */
     struct TablaFotogramas* tabla;      /* +0x28: tabla de fotogramas activa; func_80044EA8 la guarda con sw y func_8001E720 la escribe con sw 0x28(cursor) */
+    u16 w2C;                /* +0x2C..+0x32: valores de color y escala del sprite escalado, copiados sin modificar a +8..+0xE del sprite: lhu 0x2C, 0x2E, 0x30 y 0x32 en func_8001E600 (0x8001E68C y siguientes) */
+    u16 w2E;
+    u16 w30;
+    u16 w32;
 } BloqueTrabajo;
 
 /*
@@ -228,8 +240,8 @@ typedef struct Objeto {
      * en la coordenada Z de la traslacion (sw).
      */
     ParametrosObjeto portado;
-    BloqueTrabajo trabajo;  /* +0x144, ver BloqueTrabajo; incluye la tabla activa en +0x16C */
-    u8 pad170[0x17C - 0x170];
+    BloqueTrabajo trabajo;  /* +0x144, ver BloqueTrabajo; incluye la tabla activa en +0x16C y los valores de sprite hasta +0x177 */
+    u8 pad178[0x17C - 0x178];
     u16 w17C;
     u16 w17E;               /* lhu en func_80030018 y func_80020B90; las demas rutinas solo lo ponen a cero */
     /*
@@ -934,6 +946,20 @@ extern s16* D_800695FC;
  * baja de 935 a 590 puntos con el arreglo); el arreglo da el lui y el desplazamiento del original.
  */
 extern Objeto* D_8006D9B8[];
+
+/*
+ * Variables que comparten el cargador, el audio y el motor; el ancho lo fija el ensamblador:
+ * D_800694F6 (sb 0x8003FD4C) y D_80069620 (sb 0x8003E868, lbu 0x8003E9EC) son bytes; D_80069620 es el
+ * estado de presentacion de cuadros, que el retorno de llamada de VSync modifica mientras el bucle
+ * principal lo lee. D_8006951C y D_800695E4 son palabras (sw 0x80042C80 y lw 0x80042C94; lw 0x8003FABC
+ * y sw 0x80042EA4); D_8006966C es un puntero que el cargador escribe con sw (0x80042058) y avanza con
+ * lw 0x80044324.
+ */
+extern u8 D_800694F6;
+extern u8 D_80069620;
+extern u32 D_8006951C;
+extern u32 D_800695E4;
+extern u8* D_8006966C;
 
 /*
  * Llamadas al sistema del kernel (syscall 0 con a0 = 1 y 2, 16 bytes escritos a mano cada una en

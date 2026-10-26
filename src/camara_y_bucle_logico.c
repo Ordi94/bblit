@@ -81,45 +81,6 @@ extern void func_80035244(void);
 extern void func_800351B4(Objeto* a0);
 extern void func_8003502C(Objeto* a0);
 
-/* Angulos de un objeto: la sonda solo lee y reescribe el giro en Y (+2). */
-typedef struct Giro {
-    u16 x;
-    u16 y;
-    u16 z;
-} Giro;
-
-/*
- * Memoria de trabajo de func_80033358 en el scratchpad (0x1F800000): vector local, rotacion, vector
- * (0, 0, distancia), resultados de las rotaciones, sondas, resultado de la consulta de baldosa,
- * parametros de seguimiento, matriz de rotacion y distancia. El area de 0x1C8 bytes que reciben
- * func_80019474, func_8001C134 y func_80032B2C empieza en 0x1F8000F8.
- */
-typedef struct TrabajoCamara {
-    SVECTOR local;              /* +0x00 */
-    SVECTOR rot;                /* +0x08 */
-    SVECTOR dir;                /* +0x10 */
-    VECTOR v18;                 /* +0x18 */
-    Giro rot28;                 /* +0x28 */
-    u8 pad2E[2];
-    VECTOR v30;                 /* +0x30 */
-    VECTOR v40;                 /* +0x40 */
-    VECTOR v50;                 /* +0x50 */
-    u8 pad60[0x70 - 0x60];
-    VECTOR v70;                 /* +0x70 */
-    u8 pad80[0x90 - 0x80];
-    VECTOR v90;                 /* +0x90 */
-    u8 padA0[0xA4 - 0xA0];
-    ResultadoBaldosa res;       /* +0xA4 */
-    ZonaColision* zona_ant;     /* +0xBC */
-    s32 p0;                     /* +0xC0 */
-    s32 p4;                     /* +0xC4 */
-    s32 p8;                     /* +0xC8 */
-    MATRIX m;                   /* +0xCC */
-    s32 dist;                   /* +0xEC */
-    u8 padF0[4];
-    s32 alt;                    /* +0xF4 */
-} TrabajoCamara;
-
 /* Secuencia de teclas de los trucos: caso a ejecutar, paso actual y hasta diez teclas (0 termina). */
 typedef struct Secuencia {
     s16 caso;
@@ -164,12 +125,11 @@ typedef struct ParSonda {
 
 extern ParSonda D_8005E728[];
 /*
- * Vistas por direccion absoluta de campos de D_8006D928: D_8006D9B8[0] es EstadoCamara.i90 (+0x90) y
- * D_8006D990[3] es c68..c70 (+0x68). El original usa ambos accesos (sw %lo(D_8006D9B8) en 0x80033574 frente a
+ * Vistas por direccion absoluta de campos de D_8006D928: D_8006D9B8[0] (declarada en globales.h) es
+ * EstadoCamara.i90 (+0x90) y D_8006D990[3] es c68..c70 (+0x68). El original usa ambos accesos (sw %lo(D_8006D9B8) en 0x80033574 frente a
  * sw zero 0x90($a1) en 0x80033600; lui/addiu %lo(D_8006D990) en 0x80034138 frente a sw 0x68($s0) en 0x80033DDC),
  * asi que no se unifican.
  */
-extern Objeto* D_8006D9B8[3];
 extern s32 D_8006D990[3];
 extern u32 D_80010008;
 
@@ -451,7 +411,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3065 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * Pendiente: puntuacion 10175 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
  * las constantes coinciden; difieren el reparto de registros temporales y la planificacion de las cargas y los
  * almacenes en las sondas de apuntado (0x80033700-0x80033888), la direccion normalizada del modo guiado
  * (0x80033CB4-0x80033D64), el giro lateral (0x80033F00-0x80034160), los barridos contra el terreno

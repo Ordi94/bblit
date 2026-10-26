@@ -70,6 +70,11 @@ extern void func_8003E88C(void);
 /* Acceso a la base de $gp: los datos pequenos del original se direccionan por registro. */
 
 
+/*
+ * Rutina escrita a mano en el original (marca Handwritten del particionador): sin addiu sp, con t0 y
+ * t1 fijos; salta por la tabla D_8005E3F0 con lbu 0(a1) (0x8002F9FC), sll 2, add con captura de
+ * desbordamiento (0x8002FA14), lw y jr t0 (0x8002FA20).
+ */
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", TestLogicCond);
 
 s32 CondTrue(void) { return 1; }
@@ -613,6 +618,11 @@ s32 func_80030E20(Objeto* a0, u8* a1)
 
 s32 func_80030EB4(Objeto* a0, u8* a1) { return D_80069698->p6C != 0; }
 
+/*
+ * Rutina escrita a mano en el original (marca Handwritten del particionador): sin addiu sp, con t0 y
+ * t1 fijos; salta por la tabla D_8005E560 con lbu 3(a1) (0x80030ED0), sll 2, add con captura de
+ * desbordamiento (0x80030EE8), lw y jr t0 (0x80030EF4).
+ */
 INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", RunLogicAction);
 
 void ActionNop(void) {}

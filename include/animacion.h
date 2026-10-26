@@ -36,11 +36,12 @@ typedef struct RegistroEvento {
 } RegistroEvento;
 
 /*
- * Par de bytes por cuadro de una animacion: el segundo es la duracion en ticks
+ * Par de bytes por cuadro de una animacion: el primero es el indice del registro de sprite y el
+ * segundo la duracion en ticks
  * (func_8001E720: lbu 1 del par indexado por el cuadro; el indice se multiplica por 2).
  */
 typedef struct ParCuadro {
-    u8 pad00;
+    u8 indice;              /* indice del registro de sprite: lbu 0 del par en func_8001E528 (0x8001E578) y func_8001E600 (0x8001E62C) */
     u8 ticks;
 } ParCuadro;
 
@@ -130,10 +131,13 @@ typedef struct AreaCuadro {
  */
 extern void func_8003690C(Objeto* o, BloqueTrabajo* cursor, AreaCuadro* w);
 extern u32 func_8001E720(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area);
+extern void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo);
+extern void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo);
 
 /*
- * Rutinas que invoca el avance de animacion. func_8001E528 recibe el area de trabajo del llamador
- * como cuarto argumento aunque la rutina solo declara tres: se llama a traves de este tipo.
+ * Rutinas que invoca el avance de animacion. func_8001E528 y func_8001E600 reciben el area de trabajo
+ * del llamador como cuarto argumento aunque solo usan tres: los llamadores del original lo pasan, asi
+ * que se llaman a traves de este tipo (el prototipo real, de tres argumentos, es el de arriba).
  */
 typedef void (*DibujarSprite)(Objeto*, BloqueTrabajo*, u32, u8*);
 extern void func_8003502C(Objeto* o);

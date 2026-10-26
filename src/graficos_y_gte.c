@@ -64,7 +64,7 @@ s32 D_80069380;
  * instruccion antes y esa es toda la diferencia (70).
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo). Solo difiere la posicion de un addiu (el calculo de &o->m se emite una instruccion antes que en el original) y el registro del puntero de destino de la norma al cuadrado (v0 en lugar de a0). Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
+/* Pendiente: puntuacion 10 con la configuracion versionada (g = 8 del archivo). Solo difiere el registro del puntero de destino de la norma al cuadrado (v0 en lugar de a0). Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
 Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o)
 {
     SVECTOR* dif;
@@ -173,7 +173,7 @@ Objeto* func_80016ED0(Objeto* a, u32 mascara, ConsultaCaja* o)
  * radio ampliado en s2 y s3 y el C los intercambia, ademas de la posicion del calculo de &o->m.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 308 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
+/* Pendiente: puntuacion 113 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
 Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o)
 {
     Objeto* n;
@@ -226,7 +226,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_800171E4);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 10583 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las
+ * Pendiente: puntuacion 19749 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las
  * comparaciones de las regiones no se han ajustado al original. Variantes probadas: 1.
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con

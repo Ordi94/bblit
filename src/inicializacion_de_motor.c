@@ -54,7 +54,6 @@ extern u8 D_80069500;
 extern u8 D_80069684;
 extern s16 D_8006956A;
 extern s32 D_80069604;
-extern u8 D_800694F6;
 extern s16 D_80069526;
 extern s16 D_8006969E;
 extern s16 D_8006968A;
@@ -66,6 +65,11 @@ extern void func_800400C0(void);
 extern u8 D_80069664[];
 
 
+/*
+ * Rutina escrita a mano en el original: sin addiu sp, es la salida de func_80044664; toma el contexto
+ * de s1 (addu a2,s1,zero en 0x80044904), guarda s0 en D_8006949C (0x8004490C), restaura ra y s0..fp
+ * desde ese contexto (lw 0x80044910..0x80044934) y vuelve con jr ra.
+ */
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044904);
 
 #ifdef NON_MATCHING
@@ -480,6 +484,10 @@ s32 func_800453D0(u8** p)
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800453D0);
 #endif
 
+/*
+ * Pendiente de traducir: interprete de guiones de texto que compone una linea de glifos (0x7B4 bytes,
+ * 14 llamadas); tiene marco de pila (0x58) y no es una rutina manuscrita.
+ */
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045498);
 
 #ifdef NON_MATCHING

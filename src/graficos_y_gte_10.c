@@ -16,12 +16,6 @@
  * extern: maspsx las reescribe a $gp y el enlace les da su direccion (tabla datos_pequenos).
  */
 
-/*
- * Estado de presentacion de cuadros (zona 0x80069xxx). Las dos cuentas son volatile porque
- * el retorno de llamada de VSync las modifica mientras el bucle principal las lee.
- */
-extern u8 D_80069620;
-
 
 /* Alias no cacheado (0xA0000000) de func_80040A80, registrado como retorno de DrawSync. */
 extern u8 D_A0040A80[];
