@@ -369,7 +369,7 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 285 con la configuracion versionada (g = 8 del archivo). La estructura
+ * Pendiente: puntuacion 259423 con la configuracion versionada (g = 8 del archivo). La estructura
  * (bloques, bucles, llamadas, las cinco tablas de saltos) sigue el ensamblador completo y el marco
  * de pila mide lo mismo (0x210 bytes); difieren el reparto de registros (s1 y s8 intercambiados
  * desde el prologo), el orden de las cargas de la cabecera de secciones y el codigo de cada

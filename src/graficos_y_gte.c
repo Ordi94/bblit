@@ -226,7 +226,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_800171E4);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 10583 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las
+ * Pendiente: puntuacion 19749 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las
  * comparaciones de las regiones no se han ajustado al original. Variantes probadas: 1.
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con

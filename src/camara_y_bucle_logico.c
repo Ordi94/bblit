@@ -411,7 +411,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3065 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * Pendiente: puntuacion 10175 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
  * las constantes coinciden; difieren el reparto de registros temporales y la planificacion de las cargas y los
  * almacenes en las sondas de apuntado (0x80033700-0x80033888), la direccion normalizada del modo guiado
  * (0x80033CB4-0x80033D64), el giro lateral (0x80033F00-0x80034160), los barridos contra el terreno

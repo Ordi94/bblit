@@ -1129,7 +1129,7 @@ siguiente:
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 4613 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original guarda el objeto en s4, el scratchpad en s3, el area en s5 y el margen de la caja en s6 y deja s0 a s2 para los punteros de la preparacion; el compilador los reparte un registro mas abajo. La estructura de las ocho esquinas y de los dos modos coincide. */
+/* Pendiente: puntuacion 14728 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original guarda el objeto en s4, el scratchpad en s3, el area en s5 y el margen de la caja en s6 y deja s0 a s2 para los punteros de la preparacion; el compilador los reparte un registro mas abajo. La estructura de las ocho esquinas y de los dos modos coincide. */
 /*
  * Prueba de suelo bajo la posicion de prueba (t->py): si el bloque se despegaria mas de 0xC8
  * unidades del terreno, se anula el desplazamiento pedido. Solo se aplica con el modo 0x80.
