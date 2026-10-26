@@ -126,22 +126,13 @@ void func_800449B0(void)
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449B0);
 #endif
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo). Solo difieren dos instrucciones muertas del original (ori a1,zero,0x200 y ori a2,zero,0x1FF antes de la etiqueta de entrada func_800449E8) que GCC elimina; la rutina es manuscrita y esas instrucciones no se pueden emitir desde C. */
-void func_800449E0(u8* a0)
-{
-    s32 i;
-
-    i = 0x21;
-    do {
-        *a0 = 0;
-        i--;
-        a0++;
-    } while (i >= 0);
-}
-#else
+/*
+ * Rutina escrita a mano en el original: sin marco de pila, dos ori de relleno (0x800449E0 y
+ * 0x800449E4) antes del segundo punto de entrada func_800449E8 (0x800449E8), y func_800449B0 copia
+ * sus dos primeras palabras como datos dentro de FntLoad. GCC elimina los ori muertos y no existe
+ * C que reproduzca un segundo punto de entrada, por eso se conserva como ensamblador.
+ */
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800449E0);
-#endif
 
 /*
  * Reinicia el estado del motor: banderas, indices de los tres buffers, tabla de punteros de datos
