@@ -63,10 +63,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 710 con la configuracion versionada (g = 0 del archivo). El reparto de
- * registros coincide con el original; difieren el orden de planificacion en los avances por
- * subcelda y por baldosa, el cierre compartido de resultados y una constante de indice que el
- * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 3255).
+ * Pendiente: puntuacion 710 con la configuracion versionada (g = 0 del archivo). Coinciden doce de
+ * los dieciseis bloques; difieren el orden de las escrituras del avance por subcelda y por baldosa, el
+ * reparto de v0/v1 en las banderas de los planos del caso estatico y la posicion de dos instrucciones
+ * del prologo. diff solo compara las primeras 1024 instrucciones (completa: 3255).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -259,6 +259,22 @@ void func_80019364(s32* a0)
         return ret; \
     }
 
+/*
+ * Barrido de un desplazamiento (desp) del punto pos contra el terreno por baldosas: avanza baldosa a
+ * baldosa (320 unidades) y subcelda a subcelda (40 unidades) hasta que una pared (celda 0x7F), un
+ * escalon de mas de 100 unidades o el final de las zonas lo detiene; recorta desp a lo recorrido,
+ * baja la altura de pos[1] a la base de la zona final y rellena res (clase, banderas, pendiente,
+ * grupo, techo y zona). Sin desplazamiento solo consulta la baldosa bajo el punto. Devuelve 0 si el
+ * punto sale de las zonas y 1 en los demas casos. w es el area de trabajo del scratchpad: si no cabe
+ * ahi (w + 0x1C8 > 0x1F8003FF) la rutina se queda en un bucle infinito a proposito.
+ *
+ * Tres recorridos casi gemelos segun las componentes no nulas de desp: ambas (caso general, con
+ * pendientes de 12 bits de fraccion), solo x y solo z. k es una constante de una sola asignacion
+ * (el desfase de partida del historial en el cierre): el compilador la deja como equivalente a 0 y
+ * no la pliega en las comparaciones del cierre. cl y f llevan el valor de la clase y de las banderas
+ * a la escritura comun de los planos 0x7E y 0x7F; tx y tz conservan el valor previo de un punto de
+ * cruce antes de sobrescribirlo.
+ */
 s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* w)
 {
     ZonaColision* zona;
