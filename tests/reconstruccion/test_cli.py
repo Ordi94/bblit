@@ -411,3 +411,33 @@ def test_diff_que_coincide_en_bytes_sale_con_cero_y_avisa_de_las_referencias_num
         ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=EjecutorEnlace(70, difiere=True)) == 1
     )
     assert capsys.readouterr().out.endswith("puntuacion 70\n")
+
+
+def test_un_error_nativo_del_sistema_no_expone_la_ruta_absoluta(
+    entorno_repo: Any, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+    ruta_privada = str(raiz.parent / "usuarios" / "privado" / "datos.bin")
+
+    def denegado(*_: Any) -> Any:
+        raise PermissionError(13, "Acceso denegado", ruta_privada)
+
+    monkeypatch.setattr(infra, "limpiar", denegado)
+    assert ejecutar_cli(raiz, variables, "clean") == 1
+    capturado = capsys.readouterr()
+    assert ruta_privada not in capturado.err + capturado.out
+    assert "privado" not in capturado.err
+    assert capturado.err == "error: error de entrada/salida: PermissionError (Acceso denegado): datos.bin\n"
+
+
+def test_un_error_nativo_sin_nombre_de_archivo_informa_solo_tipo_y_motivo(
+    entorno_repo: Any, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+
+    def fallo(*_: Any) -> Any:
+        raise OSError(5, "")
+
+    monkeypatch.setattr(infra, "limpiar", fallo)
+    assert ejecutar_cli(raiz, variables, "clean") == 1
+    assert capsys.readouterr().err == "error: error de entrada/salida: OSError\n"

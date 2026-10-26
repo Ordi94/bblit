@@ -6,7 +6,7 @@ import argparse
 import os
 import sys
 from collections.abc import Mapping, Sequence
-from pathlib import Path
+from pathlib import Path, PurePath
 
 from tools.reconstruccion import compilacion, diff, progreso, variantes
 from tools.reconstruccion import infraestructura as infra
@@ -19,7 +19,7 @@ RAIZ_REPOSITORIO = Path(__file__).resolve().parents[2]
 RUTA_REFERENCIA = Path("config") / "ejecutable.json"
 RUTA_LOCK = Path("config") / "toolchain.lock.json"
 RUTA_LOCAL = Path("config") / "local.toml"
-ERRORES_CONTROLADOS = (ValueError, FileNotFoundError, ProcesoError, OSError)
+ERRORES_PROPIOS = (ValueError, ProcesoError)
 
 
 def construir_parser() -> argparse.ArgumentParser:
@@ -225,6 +225,36 @@ def _despachar(
     return _ejecutar_construccion(raiz, rutas, referencia, args.orden, ejecutar)
 
 
+def describir_error_de_sistema(error: OSError) -> str:
+    """
+    Da el texto de un error de entrada/salida sin exponer rutas de la maquina.
+
+    Contexto:
+        Lo usa ``main``. Un ``OSError`` nativo (permisos, disco, archivo ausente) lleva en su texto
+        la ruta completa; el proyecto tambien lanza ``FileNotFoundError`` con un mensaje propio y
+        sin ``errno`` (por ejemplo "falta config/symbols.txt"), que se conserva tal cual porque es
+        una instruccion para el usuario y no contiene directorios de la maquina.
+
+    Args:
+        error (OSError): Error capturado.
+
+    Returns:
+        str: El mensaje propio si el error no trae ``errno``; si no, el tipo de error, el motivo
+        del sistema (``strerror``) y solo el nombre base del archivo, nunca el directorio.
+
+    Ejemplo:
+        print(describir_error_de_sistema(PermissionError(13, "Acceso denegado", "C:/datos/a.bin")))
+    """
+    if error.errno is None:
+        return str(error)
+    detalle = f"error de entrada/salida: {type(error).__name__}"
+    if error.strerror:
+        detalle += f" ({error.strerror})"
+    if error.filename:
+        detalle += f": {PurePath(str(error.filename)).name}"
+    return detalle
+
+
 def main(
     argv: Sequence[str] | None = None,
     entorno: Mapping[str, str] | None = None,
@@ -236,8 +266,8 @@ def main(
 
     Contexto:
         Lo invoca ``tools/build.py``. Los errores esperados se imprimen en una linea sin
-        traza y devuelven 1; ``verify`` y ``diff`` devuelven 1 tambien cuando las huellas o las
-        funciones difieren.
+        traza ni rutas de la maquina y devuelven 1; ``verify`` y ``diff`` devuelven 1 tambien
+        cuando las huellas o las funciones difieren.
 
     Args:
         argv (Sequence[str], opcional): Argumentos; por defecto ``sys.argv[1:]``.
@@ -263,6 +293,9 @@ def main(
             return _ejecutar_clean(raiz, referencia)
         rutas = resolver_rutas(raiz, variables, leer_local_toml(raiz / RUTA_LOCAL), args.disc, args.toolchain)
         return _despachar(args, raiz, rutas, referencia, ejecutar)
-    except ERRORES_CONTROLADOS as error:
+    except ERRORES_PROPIOS as error:
         print(f"error: {error}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"error: {describir_error_de_sistema(error)}", file=sys.stderr)
         return 1
