@@ -8,7 +8,7 @@ estudiarlo y portarlo a plataformas modernas.
 <!-- progreso:inicio -->
 ## Progreso
 
-Medido el 2026-10-26 sobre el commit `ea4ee18`. Generado por `python tools/build.py progreso`;
+Medido el 2026-10-26 sobre el commit `b5cdf4c`. Generado por `python tools/build.py progreso`;
 no se edita a mano.
 
 | Estado | Cifra |
