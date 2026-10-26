@@ -471,7 +471,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
     }
 
 /*
- * Pendiente: puntuacion 4485 con la configuracion versionada (g = 8 del archivo). El flujo coincide; difiere el reparto de registros temporales y el orden del bloque de alturas.
+ * Pendiente: puntuacion 3395 con la configuracion versionada (g = 8 del archivo). El flujo coincide; difiere el reparto de registros temporales y el orden del bloque de alturas.
  *
  * Camara de seguimiento de tercera persona, una vez por cuadro. Determina la zona bajo el objeto y bajo la
  * camara y actualiza el modelo de la sala; despues atiende, por prioridad, la cuenta atras de cambio de
@@ -499,7 +499,9 @@ void func_80033358(Objeto* o, u32 reiniciar)
     u16 c8;
     u16 c6;
     u16 f;
-    u16 g;
+    u16 f1;
+    u16 f2;
+    s32 g;
     u16 pulsado;
 
     if (o == NULL) {
@@ -622,7 +624,11 @@ void func_80033358(Objeto* o, u32 reiniciar)
                 D_8006D928.z = o->param.trans.vz + w->v90.vz;
             } else {
                 D_8006D928.x = D_8006D928.x + ((o->param.trans.vx + w->v90.vx - D_8006D928.x) >> 2);
-                D_8006D928.y = D_8006D928.y + ((o->param.trans.vy - (D_8006D928.y + 400)) >> 2);
+                {
+                    s32 t;
+                    t = D_8006D928.y + 400;
+                    D_8006D928.y = D_8006D928.y + ((o->param.trans.vy - t) >> 2);
+                }
                 D_8006D928.z = D_8006D928.z + ((o->param.trans.vz + w->v90.vz - D_8006D928.z) >> 2);
             }
         }
@@ -669,7 +675,11 @@ void func_80033358(Objeto* o, u32 reiniciar)
             D_8006D928.z = D_8006D928.z - ((D_8006D928.z - D_8006D928.iDC) >> 2);
         } else {
             D_8006D928.x = D_8006D928.x - ((D_8006D928.x - o->param.trans.vx) >> 2);
-            D_8006D928.y = D_8006D928.y - ((D_8006D928.y + 400 - o->param.trans.vy) >> 2);
+            {
+                s32 t;
+                t = D_8006D928.y + 400;
+                D_8006D928.y = D_8006D928.y - ((t - o->param.trans.vy) >> 2);
+            }
             D_8006D928.z = D_8006D928.z - ((D_8006D928.z - o->param.trans.vz) >> 2);
         }
         if ((D_8006D928.flags80 & 0x1000) != 0) {
@@ -689,13 +699,13 @@ void func_80033358(Objeto* o, u32 reiniciar)
             D_8006D928.iC8 = D_8006D928.y + ((w->v18.vy * D_8006D928.iE4) >> 12);
             D_8006D928.iCC = D_8006D928.z + ((w->v18.vz * D_8006D928.iE4) >> 12);
         }
-        f = D_8006D928.flags80;
-        if ((f & 0x400) != 0) {
+        f1 = D_8006D928.flags80;
+        if ((f1 & 0x400) != 0) {
             D_8006D928.vpx = D_8006D928.vpx - ((D_8006D928.vpx - D_8006D928.iC4) >> 2);
             D_8006D928.vpy = D_8006D928.vpy - ((D_8006D928.vpy - D_8006D928.iC8) >> 2);
             D_8006D928.vpz = D_8006D928.vpz - ((D_8006D928.vpz - D_8006D928.iCC) >> 2);
         }
-        if ((f & 0x4000) != 0) {
+        if ((f1 & 0x4000) != 0) {
             D_8006D928.c68 = D_8006D928.vpx;
             D_8006D928.c94 = D_8006D928.vpx;
             D_8006D928.cB4 = D_8006D928.vpx;
@@ -709,15 +719,13 @@ void func_80033358(Objeto* o, u32 reiniciar)
             D_8006D928.cA8 = D_8006D928.y;
             D_8006D928.cAC = D_8006D928.z;
         }
-        if ((f & 8) != 0) {
-            D_8006D928.flags80 = f & 0xA3F7;
+        if ((f1 & 8) != 0) {
+            D_8006D928.flags80 = f1 & 0xA3F7;
         }
         GEO_CARGAR_W(&D_8006D928);
         GEO_RESTAR_W(D_8006D934);
         GEO_GUARDAR_H_T4(w);
-        ang = ratan2(w->local.vx, w->local.vz);
-        D_80069416 = ang;
-        D_80069402 = ang;
+        D_80069402 = D_80069416 = ratan2(w->local.vx, w->local.vz);
         D_800693F0 = SquareRoot0(w->local.vx * w->local.vx + w->local.vz * w->local.vz) + 1;
         D_800693F4 = 0x3C;
         D_800693F8 = 0;
@@ -808,8 +816,8 @@ aplicar_giro:
     if (D_800693F4 > 0) {
         D_800693F4 = c - 1;
     }
-    f = D_8006D928.flags80;
-    if ((f & 2) == 0) {
+    f2 = D_8006D928.flags80;
+    if ((f2 & 2) == 0) {
         if (D_800693F4 == 0 || reiniciar != 0) {
             ang = o->param.giro.rotate.vy + 0x800;
             i = ang % 0x1000;
@@ -832,11 +840,11 @@ aplicar_giro:
             if (i != 0) {
                 w->rot.vy = c + i;
             } else {
-                D_8006D928.flags80 = f | 2;
+                D_8006D928.flags80 = f2 | 2;
             }
         }
     }
-    if ((f & 2) != 0 || (D_8006D9A8[0] & 2) != 0) {
+    if ((f2 & 2) != 0 || (D_8006D9A8[0] & 2) != 0) {
         w->rot.vy = D_80069402;
     } else {
         D_80069402 = w->rot.vy;
@@ -937,10 +945,10 @@ aplicar_giro:
     GEO_GUARDAR_W_T1(&w->v30);
     i = 0;
     D_8006D928.c68 = o->param.trans.vx + w->v30.vx;
+    D_8006D928.c70 = o->param.trans.vz + w->v30.vz;
     w->v90.vz = 0;
     w->v90.vy = 0;
     w->v90.vx = 0;
-    D_8006D928.c70 = o->param.trans.vz + w->v30.vz;
     w->v30.vy = o->param.trans.vy - 0x1F4;
     do {
         GEO_CARGAR_W(D_8006D990);
