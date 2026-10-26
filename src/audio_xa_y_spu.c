@@ -838,8 +838,6 @@ void func_8003F3F0(void)
     }
 }
 
-/* Pendiente: puntuacion 290 con la configuracion versionada (g = 8 del archivo). El flujo coincide; difiere el reparto del temporal de la mascara de voz en la baja de efectos (a0 en lugar de v1) y el orden de dos cargas en la rama de repeticion. Variantes probadas: 14. */
-#ifdef NON_MATCHING
 void func_8003F528(s16 id)
 {
     Voz* v;
@@ -849,6 +847,7 @@ void func_8003F528(s16 id)
     u32 encender;
     u32 apagar;
     u32 m;
+    u32 m3;
     s32 vz;
     u16 f;
     u16 fe;
@@ -899,8 +898,8 @@ void func_8003F528(s16 id)
             }
         } else if (f & 4) {
             v->cuenta++;
-            m = 1 << v->voz;
-            if (!(activas & m)) {
+            m3 = 1 << v->voz;
+            if (!(activas & m3)) {
                 goto liberar;
             }
             if (v->objeto == 0) {
@@ -956,9 +955,6 @@ void func_8003F528(s16 id)
         D_80069628 = 0;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003F528);
-#endif
 
 void func_8003F900(void* a0)
 {
