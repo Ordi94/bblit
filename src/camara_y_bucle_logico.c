@@ -470,10 +470,12 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3395 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
- * las constantes coinciden; difieren el reparto de registros temporales y la planificacion en el bloque de alturas
- * (0x80034B00-0x80034E34), en la direccion normalizada del modo guiado (0x80033C98-0x80033D58), en las sondas
- * de apuntado (0x80033700-0x80033830) y en los tramos del rayo (0x80034720-0x800348C8).
+ * Pendiente: puntuacion 3065 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * las constantes coinciden; difieren el reparto de registros temporales y la planificacion de las cargas y los
+ * almacenes en las sondas de apuntado (0x80033700-0x80033888), la direccion normalizada del modo guiado
+ * (0x80033CB4-0x80033D64), el giro lateral (0x80033F00-0x80034160), los barridos contra el terreno
+ * (0x80034348-0x80034720), las ocho sondas de empuje (0x800348C8-0x80034A9C) y el bloque de alturas
+ * (0x80034B00-0x80034E34).
  *
  * Camara de seguimiento de tercera persona, una vez por cuadro. Determina la zona bajo el objeto y bajo la
  * camara y actualiza el modelo de la sala; despues atiende, por prioridad, la cuenta atras de cambio de
@@ -599,13 +601,13 @@ void func_80033358(Objeto* o, u32 reiniciar)
             w->v30.vx = o->param.trans.vx;
             w->v30.vy = o->param.trans.vy + w->p8;
             w->v30.vz = o->param.trans.vz;
-            w->v70.vy = 0;
             w->v70.vx = (s16)D_8005E728[i].x >> 1;
+            w->v70.vy = 0;
             w->v70.vz = (s16)D_8005E728[i].z >> 1;
             hit = func_80032B2C((Vec3*)&w->v30, (Vec3*)&w->v70, area, 0x24000);
             if (hit == 0) {
-                w->v70.vy = 0;
                 w->v70.vx = w->v70.vx + ((s16)D_8005E728[i].x >> 1);
+                w->v70.vy = 0;
                 w->v70.vz = w->v70.vz + ((s16)D_8005E728[i].z >> 1);
                 func_80032B2C((Vec3*)&w->v30, (Vec3*)&w->v70, area, 0x24000);
             }
@@ -955,14 +957,14 @@ aplicar_giro:
     do {
         GEO_CARGAR_W(D_8006D990);
         GEO_GUARDAR_W_T1(&w->v30);
-        w->v70.vy = 0;
         w->v70.vx = (s16)D_8005E728[i].x >> 1;
+        w->v70.vy = 0;
         w->v70.vz = (s16)D_8005E728[i].z >> 1;
         w->v30.vy = o->param.trans.vy - 0xC8;
         hit = func_80032B2C((Vec3*)&w->v30, (Vec3*)&w->v70, area, 0x20000);
         if (hit == 0) {
-            w->v70.vy = 0;
             w->v70.vx = w->v70.vx + ((s16)D_8005E728[i].x >> 1);
+            w->v70.vy = 0;
             w->v70.vz = w->v70.vz + ((s16)D_8005E728[i].z >> 1);
             func_80032B2C((Vec3*)&w->v30, (Vec3*)&w->v70, area, 0x20000);
         }
