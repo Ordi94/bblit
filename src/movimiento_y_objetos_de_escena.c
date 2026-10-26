@@ -8,7 +8,7 @@
  * suelo (0x2), salto (0x200) y caida libre segun toque el suelo o empiece un salto.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1135 con la configuracion versionada (-G0). Misma estructura de ramas y mismos almacenes; en el bloque de despegue el original conserva dos copias de las banderas (move v1,v0) y ordena los almacenes de h108 y w10E de otro modo. Variantes probadas: 14. */
+/* Pendiente: puntuacion 1135 con la configuracion versionada (-G0). Misma estructura de ramas y mismos almacenes; en el bloque de despegue el original conserva dos copias de las banderas (move v1,v0) y ordena los almacenes de h108 y w10E de otro modo. */
 void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* orden)
 {
     s32 dy;
@@ -106,7 +106,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C424);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 498 con la configuracion versionada (-G0). Misma secuencia de llamadas y almacenes; el original reparte s1 al objeto y s0 al area de trabajo y ordena un almacen de d->z antes de la lectura de w->h18, el C los asigna al reves. Variantes probadas: 7. */
+/* Pendiente: puntuacion 498 con la configuracion versionada (-G0). Misma secuencia de llamadas y almacenes; el original reparte s1 al objeto y s0 al area de trabajo y ordena un almacen de d->z antes de la lectura de w->h18, el C los asigna al reves. */
 void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
 {
     s32* pos;
@@ -189,7 +189,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C6CC);
  * maximo, o hasta el suelo anterior).
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 3636 con la configuracion versionada (-G0). Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a la altura nueva y s2 al suelo anterior, y precalcula area + 0x28 al principio, el C asigna los registros en otro orden y cambia el reparto de los saltos. Variantes probadas: 2. */
+/* Pendiente: puntuacion 3636 con la configuracion versionada (-G0). Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a la altura nueva y s2 al suelo anterior, y precalcula area + 0x28 al principio, el C asigna los registros en otro orden y cambia el reparto de los saltos. */
 void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* area)
 {
     TrabajoSuelo* w;

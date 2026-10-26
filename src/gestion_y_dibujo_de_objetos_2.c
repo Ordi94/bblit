@@ -394,7 +394,7 @@ void func_80037FB8(NodoLista* n)
  * de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada
  * grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la
  * llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de
- * otra forma. Variantes probadas: 6.
+ * otra forma.
  */
 /*
  * Crea los objetos de los indicadores de la interfaz al entrar en un nivel: reinicia los

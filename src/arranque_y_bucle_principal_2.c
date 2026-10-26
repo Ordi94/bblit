@@ -235,7 +235,7 @@ void func_800163E4(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1025 con la configuracion versionada (g = 8 del archivo). Variantes probadas: 11. El flujo y los tipos coinciden (pausa y demostracion son s16, el
+ * Pendiente: puntuacion 1025 con la configuracion versionada (g = 8 del archivo). El flujo y los tipos coinciden (pausa y demostracion son s16, el
  * contador de cuadros D_80069676 es volatile u16); difieren el reparto de registros salvados de las
  * constantes 2 y 3 y de la tabla de tiempos D_8006CF68, y la base `lui` del estado se hoistea antes
  * que en el original.

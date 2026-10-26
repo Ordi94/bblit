@@ -227,7 +227,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_800171E4);
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 19749 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las
- * comparaciones de las regiones no se han ajustado al original. Variantes probadas: 1.
+ * comparaciones de las regiones no se han ajustado al original.
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con
  * mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la
@@ -576,7 +576,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 2420 con la configuracion versionada (g = 8 del archivo). Reparto de registros del prologo (el original usa a0 como
- * copia de la posicion de a) y cadena de comparaciones de las esquinas que el original comparte entre regiones. Variantes probadas: 3.
+ * copia de la posicion de a) y cadena de comparaciones de las esquinas que el original comparte entre regiones.
  *
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
  * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.

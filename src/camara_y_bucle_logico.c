@@ -231,8 +231,7 @@ void func_80032A24(void)
 /*
  * Pendiente: puntuacion 774 con la configuracion versionada (g = 8 del archivo). El flujo y las macros vectoriales
  * coinciden; difiere el reparto de los registros salvados (el original deja los argumentos en s5 y s2 y los
- * punteros hoisted &w->i58, &w->rot, &w->v28, &w->d30 en s6, s4, s3, s1). Variantes probadas: 15 (punteros locales
- * hoisted en distinto orden y subconjunto, asignacion al inicio o dentro del bloque).
+ * punteros hoisted &w->i58, &w->rot, &w->v28, &w->d30 en s6, s4, s3, s1).
  *
  * Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la
  * mascara y cuya caja esta a menos de su alcance, lleva la posicion al sistema local del objeto, comprueba la caja
@@ -1228,9 +1227,7 @@ INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80035244);
  * y las constantes coinciden; difieren el reparto de registros (el original conserva el scratchpad, &sx, &z6C y la
  * mascara -3 en s1..s4 y no hoistea &v80 ni &c104), el relleno de los huecos de retardo de la macro de distancia
  * (maspsx anade un nop extra tras dos de sus saltos) y la forma de la busqueda en la tabla D_8006A940 (el original
- * relee el puntero guardado en el scratchpad en cada vuelta). Variantes probadas: 12 (locales del objeto,
- * punteros hoisted, mascara en local, macro de distancia con salida por registro o por puntero, y la suma de
- * vectores y la distancia reescritas en C, que dan 9641 y 11566: ver GEO_SUMAR_W y GEO_DISTANCIA_APROX).
+ * relee el puntero guardado en el scratchpad en cada vuelta). Reescribir en C la suma de vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W y GEO_DISTANCIA_APROX).
  */
 /*
  * Lista de comprobaciones del cuadro: recorre los objetos de escena, los clasifica en cuatro listas

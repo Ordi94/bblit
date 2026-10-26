@@ -93,7 +93,7 @@ extern s32 func_80014FAC(void);
 /*
  * Pendiente: puntuacion 895 con la configuracion versionada (g = 8 del archivo). El original direcciona la tabla de
  * cuentas con `addiu v0,gp,0x38`, que maspsx emite desde ASPSX 2.80 (la version fijada), y calcula la base del nombre
- * una sola vez antes del bucle. Variantes probadas: 8 (bucles por indice y por puntero).
+ * una sola vez antes del bucle.
  *
  * Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18
  * caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
@@ -337,7 +337,7 @@ s32 func_8001515C(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). Variantes probadas: 1. No se reprodujo la disposicion de los bloques locales de la pila ni las copias
+ * Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). No se reprodujo la disposicion de los bloques locales de la pila ni las copias
  * de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento.
  *
  * Da formato al archivo de partida: arma en la pila un bloque de 0x200 bytes con la cabecera de la
