@@ -40,8 +40,12 @@ Con el ejecutable sin modificar: `0 de 249595 sectores modificados` y SHA-1
 ## 4. Simbolos
 
 ```
-.venv\Scripts\python.exe -m tools.ghidra simbolos --funciones <funciones.csv> --nombres config/nombres_funciones.txt --salida <destino>
+.venv\Scripts\python.exe -m tools.ghidra simbolos --funciones <funciones.csv> --nombres config/nombres_funciones.txt --salida <archivo symbols.txt>
 ```
+
+`--salida` (igual que `--tablas` y `--nuevas`) es un **archivo**, no una carpeta: se reemplaza de forma
+atomica y su carpeta se crea si falta. Si la ruta indicada es una carpeta existente el comando termina con
+`error: --salida debe ser un archivo, no una carpeta` y codigo 2, sin escribir nada.
 
 `<funciones.csv>` es el que produce `python -m tools.ghidra exportar` (carpeta de exportacion de Ghidra,
 fuera del repositorio). Con `BBLIT_DISC` definida (cualquiera de las cinco formas: .bin, .cue, carpeta del .bin, carpeta superior o carpeta con fs/) o con `--exe`. Genera 1168 lineas
@@ -60,6 +64,14 @@ con rutas absolutas):
 toolchain\pcsx-redux\pcsx-redux.exe -portable -loadiso build/bblit_prueba.cue ^
     -bios toolchain/duckstation/bios/ps-22a.bin -run -webserver -webserver-port 8080
 ```
+
+`python -m tools.emulador` no necesita esos comandos a mano: resuelve el emulador y la BIOS igual que
+`tools/build.py` resuelve el toolchain. Orden de prioridad: argumento (`--emulador`, `--bios`), variables
+`BBLIT_REDUX` y `BBLIT_BIOS` (anulacion explicita), y por ultimo el toolchain: `BBLIT_TOOLCHAIN`, luego
+`[rutas] toolchain` de `config/local.toml`, luego `<raiz del repositorio>/toolchain`
+(`pcsx-redux/pcsx-redux.exe` y `duckstation/bios/ps-22a.bin`). Desde un worktree sin `toolchain/` basta con
+`BBLIT_TOOLCHAIN`. Las rutas por defecto cuelgan de la raiz del repositorio (tambien la imagen
+`build/bblit_prueba.cue` y la carpeta de trabajo `build/emulador`), no del directorio desde el que se lanza.
 
 1. Comprobar que el puerto 8080 esta libre y que no hay procesos `pcsx-redux` previos.
 2. `GET http://127.0.0.1:8080/api/v1/execution-flow` debe devolver `"running":true` (responde

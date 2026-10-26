@@ -1,5 +1,6 @@
 #include "common.h"
 #include "globales.h"
+#include "arranque.h"
 #include "gte.h"
 #include "objetos.h"
 #include "niveles.h"
@@ -649,13 +650,13 @@ void func_8002C1DC(Objeto* o)
                     RotMatrix(&t->origen->param.giro.rotate, m);
                     ScaleMatrix(m, &t->escala);
                     ApplyMatrixSV(m, (SVECTOR*)&t->vx, (SVECTOR*)&t->vx);
-                    D_8006D928.dvx = t->origen->param.trans.vx + (s16)t->vx;
-                    D_8006D928.dvy = t->origen->param.trans.vy + (s16)t->vy;
-                    D_8006D928.dvz = t->origen->param.trans.vz + (s16)t->vz;
+                    D_8006D928.iC4 = t->origen->param.trans.vx + (s16)t->vx;
+                    D_8006D928.iC8 = t->origen->param.trans.vy + (s16)t->vy;
+                    D_8006D928.iCC = t->origen->param.trans.vz + (s16)t->vz;
                 } else {
-                    D_8006D928.dvx = t->origen->param.trans.vx;
-                    D_8006D928.dvy = t->origen->param.trans.vy;
-                    D_8006D928.dvz = t->origen->param.trans.vz;
+                    D_8006D928.iC4 = t->origen->param.trans.vx;
+                    D_8006D928.iC8 = t->origen->param.trans.vy;
+                    D_8006D928.iCC = t->origen->param.trans.vz;
                 }
             } else if (t->flags & 0x80000) {
                 t->vx = 0;
@@ -664,25 +665,25 @@ void func_8002C1DC(Objeto* o)
                 GEO_IDENTIDAD(m);
                 RotMatrixY(D_80069698->param.giro.rotate.vy + 0x800, m);
                 ApplyMatrix(m, (SVECTOR*)&t->vx, &t->r);
-                D_8006D928.dvx += ((D_80069698->param.trans.vx + t->r.vx) - D_8006D928.dvx) >> 2;
-                D_8006D928.dvy += ((D_80069698->param.trans.vy + t->r.vy) - D_8006D928.dvy) >> 2;
-                D_8006D928.dvz += ((D_80069698->param.trans.vz + t->r.vz) - D_8006D928.dvz) >> 2;
-                D_8006D928.dmx += (D_80069698->param.trans.vx - D_8006D928.dmx) >> 2;
-                D_8006D928.dmy += (D_80069698->param.trans.vy - D_8006D928.dmy) >> 2;
-                D_8006D928.dmz += (D_80069698->param.trans.vz - D_8006D928.dmz) >> 2;
+                D_8006D928.iC4 += ((D_80069698->param.trans.vx + t->r.vx) - D_8006D928.iC4) >> 2;
+                D_8006D928.iC8 += ((D_80069698->param.trans.vy + t->r.vy) - D_8006D928.iC8) >> 2;
+                D_8006D928.iCC += ((D_80069698->param.trans.vz + t->r.vz) - D_8006D928.iCC) >> 2;
+                D_8006D928.iD4 += (D_80069698->param.trans.vx - D_8006D928.iD4) >> 2;
+                D_8006D928.iD8 += (D_80069698->param.trans.vy - D_8006D928.iD8) >> 2;
+                D_8006D928.iDC += (D_80069698->param.trans.vz - D_8006D928.iDC) >> 2;
             } else if (t->flags & 0x100000) {
-                D_8006D928.dvx = D_8006D928.vpx;
-                D_8006D928.dvy = D_8006D928.vpy;
-                D_8006D928.dvz = D_8006D928.vpz;
+                D_8006D928.iC4 = D_8006D928.vpx;
+                D_8006D928.iC8 = D_8006D928.vpy;
+                D_8006D928.iCC = D_8006D928.vpz;
             } else {
-                D_8006D928.dvx = t->nodo->p1C;
-                D_8006D928.dvy = t->nodo->p20;
-                D_8006D928.dvz = t->nodo->desplazamiento;
+                D_8006D928.iC4 = t->nodo->p1C;
+                D_8006D928.iC8 = t->nodo->p20;
+                D_8006D928.iCC = t->nodo->desplazamiento;
             }
             if (t->flags & 0x40000) {
-                t->ex = D_8006D928.vpx - D_8006D928.dvx;
-                t->ey = D_8006D928.vpy - D_8006D928.dvy;
-                t->ez = D_8006D928.vpz - D_8006D928.dvz;
+                t->ex = D_8006D928.vpx - D_8006D928.iC4;
+                t->ey = D_8006D928.vpy - D_8006D928.iC8;
+                t->ez = D_8006D928.vpz - D_8006D928.iCC;
                 GEO_CARGAR_W(&t->ex);
                 GEO_GUARDAR_W_T1(&t->r);
                 gte_ldlvl(&t->r);
@@ -699,9 +700,9 @@ void func_8002C1DC(Objeto* o)
                     t->modulo = paso;
                 }
                 if (t->modulo > 0) {
-                    D_8006D928.dvx += (t->r.vx * t->modulo) >> 12;
-                    D_8006D928.dvy += (t->r.vy * t->modulo) >> 12;
-                    D_8006D928.dvz += (t->r.vz * t->modulo) >> 12;
+                    D_8006D928.iC4 += (t->r.vx * t->modulo) >> 12;
+                    D_8006D928.iC8 += (t->r.vy * t->modulo) >> 12;
+                    D_8006D928.iCC += (t->r.vz * t->modulo) >> 12;
                 }
             }
             D_8006D928.flags80 |= 0x400;
@@ -716,29 +717,29 @@ void func_8002C1DC(Objeto* o)
                     }
                 }
                 if (t->origen != 0) {
-                    D_8006D928.dmx = t->origen->param.trans.vx;
-                    D_8006D928.dmy = t->origen->param.trans.vy;
-                    D_8006D928.dmz = t->origen->param.trans.vz;
+                    D_8006D928.iD4 = t->origen->param.trans.vx;
+                    D_8006D928.iD8 = t->origen->param.trans.vy;
+                    D_8006D928.iDC = t->origen->param.trans.vz;
                 }
             } else if (t->flags & 0x80) {
-                D_8006D928.dmx = o->param.trans.vx;
-                D_8006D928.dmy = o->param.trans.vy;
-                D_8006D928.dmz = o->param.trans.vz;
+                D_8006D928.iD4 = o->param.trans.vx;
+                D_8006D928.iD8 = o->param.trans.vy;
+                D_8006D928.iDC = o->param.trans.vz;
             } else if (t->flags & 0x100000) {
-                D_8006D928.dmx = D_8006D928.x;
-                D_8006D928.dmy = D_8006D928.y;
-                D_8006D928.dmz = D_8006D928.z;
+                D_8006D928.iD4 = D_8006D928.x;
+                D_8006D928.iD8 = D_8006D928.y;
+                D_8006D928.iDC = D_8006D928.z;
             } else {
-                D_8006D928.dmx = t->nodo->p1C;
-                D_8006D928.dmy = t->nodo->p20;
-                D_8006D928.dmz = t->nodo->desplazamiento;
+                D_8006D928.iD4 = t->nodo->p1C;
+                D_8006D928.iD8 = t->nodo->p20;
+                D_8006D928.iDC = t->nodo->desplazamiento;
             }
             D_8006D928.flags80 |= 0x800;
         } else if (t->flags & 8) {
             D_8006D928.flags80 &= 0xB7FF;
         }
         if (t->flags & 0x400) {
-            D_8006D928.zoom = t->nodo->p1C;
+            D_8006D928.iE4 = t->nodo->p1C;
             D_8006D928.flags80 |= 0x1000;
         } else if (t->flags & 0x800) {
             D_8006D928.flags80 &= 0xEFFF;
@@ -833,7 +834,7 @@ void func_8002CB8C(Objeto* o)
         b->h02 = 0;
         b->b05 = 2;
         b->b08 = 2;
-        b->h00 = k - 1;
+        b->w00 = k - 1;
         o->min.vx = -(f->w0C >> 1);
         o->min.vy = 0;
         o->min.vz = -(f->w0C >> 1);
@@ -852,7 +853,7 @@ void func_8002CB8C(Objeto* o)
         w = b->b05;
         b->h02 = b->h02 + 1;
         b->b08 = w;
-        if ((u16)b->h02 > b->h00) {
+        if ((u16)b->h02 > b->w00) {
             b->h02 = 0;
             b->actual = b->fotogramas;
         }
@@ -873,7 +874,7 @@ void func_8002CB8C(Objeto* o)
                     func_8003F06C(o, n->p1C, 2, D_8006967C);
                 }
                 if (n->flags & 0x10000) {
-                    if (b->b08 == 0 && (u16)b->h02 >= b->h00) {
+                    if (b->b08 == 0 && (u16)b->h02 >= b->w00) {
                         o->flags14 |= 0x100;
                     }
                 }
@@ -921,7 +922,7 @@ void func_8002CEC4(Objeto* o)
         f = tb->fotogramas;
         b->fotogramas = f;
         b->actual = f;
-        b->h00 = tb->cuenta - 1;
+        b->w00 = tb->cuenta - 1;
         b->h02 = (u16)o->max.vx;
         b->b05 = (u8)o->max.vz;
         b->b08 = (u8)o->max.vz;
@@ -930,7 +931,7 @@ void func_8002CEC4(Objeto* o)
     if (b->b08 == 0) {
         b->b08 = b->b05;
         b->h02 += 1;
-        if (b->h00 < (u16)b->h02) {
+        if (b->w00 < (u16)b->h02) {
             b->h02 = 0;
         }
         func_8001E600(o, b, 1, area);
@@ -1190,7 +1191,7 @@ siguiente:
     }
 
 /*
- * Manejador del bloque empujable (clase 5). El jugador deja en h40 y h44 el desplazamiento que
+ * Manejador del bloque empujable (clase 5). El jugador deja en empuje.vx y empuje.vz el desplazamiento que
  * intenta hacer contra el bloque; w17C fija los ejes y sentidos permitidos (0x01 X, 0x02 Z, 0x100 y
  * 0x200 anulan el sentido negativo o positivo, 0x04 prueba en dos pasadas, 0x40 modo plataforma,
  * 0x80 no cae). El avance se prueba contra otros objetos y contra el terreno desde las cuatro
@@ -1237,10 +1238,10 @@ void func_8002D68C(Objeto* o)
         }
     }
     if (o->w17C & 0x40) {
-        D_80069698->param.trans.vx -= o->h40;
-        D_80069698->param.trans.vz -= o->h44;
-        o->h40 = 0;
-        o->h44 = 0;
+        D_80069698->param.trans.vx -= o->empuje.vx;
+        D_80069698->param.trans.vz -= o->empuje.vz;
+        o->empuje.vx = 0;
+        o->empuje.vz = 0;
         goto reposo;
     }
     if (!((o->flags14 & 0x8000) && !(D_80069698->flags14 & 0x4000))) {
@@ -1262,9 +1263,9 @@ void func_8002D68C(Objeto* o)
     t->mxz += cuarto;
     ApplyMatrixSV(m, (SVECTOR*)&t->mnx, (SVECTOR*)&t->mnx);
     ApplyMatrixSV(m, (SVECTOR*)&t->mxx, (SVECTOR*)&t->mxx);
-    t->dz = o->h44;
+    t->dz = o->empuje.vz;
     t->dy = 0;
-    t->dx = o->h40;
+    t->dx = o->empuje.vx;
     if (o->w17C & 4) {
         t->px = o->param.trans.vx;
         t->py = o->param.trans.vy;
@@ -1292,7 +1293,7 @@ void func_8002D68C(Objeto* o)
         t->cx = t->dx;
         t->cy = t->dy;
         t->cz = t->dz;
-        t->chocado = func_80017478(o, &t->cx, area, 0x2690A);
+        t->chocado = func_80017478(o, (SVECTOR*)&t->cx, area, 0x2690A);
         if (t->chocado != 0) {
             t->chocado->flags14 |= 0x40000000;
             t->chocado->i34 = o->w1C;
@@ -1339,8 +1340,8 @@ void func_8002D68C(Objeto* o)
         }
         o->param.trans.vx += t->dx;
         o->param.trans.vz += t->dz;
-        D_80069698->param.trans.vx -= o->h40 - t->dx;
-        D_80069698->param.trans.vz -= o->h44 - t->dz;
+        D_80069698->param.trans.vx -= o->empuje.vx - t->dx;
+        D_80069698->param.trans.vz -= o->empuje.vz - t->dz;
         goto disparadores;
     }
     BLOQUE_FILTRAR(t->dx, 1);
@@ -1349,7 +1350,7 @@ void func_8002D68C(Objeto* o)
     t->cy = t->dy;
     t->cz = t->dz;
     o->p70 = D_80069698;
-    t->chocado = func_80017478(o, &t->cx, area, 0x2690A);
+    t->chocado = func_80017478(o, (SVECTOR*)&t->cx, area, 0x2690A);
     if (t->chocado != 0) {
         t->chocado->flags14 |= 0x40000000;
         t->chocado->i34 = o->w1C;
@@ -1444,9 +1445,9 @@ void func_8002D68C(Objeto* o)
             func_8003F06C(o, id, 2, D_8006967C);
         }
     }
-    t->vx = t->dx - o->h40;
+    t->vx = t->dx - o->empuje.vx;
     t->vy = 0;
-    t->vz = t->dz - o->h44;
+    t->vz = t->dz - o->empuje.vz;
     jugador = D_80069698;
     t->px = jugador->param.trans.vx;
     t->py = jugador->param.trans.vy;
@@ -1482,11 +1483,11 @@ sin_empuje:
     }
 reposo:
     ZONA_PONER_CERO_3W(&t->dx);
-    func_8001CBB8(o, &t->dx, t, area);
+    func_8001CBB8(o, (Movimiento*)&t->dx, (ResultadoBaldosa*)t, area);
     o->param.trans.vy += t->dy;
     func_8001CF50(o);
-    o->h44 = 0;
-    o->h40 = 0;
+    o->empuje.vz = 0;
+    o->empuje.vx = 0;
     o->flags14 &= 0xFFFF5FFF;
     if (o->flags08 & 0x1000000) {
         func_8001E1A4(o, area);
@@ -1705,7 +1706,7 @@ void func_8002F018(Objeto* o)
         t->px = o->param.trans.vx + t->dx;
         t->pz = o->param.trans.vz + t->dz;
         t->py = o->param.trans.vy + t->my;
-        t->golpeado = func_800171E4(o, &t->px, 0x180, 0, area);
+        t->golpeado = func_800171E4(o, (VECTOR*)&t->px, 0x180, 0, area);
         if (t->golpeado != 0) {
             o->s1E = 1;
             if (D_80069698 == t->golpeado && !(D_80069698->flags14 & 0x03000000)) {
@@ -1881,48 +1882,42 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F970);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 350 con la configuracion versionada (g = 8 del archivo). Dos 'lui' donde
- * el original usa uno solo para los dos bytes (los simbolos son variables externas distintas).
- *
- * Los dos bytes se declaran como arreglos sin tamano: con el umbral de datos pequenos (-G8) un
- * escalar de un byte se emite en forma simbolica con 'lui $at' y la funcion sube de 350 a 855,
- * mientras que el arreglo da el 'lui' y el desplazamiento del original.
+ * Pendiente: puntuacion 60 con la configuracion versionada (g = 8 del archivo). Los dos bytes se
+ * leen y escriben con un unico lui y la copia del valor leido queda en el hueco del primer salto,
+ * como el original; difiere solo el reparto de registros: el original deja el resultado de la
+ * suma en a2 y GCC lo deja en v1 (los papeles de v1 y a2 estan invertidos).
  *
  * Operacion aritmetica sobre un registro de 16 bits repartido en dos bytes (D_80010047 es el
- * bajo y D_8001013C el alto). Diferencias con el original: este lee ambos bytes con un unico
- * 'lui' (los dos simbolos comparten la parte alta) y conserva una copia del valor en el hueco de
- * retardo del primer salto; el compilador genera dos 'lui' porque son variables externas
- * distintas. Hay que declararlas como miembros de una misma estructura o arreglo.
- *
- * El operando se trunca a un byte dentro de la rutina (andi 0xFF en 0x8002F9AC y 0x8002F9DC) y los
- * llamadores le pasan el valor de 16 bits sin truncar (lhu): por eso el parametro es s32 y el
- * truncamiento un cast. Declarado u8, cada llamador recorta el argumento con lbu.
+ * bajo y D_8001013C el alto: r[7] y r[0xFC] del banco del estado principal de 0x80010000). El operando se
+ * trunca a un byte dentro de la rutina (andi 0xFF en 0x8002F9AC y 0x8002F9DC) y los llamadores
+ * le pasan el valor de 16 bits sin truncar (lhu): por eso el parametro es s32 y el truncamiento
+ * un cast. Declarado u8, cada llamador recorta el argumento con lbu.
  */
-extern u8 D_8001013C[];
-extern u8 D_80010047[];
-
 void func_8002F990(s32 a0, s32 a1)
 {
+    EstadoPrincipal* e;
     u32 reg;
+    u32 res;
     u32 alto;
 
-    reg = D_80010047[0] | (D_8001013C[0] << 8);
+    e = ESTADO_PRINCIPAL;
+    reg = e->r[7] | (e->r[0xFC] << 8);
+    res = reg;
     if (a1 == 0) {
-        reg = (u8)a0 + reg;
+        res = (u8)a0 + reg;
     }
     if (a1 == 1) {
-        reg = reg + 1;
+        res = reg + 1;
     }
     if (a1 == 2) {
-        reg = reg - 1;
+        res = reg - 1;
     }
-    alto = reg & 0xFFFF;
     if (a1 == 3) {
-        reg = reg - (u8)a0;
-        alto = reg & 0xFFFF;
+        res = reg - (u8)a0;
     }
-    D_80010047[0] = reg;
-    D_8001013C[0] = alto >> 8;
+    alto = res & 0xFFFF;
+    e->r[7] = res;
+    e->r[0xFC] = alto >> 8;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F990);

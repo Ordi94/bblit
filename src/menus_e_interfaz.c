@@ -29,9 +29,6 @@ extern u16 D_80069686;
  * D_80069680 son el limite del buffer y su inicio.
  */
 
-/* Camara: D_8006D934 es la mitad alta de D_8006D928 (+0xC); el original la direcciona con su propio lui. */
-extern s32 D_8006D934[3];
-
 /*
  * Dos bytes del banco B (D_8006AA70[0x19] detiene el paso del fundido y D_8006AA70[0xC] es el estado
  * de pausa): el original los direcciona con su propio lui, como simbolos distintos del banco.

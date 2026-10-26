@@ -108,6 +108,35 @@ def test_split_con_herramientas_sin_instalar(entorno_repo: Any, capsys: pytest.C
     assert "'ld' no esta instalado" in capsys.readouterr().err
 
 
+def test_split_avisa_de_los_datos_pequenos_repetidos_sin_cambiar_su_resultado(
+    entorno_repo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+    (raiz / "config" / "symbols.txt").write_text(
+        "D_80069330 = 0x80069330; // type:u8 size:0x8\n", encoding="utf-8"
+    )
+    (raiz / "config" / "opciones_compilacion.toml").write_text(
+        "[datos_pequenos]\nD_80069330 = 0x80069330\n", encoding="utf-8"
+    )
+    assert ejecutar_cli(raiz, variables, "split") == 0
+    salida = capsys.readouterr()
+    assert salida.out == "split completado: asm/ y script del enlazador generados\n"
+    assert salida.err == (
+        "aviso: [datos_pequenos] D_80069330 = 0x80069330: "
+        "mismo nombre: ya figura en config/symbols.txt, la clave puede retirarse\n"
+    )
+
+
+def test_split_no_falla_si_no_puede_verificar_la_configuracion(
+    entorno_repo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+    assert ejecutar_cli(raiz, variables, "split") == 0
+    salida = capsys.readouterr()
+    assert salida.out == "split completado: asm/ y script del enlazador generados\n"
+    assert salida.err == "aviso: no se pudo verificar la configuracion: falta config/symbols.txt\n"
+
+
 def test_build_sin_split_previo(entorno_repo: Any, capsys: pytest.CaptureFixture[str]) -> None:
     raiz, variables = entorno_repo
     assert ejecutar_cli(raiz, variables, "build") == 1
@@ -375,9 +404,40 @@ def test_diff_que_coincide_en_bytes_sale_con_cero_y_avisa_de_las_referencias_num
     capsys.readouterr()
     assert ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=EjecutorEnlace(70)) == 0
     assert capsys.readouterr().out.endswith(
-        "func_80036204 (src/code_a.c): coincide en bytes; 2 referencias en forma numerica (puntuacion 70)\n"
+        "nota: 2 referencias en forma numerica (asm-differ puntua 70)\n"
+        "func_80036204 (src/code_a.c): puntuacion 0 (coincide en bytes)\n"
     )
     assert (
         ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=EjecutorEnlace(70, difiere=True)) == 1
     )
     assert capsys.readouterr().out.endswith("puntuacion 70\n")
+
+
+def test_un_error_nativo_del_sistema_no_expone_la_ruta_absoluta(
+    entorno_repo: Any, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+    ruta_privada = str(raiz.parent / "usuarios" / "privado" / "datos.bin")
+
+    def denegado(*_: Any) -> Any:
+        raise PermissionError(13, "Acceso denegado", ruta_privada)
+
+    monkeypatch.setattr(infra, "limpiar", denegado)
+    assert ejecutar_cli(raiz, variables, "clean") == 1
+    capturado = capsys.readouterr()
+    assert ruta_privada not in capturado.err + capturado.out
+    assert "privado" not in capturado.err
+    assert capturado.err == "error: error de entrada/salida: PermissionError (Acceso denegado): datos.bin\n"
+
+
+def test_un_error_nativo_sin_nombre_de_archivo_informa_solo_tipo_y_motivo(
+    entorno_repo: Any, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+
+    def fallo(*_: Any) -> Any:
+        raise OSError(5, "")
+
+    monkeypatch.setattr(infra, "limpiar", fallo)
+    assert ejecutar_cli(raiz, variables, "clean") == 1
+    assert capsys.readouterr().err == "error: error de entrada/salida: OSError\n"

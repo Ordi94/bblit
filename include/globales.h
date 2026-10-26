@@ -94,10 +94,10 @@ typedef struct ParametrosObjeto {
  * animacion elegida; func_80045498 recibe su direccion.
  */
 typedef struct BloqueTrabajo {
-    u16 h00;                /* ultimo cuadro (cuadros - 1): sh en func_8002CB8C (0x8002CC70), lhu en 0x8002CD68 */
+    u16 w00;                /* ultimo cuadro (cuadros - 1): sh en func_8002CB8C (0x8002CC70), lhu en 0x8002CD68 y 0x800255D0 (func_80020B90); func_80020B90 tambien lee y escribe la palabra entera sobre el apoyo (lw / sw 0x80022C18, 0x80022C24) */
     s16 h02;
     u8 pad04;
-    u8 b05;                 /* cuadros de espera entre cuadros de la animacion: sb en func_8002CB8C (0x8002CC64), lbu en 0x8002CD58 */
+    u8 b05;                 /* cuadros de espera entre cuadros de la animacion: sb en func_8002CB8C (0x8002CC64) y lbu en 0x8002CD58; func_80020B90: sb en 0x800213BC y lbu en 0x800255D8 (indice de paso 5 - acumulado / 32) */
     u8 pad06[2];
     u8 b08;
     u8 pad09;
@@ -154,13 +154,10 @@ typedef struct Objeto {
     u16 w3A;                /* menus_e_interfaz.c */
     u16 w3C;                /* las rutinas de creacion lo escriben con sh y el resto lo lee con lhu */
     u16 w3E;                /* func_800353B0 */
-    s16 h40;                /* empuje pedido en X por el jugador: lh en func_8002D68C (0x8002D814) y sh zero (0x8002D83C) */
-    u8 pad42[2];
-    s16 h44;                /* empuje pedido en Z: lh en func_8002D68C (0x8002D828) y sh zero (0x8002D844) */
-    u8 pad46[2];
+    SVECTOR empuje;         /* +0x40: empuje externo que func_80020B90 suma al desplazamiento (lh x3 en 0x80021B24, 0x80021B38, 0x80021B4C) y borra (sh zero en 0x80021B60, 0x80021B64, 0x80021B68); vx y vz los escribe el objeto empujado con sh (0x80023CA0, 0x80023CB0). func_8002D68C (bloque empujable) lee el empuje pedido en X y en Z con lh (0x8002D814, 0x8002D828) y lo pone a cero con sh zero (0x8002D83C, 0x8002D844) */
     SVECTOR min;            /* caja del volumen (+0x48) y mitades de sprite que lee func_8001DF28 con lh */
     SVECTOR max;            /* +0x50 */
-    u8 pad58[0x68 - 0x58];
+    VECTOR objetivo;        /* +0x58: punto de interaccion; func_80020B90 lo lee con lhu (0x80022A8C, 0x80022AAC) y lw 0x5C($s4) (0x80022B44) y pasa su direccion a func_800171E4 (0x800228C4) */
     s32 i68;                /* func_8001D0FC: sw zero */
     struct Objeto* p6C;     /* func_80034E7C: lw 0x6C($s1) en 0x80034EE0 */
     struct Objeto* p70;     /* func_80034E7C: lw 0x70($s1) en 0x80034EBC, sw $zero en 0x80034F60 y 0x80034FDC */
@@ -181,7 +178,16 @@ typedef struct Objeto {
     ParametrosObjeto param; /* +0xCC: func_8001CF50, func_8001DF28, func_8001E1A4 */
     struct NodoSecuencia* secuencias;   /* func_8001CD84, func_8001D0FC: lw */
     u8* bloque;             /* func_8001CD84: base del bloque de animacion */
-    struct NodoSecuencia* apoyos;       /* func_8001D0FC: lw */
+    /*
+     * +0xFC: lista enlazada de registros cuyo formato depende de la clase del objeto (w2C), de modo
+     * que el campo conserva el tipo de func_8001D0FC (lw) y cada manejador lo convierte con un cast
+     * a su registro. Los manejadores de disparadores (func_8002D03C y el resto de logica_de_niveles_3)
+     * leen NodoDisparador y pasan a TestLogicCond y RunLogicAction el nodo + 0x10 (addiu 0x10 en
+     * 0x8002D37C y 0x8002D3A4); el jugador (func_80020B90) lee Transicion y les pasa el nodo + 0xE
+     * (addiu 0xE en 0x80024CB8 y 0x80024CCC). Son dos disenos de registro distintos, no dos nombres
+     * del mismo.
+     */
+    struct NodoSecuencia* apoyos;
     s32 i100;               /* func_8001C424, func_8001C6CC, func_8001C998: lw / sw */
     s16 h104;               /* func_80020210, func_80020240: lh */
     s16 h106;               /* func_80020210: sh 0x106($a0) en 0x80020228; func_80020240: lhu 0x106($s0) en 0x8002030C; sin lectura con signo */
@@ -250,7 +256,7 @@ typedef struct EstadoCamara {
     s32 rz;
     GsCOORDINATE2* super;
     u8 pad20[0x68 - 0x20];
-    s32 c68;                /* func_8001CC68: sw, copia del punto de vista */
+    s32 c68;                /* func_8001CC68: sw, copia del punto de vista; c68..c70 son el mismo triple que D_8006D990[3] (0x8006D928 + 0x68): func_80033358 escribe sw 0x68($s0) en 0x80033DDC y 0x800344DC y lo carga por la direccion absoluta (lui/addiu %lo(D_8006D990) en 0x80034138), asi que ambos accesos son forzosos y no se unifican */
     s32 c6C;
     s32 c70;
     u8 pad74[0x80 - 0x74];
@@ -261,7 +267,7 @@ typedef struct EstadoCamara {
     s16 s8A;
     s16 h8C;                /* func_8001D588: sh zero */
     s16 h8E;                /* func_8001D588: sh zero */
-    s32 i90;                /* func_80032894: sw zero */
+    struct Objeto* i90;     /* func_80032894: sw zero en 0x800329CC; func_80033358: lw 0x90($s1) en 0x80033F18 seguido de lw 0xE4/0xEC del objeto (0x80033F2C/44), es decir un Objeto*; es la misma palabra que D_8006D9B8[0] (0x8006D928 + 0x90): se pone a cero con sw %lo(D_8006D9B8) en 0x80033574 y con sw zero 0x90($a1) en 0x80033600, asi que ambos accesos son forzosos */
     s32 c94;                /* func_8001CC68: sw, copia del punto de vista */
     s32 c98;
     s32 c9C;
@@ -273,22 +279,25 @@ typedef struct EstadoCamara {
     s32 cB4;                /* func_8001CC68: sw, copia del punto de vista */
     s32 cB8;
     s32 cBC;
-    u8 padC0[4];
+    u8 padC0[0xC4 - 0xC0];
     /*
      * Punto de vista deseado (+0xC4) y punto de mira deseado (+0xD4) que fijan los directores de
-     * camara, y distancia de acercamiento (+0xE4). Los escribe func_8002C1DC con sw: 0x8002C574,
+     * camara, y distancia de acercamiento (+0xE4). func_8002C1DC los escribe con sw: 0x8002C574,
      * 0x8002C590 y 0x8002C5D0 (vista), 0x8002C6E0, 0x8002C6FC y 0x8002C71C (mira), 0x8002CAA4
-     * (distancia); los lee con lw en 0x8002C670, 0x8002C690 y 0x8002C6B0.
+     * (distancia), y los lee con lw en 0x8002C670, 0x8002C690 y 0x8002C6B0. func_80033358 usa la
+     * misma memoria: sw 0xC4/0xC8/0xCC($s0) en 0x80033D2C, 0x80033D3C y 0x80033D54 (destino de la
+     * mira en el modo guiado, lhu en 0x80033C10), lw 0xD4/0xD8/0xDC($s1) en 0x80033B58, 0x80033B60 y
+     * 0x80033B80 (destino alternativo) y lw 0xE4($s0) en 0x80033CE8 (distancia de la transicion).
      */
-    s32 dvx;
-    s32 dvy;
-    s32 dvz;
-    u8 padD0[4];
-    s32 dmx;
-    s32 dmy;
-    s32 dmz;
-    u8 padE0[4];
-    s32 zoom;
+    s32 iC4;
+    s32 iC8;
+    s32 iCC;
+    u8 padD0[0xD4 - 0xD0];
+    s32 iD4;
+    s32 iD8;
+    s32 iDC;
+    u8 padE0[0xE4 - 0xE0];
+    s32 iE4;
 } EstadoCamara;
 
 /*
@@ -469,6 +478,33 @@ extern void* D_80069560;
 extern s32 D_80069618;
 extern s32 D_8006961C;
 extern s32 D_80069624;
+
+/*
+ * D_800694DC: objeto de la sala. func_80033358 le cambia el modelo (+0x78), la etiqueta de grupo
+ * (+0x26) y el valor de +0x28 cuando la camara cruza a otra zona; el pozo de objetos lo reserva
+ * (func_8003652C, gestion_y_dibujo_de_objetos.c). lw de 32 bits.
+ */
+extern Objeto* D_800694DC;
+
+/*
+ * D_800695B8: zona bajo la camara (o la ultima zona valida del objeto). func_80033358 la escribe con sw
+ * y la relee con lw antes de probar si hay zona; el motor guarda su direccion en la tabla de datos del
+ * overlay (D_8006B2F8[6] = &D_800695B8). El apuntado es al grupo de la zona (u16 en +0).
+ */
+extern u16* D_800695B8;
+
+/*
+ * D_80069608: indicadores de la camara de apuntado. func_80033358 limpia el bit 1 (and con -3) y lo
+ * activa (ori 2); los eventos activan el bit 0. lw / sw de 32 bits; tambien lo leen func_80020B90
+ * (0x80020C7C, 0x80023444) y lo modifica con or movimiento_y_objetos_de_escena_2.c.
+ */
+extern u32 D_80069608;
+
+/*
+ * D_8006D934: mitad alta de D_8006D928 (+0xC, la mira); el original la direcciona con su propio lui
+ * y la resta con la macro vectorial GEO_RESTAR_W (menus_e_interfaz.c, func_80033358).
+ */
+extern s32 D_8006D934[3];
 
 /* --- Motor e inicializacion ------------------------------------------------------------- */
 
@@ -667,14 +703,20 @@ extern s16 D_80069668;
 /* D_80069690: accesos del ensamblador: lw x5, sw x8 */
 extern s32 D_80069690;
 
+
+/* D_80069584: animacion previa del objeto controlado; sh en func_80020B90 (0x80021048, 0x80024EF8) y sh zero en inicializacion_de_motor.c */
+extern s16 D_80069584;
+
 /* D_8006AA7C: accesos del ensamblador: lbu x17 */
 extern u8 D_8006AA7C;
 
-/* D_8006CFF0 */
-extern u8 D_8006CFF0[];
-
-/* D_8006D038 */
-extern u8 D_8006D038[];
+/*
+ * D_8006CFF0 y D_8006D038: buffers del mando. Se declaran como bytes sueltos y no como arreglos: el
+ * original los direcciona con un `la` indivisible (lui y addiu contiguos, sin relleno del hueco de
+ * retardo del jal), que solo se emite para objetos de hasta 8 bytes con -G8 (func_80044A04).
+ */
+extern u8 D_8006CFF0;
+extern u8 D_8006D038;
 
 /* D_80076130 */
 extern MATRIX D_80076130;
@@ -795,6 +837,9 @@ void func_80040D98(RECT* a0, s16* a1);
  * volatile en los dos archivos: el cargador lo escribe desde el retorno de llamada de lectura y la
  * presentacion de cuadros lo lee; sin volatile en el cargador func_8004109C pasa de 105 a 705.
  */
+
+/* D_800693B8: dato pequeno de $gp (0x80069320 + 0x98) que declara config/symbols.txt; sh en 0x80020E68, 0x80021538, 0x8002166C, 0x80021774 y 0x80021784, lhu en 0x80021750 (todos 0x98($gp)). Se define en movimiento_y_objetos_de_escena_2.c y en logica_de_niveles.c: ambos lo direccionan con $gp. */
+extern s16 D_800693B8;
 
 /* D_800693F0: accesos del ensamblador: sw(gp) x3, lw(gp) x1, sw x1 */
 extern s32 D_800693F0;

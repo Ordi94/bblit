@@ -536,6 +536,38 @@ def leer_datos_pequenos(raiz: Path) -> dict[str, int]:
     return {} if datos is None else dominio.datos_pequenos(datos)
 
 
+def verificar_configuracion(raiz: Path) -> list[str]:
+    """
+    Compara ``[datos_pequenos]`` de las opciones de compilacion con ``config/symbols.txt``.
+
+    Contexto:
+        Implementa ``verificar-config`` y el aviso que ``split`` imprime al terminar. Solo lee: no
+        modifica ningun archivo ni cambia lo que construyen ``build`` o ``verify``.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+
+    Returns:
+        list[str]: Avisos de ``dominio.avisos_datos_pequenos``; vacia si no hay tabla o no hay
+        direcciones repetidas.
+
+    Raises:
+        FileNotFoundError: Si falta ``config/symbols.txt``.
+        ValueError: Si algun archivo excede el tamano permitido o las opciones no son validas (por
+            ejemplo, el toml repite una clave).
+
+    Ejemplo:
+        avisos = verificar_configuracion(Path("."))
+    """
+    ruta = raiz / SIMBOLOS_PROYECTO
+    if not ruta.is_file():
+        raise FileNotFoundError(f"falta {SIMBOLOS_PROYECTO}")
+    if ruta.stat().st_size > MAX_BYTES_SIMBOLOS:
+        raise ValueError(f"{SIMBOLOS_PROYECTO} excede el tamano permitido")
+    declarados = dominio.simbolos_declarados(ruta.read_text(encoding="utf-8"))
+    return dominio.avisos_datos_pequenos(leer_datos_pequenos(raiz), declarados)
+
+
 def _leer_opciones(raiz: Path) -> object | None:
     """Carga ``config/opciones_compilacion.toml`` con cota de tamano; ``None`` si no existe."""
     ruta = raiz / OPCIONES_COMPILACION

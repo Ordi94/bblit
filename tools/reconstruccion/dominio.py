@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 import struct
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -466,6 +466,87 @@ def direcciones_de_funciones(texto: str) -> dict[str, int]:
         if coincidencia is not None and "type:func" in coincidencia.group(3):
             direcciones[coincidencia.group(1)] = int(coincidencia.group(2), 16)
     return direcciones
+
+
+_PATRON_TIPO_SIMBOLO = re.compile(r"\btype:(\w+)")
+
+
+@dataclass(frozen=True)
+class SimboloDeclarado:
+    """Simbolo de ``config/symbols.txt`` visto desde su direccion.
+
+    Attributes:
+        nombre: Nombre del simbolo.
+        tipo: Valor de ``type:`` (``func``, ``u32``...); vacio si la linea no lo declara.
+    """
+
+    nombre: str
+    tipo: str
+
+
+def simbolos_declarados(texto: str) -> dict[int, list[SimboloDeclarado]]:
+    """
+    Agrupa por direccion los simbolos de un archivo de simbolos de splat.
+
+    Contexto:
+        Base de la comprobacion de ``[datos_pequenos]``: permite saber que declara
+        ``config/symbols.txt`` en la direccion de cada clave del toml. Se leen funciones y datos;
+        las lineas de comentario o sin forma ``nombre = 0x...; // ...`` se ignoran.
+
+    Args:
+        texto (str): Contenido de ``config/symbols.txt``.
+
+    Returns:
+        dict[int, list[SimboloDeclarado]]: Simbolos por direccion, en el orden del archivo.
+
+    Ejemplo:
+        declarados = simbolos_declarados("D_80069330 = 0x80069330; // type:u8 size:0x8")
+    """
+    declarados: dict[int, list[SimboloDeclarado]] = {}
+    for linea in texto.splitlines():
+        coincidencia = _PATRON_FUNCION_SIMBOLO.match(linea.strip())
+        if coincidencia is None:
+            continue
+        tipo = _PATRON_TIPO_SIMBOLO.search(coincidencia.group(3))
+        simbolo = SimboloDeclarado(coincidencia.group(1), tipo.group(1) if tipo else "")
+        declarados.setdefault(int(coincidencia.group(2), 16), []).append(simbolo)
+    return declarados
+
+
+def avisos_datos_pequenos(
+    datos: Mapping[str, int], declarados: Mapping[int, Sequence[SimboloDeclarado]]
+) -> list[str]:
+    """
+    Avisa de las claves de ``[datos_pequenos]`` cuya direccion ya declara ``config/symbols.txt``.
+
+    Contexto:
+        El toml da nombre y direccion a los datos que el codigo direcciona por ``$gp`` hasta que la
+        tabla de simbolos los declare; en cuanto esta los declara, la clave sobra o, peor, puede
+        contradecirla. La comprobacion solo informa: no cambia ningun archivo ni el resultado de
+        la construccion. Tres casos: mismo nombre y tipo de dato (la clave puede retirarse), otro
+        nombre en esa direccion o el mismo nombre declarado como funcion (otro tipo).
+
+    Args:
+        datos (Mapping[str, int]): Tabla ``datos_pequenos`` del toml (nombre a direccion).
+        declarados (Mapping[int, Sequence[SimboloDeclarado]]): Resultado de ``simbolos_declarados``.
+
+    Returns:
+        list[str]: Un aviso por cada simbolo repetido, en el orden de las claves del toml.
+
+    Ejemplo:
+        avisos = avisos_datos_pequenos({"D_800694A8": 0x800694A8}, simbolos_declarados(texto))
+    """
+    avisos: list[str] = []
+    for nombre, direccion in datos.items():
+        for existente in declarados.get(direccion, ()):
+            if existente.nombre != nombre:
+                motivo = f"otro nombre: config/symbols.txt declara {existente.nombre} en esa direccion"
+            elif existente.tipo == "func":
+                motivo = "otro tipo: config/symbols.txt lo declara como funcion"
+            else:
+                motivo = "mismo nombre: ya figura en config/symbols.txt, la clave puede retirarse"
+            avisos.append(f"[datos_pequenos] {nombre} = 0x{direccion:08X}: {motivo}")
+    return avisos
 
 
 def datos_pequenos(datos: object) -> dict[str, int]:

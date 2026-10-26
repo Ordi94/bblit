@@ -2,11 +2,16 @@
 #define NIVELES_H
 
 /*
- * Tipos de los manejadores de objeto de la logica de niveles (tabla D_8005E35C, indexada por
- * Objeto.w2C). El objeto de escena vive en globales.h y los registros de animacion en motor.h.
+ * Tipos de la logica de niveles. Manejadores de objeto de la tabla D_8005E35C (indexada por
+ * Objeto.w2C): memorias de trabajo del scratchpad (0x1F800000) y registros de las listas que el
+ * objeto lleva en +0xF8 y +0xFC. El objeto de escena vive en globales.h y los registros de
+ * animacion en motor.h. Los desplazamientos y anchos de cada tipo salen del ensamblador de la
+ * funcion que se cita en su comentario.
  */
 #include "common.h"
+#include "arranque.h"
 #include "globales.h"
+#include "geometria.h"
 #include "motor.h"
 
 /*
@@ -314,6 +319,121 @@ typedef struct TrabajoBloque {
                       "move $11, $12\n\tsw $9, 0($8)\n\tsw $10, 4($8)\n\tsw $11, 8($8)" \
                       : : "r"(p) : "$8", "$9", "$10", "$11", "$12", "memory")
 
+/*
+ * Registro de estado de la lista de +0xF8 del objeto (el estado vigente). El enlace va en +0 y
+ * el identificador en +4 (tambien codigo de accion que recibe func_8001D414). s06 es la animacion
+ * del estado (se compara con trabajo.i14), s08 sus parametros (el bit 0x8000 impide reiniciarla),
+ * w0A la clave de la lista de transiciones, flags0C y flags10 las capacidades del estado, s14 el
+ * multiplicador de velocidad y s16 y s18 la amplitud y el paso del salto.
+ */
+typedef struct RegistroEstado {
+    struct RegistroEstado* sig;
+    u16 id;
+    s16 s06;
+    s16 s08;
+    u16 w0A;
+    u32 flags0C;
+    s32 flags10;
+    s16 s14;
+    s16 s16;
+    s16 s18;
+} RegistroEstado;
+
+/*
+ * Transicion de la lista de +0xFC del objeto: botones exigidos en w6 (0xFFF1 es comodin) y
+ * mascara de botones w8, estado siguiente en wA (0xFFF3 no cambia de estado), accion sobre el
+ * objeto portado en wC (0xD3 lo suelta), elemento de logica de 8 bytes en +0xE para TestLogicCond
+ * y RunLogicAction, modo en w18 (el bit 2 invierte la mascara de m24 y el bit 1 la de m28) y las
+ * mascaras que se comparan con los indicadores del portado (m1C), del apoyo (m20), del propio
+ * objeto (m24) y de flags18 (m28).
+ */
+typedef struct Transicion {
+    struct Transicion* sig;
+    u16 id;
+    u16 w6;
+    u16 w8;
+    u16 wA;
+    u16 wC;
+    u8 item[8];
+    u8 pad16[2];
+    u16 w18;
+    u8 pad1A[2];
+    u32 m1C;
+    u32 m20;
+    u32 m24;
+    u32 m28;
+} Transicion;
+
+/*
+ * Apoyo hallado por func_80020354: el objeto al que el jugador se agarra en +0 y, en +0xA, la
+ * altura relativa que se copia a la traslacion del apoyo.
+ */
+typedef struct ApoyoHallado {
+    Objeto* objeto;
+    u8 pad04[6];
+    s16 h0A;
+} ApoyoHallado;
+
+/* Velocidad local del cuadro: x sin uso, altura en y, avance en z (carga GTE de VXY0 y VZ0). */
+typedef struct VelocidadLocal {
+    s16 x;
+    u16 y;
+    u16 z;
+    s16 pad06;
+} VelocidadLocal;
+
+/*
+ * Memoria de trabajo de la logica del jugador en el scratchpad (0x1F800000). Se borra entera al
+ * entrar y no sobrevive al cuadro. Los anchos y signos de cada campo (lh, lhu, lw) son los que el
+ * ensamblador de func_80020B90 usa; paso se carga como vector de medias palabras en el GTE y
+ * func_80017478 lo recibe como SVECTOR. A partir de 0x148 empieza el area de trabajo que reciben
+ * las consultas de terreno y de volumen (func_80019474 exige 0x1C8 bytes libres por debajo de
+ * 0x1F8003FF).
+ */
+typedef struct ScratchJugador {
+    s16 paso_x;
+    u16 paso_y;
+    u16 paso_z;
+    u16 pad06;
+    VelocidadLocal vel;
+    u16 ang_x;
+    u16 ang_y;
+    u16 ang_z;
+    u16 pad16;
+    Vec3 desp;
+    u8 pad24[4];
+    Vec3 resp;
+    u8 pad34[4];
+    VECTOR punto;
+    MATRIX m;
+    ResultadoBaldosa res;
+    u8 pad80[0xA8 - 0x80];
+    ApoyoHallado* apoyo_hallado;
+    s16 res_peldano;
+    u8 padAE[2];
+    s32 tmp;
+    Objeto* tocado;
+    VECTOR rel;
+    Objeto* tocado2;
+    RegistroEstado* reg;
+    Transicion* trans;
+    Transicion* cand;
+    NodoSecuencia* sec;
+    u8 padDC[4];
+    u16 paso_vigente;
+    u16 estado_sig;
+    GsCOORDINATE2* cursor;
+    SVECTOR tmp_sv;
+    VECTOR tmp_v;
+    u32 resp_apoyo[3];
+    u8 pad10C[0x12C - 0x10C];
+    AcumuladorNodos acum;
+} ScratchJugador;
+
+/* Transformacion del jugador relativa al apoyo (+0x18C) y la del objeto portado (+0x11C). */
+#define APOYO(o) ((ParametrosObjeto*)((u8*)(o) + 0x18C))
+#define PORTADO(o) ((ParametrosObjeto*)((u8*)(o) + 0x11C))
+
 extern s32 BugsRand(void);
 extern s32 TestLogicCond(void* o, void* registro);
 extern void RunLogicAction(void* o, void* registro);
@@ -323,18 +443,18 @@ extern void func_8001E528(Objeto* o, BloqueTrabajo* b, u32 modo, void* area);
 extern void func_8001E600(Objeto* o, BloqueTrabajo* b, u32 modo, void* area);
 extern u32 func_80045C4C(u32 a0, void* a1, Objeto* a2);
 extern u32 func_80045498(Objeto* objeto, void* guion, BloqueTrabajo* bloque);
-extern s32 func_8001F268(Objeto* o, BloqueTrabajo* b, u32 anim, u32 params, void* area);
+extern s32 func_8001F268(Objeto* o, BloqueTrabajo* b, s32 id, s32 arg, void* w);
 extern Objeto* func_80036734(s16 id, s32* pos, u16* ang);
 extern void func_8001CD84(Objeto* o, u32 id, void* area);
 extern void func_8001D31C(s32 x, s32 y, s32 z);
 extern s16 func_80018F80(Objeto* a, Objeto* b, void* area);
 extern s32 func_8001D75C(Objeto* o, s32 modo, void* area);
-extern Objeto* func_800171E4(Objeto* a, void* pos, u32 mascara, u32 excluir, void* area);
+extern Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o);
 extern Objeto* func_80016ED0(Objeto* a, u32 mascara, void* area);
-extern s32 func_80016C0C(Objeto* a, u32 mascara, void* area);
-extern Objeto* func_80017478(Objeto* a, void* v, void* w, u32 mascara);
-extern void func_8001CBB8(Objeto* o, void* d, void* r, void* w);
-extern void func_8001E1A4(Objeto* o, void* c);
+extern Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o);
+extern Objeto* func_80017478(Objeto* a, SVECTOR* v, void* w, u32 mascara);
+extern void func_8001CBB8(Objeto* o, Movimiento* d, ResultadoBaldosa* r, void* w);
+extern void func_8001E1A4(Objeto* o, ConsultaPlano* c);
 extern void func_8001D0FC(Objeto* o, s32 id, void* area);
 extern s32 func_8001E720(Objeto* o, BloqueTrabajo* b, u32 anim, u32 params, void* area);
 

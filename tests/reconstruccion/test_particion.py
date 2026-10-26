@@ -251,14 +251,14 @@ def test_generar_progreso_lee_los_motivos_de_los_fuentes(tmp_path: Path) -> None
     )
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "a.c").write_text(
-        "#ifdef NON_MATCHING\n/* Intento a medias. */\nvoid func_80014AC4(void)\n{\n}\n#else\n"
+        "#ifdef NON_MATCHING\n/* Pendiente: puntuacion 9. Intento a medias. */\n"
+        "void func_80014AC4(void)\n{\n}\n#else\n"
         'INCLUDE_ASM("asm/nonmatchings/a", func_80014AC4);\n#endif\n',
         encoding="utf-8",
     )
     progreso.generar_progreso(tmp_path)
-    assert "- `func_80014AC4`: Intento a medias." in (tmp_path / "docs" / "PROGRESO.md").read_text(
-        encoding="utf-8"
-    )
+    documento = (tmp_path / "docs" / "PROGRESO.md").read_text(encoding="utf-8")
+    assert "- `func_80014AC4`: Pendiente: puntuacion 9. Intento a medias." in documento
 
 
 def test_combinar_simbolos_deja_la_ultima_fuente_en_una_direccion_en_conflicto_y_ordena_por_direccion() -> (
