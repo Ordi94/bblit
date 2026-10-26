@@ -122,7 +122,15 @@ def _orden_split(raiz: Path, variantes: Sequence[VarianteExtraida], ejecutar: Ej
 def _orden_build(
     raiz: Path, variantes: Sequence[VarianteExtraida], toolchain: Path, ejecutar: Ejecutor
 ) -> int:
-    """Ejecuta ``build`` sobre las variantes elegidas."""
+    """
+    Ejecuta ``build`` sobre las variantes elegidas.
+
+    Invalida primero la salida de TODAS las elegidas: si la construccion de una variante
+    falla, las posteriores no llegan a construirse y su binario anterior no debe sobrevivir
+    (``verify`` lo aprobaria). Tambien cubre el fallo previo al ensamblado (toolchain ausente).
+    """
+    for variante in variantes:
+        particion.invalidar_salida(raiz, variante.identificador)
     herramientas = infra.resolver_herramientas(leer_lock(raiz / RUTA_LOCK), toolchain, sys.executable)
     for variante in variantes:
         destino = particion.construir(raiz, variante, herramientas, ejecutar)
