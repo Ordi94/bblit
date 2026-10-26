@@ -208,7 +208,9 @@ typedef struct Objeto {
     u16 w196;
     u8 pad198[0x1A8 - 0x198];
     s32 i1A8;               /* func_80020A90: sw */
-    u8 pad1AC[0x1F4 - 0x1AC];
+    u8 pad1AC[0x1B4 - 0x1AC];
+    u32 w1B4;               /* func_800353B0: lw, segundo argumento de func_80033358 */
+    u8 pad1B8[0x1F4 - 0x1B8];
 } Objeto;
 
 /*
@@ -338,10 +340,9 @@ extern Objeto* D_80069518;
 
 /*
  * D_80069630: cabeza de la lista de objetos solidos que recorren las consultas de volumen
- * (enlace en +0x10, ver ObjetoVolumen en geometria.h). El arranque solo la pasa a otras rutinas.
+ * (enlace en +0x10, sig10 de Objeto). El arranque solo la pasa a otras rutinas.
  */
-struct ObjetoVolumen;
-extern struct ObjetoVolumen* D_80069630;
+extern Objeto* D_80069630;
 
 /*
  * D_800694FC: puntero al bloque de zonas de colision del nivel. Se guarda con sw al cargar el

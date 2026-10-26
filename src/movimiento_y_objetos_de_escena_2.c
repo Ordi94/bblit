@@ -862,7 +862,7 @@ typedef struct EventoZona {
 
 extern s32 D_800694F8;
 /* Definida en graficos_y_gte.c: devuelve el nodo de plano que toca el objeto (sin prototipo en las cabeceras, el retorno se tomaba como int). */
-extern NodoVolumen* func_80019180(ObjetoVolumen* a, VECTOR* p, ConsultaPlano* o);
+extern NodoVolumen* func_80019180(Objeto* a, VECTOR* p, ConsultaPlano* o);
 extern s32 D_80010000;
 extern s32 TestLogicCond(void* o, void* item);
 extern void RunLogicAction(void* o, void* item);
@@ -887,7 +887,7 @@ void func_8001E1A4(Objeto* o, ConsultaPlano* c)
     if (D_80069662 != 0) {
         return;
     }
-    nodo = func_80019180((ObjetoVolumen*)o, (VECTOR*)&o->param.trans.vx, c);
+    nodo = func_80019180(o, (VECTOR*)&o->param.trans.vx, c);
     if (nodo == NULL) {
         return;
     }
