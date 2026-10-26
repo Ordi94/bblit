@@ -23,7 +23,8 @@ struct ParCuadro;
 typedef struct Fotograma {
     u8 pad00[0x0A];
     u16 h0A;
-    u8 pad0C[4];
+    u16 w;                  /* +0x0C: func_8001E720 lhu, anchura del cuadro de sprite */
+    u16 h;                  /* +0x0E: func_8001E720 lhu, altura del cuadro de sprite */
 } Fotograma;
 
 typedef struct TablaFotogramas {
@@ -599,6 +600,9 @@ extern u8 D_800695F6;
 
 /* D_8006960C: accesos del ensamblador: sw x3, lw x1 */
 extern s32 D_8006960C;
+
+/* D_80069608: banderas de la escena que func_8001E720 y los eventos activan con ori 1; accesos del ensamblador: lw, sw */
+extern u32 D_80069608;
 
 /* D_80069614: accesos del ensamblador: sw x2, lw x3 */
 extern u32 D_80069614;

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "gte.h"
 #include "motor.h"
+#include "animacion.h"
 
 /*
  * Registro de dieciseis bytes de un cuadro de sprite: banderas en +2 (bit 3 = espejo), pagina
@@ -186,7 +187,301 @@ void func_8001E600(Objeto* o, ConjuntoSprites* c, u32 modo)
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E600);
 #endif
 
+/*
+ * Avanza un cuadro la animacion de un objeto cuyo dibujo es un sprite. `modo` trae las ordenes:
+ * 0x20 reinicia (estado 0x100, devuelve 0x20), 0x4 quita la pausa, 0x10 la pone (devuelve 0x200)
+ * y 0x1, 0x2 u 0x8 empiezan una animacion (con 0x8 no se busca: se reutiliza el nodo ya
+ * localizado). Devuelve 0x200 mientras la animacion sigue, 0x100 al terminar y 0x400 si la
+ * animacion pedida no existe. `area` es el area de trabajo del llamador.
+ *
+ * El original crea el ayudante raiz del objeto la primera vez y se queda en un bucle infinito si
+ * el pozo esta agotado. En cada cuadro dispara los sonidos y los eventos del cuadro actual: un
+ * evento puede crear un hijo acoplado, un objeto suelto, agarrar o soltar al protagonista.
+ */
+#ifdef NON_MATCHING
+/* Pendiente: puntuacion 2890 con la configuracion versionada (g = 8 del archivo). Flujo y almacenes identicos al original; difiere el reparto de registros callee-saved (el cursor y el identificador de animacion intercambian $s3 y $s4 porque el indice de 16 bits se asigna antes) y la planificacion de las cadenas de almacenes del agarre y de la creacion del hijo. */
+u32 func_8001E720(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
+{
+    NodoAnimacion* n;
+    Fotograma* fot;
+    Ayuda* ay;
+    Objeto* h;
+    Objeto* j;
+    GsCOORDINATE2* nc;
+    u16 i;
+    u16 r;
+    s32 k;
+    s32 t;
+    s32 m;
+    s32 reserva[4];
+    SVECTOR giro;
+    VECTOR pos;
+    AcumuladorNodos acc;
+
+    if (modo & 0x20) {
+        c->flags18 = 0x100;
+        return 0x20;
+    }
+    if (modo & 4) {
+        if (c->flags18 & 0x10) {
+            c->flags18 = c->flags18 & ~0x10;
+            goto sigue;
+        }
+    }
+    if (modo & 0x10) {
+        c->flags18 = c->flags18 | 0x10;
+        return 0x200;
+    }
+sigue:
+    c->flags18 = c->flags18 & ~0x3000;
+    if (o->u78.p == 0) {
+        ay = func_800363D4();
+        o->u78.ayudas = ay;
+        if (ay == 0) {
+            for (;;) {
+            }
+        }
+        for (n = o->lista; n != 0; n = n->sig) {
+            if (n->def->tipo == 8) {
+                break;
+            }
+        }
+        CURSOR_TABLA(c) = n->def->tabla;
+        if (o->flags08 & 0x200000) {
+            o->u78.ayudas->flags8 = 1;
+            if (o->p70 == 0) {
+                o->coord.param = PARAMETROS_SDK(o);
+                o->coord.super = 0;
+            }
+            func_8001CF50(o);
+            func_8001CFCC(&o->coord);
+        } else {
+            o->u78.ayudas->flags8 = 0x20;
+        }
+    }
+    if (modo & 0xB) {
+        if (!(modo & 8)) {
+            for (n = o->lista; n != 0; n = n->sig) {
+                if (n->def->tipo == anim) {
+                    break;
+                }
+            }
+            if (n == 0) {
+                c->flags18 = 0x100;
+                return 0x400;
+            }
+        }
+        fot = CURSOR_TABLA(c)->fotogramas;
+        if (o->flags08 & 0x200000) {
+            k = o->param.escala.vx;
+            o->min.vx = o->min.vz = (-(fot->w >> 1) * k) >> 12;
+            o->min.vy = 0;
+            o->max.vx = o->max.vz = ((fot->w >> 1) * k) >> 12;
+            o->max.vy = -((fot->h * o->param.escala.vy) >> 12);
+            if (o->flags0C & 0x4000000) {
+                o->param.trans.vy = o->param.trans.vy + (fot->h >> 1);
+            }
+            m = fot->w * 2;
+            t = (m * o->param.escala.vx) >> 12;
+            o->w2E = (u16)o->max.vx + t;
+            o->alcance2 = o->w2E * o->w2E;
+            o->s20 = (u16)o->s20 + t;
+        }
+        c->i14 = anim;
+        c->sonidos = (RegistroSonido*)n->def->sonidos;
+        c->b07 = n->def->n_sonidos;
+        c->eventos = (RegistroEvento*)n->def->eventos;
+        c->b09 = n->def->n_eventos;
+        c->fotogramas = fot;
+        c->b04 = 0;
+        c->flags18 = modo | 0x1200;
+        c->flujo = (u32*)fot;
+        c->w00 = n->def->n_cuadros - 1;
+        c->duraciones = (ParCuadro*)n->def->tabla;
+        c->h02 = 0;
+        c->b08 = c->b05 = c->duraciones->ticks;
+    }
+    if ((u16)c->h02 == c->w00) {
+        if (c->b08 == 0) {
+            t = c->flags18;
+            if (t & 2) {
+                t = (t & ~0x200) | 0x100;
+                c->flags18 = t;
+                if (t & 0x800) {
+                    return 0x200;
+                }
+                return 0x100;
+            }
+            if (t & 1) {
+                c->flags18 = t | 0x80;
+            }
+            t = c->duraciones->ticks;
+            c->h02 = 0;
+            c->flags18 = c->flags18 | 0x1000;
+            c->b08 = c->b05 = t;
+        }
+    }
+    ((DibujarSprite)func_8001E528)(o, c, 0, area);
+    if (c->b08 == 0) {
+        if (c->b07 != 0) {
+            for (i = 0; i < c->b07; i++) {
+                if ((u16)c->h02 == c->sonidos[i].cuadro) {
+                    ((SonidoObjeto)func_8003F06C)(o, c->sonidos[i].id, 1, D_8006967C);
+                }
+            }
+        }
+    }
+    r = 1;
+    if (c->b09 != 0) {
+        if (c->b08 == 0) {
+            i = 0;
+            if (c->b08 < c->b09) {
+                do {
+                    if ((u16)c->h02 == c->eventos[i].cuadro && o->i68 != 0) {
+                        r = TestLogicCond(o, c->eventos[i].cond);
+                        if (r == 0) {
+                            goto siguiente;
+                        }
+                        RunLogicAction(o, c->eventos[i].cond);
+                        if (c->eventos[i].banderas & EVENTO_LIBERA_HIJO) {
+                            if (o->p6C != 0) {
+                                func_8003502C(o->p6C);
+                                o->p6C = 0;
+                            }
+                        }
+                        if (c->eventos[i].banderas & EVENTO_HIJO_ACOPLADO) {
+                            h = func_80036734((s16)c->eventos[i].id, (s32*)&pos, (u16*)&giro);
+                            if (h != 0) {
+                                o->flags18 |= ANIM_HIJO_VIVO;
+                                ANIM_CERO_W3((u8*)h + 0x134);
+                                ANIM_CERO_WH((u8*)h + 0x12C);
+                                ANIM_UNOS_W3(HIJO_PARAM(h));
+                                if (h->w1C == 1) {
+                                    D_80069608 |= 1;
+                                }
+                                if (h->p70 != 0 && h->p70->p6C == h) {
+                                    h->p70->p6C = 0;
+                                }
+                                h->coord.super = o->i68;
+                                h->w26 = o->w26;
+                                h->p70 = o;
+                                h->coord.param = (GsCOORD2PARAM*)HIJO_PARAM(h);
+                                if (!(c->eventos[i].banderas & EVENTO_SIN_SUSTITUIR)) {
+                                    if (o->p6C != 0) {
+                                        func_8003502C(o->p6C);
+                                    }
+                                    o->p6C = h;
+                                }
+                                nc = &h->coord;
+                                h->w26 = o->w26;
+                                func_8001CFCC(nc);
+                                acc.nodo = nc;
+                                func_8001CE64(&acc);
+                                h->param.trans.vx = acc.acc.vx;
+                                h->param.trans.vy = acc.acc.vy;
+                                h->param.trans.vz = acc.acc.vz;
+                            }
+                        }
+                        if (c->eventos[i].banderas & EVENTO_HIJO_SUELTO) {
+                            h = func_80036734((s16)c->eventos[i].id, o->apar, &o->param.giro.u.x);
+                            if (h != 0) {
+                                h->w26 = o->w26;
+                            }
+                        }
+                        if (c->eventos[i].banderas & EVENTO_HIJO_CON_GIRO) {
+                            h = func_80036734((s16)c->eventos[i].id, o->apar,
+                                              (u16*)((u8*)o->i68->param + 0x10));
+                            if (h != 0) {
+                                h->w26 = o->w26;
+                                h->param.giro.u.y = h->param.giro.u.y + (u16)o->i68->super->param->rotate.vy;
+                                func_8001CF50(h);
+                            }
+                        }
+                        if (c->eventos[i].banderas & EVENTO_AGARRA) {
+                            if (!(D_80069698->flags14 & 0x3000000)) {
+                                if (D_80069698->p70 == 0) {
+                                    if ((s16)func_80018D98(D_80069698, (VECTOR*)o->apar, area) != 0) {
+                                        if (c->eventos[i].banderas & EVENTO_AGARRE_SIN_DESFASE) {
+                                            AGARRE(D_80069698).trans.vx = 0;
+                                            AGARRE(D_80069698).trans.vy = 0;
+                                            AGARRE(D_80069698).trans.vz = 0;
+                                        } else {
+                                            AGARRE(D_80069698).trans.vx = D_80069698->param.trans.vx - o->apar[0];
+                                            AGARRE(D_80069698).trans.vy = D_80069698->param.trans.vy - o->apar[1];
+                                            AGARRE(D_80069698).trans.vz = D_80069698->param.trans.vz - o->apar[2];
+                                        }
+                                        D_80069698->param.trans.vx = o->apar[0];
+                                        D_80069698->param.trans.vy = o->apar[1];
+                                        AGARRE(D_80069698).escala.vz = D_80069698->param.escala.vz;
+                                        AGARRE(D_80069698).escala.vx = D_80069698->param.escala.vx;
+                                        AGARRE(D_80069698).giro.u.x = 0;
+                                        AGARRE(D_80069698).giro.u.y = 0;
+                                        AGARRE(D_80069698).giro.u.z = 0;
+                                        AGARRE(D_80069698).escala.vy = D_80069698->param.escala.vy;
+                                        D_80069698->coord.param = (GsCOORD2PARAM*)&AGARRE(D_80069698);
+                                        D_80069698->param.trans.vz = o->apar[2];
+                                        D_80069698->coord.super = o->i68;
+                                        D_80069698->w17E = 0;
+                                        D_80069698->flags14 = 0x2000000;
+                                        D_80069698->w17C = c->eventos[i].id;
+                                        o->p6C = D_80069698;
+                                        D_80069698->p70 = o;
+                                        func_8001CFCC(&D_80069698->coord);
+                                    }
+                                }
+                            }
+                        }
+                        if (c->eventos[i].banderas & EVENTO_SUELTA) {
+                            if (D_80069698->p70 == o) {
+                                if (o->p6C != 0) {
+                                    D_80069698->param.giro.u.x = o->param.giro.u.x;
+                                    D_80069698->param.giro.u.y = o->param.giro.u.y + 0x800;
+                                    D_80069698->coord.param = PARAMETROS_SDK(D_80069698);
+                                    D_80069698->coord.super = 0;
+                                    D_80069698->p70 = 0;
+                                    D_80069698->param.giro.u.z = o->param.giro.u.z;
+                                    o->p6C = 0;
+                                    D_80069698->w17E = 0;
+                                    D_80069698->w17C = c->eventos[i].id;
+                                }
+                            }
+                        }
+                        if (c->eventos[i].banderas & EVENTO_COLOCA) {
+                            if (!(D_80069698->flags14 & 0x3000000)) {
+                                if (D_80069698->p70 == 0) {
+                                    if ((s16)func_80018D98(D_80069698, (VECTOR*)o->apar, area) != 0) {
+                                        j = D_80069698;
+                                        j->param.giro.u.y = o->param.giro.u.y + 0x800;
+                                        j->w17E = 0;
+                                        j->flags14 = 0x2000000;
+                                        j->w17C = c->eventos[i].id;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (r == 1) {
+                        break;
+                    }
+siguiente:
+                    i++;
+                } while (i < c->b09);
+            }
+        }
+    }
+    if (c->b08 == 0) {
+        c->h02 = c->h02 + 1;
+        c->b08 = c->b05 = c->duraciones[(u16)c->h02].ticks;
+    }
+    c->b08 = c->b08 - 1;
+    if ((u16)c->h02 == c->w00) {
+        c->flags18 = c->flags18 | 0x2000;
+    }
+    return 0x200;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E720);
+#endif
 
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001F268);
 

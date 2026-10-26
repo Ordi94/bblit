@@ -127,7 +127,7 @@ typedef struct AreaCuadro {
  * Rutinas de interpretacion de eventos que invoca el avance de animacion: la condicion devuelve
  * un valor de 16 bits (el llamador lo enmascara con 0xFFFF).
  */
-extern u16 TestLogicCond(Objeto* o, void* registro);
+extern u32 TestLogicCond(Objeto* o, void* registro);
 extern void RunLogicAction(Objeto* o, void* registro);
 
 /*
@@ -164,5 +164,33 @@ extern u32 func_8001E720(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* ar
 #define ANIM_DIAGONAL_CERO(p) \
     __asm__ volatile ("move $8, %0\n\tmove $9, $0\n\tsw $9, 0($8)\n\tsw $9, 8($8)\n\tsh $9, 16($8)" \
                       : : "r"(p) : "$8", "$9", "memory")
+
+
+/*
+ * Rutinas que invoca el avance de animacion. func_8001E528 recibe el area de trabajo del llamador
+ * como cuarto argumento y func_8003F06C recibe el cuadro del anillo sin recortar (lh): se llaman
+ * con prototipos de palabra completa para que el llamador no normalice los argumentos.
+ */
+typedef void (*DibujarSprite)(Objeto*, BloqueTrabajo*, u32, u8*);
+typedef void (*SonidoObjeto)(Objeto*, s32, s32, s32);
+extern void func_8003502C(Objeto* o);
+extern void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave);
+extern s32 func_80018D98(Objeto* a, VECTOR* p, void* area);
+
+/*
+ * Tabla activa del cursor (+0x28): coincide con Objeto.tabla (+0x16C) cuando el cursor es
+ * Objeto.trabajo (+0x144), y func_8001E720 la escribe a traves del cursor.
+ */
+#define CURSOR_TABLA(c) (*(TablaFotogramas**)((u8*)(c) + 0x28))
+
+/*
+ * Bloque de parametros de agarre del protagonista (Objeto + 0x18C): mismo diseno que
+ * ParametrosObjeto; solape con campos de otras clases de objeto (w192, w196, i1A8), por eso se
+ * accede por desplazamiento.
+ */
+#define AGARRE(j) (*(ParametrosObjeto*)((u8*)(j) + 0x18C))
+
+/* Parametros propios de un objeto hijo recien creado (Objeto + 0x11C). */
+#define HIJO_PARAM(h) ((u8*)(h) + 0x11C)
 
 #endif
