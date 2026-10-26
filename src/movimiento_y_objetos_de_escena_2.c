@@ -1,17 +1,8 @@
 #include "common.h"
 #include "gte.h"
 #include "motor.h"
+#include "menus.h"
 
-/*
- * Area de trabajo de func_8001CE64: nodo desde el que se acumula la traslacion en +0, vector de
- * entrada y de salida recortado a 16 bits en +4 y acumulador de 32 bits en +0xC. El llamador la
- * reserva en la pila o en la memoria rapida; no forma parte de ningun objeto.
- */
-typedef struct AcumuladorNodos {
-    Nodo* nodo;
-    SVECTOR v;
-    VECTOR acc;
-} AcumuladorNodos;
 
 /*
  * Datos de golpe del atacante: banderas en +0xC (0x200000 = golpe leve, siempre resta 1) y
@@ -39,19 +30,9 @@ extern InicioNivel D_8006ACD0;
  * tentativa) para que el ensamblador lo reescriba a $gp, y el enlace lo coloca en 0x800693B8.
  */
 s16 D_800693B8;
-extern u8 D_80010076;
 extern u32 D_80069608;
-extern u8 D_800694F2;
-extern u8 D_80010041;
-extern void func_8003AA50(u32 modo, u32 duracion);
-extern s32 D_80069690;
-extern s16 D_800693F6;
-extern s16 D_80069402;
-extern s16 D_80069416;
-extern u16 D_8001000A;
 extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
 
-extern s16 D_800693F8;
 
 /*
  * Coloca la camara detras de la posicion indicada: la rotacion del objeto controlado aplicada a
@@ -73,7 +54,7 @@ void func_8001CC68(VECTOR* p)
     v.vy = 0;
     v.vx = 0;
     v.vz = -0x64;
-    RotMatrix((SVECTOR*)&D_80069698->wDC, &m);
+    RotMatrix(&D_80069698->param.giro.rotate, &m);
     ApplyMatrix(&m, &v, &r);
     c = &D_8006D928;
     t = p->vx;
@@ -101,7 +82,7 @@ void func_8001CC68(VECTOR* p)
     c->c9C = t;
     c->vpz = t;
     c->cBC = t;
-    ang = D_80069698->wDE + 0x800;
+    ang = D_80069698->param.giro.u.y + 0x800;
     c->flags80 |= 0x40;
     D_80069416 = ang;
     D_80069402 = ang;
@@ -166,17 +147,17 @@ void func_8001CE64(AcumuladorNodos* e)
     e->v.vz = 0;
     if (e->nodo != NULL) {
         do {
-            gte_SetRotMatrix(&e->nodo->mtx);
+            gte_SetRotMatrix(&e->nodo->coord);
             gte_ldv0(&e->v);
             gte_rtv0();
             gte_stlvnl(&e->acc);
-            e->acc.vx += e->nodo->mtx.t[0];
-            e->acc.vy += e->nodo->mtx.t[1];
-            e->acc.vz += e->nodo->mtx.t[2];
+            e->acc.vx += e->nodo->coord.t[0];
+            e->acc.vy += e->nodo->coord.t[1];
+            e->acc.vz += e->nodo->coord.t[2];
             e->v.vx = e->acc.vx;
             e->v.vy = e->acc.vy;
             e->v.vz = e->acc.vz;
-            e->nodo = e->nodo->padre;
+            e->nodo = e->nodo->super;
         } while (e->nodo != NULL);
     }
 }
@@ -188,12 +169,12 @@ void func_8001CE64(AcumuladorNodos* e)
  */
 void func_8001CF50(Objeto* o)
 {
-    if (o->p78 != NULL) {
+    if (o->u78.p != NULL) {
         if ((o->flags08 & 0x200000) == 0) {
-            o->nodo.w00 = 0;
-            TransMatrix(&o->nodo.mtx, &o->nodo.transf->trans);
-            RotMatrix(&o->nodo.transf->rot, &o->nodo.mtx);
-            ScaleMatrix(&o->nodo.mtx, &o->nodo.transf->escala);
+            o->coord.flg = 0;
+            TransMatrix(&o->coord.coord, &o->coord.param->trans);
+            RotMatrix(&o->coord.param->rotate, &o->coord.coord);
+            ScaleMatrix(&o->coord.coord, &o->coord.param->scale);
         }
     }
 }
@@ -202,15 +183,15 @@ void func_8001CF50(Objeto* o)
  * Reconstruye la matriz del nodo desde su transformacion, en el orden rotacion, escala y
  * traslacion (el inverso del de func_8001CF50).
  */
-void func_8001CFCC(Nodo* n)
+void func_8001CFCC(GsCOORDINATE2* n)
 {
     MATRIX* m;
 
-    m = &n->mtx;
-    n->w00 = 0;
-    RotMatrix(&n->transf->rot, m);
-    ScaleMatrix(m, &n->transf->escala);
-    TransMatrix(m, &n->transf->trans);
+    m = &n->coord;
+    n->flg = 0;
+    RotMatrix(&n->param->rotate, m);
+    ScaleMatrix(m, &n->param->scale);
+    TransMatrix(m, &n->param->trans);
 }
 
 /*
@@ -239,18 +220,18 @@ void func_8001D028(Objeto* origen, Objeto* destino, u8* p)
     DesplazamientoObjetos* w;
 
     w = (DesplazamientoObjetos*)p;
-    w->d.vx = destino->xE4 - origen->xE4;
-    w->d.vy = destino->yE8 - origen->yE8;
-    w->d.vz = destino->zEC - origen->zEC;
-    w->origen.vx = origen->xE4;
-    w->origen.vy = origen->yE8;
-    w->origen.vz = origen->zEC;
+    w->d.vx = destino->param.trans.vx - origen->param.trans.vx;
+    w->d.vy = destino->param.trans.vy - origen->param.trans.vy;
+    w->d.vz = destino->param.trans.vz - origen->param.trans.vz;
+    w->origen.vx = origen->param.trans.vx;
+    w->origen.vy = origen->param.trans.vy;
+    w->origen.vz = origen->param.trans.vz;
     p += 0x38;
     *(s32*)p = 0;
     w->h2A = origen->w26;
     func_80019474(&w->origen, w, w->consulta, p);
-    destino->xE4 = origen->xE4 + w->d.vx;
-    destino->zEC = origen->zEC + w->d.vz;
+    destino->param.trans.vx = origen->param.trans.vx + w->d.vx;
+    destino->param.trans.vz = origen->param.trans.vz + w->d.vz;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D028);
@@ -311,18 +292,18 @@ void func_8001D0FC(Objeto* otro, u32 id, BusquedaAnim* b)
         j = D_80069698;
         llevado = j->p6C;
         j->w17E = 0;
-        j->wE0 = 0;
+        j->param.giro.u.z = 0;
         if (llevado != NULL && llevado->w2C != 0x22) {
-            llevado->nodo.transf = (Transformacion*)((u8*)llevado + 0xCC);
-            llevado->nodo.padre = NULL;
+            llevado->coord.param = PARAMETROS_SDK(llevado);
+            llevado->coord.super = NULL;
             llevado->flags14 = (llevado->flags14 & ~0x800) | 0x1000;
             llevado->w26 = otro->w26;
-            llevado->wDC = j->wDC;
-            llevado->wDE = j->wDE;
+            llevado->param.giro.u.x = j->param.giro.u.x;
+            llevado->param.giro.u.y = j->param.giro.u.y;
             llevado->p70 = NULL;
-            llevado->wE0 = j->wE0;
+            llevado->param.giro.u.z = j->param.giro.u.z;
             j->p6C = NULL;
-            func_8001CFCC(&llevado->nodo);
+            func_8001CFCC(&llevado->coord);
             func_8001D028(D_80069698, llevado, (u8*)b + 0x10);
         }
         D_800693B8 = -1;
@@ -349,8 +330,8 @@ void func_8001D31C(s32 x, s32 y, s32 z)
 
     tenido = D_80069698->p70;
     if (tenido != NULL) {
-        D_80069698->nodo.padre = NULL;
-        D_80069698->nodo.transf = (Transformacion*)((u8*)D_80069698 + 0xCC);
+        D_80069698->coord.super = NULL;
+        D_80069698->coord.param = PARAMETROS_SDK(D_80069698);
         tenido->p6C = D_80069698;
         if (D_80069698 != NULL) {
             D_80069698->p70->p6C = NULL;
@@ -358,9 +339,9 @@ void func_8001D31C(s32 x, s32 y, s32 z)
         D_80069698->p70 = NULL;
         D_80069698->flags14 &= ~0x14;
     }
-    D_80069698->xE4 = x;
-    D_80069698->yE8 = y;
-    D_80069698->zEC = z;
+    D_80069698->param.trans.vx = x;
+    D_80069698->param.trans.vy = y;
+    D_80069698->param.trans.vz = z;
     camara = &D_8006D928;
     if (!(*(u32*)D_8006D9A8 & 0x304)) {
         if ((s8)D_80010076 <= 0) {
@@ -444,8 +425,8 @@ void func_8001D588(s32 modo, VECTOR* p)
     D_80069690 = 0;
     D_800693F6 = 0;
     if (t != NULL) {
-        j->nodo.padre = NULL;
-        j->nodo.transf = (Transformacion*)((u8*)j + 0xCC);
+        j->coord.super = NULL;
+        j->coord.param = PARAMETROS_SDK(j);
         t->p6C = NULL;
         j->p70 = NULL;
         j->flags14 &= ~0x14;
@@ -455,18 +436,18 @@ void func_8001D588(s32 modo, VECTOR* p)
         if (e->w2C == 0x22) {
             e->flags14 |= 0x100;
         }
-        e->nodo.transf = (Transformacion*)((u8*)e + 0xCC);
-        e->nodo.padre = NULL;
+        e->coord.param = PARAMETROS_SDK(e);
+        e->coord.super = NULL;
         e->p70 = NULL;
         e->flags14 = (e->flags14 & ~0x800) | 0x1000;
         D_80069698->p6C = NULL;
-        func_8001CFCC(&e->nodo);
+        func_8001CFCC(&e->coord);
     }
     if (p != NULL) {
-        D_80069698->xE4 = p->vx;
-        D_80069698->yE8 = p->vy;
-        D_80069698->wDE = 0;
-        D_80069698->zEC = p->vz;
+        D_80069698->param.trans.vx = p->vx;
+        D_80069698->param.trans.vy = p->vy;
+        D_80069698->param.giro.u.y = 0;
+        D_80069698->param.trans.vz = p->vz;
         D_80069402 = 0;
         D_8006D928.vpx = p->vx;
         D_8006D928.vpy = p->vy;
@@ -474,7 +455,7 @@ void func_8001D588(s32 modo, VECTOR* p)
         D_8006D928.x = p->vx;
         D_8006D928.y = p->vy;
         D_8006D928.z = p->vz;
-        ang = D_80069698->wDE + 0x800;
+        ang = D_80069698->param.giro.u.y + 0x800;
         D_80069416 = ang;
         D_80069402 = ang;
     }
@@ -580,11 +561,11 @@ void func_8001D994(Objeto* o)
     u8 reserva[0x38];
 
     o->flags14 = 0;
-    o->xE4 = D_8006ACD0.x;
-    o->yE8 = D_8006ACD0.y;
-    o->zEC = D_8006ACD0.z;
+    o->param.trans.vx = D_8006ACD0.x;
+    o->param.trans.vy = D_8006ACD0.y;
+    o->param.trans.vz = D_8006ACD0.z;
     D_80069402 = (u16)D_8006ACD0.ang;
-    o->wDE = (u16)D_8006ACD0.ang;
+    o->param.giro.u.y = (u16)D_8006ACD0.ang;
     func_8001CC68((VECTOR*)&D_8006ACD0);
     D_80069690 = 0x1E;
     D_80010041 = 6;
@@ -642,14 +623,14 @@ void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
     s32 a1;
     s32 a0;
 
-    w->pos40 = o->xE4;
-    w->pos44 = o->yE8;
-    w->pos48 = o->zEC;
+    w->pos40 = o->param.trans.vx;
+    w->pos44 = o->param.trans.vy;
+    w->pos48 = o->param.trans.vz;
     w->delta.vx = mov->x;
     w->delta.vy = mov->dy;
     w->delta.vz = mov->z;
-    w->rot.vx = o->wDC;
-    w->rot.vz = o->wE0;
+    w->rot.vx = o->param.giro.u.x;
+    w->rot.vz = o->param.giro.u.z;
     if (a3 & 0x80000) {
         tabla = D_8005E078;
     } else {
@@ -665,7 +646,7 @@ void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
         gte_rtv0();
         gte_stlvnl(&w->v30);
         w->w50 = w->v30 + w->v38;
-        w->pos44 = o->yE8;
+        w->pos44 = o->param.trans.vy;
         w->tb.x_local = 0;
         w->res.grupo = o->w26;
         func_80019474(&w->pos40, &w->v30, &w->res, &w->tb);
@@ -685,11 +666,11 @@ void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
                     w->res.grupo = o->w26;
                 } else {
                     a0 = w->res.flags;
-                    if ((a0 & 2) && (w->res.suelo - o->yE8) >= 0xC9) {
+                    if ((a0 & 2) && (w->res.suelo - o->param.trans.vy) >= 0xC9) {
                         w->res.flags = (a0 & ~6) | 8;
                     }
                 }
-            } else if ((a1 & 2) && !(f & 0x219) && (((s16)w->res.pendiente_abs + w->pos44) - o->yE8) >= 0xC9) {
+            } else if ((a1 & 2) && !(f & 0x219) && (((s16)w->res.pendiente_abs + w->pos44) - o->param.trans.vy) >= 0xC9) {
                 w->res.flags = (a1 & ~6) | 8;
             }
         } else {
@@ -725,12 +706,12 @@ void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
     }
     if (((o->flags18 & 0x20) && !(a2 & 0x80000))
         || (!(a2 & 0x40000000) && !(o->flags14 & 0x100000) && i < 9)) {
-        o->wDE = o->wDE + w->rot.vy;
+        o->param.giro.u.y = o->param.giro.u.y + w->rot.vy;
     } else {
-        o->wDE = o->wDE + ((s16)tabla[i] >> 3);
+        o->param.giro.u.y = o->param.giro.u.y + ((s16)tabla[i] >> 3);
     }
     if (i == 9 && (o->flags14 & 0x100000)) {
-        o->wDE = o->wDE + 0x800;
+        o->param.giro.u.y = o->param.giro.u.y + 0x800;
         mov->z = 0;
         mov->dy = 0;
         mov->x = 0;
@@ -745,33 +726,6 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001DA14);
 #endif
 
 /*
- * Proyeccion de un objeto sobre la pantalla: area de trabajo de la proyeccion de un sprite que
- * func_8001DF28 rellena a partir de la posicion (+0x38) y devuelve en +0x58: profundidad en
- * +0x54, escala en +0x90, esquinas del cuadro en +0x4C..+0x52 y puntero a las coordenadas
- * del sprite en +0x98.
- */
-typedef struct ProyeccionSprite {
-    u8 pad00[0x38];
-    SVECTOR pos;
-    u8 pad40[0x4C - 0x40];
-    s16 h4C;
-    s16 h4E;
-    s16 h50;
-    s16 h52;
-    s32 z54;
-    s32 w58;
-    s32 w5C;
-    u8 pad60[0x90 - 0x60];
-    s32 escala;
-    s16 h94;
-    u8 pad96[0x98 - 0x96];
-    s16* coordenadas;
-} ProyeccionSprite;
-
-extern MATRIX D_80076130;
-extern VECTOR D_80076144;
-
-/*
  * Proyecta el objeto en pantalla y calcula las esquinas de su sprite: si esta mas cerca de 150
  * unidades lo oculta (apaga la bandera 2 y enciende 0x100) y si no, escala su tamano con la
  * profundidad y reparte el recorte entre las dos mitades cuando la bandera 0x8000000 pide
@@ -784,10 +738,10 @@ void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
     s32 t;
     s16* p;
 
-    b->coordenadas = (s16*)((u8*)o->p78 + 0xC);
-    b->pos.vx = o->xE4;
-    b->pos.vy = o->yE8;
-    b->pos.vz = o->zEC;
+    b->coordenadas = (s16*)((u8*)o->u78.p + 0xC);
+    b->pos.vx = o->param.trans.vx;
+    b->pos.vy = o->param.trans.vy;
+    b->pos.vz = o->param.trans.vz;
     gte_SetRotMatrix(&D_80076130);
     gte_SetTransVector(&D_80076144);
     gte_ldv0(&b->pos);
@@ -802,9 +756,9 @@ void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
     gte_stsxy2(&b->h4C);
     b->w5C = 0;
     b->w58 = 0x808080;
-    b->h50 = b->h4C + (((b->escala * (o->h50 * 2)) >> 12) * o->iCC >> 12);
-    b->h4C = b->h4C + (((b->escala * (o->h48 * 2)) >> 12) * o->iCC >> 12);
-    t = ((((b->escala * (o->h52 * 2)) >> 12) * o->iD0) >> 12) * 15 >> 5;
+    b->h50 = b->h4C + (((b->escala * (o->max.vx * 2)) >> 12) * o->param.escala.vx >> 12);
+    b->h4C = b->h4C + (((b->escala * (o->min.vx * 2)) >> 12) * o->param.escala.vx >> 12);
+    t = ((((b->escala * (o->max.vy * 2)) >> 12) * o->param.escala.vy) >> 12) * 15 >> 5;
     b->h94 = t;
     if (o->flags0C & 0x8000000) {
         b->h52 = b->h4E + ((s16)t >> 1);
@@ -829,9 +783,9 @@ void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
     t = b->h4E;
     p[13] = t;
     p[9] = t;
-    o->iD4 = b->z54;
+    o->param.escala.vz = b->z54;
     if (b->z54 < 0) {
-        o->iD4 = 0;
+        o->param.escala.vz = 0;
     }
     o->flags04 |= 2;
     return &b->w58;
@@ -860,10 +814,8 @@ typedef struct EventoZona {
     s32 v20;
 } EventoZona;
 
-extern s32 D_800694F8;
 /* Definida en graficos_y_gte.c: devuelve el nodo de plano que toca el objeto (sin prototipo en las cabeceras, el retorno se tomaba como int). */
-extern NodoVolumen* func_80019180(ObjetoVolumen* a, VECTOR* p, ConsultaPlano* o);
-extern s32 D_80010000;
+extern NodoVolumen* func_80019180(Objeto* a, VECTOR* p, ConsultaPlano* o);
 extern s32 TestLogicCond(void* o, void* item);
 extern void RunLogicAction(void* o, void* item);
 
@@ -887,7 +839,7 @@ void func_8001E1A4(Objeto* o, ConsultaPlano* c)
     if (D_80069662 != 0) {
         return;
     }
-    nodo = func_80019180((ObjetoVolumen*)o, (VECTOR*)&o->xE4, c);
+    nodo = func_80019180(o, (VECTOR*)&o->param.trans.vx, c);
     if (nodo == NULL) {
         return;
     }
@@ -915,18 +867,18 @@ void func_8001E1A4(Objeto* o, ConsultaPlano* c)
             }
             if (z->flags & 0x40000000) {
                 soltar = o->p70;
-                o->xE4 = z->v18;
-                o->yE8 = z->v1C;
-                o->zEC = z->v20;
+                o->param.trans.vx = z->v18;
+                o->param.trans.vy = z->v1C;
+                o->param.trans.vz = z->v20;
                 if (soltar != NULL) {
                     if (soltar->p6C == o) {
                         soltar->p6C = NULL;
                     }
-                    o->nodo.transf = (Transformacion*)((u8*)o + 0xCC);
-                    o->nodo.padre = NULL;
+                    o->coord.param = PARAMETROS_SDK(o);
+                    o->coord.super = NULL;
                     o->p70 = NULL;
                     o->flags14 = (o->flags14 & ~0x14) | 0x202;
-                    func_8001CFCC(&o->nodo);
+                    func_8001CFCC(&o->coord);
                 }
             }
             if (z->flags & 0x80000) {
@@ -945,7 +897,7 @@ void func_8001E1A4(Objeto* o, ConsultaPlano* c)
                 D_8006ACD0.y = z->v1C;
                 D_8006ACD0.z = z->v20;
                 if (D_80069698 != NULL) {
-                    D_8006ACD0.ang = (s16)D_80069698->wDE;
+                    D_8006ACD0.ang = (s16)D_80069698->param.giro.u.y;
                 } else {
                     D_8006ACD0.ang = 0;
                 }

@@ -26,6 +26,8 @@ typedef struct RegistroArchivo {
     u8 posicion[4];
 } RegistroArchivo;
 
+extern RegistroArchivo D_8005F200[];
+
 /*
  * Entrada de la cabecera del contenedor de niveles: tipo de seccion, tamano real y tamano
  * alineado a sectores. La cabecera ocupa el primer sector del archivo y func_800415A0 la copia
@@ -82,5 +84,19 @@ typedef struct ContenedorCarga {
     NodoB* listaB;
     NodoC* listaC;
 } ContenedorCarga;
+
+/* Area de contexto del descompresor en el scratchpad (la tabla de longitudes empieza en +0x38). */
+typedef struct ContextoDescompresion {
+    u32 retorno;
+    u32 retorno_lectura;
+    u32 guardados[9];
+    u32 anillo_inicio;
+    u32 anillo_fin;
+    u16 umbral;
+    u16 parametros;
+    u16 longitudes[128];
+} ContextoDescompresion;
+s32 func_80041238(s8* datos, s32 n);
+s32 func_80044664(u8* entrada, u8* salida, ContextoDescompresion* contexto);
 
 #endif

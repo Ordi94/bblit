@@ -2,11 +2,6 @@
 #include "geometria.h"
 #include "objetos.h"
 
-extern u32 D_80069610;
-extern u32 D_80069614;
-extern s32 D_8006954C;
-extern vu16 D_800695A6;
-extern s32 D_8006960C;
 
 /*
  * Area de trabajo de la sonda de altura: la entidad que transforma func_8001CE64 (nodo,
@@ -14,7 +9,7 @@ extern s32 D_8006960C;
  * +0x1C y su area de trabajo en +0x34.
  */
 typedef struct Sonda {
-    EntidadTransformada ent;
+    AcumuladorNodos ent;
     ResultadoBaldosa r;
     TrabajoBaldosa w;
 } Sonda;
@@ -89,15 +84,15 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_80039D44);
  * func_8001C134 y la limita por D_8006960C y, salvo que el nivel lo desactive, por la altura
  * del objeto. Devuelve 0 si el ayudante no es visible y 1 en otro caso.
  */
-s32 func_8003A3D0(ObjetoEscena* o, SalidaSonda* sal, Sonda* s)
+s32 func_8003A3D0(Objeto* o, SalidaSonda* sal, Sonda* s)
 {
     Ayuda* a;
     Ayuda* b;
-    ObjetoEscena* p;
+    Objeto* p;
     TrabajoBaldosa* w;
     s32 sin_grupo;
 
-    a = o->ayudas;
+    a = o->u78.ayudas;
     w = &s->w;
     if (a != 0 && (b = (Ayuda*)a->cab.siguiente) != 0) {
         if (b->visible == 0) {
@@ -115,10 +110,10 @@ s32 func_8003A3D0(ObjetoEscena* o, SalidaSonda* sal, Sonda* s)
         GEO_GUARDAR_W_T1(&sal->pos);
     }
     p = o->p70;
-    if (p != 0 && ((p->w8 & 8) || (p->wC & 0x2000))) {
+    if (p != 0 && ((p->flags08 & 8) || (p->flags0C & 0x2000))) {
         sal->pos.vy = o->param.trans.vy;
     } else {
-        s->r.grupo = o->s26;
+        s->r.grupo = (s16)o->w26;
         func_8001C134((s32*)&sal->pos, &s->r, w);
         sin_grupo = -1;
         while (s->r.flags & 8) {

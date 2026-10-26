@@ -4,6 +4,9 @@
 #include "geometria.h"
 #include "arranque.h"
 #include "menus.h"
+#include "motor.h"
+#include "objetos.h"
+
 
 /*
  * Estado del fundido de pantalla. Todas son variables de 2 bytes que el original escribe con
@@ -12,7 +15,6 @@
  * dibujo de la capa de oscurecimiento; D_80069686: paso por cuadro; D_8006966A (globales.h): fase.
  */
 extern s16 D_80069566;
-extern s16 D_80069668;
 extern u16 D_80069686;
 
 /*
@@ -20,66 +22,35 @@ extern u16 D_80069686;
  * reescribe el retorno de llamada de VSync, D_800695A6 cuenta los VSync desde el ultimo dibujo y
  * D_8006954C es la longitud del anillo.
  */
-extern s32 D_8006954C;
-extern u32 D_80069610;
-extern u32 D_80069614;
-extern vu16 D_800695A6;
 
 /*
  * Cursor de escritura de primitivas GPU: direccion de la siguiente primitiva libre del cuadro. Se
  * compara con signo contra los limites de la escena, por eso es s32 y no un puntero. D_8006958C y
  * D_80069680 son el limite del buffer y su inicio.
  */
-extern s32 D_80076188;
-extern s32 D_8006958C;
-extern s32 D_80069680;
 
 /* Camara: D_8006D934 es la mitad alta de D_8006D928 (+0xC); el original la direcciona con su propio lui. */
 extern s32 D_8006D934[3];
-extern s16 D_80069402;
-extern s16 D_80069416;
-extern s32 D_800693F0;
-extern u16 D_800694E2;
 
 /*
  * Dos bytes del banco B (D_8006AA70[0x19] detiene el paso del fundido y D_8006AA70[0xC] es el estado
  * de pausa): el original los direcciona con su propio lui, como simbolos distintos del banco.
  */
 extern u8 D_8006AA89;
-extern u8 D_8006AA7C;
 
 /* Contadores y banderas del cuadro de dibujo, y tablas de modelos y de salas visibles. */
-extern s16 D_800695A2;
-extern s16 D_800695A4;
 extern s16 D_80069532;
-extern s16 D_800695DA;
-extern s16 D_80069530;
-extern s16 D_80069588;
 extern s16 D_80069688;
 extern s32 D_80076098;
 extern s32 D_8007609C;
-extern u16 D_800695F2;
-extern u16 D_800695F4;
-extern u16 D_8006969C;
-extern u16 D_800694B0;
 extern u8 D_80069600;
-extern void* D_800694D8;
-extern void* D_800695C4;
-extern ModeloDibujo* D_8006B568[];
-/* Tabla de punteros a objetos visibles (palabras de 4 bytes: sw con indice * 4 en func_8003B5AC); el otro archivo que la usa la declara u8[]. */
-extern u8 D_8006AD80[];
 extern EntradaCola D_8006D1C8[];
-extern EntradaVisible D_8006A940[];
 
 /* Rutinas de otros archivos y del overlay (func_80010204 y func_80010258 dibujan un modelo). */
 extern void func_80039CD0(s32 cursor);
 /* Recibe en a0 la direccion de la pila local (addiu a0,sp,...); movimiento_y_objetos_de_escena_2.c la declara con Entidad*, tipo que este archivo no conoce. */
-extern void func_8001CE64(void* pila);
-extern ColorYDesplazamiento* func_8001DF28(void* objeto, void* vista);
-extern s32 func_8003760C(void* geometria, void* vista, void* vista_siguiente);
 extern void func_8003753C(void* vista);
 extern s32 func_80010204(void* modelo, s32 cursor, void* estado, void* vista);
-extern s32 func_80010258(void* modelo, s32 cursor, void* estado, void* vista);
 extern s32 func_80012AE4(s32 cursor, EstadoDibujo* estado, s32 color);
 extern s32 func_80012AB0(s32 cursor, EstadoDibujo* estado);
 
@@ -97,12 +68,10 @@ extern s32 func_8003DD70(VerticeCaja* v, LimitesPantalla* lim);
 extern void func_8003CA5C(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
 extern void func_8003D0D4(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
 extern void func_8003C1C8(VistaDibujo* vista);
-extern s32 func_8003BDD0(ModeloDibujo* modelo);
-extern void func_8003C014(ObjetoDibujo* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
+extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
 
 /* Estado principal (solo el telon de pantalla) y copias de la camara que deja el dibujo por cuadro. */
 #define PANT ESTADO_PRINCIPAL
-#define COPIAS ((CopiasCamara*)&D_8006D928)
 
 void func_8003AA38(void)
 {
@@ -213,7 +182,7 @@ void func_8003ABB4(void)
     }
 }
 
-void func_8003ACA8(ObjetoCamara* objeto, void* sin_uso, MATRIX* m)
+void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
 {
     VECTOR v;
 
@@ -221,7 +190,7 @@ void func_8003ACA8(ObjetoCamara* objeto, void* sin_uso, MATRIX* m)
     v.vy = 0;
     v.vz = 0x3E8;
     D_8006D928.flags80 |= 0x100;
-    GsGetLw(objeto->coord, m);
+    GsGetLw(objeto->geometria, m);
     D_8006D928.vpx = m->t[0];
     D_8006D928.vpy = m->t[1];
     D_8006D928.vpz = m->t[2];
@@ -286,7 +255,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     s32 desplazamiento;
     s32 k;
     ColorYDesplazamiento* par;
-    PilaNodo pila;
+    AcumuladorNodos pila;
     u32* p;
     u32* q;
     u32* orden;
@@ -306,17 +275,17 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         desplazamiento = 0;
         ctx->estado.s4 = 0;
     } else {
-        if (ctx->objeto->iC4 != 0) {
-            pila.nodo = ctx->objeto->nodo;
+        if (ctx->objeto->coord.super != 0) {
+            pila.nodo = &ctx->objeto->coord;
             func_8001CE64(&pila);
-            ctx->objeto->xE4 = pila.acc.vx;
-            ctx->objeto->yE8 = pila.acc.vy;
-            ctx->objeto->zEC = pila.acc.vz;
+            ctx->objeto->param.trans.vx = pila.acc.vx;
+            ctx->objeto->param.trans.vy = pila.acc.vy;
+            ctx->objeto->param.trans.vz = pila.acc.vz;
         }
         par = func_8001DF28(ctx->objeto, vista);
         color = par->color;
         desplazamiento = par->desplazamiento;
-        ctx->estado.s4 = (ctx->objeto->iD4 >> 2) - ctx->estado.s6;
+        ctx->estado.s4 = (ctx->objeto->param.escala.vz >> 2) - ctx->estado.s6;
     }
     if ((ctx->objeto->flags04 & 2) && color != 0 && ctx->estado.s4 >= 0) {
         q = sprite->palabras;
@@ -446,14 +415,14 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B354);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1518 con la configuracion versionada (-G0 salvo g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el registro de la carga del desplazamiento geometrico (gte_SetGeomOffset usa t4/t5 y el original t2/t3), el reparto v0/v1 del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado, y el almacen de D_800694E2 se coloca antes que la relectura), el orden de las cargas de los limites del buffer en el prologo y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (900 permutaciones de las escrituras del prologo, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). Con D_8006AD80 declarada como ObjetoDibujo*[] la puntuacion baja a 1085; con el cast local sube a 1518 porque cambia el reparto de la base de la tabla. */
-void func_8003B5AC(ObjetoDibujo* lista)
+/* Pendiente: puntuacion 1518 con la configuracion versionada (-G0 salvo g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el registro de la carga del desplazamiento geometrico (gte_SetGeomOffset usa t4/t5 y el original t2/t3), el reparto v0/v1 del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado, y el almacen de D_800694E2 se coloca antes que la relectura), el orden de las cargas de los limites del buffer en el prologo y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (900 permutaciones de las escrituras del prologo, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). Con D_8006AD80 declarada como Objeto*[] la puntuacion baja a 1085; con el cast local sube a 1518 porque cambia el reparto de la base de la tabla. */
+void func_8003B5AC(Objeto* lista)
 {
     EscenaDibujo* esc;
     VistaDibujo* vista = (VistaDibujo*)0x1F800038;
-    ObjetoDibujo** visibles = (ObjetoDibujo**)D_8006AD80; /* La tabla guarda punteros de 4 bytes: lui/addiu s7 con la base y sw indexado. */
+    Objeto** visibles = D_8006AD80; /* La tabla guarda punteros de 4 bytes: lui/addiu s7 con la base y sw indexado. */
     ModeloDibujo* modelo;
-    ObjetoDibujo* obj;
+    Objeto* obj;
     s32 color;
     s32 k;
     s32 rr;
@@ -469,7 +438,7 @@ void func_8003B5AC(ObjetoDibujo* lista)
     u16 nivel;
 
     func_8003ABB4();
-    esc = (EscenaDibujo*)0x1F800000;
+    esc = ESCENA_DIBUJO;
     D_800695A2 = 0;
     D_800695A4 = 0;
     D_80069600 = 0;
@@ -484,7 +453,7 @@ void func_8003B5AC(ObjetoDibujo* lista)
     esc->ot2 = (u32*)D_8006AEA0[D_8006967C].org;
     esc->objeto = lista;
     D_8006D928.flags80 &= 0xFCFF;
-    if (PANT->f76 != 0) {
+    if (PANT->r[BANCO_PAUSA] != 0) {
         ((GsBOXF*)vista)->x = -0x100;
         ((GsBOXF*)vista)->y = -0x78;
         ((GsBOXF*)vista)->w = 0x200;
@@ -492,22 +461,22 @@ void func_8003B5AC(ObjetoDibujo* lista)
         ((GsBOXF*)vista)->b = 0;
         ((GsBOXF*)vista)->g = 0;
         ((GsBOXF*)vista)->r = 0;
-        if ((s8)PANT->f76 > 0) {
+        if ((s8)PANT->r[BANCO_PAUSA] > 0) {
             D_8006D928.flags80 = D_8006D928.flags80 | 0x8000;
-            ((GsBOXF*)vista)->h = PANT->f76;
+            ((GsBOXF*)vista)->h = PANT->r[BANCO_PAUSA];
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
             ((GsBOXF*)vista)->y = 0x78 - ((GsBOXF*)vista)->h;
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
-            if (PANT->f76 < 0x1E) {
-                PANT->f76 += 2;
+            if (PANT->r[BANCO_PAUSA] < 0x1E) {
+                PANT->r[BANCO_PAUSA] += 2;
             }
         } else {
             D_8006D928.flags80 = D_8006D928.flags80 & 0x7CFF;
-            ((GsBOXF*)vista)->h = -(s8)PANT->f76;
+            ((GsBOXF*)vista)->h = -(s8)PANT->r[BANCO_PAUSA];
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
             ((GsBOXF*)vista)->y = 0x78 - ((GsBOXF*)vista)->h;
             GsSortBoxFill((GsBOXF*)0x1F800038, &D_8006AE20[D_8006967C], 0x60);
-            PANT->f76 += 2;
+            PANT->r[BANCO_PAUSA] += 2;
         }
     }
     if (D_8006966A != 0) {
@@ -540,7 +509,7 @@ void func_8003B5AC(ObjetoDibujo* lista)
     if (esc->objeto != NULL) {
         do {
             if (!(esc->objeto->flags04 & 2)) {
-                esc->objeto = esc->objeto->sig;
+                esc->objeto = esc->objeto->sig10;
                 continue;
             }
             if (esc->objeto->w2C == 7) {
@@ -550,8 +519,8 @@ void func_8003B5AC(ObjetoDibujo* lista)
                 esc->estado.w10 = D_800695F2;
                 esc->estado.w12 = D_800695F4;
                 esc->estado.s6 = esc->objeto->w28 - 0x80;
-                func_8003B354(esc->objeto->modelos, esc, vista);
-                esc->objeto = esc->objeto->sig;
+                func_8003B354(esc->objeto->u78.modelos, esc, vista);
+                esc->objeto = esc->objeto->sig10;
                 continue;
             }
             esc->estado.s6 = esc->objeto->w28;
@@ -573,7 +542,7 @@ void func_8003B5AC(ObjetoDibujo* lista)
                     }
                 }
             }
-            modelo = esc->objeto->modelos;
+            modelo = esc->objeto->u78.modelos;
             hecho = 0;
             if (modelo != NULL) {
                 do {
@@ -595,12 +564,12 @@ void func_8003B5AC(ObjetoDibujo* lista)
                         func_8003AE08((u32*)modelo, esc);
                     } else if (modelo->banderas & 0x40) {
                         obj = esc->objeto;
-                        if ((obj->h50 | obj->h52 | obj->h54 | obj->h48 | obj->h4A | obj->h4C) != 0) {
+                        if ((obj->max.vx | obj->max.vy | obj->max.vz | obj->min.vx | obj->min.vy | obj->min.vz) != 0) {
                             obj->flags18 = obj->flags18 | 0x1000;
                             if (esc->objeto->flags0C & 0x100) {
                                 D_8006D928.flags80 = D_8006D928.flags80 | 0x200;
                             }
-                            func_8003ACA8((ObjetoCamara*)modelo, (void*)esc, (MATRIX*)vista);
+                            func_8003ACA8(modelo, (void*)esc, (MATRIX*)vista);
                             if (esc->objeto->flags0C & 0x10000000) {
                                 px = D_8006D928.vpx;
                                 py = D_8006D928.vpy;
@@ -608,18 +577,18 @@ void func_8003B5AC(ObjetoDibujo* lista)
                                 qx = D_8006D928.x;
                                 qy = D_8006D928.y;
                                 qz = D_8006D928.z;
-                                COPIAS->c68 = px;
-                                COPIAS->c94 = px;
-                                COPIAS->cB4 = px;
-                                COPIAS->c6C = py;
-                                COPIAS->c98 = py;
-                                COPIAS->cB8 = py;
-                                COPIAS->c70 = pz;
-                                COPIAS->c9C = pz;
-                                COPIAS->cBC = pz;
-                                COPIAS->cA4 = qx;
-                                COPIAS->cA8 = qy;
-                                COPIAS->cAC = qz;
+                                D_8006D928.c68 = px;
+                                D_8006D928.c94 = px;
+                                D_8006D928.cB4 = px;
+                                D_8006D928.c6C = py;
+                                D_8006D928.c98 = py;
+                                D_8006D928.cB8 = py;
+                                D_8006D928.c70 = pz;
+                                D_8006D928.c9C = pz;
+                                D_8006D928.cBC = pz;
+                                D_8006D928.cA4 = qx;
+                                D_8006D928.cA8 = qy;
+                                D_8006D928.cAC = qz;
                             }
                         }
                     }
@@ -630,9 +599,9 @@ void func_8003B5AC(ObjetoDibujo* lista)
                 esc->estado.b0 = 0;
                 esc->estado.b2 = 1;
                 esc->estado.b1 = 1;
-                func_8003C014(esc->objeto, esc->objeto->modelos, &esc->estado, vista);
+                func_8003C014(esc->objeto, esc->objeto->u78.modelos, &esc->estado, vista);
             }
-            esc->objeto = esc->objeto->sig;
+            esc->objeto = esc->objeto->sig10;
         } while (esc->objeto != NULL);
     }
 }
@@ -643,7 +612,7 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B5AC);
 /* Rutina escrita a mano en el original: sin prologo de pila, registros temporales fijos y mtc2 desde s0-s5 con la lectura de los vertices siguientes adelantada. */
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003BDD0);
 
-void func_8003C014(ObjetoDibujo* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista)
+void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista)
 {
     estado->w0C = D_8006969C;
     if (entidad->w3C & 2) {

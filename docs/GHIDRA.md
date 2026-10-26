@@ -384,14 +384,16 @@ Reglas (`tools/ghidra/nombres.py`):
 - El archivo se valida entero antes de usarlo: cada linea debe tener direccion de ocho digitos hexadecimales e
   identificador C valido, y ni una direccion ni un nombre pueden repetirse.
 
-Contenido actual: 76 nombres, de la descompilacion de la version de PC del juego usada solo como referencia
-semantica, verificados contra nuestro desensamblado (el codigo de condicion o de accion de PC es el indice de las
+Contenido actual: 78 nombres: 76 de la descompilacion de la version de PC del juego, usada solo como referencia
+semantica, y dos llamadas al sistema del SDK, verificados contra nuestro desensamblado (el codigo de condicion o de accion de PC es el indice de las
 tablas `0x8005E3F0` y `0x8005E560`, la rutina de ese indice esta en la direccion indicada y la semantica coincide).
 Son 75 rutinas del juego (condiciones `Cond*` y acciones `Action*` del interprete de eventos, sus dos despachadores
 `TestLogicCond` y `RunLogicAction`, `BugsRand` y las cinco rutinas de la lista de nodos) y `TransMatrix`. Cuatro de
 ellas (`TestLogicCond`, `RunLogicAction`, `ActionAddgi`, `ActionSubgi`) se comportan distinto en PC y PS1, pero su
 nombre es correcto y se aplican. Se excluyen tres nombres dudosos hasta comprobarlos (`CondTpnmv`, `CondTpmov`,
-`GsSetProjection`). Con este archivo la regeneracion aplica los 76 y no tiene choques.
+`GsSetProjection`). Las dos llamadas al sistema son `EnterCriticalSection` (0x8004E66C) y `ExitCriticalSection`
+(0x8004E67C): 16 bytes escritos a mano cada una, `addiu a0,zero,1` (o 2) y `syscall 0`, que son las del SDK. Con este
+archivo la regeneracion aplica los 78 y no tiene choques.
 
 Cambiar un nombre exige regenerar la tabla y renombrar el codigo que lo cita: las definiciones, los prototipos, las
 llamadas y las lineas `INCLUDE_ASM` de `src/` e `include/` (el ensamblador de `asm/nonmatchings/` se regenera con

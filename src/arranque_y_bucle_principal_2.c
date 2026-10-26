@@ -5,16 +5,14 @@
 #include "psyq/LIBGTE.H"
 #include "psyq/LIBGPU.H"
 #include "psyq/LIBGS.H"
+#include "objetos.h"
+#include "menus.h"
+#include "geometria.h"
 
-extern s32 D_80069534;
 extern s32 D_80069638;
-extern void* D_80069508;
-extern void* D_800694D8;
-extern u8 D_8006AD80[];
 
 extern u16 D_800694F0;
 extern s32 D_8006CF68[];
-extern u8 D_80069628;
 
 extern s32 SetRCnt(u32 canal, u16 destino, s32 modo);
 extern s32 StartRCnt(u32 canal);
@@ -24,17 +22,11 @@ extern void func_80044D44(void);
 extern void func_80044E58(void);
 extern void func_80040EB4(void);
 extern s32 func_800415A0(s16 nivel, void* destino);
-extern void func_80019364(void* tabla);
-extern void func_80040AF0();
 extern void func_8003DF84(void);
-extern void func_8003AA50(u32 modo, u32 duracion);
-extern void func_8003AA7C(u32 modo, u32 duracion);
 extern void func_8003E9E8(void);
 extern void func_800156F4();
 extern void func_80015E94(void);
 extern void func_80015F38(void);
-extern void func_80037FB8(void* a);
-extern void func_80037FE8(void* a);
 extern void func_80040240(void);
 extern void func_8003E88C(void);
 extern void func_8003FC88(void);
@@ -57,12 +49,7 @@ extern void func_800160A8(void);
 extern void func_8003E3C0(void);
 extern void func_8003F3F0(s16 indice);
 extern void func_800353B0(Objeto* a);
-extern void func_80037048(void* a);
-extern void func_800399C8(void* a);
-extern void func_8003B5AC(void* a);
 extern void func_8003A5C8(void* a);
-extern void func_80045150(void* a);
-extern void func_80037184(void* a);
 extern void func_8001020C(s32 a);
 
 void func_80015EC0(void)
@@ -79,19 +66,19 @@ void func_80015EC0(void)
         i--;
     } while (i >= 0);
     e = ESTADO_PRINCIPAL;
-    e->f41 = 6;
-    e->f42 = 6;
-    e->f40 = 3;
-    e->fE5 = 0x80;
-    e->fE6 = 0x50;
+    e->r[0x01] = 6;
+    e->r[0x02] = 6;
+    e->r[0x00] = 3;
+    e->r[0xA5] = 0x80;
+    e->r[0xA6] = 0x50;
     D_80069594 = 0x50;
-    e->fE7 = 1;
-    e->f16 = 0;
-    e->f18 = 0xFF;
-    e->f1A = 0x7F;
-    e->f1C = 0;
-    e->f1E = 0xFF;
-    e->f20 = 0x7F;
+    e->r[BANCO_VIBRACION] = 1;
+    e->mando.f16 = 0;
+    e->mando.f18 = 0xFF;
+    e->mando.centro_x = 0x7F;
+    e->mando.f1C = 0;
+    e->mando.f1E = 0xFF;
+    e->mando.centro_y = 0x7F;
 }
 
 void func_80015F38(void)
@@ -105,20 +92,20 @@ void func_80015F38(void)
     u8 g;
 
     e = ESTADO_PRINCIPAL;
-    a = e->f50;
-    b = e->f51;
-    c = e->fE5;
-    d = e->fE6;
-    f = e->fE7;
-    g = e->fE8;
+    a = e->r[0x10];
+    b = e->r[BANCO_CONFIG];
+    c = e->r[0xA5];
+    d = e->r[0xA6];
+    f = e->r[BANCO_VIBRACION];
+    g = e->r[0xA8];
     func_80015EC0();
-    e->f50 = a;
-    e->f51 = b;
-    e->fE5 = c;
-    e->fE6 = d;
+    e->r[0x10] = a;
+    e->r[BANCO_CONFIG] = b;
+    e->r[0xA5] = c;
+    e->r[0xA6] = d;
     D_80069594 = d;
-    e->fE7 = f;
-    e->fE8 = g;
+    e->r[BANCO_VIBRACION] = f;
+    e->r[0xA8] = g;
 }
 
 void func_80015FC8(s32 segundos, u16 mascara)
@@ -128,7 +115,7 @@ void func_80015FC8(s32 segundos, u16 mascara)
     for (i = 0; i < segundos * 0x3C; i++) {
         VSync(0);
         func_8004048C();
-        if (ESTADO_PRINCIPAL->botones_a & mascara) {
+        if (ESTADO_PRINCIPAL->mando.botones_a & mascara) {
             break;
         }
     }
@@ -190,7 +177,7 @@ void func_800161A8(void)
     func_800160A8();
     e = ESTADO_PRINCIPAL;
     e->nivel = 0x6D;
-    e->f4F = 0;
+    e->r[BANCO_DEMO] = 0;
     func_8004443C(0x6D);
     func_80016044();
     func_80015FC8(0x1E, 0x140);
@@ -316,12 +303,12 @@ s32 main(void)
             func_80015E94();
         }
         if (pausa != 0) {
-            if (!(e->botones_a & 0x800)) {
+            if (!(e->mando.botones_a & 0x800)) {
                 pausa = 0;
             }
         } else if (D_8006AA70[0] == 0) {
             if (regs[0xC] == 0 && D_80069662 == 0) {
-                if ((e->botones_a & 0x800) && D_8006966A == 0 && (!(D_8006D9A8[0] & 0x300) || (D_8006D9A8[0] & 1)) && e->f76 == 0) {
+                if ((e->mando.botones_a & 0x800) && D_8006966A == 0 && (!(D_8006D9A8[0] & 0x300) || (D_8006D9A8[0] & 1)) && e->r[BANCO_PAUSA] == 0) {
                     contador = 0;
                     func_80037FB8(D_80069508);
                     func_80037FE8(D_80069508);
@@ -350,10 +337,10 @@ s32 main(void)
                     func_80040240();
                     func_8003E88C();
                     func_8003FC88();
-                    if (e->botones != 0) {
+                    if (e->mando.botones != 0) {
                         for (;;) {
                             func_8004048C();
-                            if (e->botones == 0) {
+                            if (e->mando.botones == 0) {
                                 break;
                             }
                         }
@@ -373,14 +360,14 @@ s32 main(void)
         }
         if (e->nivel == 0) {
             ocioso++;
-            if (e->fCD & 2) {
+            if (e->r[0x8D] & 2) {
                 ocioso = 0;
             }
             if (ocioso >= 0x385) {
                 ocioso = 0;
                 D_80069662 = 1;
                 e->nivel = demo;
-                e->f4F = 1;
+                e->r[BANCO_DEMO] = 1;
             }
         }
         if (D_80069662 != 0) {
@@ -406,28 +393,28 @@ s32 main(void)
                 D_8006965A = 0;
                 D_80069659 = 0;
                 func_80040240();
-                if (e->f4F == 0) {
+                if (e->r[BANCO_DEMO] == 0) {
                     srand((BugsRand() + VSync(1)) % 300);
                 } else {
                     func_80015F38();
                     if (demo == 0x4A) {
                         demo = 0x4B;
-                        e->fF8 = 0x83;
-                        e->fF6 = 0x5D;
+                        e->r[0xB8] = 0x83;
+                        e->r[0xB6] = 0x5D;
                     } else if (demo == 0x4B) {
                         demo = 0x4C;
-                        e->fF8 = 0x85;
-                        e->fF6 = 0x5F;
+                        e->r[0xB8] = 0x85;
+                        e->r[0xB6] = 0x5F;
                     } else if (demo == 0x4C) {
                         demo = 0x4D;
-                        e->fF8 = 0x8C;
-                        e->fF6 = 0x66;
+                        e->r[0xB8] = 0x8C;
+                        e->r[0xB6] = 0x66;
                     } else if (demo == 0x4D) {
                         demo = 0x4A;
-                        e->fF8 = 0xEA;
-                        e->fF6 = 0xEB;
+                        e->r[0xB8] = 0xEA;
+                        e->r[0xB6] = 0xEB;
                     }
-                    e->f4F = 1;
+                    e->r[BANCO_DEMO] = 1;
                     srand(1);
                 }
                 D_80069534 = 0;
@@ -443,11 +430,11 @@ s32 main(void)
             }
             D_80069662 += 1;
         }
-        if (e->f4F != 0 && (e->botones & 0x100)) {
-            e->botones_a = *D_800695B0--;
-            e->botones_e = *D_800695B0--;
-            e->botones_c = *D_800695B0--;
-            e->botones = *D_800695B0--;
+        if (e->r[BANCO_DEMO] != 0 && (e->mando.botones & 0x100)) {
+            e->mando.botones_a = *D_800695B0--;
+            e->mando.botones_e = *D_800695B0--;
+            e->mando.botones_c = *D_800695B0--;
+            e->mando.botones = *D_800695B0--;
             if (D_80069662 == 0) {
                 D_80069662 = 1;
                 e->nivel = 0;

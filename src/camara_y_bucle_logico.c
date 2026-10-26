@@ -2,48 +2,9 @@
 #include "globales.h"
 #include "geometria.h"
 #include "gte.h"
-
-/*
- * Vista del estado de la camara con los campos que EstadoCamara (globales.h) todavia no declara:
- * las copias del punto de vista y de la mira que los eventos de camara reparten (0x68, 0x94, 0xB4
- * y 0xA4) y los parametros de la sacudida (0x86 a 0x90). Es la misma memoria que D_8006D928.
- */
-typedef struct VistaCamara {
-    s32 vpx;
-    s32 vpy;
-    s32 vpz;
-    s32 mx;
-    s32 my;
-    s32 mz;
-    u8 pad18[0x68 - 0x18];
-    s32 vp68[3];
-    u8 pad74[0x80 - 0x74];
-    u16 flags80;
-    u8 pad82[0x86 - 0x82];
-    s16 s86;
-    s16 s88;
-    s16 s8A;
-    s16 s8C;
-    s16 s8E;
-    s32 i90;
-    s32 vp94[3];
-    u8 padA0[0xA4 - 0xA0];
-    s32 m4[3];
-    u8 padB0[0xB4 - 0xB0];
-    s32 vpB4[3];
-} VistaCamara;
-
-#define CAMARA ((VistaCamara*)&D_8006D928)
-
-typedef struct Vec3 {
-    s32 x;
-    s32 y;
-    s32 z;
-} Vec3;
-
-/* Campos de los objetos de escena que Objeto (globales.h) no declara. */
-#define OBJ_U32(o, off) (*(u32*)((u8*)(o) + (off)))
-#define OBJ_LISTA(o) ((void*)((u8*)(o) + 0x78))
+#include "arranque.h"
+#include "objetos.h"
+#include "motor.h"
 
 /* Area de trabajo de la sonda de camara (func_800330AC): direccion, matriz, resultado y consulta de colision. */
 typedef struct SondaCamara {
@@ -72,55 +33,8 @@ typedef struct RayoCamara {
     s32 i58;
     s32 i5C;
     s32 i60;
-    ObjetoVolumen* cur;
+    Objeto* cur;
 } RayoCamara;
-
-/* Nodo de la cadena de matrices de un objeto (a partir de +0x7C): matriz en +4, siguiente en +0x48. */
-typedef struct NodoM {
-    s32 pad0;
-    MATRIX m;
-    u8 pad24[0x48 - 0x24];
-    struct NodoM* sig;
-} NodoM;
-
-/* Vista del objeto de escena con los campos que usa la pasada por cuadro (func_800353B0). */
-typedef struct ObjEsc {
-    struct ObjEsc* sig;
-    u32 f4;
-    u32 f8;
-    u32 fC;
-    struct ObjEsc* sig2;
-    u32 flags14;
-    u32 flags18;
-    u16 w1C;
-    u8 pad1E[4];
-    u16 w22;
-    u16 w24;
-    s16 s26;
-    u8 pad28[4];
-    u16 w2C;
-    u16 w2E;
-    u8 pad30[0xC];
-    u16 w3C;
-    u16 w3E;
-    u8 pad40[8];
-    SVECTOR min;
-    SVECTOR max;
-    u8 pad58[0x6C - 0x58];
-    struct ObjEsc* p6C;
-    struct ObjEsc* p70;
-    u8 pad74[4];
-    void* lista78;
-    u8 pad7C[0xE4 - 0x7C];
-    VECTOR pos;
-} ObjEsc;
-
-/* Entrada de 12 bytes de la tabla de clases de objeto (D_8006A940): identificador y banderas. */
-typedef struct TablaEnt {
-    s16 id;
-    u16 fl;
-    u8 pad4[8];
-} TablaEnt;
 
 /* Memoria de trabajo de func_800353B0 en el scratchpad (0x1F800000). */
 typedef struct Scratch {
@@ -133,11 +47,11 @@ typedef struct Scratch {
     s32 m1C;
     s32 m20;
     u8 pad24[0x2C - 0x24];
-    ObjEsc* cur;
-    ObjEsc* l30;
-    ObjEsc* l34;
-    ObjEsc* l38;
-    TablaEnt* tp3C;
+    Objeto* cur;
+    Objeto* l30;
+    Objeto* l34;
+    Objeto* l38;
+    EntradaVisible* tp3C;
     s32 i40;
     s32 i44;
     u8 pad48[0x68 - 0x48];
@@ -146,7 +60,7 @@ typedef struct Scratch {
     s32 z6C;
     s32 i70;
     s32 r74;
-    NodoM* n78;
+    GsCOORDINATE2* n78;
     u8 pad7C[4];
     VECTOR v80[8];
     VECTOR* p100;
@@ -161,15 +75,8 @@ typedef struct Scratch {
 #define GUARDAR_MAC3(p) \
     __asm__ volatile ("move $9, %0\n\tmfc2 $8, $27\n\tnop\n\tsw $8, 0($9)" : : "r"(p) : "$8", "$9", "memory")
 
-extern MATRIX D_80076130;
-extern VECTOR D_80076144;
-extern TablaEnt D_8006A940[];
-extern s16 D_80069588;
-extern void (*D_8005E35C[])(ObjEsc*);
-extern void* D_800694D4;
-extern u16 D_80069652;
-extern s32 D_800695EC;
-extern void func_80033358(s32 a0, u32 a1);
+extern void (*D_8005E35C[])(Objeto*);
+extern void func_80033358(void* a0, u32 a1);
 extern void func_80035244(void);
 extern void func_800351B4(Objeto* a0);
 extern void func_8003502C(Objeto* a0);
@@ -188,47 +95,24 @@ typedef struct Secuencia {
     s16 teclas[10];
 } Secuencia;
 
-typedef struct EstadoPrincipal {
-    s32 modo;
-    u8 pad04[0x41 - 0x04];
-    u8 f41;
-    u8 pad42;
-    u8 f43;
-    u8 pad44;
-    u8 f45;
-    u8 pad46;
-    u8 f47;
-    u8 f48;
-    u8 pad49[0x64 - 0x49];
-    u8 f64;
-    u8 pad65[0x13C - 0x65];
-    u8 f13C;
-} EstadoPrincipal;
-
 extern Secuencia D_8005E768[];
-#define PRINCIPAL ((EstadoPrincipal*)0x80010000)
 
 extern u16 D_8005E6F8[];
 extern s16 D_80069D90[];
 extern void func_80019474(void* pos, void* res, void* f50, void* i68);
 extern long SquareRoot0(long x);
 extern s32 rand(void);
-extern void ClearList(void* lista);
-extern Objeto* RemoveListNode(Objeto* lista, Objeto* nodo);
-extern void func_8001CC68(void* a0);
-extern void func_8001CF50(void* a0);
-extern void func_8001CFCC(void* a0);
 extern void func_8003F900(Objeto* a0);
 extern Vec3 D_80069DC0;
 
 /* Variables de datos pequenos: el original las direcciona con desplazamiento($gp). */
 u16 D_800693F4;
-u16 D_800693F6;
-u16 D_800693F8;
+s16 D_800693F6;
+s16 D_800693F8;
 s32 D_800693F0;
 u16 D_8006940C;
 u16 D_80069414;
-u16 D_80069416;
+s16 D_80069416;
 s16 D_80069424;
 
 
@@ -244,41 +128,41 @@ void func_80032894(void)
     Vec3 vp;
     Vec3 mira;
 
-    GEO_CARGAR_W(&CAMARA->vpx);
+    GEO_CARGAR_W(&D_8006D928.vpx);
     GEO_GUARDAR_W_T1(&vp);
-    GEO_CARGAR_W(&CAMARA->mx);
+    GEO_CARGAR_W(&D_8006D928.x);
     GEO_GUARDAR_W_T1(&mira);
     D_80069414 = 0;
-    func_8001CC68(&D_80069698->xE4);
+    func_8001CC68(&D_80069698->param.trans.vx);
     if (mira.x != 0) {
-        CAMARA->mx = mira.x;
-        CAMARA->m4[0] = mira.x;
-        CAMARA->my = mira.y;
-        CAMARA->m4[1] = mira.y;
-        CAMARA->mz = mira.z;
-        CAMARA->m4[2] = mira.z;
+        D_8006D928.x = mira.x;
+        D_8006D928.cA4 = mira.x;
+        D_8006D928.y = mira.y;
+        D_8006D928.cA8 = mira.y;
+        D_8006D928.z = mira.z;
+        D_8006D928.cAC = mira.z;
     }
     if (vp.x != 0) {
-        CAMARA->vpx = vp.x;
-        CAMARA->vp68[0] = vp.x;
-        CAMARA->vp94[0] = vp.x;
-        CAMARA->vpB4[0] = vp.x;
-        CAMARA->vpy = vp.y;
-        CAMARA->vp68[1] = vp.y;
-        CAMARA->vp94[1] = vp.y;
-        CAMARA->vpB4[1] = vp.y;
-        CAMARA->vpz = vp.z;
-        CAMARA->vp68[2] = vp.z;
-        CAMARA->vp94[2] = vp.z;
-        CAMARA->vpB4[2] = vp.z;
+        D_8006D928.vpx = vp.x;
+        D_8006D928.c68 = vp.x;
+        D_8006D928.c94 = vp.x;
+        D_8006D928.cB4 = vp.x;
+        D_8006D928.vpy = vp.y;
+        D_8006D928.c6C = vp.y;
+        D_8006D928.c98 = vp.y;
+        D_8006D928.cB8 = vp.y;
+        D_8006D928.vpz = vp.z;
+        D_8006D928.c70 = vp.z;
+        D_8006D928.c9C = vp.z;
+        D_8006D928.cBC = vp.z;
     }
     if (D_80069698 != NULL) {
-        D_80069DC0.x = D_80069698->xE4;
-        D_80069DC0.y = D_80069698->yE8;
-        D_80069DC0.z = D_80069698->zEC;
+        D_80069DC0.x = D_80069698->param.trans.vx;
+        D_80069DC0.y = D_80069698->param.trans.vy;
+        D_80069DC0.z = D_80069698->param.trans.vz;
     }
-    CAMARA->i90 = 0;
-    CAMARA->flags80 = 0x40;
+    D_8006D928.i90 = 0;
+    D_8006D928.flags80 = 0x40;
     D_80069624 = -200;
     D_80069618 = 600;
     D_800693F6 = 0;
@@ -297,31 +181,31 @@ void func_80032A24(void)
     s32 r;
     s16 a;
 
-    if (CAMARA->s88 != 0) {
-        CAMARA->s8C = (rsin(CAMARA->s8A) * CAMARA->s88) >> 11;
-        r = rcos(CAMARA->s8A) * CAMARA->s88;
-        CAMARA->mx = CAMARA->mx + CAMARA->s8C;
-        CAMARA->s8A = CAMARA->s8A + CAMARA->s86;
-        CAMARA->s8E = r >> 12;
-        CAMARA->my = CAMARA->my + CAMARA->s8E;
-        a = CAMARA->s8A;
+    if (D_8006D928.s88 != 0) {
+        D_8006D928.h8C = (rsin(D_8006D928.s8A) * D_8006D928.s88) >> 11;
+        r = rcos(D_8006D928.s8A) * D_8006D928.s88;
+        D_8006D928.x = D_8006D928.x + D_8006D928.h8C;
+        D_8006D928.s8A = D_8006D928.s8A + D_8006D928.s86;
+        D_8006D928.h8E = r >> 12;
+        D_8006D928.y = D_8006D928.y + D_8006D928.h8E;
+        a = D_8006D928.s8A;
         if (a >= 0x800) {
-            if (CAMARA->s88 >= 4) {
-                CAMARA->s88 = CAMARA->s88 - 3;
+            if (D_8006D928.s88 >= 4) {
+                D_8006D928.s88 = D_8006D928.s88 - 3;
             } else {
-                CAMARA->s88 = 0;
+                D_8006D928.s88 = 0;
             }
         } else if (a >= 0x1000) {
-            CAMARA->s8A = a - 0x1000;
-            if (CAMARA->s88 >= 4) {
-                CAMARA->s88 = CAMARA->s88 - 3;
+            D_8006D928.s8A = a - 0x1000;
+            if (D_8006D928.s88 >= 4) {
+                D_8006D928.s88 = D_8006D928.s88 - 3;
             } else {
-                CAMARA->s88 = 0;
+                D_8006D928.s88 = 0;
             }
         }
     } else {
-        CAMARA->s8C = 0;
-        CAMARA->s8E = 0;
+        D_8006D928.h8C = 0;
+        D_8006D928.h8E = 0;
     }
 }
 
@@ -352,21 +236,21 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
         pd30 = &w->d30;
         prot = &w->rot;
         do {
-            if ((w->cur->indicadores & mascara) != 0) {
+            if ((w->cur->flags08 & mascara) != 0) {
                 GEO_CARGAR_WH(&w->cur->min);
                 GEO_OR_WH(&w->cur->max);
                 GEO_GUARDAR_1W_T1(p58);
                 if (w->i58 != 0) {
                     GEO_CARGAR_W(&w->suma);
-                    GEO_RESTAR_W(&w->cur->pos);
+                    GEO_RESTAR_W(&w->cur->param.trans);
                     GEO_GUARDAR_H_T4(pd30);
                     GEO_NORMA2_XZ(pd30, p58);
                     if (w->cur->alcance2 >= (u32)w->i58) {
-                        w->i60 = w->cur->radio;
-                        GEO_COMPLEMENTO(&w->cur->rot);
+                        w->i60 = w->cur->s20;
+                        GEO_COMPLEMENTO(&w->cur->param.giro.rotate);
                         GEO_GUARDAR_H_T1(prot);
-                        if (((w->cur->rot.vz + w->cur->rot.vx) & 0xFFF) == 0) {
-                            if (((u16)w->cur->rot.vy & 0xFFF) == 0) {
+                        if (((w->cur->param.giro.rotate.vz + w->cur->param.giro.rotate.vx) & 0xFFF) == 0) {
+                            if (((u16)w->cur->param.giro.rotate.vy & 0xFFF) == 0) {
                                 GEO_CARGAR_WH(pd30);
                                 GEO_GUARDAR_WH(&w->v28);
                             } else {
@@ -385,9 +269,9 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                             && w->cur->max.vy < w->v28.vy
                             && w->cur->min.vy >= w->v28.vy - 0xF0) {
                             w->i58 = w->cur->max.vy - w->v28.vy;
-                            w->a48.vx = a0->x - w->cur->pos.vx;
+                            w->a48.vx = a0->x - w->cur->param.trans.vx;
                             w->a48.vy = 0;
-                            w->a48.vz = a0->z - w->cur->pos.vz;
+                            w->a48.vz = a0->z - w->cur->param.trans.vz;
                             RotMatrixZYX(prot, &w->m);
                             ApplyMatrixSV(&w->m, &w->a48, &w->a50);
                             w->i5C = ratan2(w->a50.vx, w->a50.vz);
@@ -414,7 +298,7 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                                     w->v28.vz = (u16)w->cur->min.vz - (u16)w->i60 - (u16)w->a50.vz;
                                 }
                             }
-                            RotMatrix(&w->cur->rot, &w->m);
+                            RotMatrix(&w->cur->param.giro.rotate, &w->m);
                             ApplyMatrixSV(&w->m, &w->v28, &w->v28);
                             a1->x = w->v28.vx;
                             a1->y = w->i58;
@@ -424,7 +308,7 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                     }
                 }
             }
-            w->cur = w->cur->sig;
+            w->cur = w->cur->sig10;
         } while (w->cur != NULL);
     }
     return 0;
@@ -526,8 +410,8 @@ void func_80034E7C(Objeto* o)
                         if (a != NULL && (a->flags18 & 0x400) == 0) {
                             a->flags14 &= ~0x814;
                             p->p6C->flags14 |= 0x1000;
-                            p->p6C->nodo.padre = NULL;
-                            p->p6C->nodo.transf = (Transformacion*)((u8*)p->p6C + 0xCC);
+                            p->p6C->coord.super = NULL;
+                            p->p6C->coord.param = PARAMETROS_SDK(p->p6C);
                             p->p6C->w26 = p->w26;
                             p->p6C->p70 = NULL;
                             func_8001CF50(p->p6C);
@@ -537,18 +421,18 @@ void func_80034E7C(Objeto* o)
                             }
                         }
                         sig = p->siguiente;
-                        ClearList(OBJ_LISTA(p));
-                        D_80069518 = RemoveListNode(D_80069518, p);
+                        ClearList((NodoLista*)&p->u78.ayudas);
+                        D_80069518 = (Objeto*)RemoveListNode((NodoLista*)D_80069518, (NodoLista*)p);
                         func_8003F900(p);
                         func_80034E7C(p);
                         p = sig;
                         continue;
                     }
-                    p->nodo.transf = (Transformacion*)((u8*)p + 0xCC);
-                    p->nodo.padre = NULL;
+                    p->coord.param = PARAMETROS_SDK(p);
+                    p->coord.super = NULL;
                     p->p70 = NULL;
                     p->flags14 = (p->flags14 & ~0x14) | 0x1202;
-                    func_8001CFCC((u8*)p + 0x7C);
+                    func_8001CFCC(&p->coord);
                 }
                 if (p->p6C == o) {
                     p->p6C = NULL;
@@ -563,10 +447,10 @@ void func_80034E7C(Objeto* o)
 void func_8003502C(Objeto* o)
 {
     Objeto* p;
-    ObjetoVolumen* v;
+    Objeto* v;
 
-    if ((s32)o == D_80069560) {
-        D_80069560 = (s32)D_80069698;
+    if (o == D_80069560) {
+        D_80069560 = D_80069698;
     }
     if (D_80069698->p6C == o) {
         D_80069698->p6C = NULL;
@@ -580,27 +464,27 @@ void func_8003502C(Objeto* o)
     }
     if (o->p6C != NULL) {
         o->p6C->flags14 &= ~0x814;
-        o->p6C->nodo.padre = NULL;
-        o->p6C->nodo.transf = (Transformacion*)((u8*)o->p6C + 0xCC);
+        o->p6C->coord.super = NULL;
+        o->p6C->coord.param = PARAMETROS_SDK(o->p6C);
         o->p6C->w26 = o->w26;
         o->p6C->p70 = NULL;
         func_8001CF50(o->p6C);
         o->p6C->trabajo.i14 = 0;
         o->p6C = NULL;
     }
-    if ((ObjetoVolumen*)o == D_80069630) {
-        D_80069630 = ((ObjetoVolumen*)o)->sig;
+    if (o == D_80069630) {
+        D_80069630 = o->sig10;
     } else {
         v = D_80069630;
-        while (v != NULL && v->sig != (ObjetoVolumen*)o) {
-            v = v->sig;
+        while (v != NULL && v->sig10 != o) {
+            v = v->sig10;
         }
         if (v != NULL) {
-            v->sig = ((ObjetoVolumen*)o)->sig;
+            v->sig10 = o->sig10;
         }
     }
-    ClearList(OBJ_LISTA(o));
-    D_80069518 = RemoveListNode(D_80069518, o);
+    ClearList((NodoLista*)&o->u78.ayudas);
+    D_80069518 = (Objeto*)RemoveListNode((NodoLista*)D_80069518, (NodoLista*)o);
     func_8003F900(o);
     func_80034E7C(o);
 }
@@ -608,16 +492,16 @@ void func_8003502C(Objeto* o)
 /* Prepara un objeto para su baja: limpia banderas y suelta la lista enlazada si ya no la usa nadie. */
 void func_800351B4(Objeto* o)
 {
-    OBJ_U32(o, 4) &= ~2;
+    o->flags04 &= ~2;
     o->flags18 |= 0x100;
-    if ((OBJ_U32(o, 8) & 0x1000) != 0) {
+    if ((o->flags08 & 0x1000) != 0) {
         if ((o->trabajo.flags18 & 0x4000) == 0) {
-            if (*(void**)OBJ_LISTA(o) != NULL) {
+            if (o->u78.ayudas != NULL) {
                 if (o->p70 == NULL) {
                     o->trabajo.flags18 |= 0x4000;
                     o->trabajo.i14 = 0;
-                    ClearList(OBJ_LISTA(o));
-                    *(void**)OBJ_LISTA(o) = NULL;
+                    ClearList((NodoLista*)&o->u78.ayudas);
+                    o->u78.ayudas = NULL;
                 }
             }
         }
@@ -652,30 +536,30 @@ void func_80035244(void)
                     if (e->teclas[e->paso] == 0) {
                         switch (e->caso) {
                         case 0:
-                            PRINCIPAL->f64 |= 1;
+                            ESTADO_PRINCIPAL->r[0x24] |= 1;
                             break;
                         case 1:
-                            PRINCIPAL->f43 = 0x63;
-                            PRINCIPAL->f64 |= 2;
+                            ESTADO_PRINCIPAL->r[0x03] = 0x63;
+                            ESTADO_PRINCIPAL->r[0x24] |= 2;
                             break;
                         case 2:
-                            PRINCIPAL->f48 |= 0x1F;
-                            PRINCIPAL->f64 |= 4;
+                            ESTADO_PRINCIPAL->r[0x08] |= 0x1F;
+                            ESTADO_PRINCIPAL->r[0x24] |= 4;
                             break;
                         case 3:
-                            PRINCIPAL->f41 = 6;
-                            PRINCIPAL->f64 |= 8;
+                            ESTADO_PRINCIPAL->r[0x01] = 6;
+                            ESTADO_PRINCIPAL->r[0x24] |= 8;
                             break;
                         case 4:
-                            PRINCIPAL->f48 |= 0x80;
-                            PRINCIPAL->f64 |= 0x10;
+                            ESTADO_PRINCIPAL->r[0x08] |= 0x80;
+                            ESTADO_PRINCIPAL->r[0x24] |= 0x10;
                             break;
                         case 5:
-                            PRINCIPAL->f47 = 0x4D;
-                            PRINCIPAL->f13C = 1;
-                            PRINCIPAL->f45 = 0x7C;
+                            ESTADO_PRINCIPAL->r[0x07] = 0x4D;
+                            ESTADO_PRINCIPAL->r[0xFC] = 1;
+                            ESTADO_PRINCIPAL->r[0x05] = 0x7C;
                         case 6:
-                            PRINCIPAL->modo = 0x47;
+                            ESTADO_PRINCIPAL->nivel = 0x47;
                             D_80069662 = 1;
                             break;
                         }
@@ -706,13 +590,13 @@ INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80035244);
  * (segun sus indicadores) con la memoria de trabajo del scratchpad en 0x1F800000, los vuelve a enlazar en
  * D_80069630 y ejecuta la rutina de logica de cada uno (tabla D_8005E35C).
  */
-void func_800353B0(ObjEsc* a0)
+void func_800353B0(Objeto* a0)
 {
     Scratch* sc;
-    ObjEsc* o;
-    ObjEsc* s0;
-    ObjEsc* t;
-    NodoM* n;
+    Objeto* o;
+    Objeto* s0;
+    Objeto* t;
+    GsCOORDINATE2* n;
     s32 sx;
     s32 sy;
     s32 r;
@@ -725,23 +609,23 @@ void func_800353B0(ObjEsc* a0)
     D_800694D4 = D_800694B8;
     if (D_8006AA70[0xC] == 0) {
         if (D_80069560 != 0) {
-            func_80033358(D_80069560, OBJ_U32(D_80069698, 0x1B4));
+            func_80033358(D_80069560, D_80069698->w1B4);
         }
     }
     func_80035244();
-    sc->m18 = CAMARA->mx - CAMARA->vpx;
-    sc->m20 = CAMARA->mz - CAMARA->vpz;
+    sc->m18 = D_8006D928.x - D_8006D928.vpx;
+    sc->m20 = D_8006D928.z - D_8006D928.vpz;
     sc->r74 = ratan2(sc->m18, sc->m20);
     gte_SetRotMatrix(&D_80076130);
     gte_SetTransVector(&D_80076144);
-    if (D_80069698 != NULL && (CAMARA->vpx + CAMARA->vpy + CAMARA->vpz) == 0) {
-        sc->m18 = D_80069698->xE4;
-        sc->m1C = D_80069698->yE8;
-        sc->m20 = D_80069698->zEC;
+    if (D_80069698 != NULL && (D_8006D928.vpx + D_8006D928.vpy + D_8006D928.vpz) == 0) {
+        sc->m18 = D_80069698->param.trans.vx;
+        sc->m1C = D_80069698->param.trans.vy;
+        sc->m20 = D_80069698->param.trans.vz;
     } else {
-        sc->m18 = CAMARA->vpx;
-        sc->m1C = CAMARA->vpy;
-        sc->m20 = CAMARA->vpz;
+        sc->m18 = D_8006D928.vpx;
+        sc->m1C = D_8006D928.vpy;
+        sc->m20 = D_8006D928.vpz;
     }
     sc->l30 = NULL;
     sc->l34 = NULL;
@@ -755,8 +639,8 @@ void func_800353B0(ObjEsc* a0)
         pz = &sc->z6C;
         do {
             if ((sc->cur->flags14 & 0x100) != 0) {
-                s0 = sc->cur->sig;
-                func_8003502C((Objeto*)sc->cur);
+                s0 = sc->cur->siguiente;
+                func_8003502C(sc->cur);
                 if (s0 == NULL) {
                     goto fin;
                 }
@@ -765,34 +649,34 @@ void func_800353B0(ObjEsc* a0)
             if (sc->cur->w24 != 0) {
                 sc->cur->w24 = sc->cur->w24 - 1;
             }
-            if ((sc->cur->fC & 0x40) != 0) {
+            if ((sc->cur->flags0C & 0x40) != 0) {
                 goto siguiente;
             }
-            sc->cur->f4 |= 2;
+            sc->cur->flags04 |= 2;
             sc->cur->flags18 &= ~0x100;
-            if ((sc->cur->f4 & 0x20) == 0 && sc->cur->w1C != 5 && sc->cur->w2C != 0x14
-                && sc->cur->p70 != (ObjEsc*)D_80069698 && sc->cur->p6C != (ObjEsc*)D_80069698 && sc->cur->w3C != 0) {
+            if ((sc->cur->flags04 & 0x20) == 0 && sc->cur->w1C != 5 && sc->cur->w2C != 0x14
+                && sc->cur->p70 != D_80069698 && sc->cur->p6C != D_80069698 && sc->cur->w3C != 0) {
                 if ((sc->cur->w3C & 2) != 0) {
-                    sc->d0 = sc->m18 - sc->cur->pos.vx;
-                    sc->d4 = sc->m1C - sc->cur->pos.vy;
-                    sc->d8 = sc->m20 - sc->cur->pos.vz;
+                    sc->d0 = sc->m18 - sc->cur->param.trans.vx;
+                    sc->d4 = sc->m1C - sc->cur->param.trans.vy;
+                    sc->d8 = sc->m20 - sc->cur->param.trans.vz;
                     GEO_DISTANCIA_APROX(sc);
                     if (sc->cur->w3E < sc->i44) {
                         if ((sc->cur->w3C & 0x40) == 0) {
                             sc->cur->w24 = (sc->i44 - sc->cur->w3E) >> 7;
-                            func_800351B4((Objeto*)sc->cur);
+                            func_800351B4(sc->cur);
                             goto siguiente;
                         }
-                        sc->cur->f4 &= m3;
+                        sc->cur->flags04 &= m3;
                         sc->cur->flags18 |= 0x100;
                     }
                 }
-                if ((sc->cur->w3C & 1) != 0 && (sc->cur->f4 & 2) != 0) {
+                if ((sc->cur->w3C & 1) != 0 && (sc->cur->flags04 & 2) != 0) {
                     sc->i40 = 0;
                     sc->tp3C = D_8006A940;
                     if (sc->i40 < D_80069588) {
                         do {
-                            if (sc->cur->s26 == sc->tp3C->id) {
+                            if ((s16)sc->cur->w26 == sc->tp3C->modelo) {
                                 break;
                             }
                             sc->i40++;
@@ -800,25 +684,25 @@ void func_800353B0(ObjEsc* a0)
                         } while (sc->i40 < D_80069588);
                     }
                     if (sc->i40 < D_80069588) {
-                        if ((sc->tp3C->fl & 1) != 0 && (sc->cur->f8 & 0x10000) != 0) {
+                        if ((sc->tp3C->bandera & 1) != 0 && (sc->cur->flags08 & 0x10000) != 0) {
                             goto sigue2;
                         }
                     } else if (D_80069588 != sc->i40) {
                         goto sigue2;
                     }
                     if ((sc->cur->w3C & 0x40) == 0) {
-                        func_800351B4((Objeto*)sc->cur);
+                        func_800351B4(sc->cur);
                         goto siguiente;
                     }
-                    sc->cur->f4 &= m3;
+                    sc->cur->flags04 &= m3;
                     sc->cur->flags18 |= 0x100;
                 }
 sigue2:
-                if ((sc->cur->w3C & 0x20) != 0 && (sc->cur->f4 & 2) != 0) {
-                    if (sc->cur->lista78 == NULL && (sc->cur->flags18 & 0x80) == 0) {
-                        sc->p10.vx = sc->cur->pos.vx;
-                        sc->p10.vy = sc->cur->pos.vy;
-                        sc->p10.vz = sc->cur->pos.vz;
+                if ((sc->cur->w3C & 0x20) != 0 && (sc->cur->flags04 & 2) != 0) {
+                    if (sc->cur->u78.p == NULL && (sc->cur->flags18 & 0x80) == 0) {
+                        sc->p10.vx = sc->cur->param.trans.vx;
+                        sc->p10.vy = sc->cur->param.trans.vy;
+                        sc->p10.vz = sc->cur->param.trans.vz;
                         gte_ldv0(&sc->p10);
                         gte_rtps();
                         gte_stsxy(psx);
@@ -827,10 +711,10 @@ sigue2:
                         sy = sc->sy;
                         if (sc->z6C < 0 || sx + sc->cur->w2E < -0x100 || sx - sc->cur->w2E > 0x100 || sy < -0x78
                             || sy + sc->cur->max.vy >= 0x79) {
-                            sc->cur->f4 &= m3;
+                            sc->cur->flags04 &= m3;
                             sc->cur->flags18 |= 0x100;
                         }
-                        if ((sc->cur->f4 & 2) == 0) {
+                        if ((sc->cur->flags04 & 2) == 0) {
                             if ((sc->cur->w3C & 0xC0) == 0) {
                                 goto atenuar;
                             }
@@ -843,14 +727,14 @@ sigue2:
                         sc->c104[4].vy = sc->c104[5].vy = sc->c104[6].vy = sc->c104[7].vy = sc->cur->min.vy;
                         sc->c104[0].vz = sc->c104[1].vz = sc->c104[4].vz = sc->c104[5].vz = sc->cur->max.vz;
                         sc->c104[2].vz = sc->c104[3].vz = sc->c104[6].vz = sc->c104[7].vz = sc->cur->min.vz;
-                        sc->n78 = (NodoM*)((u8*)sc->cur + 0x7C);
+                        sc->n78 = &sc->cur->coord;
                         if (sc->n78 != NULL) {
                             do {
                                 n = sc->n78;
-                                gte_SetRotMatrix(&n->m);
-                                sc->d0 = n->m.t[0];
-                                sc->d4 = n->m.t[1];
-                                r = n->m.t[2];
+                                gte_SetRotMatrix(&n->coord);
+                                sc->d0 = n->coord.t[0];
+                                sc->d4 = n->coord.t[1];
+                                r = n->coord.t[2];
                                 sc->i40 = 0;
                                 sc->p100 = sc->v80;
                                 sc->p144 = sc->c104;
@@ -867,7 +751,7 @@ sigue2:
                                     sc->p100++;
                                     sc->p144++;
                                 }
-                                sc->n78 = sc->n78->sig;
+                                sc->n78 = sc->n78->super;
                             } while (sc->n78 != NULL);
                         }
                         gte_SetRotMatrix(&D_80076130);
@@ -886,72 +770,72 @@ sigue2:
                             sc->p144++;
                         }
                         if (sc->i40 == 8) {
-                            sc->cur->f4 &= m3;
+                            sc->cur->flags04 &= m3;
                             sc->cur->flags18 |= 0x100;
                         }
 tras_proyeccion:
-                        if ((sc->cur->f4 & 2) == 0 && (sc->cur->w3C & 0xC0) == 0) {
+                        if ((sc->cur->flags04 & 2) == 0 && (sc->cur->w3C & 0xC0) == 0) {
 atenuar:
                             sc->cur->w24 = (0x400 - sc->i40) >> 7;
-                            func_800351B4((Objeto*)sc->cur);
+                            func_800351B4(sc->cur);
                             goto siguiente;
                         }
                     }
                 }
             }
             if (sc->cur->w2C == 0x10 || sc->cur->w2C == 0x24) {
-                sc->cur->f4 &= m3;
+                sc->cur->flags04 &= m3;
                 sc->cur->flags18 |= 0x100;
             }
             if (sc->cur->w2C == 0x15) {
-                sc->cur->sig2 = sc->l34;
+                sc->cur->sig10 = sc->l34;
                 sc->l34 = sc->cur;
-            } else if ((sc->cur->f8 & 0x20000) != 0) {
-                sc->cur->sig2 = sc->l30;
+            } else if ((sc->cur->flags08 & 0x20000) != 0) {
+                sc->cur->sig10 = sc->l30;
                 sc->l30 = sc->cur;
-            } else if ((sc->cur->f8 & 8) != 0) {
-                sc->cur->sig2 = sc->l38;
+            } else if ((sc->cur->flags08 & 8) != 0) {
+                sc->cur->sig10 = sc->l38;
                 sc->l38 = sc->cur;
             } else if (sc->cur->w1C == 1) {
-                D_80069698 = (Objeto*)sc->cur;
+                D_80069698 = sc->cur;
             } else {
-                sc->cur->sig2 = (ObjEsc*)D_80069630;
-                D_80069630 = (ObjetoVolumen*)sc->cur;
+                sc->cur->sig10 = D_80069630;
+                D_80069630 = sc->cur;
             }
 siguiente:
-            sc->cur = sc->cur->sig;
+            sc->cur = sc->cur->siguiente;
         } while (sc->cur != NULL);
     }
 fin:
     if (D_80069698 != NULL) {
-        t = (ObjEsc*)D_80069630;
-        D_80069630 = (ObjetoVolumen*)D_80069698;
-        ((ObjEsc*)D_80069698)->sig2 = t;
+        t = D_80069630;
+        D_80069630 = D_80069698;
+        (D_80069698)->sig10 = t;
     }
     if (sc->l38 != NULL) {
         sc->cur = sc->l38;
-        while (sc->cur->sig2 != NULL) {
-            sc->cur = sc->cur->sig2;
+        while (sc->cur->sig10 != NULL) {
+            sc->cur = sc->cur->sig10;
         }
-        sc->cur->sig2 = (ObjEsc*)D_80069630;
-        D_80069630 = (ObjetoVolumen*)sc->l38;
+        sc->cur->sig10 = D_80069630;
+        D_80069630 = sc->l38;
     }
     if (sc->l30 != NULL) {
         sc->cur = sc->l30;
-        while (sc->cur->sig2 != NULL) {
-            sc->cur = sc->cur->sig2;
+        while (sc->cur->sig10 != NULL) {
+            sc->cur = sc->cur->sig10;
         }
-        sc->cur->sig2 = (ObjEsc*)D_80069630;
-        D_80069630 = (ObjetoVolumen*)sc->l30;
+        sc->cur->sig10 = D_80069630;
+        D_80069630 = sc->l30;
     }
     if (sc->l34 != NULL) {
-        sc->l34->sig2 = (ObjEsc*)D_80069630;
-        D_80069630 = (ObjetoVolumen*)sc->l34;
+        sc->l34->sig10 = D_80069630;
+        D_80069630 = sc->l34;
     }
-    s0 = (ObjEsc*)D_80069630;
+    s0 = D_80069630;
     D_800695D0 = 0;
     D_800695EC = 0;
-    D_80069560 = (s32)D_80069698;
+    D_80069560 = D_80069698;
     if (s0 != NULL) {
         do {
             o = s0;
@@ -959,18 +843,18 @@ fin:
                 if ((s0->flags14 & 0x100) == 0) {
                     D_8005E35C[s0->w2C](s0);
                 }
-                if ((*(u32*)&CAMARA->flags80 & 0x300) != 0x100 || s0->w2C == 0x20 || (s0->flags18 & 0x1000) != 0) {
+                if ((*(u32*)&D_8006D928.flags80 & 0x300) != 0x100 || s0->w2C == 0x20 || (s0->flags18 & 0x1000) != 0) {
                     s0->w22++;
                     o = s0;
                 }
-            } else if ((s0->flags14 & 0x100) == 0 && (s0->fC & 0x40000000) != 0) {
+            } else if ((s0->flags14 & 0x100) == 0 && (s0->flags0C & 0x40000000) != 0) {
                 D_8005E35C[s0->w2C](s0);
                 s0->w22++;
                 o = s0;
             }
-            s0 = s0->sig2;
+            s0 = s0->sig10;
             if ((o->flags14 & 0x100) != 0) {
-                func_8003502C((Objeto*)o);
+                func_8003502C(o);
             }
         } while (s0 != NULL);
     }

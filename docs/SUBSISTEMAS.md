@@ -242,7 +242,7 @@ Audio en streaming XA (`func_8003E034`, `func_8003E16C`, `func_8003E298`, `func_
 
 - **Rangos:** `0x80040EB4..0x800443CC`, `0x80044664..0x80044904`
 - **Funciones (12, 14264 bytes):** `80040EB4` func_80040EB4, `80040F78` func_80040F78, `8004109C` func_8004109C, `800411F0` func_800411F0, `80041238` func_80041238, `80041264` func_80041264, `80041298` func_80041298, `8004153C` func_8004153C, `800415A0` func_800415A0, `80042BB8` func_80042BB8, `80044664` func_80044664, `80044854` func_80044854
-- **Librerias de Sony (llamadas):** CdControl (3), CdIntToPos (3), CdPosToInt (2), CdReadyCallback (2), CdStatus (2), printf (2), CdControlB (1), CdGetSector (1), CdSync (1), DrawSync (1), GsGetTimInfo (1), GsMapModelingData (1), LoadImage (1), RotMatrix (1), ScaleMatrix (1), SetDispMask (1), func_8004E66C (1), func_8004E67C (1), func_8004FADC (1), memset (1)
+- **Librerias de Sony (llamadas):** CdControl (3), CdIntToPos (3), CdPosToInt (2), CdReadyCallback (2), CdStatus (2), printf (2), CdControlB (1), CdGetSector (1), CdSync (1), DrawSync (1), GsGetTimInfo (1), GsMapModelingData (1), LoadImage (1), RotMatrix (1), ScaleMatrix (1), SetDispMask (1), EnterCriticalSection (1), ExitCriticalSection (1), func_8004FADC (1), memset (1)
 - **Cadenas que lo delatan:** `0x80067F54` "BouzeID %d not found"; `0x8006933C` "Got it"
 - **Datos que toca (direcciones distintas por region):** bss 77, cadenas_y_mensajes 8, datos_pequenos 1, datos_y_tablas 2, estado_global 4, scratchpad 1
 - **Llama a (aristas):** audio_xa_y_spu (7), gestion_y_dibujo_de_objetos (11), graficos_y_gte (4), inicializacion_de_motor (2)

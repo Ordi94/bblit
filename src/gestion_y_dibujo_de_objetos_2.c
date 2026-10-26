@@ -2,8 +2,11 @@
 #include "objetos.h"
 
 /*
- * Vista del ayudante a partir de +0x0C: el puntero a su GsCOORDINATE2 (+0x10 del nodo) y la
- * bandera de visibilidad (+0xB4 del nodo). Las rutinas de recorrido acceden por esta base.
+ * Vista del ayudante (Ayuda, objetos.h) a partir de +0x0C: el puntero a su GsCOORDINATE2 (+0x10
+ * del nodo) y la bandera de visibilidad (+0xB4 del nodo). Es una vista aparte de Ayuda a proposito:
+ * el original recorre la lista con un puntero desplazado 0xC (addiu sobre el nodo) distinto del
+ * propio nodo. Accediendo por los campos de Ayuda func_80037048 sube de 0 a 604 puntos y
+ * func_80037184 de 929 a 1464.
  */
 typedef struct AyudaCuerpo {
     s32 w0;
@@ -16,11 +19,8 @@ typedef struct AyudaCuerpo {
 #define EST ((u8*)0x80010000)
 
 /* Lista de objetos ya dibujados (se encadena por +0x10) y contador de cuadros. */
-extern void* D_800694D8;
-extern s32 D_80069534;
 
 /* Objeto de referencia respecto del que func_80037184 refleja los demas. */
-extern ObjetoEscena* D_800695EC;
 
 /* Contadores de la interfaz del estado principal (bytes sueltos de 0x80010000). */
 extern u8 D_80010042;
@@ -32,8 +32,6 @@ extern u8 D_800100F9;
 extern u8 D_800100FA;
 
 /* Nivel de unidades mostrado por los indicadores y nivel de fundido pedido. */
-extern u8 D_80069524;
-extern u8 D_800695F6;
 
 /*
  * Tablas del archivo: identificadores de plantilla de los grupos de objetos (D_8005E830), de los
@@ -63,7 +61,7 @@ s32 D_80069438;
 
 extern s32 func_80038C2C(s32 idx, s32 valor, s32 modo);
 extern void func_80038884(s32 idx, s32 modo);
-extern void func_80037DB4(ObjetoEscena* o, s16 id, s16* pos, s16 modo);
+extern void func_80037DB4(Objeto* o, s16 id, s16* pos, s16 modo);
 extern u32 func_80037D3C(u16 valor);
 
 /*
@@ -71,7 +69,7 @@ extern u32 func_80037D3C(u16 valor);
  * a s16 que impondria su prototipo: el original la llama sin prototipo visible. Este tipo de
  * funcion permite la misma llamada directa sin conversion de los argumentos.
  */
-typedef void (*ReiniciarSinConversion)(ObjetoEscena* o, s32 id, s16* pos, s32 modo);
+typedef void (*ReiniciarSinConversion)(Objeto* o, s32 id, s16* pos, s32 modo);
 
 /* Idem para func_80037D3C: el llamador le pasa el valor entero sin truncarlo a u16. */
 typedef u32 (*DigitosSinConversion)(s32 valor);
@@ -82,7 +80,7 @@ typedef u32 (*DigitosSinConversion)(s32 valor);
  * vista de los visibles. El puntero en curso vive en el scratchpad porque las rutinas llamadas
  * lo consultan.
  */
-void func_80037048(ObjetoEscena* lista)
+void func_80037048(Objeto* lista)
 {
     Escritorio* sp;
     Ayuda* a;
@@ -99,11 +97,11 @@ void func_80037048(ObjetoEscena* lista)
         uno = 1;
         m = (MATRIX*)0x1F800008;
         do {
-            if (!(sp->actual->cab.libre & 2)) {
+            if (!(sp->actual->flags04 & 2)) {
                 sp->actual = sp->actual->sig10;
             } else {
                 sp->actual->coord.flg = 0;
-                for (a = sp->actual->ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
+                for (a = sp->actual->u78.ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
                     e = (AyudaCuerpo*)((u8*)a + 0xC);
                     if (a->flags8 & 8) {
                         e->visible = uno;
@@ -137,15 +135,15 @@ void func_80037048(ObjetoEscena* lista)
  * (eje X, Y o Z), recalcula su matriz, decide la visibilidad de sus ayudantes, restaura su
  * posicion original y lo anade a la lista de dibujo D_800694D8 (que se encadena por +0x10).
  */
-void func_80037184(ObjetoEscena* lista)
+void func_80037184(Objeto* lista)
 {
     Escritorio* sp;
     Ayuda* a;
     AyudaCuerpo* e;
     MATRIX* m;
     void* aux;
-    ObjetoEscena* ref;
-    ObjetoEscena* o;
+    Objeto* ref;
+    Objeto* o;
 
     sp = ESCRITORIO;
     D_80069534 += 10;
@@ -154,7 +152,7 @@ void func_80037184(ObjetoEscena* lista)
         m = (MATRIX*)0x1F800008;
         aux = (void*)0x1F800038;
         do {
-            if (!(sp->actual->cab.libre & 2) || !(sp->actual->flags18 & 8)) {
+            if (!(sp->actual->flags04 & 2) || !(sp->actual->flags18 & 8)) {
                 sp->actual = sp->actual->sig10;
             } else {
                 ref = D_800695EC;
@@ -183,7 +181,7 @@ void func_80037184(ObjetoEscena* lista)
                 }
                 TransMatrix(&sp->actual->coord.coord, &sp->actual->coord.param->trans);
                 sp->actual->coord.flg = 0;
-                for (a = sp->actual->ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
+                for (a = sp->actual->u78.ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
                     if (a->flags8 & 8) {
                         continue;
                     }
@@ -288,63 +286,63 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037D3C);
  * crea el ayudante raiz con su coordenada y la posicion inicial 'pos'. 'modo' elige entre
  * dos tiempos de espera iniciales.
  */
-void func_80037DB4(ObjetoEscena* o, s16 id, s16* pos, s16 modo)
+void func_80037DB4(Objeto* o, s16 id, s16* pos, s16 modo)
 {
-    ObjetoEscena* t;
-    ObjetoEscena* sig;
-    ObjetoEscena* sig10;
+    Objeto* t;
+    Objeto* sig;
+    Objeto* sig10;
     u32 i;
     s32* d;
 
-    if (o->ayudas != 0) {
-        ClearList((NodoLista*)&o->ayudas);
+    if (o->u78.ayudas != 0) {
+        ClearList((NodoLista*)&o->u78.ayudas);
     }
-    for (t = D_80069504; t != 0; t = (ObjetoEscena*)t->cab.siguiente) {
+    for (t = D_80069504; t != 0; t = t->siguiente) {
         if (t->w1C == id) {
             break;
         }
     }
     if (t != 0) {
-        sig = (ObjetoEscena*)o->cab.siguiente;
+        sig = o->siguiente;
         sig10 = o->sig10;
         i = 0;
         d = (s32*)o;
         for (; i < 0x7D; i++) {
             *d++ = *(s32*)t;
-            t = (ObjetoEscena*)((s32*)t + 1);
+            t = (Objeto*)((s32*)t + 1);
         }
-        o->coord.param = &o->param;
-        o->cab.siguiente = (NodoLista*)sig;
+        o->coord.param = PARAMETROS_SDK(o);
+        o->siguiente = sig;
         o->sig10 = sig10;
-        o->cab.libre |= 2;
-        if (o->p74 == 0) {
+        o->flags04 |= 2;
+        if (o->lista == 0) {
             o->flags14 |= 0x100;
         } else {
-            o->ayudas = func_800363D4();
-            if (o->ayudas == 0) {
+            o->u78.ayudas = func_800363D4();
+            if (o->u78.ayudas == 0) {
                 for (;;) {
                 }
             }
-            if (o->p74->datos->wA & 2) {
-                o->ayudas->flags8 |= 2;
-                GsInitCoordinate2(0, o->ayudas->pcoord);
-                o->ayudas->pcoord->super = &o->coord;
-                o->coord.param = &o->param;
-                o->ayudas->w14 = o->p74->datos->w54;
+            if (o->lista->def->wA & 2) {
+                o->u78.ayudas->flags8 |= 2;
+                GsInitCoordinate2(0, o->u78.ayudas->pcoord);
+                o->u78.ayudas->pcoord->super = &o->coord;
+                o->coord.param = PARAMETROS_SDK(o);
+                o->u78.ayudas->w14 = (s32)o->lista->def->tabla;
             }
             o->coord.flg = 0;
-            o->ayudas->wC = 0;
-            func_800375C4((s32*)&o->ayudas->m94);
-            o->ayudas->m94.t[0] = pos[0] << 16;
-            o->ayudas->m94.t[1] = pos[1] << 16;
+            o->u78.ayudas->wC = 0;
+            func_800375C4((s32*)&o->u78.ayudas->m94);
+            o->u78.ayudas->m94.t[0] = pos[0] << 16;
+            o->u78.ayudas->m94.t[1] = pos[1] << 16;
             if (modo != 0) {
                 o->w22 = 0x3C;
                 o->s1E = 0;
-                o->ayudas->m94.t[2] = 0x4B0;
+                o->u78.ayudas->m94.t[2] = 0x4B0;
             } else {
                 o->s1E = 1;
                 o->w22 = 0;
-                o->ayudas->m94.t[2] = 0x1F40;
+                o->u78.ayudas->m94.t[2] = 0x1F40;
             }
         }
     }
@@ -373,7 +371,7 @@ void func_80037FB8(NodoLista* n)
  * valor se convierte a BCD con func_80037D3C y cada digito elige su plantilla en D_8005E81C)
  * y, para los contadores opcionales, fija el parametro de profundidad de cada ayudante a 0x5DC.
  */
-void func_80037FE8(void)
+void func_80037FE8(void* lista)
 {
     s32 ids[6];
     s32* pid;
@@ -381,7 +379,7 @@ void func_80037FE8(void)
     s32 i;
     s32 bcd;
     s32 pct;
-    ObjetoEscena* o;
+    Objeto* o;
     s16 (*tpos)[2];
     u8* e;
 
@@ -447,7 +445,7 @@ void func_80037FE8(void)
         for (; i < 6; i++) {
             o = D_8006AB70[29 + i];
             ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], pos[i], 1);
-            o->ayudas->m94.t[2] = 0x5DC;
+            o->u78.ayudas->m94.t[2] = 0x5DC;
         }
     }
 
@@ -471,7 +469,7 @@ void func_80037FE8(void)
             } else {
                 ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], tpos[i], 1);
             }
-            o->ayudas->m94.t[2] = 0x5DC;
+            o->u78.ayudas->m94.t[2] = 0x5DC;
         }
     }
 
@@ -490,7 +488,7 @@ void func_80037FE8(void)
         for (; i < 6; i++) {
             o = D_8006AB70[41 + i];
             ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], pos[i], 1);
-            o->ayudas->m94.t[2] = 0x5DC;
+            o->u78.ayudas->m94.t[2] = 0x5DC;
         }
     }
 }
@@ -507,7 +505,7 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037FE8);
  */
 void func_8003861C(s32 idx)
 {
-    ObjetoEscena* v[3];
+    Objeto* v[3];
     VECTOR esc;
     u8 pedido;
     u8 actual;
@@ -533,7 +531,7 @@ void func_8003861C(s32 idx)
         esc.vz = 0x1000;
         esc.vy = 0x1000;
         esc.vx = 0x1000 - (D_800695F6 << 5);
-        if (!(v[0]->cab.libre & 2)) {
+        if (!(v[0]->flags04 & 2)) {
             ids = &D_8005E830[idx];
             id0 = ids[0];
             id1 = ids[1];
@@ -542,21 +540,21 @@ void func_8003861C(s32 idx)
             func_80037DB4(v[1], id1, D_8005E86C[idx + 1], 1);
             func_80037DB4(v[2], id2, D_8005E86C[idx + 2], 1);
             D_80069430 = 0;
-            ScaleMatrix(&v[1]->ayudas->m94, &esc);
+            ScaleMatrix(&v[1]->u78.ayudas->m94, &esc);
         } else {
             D_80069430 += 0x50;
             if ((s16)D_80069430 >= 0x1000) {
                 D_80069430 -= 0x1000;
             }
-            func_800375C4((s32*)&v[0]->ayudas->m94);
-            RotMatrixY((s16)D_80069430, &v[0]->ayudas->m94);
-            func_800375C4((s32*)&v[1]->ayudas->m94);
-            ScaleMatrix(&v[1]->ayudas->m94, &esc);
+            func_800375C4((s32*)&v[0]->u78.ayudas->m94);
+            RotMatrixY((s16)D_80069430, &v[0]->u78.ayudas->m94);
+            func_800375C4((s32*)&v[1]->u78.ayudas->m94);
+            ScaleMatrix(&v[1]->u78.ayudas->m94, &esc);
         }
-    } else if (v[0]->cab.libre & 2) {
-        v[0]->cab.libre &= ~2;
-        v[1]->cab.libre &= ~2;
-        v[2]->cab.libre &= ~2;
+    } else if (v[0]->flags04 & 2) {
+        v[0]->flags04 &= ~2;
+        v[1]->flags04 &= ~2;
+        v[2]->flags04 &= ~2;
     }
 }
 
@@ -574,9 +572,9 @@ void func_8003861C(s32 idx)
  */
 void func_80038884(s32 idx, s32 modo)
 {
-    ObjetoEscena* v[3];
-    ObjetoEscena** p;
-    ObjetoEscena* o;
+    Objeto* v[3];
+    Objeto** p;
+    Objeto* o;
     s16* ids;
     s32 id0;
     s32 id1;
@@ -628,7 +626,7 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80038884);
  */
 void func_800389FC(s32 idx, s32 valor, s32 apagar)
 {
-    ObjetoEscena* v[3];
+    Objeto* v[3];
     s16* ids;
     s32 id0;
     s32 id1;
@@ -639,7 +637,7 @@ void func_800389FC(s32 idx, s32 valor, s32 apagar)
     v[1] = D_8006AB70[idx + 1];
     v[2] = D_8006AB70[idx + 2];
     if (apagar == 0) {
-        if (!(v[0]->cab.libre & 2)) {
+        if (!(v[0]->flags04 & 2)) {
             ids = &D_8005E830[idx];
             id0 = ids[0];
             id1 = ids[1];
@@ -657,14 +655,14 @@ void func_800389FC(s32 idx, s32 valor, s32 apagar)
         while (D_80069438 >= 0x1000) {
             D_80069438 -= 0x1000;
         }
-        func_800375C4((s32*)&v[0]->ayudas->m94);
-        RotMatrixZ(D_80069434, &v[0]->ayudas->m94);
-        func_800375C4((s32*)&v[1]->ayudas->m94);
-        RotMatrixZ(D_80069438, &v[1]->ayudas->m94);
+        func_800375C4((s32*)&v[0]->u78.ayudas->m94);
+        RotMatrixZ(D_80069434, &v[0]->u78.ayudas->m94);
+        func_800375C4((s32*)&v[1]->u78.ayudas->m94);
+        RotMatrixZ(D_80069438, &v[1]->u78.ayudas->m94);
     } else {
-        v[0]->cab.libre &= ~2;
-        v[1]->cab.libre &= ~2;
-        v[2]->cab.libre &= ~2;
+        v[0]->flags04 &= ~2;
+        v[1]->flags04 &= ~2;
+        v[2]->flags04 &= ~2;
     }
 }
 
@@ -677,9 +675,9 @@ void func_800389FC(s32 idx, s32 valor, s32 apagar)
  */
 s32 func_80038C2C(s32 idx, s32 valor, s32 modo)
 {
-    ObjetoEscena* c;
-    ObjetoEscena* d;
-    ObjetoEscena* u;
+    Objeto* c;
+    Objeto* d;
+    Objeto* u;
     s32 bcd;
     s32 id0;
     s32 idDec;
@@ -694,25 +692,25 @@ s32 func_80038C2C(s32 idx, s32 valor, s32 modo)
     c = D_8006AB70[idx];
     d = D_8006AB70[idx + 1];
     u = D_8006AB70[idx + 2];
-    if (c->cab.libre & 2) {
+    if (c->flags04 & 2) {
         if (c->s1E == 0 && c->w22 == 0) {
             c->s1E = 1;
         }
     } else {
         ((ReiniciarSinConversion)func_80037DB4)(c, id0, D_8005E86C[idx], modo);
     }
-    if (d->cab.libre & 2) {
-        if (d->s1E != 2 && d->w1C != idDec && u->ayudas->m94.t[2] <= 0x4B0) {
+    if (d->flags04 & 2) {
+        if (d->s1E != 2 && d->w1C != idDec && u->u78.ayudas->m94.t[2] <= 0x4B0) {
             d->w22 = 0;
             d->s1E = 2;
-            d->ayudas->m94.t[2] = u->ayudas->m94.t[2];
+            d->u78.ayudas->m94.t[2] = u->u78.ayudas->m94.t[2];
         } else if (d->s1E == 0 && d->w22 == 0) {
             d->s1E = 1;
         }
     } else {
         ((ReiniciarSinConversion)func_80037DB4)(d, idDec, D_8005E86C[idx + 1], modo);
     }
-    if (u->cab.libre & 2) {
+    if (u->flags04 & 2) {
         if (u->w1C != idUni) {
             u->s1E = 2;
             u->w22 = 0;
@@ -736,16 +734,16 @@ s32 func_80038C2C(s32 idx, s32 valor, s32 modo)
  */
 void func_80038E84(s32 idx, s32 paso)
 {
-    ObjetoEscena* v[3];
-    ObjetoEscena** p;
-    ObjetoEscena* o;
+    Objeto* v[3];
+    Objeto** p;
+    Objeto* o;
     s32 i;
     s32 mascara;
 
     v[0] = D_8006AB70[idx];
     v[1] = D_8006AB70[idx + 1];
     v[2] = D_8006AB70[idx + 2];
-    if (v[0]->cab.libre & 2) {
+    if (v[0]->flags04 & 2) {
         if (v[1]->s1E == 0) {
             if (v[2]->s1E != 0) {
                 v[0]->w22 = 0x29;
@@ -764,22 +762,22 @@ void func_80038E84(s32 idx, s32 paso)
             o = *p;
             if (o->w22 == 0) {
                 if (o->s1E == 0) {
-                    o->ayudas->m94.t[2] += 0xC8 + (o->ayudas->m94.t[2] >> 2);
-                    if (o->ayudas->m94.t[2] > 0x1F40) {
-                        o->cab.libre &= mascara;
+                    o->u78.ayudas->m94.t[2] += 0xC8 + (o->u78.ayudas->m94.t[2] >> 2);
+                    if (o->u78.ayudas->m94.t[2] > 0x1F40) {
+                        o->flags04 &= mascara;
                     }
                 } else if (o->s1E == 1) {
-                    o->ayudas->m94.t[2] -= (o->ayudas->m94.t[2] >> 2) + paso;
-                    if (o->ayudas->m94.t[2] < 0x4B0) {
+                    o->u78.ayudas->m94.t[2] -= (o->u78.ayudas->m94.t[2] >> 2) + paso;
+                    if (o->u78.ayudas->m94.t[2] < 0x4B0) {
                         o->w22 = 0x28;
                         o->s1E = 0;
-                        o->ayudas->m94.t[2] = 0x4B0;
+                        o->u78.ayudas->m94.t[2] = 0x4B0;
                     }
                 } else if (o->s1E == 2) {
-                    o->ayudas->m94.t[2] -= (o->ayudas->m94.t[2] >> o->s1E) + paso;
-                    if (o->ayudas->m94.t[2] < 0) {
-                        o->cab.libre &= mascara;
-                        o->ayudas->m94.t[2] = 0;
+                    o->u78.ayudas->m94.t[2] -= (o->u78.ayudas->m94.t[2] >> o->s1E) + paso;
+                    if (o->u78.ayudas->m94.t[2] < 0) {
+                        o->flags04 &= mascara;
+                        o->u78.ayudas->m94.t[2] = 0;
                     }
                 }
             } else {

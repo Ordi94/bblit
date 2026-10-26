@@ -9,13 +9,6 @@
 #include "common.h"
 #include "globales.h"
 
-/* Entrada de D_8006A940: sala o modelo visible con su bandera (12 bytes por entrada). */
-typedef struct EntradaVisible {
-    s16 modelo;
-    u16 bandera;
-    u8 pad04[8];
-} EntradaVisible;
-
 /*
  * Pedido de dibujo de un modelo (argumento de func_8003B26C): indice del modelo en D_8006B568,
  * nivel de recursion de la lista y grupo. func_8003B26C lee los dos ultimos campos como bytes (lbu).
@@ -46,65 +39,12 @@ typedef struct ModeloDibujo {
     u16 banderas;
     u8 pad0A[2];
     u32 modo;
-    void* geometria;
+    GsCOORDINATE2* geometria;   /* sistema de coordenadas del modelo: func_8003ACA8 calcula su matriz mundial con GsGetLw */
     DatosVertices* vertices;
     u8 pad18[0xB4 - 0x18];
     s8 visible;
     u8 estado;
 } ModeloDibujo;
-
-/*
- * Vista transitoria de Objeto para las rutinas de dibujo, pendiente de fundir con Objeto en la
- * consolidacion de tipos (la misma memoria): banderas en +4,
- * +8 y +0xC, identificadores en +0x26..+0x3E, el nodo de jerarquia empotrado en +0x7C, un
- * contador en +0xC4, la profundidad en +0xD4 y la posicion en +0xE4..+0xEC.
- */
-typedef struct ObjetoDibujo {
-    u8 pad00[0x04];
-    u32 flags04;
-    u32 flags08;
-    u32 flags0C;
-    struct ObjetoDibujo* sig;
-    u32 flags14;
-    u32 flags18;
-    u8 pad1C[0x26 - 0x1C];
-    u16 w26;
-    u16 w28;
-    u8 pad2A[2];
-    u16 w2C;
-    u8 pad2E[0x3A - 0x2E];
-    u16 w3A;
-    u16 w3C;
-    u16 w3E;
-    u8 pad40[0x48 - 0x40];
-    u16 h48;
-    u16 h4A;
-    u16 h4C;
-    u8 pad4E[2];
-    u16 h50;
-    u16 h52;
-    u16 h54;
-    u8 pad56[0x70 - 0x56];
-    struct ObjetoDibujo* p70;
-    u8 pad74[4];
-    struct ModeloDibujo* modelos;
-    u8 nodo[4];
-    u8 pad80[0xC4 - 0x80];
-    s32 iC4;
-    u8 padC8[0xD4 - 0xC8];
-    s32 iD4;
-    u8 padD8[0xE4 - 0xD8];
-    s32 xE4;
-    s32 yE8;
-    s32 zEC;
-} ObjetoDibujo;
-
-/* Pila de func_8003AF8C para func_8001CE64: puntero al nodo, vector de entrada y acumulador. */
-typedef struct PilaNodo {
-    void* nodo;
-    SVECTOR v;
-    VECTOR acc;
-} PilaNodo;
 
 /* Resultado de func_8001DF28: color base del sprite proyectado y desplazamiento de su textura. */
 typedef struct ColorYDesplazamiento {
@@ -137,15 +77,6 @@ typedef struct LimitesPantalla {
     s16 x;
     s16 y;
 } LimitesPantalla;
-
-/*
- * Objeto que func_8003ACA8 usa como camara: el puntero de +0x10 es el sistema de coordenadas
- * (GsCOORDINATE2) cuya matriz mundial se calcula con GsGetLw.
- */
-typedef struct ObjetoCamara {
-    u8 pad00[0x10];
-    GsCOORDINATE2* coord;
-} ObjetoCamara;
 
 /* Vertice fuente de 12 bytes: posicion en espacio objeto, coordenadas de textura, color y codigo. */
 typedef struct Vertice12 {
@@ -300,71 +231,6 @@ typedef struct PoligonoGT4 {
 } PoligonoGT4;
 
 /*
- * Vista de EstadoCamara.pad20 (D_8006D928), pendiente de fundir con esa estructura: func_8003B5AC deja aqui tres copias
- * de la posicion del punto de vista (+0x68, +0x94, +0xB4) y de su punto de mira (+0x6C.., +0xA4..)
- * cuando el objeto en curso lo pide.
- */
-typedef struct CopiasCamara {
-    u8 pad00[0x68];
-    s32 c68;
-    s32 c6C;
-    s32 c70;
-    u8 pad74[0x94 - 0x74];
-    s32 c94;
-    s32 c98;
-    s32 c9C;
-    u8 padA0[4];
-    s32 cA4;
-    s32 cA8;
-    s32 cAC;
-    u8 padB0[4];
-    s32 cB4;
-    s32 cB8;
-    s32 cBC;
-} CopiasCamara;
-
-/*
- * Estado que se pasa al dibujador de modelos del overlay (func_80010204/func_80010258): los
- * primeros bytes de la escena. +0..+2: bytes de estado (func_8003B26C y func_8003B354);
- * +4 (s4): profundidad del objeto (func_8003AF8C) y, en func_8003C014, desplazamiento de la
- * entidad; +6 (s6): desplazamiento de profundidad; +8 (w8): nivel del fundido de pantalla;
- * +0xC/+0xE (w0C, w0E) y +0x10/+0x12: limites de profundidad del modelo.
- */
-typedef struct EstadoDibujo {
-    u8 b0;
-    u8 b1;
-    u8 b2;
-    u8 pad03;
-    s16 s4;
-    s16 s6;
-    u16 w8;
-    u8 pad0A[2];
-    u16 w0C;
-    u16 w0E;
-    u16 w10;
-    u16 w12;
-} EstadoDibujo;
-
-/*
- * Escena en curso, en el scratchpad (0x1F800000, 0x38 bytes): estado del dibujador en +4, las
- * bases de las tres listas de ordenacion en +0x18/+0x1C/+0x20, punteros a los contadores del
- * cuadro en +0x24/+0x28, inicio y limite del buffer de primitivas en +0x2C/+0x30 (func_8003AE08,
- * func_8003AF8C) y el objeto en curso en +0x34.
- */
-typedef struct EscenaDibujo {
-    u8 pad00[4];
-    EstadoDibujo estado;
-    u32* ot0;
-    u32* ot1;
-    u32* ot2;
-    u16* cuenta_a;
-    u16* cuenta_b;
-    s32 inicio;
-    s32 limite;
-    ObjetoDibujo* objeto;
-} EscenaDibujo;
-
-/*
  * Vista de dibujo (tercer argumento de las rutinas de modelos y contexto de la cola de poligonos).
  * +0: tipo de primitiva (8 y 12 sin textura, 16 y 20 con textura y color plano, 24 y 28 con
  * textura y color por vertice); +1: nivel maximo de subdivision; +2: codigo de primitiva; +4 y +6:
@@ -402,5 +268,8 @@ typedef struct VistaDibujo {
  * guardado con el limite del buffer sin reutilizar el registro.
  */
 #define CURSOR_RELEIDO(c) (*(volatile s32*)&(c)->cursor)
+void func_8003AA50(u8 modo, u16 duracion);
+void func_8003AA7C(u8 modo, u16 duracion);
+void func_8003B5AC(Objeto* lista);
 
 #endif

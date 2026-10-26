@@ -86,4 +86,6 @@
 0x800362D0 RemoveListNode  # origen: version PC, functions.md fila 157 (game/list)
 0x80036358 ClearList  # origen: version PC, functions.md fila 158 (game/list)
 0x8003638C AppendListNode  # origen: version PC, functions.md fila 159 (game/list)
+0x8004E66C EnterCriticalSection  # origen: SDK (libapi); syscall 0 con a0 = 1 en 0x8004E66C, 16 bytes escritos a mano
+0x8004E67C ExitCriticalSection  # origen: SDK (libapi); syscall 0 con a0 = 2 en 0x8004E67C, 16 bytes escritos a mano
 0x8004FADC TransMatrix  # origen: version PC, functions.md fila 57 (sdk/gte)

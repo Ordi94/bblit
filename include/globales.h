@@ -7,38 +7,83 @@
 #include "psyq/LIBGPU.H"
 #include "psyq/LIBGS.H"
 
-/* Tipos de datos de animacion que referencia el objeto; sus campos se definen donde se leen. */
+/* Tipos que el objeto referencia; sus campos se definen donde se leen (motor.h, objetos.h, menus.h). */
 struct NodoSecuencia;
 struct RegistroAnim;
-struct NodoAnimacion;
-struct Fotograma;
-struct TablaFotogramas;
+struct Ayuda;
+struct ModeloDibujo;
 
 /*
- * Transformacion que cada objeto o nodo referencia: escala en +0 (VECTOR), rotacion en +0x10
- * (SVECTOR) y traslacion en +0x18 (VECTOR). Alimenta ScaleMatrix, RotMatrix y TransMatrix
- * (func_8001CF50, func_8001CFCC). Cada objeto lleva una propia en +0xCC (ver Objeto) y su
- * puntero transf apunta a ella salvo cuando el objeto va en brazos de otro.
+ * Registro de dieciseis bytes de la tabla de fotogramas; solo se lee el u16 de +0xA
+ * (func_80044EA8).
  */
-typedef struct Transformacion {
+typedef struct Fotograma {
+    u8 pad00[0x0A];
+    u16 h0A;
+    u8 pad0C[4];
+} Fotograma;
+
+typedef struct TablaFotogramas {
+    u8 pad00[0x10];
+    Fotograma* fotogramas;
+} TablaFotogramas;
+
+/*
+ * Definicion de una animacion o de un modelo: la comparten el recorrido de animaciones
+ * (func_80044EA8, func_80045C4C: tipo en +0x4E y tabla de fotogramas en +0x54) y la creacion de
+ * objetos de escena (func_80037DB4: la bandera 2 de +0x0A indica que el objeto tiene jerarquia de
+ * ayudantes y la palabra de +0x54 se copia al ayudante como valor inicial).
+ */
+typedef struct DefinicionAnimacion {
+    u8 pad00[0x0A];
+    u16 wA;
+    u8 pad0C[0x4E - 0x0C];
+    u16 tipo;
+    u8 pad50[4];
+    TablaFotogramas* tabla;
+} DefinicionAnimacion;
+
+/*
+ * Nodo de la lista que el objeto lleva en +0x74: enlace al siguiente en +0 y la definicion en +8
+ * (func_80044EA8, func_80045C4C recorren la lista; func_80037DB4 solo lee la definicion del primer
+ * nodo).
+ */
+typedef struct NodoAnimacion {
+    struct NodoAnimacion* sig;
+    u8 pad04[4];
+    DefinicionAnimacion* def;
+} NodoAnimacion;
+
+/*
+ * Giro de un objeto (+0xDC). La logica de los objetos lo lee como tres angulos de 16 bits sin
+ * signo (lhu) y las rutinas del SDK y del calculo de volumen como un SVECTOR (lh): la union deja
+ * ambas lecturas sin casts sueltos y el ancho de cada acceso lo fija el ensamblador de quien lo
+ * usa.
+ */
+typedef union GiroObjeto {
+    SVECTOR rotate;
+    struct {
+        u16 x;
+        u16 y;
+        u16 z;
+        u16 pad;
+    } u;
+} GiroObjeto;
+
+/*
+ * Transformacion propia del objeto (+0xCC): escala en +0, giro en +0x10 y traslacion en +0x18.
+ * Tiene el mismo diseno que GsCOORD2PARAM del SDK, salvo el giro (ver GiroObjeto): el nodo
+ * coord.param del objeto apunta aqui, con el cast de PARAMETROS_SDK. func_8001CF50 y
+ * func_8001CFCC reconstruyen la matriz del nodo desde ella.
+ */
+typedef struct ParametrosObjeto {
     VECTOR escala;
-    SVECTOR rot;
+    GiroObjeto giro;
     VECTOR trans;
-} Transformacion;
+} ParametrosObjeto;
 
-/*
- * Nodo de matriz de un objeto (+0x7C del objeto; el modelo de un objeto lleva otro en +0x1C):
- * una palabra que las rutinas de reconstruccion ponen a cero (func_8001CF50, func_8001CFCC), la
- * matriz de transformacion en +4, la transformacion de origen en +0x44 y el nodo padre en +0x48,
- * que func_8001CE64 recorre acumulando la traslacion de cada matriz hasta la raiz.
- */
-typedef struct Nodo {
-    s32 w00;
-    MATRIX mtx;
-    u8 pad24[0x44 - 0x24];
-    Transformacion* transf;
-    struct Nodo* padre;
-} Nodo;
+/* Direccion de la transformacion propia de un objeto con el tipo del SDK, para coord.param. */
+#define PARAMETROS_SDK(o) ((GsCOORD2PARAM*)&(o)->param)
 
 /*
  * Bloque de trabajo de la animacion del objeto (+0x144 del objeto): estado del fotograma en
@@ -61,84 +106,85 @@ typedef struct BloqueTrabajo {
 } BloqueTrabajo;
 
 /*
- * Objeto de escena. Solo se declaran los campos que el codigo traducido usa; los huecos son
- * relleno. D_80069698 (el objeto controlado) y la lista de D_80069518 apuntan a esta estructura.
- * Los calculos de volumen de la colision la ven como ObjetoVolumen (geometria.h): ambas vistas
- * coinciden en los angulos de +0xDC y la posicion de +0xE4.
+ * Objeto de escena (0x1F4 bytes): D_80069698 (el objeto controlado), la lista de D_80069518 y la
+ * lista de objetos solidos de D_80069630 apuntan a esta estructura, que es la unica vista de esa
+ * memoria. El tamano sale de la reserva de ranuras: func_8003652C, func_800365D0 y func_80036734
+ * piden ranuras de paso 0x1F4 al pozo D_8006968C (AllocListNode). Los dos primeros campos son
+ * la cabecera de nodo de pozo (enlace y marca de libre).
  *
- * Cada campo cita una funcion cuyo ensamblador fija su desplazamiento y su ancho.
+ * Solo se declaran los campos que el codigo traducido usa; los huecos son relleno. Cada campo cita
+ * una funcion cuyo ensamblador fija su desplazamiento y su ancho.
  */
 typedef struct Objeto {
     struct Objeto* siguiente;
-    u32 flags04;            /* func_8001DF28: lw / sw, bit 2 = sprite visible */
-    u32 flags08;            /* func_8001CF50, func_8001D75C: lw con mascaras 0x200000 y 0x10000000 */
+    u32 flags04;            /* func_8001DF28: lw / sw, bit 2 = sprite visible; pozo: bit 0 = libre, bit 1 = en uso (func_800363D4, func_800365D0) */
+    u32 flags08;            /* func_8001CF50, func_8001D75C: lw con mascaras 0x200000 y 0x10000000; indicadores de volumen (graficos_y_gte.c) */
     u32 flags0C;            /* func_8001DF28, func_8001E1A4, func_80045C4C: lw / sw */
-    u8 pad10[0x14 - 0x10];
-    u32 flags14;
-    u32 flags18;
-    u16 w1C;
+    struct Objeto* sig10;   /* lista de objetos solidos que recorren las consultas de volumen (D_80069630); func_80036734 enlaza al final */
+    u32 flags14;            /* func_80034E7C: lw / sw 0x14($a0) en 0x80034F04 y 0x80034F10 */
+    u32 flags18;            /* func_80034E7C: lw 0x18($s2) en 0x80034E94, andi con 0x800 */
+    u16 w1C;                /* identificador de plantilla */
     /*
      * +0x1E: lectura con tres formas segun quien lo consulte. Los condicionales del interprete de
      * eventos lo comparan con lh (func_80030990) y el dano del golpe lo carga con lhu y con lbu
      * (func_8001D75C). El campo es s16; func_8001D75C usa casts locales comentados.
      */
     s16 s1E;
-    u8 pad20[2];
-    u16 w22;
-    u8 pad24[2];
+    s16 s20;                /* radio del volumen: lh en las consultas de graficos_y_gte.c */
+    u16 w22;                /* func_800353B0: lhu / sh 0x22($s0) en 0x8003610C y 0x80036118; func_80038C2C: lhu en 0x80038CF4 */
+    u16 w24;                /* func_800353B0 */
+    /*
+     * +0x26: se copia como u16 (movimiento, interprete, menus) y el calculo de volumen y la sonda de
+     * escena lo cargan con lh (etiqueta de grupo, func_8003A3D0); el campo es u16 y esas rutinas usan
+     * un cast (s16) local.
+     */
     u16 w26;
-    u16 w28;
-    u8 pad2A[0x2C - 0x2A];
-    u16 w2C;
-    u8 pad2E[0x34 - 0x2E];
+    u16 w28;                /* func_8003B5AC: lhu 0x28($t0) en 0x8003BA1C; func_80031960: sh 0x28($v1) en 0x80031970 */
+    s16 s2A;                /* tipo del volumen (2 = solido): graficos_y_gte.c; func_8003652C lo pone a 0 y func_800365D0 a 5 */
+    u16 w2C;                /* las rutinas de creacion lo escriben con sh y el resto lo lee con lhu */
+    u16 w2E;                /* func_800353B0 */
+    u32 alcance2;           /* alcance al cuadrado del volumen: graficos_y_gte.c */
     s32 i34;                /* func_8001D75C: sw con w1C del atacante */
     u16 w38;                /* func_8001D75C, func_80031FE0: solo sh; sin lectura que fije el signo */
-    u8 pad3A[2];
-    u16 w3C;
-    u8 pad3E[0x48 - 0x3E];
-    s16 h48;                /* func_8001DF28: lh */
-    u8 pad4A[0x50 - 0x4A];
-    s16 h50;                /* func_8001DF28: lh */
-    s16 h52;                /* func_8001C998, func_8001DF28: lh */
-    u8 pad54[0x68 - 0x54];
+    u16 w3A;                /* menus_e_interfaz.c */
+    u16 w3C;                /* las rutinas de creacion lo escriben con sh y el resto lo lee con lhu */
+    u16 w3E;                /* func_800353B0 */
+    u8 pad40[0x48 - 0x40];
+    SVECTOR min;            /* caja del volumen (+0x48) y mitades de sprite que lee func_8001DF28 con lh */
+    SVECTOR max;            /* +0x50 */
+    u8 pad58[0x68 - 0x58];
     s32 i68;                /* func_8001D0FC: sw zero */
-    struct Objeto* p6C;
-    struct Objeto* p70;
-    struct NodoAnimacion* lista;   /* func_80044EA8, func_80045C4C: lw, lista de animaciones */
+    struct Objeto* p6C;     /* func_80034E7C: lw 0x6C($s1) en 0x80034EE0 */
+    struct Objeto* p70;     /* func_80034E7C: lw 0x70($s1) en 0x80034EBC, sw $zero en 0x80034F60 y 0x80034FDC */
+    struct NodoAnimacion* lista;   /* func_80044EA8, func_80045C4C: lw, lista de animaciones; func_80037DB4 la usa como descriptor de modelo */
     /*
-     * +0x78: puntero al modelo del objeto. func_8001CF50 solo lo compara con cero, func_8001DF28
-     * suma 0xC para llegar a las coordenadas del sprite y func_80020A90 lo recorre como lista de
-     * peldanos (NodoPeldano en motor.h); void* porque cada rutina lo lee con otro tipo.
+     * +0x78: la misma palabra se lee como lista de ayudantes (objetos con jerarquia, pozo
+     * D_8006964C), como lista de modelos que dibuja func_8003B5AC y como puntero a datos del
+     * modelo: func_8001CF50 solo lo compara con cero, func_8001DF28 suma 0xC para llegar a las
+     * coordenadas del sprite y func_80020A90 lo recorre como lista de peldanos (NodoPeldano en
+     * motor.h).
      */
-    void* p78;
-    Nodo nodo;              /* +0x7C: func_8001CF50, func_8001CFCC, func_8001D0FC (lw / sw sobre +0xC0 y +0xC4) */
-    u8 padC8[0xCC - 0xC8];
-    s32 iCC;                /* escala de la transformacion propia (+0xCC): func_8001DF28 */
-    s32 iD0;                /* func_8001DF28 */
-    s32 iD4;                /* func_8001DF28: profundidad del sprite, nunca negativa */
-    u8 padD8[0xDC - 0xD8];
-    u16 wDC;                /* rotacion de la transformacion propia (+0xDC) */
-    u16 wDE;
-    u16 wE0;
-    u8 padE2[0xE4 - 0xE2];
-    s32 xE4;                /* traslacion de la transformacion propia (+0xE4) */
-    s32 yE8;
-    s32 zEC;
-    u8 padF0[0xF4 - 0xF0];
+    union {
+        struct Ayuda* ayudas;
+        struct ModeloDibujo* modelos;
+        void* p;
+    } u78;
+    GsCOORDINATE2 coord;    /* +0x7C: func_8001CF50, func_8001CFCC, func_8001D0FC; su param y su super son los lw / sw de +0xC0 y +0xC4 */
+    ParametrosObjeto param; /* +0xCC: func_8001CF50, func_8001DF28, func_8001E1A4 */
     struct NodoSecuencia* secuencias;   /* func_8001CD84, func_8001D0FC: lw */
     u8* bloque;             /* func_8001CD84: base del bloque de animacion */
     struct NodoSecuencia* apoyos;       /* func_8001D0FC: lw */
     s32 i100;               /* func_8001C424, func_8001C6CC, func_8001C998: lw / sw */
     s16 h104;               /* func_80020210, func_80020240: lh */
-    s16 h106;
+    s16 h106;               /* func_80020210: sh 0x106($a0) en 0x80020228; func_80020240: lhu 0x106($s0) en 0x8002030C; sin lectura con signo */
     s16 h108;               /* func_8001C424, func_8001C998, func_80020210, func_80020240 */
     s16 h10A;               /* func_8001C6CC, func_8001C998, func_80020210, func_80020240 */
     s16 h10C;               /* func_8001C424, func_8001C6CC, func_8001DA14 */
-    u16 w10E;               /* func_8001C424: lhu */
-    s16 h110;               /* func_8001C6CC: lh */
-    s16 h112;               /* func_8001C6CC: lh */
+    u16 w10E;               /* func_8001C424: solo sh 0x10E($s0) en 0x8001C65C; sin lectura que fije el signo */
+    s16 h110;               /* func_8001C6CC: solo sh $zero, 0x110($s1) en 0x8001C808 y 0x8001C8A8; sin lectura que fije el signo */
+    s16 h112;               /* func_8001C6CC: solo sh $zero, 0x112($s1) en 0x8001C86C y 0x8001C8AC; sin lectura que fije el signo */
     u8 pad114[0x116 - 0x114];
-    s16 h116;               /* func_8001C424: lh */
+    s16 h116;               /* func_8001C424: lh 0x116($s0) en 0x8001C558, sh en 0x8001C4E0 y 0x8001C604 */
     u8 pad118[0x13C - 0x118];
     s32 i13C;               /* func_80020A90: sw */
     u8 pad140[0x144 - 0x140];
@@ -157,18 +203,21 @@ typedef struct Objeto {
     struct RegistroAnim* registro184;   /* func_8001CD84, func_8001D75C: lw */
     struct NodoSecuencia* nodo188;      /* func_8001D0FC: sw */
     u8 pad18C[0x192 - 0x18C];
-    u16 w192;
+    u16 w192;               /* func_80031B78: solo sh $zero, 0x192($a0) en 0x80031B8C; sin lectura que fije el signo */
     u8 pad194[2];
-    u16 w196;
+    u16 w196;               /* func_80031B78: solo sh 0x196($a0) en 0x80031B94; sin lectura que fije el signo */
     u8 pad198[0x1A8 - 0x198];
-    s32 i1A8;               /* func_80020A90: sw */
+    s32 i1A8;               /* func_80020A90: lw 0x1A8($a0) en 0x80020AC0 y 0x80020AF8 */
+    u8 pad1AC[0x1B4 - 0x1AC];
+    u32 w1B4;               /* func_800353B0: lw, segundo argumento de func_80033358 */
+    u8 pad1B8[0x1F4 - 0x1B8];
 } Objeto;
 
 /*
  * Estado de la camara y de la escena en 0x8006D928. Los primeros 0x20 bytes son un GsRVIEW2 del
  * SDK (punto de vista, punto de mira, rz y coordenada padre): GsSetRefView2L recibe la
  * direccion de la estructura entera. Detras vienen los indicadores y los parametros de
- * seguimiento que mueven los eventos de camara. func_8001CC68 escribe el punto de vista en
+ * seguimiento que mueven los eventos de camara y la sacudida (s86 a h8E). func_8001CC68 escribe el punto de vista en
  * cuatro copias (+0x0, +0x68, +0x94 y +0xB4) y el punto de mira en dos (+0xC y +0xA4).
  */
 typedef struct EstadoCamara {
@@ -192,7 +241,7 @@ typedef struct EstadoCamara {
     s16 s8A;
     s16 h8C;                /* func_8001D588: sh zero */
     s16 h8E;                /* func_8001D588: sh zero */
-    u8 pad90[0x94 - 0x90];
+    s32 i90;                /* func_80032894: sw zero */
     s32 c94;                /* func_8001CC68: sw, copia del punto de vista */
     s32 c98;
     s32 c9C;
@@ -291,10 +340,9 @@ extern Objeto* D_80069518;
 
 /*
  * D_80069630: cabeza de la lista de objetos solidos que recorren las consultas de volumen
- * (enlace en +0x10, ver ObjetoVolumen en geometria.h). El arranque solo la pasa a otras rutinas.
+ * (enlace en +0x10, sig10 de Objeto). El arranque solo la pasa a otras rutinas.
  */
-struct ObjetoVolumen;
-extern struct ObjetoVolumen* D_80069630;
+extern Objeto* D_80069630;
 
 /*
  * D_800694FC: puntero al bloque de zonas de colision del nivel. Se guarda con sw al cargar el
@@ -439,5 +487,282 @@ extern u16 D_8006B658[8];
  * func_80045150 y func_80045368 lo indexa con (indice << 3) sumando la direccion.
  */
 extern void* D_800694B8;
+
+/*
+ * Glifo de la tabla de caracteres: coordenadas de textura (u, v) y tamano en +8, +9, +0xC y +0xE
+ * (func_80045150), pagina de textura en +6 (func_80045150).
+ */
+typedef struct Glifo {
+    u8 pad00[6];
+    u16 tpage;
+    u8 u;
+    u8 v;
+    u8 pad0A[2];
+    u16 w;
+    u16 h;
+} Glifo;
+
+/*
+ * Entrada de ocho bytes de la lista de glifos pendientes de dibujar que recorre D_800694D4:
+ * glifo (func_800450E8, func_80045150), posicion x (+4) e y (+6) en pantalla e indice de paleta (+7).
+ */
+typedef struct EntradaLista {
+    Glifo* glifo;
+    u16 x;
+    u8 y;
+    s8 idx;
+} EntradaLista;
+
+/* Entrada de D_8006A940: sala o modelo visible con su bandera (12 bytes por entrada). */
+typedef struct EntradaVisible {
+    s16 modelo;
+    u16 bandera;
+    u8 pad04[8];
+} EntradaVisible;
+
+struct NodoVolumen;
+
+/* --- Variables compartidas entre archivos (una sola declaracion por simbolo) ------------- */
+
+/* D_8001000A: botones_a de EstadoPrincipal (arranque.h) que los eventos leen con la forma simbolica (un lui por acceso); accesos del ensamblador: lhu x16, sh x15 */
+extern u16 D_8001000A;
+
+/* D_80010041: r[0x01] del banco de registros de EstadoPrincipal (arranque.h) con la forma simbolica; accesos del ensamblador: lbu x11, sb x12, lb x1 */
+extern u8 D_80010041;
+
+/* D_800100E6: r[0xA6] del banco de registros de EstadoPrincipal con la forma simbolica; accesos del ensamblador: lbu x8, sb x9 */
+extern u8 D_800100E6;
+
+/* D_80069402: accesos del ensamblador: sh(gp) x6, lh(gp) x2, lhu(gp) x5, sh x5, lhu x1 */
+extern s16 D_80069402;
+
+/* D_800694D8: accesos del ensamblador: lw x4, sw x2 */
+extern void* D_800694D8;
+
+/* D_800694E2: accesos del ensamblador: lhu x2, sh x1 */
+extern u16 D_800694E2;
+
+/* D_800694E6: accesos del ensamblador: lh x5, sh x1 */
+extern s16 D_800694E6;
+
+/* D_800694F2: accesos del ensamblador: sb x5, lbu x9 */
+extern u8 D_800694F2;
+
+/* D_800694F8: accesos del ensamblador: lw x2, sw x1 */
+extern s32 D_800694F8;
+
+/* D_80069508: accesos del ensamblador: lw x6, sw x3 */
+extern void* D_80069508;
+
+/* D_80069520: accesos del ensamblador: sw x2, lw x2 */
+extern u8* D_80069520;
+
+/* D_80069524: accesos del ensamblador: lbu x3, sb x3 */
+extern u8 D_80069524;
+
+/* D_8006952C: accesos del ensamblador: lh x4, sh x1 */
+extern s16 D_8006952C;
+
+/* D_80069534: accesos del ensamblador: sw x4, lw x3 */
+extern s32 D_80069534;
+
+/* D_80069588: accesos del ensamblador: lh x5, sh x2, lhu x3 */
+extern s16 D_80069588;
+
+/* D_800695A6: accesos del ensamblador: sh x3, lhu x7 */
+extern vu16 D_800695A6;
+
+/* D_800695BC: accesos del ensamblador: sh x5, lhu x2, lh x6 */
+extern s16 D_800695BC;
+
+/* D_800695F6: accesos del ensamblador: sb x4, lbu x4 */
+extern u8 D_800695F6;
+
+/* D_8006960C: accesos del ensamblador: sw x3, lw x1 */
+extern s32 D_8006960C;
+
+/* D_80069614: accesos del ensamblador: sw x2, lw x3 */
+extern u32 D_80069614;
+
+/* D_80069628: accesos del ensamblador: sb x4, lb x6 */
+extern u8 D_80069628;
+
+/* D_80069658: accesos del ensamblador: sb x4, lbu x2 */
+extern u8 D_80069658;
+
+/* D_80069660: accesos del ensamblador: lh x3, sh x1 */
+extern s16 D_80069660;
+
+/* D_80069668: accesos del ensamblador: lhu x4, sh x9 */
+extern s16 D_80069668;
+
+/* D_80069690: accesos del ensamblador: lw x5, sw x8 */
+extern s32 D_80069690;
+
+/* D_8006AA7C: accesos del ensamblador: lbu x17 */
+extern u8 D_8006AA7C;
+
+/* D_8006CFF0 */
+extern u8 D_8006CFF0[];
+
+/* D_8006D038 */
+extern u8 D_8006D038[];
+
+/* D_80076130 */
+extern MATRIX D_80076130;
+
+/* D_80076144 */
+extern VECTOR D_80076144;
+
+
+
+
+
+
+
+
+
+
+
+
+/* D_800694B0: accesos del ensamblador: sh x1, lhu x4 */
+extern u16 D_800694B0;
+
+/* D_800694D4: accesos del ensamblador: sw x2, lw x3 */
+extern EntradaLista* D_800694D4;
+
+/* D_80069530: accesos del ensamblador: sh x1, lh x1, lbu x1 */
+extern s16 D_80069530;
+
+/* D_8006954C: Longitud del anillo de primitivas; las rutinas de dibujo la comparan con signo; accesos del ensamblador: lw x5, sw x1 */
+extern s32 D_8006954C;
+
+/* D_8006955E: Estado de la lectura del archivo. func_80044854 lo carga ademas con lhu (func_80044854.s): su cuerpo lo lee con un cast (u16) local; accesos del ensamblador: lbu x12, sb x5, lhu x1 */
+extern vu8 D_8006955E;
+
+/* D_80069580: accesos del ensamblador: sw x2, lw x2 */
+extern struct NodoVolumen* D_80069580;
+
+/* D_8006958C: accesos del ensamblador: sw x1, lw x6 */
+extern s32 D_8006958C;
+
+/* D_80069590: accesos del ensamblador: sw x3, lw x3 */
+extern u16* D_80069590;
+
+/* D_800695A2: accesos del ensamblador: sh x1 */
+extern s16 D_800695A2;
+
+/* D_800695A4: accesos del ensamblador: sh x1 */
+extern s16 D_800695A4;
+
+/* D_800695C4: accesos del ensamblador: sw x4 */
+extern void* D_800695C4;
+
+/* D_800695DA: accesos del ensamblador: sh x4, lh x4 */
+extern s16 D_800695DA;
+
+/* D_800695EC: accesos del ensamblador: sw x2, lw x1 */
+extern Objeto* D_800695EC;
+
+/* D_800695F2: accesos del ensamblador: sh x1, lhu x1 */
+extern u16 D_800695F2;
+
+/* D_800695F4: accesos del ensamblador: sh x1, lhu x1 */
+extern u16 D_800695F4;
+
+/* D_80069640: accesos del ensamblador: sw x1, lw x3 */
+extern s32* D_80069640;
+
+/* D_80069652: accesos del ensamblador: sh x2, lh x3, lhu x4 */
+extern s16 D_80069652;
+
+/* D_80069680: accesos del ensamblador: sw x1, lw x6 */
+extern s32 D_80069680;
+
+/* D_8006969C: accesos del ensamblador: sh x1, lhu x3 */
+extern u16 D_8006969C;
+
+/* D_8006A940: accesos del ensamblador: sh x1 */
+extern EntradaVisible D_8006A940[];
+
+/* D_8006AD80 */
+extern Objeto* D_8006AD80[];
+
+/* D_8006B2F8: accesos del ensamblador: sw x1 */
+extern void* D_8006B2F8[27];
+
+/* D_8006B568 */
+extern struct ModeloDibujo* D_8006B568[];
+
+/*
+ * Area de trabajo de func_8001CE64: nodo desde el que se acumula la traslacion en +0, vector de
+ * entrada y de salida recortado a 16 bits en +4 y acumulador de 32 bits en +0xC. El llamador la
+ * reserva en la pila o en la memoria rapida; no forma parte de ningun objeto.
+ */
+typedef struct AcumuladorNodos {
+    GsCOORDINATE2* nodo;
+    SVECTOR v;
+    VECTOR acc;
+} AcumuladorNodos;
+void func_8001CE64(AcumuladorNodos* e);
+void func_80040AF0(void);
+void func_80045150(EntradaLista* e);
+u32 func_80045C4C(u32 a0, void* a1, Objeto* a2);
+void func_8002F990(s32 a0, s32 a1);
+void func_80040D98(RECT* a0, s16* a1);
+
+/*
+ * --- Datos pequenos de $gp ---------------------------------------------------------------
+ *
+ * Con -G8 un dato pequeno solo se direcciona con desplazamiento($gp) en el archivo que lo define
+ * (definicion tentativa, sin extern); un archivo que solo lo ve como extern lo emite en forma
+ * simbolica. Por eso el archivo que lo escribe lo define una vez (camara_y_bucle_logico.c,
+ * cargador_de_niveles_y_cd.c) y el resto usa la declaracion de abajo.
+ *
+ * D_80069488, D_800694A4 y D_800694A8 no se declaran aqui: cargador_de_niveles_y_cd.c y
+ * graficos_y_gte_10.c (y graficos_y_gte_12.c para D_800694A8) los direccionan con $gp en funciones
+ * que ya coinciden, asi que cada uno los define. Declararlos extern en una cabecera sube
+ * func_80040DDC de 5 a 110, func_80040E30 de 15 a 330, func_8004443C de 15 a 330 y func_80044588
+ * de 5 a 110. El enlazador funde las definiciones tentativas en un solo simbolo; D_80069488 es
+ * volatile en los dos archivos: el cargador lo escribe desde el retorno de llamada de lectura y la
+ * presentacion de cuadros lo lee; sin volatile en el cargador func_8004109C pasa de 105 a 705.
+ */
+
+/* D_800693F0: accesos del ensamblador: sw(gp) x3, lw(gp) x1, sw x1 */
+extern s32 D_800693F0;
+
+/* D_800693F6: accesos del ensamblador: lh(gp) x1, lhu(gp) x1, sh(gp) x2, sh x3, lh x1 */
+extern s16 D_800693F6;
+
+/* D_800693F8: accesos del ensamblador: lh(gp) x1, lhu(gp) x1, sh(gp) x4, sh x1 */
+extern s16 D_800693F8;
+
+/* D_80069416: accesos del ensamblador: sh(gp) x3, lhu(gp) x1, sh x3 */
+extern s16 D_80069416;
+
+/* D_8006947C: accesos del ensamblador: sw(gp) x1, lw x1, lw(gp) x1 */
+extern u32 D_8006947C;
+
+/* D_80069480: accesos del ensamblador: sw(gp) x3, lw(gp) x3 */
+extern u32 D_80069480;
+
+/* D_80069490: accesos del ensamblador: sw(gp) x1, lw(gp) x5, lw x1 */
+extern u32 D_80069490;
+
+/* D_8006949C: accesos del ensamblador: sw(gp) x3, lw(gp) x4, sw x1 */
+extern u32 D_8006949C;
+
+/* --- Palabras de EstadoPrincipal con la forma simbolica ------------------------------------- */
+
+/* D_80010000: nivel de EstadoPrincipal (arranque.h) que func_8001E1A4 escribe con la forma simbolica (evento de zona) */
+extern s32 D_80010000;
+
+/*
+ * Llamadas al sistema del kernel (syscall 0 con a0 = 1 y 2, 16 bytes escritos a mano cada una en
+ * 0x8004E66C y 0x8004E67C). LIBAPI.H las declara, pero incluye kernel.h, que necesita cabeceras
+ * del sistema que el proyecto no trae; se repiten aqui con la misma firma.
+ */
+extern int EnterCriticalSection(void);
+extern void ExitCriticalSection(void);
 
 #endif

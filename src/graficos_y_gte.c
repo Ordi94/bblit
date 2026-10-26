@@ -26,10 +26,10 @@ typedef struct ConsultaSondeo {
     s32 radio;
     s16 s84;
     s16 s86;
-    ObjetoVolumen* actual;
-    ObjetoVolumen* cadena;
-    ObjetoVolumen* a;
-    ObjetoVolumen* b;
+    Objeto* actual;
+    Objeto* cadena;
+    Objeto* a;
+    Objeto* b;
     SVECTOR p[5];
     SVECTOR* pt;
     u32 dist2;
@@ -52,7 +52,6 @@ s32 D_80069380;
 #define U16_2E(o) (*(u16*)((u8*)(o) + 0x2E))
 
 /* Cabeza de la lista de nodos de plano (enlace en +0). */
-extern NodoVolumen* D_80069580;
 
 /*
  * Busca el primer objeto solido cuyo volumen contiene a la caja del objeto a: el candidato se
@@ -62,7 +61,7 @@ extern NodoVolumen* D_80069580;
  * La matriz se asigna a una variable que vale 0 antes del bucle y se vuelve a asignar dentro: con una sola
  * asignacion el optimizador de bucles saca &o->m fuera del bucle, y el original lo calcula en cada vuelta.
  */
-ObjetoVolumen* func_80016C0C(ObjetoVolumen* a, u32 mascara, ConsultaVolumen* o)
+Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o)
 {
     SVECTOR* dif;
     SVECTOR* rot;
@@ -74,19 +73,19 @@ ObjetoVolumen* func_80016C0C(ObjetoVolumen* a, u32 mascara, ConsultaVolumen* o)
         rot = &o->rot;
         m = 0;
         do {
-            if ((o->actual->indicadores & mascara) && o->actual->tipo == 2 && a != o->actual
-                && a->rel2 != o->actual && a->rel1 != o->actual && o->actual->rel2 != a) {
+            if ((o->actual->flags08 & mascara) && o->actual->s2A == 2 && a != o->actual
+                && a->p70 != o->actual && a->p6C != o->actual && o->actual->p70 != a) {
                 GEO_CARGAR_WH(&o->actual->min);
                 GEO_OR_WH(&o->actual->max);
                 GEO_GUARDAR_1W_T1(&o->caja);
                 if (o->caja != 0) {
-                    GEO_CARGAR_W(&a->pos);
-                    GEO_RESTAR_W(&o->actual->pos);
+                    GEO_CARGAR_W(&a->param.trans);
+                    GEO_RESTAR_W(&o->actual->param.trans);
                     GEO_GUARDAR_H_T4(dif);
                     GEO_NORMA2_XZ(dif, &o->dist2);
                     if (o->actual->alcance2 >= o->dist2) {
-                        o->radio = o->actual->radio;
-                        GEO_COMPLEMENTO(&o->actual->rot);
+                        o->radio = o->actual->s20;
+                        GEO_COMPLEMENTO(&o->actual->param.giro.rotate);
                         GEO_GUARDAR_H_T1(rot);
                         /* Sin la barrera el compilador adelanta el calculo de &o->m; el original lo hace justo antes de la llamada. */
                         GEO_BARRERA();
@@ -104,7 +103,7 @@ ObjetoVolumen* func_80016C0C(ObjetoVolumen* a, u32 mascara, ConsultaVolumen* o)
                     }
                 }
             }
-            o->actual = o->actual->sig;
+            o->actual = o->actual->sig10;
         } while (o->actual != 0);
     }
     return 0;
@@ -117,28 +116,28 @@ ObjetoVolumen* func_80016C0C(ObjetoVolumen* a, u32 mascara, ConsultaVolumen* o)
  * Con g = 8 (config/opciones_compilacion.toml) el puntero global se carga directamente en $s0;
  * con -G0 la parte alta iria a otro registro (230).
  */
-ObjetoVolumen* func_80016ED0(ObjetoVolumen* a, u32 mascara, ConsultaCaja* o)
+Objeto* func_80016ED0(Objeto* a, u32 mascara, ConsultaCaja* o)
 {
-    GEO_COMPLEMENTO(&a->rot);
+    GEO_COMPLEMENTO(&a->param.giro.rotate);
     GEO_GUARDAR_H_T1(&o->rot);
     RotMatrixZYX(&o->rot, &o->m);
-    GEO_CARGAR_W(&a->pos);
+    GEO_CARGAR_W(&a->param.trans);
     GEO_GUARDAR_W_T1(&o->pos);
     GEO_CARGAR_WH(&a->min);
     GEO_GUARDAR_WH(&o->min);
     GEO_CARGAR_WH(&a->max);
     GEO_GUARDAR_WH(&o->max);
-    o->radio = a->radio;
+    o->radio = a->s20;
     o->actual = D_80069630;
     if (o->actual != 0) {
         do {
-            if ((o->actual->indicadores & mascara) && o->actual->tipo == 2 && a != o->actual
-                && a->rel2 != o->actual && a->rel1 != o->actual && o->actual->rel2 != a) {
+            if ((o->actual->flags08 & mascara) && o->actual->s2A == 2 && a != o->actual
+                && a->p70 != o->actual && a->p6C != o->actual && o->actual->p70 != a) {
                 GEO_CARGAR_WH(&o->actual->min);
                 GEO_OR_WH(&o->actual->max);
                 GEO_GUARDAR_1W_T1(&o->tmp);
                 if (o->tmp != 0) {
-                    GEO_CARGAR_W(&o->actual->pos);
+                    GEO_CARGAR_W(&o->actual->param.trans);
                     GEO_RESTAR_W(&o->pos);
                     GEO_GUARDAR_H_T4(&o->dif);
                     GEO_NORMA2_XZ(&o->dif, &o->tmp);
@@ -155,7 +154,7 @@ ObjetoVolumen* func_80016ED0(ObjetoVolumen* a, u32 mascara, ConsultaCaja* o)
                     }
                 }
             }
-            o->actual = o->actual->sig;
+            o->actual = o->actual->sig10;
         } while (o->actual != 0);
     }
     return 0;
@@ -171,9 +170,9 @@ ObjetoVolumen* func_80016ED0(ObjetoVolumen* a, u32 mascara, ConsultaCaja* o)
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 103 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Variantes probadas: 8. */
-ObjetoVolumen* func_800171E4(ObjetoVolumen* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o)
+Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o)
 {
-    ObjetoVolumen* n;
+    Objeto* n;
     s32 r;
     SVECTOR* dif;
     SVECTOR* rot;
@@ -185,18 +184,18 @@ ObjetoVolumen* func_800171E4(ObjetoVolumen* a, VECTOR* p, u32 mascara, u32 exclu
         dif = &o->dif;
         rot = &o->rot;
         do {
-            if ((n->indicadores & mascara) && n->tipo == 2 && n != a && !(n->indicadores & excluir)) {
+            if ((n->flags08 & mascara) && n->s2A == 2 && n != a && !(n->flags08 & excluir)) {
                 GEO_CARGAR_WH(&n->min);
                 GEO_OR_WH(&n->max);
                 GEO_GUARDAR_1W_T1(&o->caja);
                 if (o->caja != 0) {
                     GEO_CARGAR_W(p);
-                    GEO_RESTAR_W(&n->pos);
+                    GEO_RESTAR_W(&n->param.trans);
                     GEO_GUARDAR_H_T4(dif);
                     GEO_NORMA2_XZ(dif, &o->dist2);
                     if (o->dist2 <= n->alcance2) {
-                        r = n->radio + 4;
-                        GEO_COMPLEMENTO(&n->rot);
+                        r = n->s20 + 4;
+                        GEO_COMPLEMENTO(&n->param.giro.rotate);
                         GEO_GUARDAR_H_T1(rot);
                         GEO_BARRERA();
                         m = &o->m;
@@ -214,7 +213,7 @@ ObjetoVolumen* func_800171E4(ObjetoVolumen* a, VECTOR* p, u32 mascara, u32 exclu
                     }
                 }
             }
-            n = n->sig;
+            n = n->sig10;
         } while (n != 0);
     }
     return 0;
@@ -233,9 +232,9 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_800171E4);
  * pared que cruzan y, si ninguno la cruza, usa la arista mas cercana. Devuelve el candidato elegido (el de menor
  * distancia, con preferencia por los marcados con 8) o 0.
  */
-ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
+Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
 {
-    ObjetoVolumen* mejor;
+    Objeto* mejor;
     u32 mejor_d;
     s32 i;
     s32 t2;
@@ -254,34 +253,34 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
     dif = &w->dif;
     salida_y = 0;
     lista = 0;
-    w->destino.vx = a->pos.vx + v->vx;
-    w->destino.vy = a->pos.vy + v->vy;
-    w->destino.vz = a->pos.vz + v->vz;
+    w->destino.vx = a->param.trans.vx + v->vx;
+    w->destino.vy = a->param.trans.vy + v->vy;
+    w->destino.vz = a->param.trans.vz + v->vz;
     w->s86 = 0;
     w->s84 = 0;
     w->actual = D_80069630;
     for (;;) {
-        if (lista == 0 && mejor != 0 && (mejor->indicadores & 0x20000) == 0 && w->actual == 0) {
+        if (lista == 0 && mejor != 0 && (mejor->flags08 & 0x20000) == 0 && w->actual == 0) {
             w->actual = D_80069630;
             lista = 1;
         } else if (w->actual == 0) {
             break;
         }
-        if (lista != 0 && (w->actual->indicadores & 0x20000) == 0) {
+        if (lista != 0 && (w->actual->flags08 & 0x20000) == 0) {
             goto siguiente;
         }
-        if ((w->actual->indicadores & mascara) == 0 || w->actual->tipo != 2 || a == w->actual
-            || a->rel2 == w->actual || a->rel1 == w->actual || w->actual->rel2 == a
-            || w->actual->rel1 == a || w->actual->rel2 == (ObjetoVolumen*)D_80069698) {
+        if ((w->actual->flags08 & mascara) == 0 || w->actual->s2A != 2 || a == w->actual
+            || a->p70 == w->actual || a->p6C == w->actual || w->actual->p70 == a
+            || w->actual->p6C == a || w->actual->p70 == (Objeto*)D_80069698) {
             goto siguiente;
         }
-        w->cadena = w->actual->rel2;
+        w->cadena = w->actual->p70;
         if (w->cadena != 0) {
             do {
                 if (w->cadena == a) {
                     break;
                 }
-                w->cadena = w->cadena->rel2;
+                w->cadena = w->cadena->p70;
             } while (w->cadena != 0);
             if (w->cadena != 0) {
                 goto siguiente;
@@ -294,22 +293,22 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
             goto siguiente;
         }
         GEO_CARGAR_W(&w->destino);
-        GEO_RESTAR_W(&w->actual->pos);
+        GEO_RESTAR_W(&w->actual->param.trans);
         GEO_GUARDAR_H_T4(dif);
         GEO_NORMA2_XZ(dif, &w->dist2);
-        t2 = U16_2E(a) + U16_2E(w->actual) + w->actual->radio + a->radio;
+        t2 = U16_2E(a) + U16_2E(w->actual) + w->actual->s20 + a->s20;
         t2 = t2 * t2;
         if ((u32)t2 < w->dist2) {
             goto siguiente;
         }
         w->a = a;
         w->b = w->actual;
-        GEO_CARGAR_W(&a->pos);
-        GEO_RESTAR_W(&w->b->pos);
+        GEO_CARGAR_W(&a->param.trans);
+        GEO_RESTAR_W(&w->b->param.trans);
         GEO_GUARDAR_H_T4(dif);
         w->dif.vy = w->dif.vy + v->vy;
-        w->radio = w->b->radio;
-        GEO_COMPLEMENTO(&w->b->rot);
+        w->radio = w->b->s20;
+        GEO_COMPLEMENTO(&w->b->param.giro.rotate);
         GEO_GUARDAR_H_T1(&w->rot);
         RotMatrixZYX(&w->rot, &w->m);
         ApplyMatrixSV(&w->m, dif, &w->res);
@@ -331,13 +330,13 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
             w->angs[2] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->max.vz + w->radio - w->p[0].vz);
             w->angs[3] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->min.vz - w->radio - w->p[0].vz);
         }
-        w->p[0].vx = w->p[2].vx = w->a->min.vx - w->a->radio;
-        w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->radio;
-        w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->radio;
-        w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->radio;
+        w->p[0].vx = w->p[2].vx = w->a->min.vx - w->a->s20;
+        w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->s20;
+        w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->s20;
+        w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->s20;
         w->p[4].vx = w->p[4].vy = w->p[4].vz = 0;
         w->p[0].vy = w->p[1].vy = w->p[2].vy = w->p[3].vy = 0;
-        RotMatrix(&w->a->rot, &w->m2);
+        RotMatrix(&w->a->param.giro.rotate, &w->m2);
         gte_SetRotMatrix(&w->m2);
         w->pt = w->p;
         for (i = 0; i < 5; i++) {
@@ -363,7 +362,7 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
                     if (w->b->max.vx + w->radio < w->pt->vx + w->sal.vx) {
                         continue;
                     }
-                    if ((w->b->indicadores & 0x2000000) == 0) {
+                    if ((w->b->flags08 & 0x2000000) == 0) {
                         w->sal.vz = w->b->max.vz + w->radio - w->pt->vz;
                     }
                 } else if (w->ang < w->angs[1]) {
@@ -376,7 +375,7 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
                     if (w->pt->vz + w->sal.vz < w->b->min.vz - w->radio) {
                         continue;
                     }
-                    if ((w->b->indicadores & 0x2000000) == 0) {
+                    if ((w->b->flags08 & 0x2000000) == 0) {
                         w->sal.vx = w->b->max.vx + w->radio - w->pt->vx;
                     }
                 } else {
@@ -386,7 +385,7 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
                     if (w->b->max.vx + w->radio < w->pt->vx + w->sal.vx) {
                         continue;
                     }
-                    if ((w->b->indicadores & 0x2000000) == 0) {
+                    if ((w->b->flags08 & 0x2000000) == 0) {
                         w->sal.vz = w->b->min.vz - w->radio - w->pt->vz;
                     }
                 }
@@ -397,7 +396,7 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
                 if (w->pt->vx + w->sal.vx < w->b->min.vx - w->radio) {
                     continue;
                 }
-                if ((w->b->indicadores & 0x2000000) == 0) {
+                if ((w->b->flags08 & 0x2000000) == 0) {
                     w->sal.vz = w->b->max.vz + w->radio - w->pt->vz;
                 }
             } else if (w->angs[3] < w->ang) {
@@ -410,7 +409,7 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
                 if (w->pt->vz + w->sal.vz < w->b->min.vz - w->radio) {
                     continue;
                 }
-                if ((w->b->indicadores & 0x2000000) == 0) {
+                if ((w->b->flags08 & 0x2000000) == 0) {
                     w->sal.vx = w->b->min.vx - w->radio - w->pt->vx;
                 }
             } else {
@@ -420,7 +419,7 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
                 if (w->pt->vx + w->sal.vx < w->b->min.vx - w->radio) {
                     continue;
                 }
-                if ((w->b->indicadores & 0x2000000) == 0) {
+                if ((w->b->flags08 & 0x2000000) == 0) {
                     w->sal.vz = w->b->min.vz - w->radio - w->pt->vz;
                 }
             }
@@ -515,9 +514,9 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
         if (hits == 0) {
             goto siguiente;
         }
-        RotMatrix(&w->b->rot, &w->m);
+        RotMatrix(&w->b->param.giro.rotate, &w->m);
         ApplyMatrixSV(&w->m, &w->sal, &w->res);
-        if (mejor != 0 && (w->b->indicadores & 0x20000) == 0) {
+        if (mejor != 0 && (w->b->flags08 & 0x20000) == 0) {
             salida_x = (w->res.vx + v->vx) >> 1;
             salida_z = (w->res.vz + v->vz) >> 1;
             v->vx = salida_x;
@@ -528,16 +527,16 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
             salida_z = w->res.vz;
             v->vz = salida_z;
         }
-        if (w->dist2 < mejor_d || (w->actual->indicadores & 8) != 0) {
+        if (w->dist2 < mejor_d || (w->actual->flags08 & 8) != 0) {
             /* sigue a la seleccion */
-        } else if (mejor == 0 || (mejor->indicadores & 8) == 0) {
+        } else if (mejor == 0 || (mejor->flags08 & 8) == 0) {
             goto siguiente;
         }
-        if (mejor != 0 && (mejor->indicadores & 0x20000) != 0 && (w->actual->indicadores & 0x20000) == 0) {
+        if (mejor != 0 && (mejor->flags08 & 0x20000) != 0 && (w->actual->flags08 & 0x20000) == 0) {
             goto siguiente;
         }
-        if ((w->actual->indicadores & 8) != 0) {
-            if (mejor != 0 && (mejor->indicadores & 8) != 0) {
+        if ((w->actual->flags08 & 8) != 0) {
+            if (mejor != 0 && (mejor->flags08 & 8) != 0) {
                 if (!(w->dist2 < mejor_d)) {
                     goto siguiente;
                 }
@@ -547,10 +546,10 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
             salida_y = w->caja;
         } else {
             if (mejor != 0) {
-                if ((mejor->indicadores & 8) != 0) {
+                if ((mejor->flags08 & 8) != 0) {
                     goto siguiente;
                 }
-                if ((mejor->indicadores & 0x20000) != 0 && (w->actual->indicadores & 0x2000000) != 0) {
+                if ((mejor->flags08 & 0x20000) != 0 && (w->actual->flags08 & 0x2000000) != 0) {
                     goto siguiente;
                 }
             }
@@ -559,7 +558,7 @@ ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u3
             salida_y = w->caja;
         }
 siguiente:
-        w->actual = w->actual->sig;
+        w->actual = w->actual->sig10;
     }
     if (mejor != 0) {
         v->vx = salida_x;
@@ -580,7 +579,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
  * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
  */
-s32 func_80018664(ObjetoVolumen* a, ObjetoVolumen* b, ConsultaSondeo* w)
+s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
 {
     s32 i;
     SVECTOR* dif;
@@ -595,17 +594,17 @@ s32 func_80018664(ObjetoVolumen* a, ObjetoVolumen* b, ConsultaSondeo* w)
     if (w->caja == 0) {
         return 0;
     }
-    GEO_CARGAR_W(&a->pos);
-    GEO_RESTAR_W(&b->pos);
+    GEO_CARGAR_W(&a->param.trans);
+    GEO_RESTAR_W(&b->param.trans);
     dif = &w->dif;
     GEO_GUARDAR_H_T4(dif);
     w->a = a;
     w->b = b;
-    GEO_CARGAR_W(&w->a->pos);
-    GEO_RESTAR_W(&w->b->pos);
+    GEO_CARGAR_W(&w->a->param.trans);
+    GEO_RESTAR_W(&w->b->param.trans);
     GEO_GUARDAR_H_T4(dif);
-    w->radio = w->b->radio;
-    GEO_COMPLEMENTO(&w->b->rot);
+    w->radio = w->b->s20;
+    GEO_COMPLEMENTO(&w->b->param.giro.rotate);
     GEO_GUARDAR_H_T1(&w->rot);
     RotMatrixZYX(&w->rot, &w->m);
     ApplyMatrixSV(&w->m, dif, &w->res);
@@ -619,14 +618,14 @@ s32 func_80018664(ObjetoVolumen* a, ObjetoVolumen* b, ConsultaSondeo* w)
         w->angs[2] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->max.vz + w->radio - w->p[0].vz);
         w->angs[3] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->min.vz - w->radio - w->p[0].vz);
     }
-    w->p[0].vx = w->p[2].vx = w->a->min.vx - w->a->radio;
-    w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->radio;
-    w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->radio;
-    w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->radio;
+    w->p[0].vx = w->p[2].vx = w->a->min.vx - w->a->s20;
+    w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->s20;
+    w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->s20;
+    w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->s20;
     w->p[4].vx = w->p[4].vy = w->p[4].vz = 0;
     w->p[0].vy = w->p[1].vy = w->p[2].vy = w->p[3].vy = 0;
     m2 = &w->m2;
-    RotMatrix(&w->a->rot, m2);
+    RotMatrix(&w->a->param.giro.rotate, m2);
     gte_SetRotMatrix(m2);
     w->pt = w->p;
     for (i = 0; i < 4; i++) {
@@ -706,13 +705,13 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80018664);
  * Clasifica el punto del jugador respecto de la caja del objeto a en el eje z de su sistema
  * local: 1 si queda por debajo del minimo, 2 si por encima del maximo y 0 si dentro.
  */
-s32 func_80018C68(ObjetoVolumen* a, ConsultaMatriz* o)
+s32 func_80018C68(Objeto* a, ConsultaMatriz* o)
 {
-    GEO_COMPLEMENTO(&a->rot);
+    GEO_COMPLEMENTO(&a->param.giro.rotate);
     GEO_GUARDAR_H_T1(&o->rot);
     /* 0x80018CC0..0x80018CD4: lw v0,%lo(D_80069698) ; addiu v0,v0,0xE4 ; lw 0x0/0x4/0x8 de esa base: tres s32 consecutivos que la macro lee como VECTOR. */
-    GEO_CARGAR_W((VECTOR*)&D_80069698->xE4);
-    GEO_RESTAR_W(&a->pos);
+    GEO_CARGAR_W(&D_80069698->param.trans);
+    GEO_RESTAR_W(&a->param.trans);
     GEO_GUARDAR_H_T4(&o->dif);
     GEO_IDENTIDAD(o);
     RotMatrixZYX(&o->rot, &o->m);
@@ -727,17 +726,17 @@ s32 func_80018C68(ObjetoVolumen* a, ConsultaMatriz* o)
  * Prueba si el punto p cae dentro del volumen del objeto a ampliado por su radio. Descarta antes
  * por distancia al cuadrado en el plano.
  */
-s32 func_80018D98(ObjetoVolumen* a, VECTOR* p, ConsultaVolumen* o)
+s32 func_80018D98(Objeto* a, VECTOR* p, ConsultaVolumen* o)
 {
     GEO_CARGAR_W(p);
-    GEO_RESTAR_W(&a->pos);
+    GEO_RESTAR_W(&a->param.trans);
     GEO_GUARDAR_H_T4(&o->dif);
     GEO_NORMA2_XZ(&o->dif, &o->dist2);
     if (o->dist2 > a->alcance2) {
         return 0;
     }
-    o->radio = a->radio;
-    GEO_COMPLEMENTO(&a->rot);
+    o->radio = a->s20;
+    GEO_COMPLEMENTO(&a->param.giro.rotate);
     GEO_GUARDAR_H_T1(&o->rot);
     GEO_IDENTIDAD(&o->m);
     RotMatrixZYX(&o->rot, &o->m);
@@ -757,17 +756,17 @@ s32 func_80018D98(ObjetoVolumen* a, VECTOR* p, ConsultaVolumen* o)
  * Igual que func_80018D98 pero la posicion a probar es la del objeto b y la caja de b
  * (extensiones en y) se suma al margen vertical.
  */
-s32 func_80018F80(ObjetoVolumen* a, ObjetoVolumen* b, ConsultaVolumen* o)
+s32 func_80018F80(Objeto* a, Objeto* b, ConsultaVolumen* o)
 {
-    GEO_CARGAR_W(&b->pos);
-    GEO_RESTAR_W(&a->pos);
+    GEO_CARGAR_W(&b->param.trans);
+    GEO_RESTAR_W(&a->param.trans);
     GEO_GUARDAR_H_T4(&o->dif);
     GEO_NORMA2_XZ(&o->dif, &o->dist2);
     if (o->dist2 > a->alcance2) {
         return 0;
     }
-    o->radio = a->radio;
-    GEO_COMPLEMENTO(&a->rot);
+    o->radio = a->s20;
+    GEO_COMPLEMENTO(&a->param.giro.rotate);
     GEO_GUARDAR_H_T1(&o->rot);
     GEO_IDENTIDAD(&o->m);
     RotMatrixZYX(&o->rot, &o->m);
@@ -790,7 +789,7 @@ s32 func_80018F80(ObjetoVolumen* a, ObjetoVolumen* b, ConsultaVolumen* o)
  * Con g = 8 (config/opciones_compilacion.toml) el puntero global se carga directamente en $s0;
  * con -G0 la parte alta iria a otro registro (205).
  */
-NodoVolumen* func_80019180(ObjetoVolumen* a, VECTOR* p, ConsultaPlano* o)
+NodoVolumen* func_80019180(Objeto* a, VECTOR* p, ConsultaPlano* o)
 {
     NodoVolumen* n;
     s32 z;
@@ -802,7 +801,7 @@ NodoVolumen* func_80019180(ObjetoVolumen* a, VECTOR* p, ConsultaPlano* o)
         dif = &o->dif;
         rot = &o->rot;
         do {
-            if ((n->indicadores & 2) || n->etiqueta == a->etiqueta) {
+            if ((n->indicadores & 2) || n->etiqueta == (s16)a->w26) {
                 GEO_CARGAR_W(p);
                 GEO_RESTAR_W(&n->pos);
                 GEO_GUARDAR_H_T4(dif);

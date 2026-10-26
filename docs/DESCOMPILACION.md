@@ -29,6 +29,14 @@ dónde difiere; no sustituye a `verify`.
 | `include/common.h` | Tipos de ancho fijo y `NULL`. Todo `.c` empieza con `#include "common.h"`. |
 | `include/macro.h` | Macro `INCLUDE_ASM`. Lo incluye `common.h`. |
 | `include/gte.h` | Comandos del GTE por mnemónico (ver «Comandos del GTE»). Se incluye en lugar de `psyq/INLINE_C.H`. |
+| `include/globales.h` | Tipos de la memoria que comparten los subsistemas (`Objeto` de 0x1F4 bytes, `EstadoCamara`, `AcumuladorNodos`, `EntradaVisible`...) y la declaración única de cada variable `D_` y de cada rutina que usan dos o más archivos. |
+| `include/arranque.h` | `EstadoPrincipal` (0x80010000..0x8001013F) con el bloque `Mando` y el banco de 256 registros de 8 bits. |
+| `include/eventos.h` | Registro de acción del intérprete de eventos; incluye `arranque.h` y `globales.h`. |
+| `include/objetos.h` | Pozos de objetos y de ayudantes (`NodoLista`, `Ayuda`, `EntradaId`, `EntradaPunto`), sus variables y los prototipos de la reserva, las listas y el dibujo de la escena. |
+| `include/motor.h` | Tipos del movimiento y de la animación (`Movimiento`, `TrabajoMov`, `NodoSecuencia`, `ProyeccionSprite`) y los prototipos de las rutinas del motor. |
+| `include/geometria.h` | Colisión y volúmenes: `ZonaColision`, `ResultadoBaldosa`, las áreas de consulta y las macros vectoriales. |
+| `include/menus.h` | Dibujo de escena y polígonos: `ModeloDibujo`, `VistaDibujo`, `EstadoDibujo` y las primitivas. |
+| `include/cargador.h` | Tabla de sectores, registros por archivo, contenedor cargado y contexto del descompresor. |
 | `asm/boot.s`, `asm/libs.s` | Ensamblador que no se descompila en esta fase: arranque del SDK y librerías Sony. |
 | `asm/nonmatchings/<archivo>/<función>.s` | Ensamblador original de cada función que sigue pendiente, con el `rodata` que usa si su archivo tiene subsegmento `.rodata`. Lo incluye `INCLUDE_ASM`. |
 | `asm/matchings/<archivo>/<función>.s` | Ensamblador original de las funciones que ya están en C. Es el objetivo de `diff`. |
@@ -255,6 +263,22 @@ extern u32 D_80069698;           /* palabra */
 - Dos variables contiguas que el original lee con un único `lui` (misma parte alta) deben
   declararse como miembros de una misma estructura o arreglo; como variables externas distintas
   GCC emite un `lui` por cada una (es la diferencia de `func_8002F990`).
+- Un símbolo que usan dos o más archivos se declara una sola vez, en `include/globales.h` o en la
+  cabecera de su subsistema, con el ancho y el signo que fija el ensamblador (`lb`, `lbu`, `lh`,
+  `lhu`, `lw`): dos declaraciones con tipos distintos no las detecta el enlazador y cada una cambia
+  el código del archivo que la ve. Si una rutina lee el dato con otro ancho, se deja un cast local
+  con la instrucción que lo exige (`D_8006955E` es `vu8` y `func_80044854` lo lee como `u16`, porque
+  el original usa `lhu`). Un campo de una estructura compartida que se lee con dos signos se resuelve
+  con un cast local o con una unión con nombre (`GiroObjeto` en `Objeto`).
+- Una estructura describe una sola vez cada región de memoria: `Objeto` es el objeto de escena
+  completo (la reserva, la lógica, el volumen y el dibujo), `EstadoPrincipal` el estado de
+  `0x80010000` y `EstadoCamara` el de `D_8006D928`. Las variables sueltas `D_8001xxxx` que
+  conviven con `EstadoPrincipal` son los accesos con la forma simbólica (un `lui` por acceso) que el
+  original usa en algunas rutinas; no se acceden por la estructura porque eso comparte el `lui`.
+- Una rutina compartida se prototipa en la cabecera de su subsistema con los tipos de su
+  definición. Un parámetro estrecho (`u8`, `s16`) hace que cada llamador recorte el argumento; si el
+  original pasa el valor sin recortar y la rutina lo recorta dentro, el parámetro es `s32` y el
+  recorte un cast (`func_8002F990`).
 - No hay que definir el símbolo: el enlazador lo resuelve contra `asm/data/` o contra
   `build/undefined_syms_auto.txt`. Definir un dato en C solo es posible cuando también se migra su
   zona (ver trampas).
@@ -349,7 +373,11 @@ como común); un símbolo `extern` queda como `lui`. Por eso:
    `_gp = 0x80069320;` y una asignación por símbolo, y lo pasa al enlazador después del script
    principal: la asignación sustituye al símbolo común y el desplazamiento resultante es el exacto del
    original (`lw v0,0x188(gp)`). Son símbolos absolutos: no mueven ningún byte.
-3. Se define en **un solo archivo**; si otro archivo lo usa, lo declara `extern` y accede por `lui`.
+3. Se define en cada archivo que lo accede por `$gp`; los que lo acceden por `lui` lo ven `extern`, con la
+   declaración única de `include/globales.h`. `D_800694A8` se define en `cargador_de_niveles_y_cd`,
+   `graficos_y_gte_10` y `graficos_y_gte_12`, y `D_800694A4` y `D_80069488` en los dos primeros, porque
+   las funciones de cada archivo los direccionan por `$gp` y ya coinciden: el enlazador funde las
+   definiciones comunes en un solo símbolo, y declararlos `extern` en cabecera empeora cuatro funciones.
 
 Cuando `config/symbols.txt` declare esos datos pequeños se retirarán de `[datos_pequenos]` (hoy figuran
 allí porque el ejecutable original no los nombra).

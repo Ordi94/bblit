@@ -1,6 +1,8 @@
 #include "common.h"
+#include "globales.h"
 #include "psyq/TYPES.H"
 #include "psyq/LIBCD.H"
+#include "cargador.h"
 
 /*
  * Descompresor LZSS de las secciones de un contenedor y su lectura de sectores.
@@ -21,18 +23,6 @@
  * estado explicito en una estructura.
  */
 
-/* Area de contexto del descompresor en el scratchpad (la tabla de longitudes empieza en +0x38). */
-typedef struct ContextoDescompresion {
-    u32 retorno;
-    u32 retorno_lectura;
-    u32 guardados[9];
-    u32 anillo_inicio;
-    u32 anillo_fin;
-    u16 umbral;
-    u16 parametros;
-    u16 longitudes[128];
-} ContextoDescompresion;
-
 /* Estado del flujo de entrada que el original conserva en registros (ver arriba). */
 typedef struct FlujoEntrada {
     u8* actual;
@@ -42,16 +32,8 @@ typedef struct FlujoEntrada {
     ContextoDescompresion* contexto;
 } FlujoEntrada;
 
-extern u32 D_8006947C;
-extern u32 D_80069480;
-extern u32 D_80069490;
-extern u32 D_8006949C;
-extern u16 D_8006955E;
 
 extern s32 func_80044904(void);
-/* Entrada y salida de seccion critica (llamadas al sistema de 16 bytes sin nombre en el simbolo). */
-extern void func_8004E66C(void);
-extern void func_8004E67C(void);
 extern void func_80044854(FlujoEntrada* flujo);
 
 #ifdef NON_MATCHING
@@ -181,16 +163,17 @@ void func_80044854(FlujoEntrada* flujo)
             func_80044904();
             return;
         }
-        if (D_8006955E == 0) {
+        /* El original carga el estado con lhu (0x80044898): el campo es un byte y aqui se lee como media palabra. */
+        if (*(volatile u16*)&D_8006955E == 0) {
             flujo->operaciones = 0;
             flujo->restantes = 0x7FF;
             return;
         }
         intentos = 0;
     }
-    func_8004E66C();
+    EnterCriticalSection();
     D_80069480 -= 0x800;
-    func_8004E67C();
+    ExitCriticalSection();
     flujo->actual = flujo->sector_siguiente;
     flujo->sector_siguiente += 0x800;
     if ((u32)flujo->sector_siguiente >= flujo->contexto->anillo_fin) {

@@ -6,8 +6,16 @@
  * por objeto. Los desplazamientos son los que el ensamblador original lee con lw, lh y lhu.
  */
 #include "common.h"
+#include "globales.h"
 #include "psyq/TYPES.H"
 #include "psyq/LIBGTE.H"
+
+/* Vector de tres s32 del juego (x, y, z); distinto de VECTOR del SDK, cuyos campos son vx, vy, vz. */
+typedef struct Vec3 {
+    s32 x;
+    s32 y;
+    s32 z;
+} Vec3;
 
 /*
  * Zona de colision: bloque de 0x44 bytes de la tabla que carga func_80019364. El primer campo
@@ -36,7 +44,10 @@ typedef struct ZonaColision {
 /*
  * Resultado de la consulta de baldosa de func_8001C134. tipo conserva los cuatro bits altos del
  * valor de la baldosa; grupo es el grupo de la zona encontrada (-1 si ninguna) y zona la propia
- * zona. suelo es la altura donde se apoya el punto.
+ * zona. En las rutinas de movimiento, flags 8 y 1 marcan rampa y salto y los bits 4, 8 y 0x10
+ * piden tipos de movimiento. suelo es la altura donde se apoya el punto y techo la altura del
+ * techo sobre el punto: func_8001C998 la lee con lw 0xC para limitar el salto y func_8001C134
+ * no la escribe.
  */
 typedef struct ResultadoBaldosa {
     u16 clase;
@@ -45,7 +56,7 @@ typedef struct ResultadoBaldosa {
     u16 pendiente_abs;
     u16 tipo;
     s16 grupo;
-    u8 pad0C[4];
+    s32 techo;
     s32 suelo;
     ZonaColision* zona;
 } ResultadoBaldosa;
@@ -203,36 +214,6 @@ typedef struct TrabajoBaldosa {
                       ".set pop" \
                       : : "r"(p) : "$1", "$2", "$3", "$4", "$5", "$7", "$8", "$9", "$10", "memory")
 
-/*
- * Objeto del motor tal como lo ven los calculos de volumen: indicadores en +8, lista enlazada
- * en +0x10 (la cabeza vive en D_80069630), radio en +0x20, tipo en +0x2A (2 = solido), alcance
- * al cuadrado en +0x30, cajas minima y maxima en +0x48 y +0x50, enlaces de pertenencia en +0x6C
- * y +0x70, angulos en +0xDC y posicion en +0xE4.
- */
-typedef struct ObjetoVolumen {
-    u8 pad00[0x08];
-    u32 indicadores;
-    u8 pad0C[0x04];
-    struct ObjetoVolumen* sig;
-    u8 pad14[0x20 - 0x14];
-    s16 radio;
-    u8 pad22[0x26 - 0x22];
-    s16 etiqueta;
-    u8 pad28[0x2A - 0x28];
-    s16 tipo;
-    u8 pad2C[0x30 - 0x2C];
-    u32 alcance2;
-    u8 pad34[0x48 - 0x34];
-    SVECTOR min;
-    SVECTOR max;
-    u8 pad58[0x6C - 0x58];
-    struct ObjetoVolumen* rel1;
-    struct ObjetoVolumen* rel2;
-    u8 pad74[0xDC - 0x74];
-    SVECTOR rot;
-    VECTOR pos;
-} ObjetoVolumen;
-
 /* Area de trabajo de func_80018C68: matriz de rotacion inversa del objeto y vectores locales. */
 typedef struct ConsultaMatriz {
     MATRIX m;
@@ -248,7 +229,7 @@ typedef struct ConsultaMatriz {
  * cuadrado en el plano y radio.
  */
 typedef struct ConsultaVolumen {
-    ObjetoVolumen* actual;
+    Objeto* actual;
     u8 pad04[0x14 - 0x04];
     MATRIX m;
     SVECTOR rot;
@@ -293,7 +274,7 @@ typedef struct ConsultaPlano {
  * banderas o distancia al cuadrado, radio y copia de la posicion.
  */
 typedef struct ConsultaCaja {
-    ObjetoVolumen* actual;
+    Objeto* actual;
     MATRIX m;
     SVECTOR rot;
     SVECTOR res;
@@ -304,5 +285,6 @@ typedef struct ConsultaCaja {
     s32 radio;
     VECTOR pos;
 } ConsultaCaja;
+extern void func_80019364(s32* zonas);
 
 #endif
