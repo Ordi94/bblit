@@ -89,13 +89,6 @@ extern u8 D_8006CFF3;
 extern u8 D_8006CFF6;
 extern u8 D_8006CFF7;
 
-/* Entidad en curso (D_80069698): solo se lee su palabra de banderas en +0x14. */
-typedef struct EntidadActual {
-    u8 pad0[0x14];
-    u32 banderas;
-} EntidadActual;
-extern EntidadActual* D_80069698;
-
 /*
  * Solo la usa el cuerpo de func_80040240 bajo NON_MATCHING; la declaracion no emite codigo ni datos,
  * asi que es inocua en la compilacion normal. Esta para que el intento compile con diff.
@@ -351,7 +344,7 @@ void func_8004048C(void)
     s32 centro;
     s32 eje;
 
-    if (D_80069662 == 0 && (D_80069698 == 0 || (D_80069698->banderas & 0x01000000) == 0)) {
+    if (D_80069662 == 0 && (D_80069698 == 0 || (D_80069698->flags14 & 0x01000000) == 0)) {
         goto normal;
     }
     if (D_8006AA7C == 0) {

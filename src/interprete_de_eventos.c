@@ -48,7 +48,6 @@ typedef struct Byte {
     u8 v;
 } Byte;
 
-extern Objeto* D_80069518;
 extern s32* D_80069640;
 extern s32 D_800693B4;
 extern s32 D_800693C0;

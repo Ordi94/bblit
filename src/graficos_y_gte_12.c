@@ -33,7 +33,6 @@ typedef struct RegistroArchivo {
 } RegistroArchivo;
 extern RegistroArchivo D_8005F200[];
 
-extern void* D_800694FC;
 extern u8 D_80010065;
 
 /* Dato pequeno de $gp (+0x188): maquina de estados de la pantalla de carga (0, 2, 4; bit 0 = activa). */

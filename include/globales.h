@@ -8,6 +8,57 @@
 #include "psyq/LIBGS.H"
 
 /*
+ * Objeto de escena. Solo se declaran los campos que el codigo traducido usa; los huecos son
+ * relleno. D_80069698 (el objeto controlado) y la lista de D_80069518 apuntan a esta estructura.
+ * Los calculos de volumen de la colision la ven como ObjetoVolumen (geometria.h): ambas vistas
+ * coinciden en los angulos de +0xDC y la posicion de +0xE4.
+ */
+typedef struct Objeto {
+    struct Objeto* siguiente;
+    u8 pad04[0x14 - 0x04];
+    u32 flags14;
+    u32 flags18;
+    u16 w1C;
+    s16 s1E;
+    u8 pad20[2];
+    u16 w22;
+    u8 pad24[2];
+    u16 w26;
+    u16 w28;
+    u8 pad2A[0x2C - 0x2A];
+    u16 w2C;
+    u8 pad2E[0x38 - 0x2E];
+    u16 w38;
+    u8 pad3A[2];
+    u16 w3C;
+    u8 pad3E[0x6C - 0x3E];
+    struct Objeto* p6C;
+    struct Objeto* p70;
+    u8 pad74[0xC0 - 0x74];
+    struct Objeto* pC0;
+    s32 iC4;
+    u8 padC8[0xDC - 0xC8];
+    u16 wDC;
+    u16 wDE;
+    u16 wE0;
+    u8 padE2[0xE4 - 0xE2];
+    s32 xE4;
+    s32 yE8;
+    s32 zEC;
+    u8 padF0[0x158 - 0xF0];
+    s32 i158;
+    u32 flags15C;
+    u8 pad160[0x17C - 0x160];
+    u16 w17C;
+    u16 w17E;
+    u16* p180;
+    u8 pad184[0x192 - 0x184];
+    u16 w192;
+    u8 pad194[2];
+    u16 w196;
+} Objeto;
+
+/*
  * Variables globales que mas de un archivo del juego declara. Una sola declaracion por simbolo:
  * el tipo sale del ensamblador original (el ancho de la instruccion de carga y de almacen) y
  * cambiarlo cambia el codigo generado, asi que no se retoca sin repetir diff y verify.
@@ -66,6 +117,33 @@ extern vu16 D_80069676;
 extern s8 D_800695A0;
 extern s8 D_80069595;
 extern s8 D_8006963C;
+
+/* --- Punteros a objetos y a datos cargados -------------------------------------------- */
+
+/*
+ * D_80069698: objeto controlado (el protagonista). Se carga con lw en mas de 160 sitios y se
+ * indexa por +0x14 (flags14), +0x18 (flags18), +0xDE (angulo) y +0xE4..+0xEC (posicion).
+ */
+extern Objeto* D_80069698;
+
+/*
+ * D_80069518: cabeza de la lista de objetos de escena (enlace en +0). func_800353B0 la recibe
+ * como argumento y los eventos la recorren con ->siguiente; lw / sw de 32 bits.
+ */
+extern Objeto* D_80069518;
+
+/*
+ * D_80069630: cabeza de la lista de objetos solidos que recorren las consultas de volumen
+ * (enlace en +0x10, ver ObjetoVolumen en geometria.h). El arranque solo la pasa a otras rutinas.
+ */
+struct ObjetoVolumen;
+extern struct ObjetoVolumen* D_80069630;
+
+/*
+ * D_800694FC: puntero al bloque de zonas de colision del nivel. Se guarda con sw al cargar el
+ * archivo y se pasa tal cual a func_80019364(void*); no se indexa ni se desplaza.
+ */
+extern void* D_800694FC;
 
 /* --- Banderas de un byte -------------------------------------------------------------- */
 

@@ -8,8 +8,6 @@
 
 extern s32 D_80069534;
 extern s32 D_80069638;
-extern u32 D_80069518;
-extern void* D_80069630;
 extern void* D_80069508;
 extern void* D_800694B8;
 extern void* D_800694D8;
@@ -21,7 +19,6 @@ extern GsOT D_8006AE60[];
 extern GsOT D_8006AEA0[];
 
 extern u16 D_800694F0;
-extern u32 D_800694FC;
 extern s32 D_8006CF68[];
 extern u8 D_80069628;
 
@@ -65,7 +62,7 @@ extern void func_80016044(void);
 extern void func_800160A8(void);
 extern void func_8003E3C0(void);
 extern void func_8003F3F0(s16 indice);
-extern void func_800353B0(u32 a);
+extern void func_800353B0(Objeto* a);
 extern void func_80037048(void* a);
 extern void func_800399C8(void* a);
 extern void func_8003B5AC(void* a);

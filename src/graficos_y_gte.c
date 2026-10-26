@@ -1,13 +1,6 @@
 #include "geometria.h"
+#include "globales.h"
 
-/* Cabeza de la lista de objetos solidos del nivel (enlace en +0x10). */
-extern ObjetoVolumen* D_80069630;
-/*
- * Estructura global del jugador (la misma D_80069698 que func_80030D60 trata como EstadoGlobal):
- * este archivo solo demuestra el acceso a la posicion, un VECTOR en +0xE4; su componente y
- * (+0xE8) es el s32 `valor` de EstadoGlobal. Debe unificarse en una cabecera global unica.
- */
-extern ObjetoVolumen* D_80069698;
 /* Cabeza de la lista de nodos de plano (enlace en +0). */
 extern NodoVolumen* D_80069580;
 
@@ -184,7 +177,8 @@ s32 func_80018C68(ObjetoVolumen* a, ConsultaMatriz* o)
 {
     GEO_COMPLEMENTO(&a->rot);
     GEO_GUARDAR_H_T1(&o->rot);
-    GEO_CARGAR_W(&D_80069698->pos);
+    /* La posicion del jugador son los tres s32 de +0xE4 de Objeto; la macro los lee como VECTOR. */
+    GEO_CARGAR_W((VECTOR*)&D_80069698->xE4);
     GEO_RESTAR_W(&a->pos);
     GEO_GUARDAR_H_T4(&o->dif);
     GEO_IDENTIDAD(o);
