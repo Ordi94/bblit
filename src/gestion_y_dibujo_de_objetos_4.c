@@ -58,7 +58,7 @@ typedef struct SondaSombra {
 } SondaSombra;
 
 /* Resta de vectores de tres componentes: resultado = b - a. */
-void func_80039BFC(s32* a, s32* b, s32* resultado)
+void RestarPuntos(s32* a, s32* b, s32* resultado)
 {
     resultado[0] = b[0] - a[0];
     resultado[1] = b[1] - a[1];
@@ -66,7 +66,7 @@ void func_80039BFC(s32* a, s32* b, s32* resultado)
 }
 
 /* Producto vectorial de dos vectores de tres componentes: resultado = a x b (sin GTE). */
-void func_80039C3C(s32* a, s32* b, s32* resultado)
+void ProductoVectorial(s32* a, s32* b, s32* resultado)
 {
     resultado[0] = a[1] * b[2] - a[2] * b[1];
     resultado[1] = a[2] * b[0] - a[0] * b[2];
@@ -230,9 +230,9 @@ Objeto* func_80039D44(Objeto* o, ParametrosObjeto* d, u32 mascara, SondaSombra* 
         d->giro.rotate.vx = 0;
         d->giro.rotate.vy = o->param.giro.u.y;
     } else {
-        func_80039BFC((s32*)&w->u.t.p1, (s32*)&w->u.t.p2, (s32*)&w->u.t.v1);
-        func_80039BFC((s32*)&w->u.t.p1, (s32*)&w->u.t.p3, (s32*)&w->u.t.v2);
-        func_80039C3C((s32*)&w->u.t.v1, (s32*)&w->u.t.v2, (s32*)&w->u.t.nrm);
+        RestarPuntos((s32*)&w->u.t.p1, (s32*)&w->u.t.p2, (s32*)&w->u.t.v1);
+        RestarPuntos((s32*)&w->u.t.p1, (s32*)&w->u.t.p3, (s32*)&w->u.t.v2);
+        ProductoVectorial((s32*)&w->u.t.v1, (s32*)&w->u.t.v2, (s32*)&w->u.t.nrm);
         d->giro.rotate.vx = ratan2(w->u.t.nrm.vz, w->u.t.nrm.vy);
         d->giro.rotate.vy = 0;
         d->giro.rotate.vz = ratan2(w->u.t.nrm.vx, w->u.t.nrm.vy);
@@ -435,7 +435,7 @@ void func_8003A5C8(Objeto** objetos)
                                             }
                                         }
                                         func_8001CFCC(&q->coord);
-                                        func_8003760C(q->pcoord, mat, area);
+                                        ComponerMatrizMundo(q->pcoord, mat, area);
                                         c->estado.b0 = 0;
                                         func_8003753C(mat);
                                         func_8003BDD0(mod);

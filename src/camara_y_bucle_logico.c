@@ -374,7 +374,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
         *q = 0;
         w->s5A = -1;
         s1 = w->res.vx + w->res.vz;
-        func_80019474(&w->pos, &w->res, &w->pad50, q);
+        BarrerTerreno(&w->pos, &w->res, &w->pad50, q);
         x = w->res.vx;
         z = w->res.vz;
         s1 = s1 - (x + z);
@@ -582,7 +582,7 @@ void func_80033358(Objeto* o, u32 reiniciar)
             i++;
             w->res.grupo = -1;
             w->v30.vy = o->param.trans.vy + w->p8;
-            func_80019474(&w->v30, &w->v70, &w->res, area);
+            BarrerTerreno(&w->v30, &w->v70, &w->res, area);
             w->v90.vx = w->v90.vx + w->v70.vx;
             w->v90.vz = w->v90.vz + w->v70.vz;
         } while (i < 8);
@@ -850,7 +850,7 @@ aplicar_giro:
     w->v40.vx = w->v30.vx;
     w->v40.vy = w->v30.vy;
     w->v40.vz = w->v30.vz;
-    func_80019474(&w->v70, &w->v30, &w->res, area);
+    BarrerTerreno(&w->v70, &w->v30, &w->res, area);
     D_8006D928.c68 = o->param.trans.vx + w->v30.vx;
     D_8006D928.c70 = o->param.trans.vz + w->v30.vz;
     w->dist = SquareRoot0(w->v30.vx * w->v30.vx + w->v30.vz * w->v30.vz) | 1;
@@ -886,7 +886,7 @@ aplicar_giro:
     w->v70.vy = w->alt;
     w->v70.vz = o->param.trans.vz;
     w->res.grupo = -1;
-    func_80019474(&w->v70, &w->v30, &w->res, area);
+    BarrerTerreno(&w->v70, &w->v30, &w->res, area);
     d = SquareRoot0(w->v30.vx * w->v30.vx + w->v30.vz * w->v30.vz);
     w->dir.vy = 0;
     w->dir.vx = 0;
@@ -939,7 +939,7 @@ aplicar_giro:
         i++;
         w->res.grupo = -1;
         w->v30.vy = w->alt;
-        func_80019474(&w->v30, &w->v70, &w->res, area);
+        BarrerTerreno(&w->v30, &w->v70, &w->res, area);
         w->v90.vx = w->v90.vx + w->v70.vx;
         w->v90.vz = w->v90.vz + w->v70.vz;
     } while (i < 8);

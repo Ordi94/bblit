@@ -17,7 +17,7 @@ extern MATRIX* TransMatrix(MATRIX* m, VECTOR* v);
  * parametros de la zona y el area de trabajo de la consulta. Devuelve 0 cuando el punto no tiene zona
  * (v0 = 0 en 0x80019504) y 1 al terminar el barrido (v0 = 1 en 0x8001BEC0); los llamadores lo ignoran.
  */
-extern s32 func_80019474(void* pos, void* desplazamiento, void* zona, void* trabajo);
+extern s32 BarrerTerreno(void* pos, void* desplazamiento, void* zona, void* trabajo);
 
 /*
  * Desplazamiento que un objeto pretende hacer en un cuadro (x en +0, altura en +4, z en +8).

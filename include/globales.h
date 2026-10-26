@@ -499,9 +499,9 @@ extern u8 D_80010076;
 
 /*
  * D_80069560: objeto de referencia de la camara. Se guarda con sw (0x80036020 en func_800353B0,
- * func_800415A0, func_80044A04 con $zero) y se carga con lw (0x800353F8): se compara y se copia
+ * CargarContenedor, func_80044A04 con $zero) y se carga con lw (0x800353F8): se compara y se copia
  * como puntero de objeto y tambien se pone a cero. Se declara void* porque el cargador le asigna
- * un puntero a nodo de lista (func_800415A0); como puntero genera el mismo codigo que como entero
+ * un puntero a nodo de lista (CargarContenedor); como puntero genera el mismo codigo que como entero
  * en todas las funciones que lo usan.
  */
 extern void* D_80069560;
@@ -546,7 +546,7 @@ extern s32 D_8006D934[3];
 
 /*
  * D_80076188: puntero a la siguiente primitiva libre del anillo de primitivas del motor. Todos
- * los accesos son lw / sw de 32 bits (func_80016218, func_80045150, func_800415A0, func_800399C8);
+ * los accesos son lw / sw de 32 bits (func_80016218, func_80045150, CargarContenedor, func_800399C8);
  * func_80045150 le suma 0x28 por glifo y lo compara con D_8006958C, y func_80016218 lo guarda en
  * D_8006AD40[]. Se declara s32 y no como puntero porque asi lo comparan y lo suman los originales.
  */
@@ -577,7 +577,7 @@ extern vu16 D_800695D0;
 
 /*
  * D_80069610: direccion del anillo de primitivas sobre la que espera func_80039CD0. lw / sw de 32
- * bits (func_80039CD0, func_8003DF10, func_80040B8C, func_800415A0); la distancia a otro puntero
+ * bits (func_80039CD0, func_8003DF10, func_80040B8C, CargarContenedor); la distancia a otro puntero
  * se calcula con subu y se prueba con bgez, y func_80040B8C la sustituye por D_80069614.
  */
 extern u32 D_80069610;
@@ -590,7 +590,7 @@ extern u16 D_8006B658[8];
 
 /*
  * D_800694B8: puntero a datos del nivel y inicio de la tabla de entradas de ocho bytes de glifos.
- * Se guarda con sw (0x80041E70 en func_800415A0) y se carga con lw (0x800353B8 en func_800353B0,
+ * Se guarda con sw (0x80041E70 en CargarContenedor) y se carga con lw (0x800353B8 en func_800353B0,
  * 0x80045390 en func_80045368, func_80016218) para pasarlo tal cual; se pasa como puntero opaco a
  * func_80045150 y func_80045368 lo indexa con (indice << 3) sumando la direccion.
  */
@@ -879,7 +879,7 @@ void func_80040D98(RECT* a0, s16* a1);
  * func_80040DDC de 5 a 110, func_80040E30 de 15 a 330, func_8004443C de 15 a 330 y func_80044588
  * de 5 a 110. El enlazador funde las definiciones tentativas en un solo simbolo; D_80069488 es
  * volatile en los dos archivos: el cargador lo escribe desde el retorno de llamada de lectura y la
- * presentacion de cuadros lo lee; sin volatile en el cargador func_8004109C pasa de 105 a 705.
+ * presentacion de cuadros lo lee; sin volatile en el cargador CallbackSectorListo pasa de 105 a 705.
  */
 
 /* D_800693B8: dato pequeno de $gp (0x80069320 + 0x98) que declara config/symbols.txt; sh en 0x80020E68, 0x80021538, 0x8002166C, 0x80021774 y 0x80021784, lhu en 0x80021750 (todos 0x98($gp)). Se define en movimiento_y_objetos_de_escena_2.c y en logica_de_niveles.c: ambos lo direccionan con $gp. */
@@ -916,7 +916,7 @@ extern s32 D_80010000;
 
 /*
  * Punteros a las tablas de la banda sonora que se cargan con el nivel. El cargador los escribe
- * con sw (func_800415A0 0x80042060, 0x8004206C, 0x80042DA4, 0x80042DAC, 0x80042DB4, 0x80042DC8,
+ * con sw (CargarContenedor 0x80042060, 0x8004206C, 0x80042DA4, 0x80042DAC, 0x80042DB4, 0x80042DC8,
  * 0x80042DE0) y el audio los lee como base de una tabla; el ensamblador solo fija el ancho (lw/sw
  * de una palabra) y el tipo del elemento sale de como los indexa cada lector.
  *
@@ -925,7 +925,7 @@ extern s32 D_80010000;
  *
  * D_800694EC: base de bytes de las definiciones de sonido; func_8003FDEC y func_8003FEEC le suman
  * desplazamientos en bytes.
- * D_80069550: base de bytes; el cargador la avanza en bytes (func_800415A0 0x80044330 lw y
+ * D_80069550: base de bytes; el cargador la avanza en bytes (CargarContenedor 0x80044330 lw y
  * 0x80044354 sw) y func_8003FA2C la lee como tabla de palabras.
  * D_80069598: tabla de palabras indexada por el sonido (func_8003FA2C).
  * D_800695AC y D_800695FC: tablas de s16 indexadas por el grupo del efecto (func_8003FDEC y

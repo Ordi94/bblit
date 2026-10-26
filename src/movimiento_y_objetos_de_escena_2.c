@@ -231,7 +231,7 @@ void func_8001D028(Objeto* origen, Objeto* destino, u8* p)
     w->origen.vz = origen->param.trans.vz;
     *(s32*)p = 0;
     w->h2A = origen->w26;
-    func_80019474(&w->origen, w, w->consulta, p);
+    BarrerTerreno(&w->origen, w, w->consulta, p);
     destino->param.trans.vx = origen->param.trans.vx + w->d.vx;
     destino->param.trans.vz = origen->param.trans.vz + w->d.vz;
 }
@@ -606,7 +606,7 @@ extern u16 D_8005E078[];
 /*
  * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
  * angulos (D_8005E064, o D_8005E078 con el bit 0x80000 de a3) hasta que el desplazamiento rotado
- * no choque (func_80019474) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
+ * no choque (BarrerTerreno) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
  * el borde de los precipicios y 0x40000000 fija la orientacion del objeto al resultado. El
  * desplazamiento realizado queda en `mov`.
  */
@@ -648,7 +648,7 @@ void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
         w->pos44 = o->param.trans.vy;
         w->tb.x_local = 0;
         w->res.grupo = o->w26;
-        func_80019474(&w->pos40, &w->v30, &w->res, &w->tb);
+        BarrerTerreno(&w->pos40, &w->v30, &w->res, &w->tb);
         w->w8C = (s16)w->res.grupo;
         w->w50 = w->w50 - (w->v30 + w->v38);
         f = o->flags14;

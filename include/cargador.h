@@ -5,7 +5,7 @@
 
 /*
  * Entrada de la tabla de sectores de la imagen (D_8005EE78, 113 entradas): posicion y tamano en
- * bytes del archivo cuyo identificador de nivel es el indice. func_80040EB4 la recorre al arrancar.
+ * bytes del archivo cuyo identificador de nivel es el indice. ConstruirRegistrosArchivo la recorre al arrancar.
  */
 typedef struct EntradaSector {
     u32 sector;
@@ -15,8 +15,8 @@ typedef struct EntradaSector {
 /*
  * Registro de 16 bytes por archivo (D_8005F200), construido a partir de EntradaSector.
  * +4 lo lee la pantalla de carga (archivo de la pantalla asociada); +6 lo deja en 1
- * func_80040EB4 y +8 copia el tamano. Los cuatro bytes de +0xC son la posicion de CD
- * en minuto, segundo y cuadro (CdlLOC) que func_800415A0 pasa a la lectura.
+ * ConstruirRegistrosArchivo y +8 copia el tamano. Los cuatro bytes de +0xC son la posicion de CD
+ * en minuto, segundo y cuadro (CdlLOC) que CargarContenedor pasa a la lectura.
  */
 typedef struct RegistroArchivo {
     s32 pad0;
@@ -30,7 +30,7 @@ extern RegistroArchivo D_8005F200[];
 
 /*
  * Entrada de la cabecera del contenedor de niveles: tipo de seccion, tamano real y tamano
- * alineado a sectores. La cabecera ocupa el primer sector del archivo y func_800415A0 la copia
+ * alineado a sectores. La cabecera ocupa el primer sector del archivo y CargarContenedor la copia
  * a la pila (hasta diez entradas) tras comprobar su suma de control.
  */
 typedef struct EntradaSeccion {
@@ -40,7 +40,7 @@ typedef struct EntradaSeccion {
 } EntradaSeccion;
 
 /*
- * Nodos de las tres listas de un contenedor ya cargado (func_80041298). Todos empiezan con el
+ * Nodos de las tres listas de un contenedor ya cargado (ResolverReferenciasContenedor). Todos empiezan con el
  * enlace al siguiente nodo (+0) y un identificador de 16 bits (+4); el resto de los campos son
  * los que esa rutina convierte de identificador a desplazamiento.
  * NodoA mide 0x10 bytes: cinco referencias de 16 bits a NodoB desde +6 (0xFFF0 cierra la serie).
@@ -96,7 +96,7 @@ typedef struct ContextoDescompresion {
     u16 parametros;
     u16 longitudes[128];
 } ContextoDescompresion;
-s32 func_80041238(s8* datos, s32 n);
+s32 SumaControl(s8* datos, s32 n);
 s32 func_80044664(u8* entrada, u8* salida, ContextoDescompresion* contexto);
 
 #endif

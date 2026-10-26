@@ -332,7 +332,7 @@ void func_8003B26C(PedidoModelo* pedido, EscenaDibujo* escena, VistaDibujo* vist
     ModeloDibujo* modelo;
 
     modelo = D_8006B568[pedido->modelo];
-    if (func_8003760C(modelo->geometria, vista, (u8*)vista + 0x20) != 0) {
+    if (ComponerMatrizMundo(modelo->geometria, vista, (u8*)vista + 0x20) != 0) {
         func_8003753C(vista);
         escena->estado.b0 = (u8)pedido->grupo;
         escena->estado.b1 = modelo->estado;

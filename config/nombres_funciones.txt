@@ -89,3 +89,17 @@
 0x8004E66C EnterCriticalSection  # origen: SDK (libapi); syscall 0 con a0 = 1 en 0x8004E66C, 16 bytes escritos a mano
 0x8004E67C ExitCriticalSection  # origen: SDK (libapi); syscall 0 con a0 = 2 en 0x8004E67C, 16 bytes escritos a mano
 0x8004FADC TransMatrix  # origen: version PC, functions.md fila 57 (sdk/gte)
+0x80040EB4 ConstruirRegistrosArchivo  # origen: comportamiento (src/cargador_de_niveles_y_cd.c): recorre las 113 entradas de la tabla de sectores 0x8005EE78 y deja tamano y posicion de CD de cada archivo
+0x8004109C CallbackSectorListo  # origen: comportamiento (src/cargador_de_niveles_y_cd.c): se registra con CdReadyCallback en func_800411F0 y copia cada sector listo con CdGetSector
+0x800411F0 IniciarLecturaContinua  # origen: comportamiento (src/cargador_de_niveles_y_cd.c): registra el callback de sector y emite CdControl(6) (CdlReadN) desde la posicion dada
+0x80041238 SumaControl  # origen: comportamiento (src/cargador_de_niveles_y_cd.c): suma de n bytes con signo, la que se guarda en 0x7FC de la cabecera del contenedor y en la partida
+0x80041264 CopiarBytes  # origen: comportamiento (src/cargador_de_niveles_y_cd.c): copia n bytes de menor a mayor direccion
+0x80041298 ResolverReferenciasContenedor  # origen: comportamiento (src/cargador_de_niveles_y_cd.c): convierte las referencias por identificador entre las listas A, B y C de un contenedor cargado en desplazamientos
+0x8004153C CopiarBytesSolapados  # origen: comportamiento (src/cargador_de_niveles_y_cd.c): copia hacia delante si origen >= destino y hacia atras si no, como memmove
+0x800415A0 CargarContenedor  # origen: comportamiento (src/cargador_de_niveles_y_cd.c): carga un contenedor por identificador, valida la suma de control y construye listas y recursos
+0x80039BFC RestarPuntos  # origen: comportamiento (src/gestion_y_dibujo_de_objetos_4.c): resultado = b - a en tres componentes (C que coincide byte a byte)
+0x80039C3C ProductoVectorial  # origen: comportamiento (src/gestion_y_dibujo_de_objetos_4.c): resultado = a x b sin GTE (C que coincide byte a byte)
+0x8003760C ComponerMatrizMundo  # origen: comportamiento (src/gestion_y_dibujo_de_objetos_2.c): sube por super apilando nodos GsCOORDINATE2 y baja componiendo la matriz acumulada en workm
+0x80037184 DibujarListaReflejada  # origen: comportamiento (src/gestion_y_dibujo_de_objetos_2.c): refleja cada objeto activo respecto de D_800695EC segun s1E y lo anade a la lista de dibujo D_800694D8
+0x800156F4 SondearTarjeta  # origen: comportamiento (src/tarjeta_de_memoria.c): sondeo por cuadro con MemCardSync(1) de la operacion asincrona de la tarjeta y atencion de la orden pendiente
+0x80019474 BarrerTerreno  # origen: comportamiento (src/colision_y_terreno.c): barre un desplazamiento baldosa a baldosa y subcelda a subcelda contra las zonas de colision

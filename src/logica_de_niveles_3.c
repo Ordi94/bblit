@@ -1160,7 +1160,7 @@ siguiente:
         t->pz = o->param.trans.vz + (s16)t->ez; \
         *(s32*)area = 0; \
         t->zona = o->w26; \
-        func_80019474(&t->px, &t->vx, t, area); \
+        BarrerTerreno(&t->px, &t->vx, t, area); \
         t->dx = t->vx; \
         BLOQUE_SIN_SUELO(); \
     }
@@ -1176,7 +1176,7 @@ siguiente:
         t->pz = o->param.trans.vz + (s16)t->ez; \
         *(s32*)area = 0; \
         t->zona = o->w26; \
-        func_80019474(&t->px, &t->vx, t, area); \
+        BarrerTerreno(&t->px, &t->vx, t, area); \
         t->dz = t->vz; \
         BLOQUE_SIN_SUELO(); \
     }
@@ -1314,7 +1314,7 @@ void func_8002D68C(Objeto* o)
         }
         *(s32*)area = 0;
         t->zona = o->w26;
-        func_80019474(&t->px, &t->dx, t, area);
+        BarrerTerreno(&t->px, &t->dx, t, area);
         t->px = o->param.trans.vx;
         t->py = o->param.trans.vy;
         t->pz = o->param.trans.vz;
@@ -1326,7 +1326,7 @@ void func_8002D68C(Objeto* o)
         }
         *(s32*)area = 0;
         t->zona = o->w26;
-        func_80019474(&t->px, &t->dx, t, area);
+        BarrerTerreno(&t->px, &t->dx, t, area);
         if (o->w17C & 0x80) {
             t->px = o->param.trans.vx + t->dx;
             t->py = o->param.trans.vy;
@@ -1392,7 +1392,7 @@ void func_8002D68C(Objeto* o)
             t->vz = o->max.vz - o->min.vz + margen;
             *(s32*)area = 0;
             t->zona = o->w26;
-            func_80019474(&t->px, &t->vx, t, area);
+            BarrerTerreno(&t->px, &t->vx, t, area);
             if (t->bits & 4) {
                 t->dx = 0;
             }
@@ -1410,7 +1410,7 @@ void func_8002D68C(Objeto* o)
             t->vx = o->max.vx - o->min.vx + margen;
             *(s32*)area = 0;
             t->zona = o->w26;
-            func_80019474(&t->px, &t->vx, t, area);
+            BarrerTerreno(&t->px, &t->vx, t, area);
             if (t->bits & 4) {
                 t->dz = 0;
             }
@@ -1458,7 +1458,7 @@ void func_8002D68C(Objeto* o)
     t->py = jugador->param.trans.vy;
     t->pz = jugador->param.trans.vz;
     t->zona = o->w26;
-    func_80019474(&t->px, &t->vx, t, area);
+    BarrerTerreno(&t->px, &t->vx, t, area);
     D_80069698->param.trans.vx += t->vx;
     D_80069698->param.trans.vz += t->vz;
 disparadores:
@@ -1711,7 +1711,7 @@ void func_8002F018(Objeto* o)
         GEO_CARGAR_W(pos);
         GEO_GUARDAR_W_T1(&t->px);
         t->zona = o->w26;
-        func_80019474(&t->px, &t->dx, t, area);
+        BarrerTerreno(&t->px, &t->dx, t, area);
         t->px = o->param.trans.vx + t->dx;
         t->pz = o->param.trans.vz + t->dz;
         t->py = o->param.trans.vy + t->my;

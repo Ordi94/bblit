@@ -126,7 +126,7 @@ void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
     w->y10 = o->param.trans.vy;
     w->h18 = d->x;
     w->h1A = d->z;
-    func_80019474(pos, d, r, area);
+    BarrerTerreno(pos, d, r, area);
     w->dx = d->x;
     w->dz = d->z;
     o->param.trans.vx = o->param.trans.vx + d->x;
@@ -137,7 +137,7 @@ void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
         d->z = 0;
         d->x = w->h18 - d->x;
         o->param.trans.vy = w->y10;
-        func_80019474(pos, d, r, area);
+        BarrerTerreno(pos, d, r, area);
         v = d->x;
         if (v == 0) {
             o->h110 = 0;
@@ -148,7 +148,7 @@ void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
         d->x = 0;
         d->z = w->h1A;
         o->param.trans.vy = w->y10;
-        func_80019474(&o->param.trans.vx, d, r, area);
+        BarrerTerreno(&o->param.trans.vx, d, r, area);
         v = d->z;
         if (v == 0) {
             o->h112 = 0;

@@ -362,7 +362,7 @@ typedef struct VelocidadLocal {
  * entrar y no sobrevive al cuadro. Los anchos y signos de cada campo (lh, lhu, lw) son los que el
  * ensamblador de func_80020B90 usa; paso se carga como vector de medias palabras en el GTE y
  * func_80017478 lo recibe como SVECTOR. A partir de 0x148 empieza el area de trabajo que reciben
- * las consultas de terreno y de volumen (func_80019474 exige 0x1C8 bytes libres por debajo de
+ * las consultas de terreno y de volumen (BarrerTerreno exige 0x1C8 bytes libres por debajo de
  * 0x1F8003FF).
  */
 typedef struct ScratchJugador {

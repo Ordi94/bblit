@@ -144,7 +144,7 @@ extern EntradaPunto D_8006B668[];
 EntradaId* func_80036164(s32 id);
 Objeto* func_80036734(s16 id, s32* pos, u16* ang);
 void func_80037048(Objeto* lista);
-void func_80037184(Objeto* lista);
+void DibujarListaReflejada(Objeto* lista);
 void func_80037FB8(NodoLista* n);
 void func_80037FE8(void* lista);
 void func_800399C8(Objeto* lista);
@@ -156,6 +156,6 @@ s32 func_80010258(void* modelo, s32 cursor, void* estado, void* vista);
 
 /* Rutina en ensamblador que proyecta los vertices de un Ayuda o de un ModeloDibujo. */
 s32 func_8003BDD0(void* modelo);
-extern s32 func_8003760C(GsCOORDINATE2* c, MATRIX* m, void* aux);
+extern s32 ComponerMatrizMundo(GsCOORDINATE2* c, MATRIX* m, void* aux);
 
 #endif

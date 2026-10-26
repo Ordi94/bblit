@@ -657,7 +657,7 @@ void func_80020B90(Objeto* o)
                     GEO_GUARDAR_W_T1(&sc->punto);
                     sc->punto.vy = o->param.trans.vy;
                     sc->res.grupo = o->w26;
-                    func_80019474(&sc->punto, &sc->rel, &sc->res, w);
+                    BarrerTerreno(&sc->punto, &sc->rel, &sc->res, w);
                     o->param.trans.vx = o->p70->param.trans.vx + sc->rel.vx;
                     o->param.trans.vz = o->p70->param.trans.vz + sc->rel.vz;
                     sc->resp_apoyo[0] = (u32)o->p70;
@@ -767,7 +767,7 @@ llamar_salto:
             sc->tmp_v.vx = (s16)sc->tmp_sv.vx;
             sc->tmp_v.vz = (s16)sc->tmp_sv.vz;
             sc->res.grupo = o->w26;
-            func_80019474(&sc->punto, &sc->tmp_v, &sc->res, w);
+            BarrerTerreno(&sc->punto, &sc->tmp_v, &sc->res, w);
             pp->param.trans.vx = o->param.trans.vx + sc->tmp_v.vx;
             pp->param.trans.vy = o->objetivo.vy;
             pp->coord.super = NULL;
@@ -866,7 +866,7 @@ llamar_salto:
             GEO_CARGAR_W(&sc->rel);
             GEO_GUARDAR_H_T1(&sc->tmp_sv);
             sc->res.grupo = o->w26;
-            func_80019474(&sc->punto, &sc->rel, &sc->res, w);
+            BarrerTerreno(&sc->punto, &sc->rel, &sc->res, w);
             sc->desp.x += sc->rel.vx - (s16)sc->tmp_sv.vx;
             sc->desp.z += sc->rel.vz - (s16)sc->tmp_sv.vz;
             o->param.giro.u.y = ratan2(sc->paso_x, (s16)sc->paso_z);
@@ -934,7 +934,7 @@ llamar_salto:
                         GEO_GUARDAR_W_T1(&sc->tmp_v);
                         sc->res.grupo = o->w26;
                         sc->punto.vy = o->param.trans.vy - 0x64;
-                        func_80019474(&sc->punto, &sc->tmp_v, &sc->res, w);
+                        BarrerTerreno(&sc->punto, &sc->tmp_v, &sc->res, w);
                         a++;
                         ptr16 = D_800693DC;
                         D_800693DC += 4;
@@ -954,7 +954,7 @@ llamar_salto:
         sc->tmp_v.vx = sc->desp.x;
         sc->punto.vz = o->param.trans.vz;
         sc->res.grupo = o->w26;
-        func_80019474(pt, &sc->tmp_v, &sc->res, w);
+        BarrerTerreno(pt, &sc->tmp_v, &sc->res, w);
         a = sc->tmp_v.vx;
         sc->punto.vx = o->param.trans.vx;
         sc->punto.vy = o->param.trans.vy;
@@ -963,7 +963,7 @@ llamar_salto:
         sc->tmp_v.vz = sc->desp.z;
         sc->punto.vz = o->param.trans.vz;
         sc->res.grupo = o->w26;
-        func_80019474(pt, &sc->tmp_v, &sc->res, w);
+        BarrerTerreno(pt, &sc->tmp_v, &sc->res, w);
         sc->desp.x = a;
         sc->desp.z = sc->tmp_v.vz;
         if (!(o->flags14 & 0x81000000) || ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0 || (D_80069608 & 2)) {
@@ -1003,7 +1003,7 @@ llamar_salto:
             sc->tmp_v.vx = sc->paso_x;
             sc->punto.vz = o->param.trans.vz;
             sc->res.grupo = o->w26;
-            func_80019474(&sc->punto, &sc->tmp_v, &sc->res, w);
+            BarrerTerreno(&sc->punto, &sc->tmp_v, &sc->res, w);
             a = sc->tmp_v.vx;
             sc->punto.vx = o->param.trans.vx;
             sc->punto.vy = o->param.trans.vy;
@@ -1012,7 +1012,7 @@ llamar_salto:
             sc->tmp_v.vz = (s16)sc->paso_z;
             sc->punto.vz = o->param.trans.vz;
             sc->res.grupo = o->w26;
-            func_80019474(&sc->punto, &sc->tmp_v, &sc->res, w);
+            BarrerTerreno(&sc->punto, &sc->tmp_v, &sc->res, w);
             sc->paso_x = a;
             sc->paso_z = sc->tmp_v.vz;
             if (sc->tocado->flags08 & 8) {
@@ -1316,7 +1316,7 @@ sin_rebote:
                     GEO_GUARDAR_W_T1(&sc->punto);
                     sc->punto.vy = o->param.trans.vy;
                     sc->res.grupo = o->w26;
-                    func_80019474(&sc->punto, &sc->rel, &sc->res, w);
+                    BarrerTerreno(&sc->punto, &sc->rel, &sc->res, w);
                     o->param.trans.vx = o->p70->param.trans.vx + sc->rel.vx;
                     o->coord.param = (GsCOORD2PARAM*)&o->param;
                     o->param.giro.u.z = 0;

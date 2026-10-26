@@ -72,7 +72,7 @@ typedef struct Giro {
  * Memoria de trabajo de func_80033358 en el scratchpad (0x1F800000): vector local, rotacion, vector
  * (0, 0, distancia), resultados de las rotaciones, sondas, resultado de la consulta de baldosa,
  * parametros de seguimiento, matriz de rotacion y distancia. El area de 0x1C8 bytes que reciben
- * func_80019474, func_8001C134 y func_80032B2C empieza en 0x1F8000F8. El scratchpad lo reparten por
+ * BarrerTerreno, func_8001C134 y func_80032B2C empieza en 0x1F8000F8. El scratchpad lo reparten por
  * turnos rutinas con disposiciones distintas; la de func_8002C1DC es TrabajoDirectorCamara (niveles.h).
  * Evidencia de los campos: sw en 0x1F8000BC (zona_ant, 0x800333B0), sw en 0x1F8000C0..C8 (p0, p4, p8,
  * 0x80033630), sw en 0x1F800030..38 (v30, 0x80033740), 0x1F800070..78 (v70, 0x80033774), 0x1F800090..98
@@ -122,7 +122,7 @@ typedef struct TrabajoBaldosa {
 } TrabajoBaldosa;
 
 /*
- * Area de trabajo de func_80019474 (0x1C8 bytes en el scratchpad): el barrido avanza el punto por
+ * Area de trabajo de BarrerTerreno (0x1C8 bytes en el scratchpad): el barrido avanza el punto por
  * el plano baldosa a baldosa (320 unidades) y subcelda a subcelda (40 unidades). Todos los
  * valores intermedios viven en esta estructura y no en registros: el original los relee de
  * memoria en cada paso.

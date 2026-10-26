@@ -28,7 +28,7 @@ extern void func_80040B8C(void);
  * Datos pequenos direccionados con $gp (0x80069320 + desplazamiento). D_80069488 lleva volatile
  * igual que en cargador_de_niveles_y_cd.c, que es quien lo escribe: la definicion tentativa debe
  * tener el mismo calificador en los dos archivos, y la medicion de ambos con y sin volatile
- * deja las funciones en C del par con la misma puntuacion con volatile y empeora func_8004109C
+ * deja las funciones en C del par con la misma puntuacion con volatile y empeora CallbackSectorListo
  * (105 a 705) sin el.
  */
 s8 D_80069338;

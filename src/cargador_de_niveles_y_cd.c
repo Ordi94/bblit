@@ -49,14 +49,14 @@ extern void func_80040E30(void);
 /*
  * Construye al arrancar los registros de archivo a partir de la tabla de sectores: pausa la
  * unidad, espera a que termine el comando y, para cada una de las 113 entradas, deja el tamano
- * y la posicion de CD (minuto, segundo, cuadro) que func_800415A0 usa para iniciar la lectura.
+ * y la posicion de CD (minuto, segundo, cuadro) que CargarContenedor usa para iniciar la lectura.
  *
  * D_80069540 se declara como escalar de un byte: con el umbral de datos pequenos el compilador
  * emite su direccion como simbolo (lui y addiu juntos, dentro del bucle de espera) y no la iza
  * fuera del bucle como haria con un arreglo; el original la calcula dentro del bucle.
  * Cada entrada se lee a locales antes de escribir el registro, que es el orden de las cargas.
  */
-void func_80040EB4(void)
+void ConstruirRegistrosArchivo(void)
 {
     s16 i;
     EntradaSector* tabla;
@@ -142,7 +142,7 @@ INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd", func_80040F78);
  * linealmente a D_80069498. Al completar los bytes pedidos (D_800694A0) apaga la espera, pausa
  * la unidad y deja en D_800694AC y en la posicion D_8006A928 el sector siguiente al ultimo leido.
  */
-void func_8004109C(u8 aviso)
+void CallbackSectorListo(u8 aviso)
 {
     if (aviso == 1) {
         if (D_80069494 != 0) {
@@ -172,11 +172,11 @@ void func_8004109C(u8 aviso)
     }
 }
 
-/* Inicia la lectura continua de sectores desde la posicion dada; func_8004109C los recoge. */
-void func_800411F0(CdlLOC* posicion)
+/* Inicia la lectura continua de sectores desde la posicion dada; CallbackSectorListo los recoge. */
+void IniciarLecturaContinua(CdlLOC* posicion)
 {
     D_8006955E = 1;
-    CdReadyCallback((CdlCB)func_8004109C);
+    CdReadyCallback((CdlCB)CallbackSectorListo);
     CdControl(6, (u8*)posicion, 0);
 }
 
@@ -184,7 +184,7 @@ void func_800411F0(CdlLOC* posicion)
  * Suma de control de una cabecera: suma de los bytes con signo (lb), como la que se guarda en
  * el offset 0x7FC de la cabecera de un contenedor y en la partida.
  */
-s32 func_80041238(s8* datos, s32 n)
+s32 SumaControl(s8* datos, s32 n)
 {
     s32 i;
     s32 suma;
@@ -197,7 +197,7 @@ s32 func_80041238(s8* datos, s32 n)
 }
 
 /* Copia n bytes de origen a destino, de menor a mayor direccion (n con signo de 16 bits). */
-void func_80041264(u8* origen, u8* destino, s16 n)
+void CopiarBytes(u8* origen, u8* destino, s16 n)
 {
     s32 i;
 
@@ -222,7 +222,7 @@ void func_80041264(u8* origen, u8* destino, s16 n)
  * Solo actua sobre las clases 2, 0xE y 0x22. Los nodos empiezan con el enlace al siguiente (+0)
  * y el identificador de 16 bits (+4).
  */
-void func_80041298(ContenedorCarga* c)
+void ResolverReferenciasContenedor(ContenedorCarga* c)
 {
     NodoA* a;
     NodoB* b;
@@ -303,10 +303,10 @@ void func_80041298(ContenedorCarga* c)
     }
 }
 #else
-INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd", func_80041298);
+INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd", ResolverReferenciasContenedor);
 #endif
 
-void func_8004153C(u8* origen, u32 n, u8* destino)
+void CopiarBytesSolapados(u8* origen, u32 n, u8* destino)
 {
     s32 i;
 
@@ -386,7 +386,7 @@ extern u8* D_80069538;
  * demostracion (0x47) y textos (0x49). Devuelve 0 si todo salio bien y 1 si el disco falla, la
  * suma de control de la cabecera no coincide o una descompresion no termina.
  */
-s32 func_800415A0(s16 archivo, void* destino)
+s32 CargarContenedor(s16 archivo, void* destino)
 {
     s32 tamanos[15] = {
         0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200, 0x400, 0x800, 0x1000, 0x2000, 0x4000, 0x8000,
@@ -486,7 +486,7 @@ s32 func_800415A0(s16 archivo, void* destino)
         D_80069480 = 0;
         D_800694A4 = registro->tamano;
         D_800694A0 = registro->tamano;
-        func_800411F0((CdlLOC*)D_8006A928);
+        IniciarLecturaContinua((CdlLOC*)D_8006A928);
         if (D_80069480 == 0) {
             do {
                 if (CdStatus() & 0x10) {
@@ -495,7 +495,7 @@ s32 func_800415A0(s16 archivo, void* destino)
             } while (D_80069480 == 0);
         }
         cursor = (u8*)D_80069490;
-        if (func_80041238((s8*)cursor, 0x7FC) != *(s32*)(cursor + 0x7FC)) {
+        if (SumaControl((s8*)cursor, 0x7FC) != *(s32*)(cursor + 0x7FC)) {
             return 1;
         }
         D_80069480 = 0;
@@ -522,7 +522,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                     do {
                         tipo = *cursor++;
                         if (tipo == 0x45) {
-                            func_80041264(cursor, campos, 1);
+                            CopiarBytes(cursor, campos, 1);
                             cursor++;
                             destino_seccion = (u8*)D_80067E98[campos[0]];
                             D_800694A0 += secciones[posicion].alineado;
@@ -550,10 +550,10 @@ s32 func_800415A0(s16 archivo, void* destino)
         D_800694A0 = 0x800;
         D_80069498 = (u32)datos;
         D_800694A4 = registro->tamano;
-        func_800411F0((CdlLOC*)D_8006A928);
+        IniciarLecturaContinua((CdlLOC*)D_8006A928);
         while (D_8006955E != 0) {
         }
-        if (func_80041238((s8*)datos, 0x7FC) != *(s32*)(datos + 0x7FC)) {
+        if (SumaControl((s8*)datos, 0x7FC) != *(s32*)(datos + 0x7FC)) {
             return 1;
         }
         D_80069494 = *(u32*)datos;
@@ -567,7 +567,7 @@ s32 func_800415A0(s16 archivo, void* destino)
         D_800694A0 = secciones[posicion].alineado;
         D_80069484 = 0;
         D_80069498 = (u32)datos;
-        func_800411F0((CdlLOC*)D_8006A928);
+        IniciarLecturaContinua((CdlLOC*)D_8006A928);
         posicion++;
         while (D_8006955E != 0) {
         }
@@ -578,12 +578,12 @@ s32 func_800415A0(s16 archivo, void* destino)
                     do {
                         tipo = *cursor++;
                         if (tipo == 0x45) {
-                            func_80041264(cursor, campos, 1);
+                            CopiarBytes(cursor, campos, 1);
                             destino_seccion = (u8*)D_80067E98[campos[0]];
                             D_800694A0 = secciones[posicion].alineado;
                             D_80069484 = 0;
                             D_80069498 = (u32)destino_seccion;
-                            func_800411F0((CdlLOC*)D_8006A928);
+                            IniciarLecturaContinua((CdlLOC*)D_8006A928);
                             posicion++;
                             while (D_8006955E != 0) {
                             }
@@ -599,7 +599,7 @@ s32 func_800415A0(s16 archivo, void* destino)
         D_800694A0 = secciones[posicion].alineado;
         D_80069484 = 0;
         D_80069498 = (u32)datos;
-        func_800411F0((CdlLOC*)D_8006A928);
+        IniciarLecturaContinua((CdlLOC*)D_8006A928);
         while (D_8006955E != 0) {
         }
     }
@@ -636,18 +636,18 @@ s32 func_800415A0(s16 archivo, void* destino)
                     do {
                         etiqueta = *cursor++;
                         if (etiqueta == 4) {
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             func_8003EB88(campos);
                             cursor += 8;
                         } else if (etiqueta == 1) {
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             audio_cargado = 1;
                             tam_audio = *(s32*)campos;
                             reserva += *(s32*)(campos + 4);
                             D_800694A0 = *(s32*)(campos + 4);
                         } else if (etiqueta == 2) {
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             posicion = *(s32*)campos;
                             D_8006951C = 0x1010;
                             D_800694A0 = *(s32*)(campos + 4);
@@ -655,7 +655,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             D_8006951C += D_800694A0;
                             cursor += 8;
                         } else if (etiqueta == 0x4C) {
-                            func_80041264(cursor, campos, 0x30);
+                            CopiarBytes(cursor, campos, 0x30);
                             if (D_80010050 == 0) {
                                 desp_texturas = *(s32*)campos;
                                 compensacion = *(s32*)(campos + 4);
@@ -685,7 +685,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             D_80069598 = (u32*)(aux + *(s32*)(aux + 4));
                             reserva += D_800694A0;
                         } else if (etiqueta == 0x4D) {
-                            func_80041264(cursor, campos, 0x30);
+                            CopiarBytes(cursor, campos, 0x30);
                             if (D_80010050 == 0) {
                                 desp_bancos = *(s32*)campos;
                                 compensacion = *(s32*)(campos + 4);
@@ -710,7 +710,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             func_8003ECD4(datos + desp_bancos, D_800694A0);
                             cursor += 0x30;
                         } else if (etiqueta == 0x44) {
-                            func_80041264(cursor, campos, 0xC);
+                            CopiarBytes(cursor, campos, 0xC);
                             func_8003ECF8(campos);
                             cursor += 0xC;
                         }
@@ -726,7 +726,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                     do {
                         etiqueta = *cursor++;
                         if (etiqueta == 6) {
-                            func_80041264(cursor, campos, 3);
+                            CopiarBytes(cursor, campos, 3);
                             func_8003EC3C(campos);
                             cursor += 3;
                         }
@@ -754,7 +754,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                     EN(u16, nodo, 0x26) = 0xFFFF;
                     es_jugador = 0;
                     if (*cursor == 0x2E) {
-                        func_80041298((ContenedorCarga*)nodo);
+                        ResolverReferenciasContenedor((ContenedorCarga*)nodo);
                         break;
                     }
                     do {
@@ -764,19 +764,19 @@ s32 func_800415A0(s16 archivo, void* destino)
                         }
                         switch (etiqueta) {
                         case 0x0B:
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             EN(u16, nodo, 0x170) = *(u16*)campos;
                             EN(u16, nodo, 0x172) = *(u16*)(campos + 2);
                             cursor += 4;
                             break;
                         case 0x0C:
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             EN(u16, nodo, 0x174) = *(u16*)campos;
                             EN(u16, nodo, 0x176) = *(u16*)(campos + 2);
                             cursor += 4;
                             break;
                         case 0x0F:
-                            func_80041264(cursor, campos, 2);
+                            CopiarBytes(cursor, campos, 2);
                             modelo = func_80036164(*(u16*)campos);
                             if (modelo == NULL) {
                                 for (;;) {
@@ -792,7 +792,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             cursor += 2;
                             break;
                         case 0x10:
-                            func_80041264(cursor, campos, 0xC);
+                            CopiarBytes(cursor, campos, 0xC);
                             EN(s32, nodo, 0xE4) = *(s32*)campos;
                             EN(s32, nodo, 0xE8) = *(s32*)(campos + 4);
                             EN(s32, nodo, 0xEC) = *(s32*)(campos + 8);
@@ -800,21 +800,21 @@ s32 func_800415A0(s16 archivo, void* destino)
                             cursor += 0xC;
                             break;
                         case 0x11:
-                            func_80041264(cursor, campos, 6);
+                            CopiarBytes(cursor, campos, 6);
                             EN(u16, nodo, 0xDC) = *(u16*)campos;
                             EN(u16, nodo, 0xDE) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0xE0) = *(u16*)(campos + 4);
                             cursor += 6;
                             break;
                         case 0x12:
-                            func_80041264(cursor, campos, 0xC);
+                            CopiarBytes(cursor, campos, 0xC);
                             EN(s32, nodo, 0xCC) = *(s32*)campos;
                             EN(s32, nodo, 0xD0) = *(s32*)(campos + 4);
                             EN(s32, nodo, 0xD4) = *(s32*)(campos + 8);
                             cursor += 0xC;
                             break;
                         case 0x13:
-                            func_80041264(cursor, campos, 1);
+                            CopiarBytes(cursor, campos, 1);
                             EN(u16, nodo, 0x2C) = campos[0];
                             if (campos[0] == 1) {
                                 D_80069640 = (s32*)(nodo + 0xE4);
@@ -826,12 +826,12 @@ s32 func_800415A0(s16 archivo, void* destino)
                             cursor += 1;
                             break;
                         case 0x15:
-                            func_80041264(cursor, campos, 1);
+                            CopiarBytes(cursor, campos, 1);
                             EN(u16, nodo, 0x2A) = campos[0];
                             cursor += 1;
                             break;
                         case 0x16:
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             EN(s32, nodo, 8) = *(s32*)campos;
                             EN(s32, nodo, 0xC) = *(s32*)(campos + 4);
                             if (EN(u8*, nodo, 0x74) != NULL
@@ -841,7 +841,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             cursor += 8;
                             break;
                         case 0x17:
-                            func_80041264(cursor, campos, 0x24);
+                            CopiarBytes(cursor, campos, 0x24);
                             for (i = 0; i < 9; i++) {
                                 EN(u32, nodo, 0x104 + i * 4) = ((u32*)campos)[i];
                             }
@@ -849,7 +849,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             break;
                         case 0x18:
                             /* Solo se copian 4 bytes, pero se leen 16 del bufer: lo restante es lo que dejo la etiqueta anterior. */
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             EN(u8*, nodo, 0x118) = nodo + 0x128;
                             EN(u8, nodo, 0x128) = campos[0];
                             EN(u8, nodo, 0x129) = campos[1];
@@ -872,23 +872,23 @@ s32 func_800415A0(s16 archivo, void* destino)
                             EN(u8*, nodo, 0x134) = EN(u8*, modelo, 0x54);
                             break;
                         case 0x19:
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             cursor += 4;
                             break;
                         case 0x1A:
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             EN(u16, nodo, 0x100) = *(u16*)campos;
                             cursor += 4;
                             break;
                         case 0x1B:
-                            func_80041264(cursor, campos, 6);
+                            CopiarBytes(cursor, campos, 6);
                             EN(u16, nodo, 0x48) = *(u16*)campos;
                             EN(u16, nodo, 0x4A) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0x4C) = *(u16*)(campos + 4);
                             cursor += 6;
                             break;
                         case 0x1C:
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             EN(u16, nodo, 0x50) = *(u16*)campos;
                             EN(u16, nodo, 0x52) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0x54) = *(u16*)(campos + 4);
@@ -897,7 +897,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             cursor += 8;
                             break;
                         case 0x1D:
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             if (EN(u16, nodo, 0x2C) == 0xE || EN(u16, nodo, 0x2C) == 0x1F) {
                                 EN(u16, nodo, 0x196) = *(u16*)campos;
                             } else if (EN(u16, nodo, 0x2C) == 8) {
@@ -908,23 +908,23 @@ s32 func_800415A0(s16 archivo, void* destino)
                             cursor += 4;
                             break;
                         case 0x1E:
-                            func_80041264(cursor, campos, 2);
+                            CopiarBytes(cursor, campos, 2);
                             EN(u16, nodo, 0x1E) = *(u16*)campos;
                             cursor += 2;
                             break;
                         case 0x1F:
-                            func_80041264(cursor, campos, 1);
+                            CopiarBytes(cursor, campos, 1);
                             EN(u16, nodo, 0x26) = campos[0];
                             cursor += 1;
                             break;
                         case 0x27:
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             EN(u16, nodo, 0x1C) = *(u16*)campos;
                             cursor += 4;
                             break;
                         case 0x30:
                             /* Elemento de 0x20 bytes que se encadena al final de la lista +0xF8 del nodo. */
-                            func_80041264(cursor, campos, 0x20);
+                            CopiarBytes(cursor, campos, 0x20);
                             aux = EN(u8*, nodo, 0xF8);
                             if (aux != NULL) {
                                 while (*(u8**)aux != NULL) {
@@ -957,7 +957,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             break;
                         case 0x31:
                             /* Elemento de 0x24 bytes al final de la lista +0xFC del nodo. */
-                            func_80041264(cursor, campos, 0x20);
+                            CopiarBytes(cursor, campos, 0x20);
                             aux = EN(u8*, nodo, 0xFC);
                             if (aux != NULL) {
                                 while (*(u8**)aux != NULL) {
@@ -992,7 +992,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             break;
                         case 0x32:
                             /* Cinco referencias de 16 bits; el elemento (0x10 bytes) va a la lista +0xF4. */
-                            func_80041264(cursor, campos, 0xC);
+                            CopiarBytes(cursor, campos, 0xC);
                             aux = EN(u8*, nodo, 0xF4);
                             if (aux != NULL) {
                                 while (*(u8**)aux != NULL) {
@@ -1018,7 +1018,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             break;
                         case 0x34:
                             /* Elemento de 0x1C bytes al final de la lista +0xF8 del nodo. */
-                            func_80041264(cursor, campos, 0x18);
+                            CopiarBytes(cursor, campos, 0x18);
                             aux = EN(u8*, nodo, 0xF8);
                             if (aux != NULL) {
                                 while (*(u8**)aux != NULL) {
@@ -1049,7 +1049,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             break;
                         case 0x35:
                             /* Elemento de 0x2C bytes al final de la lista +0xFC del nodo. */
-                            func_80041264(cursor, campos, 0x28);
+                            CopiarBytes(cursor, campos, 0x28);
                             aux = EN(u8*, nodo, 0xFC);
                             if (aux != NULL) {
                                 while (*(u8**)aux != NULL) {
@@ -1087,25 +1087,25 @@ s32 func_800415A0(s16 archivo, void* destino)
                             cursor += 0x28;
                             break;
                         case 0x38:
-                            func_80041264(cursor, campos, 2);
+                            CopiarBytes(cursor, campos, 2);
                             EN(u16, nodo, 0x20) = *(u16*)campos;
                             EN(s32, nodo, 0x30) += (s16)*(u16*)campos * (s16)*(u16*)campos;
                             cursor += 2;
                             break;
                         case 0x39:
-                            func_80041264(cursor, campos, 2);
+                            CopiarBytes(cursor, campos, 2);
                             EN(u16, nodo, 0x28) = *(u16*)campos + 0x10;
                             cursor += 2;
                             break;
                         case 0x3A:
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             EN(u16, nodo, 0x3C) = *(u16*)campos;
                             EN(u16, nodo, 0x3E) = *(u16*)(campos + 2);
                             cursor += 4;
                             break;
                         case 0x41:
                             /* Lista de enteros de 16 bits terminada en cero, copiada al monton. */
-                            func_80041264(cursor, campos, 0x14);
+                            CopiarBytes(cursor, campos, 0x14);
                             EN(u8*, nodo, 0x178) = monton;
                             i = 0;
                             if (*(u16*)campos != 0) {
@@ -1125,14 +1125,14 @@ s32 func_800415A0(s16 archivo, void* destino)
                             cursor += 0x14;
                             break;
                         case 0x42:
-                            func_80041264(cursor, campos, 6);
+                            CopiarBytes(cursor, campos, 6);
                             EN(u16, nodo, 0x50) = *(u16*)campos;
                             EN(u16, nodo, 0x52) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0x54) = *(u16*)(campos + 4);
                             cursor += 6;
                             break;
                         case 0x46:
-                            func_80041264(cursor, campos, 2);
+                            CopiarBytes(cursor, campos, 2);
                             EN(u16, nodo, 0x3A) = *(u16*)campos;
                             cursor += 2;
                             break;
@@ -1140,7 +1140,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             break;
                         }
                     } while (*cursor != 0x2E);
-                    func_80041298((ContenedorCarga*)nodo);
+                    ResolverReferenciasContenedor((ContenedorCarga*)nodo);
                     break;
 
                 case 0x09:
@@ -1161,27 +1161,27 @@ s32 func_800415A0(s16 archivo, void* destino)
                         }
                         switch (etiqueta) {
                         case 0x10:
-                            func_80041264(cursor, campos, 0xC);
+                            CopiarBytes(cursor, campos, 0xC);
                             EN(s32, nodo, 0x10) = *(s32*)campos;
                             EN(s32, nodo, 0x14) = *(s32*)(campos + 4);
                             EN(s32, nodo, 0x18) = *(s32*)(campos + 8);
                             cursor += 0xC;
                             break;
                         case 0x11:
-                            func_80041264(cursor, campos, 6);
+                            CopiarBytes(cursor, campos, 6);
                             EN(u16, nodo, 0x20) = *(u16*)campos;
                             EN(u16, nodo, 0x22) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0x24) = *(u16*)(campos + 4);
                             cursor += 6;
                             break;
                         case 0x16:
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             EN(s32, nodo, 8) = *(s32*)campos;
                             EN(s32, nodo, 0xC) = *(s32*)(campos + 4);
                             cursor += 8;
                             break;
                         case 0x1C:
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             EN(u16, nodo, 0x28) = *(u16*)campos;
                             EN(u16, nodo, 0x2A) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0x2C) = *(u16*)(campos + 4);
@@ -1189,13 +1189,13 @@ s32 func_800415A0(s16 archivo, void* destino)
                             cursor += 8;
                             break;
                         case 0x1F:
-                            func_80041264(cursor, campos, 1);
+                            CopiarBytes(cursor, campos, 1);
                             EN(u16, nodo, 0x34) = campos[0];
                             cursor += 1;
                             break;
                         case 0x33:
                             /* Elemento de 0x24 bytes al final de la lista +0x30 del volumen. */
-                            func_80041264(cursor, campos, 0x20);
+                            CopiarBytes(cursor, campos, 0x20);
                             aux = EN(u8*, nodo, 0x30);
                             if (aux != NULL) {
                                 while (*(u8**)aux != NULL) {
@@ -1252,7 +1252,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                         }
                         switch (etiqueta) {
                         case 0x10:
-                            func_80041264(cursor, campos, 0xC);
+                            CopiarBytes(cursor, campos, 0xC);
                             aux = EN(u8*, EN(u8*, hijo_matriz, 4), 0x44);
                             EN(s32, aux, 0x18) = *(s32*)campos;
                             EN(s32, aux, 0x1C) = *(s32*)(campos + 4);
@@ -1264,7 +1264,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             D_80069648 = RemoveListNode((NodoLista*)D_80069648, (NodoLista*)nodo);
                             break;
                         case 0x11:
-                            func_80041264(cursor, campos, 6);
+                            CopiarBytes(cursor, campos, 6);
                             hijo = (u8*)func_800363D4();
                             if (hijo == NULL) {
                                 for (;;) {
@@ -1287,7 +1287,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                                       (MATRIX*)(EN(u8*, hijo_matriz, 4) + 4));
                             break;
                         case 0x12:
-                            func_80041264(cursor, campos, 0xC);
+                            CopiarBytes(cursor, campos, 0xC);
                             aux = EN(u8*, EN(u8*, hijo_matriz, 4), 0x44);
                             EN(s32, aux, 0) = *(s32*)campos;
                             EN(s32, aux, 4) = *(s32*)campos;
@@ -1297,13 +1297,13 @@ s32 func_800415A0(s16 archivo, void* destino)
                                         (VECTOR*)EN(u8*, EN(u8*, hijo_matriz, 4), 0x44));
                             break;
                         case 0x21:
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             cursor += 4;
                             EN(u16, nodo, 0x4E) = 0;
                             EN(s32, nodo, 0xC) = *(u16*)campos;
                             break;
                         case 0x24:
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             posicion = *(s32*)campos;
                             EN(u16, nodo, 0xA) = 2;
                             aux = datos + posicion + 4;
@@ -1314,12 +1314,12 @@ s32 func_800415A0(s16 archivo, void* destino)
                             EN(u8*, nodo, 0x54) += 8;
                             break;
                         case 0x39:
-                            func_80041264(cursor, campos, 2);
+                            CopiarBytes(cursor, campos, 2);
                             EN(u16, hijo, 0xB6) = *(u16*)campos;
                             cursor += 2;
                             break;
                         case 0x43:
-                            func_80041264(cursor, campos, 1);
+                            CopiarBytes(cursor, campos, 1);
                             EN(u8, hijo, 0xB5) = campos[0];
                             cursor += 1;
                             break;
@@ -1349,7 +1349,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                         }
                         switch (etiqueta) {
                         case 0x0D:
-                            func_80041264(cursor, campos, 0xC);
+                            CopiarBytes(cursor, campos, 0xC);
                             i = EN(u16, nodo, 0x12);
                             EN(u16, nodo + i * 14, 0x24) = *(u16*)campos;
                             EN(u16, nodo + i * 14, 0x26) = *(u16*)(campos + 2);
@@ -1364,7 +1364,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             EN(u16, nodo, 0x12) = EN(u16, nodo, 0x12) + 1;
                             break;
                         case 0x24:
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             posicion = *(s32*)campos;
                             D_800694A0 = *(s32*)(campos + 4);
@@ -1375,7 +1375,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             EN(u8*, nodo, 0x54) += 8;
                             break;
                         case 0x25:
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             aux = (u8*)AllocListNode((u8*)D_80069570, 0x14, D_80069670 * 0x14);
                             if (aux == NULL) {
                                 for (;;) {
@@ -1395,18 +1395,18 @@ s32 func_800415A0(s16 archivo, void* destino)
                             EN(u16, aux, 0x10) = EN(u16, modelo + 8, 4);
                             break;
                         case 0x26:
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             EN(u16, nodo, 8) = *(u16*)campos;
                             cursor += 4;
                             break;
                         case 0x27:
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             EN(s32, nodo, 0xC) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0x4E) = *(u16*)campos;
                             cursor += 4;
                             break;
                         case 0x28:
-                            func_80041264(cursor, campos, 3);
+                            CopiarBytes(cursor, campos, 3);
                             EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x14) = campos[0];
                             EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x15) = campos[1];
                             EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x16) = campos[2];
@@ -1415,7 +1415,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             EN(u16, nodo, 0x10) = EN(u16, nodo, 0x10) + 1;
                             break;
                         case 0x3F:
-                            func_80041264(cursor, campos, 0xC);
+                            CopiarBytes(cursor, campos, 0xC);
                             posicion = *(s32*)(campos + 4);
                             compensacion = *(s32*)(campos + 8);
                             EN(u16, nodo, 0xA) = 1;
@@ -1425,7 +1425,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                             D_800694A0 = compensacion;
                             break;
                         case 0x40:
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             posicion = *(s32*)campos;
                             D_800694A0 = *(s32*)(campos + 4);
@@ -1449,7 +1449,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                     do {
                         etiqueta = *cursor++;
                         if (etiqueta == 0x2A) {
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             posicion = *(s32*)campos;
                             D_800694A0 = *(s32*)(campos + 4);
                             GsGetTimInfo((unsigned long*)(datos + posicion + 4), &imagen);
@@ -1481,7 +1481,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                     do {
                         etiqueta = *cursor++;
                         if (etiqueta == 0x37) {
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             posicion = *(s32*)campos;
                             D_800694A0 = *(s32*)(campos + 4);
@@ -1498,7 +1498,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                     do {
                         etiqueta = *cursor++;
                         if (etiqueta == 0x48) {
-                            func_80041264(cursor, campos, 8);
+                            CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             posicion = *(s32*)campos;
                             D_800694A0 = *(s32*)(campos + 4);
@@ -1516,26 +1516,26 @@ s32 func_800415A0(s16 archivo, void* destino)
                     do {
                         etiqueta = *cursor++;
                         if (etiqueta == 0x3C) {
-                            func_80041264(cursor, campos, 4);
+                            CopiarBytes(cursor, campos, 4);
                             D_800695B4 = campos[2];
                             D_8006960C = *(s16*)campos;
                             D_80069530 = campos[3];
                             cursor += 4;
                         } else if (etiqueta == 0x2B) {
-                            func_80041264(cursor, campos, 0xC);
+                            CopiarBytes(cursor, campos, 0xC);
                             D_8006D928.vpx = *(s32*)campos;
                             D_8006D928.vpy = *(s32*)(campos + 4);
                             D_8006D928.vpz = *(s32*)(campos + 8);
                             cursor += 0xC;
                         } else if (etiqueta == 0x3D) {
-                            func_80041264(cursor, campos, 6);
+                            CopiarBytes(cursor, campos, 6);
                             D_800694B0 = *(s16*)campos / 4;
                             D_800695F2 = *(s16*)(campos + 2) / 4;
                             D_800695F4 = *(s16*)(campos + 4) / 4;
                             cursor += 6;
                             D_8006969C = D_800694B0 - 0x80;
                         } else if (etiqueta == 0x3E) {
-                            func_80041264(cursor, campos, 0x1C);
+                            CopiarBytes(cursor, campos, 0x1C);
                             pools_listos = 1;
                             D_80069660 = *(u16*)(campos + 2);
                             D_80069670 = *(u16*)campos;
@@ -1563,7 +1563,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                     do {
                         etiqueta = *cursor++;
                         if (etiqueta == 0x4A) {
-                            func_80041264(cursor, campos, 0x30);
+                            CopiarBytes(cursor, campos, 0x30);
                             if (D_80010050 == 0) {
                                 posicion = *(s32*)campos;
                                 tam_extra = *(u32*)(campos + 4);
@@ -1650,7 +1650,7 @@ s32 func_800415A0(s16 archivo, void* destino)
                 D_80069520 = NULL;
             }
             if (datos_extra != NULL && tam_extra != 0) {
-                func_8004153C(datos_extra, tam_extra, reserva);
+                CopiarBytesSolapados(datos_extra, tam_extra, reserva);
                 D_80069590 = (u16*)reserva;
                 datos_extra = NULL;
                 reserva += tam_extra;
@@ -1676,7 +1676,7 @@ s32 func_800415A0(s16 archivo, void* destino)
             D_80069498 = (u32)datos;
             D_8006948C = D_80069490;
             D_8006949C = D_80069490;
-            func_800411F0((CdlLOC*)D_8006A928);
+            IniciarLecturaContinua((CdlLOC*)D_8006A928);
             if (D_80069494 != 0) {
                 if (func_80044664((u8*)D_8006949C, (u8*)D_80069498, (void*)0x1F800000) == 0) {
                     return 1;
@@ -1691,7 +1691,7 @@ s32 func_800415A0(s16 archivo, void* destino)
             D_8006959C = (u32)reserva;
             reserva += D_8006954C;
             if (datos_extra != NULL && tam_extra != 0) {
-                func_8004153C(datos_extra, tam_extra, reserva);
+                CopiarBytesSolapados(datos_extra, tam_extra, reserva);
                 D_80069590 = (u16*)reserva;
                 datos_extra = NULL;
                 reserva += tam_extra;
@@ -1716,7 +1716,7 @@ s32 func_800415A0(s16 archivo, void* destino)
             D_8006949C = D_80069490;
             D_800694AC = CdPosToInt((CdlLOC*)D_8006A928) + ((u32)compensacion >> 11);
             CdIntToPos(D_800694AC, (CdlLOC*)D_8006A928);
-            func_800411F0((CdlLOC*)D_8006A928);
+            IniciarLecturaContinua((CdlLOC*)D_8006A928);
             if (D_80069494 != 0) {
                 if (func_80044664((u8*)D_8006949C, (u8*)D_80069498, (void*)0x1F800000) == 0) {
                     return 1;
@@ -1747,5 +1747,5 @@ s32 func_800415A0(s16 archivo, void* destino)
     return 0;
 }
 #else
-INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd", func_800415A0);
+INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd", CargarContenedor);
 #endif
