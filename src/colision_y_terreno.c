@@ -63,10 +63,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 7179 con la configuracion versionada (g = 0 del archivo). El C reproduce el flujo
+ * Pendiente: puntuacion 5337 con la configuracion versionada (g = 0 del archivo). El C reproduce el flujo
  * y las estructuras del barrido, pero el reparto de registros difiere (zona original y copia
  * intercambiadas, desplazamiento en la pila) y `diff` solo compara las primeras 1024 instrucciones
- * (la comparacion completa puntua 36309).
+ * (la comparacion completa puntua 27792).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -247,7 +247,7 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                     w->cbz_z = w->lin_z;
                     w->cbz_x = ((w->pend_z * (w->lin_z - w->z)) >> 12) + w->x;
                     w->cbx_z = ((w->pend_x * (w->lin_x - w->x)) >> 12) + w->z;
-                    for (;;) {
+                    do {
                         if (w->bx < cur->x || w->bx >= cur->x + cur->ancho_x
                             || w->bz < cur->z || w->bz >= cur->z + cur->ancho_z) {
                             w->aux = w->by;
@@ -424,12 +424,9 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             w->bx = w->cbx_x;
                             w->cbx_z = w->cbx_z + ((w->pend_x * w->paso_x) >> 12);
                         }
-                        if ((w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x)
-                            || (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z)) {
-                            continue;
-                        }
-                        CIERRE_COMPLETO;
-                    }
+                    } while ((w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x)
+                             || (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z));
+                    CIERRE_COMPLETO;
                 }
                 /* Solo en x (dz == 0). */
                 if (w->dx > 0) {
@@ -444,7 +441,7 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                 w->rz = w->bz % 320;
                 w->t1 = (w->bz - cur->z) / 320 * cur->columnas;
                 w->t3 = w->rz / 40 * 8;
-                for (;;) {
+                do {
                     if (w->bx < cur->x || w->bx >= cur->x + cur->ancho_x) {
                         w->aux = w->by;
                         w->by = w->y;
@@ -542,11 +539,8 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                              && (w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x));
                     w->bx = w->lin_x;
                     w->lin_x = w->lin_x + w->paso_x;
-                    if (w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x) {
-                        continue;
-                    }
-                    CIERRE_COMPLETO;
-                }
+                } while (w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x);
+                CIERRE_COMPLETO;
             }
             if (w->dz != 0) {
                 /* Solo en z (dx == 0). */
@@ -562,7 +556,7 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                 w->rx = w->bx % 320;
                 w->t0 = (w->bx - cur->x) / 320;
                 w->t2 = w->rx / 40;
-                for (;;) {
+                do {
                     if (w->bz < cur->z || w->bz >= cur->z + cur->ancho_z) {
                         w->aux = w->by;
                         w->by = w->y;
@@ -660,11 +654,8 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                              && (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z));
                     w->bz = w->lin_z;
                     w->lin_z = w->lin_z + w->paso_z;
-                    if (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z) {
-                        continue;
-                    }
-                    CIERRE_COMPLETO;
-                }
+                } while (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z);
+                CIERRE_COMPLETO;
             }
             return 0;
         }
