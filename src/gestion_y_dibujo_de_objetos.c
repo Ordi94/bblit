@@ -294,37 +294,35 @@ void func_8003652C(void)
     o->cab.libre |= 2;
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). El bucle de las
- * 47 reservas coincide; la cabecera difiere solo en el orden en que el planificador coloca la
- * lectura de D_800694B4 respecto del almacen de la nueva cabeza D_80069518 (el original lee el
- * puntero antes de publicar la cabeza y conserva la base del arreglo en $s1). Variantes
- * probadas: 3.
+ * Crea el objeto de la camara (D_800694B4) y los 47 objetos de la tabla D_8006AB70, que se
+ * anaden a las listas D_80069518 y D_80069508. El objeto de la camara queda activo con la
+ * rejilla vacia; los de la tabla, con el estado inicial 1 y la marca de identificador -1. Sin
+ * salida de error: si el pozo se agota se detiene.
  */
 void func_800365D0(void)
 {
     ObjetoEscena* o;
     s32 i;
 
-    D_800694B4 = (ObjetoEscena*)AllocListNode((u8*)D_8006968C, 0x1F4, D_8006955C * 0x1F4);
+    D_800694B4 = (ObjetoEscena*)AllocListNode(D_8006968C, 0x1F4, D_8006955C * 0x1F4);
     if (D_800694B4 == 0) {
         for (;;) {
         }
     }
     D_80069518 = (Objeto*)AppendListNode((NodoLista*)D_80069518, (NodoLista*)D_800694B4);
     o = D_800694B4;
-    D_80069508 = 0;
-    o->s2A = 5;
-    o->s2C = 6;
     o->w1C = 0;
     o->w8 = 0;
     o->wC = 0;
+    o->s2A = 5;
+    o->s2C = 6;
     o->s3C = 0x40;
+    D_80069508 = 0;
     o->ayudas = 0;
     o->cab.libre |= 2;
     for (i = 0; i < 47; i++) {
-        D_8006AB70[i] = (ObjetoEscena*)AllocListNode((u8*)D_8006968C, 0x1F4, D_8006955C * 0x1F4);
+        D_8006AB70[i] = (ObjetoEscena*)AllocListNode(D_8006968C, 0x1F4, D_8006955C * 0x1F4);
         if (D_8006AB70[i] == 0) {
             for (;;) {
             }
@@ -335,9 +333,6 @@ void func_800365D0(void)
         D_8006AB70[i]->ayudas = 0;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_800365D0);
-#endif
 
 /*
  * Crea un objeto a partir de la plantilla de identificador 'id' (lista D_80069504): copia sus

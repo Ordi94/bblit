@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 254 | 24712 |
+| Código del juego | 450 | 201416 | 255 | 25068 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 24712 de 201416 (12.27 %).
-Funciones marcadas `NON_MATCHING`: 34.
-Coherencia con el ensamblador: correcta (848 `glabel` en `asm/` + 254 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 25068 de 201416 (12.45 %).
+Funciones marcadas `NON_MATCHING`: 33.
+Coherencia con el ensamblador: correcta (847 `glabel` en `asm/` + 255 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -26,7 +26,7 @@ Coherencia con el ensamblador: correcta (848 `glabel` en `asm/` + 254 en C = 110
 | cargador_de_niveles_y_cd | 2 | 0 | 0 | 11 | 0 | 14264 |
 | colision_y_terreno | 1 | 2 | 1 | 1 | 680 | 12480 |
 | entrada_de_mando | 1 | 4 | 2 | 0 | 764 | 2784 |
-| gestion_y_dibujo_de_objetos | 4 | 24 | 10 | 8 | 5536 | 18624 |
+| gestion_y_dibujo_de_objetos | 4 | 25 | 9 | 8 | 5892 | 18624 |
 | graficos_y_gte | 3 | 13 | 4 | 2 | 3888 | 11812 |
 | inicializacion_de_motor | 1 | 0 | 0 | 16 | 0 | 5276 |
 | interprete_de_eventos | 1 | 183 | 11 | 3 | 10232 | 11900 |
@@ -47,7 +47,7 @@ Coherencia con el ensamblador: correcta (848 `glabel` en `asm/` + 254 en C = 110
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 0 | 2 | 0 | 672 |
 | `src/colision_y_terreno.c` | 2 | 1 | 1 | 680 | 12480 |
 | `src/entrada_de_mando.c` | 4 | 2 | 0 | 764 | 2784 |
-| `src/gestion_y_dibujo_de_objetos.c` | 11 | 3 | 1 | 1340 | 3812 |
+| `src/gestion_y_dibujo_de_objetos.c` | 12 | 2 | 1 | 1696 | 3812 |
 | `src/gestion_y_dibujo_de_objetos_2.c` | 9 | 6 | 5 | 3304 | 10604 |
 | `src/gestion_y_dibujo_de_objetos_3.c` | 1 | 0 | 0 | 564 | 564 |
 | `src/gestion_y_dibujo_de_objetos_4.c` | 3 | 1 | 2 | 328 | 3644 |
@@ -89,7 +89,6 @@ Coherencia con el ensamblador: correcta (848 `glabel` en `asm/` + 254 en C = 110
 - `func_80035244`: Lee los botones (D_80010010 sin los bits 0 y 3) y, si cambiaron, avanza siete secuencias de teclas de D_8005E768 (24 bytes cada una: caso, paso y diez teclas); al completar una ejecuta su caso con un switch de siete entradas. El archivo se compila con -G8 (config/opciones_compilacion.toml). Puntuacion 600: la tabla de saltos, los destinos de los casos, el reparto de registros del estado y la forma simbolica de D_80069662 coinciden; difieren la posicion del almacen en 0x104($gp) (el original no lo coloca en el hueco de retardo), las constantes 0x47 y 1, que el original carga antes del bucle, y 
 - `func_80036164`: Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el original usa un solo puntero con desplazamientos 0x0C y 0x04. Variantes probadas: 9.
 - `func_800363D4`: Pendiente: puntuacion 205 con la configuracion versionada (g = 8 del archivo). El original mantiene el nodo en $a0 y deriva el puntero inducido en $a1; GCC los intercambia. Variantes probadas: 5.
-- `func_800365D0`: Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). El bucle de las 47 reservas coincide; la cabecera difiere solo en el orden en que el planificador coloca la lectura de D_800694B4 respecto del almacen de la nueva cabeza D_80069518 (el original lee el puntero antes de publicar la cabeza y conserva la base del arreglo en $s1). Variantes probadas: 3.
 - `func_80037184`: Pendiente: puntuacion 929 con la configuracion versionada (g = 8 del archivo). El cuerpo coincide instruccion por instruccion salvo el reparto de registros: GCC iza la constante 1 de la marca de visibilidad a $s5 fuera de los bucles y el original la carga junto al almacen. Variantes probadas: 9.
 - `func_8003753C`: Pendiente: puntuacion 160 con la configuracion versionada (g = 8 del archivo). Rutina de GTE escrita a mano: carga ocho palabras en $t0..$t7 y las escribe en los registros de control 0 a 7; la ultima escritura (ctc2 $t7,$7) va en el hueco de retardo del retorno, y GCC no mueve una sentencia __asm__ a ese hueco. Variantes probadas: 2.
 - `func_80037580`: Pendiente: puntuacion 160 con la configuracion versionada (g = 8 del archivo). Rutina de GTE escrita a mano: carga ocho palabras en $t0..$t7 y las escribe en los registros de control 0 a 4, 24, 25 y 7; la ultima escritura (ctc2 $t7,$7) va en el hueco de retardo del retorno, y GCC no mueve una sentencia __asm__ a ese hueco. Variantes probadas: 2.
