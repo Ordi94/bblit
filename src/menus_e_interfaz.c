@@ -193,7 +193,7 @@ void func_8003ACA8(ObjetoCamara* objeto, void* sin_uso, MATRIX* m)
     D_80069416 = D_80069402;
 }
 
-/* Pendiente: puntuacion 1245 con la configuracion versionada (g = 8 del archivo). El cursor de primitivas se carga antes que en el original y los registros t0/t1/a1/v1 se reparten distinto; la estructura de las dos primitivas de 6 palabras coincide. Variantes probadas: 14 (orden de las 6 escrituras, 720 permutaciones del primer bloque, macro sobre D_80076188, estructura de paquete). */
+/* Pendiente: puntuacion 990 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de registros (la tabla de ordenacion y el cursor intercambian v1 y a1, y las constantes 1, 0x80000000 y 0x05000000 caen en t0/a3/a2 en lugar de t1/t0/a3) y la posicion de la carga del cursor en el segundo paquete. Variantes probadas: 40 (720 permutaciones de las escrituras del primer paquete, cursor volatile, macros, estructura de paquete). */
 #ifdef NON_MATCHING
 s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
 {
@@ -205,8 +205,8 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
     tabla = (u32*)D_8006AEA0[D_8006967C].org;
     actual = D_80076188;
     ((u32*)actual)[0] = *tabla | 0x05000000;
-    ((u32*)actual)[2] = 0x80000000;
     ((u32*)actual)[1] = 1;
+    ((u32*)actual)[2] = 0x80000000;
     ((u32*)actual)[3] = puntos[3];
     ((u32*)actual)[4] = puntos[5];
     ((u32*)actual)[5] = puntos[7];
