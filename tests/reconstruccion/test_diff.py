@@ -150,7 +150,9 @@ def test_comparar_funcion_ensambla_el_objetivo_compila_con_non_matching_y_lee_la
     resultado = diff.comparar_funcion(
         repo_diff, "func_80036204", herramientas_compilacion(), Path("diff.py"), ejecutor
     )
-    assert resultado == diff.ResultadoDiff("func_80036204", "src/code_a.c", 0, "TARGET   CURRENT\nfila")
+    assert resultado == diff.ResultadoDiff(
+        "func_80036204", "src/code_a.c", 0, "TARGET   CURRENT\nfila", puntuacion_asm=0
+    )
     nombres = [Path(c[0]).name for c in ejecutor.comandos]
     assert nombres == ["as.exe", "CPPPSX.EXE", "CC1PSX.EXE", "py", "py", "py"]
     ensamblado = ejecutor.comandos[0]

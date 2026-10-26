@@ -39,6 +39,9 @@ g = 8
 [archivos.movimiento_y_objetos_de_escena_2]
 g = 8
 
+[archivos.movimiento_y_objetos_de_escena_3]
+g = 8
+
 [archivos.gestion_y_dibujo_de_objetos]
 g = 8
 
@@ -57,6 +60,9 @@ g = 8
 [archivos.audio_xa_y_spu]
 g = 8
 
+[archivos.logica_de_niveles]
+g = 8
+
 # Enlace. gp: valor de $gp que fija el codigo de arranque del juego (lui gp,0x8007 ;
 # addiu gp,gp,-0x6CE0). build lo define como _gp en el enlace; las referencias relativas a $gp
 # de los objetos C se resuelven contra el. Es un simbolo absoluto: no cambia ningun byte.
@@ -67,6 +73,9 @@ gp = 0x80069320
 # que los usa los declara como definicion tentativa (sin extern) y maspsx los reescribe a $gp; el
 # enlace les da esta direccion (los fija junto a _gp). Se retiran cuando config/symbols.txt los declare.
 [datos_pequenos]
+D_8006935C = 0x8006935C
+D_80069360 = 0x80069360
+D_80069368 = 0x80069368
 D_80069330 = 0x80069330
 D_80069338 = 0x80069338
 D_80069380 = 0x80069380
@@ -96,3 +105,6 @@ D_80069424 = 0x80069424
 D_80069430 = 0x80069430
 D_80069434 = 0x80069434
 D_80069438 = 0x80069438
+
+[archivos.logica_de_niveles_3]
+g = 8

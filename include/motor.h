@@ -77,8 +77,13 @@ typedef struct RegistroAnim {
     u8 pad00[6];
     u16 w06;
     u16 w08;
-    u8 pad0A[2];
+    u16 w0A;                /* grupo de disparadores del fotograma: lhu en func_8002D03C (0x8002D24C) */
     u32 w0C;
+    u32 w10;                /* banderas de movimiento: lw en func_8002F018 (0x8002F40C), bit 3 = el golpe se reparte */
+    u8 pad14[0x16 - 0x14];
+    u16 w16;                /* dano del golpe: lhu en func_8002EAA4 (0x8002ED84) */
+    u8 pad18[0x1E - 0x18];
+    u16 w1E;                /* desplazamiento del primer disparador del fotograma: lhu en func_8002D03C (0x8002D25C) */
 } RegistroAnim;
 
 /*
@@ -118,6 +123,36 @@ extern void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, Trabajo
                       "nop\n\t" \
                       "sw $8, 0($9)" \
                       : : "r"(p) : "$8", "$9", "memory")
+
+/*
+ * Macros vectoriales de la animacion de objetos: reproducen rutinas manuscritas del original con
+ * los temporales fijos $8..$12, como las de geometria.h, y su lista de registros destruidos
+ * contiene exactamente los que el cuerpo escribe.
+ *
+ * MOTOR_UNOS_W(p): vector de tres palabras de p = 0x1000. El original (0x8001ECE8 a 0x8001ED00,
+ * func_8001E720) copia la direccion a $t0, carga 0x1000 en $t4 una sola vez, lo copia a $t1..$t3
+ * con addu y almacena las tres palabras; el cuerpo escribe $8 a $12, y todos los almacenes
+ * pasan por $9..$11.
+ */
+#define MOTOR_UNOS_W(p)     __asm__ volatile ("move $8, %0
+	"                       "addiu $12, $0, 0x1000
+	"                       "move $9, $12
+	"                       "move $10, $12
+	"                       "move $11, $12
+	"                       "sw $9, 0($8)
+	"                       "sw $10, 4($8)
+	"                       "sw $11, 8($8)"                       : : "r"(p) : "$8", "$9", "$10", "$11", "$12", "memory")
+
+/*
+ * MOTOR_DIAGONAL_CERO(p): pone a cero los elementos de la diagonal de la matriz de p (sw en +0,
+ * sw en +8 y sh en +0x10). El original (0x80036F90 a 0x80036FA0, func_8003690C) copia la direccion
+ * a $t0, pone $t1 a cero con addu y almacena tres veces; el cuerpo escribe $8 y $9.
+ */
+#define MOTOR_DIAGONAL_CERO(p)     __asm__ volatile ("move $8, %0
+	"                       "move $9, $0
+	"                       "sw $9, 0($8)
+	"                       "sw $9, 8($8)
+	"                       "sh $9, 16($8)"                       : : "r"(p) : "$8", "$9", "memory")
 
 /*
  * Proyeccion de un objeto sobre la pantalla: area de trabajo de la proyeccion de un sprite que

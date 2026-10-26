@@ -196,7 +196,13 @@ typedef struct TrabajoRecorrido {
  * GEO_OR_WH(p)           t1 = t1 | t2 | (palabra de p) | (media palabra de p + 4)
  * GEO_GUARDAR_WH(p)      6 bytes de p = t1 (palabra) y t2 (media palabra)
  * GEO_GUARDAR_1W_T1(p) palabra de p = t1
+ * GEO_CERO_W(p)          vector de 3 palabras en p = 0
+ * GEO_CERO_WH(p)         6 bytes de p = 0 (una palabra y una media palabra)
  * GEO_NORMA2_XZ(v, d)    *d = x*x + z*z del vector de medias palabras v (producto por el GTE)
+ * GEO_CARGAR_H(p)        t1..t3 = vector de 3 medias palabras con signo en p
+ * GEO_GUARDAR_H_T1_UNICA(p) igual que GEO_GUARDAR_H_T1, en una sola sentencia asm
+ * GEO_SUMAR_H(p)         las 3 medias palabras de p += t1..t3 (tras GEO_CARGAR_H)
+ * GEO_RELLENAR_1000(p)   vector de 3 palabras en p = 0x1000 (t1..t3 y t4 quedan con 0x1000)
  */
 #define GEO_CARGAR_W(p) \
     __asm__ volatile ("move $8, %0\n\tlw $9, 0($8)\n\tlw $10, 4($8)\n\tlw $11, 8($8)" \
@@ -248,6 +254,25 @@ typedef struct TrabajoRecorrido {
                       : : "r"(p) : "$8", "memory")
 #define GEO_GUARDAR_1W_T1(p) \
     __asm__ volatile ("move $8, %0\n\tsw $9, 0($8)" : : "r"(p) : "$8", "memory")
+/*
+ * Puesta a cero de un vector de tres palabras (GEO_CERO_W) y de seis bytes, una palabra y una
+ * media palabra (GEO_CERO_WH), y carga de tres medias palabras con signo en t1..t3
+ * (GEO_CARGAR_H). El original las escribio con "move t0, puntero" y almacenes o cargas sobre t0
+ * (func_80020B90): GEO_CERO_W en 0x80020CE4, 0x800251A4 y 0x80025690; GEO_CERO_WH en 0x80020CF8,
+ * 0x80024F1C y 0x800251C0; GEO_CARGAR_H en 0x80023290. Las usa tambien la logica de niveles:
+ * GEO_CERO_W en 0x8002BF3C (func_8002BA80), 0x8002EA04 (func_8002D68C) y 0x8002F134 y 0x8002F150
+ * (func_8002F018); GEO_CERO_WH en 0x8002BF58, 0x8002EE3C y 0x8002F11C; GEO_CARGAR_H en 0x8002EFBC
+ * (func_8002EAA4) y 0x8002F7B4 (func_8002F6B4); GEO_GUARDAR_H_T1_UNICA en 0x8002EF68 y 0x8002F7A0.
+ */
+#define GEO_CERO_W(p) \
+    __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsw $0, 4($8)\n\tsw $0, 8($8)" \
+                      : : "r"(p) : "$8", "memory")
+#define GEO_CERO_WH(p) \
+    __asm__ volatile ("move $8, %0\n\tsw $0, 0($8)\n\tsh $0, 4($8)" \
+                      : : "r"(p) : "$8", "memory")
+#define GEO_CARGAR_H(p) \
+    __asm__ volatile ("move $8, %0\n\tlh $9, 0($8)\n\tlh $10, 2($8)\n\tlh $11, 4($8)" \
+                      : : "r"(p) : "$8", "$9", "$10", "$11", "memory")
 #define GEO_NORMA2_XZ(v, d) \
     __asm__ volatile ("lh $8, 0(%1)\n\tlh $9, 4(%1)\n\tmtc2 $8, $9\n\tmtc2 $9, $11\n\tnop\n\tnop\n\t" \
                       "sqr 0\n\tmfc2 $8, $25\n\tmfc2 $9, $27\n\tnop\n\tadd $8, $8, $9\n\tsw $8, 0(%0)" \
@@ -266,6 +291,40 @@ typedef struct TrabajoRecorrido {
                       "add $12, $12, $9\n\tadd $13, $13, $10\n\tadd $14, $14, $11\n\t" \
                       "sw $12, 0($8)\n\tsw $13, 4($8)\n\tsw $14, 8($8)" \
                       : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
+/*
+ * GEO_GUARDAR_H_T1_UNICA(p): lo mismo que GEO_GUARDAR_H_T1 (tres medias palabras de p = t1..t3) en una
+ * sola sentencia asm, que es como el original las emite (move $t0, puntero y tres sh sobre $t0:
+ * 0x8002EF68 en func_8002EAA4 y 0x8002F7A0 en func_8002F6B4). La variante partida en dos sentencias
+ * cambia el reparto de registros de func_8002EAA4 (0 a 70 puntos: un move del bucle usa a0 en
+ * lugar de a1). Lee $9..$11 sin declararlos, igual que GEO_GUARDAR_W_T1:
+ * el acoplamiento con la macro previa es del original y debe conservarse el orden de sentencias.
+ */
+#define GEO_GUARDAR_H_T1_UNICA(p) \
+    __asm__ volatile ("move $8, %0\n\tsh $9, 0($8)\n\tsh $10, 2($8)\n\tsh $11, 4($8)" \
+                      : : "r"(p) : "$8", "memory")
+/*
+ * GEO_SUMAR_H(p): las tres medias palabras de p += t1..t3, con los temporales que dejo la macro
+ * anterior (GEO_CARGAR_H) y los mismos $8, $12..$14 y add con captura de desbordamiento que
+ * GEO_SUMAR_W: el original la escribio en 0x8002F7C4 (func_8002F6B4, tras GEO_CARGAR_H en
+ * 0x8002F7B4). Lee $9..$11 sin declararlos: GCC 2.8.1 no admite fijar un registro como entrada
+ * sin una variable de registro, asi que el acoplamiento con la macro previa es el mismo que el
+ * de GEO_GUARDAR_W_T4 y GEO_SUMAR_W y debe conservarse el orden de las sentencias.
+ */
+#define GEO_SUMAR_H(p) \
+    __asm__ volatile ("move $8, %0\n\tlh $12, 0($8)\n\tlh $13, 2($8)\n\tlh $14, 4($8)\n\t" \
+                      "add $12, $12, $9\n\tadd $13, $13, $10\n\tadd $14, $14, $11\n\t" \
+                      "sh $12, 0($8)\n\tsh $13, 2($8)\n\tsh $14, 4($8)" \
+                      : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
+/*
+ * GEO_RELLENAR_1000(p): las tres palabras de p = 0x1000 (escala unidad de un vector de tres
+ * palabras). El original carga el valor en $12 (addiu $t4, zero, 0x1000), lo copia a t1..t3 y lo
+ * almacena con tres sw sobre $t0, y deja esos cuatro temporales con 0x1000 (func_8002BA80,
+ * 0x8002BF70..0x8002BF8C).
+ */
+#define GEO_RELLENAR_1000(p) \
+    __asm__ volatile ("move $8, %0\n\taddiu $12, $0, 0x1000\n\tmove $9, $12\n\tmove $10, $12\n\t" \
+                      "move $11, $12\n\tsw $9, 0($8)\n\tsw $10, 4($8)\n\tsw $11, 8($8)" \
+                      : : "r"(p) : "$8", "$9", "$10", "$11", "$12", "memory")
 /*
  * GEO_DISTANCIA_APROX(p): distancia aproximada al vector de tres palabras de p (d0, d4, d8): el
  * maximo de |x|, |y|, |z| mas un cuarto de cada uno de los otros dos; el resultado, con el bit 0

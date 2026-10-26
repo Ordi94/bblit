@@ -213,6 +213,7 @@ macros dos veces es un error del ensamblador.
 
    ```c
    #ifdef NON_MATCHING
+   /* Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). Reparto de registros. */
    s32 func_80030D60(void* a0, Rango* a1)
    {
        /* mejor intento */
@@ -224,6 +225,14 @@ macros dos veces es un error del ensamblador.
 
    La construcción normal no define `NON_MATCHING`, así que sigue usando el ensamblador y el
    ejecutable no cambia. `diff` sí lo define y compara el intento.
+
+   **Posición exacta del comentario de pendientes.** Lo primero que hay debajo de cada
+   `#ifdef NON_MATCHING` es un comentario (`/* ... */` o `//`) cuyo texto empieza por
+   `Pendiente: puntuacion N`, con `N` la puntuación de `diff`, seguido del motivo técnico en una frase.
+   Es el comentario que `progreso` copia a `docs/PROGRESO.md` como motivo del intento. Un comentario
+   encima del `#ifdef`, después del código, o que empiece por otro texto no cuenta, y `progreso` termina
+   con error (`N funcion(es) NON_MATCHING sin la linea 'Pendiente: puntuacion N'...`) con el archivo, la
+   línea del `#ifdef` y la función de cada bloque afectado, sin escribir `docs/PROGRESO.md`.
 4. **Comparar**: `python tools/build.py diff func_80030D60`. La puntuación 0 y el código de
    salida 0 indican que las instrucciones y los símbolos coinciden. Cualquier otra puntuación
    termina con código 1 y muestra las dos columnas (objetivo y compilado) con una marca en las
@@ -379,6 +388,16 @@ como común); un símbolo `extern` queda como `lui`. Por eso:
    las funciones de cada archivo los direccionan por `$gp` y ya coinciden: el enlazador funde las
    definiciones comunes en un solo símbolo, y declararlos `extern` en cabecera empeora cuatro funciones.
 
+Datos pequeños de `tarjeta_de_memoria` (`g = 8`), todos definidos solo en ese archivo y usados por
+`func_80015E94`, que los direcciona por `$gp` (el original usa `sb zero,0x3c($gp)`,
+`addiu a1,gp,0x40` y `addiu a2,gp,0x48`; `0x80069320` más cada desplazamiento da la dirección):
+
+| Símbolo | Dirección | Tipo | Evidencia en `func_80015E94` |
+|---|---|---|---|
+| `D_8006935C` | `0x8006935C` | `u8` | `sb zero,0x3c($gp)`: bandera de operación pendiente, a cero antes de `MemCardSync` |
+| `D_80069360` | `0x80069360` | `s32` | `addiu a1,gp,0x40`: segundo argumento de `MemCardSync`, pasado por dirección |
+| `D_80069368` | `0x80069368` | `s32` | `addiu a2,gp,0x48`: tercer argumento de `MemCardSync`, pasado por dirección |
+
 Cuando `config/symbols.txt` declare esos datos pequeños se retirarán de `[datos_pequenos]` (hoy figuran
 allí porque el ejecutable original no los nombra).
 
@@ -409,13 +428,21 @@ un C que accede a `0x800694A8` por `$gp` y el original pueden diferir solo en la
 numérico frente a símbolo) aunque tras enlazar produzcan los mismos bytes. Cuando la puntuación no es 0,
 `diff` y `probar` enlazan el candidato y el original por separado en la dirección de la función
 (`config/symbols.txt`), resolviendo los símbolos contra `build/SLUS_008.elf` de la última construcción
-correcta, y comparan los bytes. Si coinciden, `diff` termina con código 0 y avisa:
+correcta, y comparan los bytes. Si coinciden, la función **puntúa 0**, igual que una que coincide instrucción
+por instrucción: la forma de una referencia (símbolo o número) no es una diferencia. `diff` termina con código 0 y
+deja el número de referencias en forma numérica y la puntuación que dio `asm-differ` como nota aparte, antes
+del veredicto:
 
 ```text
-func_800400C0 (src/graficos_y_gte_10.c): coincide en bytes; 14 referencias en forma numerica (puntuacion 70)
+nota: 14 referencias en forma numerica (asm-differ puntua 70)
+func_800400C0 (src/entrada_de_mando.c): puntuacion 0 (coincide en bytes)
 ```
 
-y `probar` marca la variante con `(bytes iguales)`. Sin `build/SLUS_008.elf` o sin la dirección en la
+Una función con coincidencia exacta imprime solo `func_8003E034 (src/audio_xa_y_spu.c): puntuacion 0`. La nota es
+información para quien quiera escribir esas referencias en forma simbólica; no cambia el estado de la función. Una
+función «cerrada» (definida en C en la construcción normal) cuenta igual en `progreso` y en `docs/PROGRESO.md` haya
+coincidido de una forma o de otra: esos documentos no distinguen entre las dos. `probar` marca la variante con
+`(bytes iguales)` y la ordena como coincidente. Sin `build/SLUS_008.elf` o sin la dirección en la
 tabla de símbolos no se hace la comparación por bytes y vale la puntuación de `asm-differ`.
 
 ## Banco de variantes (`probar`)
@@ -490,6 +517,18 @@ su uso es un error de compilación a propósito. Las macros de carga y lectura d
   `docs/PROGRESO.md`.
 - Control de coherencia: los `glabel` de `asm/` más las funciones en C deben sumar las funciones
   de la tabla; si no, `progreso` termina con error y hay que ejecutar `split`.
+- Guardia de pendientes: todo bloque `#ifdef NON_MATCHING` debe llevar la línea `Pendiente: puntuacion N`
+  bajo el `#ifdef` (ver «Cómo mover una función de ensamblador a C»); si falta, `progreso` termina con error.
+- **Rutinas manuscritas.** Una función que se queda en `INCLUDE_ASM` porque el original es una rutina
+  escrita a mano (sin `addiu sp`, temporales fijos, marca `Handwritten` del particionador) lleva encima,
+  sin línea en blanco de por medio, un comentario que dice «rutina escrita a mano en el original» (también
+  vale «Rutina de GTE escrita a mano en el original»). `progreso` las lista aparte, con su tamaño, en la
+  categoría «Rutinas manuscritas» de `docs/PROGRESO.md` (y en `manuscritas` de `build/progreso.json`); no
+  cuentan como funciones en C. Además avisa (por la salida de errores, sin cambiar el código de salida y en
+  la sección «`INCLUDE_ASM` sin comentario» del documento) de cada `INCLUDE_ASM` sin ningún comentario
+  encima en un archivo que ya tiene funciones en C: o es una rutina manuscrita sin marcar o falta explicar
+  por qué sigue en ensamblador. Los `INCLUDE_ASM` de la rama `#else` de un bloque `NON_MATCHING` son intentos
+  pendientes y no se clasifican.
 
 Las funciones triviales vacías (`jr ra; nop`) también entran como `INCLUDE_ASM`: pasarlas a C es
 una decisión del desarrollador, así el progreso solo cuenta lo que alguien escribió.
@@ -501,9 +540,10 @@ una decisión del desarrollador, así el progreso solo cuenta lo que alguien esc
 | `split` | Copia el original a `expected/`, ejecuta el particionador y genera `asm/`, `src/` (los `.c` que falten) y el script del enlazador. No toca `asm/overlay/`. |
 | `build` | Para cada objeto del script del enlazador: ensambla el `.s` o compila el `.c` (preprocesador, `CC1PSX.EXE -O2 -G<g>`, `maspsx --aspsx-version=2.80`, `as`). Enlaza en el orden del script y escribe `build/SLUS_008.38`. Antes de empezar elimina la salida de la construcción anterior (ver «Invalidación de la salida»). |
 | `verify` | Compara el SHA-256 con el del original. Imprime `OK` o `FAIL` con el desplazamiento de la primera diferencia; si no existe el ejecutable reconstruido imprime `FAIL ... no existe` y devuelve 1. |
-| `diff <función>` | Compila el `.c` que contiene la función con `NON_MATCHING`, ensambla el original y ejecuta `asm-differ`. Código 0 si la puntuación es 0 o si los bytes enlazados coinciden (con aviso del número de referencias en forma numérica). Una función que sigue solo en `INCLUDE_ASM` se rechaza: compararla consigo misma daría 0 sin significar nada. |
+| `diff <función>` | Compila el `.c` que contiene la función con `NON_MATCHING`, ensambla el original y ejecuta `asm-differ`. Código 0 si la puntuación informada es 0: instrucciones iguales o bytes enlazados iguales (en ese caso informa 0 y añade una nota con las referencias en forma numérica y la puntuación de `asm-differ`). Una función que sigue solo en `INCLUDE_ASM` se rechaza: compararla consigo misma daría 0 sin significar nada. |
 | `probar <función> <carpeta>` | Compila y puntúa cada variante `.c` de la carpeta contra el original y muestra la tabla ordenada. Código 0 si la mejor coincide (puntuación 0 o bytes iguales). |
-| `progreso` | Escribe `docs/PROGRESO.md` y `build/progreso.json`. No necesita el disco ni el toolchain. |
+| `progreso` | Escribe `docs/PROGRESO.md` y `build/progreso.json`. No necesita el disco ni el toolchain. Termina con error si algún bloque `NON_MATCHING` no lleva la línea `Pendiente: puntuacion N`. |
+| `verificar-config` | Avisa de las claves de `[datos_pequenos]` (`config/opciones_compilacion.toml`) cuya dirección ya declara `config/symbols.txt` (mismo nombre, otro nombre u otro tipo). Solo informa; `split` imprime los mismos avisos al terminar. No necesita el disco ni el toolchain. |
 | `clean` | Elimina `asm/`, `expected/` y los artefactos propios de `build/`. Conserva `asm/overlay/`, `expected/overlay/`, `build/overlay/`, `build/emulador/` y `build/bblit_prueba.*`, que son de otras herramientas. |
 
 Los objetos intermedios (`.i`, `.s` y `.o` de cada compilación) quedan en `build/src/` y los de
