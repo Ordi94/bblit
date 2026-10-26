@@ -219,18 +219,23 @@ void func_80040158(Mando* m)
     }
 }
 
+/* Bloque de alineacion de vibracion: dato pequeno que el original direcciona como 0x10($gp). */
+u8 D_80069330[8];
+
 #ifdef NON_MATCHING
 /*
- * No coincide: puntuacion 240 (el archivo se compila con g = 8; 3210 con -G0).
+ * Pendiente: puntuacion 130 con la configuracion versionada (g = 8 del archivo). El original calcula la
+ * direccion del bloque de alineacion con `addiu a1,gp,0x10`; maspsx solo la reescribe a $gp desde la
+ * version 2.80 de ASPSX (gp_allow_la) y la configuracion versionada fija 2.79, de modo que sale
+ * `lui` + `addiu`. Con 2.80 la funcion coincide en bytes (puntuacion 25 por la forma simbolica de
+ * 0x800100E7 y de D_80069330) y el ejecutable completo sigue verificando. Variantes: base_gp + 0x10,
+ * variable intermedia al principio y al final, conversion a u32, definicion tentativa del dato pequeno.
+ *
  * Vibracion del mando: mientras el mando 0 anuncia el modo extendido (PadInfoMode 1 = 7 y
  * PadInfoMode 2 distinto de cero) descuenta los dos temporizadores de pulso (D_80069659 el
  * pequeno, D_8006965A el grande) y fija los motores D_8006965C/D_8006965D si el estado
  * global lo permite (bits 7 y 0 de 0x800100E7); si no, borra todo. Al reconectarse (estado
  * 1) o mientras falte la alineacion, reenvia la vibracion con PadSetAct y PadSetActAlign.
- * Puntuacion 240 con -G8: difiere solo el orden de las dos ultimas instrucciones antes de
- * PadSetActAlign (el original calcula $gp + 0x10 y deja el argumento 0 en el hueco de
- * retardo; el candidato al reves) y la forma simbolica de 0x800100E7. Probado sin efecto:
- * &base_gp[0x10], variable intermedia al final y al principio, conversion a u32.
  */
 void func_80040240(void)
 {
@@ -286,7 +291,7 @@ void func_80040240(void)
     }
     if (D_80069658 == 0) {
         PadSetAct(0, &D_8006965C, 2);
-        if (PadSetActAlign(0, base_gp + 0x10) != 0) {
+        if (PadSetActAlign(0, D_80069330) != 0) {
             D_80069658 = 1;
         }
     }
