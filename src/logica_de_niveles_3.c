@@ -548,7 +548,7 @@ siguiente:
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 740 con la configuracion versionada (g = 8 del archivo). Prologo y busqueda del origen: el original calcula la parte alta de la camara antes de derivar la matriz del scratchpad de la misma base, relee las banderas del nodo en la rama contraria y sale de la busqueda por id con un salto directo al caso sin origen. */
+/* Pendiente: puntuacion 365 con la configuracion versionada (g = 8 del archivo). Prologo y salida de la busqueda por id: el original deriva la matriz del scratchpad de la base despues de calcular la parte alta de la camara, y sale de la busqueda con un salto directo al caso sin origen en lugar de volver a probar el cursor. */
 /*
  * Manejador del director de camara (clase 36): por cada disparador cuya condicion y distancia se
  * cumplen reescribe el destino de vista y de mira de la camara global, la distancia de acercamiento
@@ -568,6 +568,7 @@ void func_8002C1DC(Objeto* o)
     s32 ce;
     s32 cf;
     u16 fl;
+    s32 cond;
 
     t = TRABAJO_CAMARA;
     t->nodo = (NodoDisparador*)o->apoyos;
@@ -621,8 +622,9 @@ void func_8002C1DC(Objeto* o)
             RunLogicAction(o, &t->nodo->cond);
         }
         if (t->flags & 1) {
+            cond = (t->flags & 0x42);
             t->origen = 0;
-            if ((t->flags & 0x42) == 0x40) {
+            if (cond == 0x40) {
                 for (t->origen = D_80069518; t->origen != 0; t->origen = t->origen->siguiente) {
                     if (t->origen->w1C == t->nodo->p20 && !(t->origen->flags14 & 0x100)) {
                         break;
