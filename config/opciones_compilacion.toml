@@ -39,6 +39,18 @@ g = 8
 [archivos.movimiento_y_objetos_de_escena_2]
 g = 8
 
+[archivos.gestion_y_dibujo_de_objetos]
+g = 8
+
+[archivos.gestion_y_dibujo_de_objetos_2]
+g = 8
+
+[archivos.gestion_y_dibujo_de_objetos_3]
+g = 8
+
+[archivos.gestion_y_dibujo_de_objetos_4]
+g = 8
+
 # Enlace. gp: valor de $gp que fija el codigo de arranque del juego (lui gp,0x8007 ;
 # addiu gp,gp,-0x6CE0). build lo define como _gp en el enlace; las referencias relativas a $gp
 # de los objetos C se resuelven contra el. Es un simbolo absoluto: no cambia ningun byte.
@@ -75,3 +87,6 @@ D_8006940C = 0x8006940C
 D_80069414 = 0x80069414
 D_80069416 = 0x80069416
 D_80069424 = 0x80069424
+D_80069430 = 0x80069430
+D_80069434 = 0x80069434
+D_80069438 = 0x80069438
