@@ -28,6 +28,9 @@ extern InicioNivel D_8006ACD0;
 /*
  * Dato pequeno direccionado con desplazamiento($gp): lo define este archivo (definicion
  * tentativa) para que el ensamblador lo reescriba a $gp, y el enlace lo coloca en 0x800693B8.
+ * La declaracion compartida vive en globales.h; la definicion se conserva aqui porque
+ * func_8001D0FC, func_8001D31C y func_8001D588 lo escriben con sh 0x98($gp) (0x8001D304,
+ * 0x8001D3E8, 0x8001D750) y sin ella el acceso pasa a lui mas desplazamiento.
  */
 s16 D_800693B8;
 extern s32 func_8003F06C(void* a0, s32 a1, s32 a2, s32 a3);
