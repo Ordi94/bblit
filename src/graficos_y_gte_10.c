@@ -22,7 +22,6 @@
  */
 extern vu16 D_800695A6;
 extern s16 D_800695BC;
-extern u32 D_80069610;
 extern u32 D_80069614;
 extern u8 D_80069620;
 

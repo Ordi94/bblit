@@ -526,14 +526,14 @@ void func_80034E7C(Objeto* o)
                         if (a != NULL && (a->flags18 & 0x400) == 0) {
                             a->flags14 &= ~0x814;
                             p->p6C->flags14 |= 0x1000;
-                            p->p6C->iC4 = 0;
-                            p->p6C->pC0 = (Objeto*)((u8*)p->p6C + 0xCC);
+                            p->p6C->nodo.padre = NULL;
+                            p->p6C->nodo.transf = (Transformacion*)((u8*)p->p6C + 0xCC);
                             p->p6C->w26 = p->w26;
                             p->p6C->p70 = NULL;
                             func_8001CF50(p->p6C);
                             a = p->p6C;
                             if (a->w2C == 0xE) {
-                                a->i158 = 0;
+                                a->trabajo.i14 = 0;
                             }
                         }
                         sig = p->siguiente;
@@ -544,8 +544,8 @@ void func_80034E7C(Objeto* o)
                         p = sig;
                         continue;
                     }
-                    p->pC0 = (Objeto*)((u8*)p + 0xCC);
-                    p->iC4 = 0;
+                    p->nodo.transf = (Transformacion*)((u8*)p + 0xCC);
+                    p->nodo.padre = NULL;
                     p->p70 = NULL;
                     p->flags14 = (p->flags14 & ~0x14) | 0x1202;
                     func_8001CFCC((u8*)p + 0x7C);
@@ -580,12 +580,12 @@ void func_8003502C(Objeto* o)
     }
     if (o->p6C != NULL) {
         o->p6C->flags14 &= ~0x814;
-        o->p6C->iC4 = 0;
-        o->p6C->pC0 = (Objeto*)((u8*)o->p6C + 0xCC);
+        o->p6C->nodo.padre = NULL;
+        o->p6C->nodo.transf = (Transformacion*)((u8*)o->p6C + 0xCC);
         o->p6C->w26 = o->w26;
         o->p6C->p70 = NULL;
         func_8001CF50(o->p6C);
-        o->p6C->i158 = 0;
+        o->p6C->trabajo.i14 = 0;
         o->p6C = NULL;
     }
     if ((ObjetoVolumen*)o == D_80069630) {
@@ -611,11 +611,11 @@ void func_800351B4(Objeto* o)
     OBJ_U32(o, 4) &= ~2;
     o->flags18 |= 0x100;
     if ((OBJ_U32(o, 8) & 0x1000) != 0) {
-        if ((o->flags15C & 0x4000) == 0) {
+        if ((o->trabajo.flags18 & 0x4000) == 0) {
             if (*(void**)OBJ_LISTA(o) != NULL) {
                 if (o->p70 == NULL) {
-                    o->flags15C |= 0x4000;
-                    o->i158 = 0;
+                    o->trabajo.flags18 |= 0x4000;
+                    o->trabajo.i14 = 0;
                     ClearList(OBJ_LISTA(o));
                     *(void**)OBJ_LISTA(o) = NULL;
                 }

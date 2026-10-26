@@ -394,7 +394,6 @@ extern u8* D_80069538;
 extern u8* D_80069520;
 extern u8* D_8006966C;
 extern u8* D_80069550;
-extern u32 D_80076188;
 extern u32 D_80069680;
 extern u32 D_8006958C;
 extern u32 D_80069610;

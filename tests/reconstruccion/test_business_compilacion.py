@@ -340,7 +340,7 @@ def test_un_build_fallido_no_deja_ejecutable_y_verify_da_fail(
     capsys.readouterr()
     assert cli.main(["build"], variables, raiz) == 1
     capturado = capsys.readouterr()
-    assert "inicializacion_de_motor.c.o: genera 4 bytes en la seccion inesperada '.data'" in capturado.err
+    assert "inicializacion_de_motor.c.o: genera 4 bytes en la seccion inesperada '.sdata'" in capturado.err
     for salida in ("SLUS_008.38", "SLUS_008.bin", "SLUS_008.elf", "SLUS_008.map"):
         assert not (raiz / "build" / salida).exists(), salida
     assert cli.main(["verify"], variables, raiz) == 1
