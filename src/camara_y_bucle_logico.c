@@ -60,6 +60,21 @@ typedef struct SondaCamara {
     s32 i68;
 } SondaCamara;
 
+/* Area de trabajo del rayo de camara (func_80032B2C): matriz, vectores locales, caja del objeto y objeto en curso. */
+typedef struct RayoCamara {
+    MATRIX m;
+    SVECTOR rot;
+    SVECTOR v28;
+    SVECTOR d30;
+    VECTOR suma;
+    SVECTOR a48;
+    SVECTOR a50;
+    s32 i58;
+    s32 i5C;
+    s32 i60;
+    ObjetoVolumen* cur;
+} RayoCamara;
+
 /* Angulos de un objeto: la sonda solo lee y reescribe el giro en Y (+2). */
 typedef struct Giro {
     u16 x;
@@ -216,7 +231,113 @@ void func_80032A24(void)
     }
 }
 
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 774 con la configuracion versionada (g = 8 del archivo). El flujo y las macros vectoriales
+ * coinciden; difiere el reparto de los registros salvados (el original deja los argumentos en s5 y s2 y los
+ * punteros hoisted &w->i58, &w->rot, &w->v28, &w->d30 en s6, s4, s3, s1). Variantes probadas: 15 (punteros locales
+ * hoisted en distinto orden y subconjunto, asignacion al inicio o dentro del bloque).
+ *
+ * Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la
+ * mascara y cuya caja esta a menos de su alcance, lleva la posicion al sistema local del objeto, comprueba la caja
+ * ensanchada por el radio y, si el punto cae sobre el objeto, desplaza el vector de salida a la cara mas cercana
+ * (cuatro rectas de la caja segun el angulo ratan2) y lo devuelve al sistema global; retorna el objeto o 0.
+ */
+s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
+{
+    s32* p58;
+    SVECTOR* pd30;
+    SVECTOR* prot;
+
+    w->suma.vx = a0->x + a1->x;
+    w->suma.vy = a0->y + a1->y;
+    w->cur = D_80069630;
+    w->suma.vz = a0->z + a1->z;
+    if (w->cur != NULL) {
+        p58 = &w->i58;
+        pd30 = &w->d30;
+        prot = &w->rot;
+        do {
+            if ((w->cur->indicadores & mascara) != 0) {
+                GEO_CARGAR_WH(&w->cur->min);
+                GEO_OR_WH(&w->cur->max);
+                GEO_GUARDAR_1W_T1(p58);
+                if (w->i58 != 0) {
+                    GEO_CARGAR_W(&w->suma);
+                    GEO_RESTAR_W(&w->cur->pos);
+                    GEO_GUARDAR_H_T4(pd30);
+                    GEO_NORMA2_XZ(pd30, p58);
+                    if (w->cur->alcance2 >= (u32)w->i58) {
+                        w->i60 = w->cur->radio;
+                        GEO_COMPLEMENTO(&w->cur->rot);
+                        GEO_GUARDAR_H_T1(prot);
+                        if (((w->cur->rot.vz + w->cur->rot.vx) & 0xFFF) == 0) {
+                            if (((u16)w->cur->rot.vy & 0xFFF) == 0) {
+                                GEO_CARGAR_WH(pd30);
+                                GEO_GUARDAR_WH(&w->v28);
+                            } else {
+                                GEO_IDENTIDAD(w);
+                                RotMatrixY(w->rot.vy, &w->m);
+                                ApplyMatrixSV(&w->m, pd30, &w->v28);
+                            }
+                        } else {
+                            RotMatrixZYX(prot, &w->m);
+                            ApplyMatrixSV(&w->m, pd30, &w->v28);
+                        }
+                        if (w->v28.vx >= w->cur->min.vx - w->i60
+                            && w->cur->max.vx + w->i60 >= w->v28.vx
+                            && w->v28.vz >= w->cur->min.vz - w->i60
+                            && w->cur->max.vz + w->i60 >= w->v28.vz
+                            && w->cur->max.vy < w->v28.vy
+                            && w->cur->min.vy >= w->v28.vy - 0xF0) {
+                            w->i58 = w->cur->max.vy - w->v28.vy;
+                            w->a48.vx = a0->x - w->cur->pos.vx;
+                            w->a48.vy = 0;
+                            w->a48.vz = a0->z - w->cur->pos.vz;
+                            RotMatrixZYX(prot, &w->m);
+                            ApplyMatrixSV(&w->m, &w->a48, &w->a50);
+                            w->i5C = ratan2(w->a50.vx, w->a50.vz);
+                            w->v28.vx = a1->x;
+                            w->v28.vy = a1->y;
+                            w->v28.vz = a1->z;
+                            ApplyMatrixSV(&w->m, &w->v28, &w->v28);
+                            w->i60 = w->i60 + 2;
+                            if (w->i5C >= 0) {
+                                if (w->i5C < ratan2(w->cur->max.vx + w->i60, w->cur->max.vz + w->i60)) {
+                                    w->v28.vz = (u16)w->cur->max.vz + (u16)w->i60 - (u16)w->a50.vz;
+                                } else if (w->i5C < ratan2(w->cur->max.vx + w->i60, w->cur->min.vz - w->i60)) {
+                                    w->v28.vx = (u16)w->cur->max.vx + (u16)w->i60 - (u16)w->a50.vx;
+                                } else {
+                                    w->v28.vz = (u16)w->cur->min.vz - (u16)w->i60 - (u16)w->a50.vz;
+                                }
+                            } else {
+                                w->i5C = -w->i5C;
+                                if (w->i5C < -ratan2(w->cur->min.vx - w->i60, w->cur->max.vz + w->i60)) {
+                                    w->v28.vz = (u16)w->cur->max.vz + (u16)w->i60 - (u16)w->a50.vz;
+                                } else if (w->i5C < -ratan2(w->cur->min.vx - w->i60, w->cur->min.vz - w->i60)) {
+                                    w->v28.vx = (u16)w->cur->min.vx - (u16)w->i60 - (u16)w->a50.vx;
+                                } else {
+                                    w->v28.vz = (u16)w->cur->min.vz - (u16)w->i60 - (u16)w->a50.vz;
+                                }
+                            }
+                            RotMatrix(&w->cur->rot, &w->m);
+                            ApplyMatrixSV(&w->m, &w->v28, &w->v28);
+                            a1->x = w->v28.vx;
+                            a1->y = w->i58;
+                            a1->z = w->v28.vz;
+                            return (s32)w->cur;
+                        }
+                    }
+                }
+            }
+            w->cur = w->cur->sig;
+        } while (w->cur != NULL);
+    }
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80032B2C);
+#endif
 
 /*
  * Busca un giro en Y para el que la sonda de colision avance libre: prueba hasta 25 giros de la
