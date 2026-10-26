@@ -40,7 +40,6 @@ u8 D_800694A8;
 s32 D_800694AC;
 
 extern EntradaSector D_8005EE78[];
-extern RegistroArchivo D_8005F200[];
 extern u8 D_80069540;
 extern vu8 D_8006955E;
 extern u8 D_8006933C[];

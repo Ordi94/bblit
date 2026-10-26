@@ -1,5 +1,6 @@
 #include "common.h"
 #include "globales.h"
+#include "cargador.h"
 #include "psyq/TYPES.H"
 #include "psyq/LIBGTE.H"
 #include "psyq/LIBGPU.H"
@@ -19,16 +20,6 @@ extern void func_80040AF0(void);
  * pequenos mayor que cero (-G8) en config/opciones_compilacion.toml: la maquina de estados de la
  * carga (D_800694A8) es un dato pequeno que el original direcciona como 0x188($gp).
  */
-
-/* Registro de 16 bytes por archivo; el campo +4 es el archivo de la pantalla de carga, 0 si no hay. */
-typedef struct RegistroArchivo {
-    s32 pad0;
-    s16 pantalla;
-    s16 pad6;
-    s32 pad8;
-    s32 padC;
-} RegistroArchivo;
-extern RegistroArchivo D_8005F200[];
 
 extern u8 D_80010065;
 

@@ -26,6 +26,8 @@ typedef struct RegistroArchivo {
     u8 posicion[4];
 } RegistroArchivo;
 
+extern RegistroArchivo D_8005F200[];
+
 /*
  * Entrada de la cabecera del contenedor de niveles: tipo de seccion, tamano real y tamano
  * alineado a sectores. La cabecera ocupa el primer sector del archivo y func_800415A0 la copia
