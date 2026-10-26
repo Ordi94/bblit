@@ -5,19 +5,19 @@
 #include "menus.h"
 
 /*
- * Estado del fundido de pantalla (todas las variables son datos pequenos que el original
- * direcciona con lui + desplazamiento y escribe con lui at, de ahi g = 8 para este archivo).
- * D_80069566: nivel actual del fundido, en 1/4096. D_80069668: nivel complementario que usa el
- * dibujo. D_80069686: paso por cuadro. D_8006966A: banderas de fase (ver func_8003ABB4).
+ * Estado del fundido de pantalla. Todas son variables de 2 bytes que el original escribe con
+ * lui at (de ahi g = 8 para este archivo) y carga con lui + desplazamiento, sin $gp.
+ * D_80069566: progreso del fundido (0 a 0x1000); D_80069668: nivel complementario que usa el
+ * dibujo de la capa de oscurecimiento; D_80069686: paso por cuadro; D_8006966A (globales.h): fase.
  */
 extern s16 D_80069566;
 extern s16 D_80069668;
 extern u16 D_80069686;
 
 /*
- * Anillo de marcas de tiempo de los cuadros (los mismos datos que usa la presentacion de cuadros):
- * D_80069610 la reescribe el retorno de llamada de VSync, D_800695A6 cuenta los VSync desde el
- * ultimo dibujo y D_8006954C es la longitud del anillo.
+ * Anillo de marcas de tiempo de los cuadros (mismos datos que usa la presentacion): D_80069610 lo
+ * reescribe el retorno de llamada de VSync, D_800695A6 cuenta los VSync desde el ultimo dibujo y
+ * D_8006954C es la longitud del anillo.
  */
 extern s32 D_8006954C;
 extern u32 D_80069610;
@@ -26,69 +26,80 @@ extern vu16 D_800695A6;
 
 /*
  * Cursor de escritura de primitivas GPU: direccion de la siguiente primitiva libre del cuadro. Se
- * compara con signo contra los limites del contexto, por eso es s32 y no un puntero.
+ * compara con signo contra los limites de la escena, por eso es s32 y no un puntero. D_8006958C y
+ * D_80069680 son el limite del buffer y su inicio.
  */
 extern s32 D_80076188;
-extern void func_80039CD0(s32 cursor);
+extern s32 D_8006958C;
+extern s32 D_80069680;
 
-/* D_8006D934 es la mitad alta de la camara (D_8006D928 + 0xC): el original la direcciona con su propio lui. */
+/* Camara: D_8006D934 es la mitad alta de D_8006D928 (+0xC); el original la direcciona con su propio lui. */
 extern s32 D_8006D934[3];
 extern s16 D_80069402;
 extern s16 D_80069416;
 extern s32 D_800693F0;
+extern u16 D_800694E2;
 
-extern s32 D_8006958C;
-extern s32 D_80069680;
-extern void func_8003DF10(s32 cursor);
-extern s32 func_8003D7C4(void);
-extern void func_8003D880(VistaDibujo* ctx);
-extern s32 func_8003D814(void);
-extern void func_8003D0D4(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
+/*
+ * Dos bytes del banco B (D_8006AA70[0x19] detiene el paso del fundido y D_8006AA70[0xC] es el estado
+ * de pausa): el original los direcciona con su propio lui, como simbolos distintos del banco.
+ */
+extern u8 D_8006AA89;
+extern u8 D_8006AA7C;
 
-extern ModeloDibujo* D_8006B568[];
-extern u16 D_800695F2;
-extern u16 D_800695F4;
+/* Contadores y banderas del cuadro de dibujo, y tablas de modelos y de salas visibles. */
 extern s16 D_800695A2;
 extern s16 D_800695A4;
 extern s16 D_80069532;
-extern void* D_800694D8;
-extern ObjetoEscena* D_8006AD80[];
-extern s32 func_80012AE4(s32 cursor, EstadoDibujo* estado, s32 color);
-extern s32 func_80012AB0(s32 cursor, EstadoDibujo* estado);
-extern s32 func_8003BDD0(ModeloDibujo* modelo);
-extern void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
-
-#define PANT ((EstadoPantalla*)0x80010000)
-
-#define COPIAS ((CopiasCamara*)&D_8006D928)
-
-
+extern s16 D_800695DA;
+extern s16 D_80069530;
+extern s16 D_80069588;
+extern s16 D_80069688;
+extern s32 D_80076098;
+extern s32 D_8007609C;
+extern u16 D_800695F2;
+extern u16 D_800695F4;
 extern u16 D_8006969C;
 extern u16 D_800694B0;
 extern u8 D_80069600;
-extern s32 func_80010258(void* modelo, s32 cursor, void* estado, void* vista);
-extern s16 D_800695DA;
+extern void* D_800694D8;
 extern void* D_800695C4;
+extern ModeloDibujo* D_8006B568[];
+extern ObjetoEscena* D_8006AD80[];
 extern EntradaCola D_8006D1C8[];
 extern EntradaVisible D_8006A940[];
-extern s16 D_80069588;
-extern s16 D_80069688;
-extern u16 D_800694E2;
+
+/* Rutinas de otros archivos y del overlay (func_80010204 y func_80010258 dibujan un modelo). */
+extern void func_80039CD0(s32 cursor);
 extern void func_8001CE64(void* pila);
 extern ColorYDesplazamiento* func_8001DF28(void* objeto, void* vista);
 extern s32 func_8003760C(void* geometria, void* vista, void* vista_siguiente);
 extern void func_8003753C(void* vista);
 extern s32 func_80010204(void* modelo, s32 cursor, void* estado, void* vista);
-extern void func_8003C1C8(VistaDibujo* vista);
-extern s16 D_80069530;
-extern s32 D_80076098;
-extern s32 D_8007609C;
-extern void func_8003CA5C(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
+extern s32 func_80010258(void* modelo, s32 cursor, void* estado, void* vista);
+extern s32 func_80012AE4(s32 cursor, EstadoDibujo* estado, s32 color);
+extern s32 func_80012AB0(s32 cursor, EstadoDibujo* estado);
+
+/* Rutinas de este archivo que se llaman antes de definirse. */
+extern void func_8003DF10(s32 cursor);
+extern /* Mayor profundidad de los tres vertices proyectados (SZ1..SZ3), dividida entre cuatro. */
+s32 func_8003D7C4(void);
+extern /* Igual que func_8003D7C4 para cuatro vertices (SZ0..SZ3). */
+s32 func_8003D814(void);
+extern void func_8003D880(VistaDibujo* ctx);
 extern void func_8003D904(Vertice12* dest, Vertice12* a, Vertice12* b);
 extern void func_8003D988(Vertice12* dest, Vertice12* a, Vertice12* b);
 extern void func_8003DA4C(Vertice12* a, Vertice12* b, Vertice12* c, VistaDibujo* ctx);
 extern s32 func_8003DD70(VerticeCaja* v, LimitesPantalla* lim);
+extern void func_8003CA5C(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
+extern void func_8003D0D4(VistaDibujo* vista, s8 nivel, Vertice12* trabajo);
+extern void func_8003C1C8(VistaDibujo* vista);
+extern s32 func_8003BDD0(ModeloDibujo* modelo);
+extern void func_8003C014(ObjetoEscena* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
 
+/* Estado principal (solo el telon de pantalla) y copias de la camara que deja el dibujo por cuadro. */
+#define PANT ((EstadoPantalla*)0x80010000)
+#define COPIAS ((CopiasCamara*)&D_8006D928)
 
 void func_8003AA38(void)
 {
@@ -102,6 +113,10 @@ void func_8003AA48(void)
 {
 }
 
+/*
+ * Inicia un fundido que parte de nivel 0 con el complemento a 0x1000 (func_8003AA7C lo inicia en
+ * sentido contrario). modo se guarda como fase de D_8006966A; duracion es el paso por cuadro.
+ */
 void func_8003AA50(u8 modo, u16 duracion)
 {
     D_8006966A = modo;
@@ -118,6 +133,10 @@ void func_8003AA7C(u8 modo, u16 duracion)
     D_80069668 = 0;
 }
 
+/*
+ * Un paso del fundido ascendente. El nivel se compara con signo (lh) pero la aritmetica carga sin
+ * signo (lhu): por eso el valor actual pasa por un u16 local y la comparacion lee la variable.
+ */
 void func_8003AAA8(void)
 {
     u16 actual;
@@ -158,6 +177,11 @@ void func_8003AB3C(void)
     }
 }
 
+/*
+ * Actualiza el fundido del cuadro. Las fases piden iniciar el fundido (bits 4 y 8), avanzar un paso
+ * (bits 1 y 2, salvo que el banco B lo detenga) o terminar (bits 0x10 y 0x20, que limpian la fase).
+ * Sin fase activa, la pausa mantiene la capa a 0xE00.
+ */
 void func_8003ABB4(void)
 {
     u8 fase;
@@ -168,7 +192,7 @@ void func_8003ABB4(void)
             func_8003AA50(1, 0x100);
         } else if (fase & 8) {
             func_8003AA7C(2, 0x100);
-        } else if (D_8006AA70[0x19] == 0) {
+        } else if (D_8006AA89 == 0) {
             if (fase & 2) {
                 func_8003AB3C();
             } else if (fase & 1) {
@@ -179,7 +203,7 @@ void func_8003ABB4(void)
             D_8006966A = 0;
             D_80069668 = 0;
         }
-    } else if (D_8006AA70[0xC] != 0) {
+    } else if (D_8006AA7C != 0) {
         D_80069668 = 0xE00;
     } else {
         D_80069668 = 0;
@@ -418,7 +442,7 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B354);
 #endif
 
-/* Pendiente: puntuacion 885 con la configuracion versionada (g = 8 del archivo). Las instrucciones, el reparto de registros del bucle de objetos y la tabla de costes coinciden; difieren el orden de las cargas de los limites del buffer en el prologo (el original carga D_80069680 antes que D_8006958C y guarda el limite primero), la relectura del nivel del fundido tras guardarlo (el compilador reutiliza el registro) y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (orden de las nueve escrituras del prologo con 900 permutaciones, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). */
+/* Pendiente: puntuacion 875 con la configuracion versionada (g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el orden de las cargas de los limites del buffer en el prologo (el original carga D_80069680 antes que D_8006958C y guarda el limite primero), el reparto v0/v1 del calculo del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado) y el orden de dos movimientos de argumentos antes de func_8003AE08. Variantes probadas: 80 (900 permutaciones de las escrituras del prologo, forma del calculo del color, variable del objeto, copias de la camara, acceso por direccion literal). */
 #ifdef NON_MATCHING
 void func_8003B5AC(ObjetoEscena* lista)
 {
@@ -505,7 +529,7 @@ void func_8003B5AC(ObjetoEscena* lista)
         }
         D_80076188 = func_80012AE4(D_80076188, &esc->estado, color);
         D_80076188 = func_80012AB0(D_80076188, &esc->estado);
-    } else if (D_8006AA70[0xC] != 0) {
+    } else if (D_8006AA7C != 0) {
         color = 0;
         esc->estado.w8 = 0x833;
         D_80076188 = func_80012AE4(D_80076188, &esc->estado, color);
@@ -1181,6 +1205,11 @@ s32 func_8003D814(void)
     return mayor >> 2;
 }
 
+/*
+ * Elige la lista de ordenacion para la profundidad indice - w8: las 0x200 primeras entradas van a la
+ * lista de resolucion completa, las 0x200 siguientes a la de media resolucion y el resto a la de un
+ * treintaidosavo. Deja en indice el desplazamiento dentro de la lista y en destino la ranura.
+ */
 void func_8003D880(VistaDibujo* ctx)
 {
     s32 n;
@@ -1349,6 +1378,12 @@ s32 func_8003DD70(VerticeCaja* v, LimitesPantalla* lim)
     return 0;
 }
 
+/*
+ * Espera a que quede espacio en el anillo de primitivas del cuadro: mientras la distancia al
+ * limite sea menor que 0x800, reinicia la marca cuando han pasado cuatro VSync. El ajuste del anillo
+ * se hace en dos sentencias: en una sola el compilador calcula antes del bucle la constante
+ * combinada de la longitud y 0x400.
+ */
 void func_8003DF10(s32 limite)
 {
     s32 anillo;

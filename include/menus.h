@@ -17,9 +17,8 @@ typedef struct EntradaVisible {
 } EntradaVisible;
 
 /*
- * Entrada de la lista de dibujo de modelos (D_8006A940, 12 bytes por entrada) y argumento de
- * func_8003B26C: indice del modelo, nivel de profundidad y grupo. Los accesos de func_8003B26C
- * leen los dos ultimos campos como bytes (lbu).
+ * Pedido de dibujo de un modelo (argumento de func_8003B26C): indice del modelo en D_8006B568,
+ * nivel de recursion de la lista y grupo. func_8003B26C lee los dos ultimos campos como bytes (lbu).
  */
 typedef struct PedidoModelo {
     s16 modelo;
@@ -38,8 +37,8 @@ typedef struct DatosVertices {
 
 /*
  * Modelo de la tabla D_8006B568 y elemento de las cadenas de dibujo de func_8003C014: enlace al
- * siguiente en +0, banderas en +8 y +0xC, geometria en +0x10, vertices a proyectar en +0x14, un byte de visibilidad en +0xB4 y
- * un byte de estado en +0xB5.
+ * siguiente en +0, banderas en +8 y +0xC, geometria en +0x10, vertices a proyectar en +0x14,
+ * un byte de visibilidad en +0xB4 y un byte de estado en +0xB5.
  */
 typedef struct ModeloDibujo {
     struct ModeloDibujo* siguiente;
@@ -99,7 +98,7 @@ typedef struct ObjetoEscena {
     s32 zEC;
 } ObjetoEscena;
 
-/* Pila de func_8003AF8C para func_8001CE64: puntero al nodo, vector de entrada y acumulador (E-07). */
+/* Pila de func_8003AF8C para func_8001CE64: puntero al nodo, vector de entrada y acumulador. */
 typedef struct PilaNodo {
     void* nodo;
     SVECTOR v;
@@ -382,14 +381,15 @@ typedef struct EscenaDibujo {
 
 /*
  * Vista de dibujo (tercer argumento de las rutinas de modelos y contexto de la cola de poligonos).
- * +0: tipo de primitiva (8 y 12 sin textura, 16 y 20 con
- * textura y color plano, 24 y 28 con textura y color por vertice); +0x10: registro de banderas del
- * GTE (negativo si el poligono se descarta); +0x18: cursor de la primitiva siguiente; +0x1C,
- * +0x20 y +0x24: bases de las tres listas de ordenacion, de resolucion decreciente; +0x28:
- * entrada elegida; +0x2C: plantilla de poligono con textura y color por vertice (POLY_GT4, 0x34 bytes) donde
- * func_8003CA5C deja las coordenadas proyectadas y de la que copia los tres formatos de
- * primitiva; su clut (+0x3A) y su pagina de textura (+0x46) los fija func_8003DA4C; +0x60: cuatro
- * vertices de trabajo.
+ * +0: tipo de primitiva (8 y 12 sin textura, 16 y 20 con textura y color plano, 24 y 28 con
+ * textura y color por vertice); +1: nivel maximo de subdivision; +2: codigo de primitiva; +4 y +6:
+ * mitad del ancho y del alto de pantalla; +8: banderas del poligono; +0xC: indice de la lista de
+ * ordenacion; +0x10 y +0x14: registros FLAG del GTE (negativos si el poligono se descarta); +0x18:
+ * cursor de la primitiva siguiente; +0x1C, +0x20 y +0x24: bases de las tres listas de ordenacion,
+ * de resolucion decreciente; +0x28: entrada elegida; +0x2C: plantilla de poligono con textura y
+ * color por vertice (POLY_GT4, 0x34 bytes) donde func_8003CA5C deja las coordenadas proyectadas y de
+ * la que copia los formatos de primitiva (su clut, +0x3A, y su pagina de textura, +0x46, los fija
+ * func_8003C1C8); +0x60: cuatro vertices de trabajo.
  */
 typedef struct VistaDibujo {
     s8 tipo;
