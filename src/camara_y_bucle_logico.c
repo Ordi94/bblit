@@ -445,7 +445,6 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
     return 0;
 }
 
-#ifdef NON_MATCHING
 /*
  * Acerca la altura del punto de vista a la banda [base - 0x64, base + 0x64] desplazada por p4: si queda por encima
  * del limite inferior de la banda se mueve un octavo hacia el, y si queda por debajo del superior, hacia el otro.
@@ -469,8 +468,12 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
         } \
     }
 
+#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3395 con la configuracion versionada (g = 8 del archivo). El flujo coincide; difiere el reparto de registros temporales y el orden del bloque de alturas.
+ * Pendiente: puntuacion 3395 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * las constantes coinciden; difieren el reparto de registros temporales y la planificacion en el bloque de alturas
+ * (0x80034B00-0x80034E34), en la direccion normalizada del modo guiado (0x80033C98-0x80033D58), en las sondas
+ * de apuntado (0x80033700-0x80033830) y en los tramos del rayo (0x80034720-0x800348C8).
  *
  * Camara de seguimiento de tercera persona, una vez por cuadro. Determina la zona bajo el objeto y bajo la
  * camara y actualiza el modelo de la sala; despues atiende, por prioridad, la cuenta atras de cambio de
@@ -507,7 +510,7 @@ void func_80033358(Objeto* o, u32 reiniciar)
         return;
     }
     area = (void*)0x1F8000F8;
-    zona = func_8001BF9C(&o->param.trans.vx, (s16)o->w26);
+    zona = func_8001BF9C((s32*)&o->param.trans.vx, (s16)o->w26);
     w = (TrabajoCamara*)0x1F800000;
     w->zona_ant = zona;
     if (zona != NULL) {
@@ -859,10 +862,10 @@ aplicar_giro:
     if ((o->flags14 & 0x16) == 0) {
         w->res.grupo = -1;
         w->v70.vy = o->param.trans.vy;
-        func_8001C134(&w->v70.vx, &w->res, area);
+        func_8001C134((s32*)&w->v70.vx, &w->res, area);
         w->zona_ant = w->res.zona;
         w->v70.vy = o->param.trans.vy - 0x1F4;
-        func_8001C134(&w->v70.vx, &w->res, area);
+        func_8001C134((s32*)&w->v70.vx, &w->res, area);
         if (w->zona_ant != w->res.zona && (w->res.flags & 6) != 0 && (s16)w->res.grupo != -1) {
             w->v70.vy = w->res.zona->y_max + 0x1F4;
             if (o->param.trans.vy < w->v70.vy) {
@@ -1013,11 +1016,11 @@ aplicar_giro:
     w->v30.vx = D_8006D928.c68;
     w->v30.vz = D_8006D928.c70;
     D_8006D928.vpz = D_8006D928.vpz + ((o->param.trans.vz + w->v18.vz - D_8006D928.vpz) >> 2);
-    func_8001C134(&w->v30.vx, &w->res, area);
+    func_8001C134((s32*)&w->v30.vx, &w->res, area);
     if ((w->res.flags & 8) != 0 && w->res.suelo < o->param.trans.vy) {
         w->res.grupo = -1;
         w->v30.vy = w->v30.vy + 1;
-        func_8001C134(&w->v30.vx, &w->res, area);
+        func_8001C134((s32*)&w->v30.vx, &w->res, area);
     }
     if ((w->res.flags & 4) != 0 || (s16)w->res.grupo == -1) {
         ALTURA_CAMARA(o->param.trans.vy);
@@ -1037,17 +1040,20 @@ aplicar_giro:
     w->v30.vy = D_8006D928.vpy;
     w->v30.vz = D_8006D928.vpz;
     w->res.grupo = -1;
-    func_8001C134(&w->v30.vx, &w->res, area);
+    func_8001C134((s32*)&w->v30.vx, &w->res, area);
     w->res.grupo = -1;
     w->v30.vy = D_8006D928.vpy - 0x258;
     w->zona_ant = w->res.zona;
     n = w->res.suelo;
-    func_8001C134(&w->v30.vx, &w->res, area);
+    func_8001C134((s32*)&w->v30.vx, &w->res, area);
     if (w->zona_ant != w->res.zona && (w->res.flags & 6) != 0 && (s16)w->res.grupo != -1) {
-        if (w->res.zona->y_max < n - 0x262) {
-            D_8006D928.vpy = D_8006D928.vpy + ((w->res.zona->y_max - (D_8006D928.vpy - 0x258)) >> 3);
+        i = n - 10;
+        if (w->res.zona->y_max >= n - 0x262) {
+            D_8006D928.vpy = D_8006D928.vpy + ((i - D_8006D928.vpy) >> 3);
         } else {
-            D_8006D928.vpy = D_8006D928.vpy + ((n - 10 - D_8006D928.vpy) >> 3);
+            s32 t;
+            t = D_8006D928.vpy - 0x258;
+            D_8006D928.vpy = D_8006D928.vpy + ((w->res.zona->y_max - t) >> 3);
         }
         D_8006D928.c98 = D_8006D928.vpy;
         D_8006D928.c6C = D_8006D928.vpy;
@@ -1058,6 +1064,7 @@ aplicar_giro:
     func_80032A24();
     D_8006D928.flags80 = D_8006D928.flags80 & 0xFF7F;
 }
+#undef ALTURA_CAMARA
 #else
 INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80033358);
 #endif
