@@ -61,7 +61,7 @@ s32 D_80069380;
  * La matriz se asigna a una variable que vale 0 antes del bucle y se vuelve a asignar dentro: con una sola
  * asignacion el optimizador de bucles saca &o->m fuera del bucle, y el original lo calcula en cada vuelta.
  * El original la calcula justo despues de cargar el primer argumento de RotMatrixZYX; el C la calcula una
- * instruccion antes y esa es toda la diferencia (70).
+ * instruccion antes y esa es toda la diferencia (10).
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 10 con la configuracion versionada (g = 8 del archivo). Solo difiere el registro del puntero de destino de la norma al cuadrado (v0 en lugar de a0). Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
