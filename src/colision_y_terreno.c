@@ -63,10 +63,10 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2120 con la configuracion versionada (g = 0 del archivo). El reparto de
+ * Pendiente: puntuacion 2140 con la configuracion versionada (g = 0 del archivo). El reparto de
  * registros coincide con el original; difieren el orden de planificacion en los avances por
  * subcelda y por baldosa, el cierre compartido de resultados y una constante de indice que el
- * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 9670).
+ * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 9550).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -310,8 +310,8 @@ s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
     GEO_GUARDAR_W_T1(&w->ax);
     if (desp != NULL) {
         dx = desp[0];
-        dz = desp[2];
         w->dx = dx;
+        dz = desp[2];
         w->dz = dz;
         if ((dx | dz) != 0) {
             if (w->dx != 0) {
