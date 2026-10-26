@@ -66,7 +66,7 @@ void func_80019364(s32* a0)
  * Pendiente: puntuacion 2135 con la configuracion versionada (g = 0 del archivo). El reparto de
  * registros coincide con el original; difieren el orden de planificacion en los avances por
  * subcelda y por baldosa, el cierre compartido de resultados y una constante de indice que el
- * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 7010).
+ * original no pliega. diff solo compara las primeras 1024 instrucciones (completa: 6800).
  */
 /*
  * Copia los 0x1C primeros bytes de una zona (todo salvo los dos punteros de datos) al historial
@@ -246,8 +246,8 @@ void func_80019364(s32* a0)
         res->pendiente = w->t0 * zona->pendiente; \
         w->t0 = w->celdas[w->n]; \
         if (w->t0 == 0x7E) { \
-            res->flags = 8; \
             w->t0 = 0; \
+            res->flags = 8; \
         } else if (w->t0 > 0) { \
             w->t0 = -w->t0; \
             res->flags = res->flags | 0x20; \
