@@ -150,6 +150,11 @@ typedef struct Vertice12 {
 #define VERT_UV(v) (*(u16*)&(v)->u)
 #define VERT_COLOR(v) (*(u32*)&(v)->r)
 
+/* Copia de 12 bytes sin alineacion (struct de bytes): el compilador la hace con lwl/lwr y swl/swr. */
+typedef struct Copia12 {
+    u8 b[12];
+} Copia12;
+
 /* Triangulo de color por vertice (POLY_G3, 0x1C bytes). */
 typedef struct PoligonoG3 {
     u32 tag;
@@ -257,11 +262,14 @@ typedef struct EscenaDibujo {
  * textura y color plano, 24 y 28 con textura y color por vertice); +0x10: registro de banderas del
  * GTE (negativo si el poligono se descarta); +0x18: cursor de la primitiva siguiente; +0x1C,
  * +0x20 y +0x24: bases de las tres listas de ordenacion, de resolucion decreciente; +0x28:
- * entrada elegida; +0x3A y +0x46: clut y pagina de textura; +0x60: cuatro vertices de trabajo.
+ * entrada elegida; +0x2C: plantilla de poligono con textura y color por vertice (POLY_GT3) donde
+ * func_8003CA5C deja las coordenadas proyectadas y de la que copia los tres formatos de
+ * primitiva; su clut (+0x3A) y su pagina de textura (+0x46) los fija func_8003DA4C; +0x60: cuatro
+ * vertices de trabajo.
  */
 typedef struct VistaDibujo {
     s8 tipo;
-    u8 b1;
+    s8 b1;
     s8 b2;
     u8 pad03;
     s16 s4;
@@ -271,18 +279,21 @@ typedef struct VistaDibujo {
     s32 indice;
     s32 bandera;
     u8 pad14[4];
-    volatile s32 cursor;
+    s32 cursor;
     u32* ot0;
     u32* ot1;
     u32* ot2;
     u32* destino;
-    u8 pad2C[0x3A - 0x2C];
-    u16 clut;
-    u8 pad3C[0x46 - 0x3C];
-    u16 tpage;
-    u8 pad48[0x60 - 0x48];
+    PoligonoGT3 plantilla;
+    u8 pad54[0x60 - 0x54];
     Vertice12 trabajo[4];
 } VistaDibujo;
+
+/*
+ * El cursor se vuelve a leer de memoria tras escribirlo: el original compara el valor recien
+ * guardado con el limite del buffer sin reutilizar el registro.
+ */
+#define CURSOR_RELEIDO(c) (*(volatile s32*)&(c)->cursor)
 
 /* Los limites de profundidad del modelo ocupan las dos mitades de VistaDibujo.indice. */
 #define VISTA_W0C(v) (*(u16*)&(v)->indice)
