@@ -8,7 +8,7 @@
 extern s16 D_800695DE;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 4383 con la configuracion versionada (g = 8 del archivo). Orden de instrucciones y reparto de registros: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV y la comprobacion del paso, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1. */
+/* Pendiente: puntuacion 3383 con la configuracion versionada (g = 8 del archivo). Orden de instrucciones y reparto de registros: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1. */
 /*
  * Manejador de los objetos moviles por mascara (clases 12, 13, 18, 19 y 22 a 29): una sola rutina
  * atiende doce modos, uno por bit de la mascara (balancin, giro, bajar o subir con el jugador,
@@ -49,8 +49,8 @@ void func_80026298(Objeto* o, u32 mascara)
             ApplyMatrixLV(&o->coord.coord, &v, &v);
             MOVIL_ORIGEN_X(o) = o->param.trans.vx + v.vx;
             MOVIL_LIMITE_ALTO(o) = o->param.trans.vy + v.vy;
-            o->w17E = 0;
             MOVIL_ORIGEN_Z(o) = o->param.trans.vz + v.vz;
+            o->w17E = 0;
             if (o->s1E == 0) {
                 o->s1E = 0x10;
             }
@@ -71,10 +71,12 @@ void func_80026298(Objeto* o, u32 mascara)
             paso = (s16)o->w17C;
             if (paso < 0) {
                 num = o->param.trans.vy;
-                sentido = num + paso;
+                sentido = num;
+                sentido += paso;
             } else {
-                num = o->param.trans.vy + paso;
-                sentido = o->param.trans.vy;
+                num = o->param.trans.vy;
+                sentido = num;
+                num += paso;
             }
             MOVIL_LIMITE_ALTO(o) = num;
             MOVIL_LIMITE_BAJO(o) = sentido;
@@ -1721,8 +1723,6 @@ matriz:
     TransMatrix(mm, (VECTOR*)((u8*)o->coord.param + 0x18));
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 878 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original deja el objeto en s1 y la edad del efecto en s0, el compilador los intercambia, y no adelanta la suma del guion al hueco del salto compartido. */
 /*
  * Manejador de la animacion de modelo por guion (clase 32). w17C es el tiempo de vida y w17E el
  * indice del guion con el bit 15 como marca de guion ya lanzado: al cumplirse la edad reanuda el
@@ -1734,8 +1734,12 @@ void func_8002F510(Objeto* o)
     s16 vida;
     s16 idx;
     s32 edad;
+    s32 edad2;
     u16 bits;
     u16* base;
+    s16 idx2;
+    u16 bits2;
+    u16* base2;
 
     vida = o->w17C;
     if (vida > 0) {
@@ -1759,20 +1763,17 @@ void func_8002F510(Objeto* o)
         o->w22 = edad;
         return;
     }
-    idx = o->w17E;
-    bits = o->w17E;
-    if (idx & 0x8000) {
-        o->w17E = bits & 0x7FFF;
+    idx2 = o->w17E;
+    bits2 = o->w17E;
+    if (idx2 & 0x8000) {
+        o->w17E = bits2 & 0x7FFF;
         return;
     }
-    edad = o->w22;
-    base = D_80069590;
-        func_80045498(o, (u8*)base + base[idx], &o->trabajo);
-    o->w22 = edad;
+    edad2 = o->w22;
+    base2 = D_80069590;
+    func_80045498(o, (u8*)base2 + base2[idx2], &o->trabajo);
+    o->w22 = edad2;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F510);
-#endif
 
 /*
  * Manejador del objeto pegado a la camara (clase 9): en el primer cuadro destruye el objeto si no
@@ -1865,8 +1866,12 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F970);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 350 con la configuracion versionada. Dos 'lui' donde el original usa uno
- * solo para los dos bytes (los simbolos son variables externas distintas).
+ * Pendiente: puntuacion 350 con la configuracion versionada (g = 8 del archivo). Dos 'lui' donde
+ * el original usa uno solo para los dos bytes (los simbolos son variables externas distintas).
+ *
+ * Los dos bytes se declaran como arreglos sin tamano: con el umbral de datos pequenos (-G8) un
+ * escalar de un byte se emite en forma simbolica con 'lui $at' y la funcion sube de 350 a 855,
+ * mientras que el arreglo da el 'lui' y el desplazamiento del original.
  *
  * Operacion aritmetica sobre un registro de 16 bits repartido en dos bytes (D_80010047 es el
  * bajo y D_8001013C el alto). Diferencias con el original: este lee ambos bytes con un unico
