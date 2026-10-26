@@ -43,15 +43,6 @@ extern u8 D_8006CFF3;
 extern u8 D_8006CFF6;
 extern u8 D_8006CFF7;
 
-/*
- * Solo la usa el cuerpo de func_80040240 bajo NON_MATCHING; la declaracion no emite codigo ni datos,
- * asi que es inocua en la compilacion normal. Esta para que el intento compile con diff.
- * $gp = 0x80069320: PadSetActAlign recibe el bloque de $gp + 0x10. func_80040240 difiere del
- * original en una sola cosa: el original calcula $gp + 0x10 antes de cargar el argumento 0
- * (que ocupa el hueco de retardo de la llamada) y el compilador, con la variable de registro,
- * lo calcula despues.
- */
-
 /* Registro absoluto del eje Y: lo escribe el original por direccion, sin base compartida. */
 #define W14 (*(s16*)0x80010014)
 
@@ -176,14 +167,10 @@ void func_80040158(Mando* m)
 /* Bloque de alineacion de vibracion: dato pequeno que el original direcciona como 0x10($gp). */
 u8 D_80069330[8];
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 130 con la configuracion versionada (g = 8 del archivo). El original calcula la
- * direccion del bloque de alineacion con `addiu a1,gp,0x10`; maspsx solo la reescribe a $gp desde la
- * version 2.80 de ASPSX (gp_allow_la) y la configuracion versionada fija 2.79, de modo que sale
- * `lui` + `addiu`. Con 2.80 la funcion coincide en bytes (puntuacion 25 por la forma simbolica de
- * 0x800100E7 y de D_80069330) y el ejecutable completo sigue verificando. Variantes: base_gp + 0x10,
- * variable intermedia al principio y al final, conversion a u32, definicion tentativa del dato pequeno.
+ * El original calcula el bloque de alineacion con `addiu a1,gp,0x10`. maspsx reescribe esa direccion a
+ * $gp desde la version 2.80 de ASPSX (gp_allow_la); con la 2.79 salian `lui` + `addiu`. Coincide en
+ * bytes; la puntuacion 25 que queda es solo la forma simbolica de 0x800100E7 y de D_80069330.
  *
  * Vibracion del mando: mientras el mando 0 anuncia el modo extendido (PadInfoMode 1 = 7 y
  * PadInfoMode 2 distinto de cero) descuenta los dos temporizadores de pulso (D_80069659 el
@@ -250,9 +237,6 @@ void func_80040240(void)
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/entrada_de_mando", func_80040240);
-#endif
 
 /*
  * Repeticion automatica de un boton: mientras esta pulsado cuenta hacia atras el contador
