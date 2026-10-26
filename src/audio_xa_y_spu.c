@@ -12,11 +12,22 @@
  * este archivo se definen aqui sin extern para que maspsx las reescriba a $gp.
  */
 
+/*
+ * Lista de pistas XA por zona: 40 entradas de 3 bytes (func_8003EC3C las llena). pista_a es la pista
+ * que se reproduce al entrar en la zona (func_8003E3C0 la guarda en D_80069501) y pista_b la
+ * alternativa que se compara con la pista en curso (func_8003E680 reinicia con ella).
+ */
+typedef struct Pista {
+    u8 zona;
+    u8 pista_a;
+    u8 pista_b;
+} Pista;
+
 /* Estado de la pista XA en curso (zona de datos pequenos, $gp = 0x80069320). */
-u32 D_80069440;
+s32 D_80069440;
 CdlLOC D_80069444;
 s16 D_80069448;
-u32 D_8006944C;
+Pista* D_8006944C;
 u32 D_80069450;
 u32 D_80069454;
 u8 D_80069458;
@@ -60,6 +71,8 @@ extern void func_8003E094(void);
 extern void func_8003E16C(u8 a0);
 extern void func_8003FC88(void);
 extern void func_8003FD60(void);
+/* Volumen maestro de los efectos en el estado principal (0x80010000 + 0xE5). */
+extern u8 D_800100E5;
 
 /* Tabla de nombres de archivo del disco: el primero es \LEVEL5\MERLIN.BZZ;1 (rodata D_80067EF0). */
 typedef struct Lista4 {
@@ -94,12 +107,6 @@ typedef struct Efecto {
     u8 b7;
 } Efecto;
 
-/* Lista de pistas XA pendientes: 40 entradas de 3 bytes (func_8003EC3C las llena). */
-typedef struct Pista {
-    u8 zona;
-    u8 fila;
-    u8 pista;
-} Pista;
 
 /* Ranura de voz de efecto: 24 entradas de 0x14 bytes en D_8006B378. */
 typedef struct Voz {
@@ -120,6 +127,7 @@ extern Voz D_8006B378[];
 extern s16 D_80069568;
 extern s16 D_800695D8;
 extern s32 func_8003F9C4(u8* a0, u32 a1);
+extern u32 func_8003EDA8(void* objeto, Efecto* e);
 extern void func_8003F984(void);
 
 /* Parametros de reverberacion que recibe func_8003ECF8 (profundidad en +8). */
@@ -319,9 +327,132 @@ void func_8003E298(s32 a0)
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003E298);
 #endif
 
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003E3C0);
+void func_8003E3C0(void)
+{
+    u16 f;
+    s16 i;
+    Pista* p;
+    Pista* t;
+    Objeto* o;
+    s16 zona;
+    u8 modo;
+    u8 a;
+    u8 b;
 
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003E680);
+    f = D_80069448;
+    if (f & 4) {
+        func_8003E068();
+    } else if (f & 8) {
+        func_8003E094();
+    } else if (f & 1) {
+        func_8003E0C8();
+    } else if (f & 2) {
+        func_8003E120();
+    }
+    if (D_80069448 & 0x30) {
+        D_80069448 = 0;
+    }
+    modo = D_8006AA70[0x17];
+    if (modo != 0) {
+        if (modo == 1) {
+        } else if (modo == 2) {
+            CdControlB(1, &D_800694D0, &D_80069540);
+            if (D_80069540 & 2) {
+                CdControl(0x1B, (u8*)&D_80069444, 0);
+                D_8006AA70[0x17] = 4;
+            }
+        } else if (modo == 8) {
+            if (D_80069448 == 0) {
+                func_8003E298(D_80069586);
+                func_8003E068();
+            }
+        }
+    } else {
+        for (i = 0; i < D_800694CE; i++) {
+            if (D_8006AC58[i].zona == (s16)D_80069698->w26) {
+                break;
+            }
+        }
+        if (i != D_800694CE) {
+            o = D_80069698;
+            zona = o->w26;
+            if (D_800694C8 != (s16)o->w26) {
+                t = D_8006AC58;
+                p = t + i;
+                a = p->pista_a;
+                b = p->pista_b;
+                if (D_80069501 != (s8)p->pista_a || D_80069501 != (s8)b) {
+                    if (D_80069674 == 0) {
+                        D_80069501 = a;
+                        D_800694C8 = zona;
+                        D_8006944C = p;
+                        func_8003E16C(a);
+                        func_8003E068();
+                    } else if (o->flags14 & 0x1000000) {
+                        D_80069674 = 0;
+                    } else if (D_80069674 == D_800100E6) {
+                        func_8003E094();
+                    }
+                } else {
+                    D_800694C8 = zona;
+                }
+            }
+        } else {
+            D_80069501 = 0;
+            func_8003E16C(0);
+        }
+    }
+}
+
+void func_8003E680(u8 intr, u8* resultado)
+{
+    CdlLOC loc;
+    s32 pos;
+    s32 i;
+
+    if (intr == 1) {
+        CdControlB(0x10, 0, resultado);
+        loc.minute = resultado[0];
+        loc.second = resultado[1];
+        loc.sector = 0;
+        pos = CdPosToInt(&loc);
+        if (D_8006AA70[0x17] == 4 && pos >= D_80069440) {
+            D_80069586 = 0;
+            D_80069674 = 0;
+            func_8003DFE4();
+            D_800695DC = 1;
+            D_8006AA70[0x17] = 0;
+            D_800100E6 = D_80069594;
+        }
+        if (D_8006AA87[0] == 0) {
+            D_80069586 = 0;
+            if (D_800695DC != 0) {
+                D_800695DC = 0;
+                if (pos >= D_80069440) {
+                    for (i = 0; i < D_800694CE; i++) {
+                        if (D_8006AC58[i].zona == (s16)D_80069698->w26) {
+                            break;
+                        }
+                    }
+                    if (i != D_800694CE) {
+                        D_80069501 = D_8006AC58[i].pista_b;
+                        func_8003E16C(D_80069501);
+                        func_8003E068();
+                    } else {
+                        D_80069501 = 0;
+                        func_8003E16C(0);
+                    }
+                }
+            }
+        }
+    } else if (intr == 5) {
+        CdControlB(1, &D_800694D0, &D_80069540);
+        if (D_80069540 & 0x10) {
+            D_80069620 = 1;
+            func_8003FC88();
+        }
+    }
+}
 
 void func_8003E88C(void)
 {
@@ -448,8 +579,8 @@ void func_8003EC3C(u8* e)
         }
     }
     D_8006AC58[D_800694CE].zona = e[0];
-    D_8006AC58[D_800694CE].fila = e[1];
-    D_8006AC58[D_800694CE++].pista = e[2];
+    D_8006AC58[D_800694CE].pista_a = e[1];
+    D_8006AC58[D_800694CE++].pista_b = e[2];
 }
 
 void func_8003ECD4(u8* a0, u32 a1)
@@ -487,7 +618,39 @@ INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003EDA8);
 
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003F06C);
 
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003F3F0);
+void func_8003F3F0(void)
+{
+    s32 i;
+    Voz* v;
+    u16 f;
+    Efecto* e;
+
+    D_80069458 = D_800100E5;
+    v = D_8006B378;
+    for (i = 0; i < 0x18; i++) {
+        f = v->flags;
+        if (f & 0x8000) {
+            e = v->efecto;
+            if (f & 4) {
+                if (e->flags & 2) {
+                    if ((s8)D_80069628 == 1) {
+                        if (e->cuenta > D_80069458) {
+                            v->vol = (D_80069458 << 8) + D_80069458;
+                        } else {
+                            v->vol = (e->cuenta << 8) + e->cuenta;
+                        }
+                    }
+                } else if ((e->flags & 0x20) || (s8)D_80069628 == 1) {
+                    v->vol = func_8003EDA8(v->objeto, e);
+                }
+            }
+        }
+        v++;
+    }
+    if ((s8)D_80069628 == 1) {
+        D_80069628 = 2;
+    }
+}
 
 INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003F528);
 
