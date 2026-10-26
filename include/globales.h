@@ -154,7 +154,7 @@ typedef struct Objeto {
     SVECTOR empuje;         /* +0x40: empuje externo que func_80020B90 suma al desplazamiento (lh x3 en 0x80021B24, 0x80021B38, 0x80021B4C) y borra (sh zero en 0x80021B60, 0x80021B64, 0x80021B68); w40 y w44 los escribe el objeto empujado con sh (0x80023CA0, 0x80023CB0) */
     SVECTOR min;            /* caja del volumen (+0x48) y mitades de sprite que lee func_8001DF28 con lh */
     SVECTOR max;            /* +0x50 */
-    VECTOR objetivo;        /* +0x58: punto de interaccion; func_80020B90 lo lee con lhu (0x80022A8C, 0x80022AAC) y lw (0x80022B4C) y pasa su direccion a func_800171E4 (0x800228C4) */
+    VECTOR objetivo;        /* +0x58: punto de interaccion; func_80020B90 lo lee con lhu (0x80022A8C, 0x80022AAC) y lw 0x5C($s4) (0x80022B44) y pasa su direccion a func_800171E4 (0x800228C4) */
     s32 i68;                /* func_8001D0FC: sw zero */
     struct Objeto* p6C;     /* func_80034E7C: lw 0x6C($s1) en 0x80034EE0 */
     struct Objeto* p70;     /* func_80034E7C: lw 0x70($s1) en 0x80034EBC, sw $zero en 0x80034F60 y 0x80034FDC */
