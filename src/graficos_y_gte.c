@@ -1,6 +1,7 @@
 #include "geometria.h"
 #include "globales.h"
 #include "gte.h"
+#include "psyq/GTEMAC.H"
 
 
 /*
@@ -16,7 +17,10 @@ typedef struct ConsultaSondeo {
     SVECTOR dif;
     VECTOR destino;
     SVECTOR sal;
-    u8 pad70[0x78 - 0x70];
+    s16 e_x;
+    s16 pad72;
+    s16 e_z;
+    s16 pad76;
     u32 caja;
     s32 ang;
     s32 radio;
@@ -31,6 +35,21 @@ typedef struct ConsultaSondeo {
     u32 dist2;
     s16 angs[4];
 } ConsultaSondeo;
+
+
+/* Esquinas del barrido y punto de prueba como pares (z, x) de 16 bits; func_80017478 las usa para elegir la arista mas cercana. */
+typedef struct ParZX {
+    s16 z;
+    s16 x;
+} ParZX;
+extern ParZX D_80069D18[5];
+extern VECTOR D_80069D08;
+extern VECTOR D_80069C08;
+
+/* Dato pequeno: el original lo direcciona como 0x60($gp) (area con signo mas baja de las aristas probadas). */
+s32 D_80069380;
+
+#define U16_2E(o) (*(u16*)((u8*)(o) + 0x2E))
 
 /* Cabeza de la lista de nodos de plano (enlace en +0). */
 extern NodoVolumen* D_80069580;
@@ -196,7 +215,354 @@ ObjetoVolumen* func_800171E4(ObjetoVolumen* a, VECTOR* p, u32 mascara, u32 exclu
 INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_800171E4);
 #endif
 
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 10573 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las
+ * comparaciones de las regiones no se han ajustado al original. Variantes probadas: 1.
+ *
+ * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con
+ * mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la
+ * pared que cruzan y, si ninguno la cruza, usa la arista mas cercana. Devuelve el candidato elegido (el de menor
+ * distancia, con preferencia por los marcados con 8) o 0.
+ */
+ObjetoVolumen* func_80017478(ObjetoVolumen* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
+{
+    ObjetoVolumen* mejor;
+    u32 mejor_d;
+    s32 i;
+    s32 t2;
+    s32 hits;
+    s32 k;
+    s32 len1;
+    s32 len2;
+    s16 salida_x;
+    s16 salida_z;
+    s32 salida_y;
+    u16 lista;
+    SVECTOR* dif;
+
+    mejor = 0;
+    mejor_d = 0xFFFFFFFF;
+    dif = &w->dif;
+    salida_y = 0;
+    lista = 0;
+    w->destino.vx = a->pos.vx + v->vx;
+    w->destino.vy = a->pos.vy + v->vy;
+    w->destino.vz = a->pos.vz + v->vz;
+    w->s86 = 0;
+    w->s84 = 0;
+    w->actual = D_80069630;
+    for (;;) {
+        if (lista == 0 && mejor != 0 && (mejor->indicadores & 0x20000) == 0 && w->actual == 0) {
+            w->actual = D_80069630;
+            lista = 1;
+        } else if (w->actual == 0) {
+            break;
+        }
+        if (lista != 0 && (w->actual->indicadores & 0x20000) == 0) {
+            goto siguiente;
+        }
+        if ((w->actual->indicadores & mascara) == 0 || w->actual->tipo != 2 || a == w->actual
+            || a->rel2 == w->actual || a->rel1 == w->actual || w->actual->rel2 == a
+            || w->actual->rel1 == a || w->actual->rel2 == (ObjetoVolumen*)D_80069698) {
+            goto siguiente;
+        }
+        w->cadena = w->actual->rel2;
+        if (w->cadena != 0) {
+            do {
+                if (w->cadena == a) {
+                    break;
+                }
+                w->cadena = w->cadena->rel2;
+            } while (w->cadena != 0);
+            if (w->cadena != 0) {
+                goto siguiente;
+            }
+        }
+        GEO_CARGAR_WH(&w->actual->min);
+        GEO_OR_WH(&w->actual->max);
+        GEO_GUARDAR_1W_T1(&w->caja);
+        if (w->caja == 0) {
+            goto siguiente;
+        }
+        GEO_CARGAR_W(&w->destino);
+        GEO_RESTAR_W(&w->actual->pos);
+        GEO_GUARDAR_H_T4(dif);
+        GEO_NORMA2_XZ(dif, &w->dist2);
+        t2 = U16_2E(a) + U16_2E(w->actual) + w->actual->radio + a->radio;
+        t2 = t2 * t2;
+        if ((u32)t2 < w->dist2) {
+            goto siguiente;
+        }
+        w->a = a;
+        w->b = w->actual;
+        GEO_CARGAR_W(&a->pos);
+        GEO_RESTAR_W(&w->b->pos);
+        GEO_GUARDAR_H_T4(dif);
+        w->dif.vy = w->dif.vy + v->vy;
+        w->radio = w->b->radio;
+        GEO_COMPLEMENTO(&w->b->rot);
+        GEO_GUARDAR_H_T1(&w->rot);
+        RotMatrixZYX(&w->rot, &w->m);
+        ApplyMatrixSV(&w->m, dif, &w->res);
+        ApplyMatrixSV(&w->m, v, &w->sal);
+        w->caja = w->actual->max.vy - w->res.vy;
+        if (!(w->b->max.vy < w->res.vy + w->a->min.vy + v->vy)) {
+            goto siguiente;
+        }
+        if (w->b->min.vy < w->res.vy + w->a->max.vy + v->vy) {
+            goto siguiente;
+        }
+        w->p[0].vx = (w->b->max.vx >> 1) + (w->b->min.vx >> 1);
+        w->p[0].vz = (w->b->max.vz >> 1) + (w->b->min.vz >> 1);
+        w->ang = ratan2(w->res.vx - w->p[0].vx, w->res.vz - w->p[0].vz);
+        if (w->ang >= 0) {
+            w->angs[0] = ratan2(w->b->max.vx + w->radio - w->p[0].vx, w->b->max.vz + w->radio - w->p[0].vz);
+            w->angs[1] = ratan2(w->b->max.vx + w->radio - w->p[0].vx, w->b->min.vz - w->radio - w->p[0].vz);
+        } else {
+            w->angs[2] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->max.vz + w->radio - w->p[0].vz);
+            w->angs[3] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->min.vz - w->radio - w->p[0].vz);
+        }
+        w->p[0].vx = w->p[2].vx = w->a->min.vx - w->a->radio;
+        w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->radio;
+        w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->radio;
+        w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->radio;
+        w->p[4].vx = w->p[4].vy = w->p[4].vz = 0;
+        w->p[0].vy = w->p[1].vy = w->p[2].vy = w->p[3].vy = 0;
+        RotMatrix(&w->a->rot, &w->m2);
+        gte_SetRotMatrix(&w->m2);
+        w->pt = w->p;
+        for (i = 0; i < 5; i++) {
+            gte_ldv0(w->pt);
+            gte_rtv0();
+            gte_stsv(w->pt);
+            w->pt++;
+        }
+        gte_SetRotMatrix(&w->m);
+        w->pt = w->p;
+        hits = 0;
+        for (i = 0; i < 5; i++, w->pt++) {
+            w->pt->vx += w->dif.vx;
+            w->pt->vz += w->dif.vz;
+            gte_ldv0(w->pt);
+            gte_rtv0();
+            gte_stsv(w->pt);
+            if (w->ang >= 0) {
+                if (w->ang < w->angs[0]) {
+                    if (w->b->max.vz + w->radio < w->pt->vz + w->sal.vz) {
+                        continue;
+                    }
+                    if (w->b->max.vx + w->radio < w->pt->vx + w->sal.vx) {
+                        continue;
+                    }
+                    if ((w->b->indicadores & 0x2000000) == 0) {
+                        w->sal.vz = w->b->max.vz + w->radio - w->pt->vz;
+                    }
+                } else if (w->ang < w->angs[1]) {
+                    if (w->b->max.vx + w->radio < w->pt->vx + w->sal.vx) {
+                        continue;
+                    }
+                    if (w->b->max.vz + w->radio < w->pt->vz + w->sal.vz) {
+                        continue;
+                    }
+                    if (w->pt->vz + w->sal.vz < w->b->min.vz - w->radio) {
+                        continue;
+                    }
+                    if ((w->b->indicadores & 0x2000000) == 0) {
+                        w->sal.vx = w->b->max.vx + w->radio - w->pt->vx;
+                    }
+                } else {
+                    if (w->pt->vz + w->sal.vz < w->b->min.vz - w->radio) {
+                        continue;
+                    }
+                    if (w->b->max.vx + w->radio < w->pt->vx + w->sal.vx) {
+                        continue;
+                    }
+                    if ((w->b->indicadores & 0x2000000) == 0) {
+                        w->sal.vz = w->b->min.vz - w->radio - w->pt->vz;
+                    }
+                }
+            } else if (w->angs[2] < w->ang) {
+                if (w->b->max.vz + w->radio < w->pt->vz + w->sal.vz) {
+                    continue;
+                }
+                if (w->pt->vx + w->sal.vx < w->b->min.vx - w->radio) {
+                    continue;
+                }
+                if ((w->b->indicadores & 0x2000000) == 0) {
+                    w->sal.vz = w->b->max.vz + w->radio - w->pt->vz;
+                }
+            } else if (w->angs[3] < w->ang) {
+                if (w->pt->vx + w->sal.vx < w->b->min.vx - w->radio) {
+                    continue;
+                }
+                if (w->b->max.vz + w->radio < w->pt->vz + w->sal.vz) {
+                    continue;
+                }
+                if (w->pt->vz + w->sal.vz < w->b->min.vz - w->radio) {
+                    continue;
+                }
+                if ((w->b->indicadores & 0x2000000) == 0) {
+                    w->sal.vx = w->b->min.vx - w->radio - w->pt->vx;
+                }
+            } else {
+                if (w->pt->vz + w->sal.vz < w->b->min.vz - w->radio) {
+                    continue;
+                }
+                if (w->pt->vx + w->sal.vx < w->b->min.vx - w->radio) {
+                    continue;
+                }
+                if ((w->b->indicadores & 0x2000000) == 0) {
+                    w->sal.vz = w->b->min.vz - w->radio - w->pt->vz;
+                }
+            }
+            hits++;
+        }
+        if (hits == 0) {
+            D_80069D18[0].z = w->p[0].vz;
+            D_80069D18[0].x = w->p[0].vx;
+            D_80069D18[1].z = w->p[1].vz;
+            D_80069D18[1].x = w->p[1].vx;
+            D_80069D18[2].z = w->p[2].vz;
+            D_80069D18[2].x = w->p[2].vx;
+            D_80069D18[3].z = w->p[3].vz;
+            D_80069D18[3].x = w->p[3].vx;
+            D_80069380 = -1;
+            w->angs[0] = 0;
+            while (w->angs[0] < 4) {
+                if (w->angs[0] == 0) {
+                    D_80069D18[4].x = w->b->max.vx + w->radio;
+                    D_80069D18[4].z = w->b->max.vz + w->radio;
+                } else if (w->angs[0] == 1) {
+                    D_80069D18[4].x = w->b->max.vx + w->radio;
+                    D_80069D18[4].z = w->b->min.vz - w->radio;
+                } else if (w->angs[0] == 2) {
+                    D_80069D18[4].x = w->b->min.vx - w->radio;
+                    D_80069D18[4].z = w->b->min.vz - w->radio;
+                } else if (w->angs[0] == 3) {
+                    D_80069D18[4].x = w->b->min.vx - w->radio;
+                    D_80069D18[4].z = w->b->max.vz + w->radio;
+                }
+                D_80069380 = 0x7FFFFFFF;
+                gte_NormalClip(*(u32*)&D_80069D18[0], *(u32*)&D_80069D18[1], *(u32*)&D_80069D18[4], &k);
+                if (k < D_80069380) {
+                    D_80069380 = k;
+                    t2 = 0;
+                }
+                gte_NormalClip(*(u32*)&D_80069D18[1], *(u32*)&D_80069D18[3], *(u32*)&D_80069D18[4], &k);
+                if (k < D_80069380) {
+                    D_80069380 = k;
+                    t2 = 1;
+                }
+                gte_NormalClip(*(u32*)&D_80069D18[3], *(u32*)&D_80069D18[2], *(u32*)&D_80069D18[4], &k);
+                if (k < D_80069380) {
+                    D_80069380 = k;
+                    t2 = 2;
+                }
+                gte_NormalClip(*(u32*)&D_80069D18[2], *(u32*)&D_80069D18[0], *(u32*)&D_80069D18[4], &k);
+                if (k < D_80069380) {
+                    D_80069380 = k;
+                    t2 = 3;
+                }
+                w->angs[0]++;
+                if (D_80069380 >= 0) {
+                    break;
+                }
+            }
+            if (D_80069380 > 0) {
+                if (t2 == 0) {
+                    w->e_x = D_80069D18[1].x - D_80069D18[0].x;
+                    w->e_z = D_80069D18[1].z - D_80069D18[0].z;
+                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[0].x;
+                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[0].z;
+                } else if (t2 == 1) {
+                    w->e_x = D_80069D18[3].x - D_80069D18[1].x;
+                    w->e_z = D_80069D18[3].z - D_80069D18[1].z;
+                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[1].x;
+                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[1].z;
+                } else if (t2 == 2) {
+                    w->e_x = D_80069D18[2].x - D_80069D18[3].x;
+                    w->e_z = D_80069D18[2].z - D_80069D18[3].z;
+                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[3].x;
+                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[3].z;
+                } else if (t2 == 3) {
+                    w->e_x = D_80069D18[0].x - D_80069D18[2].x;
+                    w->e_z = D_80069D18[0].z - D_80069D18[2].z;
+                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[2].x;
+                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[2].z;
+                }
+                len1 = SquareRoot0(w->e_x * w->e_x + w->e_z * w->e_z);
+                len2 = SquareRoot0(D_80069D08.vx * D_80069D08.vx + D_80069D08.vz * D_80069D08.vz);
+                D_80069C08.vx = (w->e_x << 12) / len1;
+                D_80069C08.vz = (w->e_z << 12) / len1;
+                D_80069C08.vx = (D_80069C08.vx * len2) >> 12;
+                D_80069C08.vz = (D_80069C08.vz * len2) >> 12;
+                hits = 1;
+                w->sal.vx = w->sal.vx - (D_80069C08.vx - D_80069D08.vx);
+                w->sal.vz = w->sal.vz - (D_80069C08.vz - D_80069D08.vz);
+            } else {
+                hits = 0;
+            }
+        }
+        if (hits == 0) {
+            goto siguiente;
+        }
+        RotMatrix(&w->b->rot, &w->m);
+        ApplyMatrixSV(&w->m, &w->sal, &w->res);
+        if (mejor != 0 && (w->b->indicadores & 0x20000) == 0) {
+            salida_x = (w->res.vx + v->vx) >> 1;
+            salida_z = (w->res.vz + v->vz) >> 1;
+            v->vx = salida_x;
+            v->vz = salida_z;
+        } else {
+            salida_x = w->res.vx;
+            v->vx = salida_x;
+            salida_z = w->res.vz;
+            v->vz = salida_z;
+        }
+        if (w->dist2 < mejor_d || (w->actual->indicadores & 8) != 0) {
+            /* sigue a la seleccion */
+        } else if (mejor == 0 || (mejor->indicadores & 8) == 0) {
+            goto siguiente;
+        }
+        if (mejor != 0 && (mejor->indicadores & 0x20000) != 0 && (w->actual->indicadores & 0x20000) == 0) {
+            goto siguiente;
+        }
+        if ((w->actual->indicadores & 8) != 0) {
+            if (mejor != 0 && (mejor->indicadores & 8) != 0) {
+                if (!(w->dist2 < mejor_d)) {
+                    goto siguiente;
+                }
+            }
+            mejor = w->actual;
+            mejor_d = w->dist2;
+            salida_y = w->caja;
+        } else {
+            if (mejor != 0) {
+                if ((mejor->indicadores & 8) != 0) {
+                    goto siguiente;
+                }
+                if ((mejor->indicadores & 0x20000) != 0 && (w->actual->indicadores & 0x2000000) != 0) {
+                    goto siguiente;
+                }
+            }
+            mejor = w->actual;
+            mejor_d = w->dist2;
+            salida_y = w->caja;
+        }
+siguiente:
+        w->actual = w->actual->sig;
+    }
+    if (mejor != 0) {
+        v->vx = salida_x;
+        v->vy = salida_y;
+        v->vz = salida_z;
+    }
+    return mejor;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
+#endif
 
 #ifdef NON_MATCHING
 /*
