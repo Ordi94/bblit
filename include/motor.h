@@ -17,7 +17,7 @@ extern MATRIX* TransMatrix(MATRIX* m, VECTOR* v);
  * parametros de la zona y el area de trabajo de la consulta. Devuelve 0 cuando el punto no tiene zona
  * (v0 = 0 en 0x80019504) y 1 al terminar el barrido (v0 = 1 en 0x8001BEC0); los llamadores lo ignoran.
  */
-extern s32 func_80019474(void* pos, void* desplazamiento, void* zona, void* trabajo);
+extern s32 BarrerTerreno(void* pos, void* desplazamiento, void* zona, void* trabajo);
 
 /*
  * Desplazamiento que un objeto pretende hacer en un cuadro (x en +0, altura en +4, z en +8).
@@ -78,13 +78,13 @@ typedef struct RegistroAnim {
     u8 pad00[6];
     u16 w06;
     u16 w08;
-    u16 w0A;                /* grupo de disparadores del fotograma: lhu en func_8002D03C (0x8002D24C) */
+    u16 w0A;                /* grupo de disparadores del fotograma: lhu en LogicaActorSecuencias (0x8002D24C) */
     u32 w0C;
-    u32 w10;                /* banderas de movimiento: lw en func_8002F018 (0x8002F40C), bit 3 = el golpe se reparte */
+    u32 w10;                /* banderas de movimiento: lw en LogicaProyectil (0x8002F40C), bit 3 = el golpe se reparte */
     u8 pad14[0x16 - 0x14];
-    u16 w16;                /* dano del golpe: lhu en func_8002EAA4 (0x8002ED84) */
+    u16 w16;                /* dano del golpe: lhu en LogicaEfectoAnclado (0x8002ED84) */
     u8 pad18[0x1E - 0x18];
-    u16 w1E;                /* desplazamiento del primer disparador del fotograma: lhu en func_8002D03C (0x8002D25C) */
+    u16 w1E;                /* desplazamiento del primer disparador del fotograma: lhu en LogicaActorSecuencias (0x8002D25C) */
 } RegistroAnim;
 
 /*
@@ -131,7 +131,7 @@ extern void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, Trabajo
  * contiene exactamente los que el cuerpo escribe.
  *
  * MOTOR_UNOS_W(p): vector de tres palabras de p = 0x1000. El original (0x8001ECE8 a 0x8001ED00,
- * func_8001E720) copia la direccion a $t0, carga 0x1000 en $t4 una sola vez, lo copia a $t1..$t3
+ * AvanzarAnimacionSprite) copia la direccion a $t0, carga 0x1000 en $t4 una sola vez, lo copia a $t1..$t3
  * con addu y almacena las tres palabras; el cuerpo escribe $8 a $12, y todos los almacenes
  * pasan por $9..$11.
  */
@@ -148,7 +148,7 @@ extern void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, Trabajo
 
 /*
  * MOTOR_DIAGONAL_CERO(p): pone a cero los elementos de la diagonal de la matriz de p (sw en +0,
- * sw en +8 y sh en +0x10). El original (0x80036F90 a 0x80036FA0, func_8003690C) copia la direccion
+ * sw en +8 y sh en +0x10). El original (0x80036F90 a 0x80036FA0, AplicarCuadro) copia la direccion
  * a $t0, pone $t1 a cero con addu y almacena tres veces; el cuerpo escribe $8 y $9.
  */
 #define MOTOR_DIAGONAL_CERO(p) \

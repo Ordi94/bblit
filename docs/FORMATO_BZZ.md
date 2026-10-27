@@ -30,7 +30,7 @@ Reglas, verificadas en los 108 archivos (742 secciones):
 - `0x800 + suma(tamano_alineado)` es exactamente el tamano del archivo.
 - `tipo` vale de 1 a 10. Los archivos de pantallas de carga (`LOADING/`) traen tipos 1, 3 y 4;
   los menus y escenas, 1 a 4; los niveles jugables, los diez tipos.
-- La suma de control la calcula `func_80041238` (`0x80041238`) y el cargador la compara en
+- La suma de control la calcula `SumaControl` (`0x80041238`) y el cargador la compara en
   `0x80041850` con la palabra de `0x7FC`.
 - El orden de las secciones en el archivo no es el de los tipos: en los niveles jugables es
   `1, 2, 3, 6, 5, 7, 8, 9, 10, 4`.

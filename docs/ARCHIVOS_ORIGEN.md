@@ -86,6 +86,6 @@ Para `splat.yaml`, cada fila equivale a un subsegmento `- [offset, c, nombre]`; 
 - Dentro de `gestion_y_dibujo_de_objetos` los cortes de `0x80037048`, `0x800399C8` y `0x80039BFC` son de
   confianza alta, pero el rango entre `0x80036164` y `0x80037048` agrupa utilidades de lista que usan
   muchos subsistemas y que pudieron estar en un archivo de utilidades.
-- Las funciones fundidas en `func_8002F9F8`, `func_80030ECC` y `func_800415A0`/`func_80042BB8` ya se
+- Las funciones fundidas en `func_8002F9F8`, `func_80030ECC` y `CargarContenedor`/`func_80042BB8` ya se
   separaron o fusionaron en `config/symbols.txt` (1102 simbolos de funcion; ver `docs/GHIDRA.md`); las cifras de este
   documento se calcularon con la tabla anterior de 908.

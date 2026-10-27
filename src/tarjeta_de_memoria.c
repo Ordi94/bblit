@@ -47,8 +47,8 @@ extern u8 D_8006AA7A[];
  * (-G8), asi que se define aqui, sin extern, y el enlace le da la direccion de config/symbols.txt. Se declaran
  * ademas en la tabla de datos pequenos de la configuracion para que el ensamblador los reescriba a $gp: con
  * `base_gp` el almacen de la bandera +0x3C ocupaba el hueco de retardo del jal de func_80015E94 en lugar de
- * `li a0,1`. Los usan func_800156F4 y func_80015E94 (func_80014AC4 accede a +0x38 y +0x3C con base_gp, forma transitoria).
- * La bandera +0x3C se declara u8 (la escribe con sb func_80015E94); func_800156F4 la lee con `lb`
+ * `li a0,1`. Los usan SondearTarjeta y func_80015E94 (func_80014AC4 accede a +0x38 y +0x3C con base_gp, forma transitoria).
+ * La bandera +0x3C se declara u8 (la escribe con sb func_80015E94); SondearTarjeta la lee con `lb`
  * (0x800157C0, 0x800158FC, 0x800159E8), de modo que sus lecturas pasan por un acceso s8.
  */
 s32 D_80069350;     /* +0x30: suma de control recalculada del directorio */
@@ -73,7 +73,7 @@ typedef struct RegistroNivel {
 
 typedef struct CabeceraGuardado {
     u32 suma;
-    u32 mascara;    /* +4: ranuras con partida guardada, un bit por ranura (func_800156F4); func_80014C54 copia su byte bajo al banco de registros */
+    u32 mascara;    /* +4: ranuras con partida guardada, un bit por ranura (SondearTarjeta); func_80014C54 copia su byte bajo al banco de registros */
     RegistroNivel nivel[8];
 } CabeceraGuardado;
 
@@ -164,7 +164,7 @@ s32 func_80014C54(void)
             p = &buf;
             suma = p->c.suma;
             p->c.suma = 0;
-            p->c.suma = func_80041238(p, 0x200);
+            p->c.suma = SumaControl(p, 0x200);
             if (p->c.suma == suma) {
                 D_8006D060 = p->c;
                 D_8006AA70[4] = D_8006D060.mascara;
@@ -222,7 +222,7 @@ s32 func_80014E24(void)
         if (func_80014BA0(buf, 0x180, (ESTADO_PRINCIPAL->r[BANCO_PARTIDA] - 1) * 0x180 + 0x400) == 1) {
             suma = *(u32*)(buf + 4);
             *(u32*)(buf + 4) = 0;
-            calculada = func_80041238(buf, 0x140);
+            calculada = SumaControl(buf, 0x140);
             *(u32*)(buf + 4) = calculada;
             if (calculada == suma) {
                 origen = buf;
@@ -299,7 +299,7 @@ s32 func_80014FAC(void)
         D_8006D060.nivel[5].extra = estado->r[0x05];
     }
     buf.c = D_8006D060;
-    D_8006D060.suma = func_80041238(&buf, 0x200);
+    D_8006D060.suma = SumaControl(&buf, 0x200);
     buf.c = D_8006D060;
     for (i = 0; i < 5; i++) {
         if (func_80014EF8(&buf, 0x200, 0x200) != 0) {
@@ -322,7 +322,7 @@ s32 func_8001515C(void)
 
     estado = ESTADO_PRINCIPAL;
     estado->suma = 0;
-    estado->suma = func_80041238(estado, 0x140);
+    estado->suma = SumaControl(estado, 0x140);
     if (func_80014FAC() != 0) {
         for (i = 0; i < 5; i++) {
             if (func_80014EF8((void*)0x80010000, 0x180, (ESTADO_PRINCIPAL->r[BANCO_PARTIDA] - 1) * 0x180 + 0x400) == 1) {
@@ -392,7 +392,7 @@ s32 func_800151FC(void)
     *(Fragmento*)dest = *(Fragmento*)&blq;
     sumada = dest + 0x200;
     *(CabeceraGuardado*)sumada = D_8006D060;
-    D_8006D060.suma = func_80041238(sumada, 0x200);
+    D_8006D060.suma = SumaControl(sumada, 0x200);
     *(CabeceraGuardado*)sumada = D_8006D060;
     for (i = 0; i < 5; i++) {
         fd = open(D_8005E04C, (blq.cab[3] << 16) | 0x200);
@@ -407,7 +407,7 @@ s32 func_800151FC(void)
                 close(fd);
                 if (func_80014BA0(base, 0x400, 0) != 0) {
                     *(u32*)(base + 0x200) = 0;
-                    suma = func_80041238(base + 0x200, 0x200);
+                    suma = SumaControl(base + 0x200, 0x200);
                     *(u32*)(base + 0x200) = suma;
                     if (suma == D_8006D060.suma) {
                         break;
@@ -436,7 +436,7 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  * las ramas de la orden 6 y se alcanzan con goto desde el sondeo: el original los coloca ahi y el compilador no reordena bloques.
  * La reserva de 16 bytes mantiene el marco de pila del original. El argumento que pasa main se ignora.
  */
-void func_800156F4(void)
+void SondearTarjeta(void)
 {
     CabeceraGuardado* cabecera;
     s32 cuenta_previa;
@@ -643,10 +643,10 @@ void func_800156F4(void)
                 D_8006936C = func_80014AC4(ranura);
                 if (D_8006936C >= 0) {
                     if (ESTADO_PRINCIPAL->nivel == 0) {
-                        D_80069354 = func_80041238(D_800697B0, D_80069358[ranura] * 0x28);
+                        D_80069354 = SumaControl(D_800697B0, D_80069358[ranura] * 0x28);
                         func_80014C54();
                     } else {
-                        D_80069350 = func_80041238(D_800697B0, D_80069358[ranura] * 0x28);
+                        D_80069350 = SumaControl(D_800697B0, D_80069358[ranura] * 0x28);
                         if (D_80069350 != D_80069354) {
                             D_8006935C = 0;
                         }
@@ -672,7 +672,7 @@ void func_800156F4(void)
     }
 }
 #else
-INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800156F4);
+INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", SondearTarjeta);
 #endif
 
 /*

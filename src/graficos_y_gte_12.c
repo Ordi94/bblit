@@ -8,7 +8,7 @@
 #include "psyq/LIBCD.H"
 #include "geometria.h"
 
-extern s32 func_800415A0(s16 archivo, void* destino);
+extern s32 CargarContenedor(s16 archivo, void* destino);
 extern void func_80044A04(void);
 extern void func_8003DF84(void);
 extern void func_8003E068(void);
@@ -95,7 +95,7 @@ void func_8004443C(s32 archivo)
         } else {
             archivo = reg->pantalla;
         }
-        while (func_800415A0(archivo, (void*)0x80077000) != 0) {
+        while (CargarContenedor(archivo, (void*)0x80077000) != 0) {
         }
         D_800694A8 = 2;
     }
@@ -122,7 +122,7 @@ void func_80044588(s32 archivo)
     if (reg->pantalla != 0) {
         D_800694A8 = 4;
         archivo = reg->pantalla;
-        while (func_800415A0(archivo, (void*)0x80077000) != 0) {
+        while (CargarContenedor(archivo, (void*)0x80077000) != 0) {
         }
     }
 }
@@ -135,7 +135,7 @@ void func_80044588(s32 archivo)
 void func_800445E8(s16 archivo)
 {
     func_80044A04();
-    while (func_800415A0(archivo, (void*)0x80077000) != 0) {
+    while (CargarContenedor(archivo, (void*)0x80077000) != 0) {
     }
     func_80019364(D_800694FC);
     DrawSyncCallback(NULL);

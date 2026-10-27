@@ -20,11 +20,11 @@ extern s32 VSyncCallback(void (*funcion)());
 extern void srand(u32 semilla);
 extern void func_80044D44(void);
 extern void func_80044E58(void);
-extern void func_80040EB4(void);
-extern s32 func_800415A0(s16 nivel, void* destino);
+extern void ConstruirRegistrosArchivo(void);
+extern s32 CargarContenedor(s16 nivel, void* destino);
 extern void func_8003DF84(void);
 extern void func_8003E9E8(void);
-extern void func_800156F4();
+extern void SondearTarjeta();
 extern void func_80015E94(void);
 extern void func_80015F38(void);
 extern void func_80040240(void);
@@ -214,9 +214,9 @@ void func_80016218(void)
     D_8006AD40[D_8006967C] = D_80076188;
     func_800399C8(D_80069508);
     func_8003B5AC(D_80069630);
-    func_8003A5C8(D_8006AD80);
+    DibujarSombras(D_8006AD80);
     func_80045150(D_800694B8);
-    func_80037184(D_80069630);
+    DibujarListaReflejada(D_80069630);
     if (D_800694D8 != 0) {
         func_8001020C(0x1C40);
         func_8003B5AC(D_800694D8);
@@ -260,11 +260,11 @@ s32 main(void)
     func_80015EC0();
     e0 = ESTADO_PRINCIPAL;
     e0->nivel = 2;
-    func_80040EB4();
+    ConstruirRegistrosArchivo();
     func_80016118();
     D_800694F0 = e0->nivel;
     func_8004443C(e0->nivel);
-    while (func_800415A0((s16)ESTADO_PRINCIPAL->nivel, (void*)0x80077000) != 0) {
+    while (CargarContenedor((s16)ESTADO_PRINCIPAL->nivel, (void*)0x80077000) != 0) {
     }
     e = ESTADO_PRINCIPAL;
     pausa = 0;
@@ -297,7 +297,7 @@ s32 main(void)
         func_80016218();
         D_8006CF68[D_8006967C] = VSync(1) - D_8006CF68[D_8006967C];
         if (D_80069662 == 0 && regs[3] != 0) {
-            func_800156F4(1);
+            SondearTarjeta(1);
         } else {
             func_80015E94();
         }

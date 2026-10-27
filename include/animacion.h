@@ -14,7 +14,7 @@
 
 /*
  * Sonido de un cuadro (4 bytes): identificador en +0 y cuadro en el que suena en +1
- * (func_8001E720: lbu 0 y lbu 1 de cada entrada; el avance de la lista es de 4 bytes).
+ * (AvanzarAnimacionSprite: lbu 0 y lbu 1 de cada entrada; el avance de la lista es de 4 bytes).
  */
 typedef struct RegistroSonido {
     u8 id;
@@ -25,7 +25,7 @@ typedef struct RegistroSonido {
 /*
  * Evento de un cuadro (0xE bytes): plantilla del objeto hijo en +0 (lh para crear el hijo, lhu
  * para recordarla en el agarre), banderas en +2 y cuadro en el que se dispara en +4. Desde +6
- * hay un registro de condicion y accion del interprete de eventos: func_8001E720 pasa su
+ * hay un registro de condicion y accion del interprete de eventos: AvanzarAnimacionSprite pasa su
  * direccion a TestLogicCond y a RunLogicAction.
  */
 typedef struct RegistroEvento {
@@ -38,14 +38,14 @@ typedef struct RegistroEvento {
 /*
  * Par de bytes por cuadro de una animacion: el primero es el indice del registro de sprite y el
  * segundo la duracion en ticks
- * (func_8001E720: lbu 1 del par indexado por el cuadro; el indice se multiplica por 2).
+ * (AvanzarAnimacionSprite: lbu 1 del par indexado por el cuadro; el indice se multiplica por 2).
  */
 typedef struct ParCuadro {
     u8 indice;              /* indice del registro de sprite: lbu 0 del par en func_8001E528 (0x8001E578) y func_8001E600 (0x8001E62C) */
     u8 ticks;
 } ParCuadro;
 
-/* Banderas de RegistroEvento.banderas que func_8001E720 interpreta. */
+/* Banderas de RegistroEvento.banderas que AvanzarAnimacionSprite interpreta. */
 #define EVENTO_HIJO_ACOPLADO 0x0001
 #define EVENTO_HIJO_SUELTO 0x0002
 #define EVENTO_AGARRA 0x0004
@@ -56,7 +56,7 @@ typedef struct ParCuadro {
 #define EVENTO_AGARRE_SIN_DESFASE 0x0080
 #define EVENTO_SIN_SUSTITUIR 0x8000
 
-/* Bits del estado del cursor (BloqueTrabajo.flags18) que func_8001E720 maneja. */
+/* Bits del estado del cursor (BloqueTrabajo.flags18) que AvanzarAnimacionSprite maneja. */
 #define ANIM_UNA_PASADA 0x0002
 #define ANIM_EN_BUCLE 0x0001
 #define ANIM_PAUSA 0x0010
@@ -68,7 +68,7 @@ typedef struct ParCuadro {
 #define ANIM_ULTIMO_CUADRO 0x2000
 
 /*
- * Tipos de pista del flujo de un cuadro (la palabra de la pista & 0xF0000, func_8003690C).
+ * Tipos de pista del flujo de un cuadro (la palabra de la pista & 0xF0000, AplicarCuadro).
  */
 #define PISTA_MASCARA 0x00000
 #define PISTA_POSE 0x10000
@@ -81,7 +81,7 @@ typedef struct ParCuadro {
 
 /*
  * Vista de un ayudante (Ayuda, objetos.h) a partir de +0x0C: palabra de estado, puntero a su
- * GsCOORDINATE2 (Ayuda.pcoord, +0x10) y valor asociado (Ayuda.w14, +0x14). func_8003690C
+ * GsCOORDINATE2 (Ayuda.pcoord, +0x10) y valor asociado (Ayuda.w14, +0x14). AplicarCuadro
  * mantiene viva la direccion Ayuda + 0xC entre una pista y la siguiente (las pistas sin ayudante
  * reutilizan la anterior), de modo que esos tres campos se alcanzan con un puntero propio.
  */
@@ -92,7 +92,7 @@ typedef struct NucleoAyuda {
 } NucleoAyuda;
 
 /*
- * Area de trabajo con que func_8003690C aplica un cuadro (en el scratchpad del llamador; 0x78
+ * Area de trabajo con que AplicarCuadro aplica un cuadro (en el scratchpad del llamador; 0x78
  * bytes mas un puntero por ayudante). Cada campo cita el acceso que fija su desplazamiento.
  */
 typedef struct AreaCuadro {
@@ -129,8 +129,8 @@ typedef struct AreaCuadro {
  * Aplica un cuadro de la animacion (gestion_y_dibujo_de_objetos.c) y avanza el cursor
  * (movimiento_y_objetos_de_escena_3.c).
  */
-extern void func_8003690C(Objeto* o, BloqueTrabajo* cursor, AreaCuadro* w);
-extern u32 func_8001E720(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area);
+extern void AplicarCuadro(Objeto* o, BloqueTrabajo* cursor, AreaCuadro* w);
+extern u32 AvanzarAnimacionSprite(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area);
 extern void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo);
 extern void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo);
 
@@ -145,7 +145,7 @@ extern s32 func_80018D98(Objeto* a, VECTOR* p, void* area);
 
 /*
  * Flujo de pistas del cuadro en curso: BloqueTrabajo.actual (+0x24) es el puntero al cuadro y,
- * mientras func_8003690C lo aplica, la misma palabra avanza como puntero a palabras de 32 bits
+ * mientras AplicarCuadro lo aplica, la misma palabra avanza como puntero a palabras de 32 bits
  * (lw / sw de 0x24(cursor)). Se accede con un cast de la propia direccion del campo para que
  * exista una sola definicion de esa memoria.
  */

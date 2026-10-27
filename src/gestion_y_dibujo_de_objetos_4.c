@@ -23,7 +23,7 @@ typedef struct SalidaSonda {
 } SalidaSonda;
 
 /*
- * Area de trabajo de func_80039D44 (0xB4 bytes). Entre +8 y +0x77 la misma memoria tiene dos
+ * Area de trabajo de OrientarSombraSobreSuperficie (0xB4 bytes). Entre +8 y +0x77 la misma memoria tiene dos
  * disposiciones segun la fase: 's' cuando el objeto cae dentro de un solido (matriz inversa del
  * solido, vectores de 16 bits y producto escalar) y 't' cuando se muestrea el terreno (centro,
  * tres esquinas de 12 bytes y los dos vectores de plano con su producto vectorial). La consulta
@@ -58,7 +58,7 @@ typedef struct SondaSombra {
 } SondaSombra;
 
 /* Resta de vectores de tres componentes: resultado = b - a. */
-void func_80039BFC(s32* a, s32* b, s32* resultado)
+void RestarPuntos(s32* a, s32* b, s32* resultado)
 {
     resultado[0] = b[0] - a[0];
     resultado[1] = b[1] - a[1];
@@ -66,7 +66,7 @@ void func_80039BFC(s32* a, s32* b, s32* resultado)
 }
 
 /* Producto vectorial de dos vectores de tres componentes: resultado = a x b (sin GTE). */
-void func_80039C3C(s32* a, s32* b, s32* resultado)
+void ProductoVectorial(s32* a, s32* b, s32* resultado)
 {
     resultado[0] = a[1] * b[2] - a[2] * b[1];
     resultado[1] = a[2] * b[0] - a[0] * b[2];
@@ -111,7 +111,7 @@ void func_80039CD0(s32 limite)
  * objeto, descarta las alturas a mas de 0x23 de la de referencia, y deduce los giros X y Z de la
  * sombra con el producto vectorial de los dos lados del triangulo. Devuelve el solido o 0.
  */
-Objeto* func_80039D44(Objeto* o, ParametrosObjeto* d, u32 mascara, SondaSombra* w)
+Objeto* OrientarSombraSobreSuperficie(Objeto* o, ParametrosObjeto* d, u32 mascara, SondaSombra* w)
 {
     Objeto* cur;
     TrabajoBaldosa* tb;
@@ -132,7 +132,7 @@ Objeto* func_80039D44(Objeto* o, ParametrosObjeto* d, u32 mascara, SondaSombra* 
         }
         if (top >= o->param.trans.vy && d->trans.vy >= top &&
             ((cur->flags08 & mascara) || (cur->flags0C & 0x2000)) && !(cur->flags08 & 1) &&
-            cur->s2A == 2 && o != cur) {
+            cur->tipo_volumen == 2 && o != cur) {
             w->u.s.giro.vx = 0x1000 - cur->param.giro.u.x;
             w->u.s.giro.vy = 0x1000 - cur->param.giro.u.y;
             w->u.s.giro.vz = 0x1000 - cur->param.giro.u.z;
@@ -145,7 +145,7 @@ Objeto* func_80039D44(Objeto* o, ParametrosObjeto* d, u32 mascara, SondaSombra* 
             RotMatrixZ(w->u.s.giro.vz, &w->u.s.m);
             ApplyMatrixSV(&w->u.s.m, &w->u.s.dif, &w->u.s.local);
             /* El radio se extiende a 32 bits en esta sentencia (variable s32): el original carga s20 antes que la caja del solido. */
-            r = cur->s20;
+            r = cur->radio;
             if (w->u.s.local.vx >= cur->min.vx - r && cur->max.vx + r >= w->u.s.local.vx &&
                 w->u.s.local.vz >= cur->min.vz - r && cur->max.vz + r >= w->u.s.local.vz) {
                 w->u.s.giro.vx = 0;
@@ -230,9 +230,9 @@ Objeto* func_80039D44(Objeto* o, ParametrosObjeto* d, u32 mascara, SondaSombra* 
         d->giro.rotate.vx = 0;
         d->giro.rotate.vy = o->param.giro.u.y;
     } else {
-        func_80039BFC((s32*)&w->u.t.p1, (s32*)&w->u.t.p2, (s32*)&w->u.t.v1);
-        func_80039BFC((s32*)&w->u.t.p1, (s32*)&w->u.t.p3, (s32*)&w->u.t.v2);
-        func_80039C3C((s32*)&w->u.t.v1, (s32*)&w->u.t.v2, (s32*)&w->u.t.nrm);
+        RestarPuntos((s32*)&w->u.t.p1, (s32*)&w->u.t.p2, (s32*)&w->u.t.v1);
+        RestarPuntos((s32*)&w->u.t.p1, (s32*)&w->u.t.p3, (s32*)&w->u.t.v2);
+        ProductoVectorial((s32*)&w->u.t.v1, (s32*)&w->u.t.v2, (s32*)&w->u.t.nrm);
         d->giro.rotate.vx = ratan2(w->u.t.nrm.vz, w->u.t.nrm.vy);
         d->giro.rotate.vy = 0;
         d->giro.rotate.vz = ratan2(w->u.t.nrm.vx, w->u.t.nrm.vy);
@@ -315,7 +315,7 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_8003A3D0);
  * Contexto de dibujo de las sombras en el scratchpad (0x1F800000). El estado del dibujador
  * (EstadoDibujo) empieza en +8, igual que el que func_8003C014 recibe; la transformacion de la
  * sombra (param) ocupa +0x68 y es tambien la estructura de salida de func_8003A3D0 (su posicion en
- * +0x80) y el descriptor de func_80039D44. En +0x90 esta el ayudante con el que se dibuja la
+ * +0x80) y el descriptor de OrientarSombraSobreSuperficie. En +0x90 esta el ayudante con el que se dibuja la
  * sombra (0xB8 bytes) y a continuacion, en +0x148, el area de trabajo de las consultas.
  */
 typedef struct ContextoSombras {
@@ -354,7 +354,7 @@ extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* es
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 930 con la configuracion versionada (g = 8 del archivo). Difiere el reparto de registros del prologo, el cierre del bucle de nodos (el original conserva el salto condicional hacia atras) y la direccion de la caja de relleno, que el original deriva de la base del scratchpad. */
-void func_8003A5C8(Objeto** objetos)
+void DibujarSombras(Objeto** objetos)
 {
     ContextoSombras* c;
     Sonda* area;
@@ -428,14 +428,14 @@ void func_8003A5C8(Objeto** objetos)
                                             GEO_GUARDAR_WH(&c->param.giro);
                                             c->estado.s6 += c->obj->p70->w28;
                                         } else {
-                                            s = func_80039D44(c->obj, &c->param, 8, (SondaSombra*)area);
+                                            s = OrientarSombraSobreSuperficie(c->obj, &c->param, 8, (SondaSombra*)area);
                                             c->hallado = s;
                                             if (s != 0) {
                                                 c->estado.s6 += s->w28;
                                             }
                                         }
                                         func_8001CFCC(&q->coord);
-                                        func_8003760C(q->pcoord, mat, area);
+                                        ComponerMatrizMundo(q->pcoord, mat, area);
                                         c->estado.b0 = 0;
                                         func_8003753C(mat);
                                         func_8003BDD0(mod);
@@ -467,5 +467,5 @@ void func_8003A5C8(Objeto** objetos)
     }
 }
 #else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_8003A5C8);
+INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", DibujarSombras);
 #endif

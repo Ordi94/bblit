@@ -928,7 +928,7 @@ void func_80031A34(Objeto* a0, Accion* a1)
     Objeto* o;
     if (ACC_W4(a1) == 0xFF) {
         for (o = D_80069518; o != 0; o = o->siguiente) {
-            if (o->w2C == 0x20) {
+            if (o->clase == 0x20) {
                 o->flags14 |= 0x100;
             }
         }

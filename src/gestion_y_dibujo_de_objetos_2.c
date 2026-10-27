@@ -19,7 +19,7 @@ typedef struct AyudaCuerpo {
 
 /* Lista de objetos ya dibujados (se encadena por +0x10) y contador de cuadros. */
 
-/* Objeto de referencia respecto del que func_80037184 refleja los demas. */
+/* Objeto de referencia respecto del que DibujarListaReflejada refleja los demas. */
 
 /* Contadores de la interfaz del estado principal (bytes sueltos de 0x80010000). */
 extern u8 D_80010042;
@@ -107,7 +107,7 @@ void func_80037048(Objeto* lista)
                     } else if (a->flags8 & 6) {
                         if (a->flags8 & 0x8000) {
                             e->visible = 0;
-                        } else if (func_8003760C(e->pcoord, m, aux)) {
+                        } else if (ComponerMatrizMundo(e->pcoord, m, aux)) {
                             func_80037CF8((s32*)m, (s32*)&a->m94);
                             e->visible = uno;
                         } else {
@@ -132,7 +132,7 @@ void func_80037048(Objeto* lista)
  * junto al almacen. La constante del area de trabajo se asigna antes que el puntero al escritorio para que cada una tenga
  * su propio lui, y el enlace del objeto en curso se guarda antes de releerlo para que el original conserve la copia.
  */
-void func_80037184(Objeto* lista)
+void DibujarListaReflejada(Objeto* lista)
 {
     Escritorio* sp;
     Ayuda* a;
@@ -185,7 +185,7 @@ void func_80037184(Objeto* lista)
                         e = (AyudaCuerpo*)((u8*)a + 0xC);
                         if (a->flags8 & 0x8000) {
                             e->visible = 0;
-                        } else if (func_8003760C(e->pcoord, m, aux)) {
+                        } else if (ComponerMatrizMundo(e->pcoord, m, aux)) {
                             func_80037CF8((s32*)m, (s32*)&a->m94);
                             e->visible = 1;
                         } else {
@@ -239,7 +239,7 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375C4);
 
 /*
  * Dato, no funcion: cinco palabras (20 bytes, 0x800375F8..0x8003760B) incrustadas en .text entre func_800375C4 y
- * func_8003760C. Son la matriz inicial de un ayudante (nueve valores de 16 bits y relleno) que func_800375C4 copia. El
+ * ComponerMatrizMundo. Son la matriz inicial de un ayudante (nueve valores de 16 bits y relleno) que func_800375C4 copia. El
  * desensamblador las marca como instrucciones invalidas. Se conserva como bloque de palabras con INCLUDE_ASM: pasarlo a un
  * dato de C obligaria a mover su contenido a otra seccion y a cambiar el reparto del script de particion, y el bloque no
  * tiene tamano en config/symbols.txt. Se declara extern s32 func_800375F8[] mas arriba solo para direccionar el origen.
@@ -256,7 +256,7 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_800375F8);
  * la funcion (addiu sp,-0x18 en 0x80037808 y addiu sp,-0x20 en 0x80037920) alrededor de las llamadas a las rutinas de
  * rotacion y traslacion. Se conserva en ensamblador.
  */
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_8003760C);
+INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", ComponerMatrizMundo);
 
 /*
  * Rutina escrita a mano en el original (marca Handwritten del particionador): carga la matriz de a0 en los registros de

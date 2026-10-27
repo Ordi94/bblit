@@ -64,7 +64,7 @@ atomica y su carpeta se crea si falta. Si la ruta indicada es una carpeta existe
 `<funciones.csv>` es el que produce `python -m tools.ghidra exportar` (carpeta de exportacion de Ghidra,
 fuera del repositorio). Con `BBLIT_DISC` definida (cualquiera de las cinco formas: .bin, .cue, carpeta del .bin, carpeta superior o carpeta con fs/) o con `--exe`. Genera 1168 lineas
 (1102 simbolos de funcion y 66 variables pequenas direccionadas por `$gp`; ver `docs/GHIDRA.md`) y aplica los
-78 nombres de `config/nombres_funciones.txt` (un nombre repetido aborta con `error: nombres linea N`; uno que
+109 nombres de `config/nombres_funciones.txt` (un nombre repetido aborta con `error: nombres linea N`; uno que
 choca con un nombre oficial del SDK se informa y no se aplica). El resultado debe ser identico a
 `config/symbols.txt`.
 

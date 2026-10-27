@@ -62,28 +62,28 @@ void func_8001CC68(VECTOR* p)
     ApplyMatrix(&m, &v, &r);
     c = &D_8006D928;
     t = p->vx;
-    c->cA4 = t;
+    c->mira_a4_x = t;
     c->x = t;
     t = p->vy - 0x190;
-    c->cA8 = t;
+    c->mira_a4_y = t;
     c->y = t;
     t = p->vz;
-    c->cAC = t;
+    c->mira_a4_z = t;
     c->z = t;
-    c->c68 = p->vx + r.vx;
-    c->c94 = c->c68;
-    c->vpx = c->c68;
-    c->cB4 = c->c68;
+    c->vista_68_x = p->vx + r.vx;
+    c->vista_94_x = c->vista_68_x;
+    c->vpx = c->vista_68_x;
+    c->vista_b4_x = c->vista_68_x;
     t = p->vy - 0x190;
-    c->c6C = t;
-    c->c98 = t;
+    c->vista_68_y = t;
+    c->vista_94_y = t;
     c->vpy = t;
-    c->cB8 = t;
+    c->vista_b4_y = t;
     D_800693F8 = 0;
-    c->c70 = p->vz + r.vz;
-    c->c9C = c->c70;
-    c->vpz = c->c70;
-    c->cBC = c->c70;
+    c->vista_68_z = p->vz + r.vz;
+    c->vista_94_z = c->vista_68_z;
+    c->vpz = c->vista_68_z;
+    c->vista_b4_z = c->vista_68_z;
     ang = D_80069698->param.giro.u.y + 0x800;
     c->flags80 |= 0x40;
     D_80069416 = ang;
@@ -127,8 +127,8 @@ void func_8001CD84(Objeto* o, u32 id, CursorAnim* c)
     o->flags14 = o->flags14 & 0xF9FFFDF6;
     if ((c->actual->w08 & 0x40) == 0 || c->actual->w06 != c->anterior) {
         o->trabajo.i14 = 0;
-        o->trabajo.h02 = 0;
-        o->trabajo.b08 = 0;
+        o->trabajo.cuadro = 0;
+        o->trabajo.ticks = 0;
         o->w17C = 0;
         o->trabajo.flags18 = 0;
     }
@@ -231,7 +231,7 @@ void func_8001D028(Objeto* origen, Objeto* destino, u8* p)
     w->origen.vz = origen->param.trans.vz;
     *(s32*)p = 0;
     w->h2A = origen->w26;
-    func_80019474(&w->origen, w, w->consulta, p);
+    BarrerTerreno(&w->origen, w, w->consulta, p);
     destino->param.trans.vx = origen->param.trans.vx + w->d.vx;
     destino->param.trans.vz = origen->param.trans.vz + w->d.vz;
 }
@@ -284,7 +284,7 @@ void func_8001D0FC(Objeto* otro, u32 id, BusquedaAnim* b)
         j->registro184 = (RegistroAnim*)b->fotograma;
         j->nodo188 = b->apoyo;
         j->trabajo.i14 = 0;
-        j->i68 = 0;
+        j->raiz_ayudantes = 0;
         if ((b->fotograma->w10 & 0x800)) {
             D_80069698->flags14 &= ~0x209;
         }
@@ -292,7 +292,7 @@ void func_8001D0FC(Objeto* otro, u32 id, BusquedaAnim* b)
         llevado = j->p6C;
         j->w17E = 0;
         j->param.giro.u.z = 0;
-        if (llevado != NULL && llevado->w2C != 0x22) {
+        if (llevado != NULL && llevado->clase != 0x22) {
             llevado->coord.param = PARAMETROS_SDK(llevado);
             llevado->coord.super = NULL;
             llevado->flags14 = (llevado->flags14 & ~0x800) | 0x1000;
@@ -432,7 +432,7 @@ void func_8001D588(s32 modo, VECTOR* p)
     }
     e = D_80069698->p6C;
     if (e != NULL) {
-        if (e->w2C == 0x22) {
+        if (e->clase == 0x22) {
             e->flags14 |= 0x100;
         }
         e->coord.param = PARAMETROS_SDK(e);
@@ -508,9 +508,9 @@ s32 func_8001D75C(Objeto* otro, DatosGolpe* a1)
     if (!(j->registro184->w0C & 0x4000)) {
         return 0;
     }
-    j->i34 = otro->w1C;
-    otro->i34 = 1;
-    if (otro->w2C == 0x1F) {
+    j->id_atacante = otro->w1C;
+    otro->id_atacante = 1;
+    if (otro->clase == 0x1F) {
         /* 0x8001D860: lhu 0x1E(a3) y 0x8001D870: lbu 0x1E(a3); el campo es s16 para el interprete de eventos (lh), asi que el dano se lee sin signo con la conversion. */
         j->w38 = (u16)otro->s1E;
         D_80069690 = 0x1E;
@@ -606,7 +606,7 @@ extern u16 D_8005E078[];
 /*
  * Busca el rumbo libre para mover al objeto: prueba hasta nueve desviaciones de la tabla de
  * angulos (D_8005E064, o D_8005E078 con el bit 0x80000 de a3) hasta que el desplazamiento rotado
- * no choque (func_80019474) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
+ * no choque (BarrerTerreno) y el suelo de la baldosa lo permita. a2 elige el modo: 0x80000 ignora
  * el borde de los precipicios y 0x40000000 fija la orientacion del objeto al resultado. El
  * desplazamiento realizado queda en `mov`.
  */
@@ -648,7 +648,7 @@ void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
         w->pos44 = o->param.trans.vy;
         w->tb.x_local = 0;
         w->res.grupo = o->w26;
-        func_80019474(&w->pos40, &w->v30, &w->res, &w->tb);
+        BarrerTerreno(&w->pos40, &w->v30, &w->res, &w->tb);
         w->w8C = (s16)w->res.grupo;
         w->w50 = w->w50 - (w->v30 + w->v38);
         f = o->flags14;

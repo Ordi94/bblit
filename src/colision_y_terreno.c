@@ -275,7 +275,7 @@ void func_80019364(s32* a0)
  * a la escritura comun de los planos 0x7E y 0x7F; tx y tz conservan el valor previo de un punto de
  * cruce antes de sobrescribirlo.
  */
-s32 func_80019474(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* w)
+s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* w)
 {
     ZonaColision* zona;
     ZonaColision* cur;
@@ -874,7 +874,7 @@ fin:
     ;
 }
 #else
-INCLUDE_ASM("asm/nonmatchings/colision_y_terreno", func_80019474);
+INCLUDE_ASM("asm/nonmatchings/colision_y_terreno", BarrerTerreno);
 #endif
 
 /*

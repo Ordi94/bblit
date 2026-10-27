@@ -393,6 +393,6 @@ def test_la_tabla_del_repositorio_lleva_todos_los_nombres_del_archivo_de_nombres
     """Si el archivo de nombres cambia hay que regenerar la tabla: nunca se edita symbols.txt a mano."""
     nombres = parsear_nombres((RAIZ / "config" / "nombres_funciones.txt").read_text(encoding="utf-8"))
     simbolos = _simbolos_del_repositorio()
-    assert len(nombres) == 78
+    assert len(nombres) == 109
     assert {d: simbolos[d].nombre for d in nombres} == nombres
     assert all(simbolos[d].tipo == "func" for d in nombres)

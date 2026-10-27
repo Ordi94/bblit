@@ -16,7 +16,7 @@
  *   - s1: area de contexto en el scratchpad (la recibe el descompresor en a2).
  * func_80044664 guarda ra y s0..fp en esa area, sin marco de pila, y sale por func_80044904, que
  * los restaura y devuelve v0 (final de la salida, o 0 si el CD fallo). func_80044854 espera a que
- * el retorno de llamada de CD (func_8004109C) deje un sector completo en el anillo y reanuda con
+ * el retorno de llamada de CD (CallbackSectorListo) deje un sector completo en el anillo y reanuda con
  * a0 apuntando a el.
  *
  * Formato que descomprime func_80044664: el primer byte fija k (bits 0-2) y la escala de las
