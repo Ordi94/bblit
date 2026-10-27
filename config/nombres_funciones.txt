@@ -10,6 +10,9 @@
 # Cada nombre se verifico contra nuestro desensamblado: el codigo de condicion o de accion de PC es el indice de las
 # tablas 0x8005E3F0 y 0x8005E560, la rutina de ese indice esta en la direccion indicada y la semantica coincide. Se
 # excluyen tres nombres dudosos (CondTpnmv, CondTpmov, GsSetProjection) hasta comprobarlos.
+# Segundo origen, "comportamiento": nombres que describen lo que hace la funcion segun el C que la reproduce (la linea
+# cita el archivo de src/ donde esta descrito). Se aplican solo si el C reproduce el flujo del ensamblador (o este se
+# confirmo leyendolo) y el nombre no depende de una hipotesis; el resto conserva su nombre automatico.
 #
 0x8002F9F8 TestLogicCond  # origen: version PC, functions.md fila 82 (game/logic); el comportamiento de PC y PS1 difiere, el nombre es el mismo
 0x8002FA30 CondTrue  # origen: version PC, functions.md fila 83 (game/logic)

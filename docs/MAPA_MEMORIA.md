@@ -62,7 +62,7 @@ y `start`), 450 en la zona del juego y 650 en la zona de librerias. La depuracio
 Ghidra (935 de libreria y 282 del juego) dio 1217 - 306 fundidos - 10 descartados + 7 rutinas
 completas que ningun candidato cubria = 908 (detalle en `docs/GHIDRA.md`). Separar las rutinas que solo se
 llaman por tablas de punteros (194 nuevas: 92 de `func_8002F9F8` y 102 de `func_80030ECC`, que quedan de
-0x38 bytes) y fusionar `func_800415A0` con `func_80042BB8` da 908 - 1 + 194 = 1101; la regla del retorno
+0x38 bytes) y fusionar `CargarContenedor` con `func_80042BB8` da 908 - 1 + 194 = 1101; la regla del retorno
 intermedio separa ademas `func_8002FF38` en dos rutinas de 0x20 bytes (`func_8002FF58` es la nueva) y deja
 1102. Las cifras de origen de abajo (599, 277, 32) corresponden a los 908 de la depuracion. Por origen, 599 son de
 libreria identificada por firma (400 con nombre oficial), 277 del juego y 32 tienen una direccion que no figura entre los candidatos (rutinas nuevas o funciones cuyo inicio se adelanto). Dentro de la zona de librerias hay 52 simbolos

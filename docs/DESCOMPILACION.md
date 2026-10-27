@@ -140,7 +140,7 @@ subsegmento. Por eso un archivo posee sus datos declarando subsegmentos **con su
   enlazador recoja `build/src/<archivo>.c.o(.rodata)` en la posición correcta. Sin el punto
   (`rodata`) el particionador genera un archivo ensamblador aparte y los símbolos se duplican.
   Archivos con rodata migrado: `camara_y_bucle_logico` (`0x80067E64`, tabla de `func_80035244`),
-  `gestion_y_dibujo_de_objetos` (`0x80067E80`, tabla de `func_8003690C`) y `menus_e_interfaz`
+  `gestion_y_dibujo_de_objetos` (`0x80067E80`, tabla de `AplicarCuadro`) y `menus_e_interfaz`
   (`0x80067E9C`, tabla de `func_8003C1C8`), `audio_xa_y_spu` (`0x80067EF0`) y
   `cargador_de_niveles_y_cd` (`0x80067F18`). El resto del rodata sigue en trozos de
   ensamblador (`rodata`, `rodata_constante`, `rodata_resto`).
@@ -423,7 +423,7 @@ preferible.
   archivo (pasos 1 y 2) en lugar de declararla `extern`.
 - **`addiu rX,$gp,desplazamiento` (dirección de una variable pequeña)**: ASPSX 2.79 no lo emite; con la 2.80 fijada (`gp_allow_la` en `maspsx`) sí. Hace falta
   ASPSX 2.80 o posterior (`gp_allow_la` en `maspsx`). Las tres funciones de `tarjeta_de_memoria` que lo
-  necesitan (`func_80014AC4`, `func_80015E94` y `func_800156F4`) se quedan en `NON_MATCHING`.
+  necesitan (`func_80014AC4`, `func_80015E94` y `SondearTarjeta`) se quedan en `NON_MATCHING`.
 
 ### Comparación por bytes (`diff` y `probar`)
 
@@ -607,7 +607,7 @@ Los objetos intermedios (`.i`, `.s` y `.o` de cada compilación) quedan en `buil
   contiguos como en el original.
 - **Símbolos fundidos.** La tabla `config/symbols.txt` separa ya las rutinas hoja que antes
   estaban fundidas en `func_8002F9F8` y `func_80030ECC` (cada una es ahora una función de 0x38
-  bytes más sus rutinas) y fusiona `func_800415A0` y `func_80042BB8` en una sola función de
+  bytes más sus rutinas) y fusiona `CargarContenedor` y `func_80042BB8` en una sola función de
   0x2E2C bytes (evidencia en `docs/GHIDRA.md`). Ya no hace falta ningún archivo de símbolos
   adicional.
 - **`asm-differ` y el tamaño de la función.** Con un archivo C entero como objeto, `asm-differ`
