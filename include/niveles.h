@@ -3,7 +3,7 @@
 
 /*
  * Tipos de la logica de niveles. Manejadores de objeto de la tabla D_8005E35C (indexada por
- * Objeto.w2C): memorias de trabajo del scratchpad (0x1F800000) y registros de las listas que el
+ * Objeto.clase): memorias de trabajo del scratchpad (0x1F800000) y registros de las listas que el
  * objeto lleva en +0xF8 y +0xFC. El objeto de escena vive en globales.h y los registros de
  * animacion en motor.h. Los desplazamientos y anchos de cada tipo salen del ensamblador de la
  * funcion que se cita en su comentario.

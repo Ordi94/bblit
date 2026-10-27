@@ -116,17 +116,17 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
                     goto decae;
                 }
                 if (o->param.giro.rotate.vz >= -0x163) {
-                    o->param.giro.u.z += (num * paso) / (o->s20 - o->min.vx);
+                    o->param.giro.u.z += (num * paso) / (o->radio - o->min.vx);
                 }
-                sentido = (o->param.giro.rotate.vz * paso) / (o->s20 - o->min.vx);
+                sentido = (o->param.giro.rotate.vz * paso) / (o->radio - o->min.vx);
             } else {
                 if (o->w17C & 2) {
                     goto decae;
                 }
                 if (o->param.giro.rotate.vz < 0x164) {
-                    o->param.giro.u.z += (num * paso) / (o->max.vx + o->s20);
+                    o->param.giro.u.z += (num * paso) / (o->max.vx + o->radio);
                 }
-                sentido = (o->param.giro.rotate.vz * paso) / (o->s20 + o->max.vx);
+                sentido = (o->param.giro.rotate.vz * paso) / (o->radio + o->max.vx);
             }
             D_80069698->coord.param->trans.vx += sentido;
         } else {
@@ -655,13 +655,13 @@ void LogicaDirectorCamara(Objeto* o)
                     RotMatrix(&t->origen->param.giro.rotate, m);
                     ScaleMatrix(m, &t->escala);
                     ApplyMatrixSV(m, (SVECTOR*)&t->vx, (SVECTOR*)&t->vx);
-                    D_8006D928.iC4 = t->origen->param.trans.vx + (s16)t->vx;
-                    D_8006D928.iC8 = t->origen->param.trans.vy + (s16)t->vy;
-                    D_8006D928.iCC = t->origen->param.trans.vz + (s16)t->vz;
+                    D_8006D928.destino_vista_x = t->origen->param.trans.vx + (s16)t->vx;
+                    D_8006D928.destino_vista_y = t->origen->param.trans.vy + (s16)t->vy;
+                    D_8006D928.destino_vista_z = t->origen->param.trans.vz + (s16)t->vz;
                 } else {
-                    D_8006D928.iC4 = t->origen->param.trans.vx;
-                    D_8006D928.iC8 = t->origen->param.trans.vy;
-                    D_8006D928.iCC = t->origen->param.trans.vz;
+                    D_8006D928.destino_vista_x = t->origen->param.trans.vx;
+                    D_8006D928.destino_vista_y = t->origen->param.trans.vy;
+                    D_8006D928.destino_vista_z = t->origen->param.trans.vz;
                 }
             } else if (t->flags & 0x80000) {
                 t->vx = 0;
@@ -670,25 +670,25 @@ void LogicaDirectorCamara(Objeto* o)
                 GEO_IDENTIDAD(m);
                 RotMatrixY(D_80069698->param.giro.rotate.vy + 0x800, m);
                 ApplyMatrix(m, (SVECTOR*)&t->vx, &t->r);
-                D_8006D928.iC4 += ((D_80069698->param.trans.vx + t->r.vx) - D_8006D928.iC4) >> 2;
-                D_8006D928.iC8 += ((D_80069698->param.trans.vy + t->r.vy) - D_8006D928.iC8) >> 2;
-                D_8006D928.iCC += ((D_80069698->param.trans.vz + t->r.vz) - D_8006D928.iCC) >> 2;
-                D_8006D928.iD4 += (D_80069698->param.trans.vx - D_8006D928.iD4) >> 2;
-                D_8006D928.iD8 += (D_80069698->param.trans.vy - D_8006D928.iD8) >> 2;
-                D_8006D928.iDC += (D_80069698->param.trans.vz - D_8006D928.iDC) >> 2;
+                D_8006D928.destino_vista_x += ((D_80069698->param.trans.vx + t->r.vx) - D_8006D928.destino_vista_x) >> 2;
+                D_8006D928.destino_vista_y += ((D_80069698->param.trans.vy + t->r.vy) - D_8006D928.destino_vista_y) >> 2;
+                D_8006D928.destino_vista_z += ((D_80069698->param.trans.vz + t->r.vz) - D_8006D928.destino_vista_z) >> 2;
+                D_8006D928.destino_mira_x += (D_80069698->param.trans.vx - D_8006D928.destino_mira_x) >> 2;
+                D_8006D928.destino_mira_y += (D_80069698->param.trans.vy - D_8006D928.destino_mira_y) >> 2;
+                D_8006D928.destino_mira_z += (D_80069698->param.trans.vz - D_8006D928.destino_mira_z) >> 2;
             } else if (t->flags & 0x100000) {
-                D_8006D928.iC4 = D_8006D928.vpx;
-                D_8006D928.iC8 = D_8006D928.vpy;
-                D_8006D928.iCC = D_8006D928.vpz;
+                D_8006D928.destino_vista_x = D_8006D928.vpx;
+                D_8006D928.destino_vista_y = D_8006D928.vpy;
+                D_8006D928.destino_vista_z = D_8006D928.vpz;
             } else {
-                D_8006D928.iC4 = t->nodo->p1C;
-                D_8006D928.iC8 = t->nodo->p20;
-                D_8006D928.iCC = t->nodo->desplazamiento;
+                D_8006D928.destino_vista_x = t->nodo->p1C;
+                D_8006D928.destino_vista_y = t->nodo->p20;
+                D_8006D928.destino_vista_z = t->nodo->desplazamiento;
             }
             if (t->flags & 0x40000) {
-                t->ex = D_8006D928.vpx - D_8006D928.iC4;
-                t->ey = D_8006D928.vpy - D_8006D928.iC8;
-                t->ez = D_8006D928.vpz - D_8006D928.iCC;
+                t->ex = D_8006D928.vpx - D_8006D928.destino_vista_x;
+                t->ey = D_8006D928.vpy - D_8006D928.destino_vista_y;
+                t->ez = D_8006D928.vpz - D_8006D928.destino_vista_z;
                 GEO_CARGAR_W(&t->ex);
                 GEO_GUARDAR_W_T1(&t->r);
                 gte_ldlvl(&t->r);
@@ -705,9 +705,9 @@ void LogicaDirectorCamara(Objeto* o)
                     t->modulo = paso;
                 }
                 if (t->modulo > 0) {
-                    D_8006D928.iC4 += (t->r.vx * t->modulo) >> 12;
-                    D_8006D928.iC8 += (t->r.vy * t->modulo) >> 12;
-                    D_8006D928.iCC += (t->r.vz * t->modulo) >> 12;
+                    D_8006D928.destino_vista_x += (t->r.vx * t->modulo) >> 12;
+                    D_8006D928.destino_vista_y += (t->r.vy * t->modulo) >> 12;
+                    D_8006D928.destino_vista_z += (t->r.vz * t->modulo) >> 12;
                 }
             }
             D_8006D928.flags80 |= 0x400;
@@ -722,29 +722,29 @@ void LogicaDirectorCamara(Objeto* o)
                     }
                 }
                 if (t->origen != 0) {
-                    D_8006D928.iD4 = t->origen->param.trans.vx;
-                    D_8006D928.iD8 = t->origen->param.trans.vy;
-                    D_8006D928.iDC = t->origen->param.trans.vz;
+                    D_8006D928.destino_mira_x = t->origen->param.trans.vx;
+                    D_8006D928.destino_mira_y = t->origen->param.trans.vy;
+                    D_8006D928.destino_mira_z = t->origen->param.trans.vz;
                 }
             } else if (t->flags & 0x80) {
-                D_8006D928.iD4 = o->param.trans.vx;
-                D_8006D928.iD8 = o->param.trans.vy;
-                D_8006D928.iDC = o->param.trans.vz;
+                D_8006D928.destino_mira_x = o->param.trans.vx;
+                D_8006D928.destino_mira_y = o->param.trans.vy;
+                D_8006D928.destino_mira_z = o->param.trans.vz;
             } else if (t->flags & 0x100000) {
-                D_8006D928.iD4 = D_8006D928.x;
-                D_8006D928.iD8 = D_8006D928.y;
-                D_8006D928.iDC = D_8006D928.z;
+                D_8006D928.destino_mira_x = D_8006D928.x;
+                D_8006D928.destino_mira_y = D_8006D928.y;
+                D_8006D928.destino_mira_z = D_8006D928.z;
             } else {
-                D_8006D928.iD4 = t->nodo->p1C;
-                D_8006D928.iD8 = t->nodo->p20;
-                D_8006D928.iDC = t->nodo->desplazamiento;
+                D_8006D928.destino_mira_x = t->nodo->p1C;
+                D_8006D928.destino_mira_y = t->nodo->p20;
+                D_8006D928.destino_mira_z = t->nodo->desplazamiento;
             }
             D_8006D928.flags80 |= 0x800;
         } else if (t->flags & 8) {
             D_8006D928.flags80 &= 0xB7FF;
         }
         if (t->flags & 0x400) {
-            D_8006D928.iE4 = t->nodo->p1C;
+            D_8006D928.distancia_acercamiento = t->nodo->p1C;
             D_8006D928.flags80 |= 0x1000;
         } else if (t->flags & 0x800) {
             D_8006D928.flags80 &= 0xEFFF;
@@ -758,18 +758,18 @@ void LogicaDirectorCamara(Objeto* o)
             cf = D_8006D928.z;
             fl = D_8006D928.flags80;
             fl |= 0x4000;
-            D_8006D928.c68 = ca;
-            D_8006D928.c94 = ca;
-            D_8006D928.cB4 = ca;
-            D_8006D928.c6C = cb;
-            D_8006D928.c98 = cb;
-            D_8006D928.cB8 = cb;
-            D_8006D928.c70 = cc;
-            D_8006D928.c9C = cc;
-            D_8006D928.cBC = cc;
-            D_8006D928.cA4 = cd;
-            D_8006D928.cA8 = ce;
-            D_8006D928.cAC = cf;
+            D_8006D928.vista_68_x = ca;
+            D_8006D928.vista_94_x = ca;
+            D_8006D928.vista_b4_x = ca;
+            D_8006D928.vista_68_y = cb;
+            D_8006D928.vista_94_y = cb;
+            D_8006D928.vista_b4_y = cb;
+            D_8006D928.vista_68_z = cc;
+            D_8006D928.vista_94_z = cc;
+            D_8006D928.vista_b4_z = cc;
+            D_8006D928.mira_a4_x = cd;
+            D_8006D928.mira_a4_y = ce;
+            D_8006D928.mira_a4_z = cf;
             D_8006D928.flags80 = fl;
             return;
         }
@@ -836,10 +836,10 @@ void LogicaSpriteConCaja(Objeto* o)
         b->fotogramas = f;
         b->actual = f;
         k = tb->cuenta;
-        b->h02 = 0;
-        b->b05 = 2;
-        b->b08 = 2;
-        b->w00 = k - 1;
+        b->cuadro = 0;
+        b->espera = 2;
+        b->ticks = 2;
+        b->ultimo = k - 1;
         o->min.vx = -(f->w0C >> 1);
         o->min.vy = 0;
         o->min.vz = -(f->w0C >> 1);
@@ -850,28 +850,28 @@ void LogicaSpriteConCaja(Objeto* o)
             o->param.trans.vy += f->w0E >> 1;
         }
         o->w2E = f->w0C >> 1;
-        o->alcance2 = o->w2E * o->w2E + o->s20 * o->s20;
+        o->alcance2 = o->w2E * o->w2E + o->radio * o->radio;
         func_8001CFCC(&o->coord);
         ((DibujarSprite)func_8001E528)(o, b, 1, area);
     }
-    if (b->b08 == 0) {
-        w = b->b05;
-        b->h02 = b->h02 + 1;
-        b->b08 = w;
-        if ((u16)b->h02 > b->w00) {
-            b->h02 = 0;
+    if (b->ticks == 0) {
+        w = b->espera;
+        b->cuadro = b->cuadro + 1;
+        b->ticks = w;
+        if ((u16)b->cuadro > b->ultimo) {
+            b->cuadro = 0;
             b->actual = b->fotogramas;
         }
         ((DibujarSprite)func_8001E528)(o, b, 1, area);
     }
-    b->b08 -= 1;
+    b->ticks -= 1;
     n = (NodoDisparador*)o->apoyos;
     if (n != 0) {
         do {
             if (TestLogicCond(o, &n->cond) != 0) {
                 RunLogicAction(o, &n->cond);
                 if (n->flags & 0x200) {
-                    if (b->b08 == 0 && (u16)b->h02 == 0) {
+                    if (b->ticks == 0 && (u16)b->cuadro == 0) {
                         func_8003F06C(o, n->p1C, 1, D_8006967C);
                     }
                 }
@@ -879,7 +879,7 @@ void LogicaSpriteConCaja(Objeto* o)
                     func_8003F06C(o, n->p1C, 2, D_8006967C);
                 }
                 if (n->flags & 0x10000) {
-                    if (b->b08 == 0 && (u16)b->h02 >= b->w00) {
+                    if (b->ticks == 0 && (u16)b->cuadro >= b->ultimo) {
                         o->flags14 |= 0x100;
                     }
                 }
@@ -927,21 +927,21 @@ void LogicaSpriteDecorativo(Objeto* o)
         f = tb->fotogramas;
         b->fotogramas = f;
         b->actual = f;
-        b->w00 = tb->cuenta - 1;
-        b->h02 = (u16)o->max.vx;
-        b->b05 = (u8)o->max.vz;
-        b->b08 = (u8)o->max.vz;
+        b->ultimo = tb->cuenta - 1;
+        b->cuadro = (u16)o->max.vx;
+        b->espera = (u8)o->max.vz;
+        b->ticks = (u8)o->max.vz;
         ((DibujarSprite)func_8001E600)(o, b, 1, area);
     }
-    if (b->b08 == 0) {
-        b->b08 = b->b05;
-        b->h02 += 1;
-        if (b->w00 < (u16)b->h02) {
-            b->h02 = 0;
+    if (b->ticks == 0) {
+        b->ticks = b->espera;
+        b->cuadro += 1;
+        if (b->ultimo < (u16)b->cuadro) {
+            b->cuadro = 0;
         }
         ((DibujarSprite)func_8001E600)(o, b, 1, area);
     }
-    b->b08 -= 1;
+    b->ticks -= 1;
     o->flags04 |= 2;
 }
 
@@ -1015,17 +1015,17 @@ void LogicaActorSecuencias(Objeto* o)
                 t->flags = t->nodo->flags;
                 if (t->flags != 0) {
                     if (t->flags & 0x40) {
-                        if (t->nodo->p1C != (u16)o->trabajo.h02) {
+                        if (t->nodo->p1C != (u16)o->trabajo.cuadro) {
                             goto siguiente;
                         }
-                        if (o->trabajo.b08 != 0) {
+                        if (o->trabajo.ticks != 0) {
                             goto siguiente;
                         }
                     } else if (t->flags & 4) {
                         if (!(o->trabajo.flags18 & 0x2000)) {
                             goto siguiente;
                         }
-                        if (o->trabajo.b08 != 0) {
+                        if (o->trabajo.ticks != 0) {
                             goto siguiente;
                         }
                     }
@@ -1121,8 +1121,8 @@ siguiente:
                 t->fotograma = (RegistroAnim*)(o->bloque + t->paso);
                 o->registro184 = t->fotograma;
                 o->trabajo.i14 = 0;
-                o->trabajo.h02 = 0;
-                o->trabajo.b08 = 0;
+                o->trabajo.cuadro = 0;
+                o->trabajo.ticks = 0;
             }
         }
     }
@@ -1255,7 +1255,7 @@ void LogicaBloqueEmpujable(Objeto* o)
         }
     }
     m = &t->m;
-    margen = (s16)o->s20 >> 1;
+    margen = (s16)o->radio >> 1;
     RotMatrix(&o->param.giro.rotate, m);
     cuarto = margen >> 1;
     GEO_CARGAR_WH(&o->min);
@@ -1301,8 +1301,8 @@ void LogicaBloqueEmpujable(Objeto* o)
         t->chocado = func_80017478(o, (SVECTOR*)&t->cx, area, 0x2690A);
         if (t->chocado != 0) {
             t->chocado->flags14 |= 0x40000000;
-            t->chocado->i34 = o->w1C;
-            o->i34 = t->chocado->w1C;
+            t->chocado->id_atacante = o->w1C;
+            o->id_atacante = t->chocado->w1C;
             if (!(t->chocado->flags08 & 0x2000000)) {
                 if (o->w17C & 1) {
                     t->dx = (s16)t->cx;
@@ -1358,8 +1358,8 @@ void LogicaBloqueEmpujable(Objeto* o)
     t->chocado = func_80017478(o, (SVECTOR*)&t->cx, area, 0x2690A);
     if (t->chocado != 0) {
         t->chocado->flags14 |= 0x40000000;
-        t->chocado->i34 = o->w1C;
-        o->i34 = t->chocado->w1C;
+        t->chocado->id_atacante = o->w1C;
+        o->id_atacante = t->chocado->w1C;
         if (!(t->chocado->flags08 & 0x2000000)) {
             if (o->w17C & 1) {
                 t->dx = (s16)t->cx;
@@ -1579,8 +1579,8 @@ void LogicaEfectoAnclado(Objeto* o)
         t->otro = func_80016ED0(o, 0x80, area);
         if (t->otro != 0) {
             t->otro->flags14 |= 0x2000000;
-            t->otro->i34 = o->w1C;
-            o->i34 = t->otro->w1C;
+            t->otro->id_atacante = o->w1C;
+            o->id_atacante = t->otro->w1C;
             t->otro->w38 = t->fotograma->w16;
         }
     }
@@ -1697,7 +1697,7 @@ void LogicaProyectil(Objeto* o)
         }
         func_80036734(0x14, (s32*)&o->param.trans.vx, &o->param.giro.u.x);
     } else {
-        t->vz = (u16)o->s20;
+        t->vz = (u16)o->radio;
     }
     if (o->w22 < 0x3D) {
         mm = &o->coord.coord;
@@ -1723,7 +1723,7 @@ void LogicaProyectil(Objeto* o)
                     func_8001D0FC(o, (s16)o->u18C.estado.w196, area);
                 }
             } else {
-                t->golpeado->i34 = (u16)o->w1C;
+                t->golpeado->id_atacante = (u16)o->w1C;
                 if (t->golpeado->registro184 != 0 && (t->golpeado->registro184->w10 & 8)) {
                     t->golpeado->w38 = o->s1E;
                     t->golpeado->flags14 |= 0x2000000;

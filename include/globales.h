@@ -51,9 +51,9 @@ typedef struct DefinicionAnimacion {
     u8 pad00[0x0A];
     u16 wA;
     u8 pad0C[0x10 - 0x0C];
-    u8 n_sonidos;           /* +0x10: AvanzarAnimacionSprite lbu, copia a BloqueTrabajo.b07 */
+    u8 n_sonidos;           /* +0x10: AvanzarAnimacionSprite lbu, copia a BloqueTrabajo.n_sonidos */
     u8 pad11;
-    u8 n_eventos;           /* +0x12: AvanzarAnimacionSprite lbu, copia a BloqueTrabajo.b09 */
+    u8 n_eventos;           /* +0x12: AvanzarAnimacionSprite lbu, copia a BloqueTrabajo.n_eventos */
     u8 pad13;
     u8 sonidos[0x24 - 0x14];    /* +0x14: lista en linea de RegistroSonido; AvanzarAnimacionSprite toma su direccion */
     u8 eventos[0x4E - 0x24];    /* +0x24: lista en linea de RegistroEvento; AvanzarAnimacionSprite toma su direccion */
@@ -116,14 +116,14 @@ typedef struct ParametrosObjeto {
  * func_80044EA8 la guarda en el objeto, que es el mismo desplazamiento (+0x16C del objeto).
  */
 typedef struct BloqueTrabajo {
-    u16 w00;                /* ultimo cuadro (cuadros - 1): sh en LogicaSpriteConCaja (0x8002CC70) y AvanzarAnimacionSprite, lhu en 0x8002CD68 y 0x800255D0 (func_80020B90); func_80020B90 tambien lee y escribe la palabra entera sobre el apoyo (lw / sw 0x80022C18, 0x80022C24) */
-    s16 h02;                /* cuadro actual: sh (func_8001CD84); AvanzarAnimacionSprite lo carga siempre con lhu */
+    u16 ultimo;             /* ultimo cuadro (cuadros - 1): sh en LogicaSpriteConCaja (0x8002CC70) y AvanzarAnimacionSprite, lhu en 0x8002CD68 y 0x800255D0 (func_80020B90); func_80020B90 tambien lee y escribe la palabra entera sobre el apoyo (lw / sw 0x80022C18, 0x80022C24) */
+    s16 cuadro;             /* cuadro actual: sh (func_8001CD84); AvanzarAnimacionSprite lo carga siempre con lhu */
     u8 b04;                 /* sb zero (AvanzarAnimacionSprite) */
-    u8 b05;                 /* cuadros de espera entre cuadros de la animacion: sb en LogicaSpriteConCaja (0x8002CC64) y lbu en 0x8002CD58; func_80020B90: sb en 0x800213BC y lbu en 0x800255D8 (indice de paso 5 - acumulado / 32); AvanzarAnimacionSprite: lbu / sb */
+    u8 espera;              /* cuadros de espera entre cuadros de la animacion: sb en LogicaSpriteConCaja (0x8002CC64) y lbu en 0x8002CD58; func_80020B90: sb en 0x800213BC y lbu en 0x800255D8 (indice de paso 5 - acumulado / 32); AvanzarAnimacionSprite: lbu / sb */
     u8 pad06;
-    u8 b07;                 /* numero de sonidos: sb / lbu (AvanzarAnimacionSprite) */
-    u8 b08;                 /* ticks restantes */
-    u8 b09;                 /* numero de eventos: sb / lbu (AvanzarAnimacionSprite) */
+    u8 n_sonidos;           /* numero de sonidos: sb / lbu (AvanzarAnimacionSprite) */
+    u8 ticks;               /* ticks restantes */
+    u8 n_eventos;           /* numero de eventos: sb / lbu (AvanzarAnimacionSprite) */
     s16 h0A;
     struct RegistroSonido* sonidos;     /* +0x0C: sw / lw (AvanzarAnimacionSprite) */
     struct RegistroEvento* eventos;     /* +0x10: sw / lw (AvanzarAnimacionSprite) */
@@ -164,7 +164,7 @@ typedef struct Objeto {
      * (func_8001D75C). El campo es s16; func_8001D75C usa casts locales comentados.
      */
     s16 s1E;
-    s16 s20;                /* radio del volumen: lh en las consultas de graficos_y_gte.c */
+    s16 radio;              /* radio del volumen: lh en las consultas de graficos_y_gte.c */
     u16 w22;                /* func_800353B0: lhu / sh 0x22($s0) en 0x8003610C y 0x80036118; func_80038C2C: lhu en 0x80038CF4 */
     u16 w24;                /* func_800353B0 */
     /*
@@ -174,11 +174,11 @@ typedef struct Objeto {
      */
     u16 w26;
     u16 w28;                /* func_8003B5AC: lhu 0x28($t0) en 0x8003BA1C; func_80031960: sh 0x28($v1) en 0x80031970 */
-    s16 s2A;                /* tipo del volumen (2 = solido): graficos_y_gte.c; func_8003652C lo pone a 0 y func_800365D0 a 5 */
-    u16 w2C;                /* las rutinas de creacion lo escriben con sh y el resto lo lee con lhu */
+    s16 tipo_volumen;       /* tipo del volumen (2 = solido): graficos_y_gte.c; func_8003652C lo pone a 0 y func_800365D0 a 5 */
+    u16 clase;              /* indice del manejador en D_8005E35C[clase] (la lista de comprobaciones del cuadro llama D_8005E35C[s0->clase](s0), jal indirecto); las rutinas de creacion lo escriben con sh */
     u16 w2E;                /* func_800353B0 */
     u32 alcance2;           /* alcance al cuadrado del volumen: graficos_y_gte.c */
-    s32 i34;                /* func_8001D75C: sw con w1C del atacante */
+    s32 id_atacante;        /* func_8001D75C: sw con w1C del atacante */
     u16 w38;                /* func_8001D75C, func_80031FE0: solo sh; sin lectura que fije el signo */
     u16 w3A;                /* menus_e_interfaz.c */
     u16 w3C;                /* las rutinas de creacion lo escriben con sh y el resto lo lee con lhu */
@@ -187,7 +187,7 @@ typedef struct Objeto {
     SVECTOR min;            /* caja del volumen (+0x48) y mitades de sprite que lee func_8001DF28 con lh */
     SVECTOR max;            /* +0x50 */
     VECTOR objetivo;        /* +0x58: punto de interaccion; func_80020B90 lo lee con lhu (0x80022A8C, 0x80022AAC) y lw 0x5C($s4) (0x80022B44) y pasa su direccion a func_800171E4 (0x800228C4); posicion de aparicion de los hijos y de salida de la animacion de posicion: AvanzarAnimacionSprite lee vx, vy y vz con lw y pasa su direccion a func_80036734, AplicarCuadro los escribe con sw */
-    GsCOORDINATE2* i68;     /* nodo raiz de la cadena de ayudantes (AplicarCuadro: sw del coord del ayudante; AvanzarAnimacionSprite: lw 0x44 y 0x48 del nodo); func_8001D0FC: sw zero; los demas lo comparan con cero */
+    GsCOORDINATE2* raiz_ayudantes; /* nodo raiz de la cadena de ayudantes (AplicarCuadro: sw del coord del ayudante; AvanzarAnimacionSprite: lw 0x44 y 0x48 del nodo); func_8001D0FC: sw zero; los demas lo comparan con cero */
     struct Objeto* p6C;     /* func_80034E7C: lw 0x6C($s1) en 0x80034EE0 */
     struct Objeto* p70;     /* func_80034E7C: lw 0x70($s1) en 0x80034EBC, sw $zero en 0x80034F60 y 0x80034FDC */
     struct NodoAnimacion* lista;   /* func_80044EA8, func_80045C4C: lw, lista de animaciones; func_80037DB4 la usa como descriptor de modelo */
@@ -208,7 +208,7 @@ typedef struct Objeto {
     struct NodoSecuencia* secuencias;   /* func_8001CD84, func_8001D0FC: lw */
     u8* bloque;             /* func_8001CD84: base del bloque de animacion */
     /*
-     * +0xFC: lista enlazada de registros cuyo formato depende de la clase del objeto (w2C), de modo
+     * +0xFC: lista enlazada de registros cuyo formato depende de la clase del objeto (clase), de modo
      * que el campo conserva el tipo de func_8001D0FC (lw) y cada manejador lo convierte con un cast
      * a su registro. Los manejadores de disparadores (LogicaActorSecuencias y el resto de logica_de_niveles_3)
      * leen NodoDisparador y pasan a TestLogicCond y RunLogicAction el nodo + 0x10 (addiu 0x10 en
@@ -271,7 +271,7 @@ typedef struct Objeto {
             u8 pad0C[0x28 - 0x0C];
         } estado;
     } u18C;
-    u32 w1B4;               /* func_800353B0: lw, segundo argumento de ActualizarCamaraSeguimiento */
+    u32 reiniciar_camara;   /* func_800353B0: lw, segundo argumento de ActualizarCamaraSeguimiento */
     u8 pad1B8[0x1F4 - 0x1B8];
 } Objeto;
 
@@ -292,9 +292,9 @@ typedef struct EstadoCamara {
     s32 rz;
     GsCOORDINATE2* super;
     u8 pad20[0x68 - 0x20];
-    s32 c68;                /* func_8001CC68: sw, copia del punto de vista; c68..c70 son el mismo triple que D_8006D990[3] (0x8006D928 + 0x68): ActualizarCamaraSeguimiento escribe sw 0x68($s0) en 0x80033DDC y 0x800344DC y lo carga por la direccion absoluta (lui/addiu %lo(D_8006D990) en 0x80034138), asi que ambos accesos son forzosos y no se unifican */
-    s32 c6C;
-    s32 c70;
+    s32 vista_68_x;         /* func_8001CC68: sw, copia del punto de vista; vista_68_x..vista_68_z son el mismo triple que D_8006D990[3] (0x8006D928 + 0x68): ActualizarCamaraSeguimiento escribe sw 0x68($s0) en 0x80033DDC y 0x800344DC y lo carga por la direccion absoluta (lui/addiu %lo(D_8006D990) en 0x80034138), asi que ambos accesos son forzosos y no se unifican */
+    s32 vista_68_y;
+    s32 vista_68_z;
     u8 pad74[0x80 - 0x74];
     u16 flags80;
     u8 pad82[0x86 - 0x82];
@@ -304,17 +304,17 @@ typedef struct EstadoCamara {
     s16 h8C;                /* func_8001D588: sh zero */
     s16 h8E;                /* func_8001D588: sh zero */
     struct Objeto* i90;     /* func_80032894: sw zero en 0x800329CC; ActualizarCamaraSeguimiento: lw 0x90($s1) en 0x80033F18 seguido de lw 0xE4/0xEC del objeto (0x80033F2C/44), es decir un Objeto*; es la misma palabra que D_8006D9B8[0] (0x8006D928 + 0x90): se pone a cero con sw %lo(D_8006D9B8) en 0x80033574 y con sw zero 0x90($a1) en 0x80033600, asi que ambos accesos son forzosos */
-    s32 c94;                /* func_8001CC68: sw, copia del punto de vista */
-    s32 c98;
-    s32 c9C;
+    s32 vista_94_x;         /* func_8001CC68: sw, copia del punto de vista */
+    s32 vista_94_y;
+    s32 vista_94_z;
     u8 padA0[0xA4 - 0xA0];
-    s32 cA4;                /* func_8001CC68: sw, copia del punto de mira */
-    s32 cA8;
-    s32 cAC;
+    s32 mira_a4_x;          /* func_8001CC68: sw, copia del punto de mira */
+    s32 mira_a4_y;
+    s32 mira_a4_z;
     u8 padB0[0xB4 - 0xB0];
-    s32 cB4;                /* func_8001CC68: sw, copia del punto de vista */
-    s32 cB8;
-    s32 cBC;
+    s32 vista_b4_x;         /* func_8001CC68: sw, copia del punto de vista */
+    s32 vista_b4_y;
+    s32 vista_b4_z;
     u8 padC0[0xC4 - 0xC0];
     /*
      * Punto de vista deseado (+0xC4) y punto de mira deseado (+0xD4) que fijan los directores de
@@ -325,15 +325,15 @@ typedef struct EstadoCamara {
      * mira en el modo guiado, lhu en 0x80033C10), lw 0xD4/0xD8/0xDC($s1) en 0x80033B58, 0x80033B60 y
      * 0x80033B80 (destino alternativo) y lw 0xE4($s0) en 0x80033CE8 (distancia de la transicion).
      */
-    s32 iC4;
-    s32 iC8;
-    s32 iCC;
+    s32 destino_vista_x;
+    s32 destino_vista_y;
+    s32 destino_vista_z;
     u8 padD0[0xD4 - 0xD0];
-    s32 iD4;
-    s32 iD8;
-    s32 iDC;
+    s32 destino_mira_x;
+    s32 destino_mira_y;
+    s32 destino_mira_z;
     u8 padE0[0xE4 - 0xE0];
-    s32 iE4;
+    s32 distancia_acercamiento;
 } EstadoCamara;
 
 /*

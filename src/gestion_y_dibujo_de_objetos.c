@@ -277,8 +277,8 @@ void func_8003652C(void)
     D_80069518 = (Objeto*)AppendListNode((NodoLista*)D_80069518, (NodoLista*)D_800694DC);
     o = D_800694DC;
     o->w1C = 5;
-    o->s2A = 0;
-    o->w2C = 7;
+    o->tipo_volumen = 0;
+    o->clase = 7;
     o->flags04 |= 2;
 }
 
@@ -303,8 +303,8 @@ void func_800365D0(void)
     o->w1C = 0;
     o->flags08 = 0;
     o->flags0C = 0;
-    o->s2A = 5;
-    o->w2C = 6;
+    o->tipo_volumen = 5;
+    o->clase = 6;
     o->w3C = 0x40;
     D_80069508 = 0;
     o->u78.ayudas = 0;
@@ -422,7 +422,7 @@ void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
     w->cab.w = *FLUJO_PISTAS(c)++;
     w->npistas = w->cab.h.alto;
     w->palabra2 = *FLUJO_PISTAS(c)++;
-    o->i68 = 0;
+    o->raiz_ayudantes = 0;
     w->modo = 1;
     if (o->u78.ayudas != 0) {
         w->tabla = &w->ayudas[0];
@@ -496,7 +496,7 @@ void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
                 GEO_CARGAR_WH(p);
                 GEO_GUARDAR_WH(&o->min);
                 h = (u16*)p;
-                f = o->s20;
+                f = o->radio;
                 o->max.vx = h[3];
                 o->max.vy = h[4];
                 o->max.vz = h[5];
@@ -527,7 +527,7 @@ void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
                 o->objetivo.vx = w->acc.vx;
                 o->objetivo.vy = w->acc.vy;
                 o->objetivo.vz = w->acc.vz;
-                o->i68 = e->pcoord;
+                o->raiz_ayudantes = e->pcoord;
                 break;
             case PISTA_SPRITE:
                 w->n = *(u16*)p;

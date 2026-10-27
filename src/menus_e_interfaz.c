@@ -507,7 +507,7 @@ void func_8003B5AC(Objeto* lista)
                 esc->objeto = esc->objeto->sig10;
                 continue;
             }
-            if (esc->objeto->w2C == 7) {
+            if (esc->objeto->clase == 7) {
                 esc->estado.s4 = -0x80;
                 esc->estado.w0C = D_8006969C;
                 esc->estado.w0E = D_800694B0;
@@ -572,18 +572,18 @@ void func_8003B5AC(Objeto* lista)
                                 qx = D_8006D928.x;
                                 qy = D_8006D928.y;
                                 qz = D_8006D928.z;
-                                D_8006D928.c68 = px;
-                                D_8006D928.c94 = px;
-                                D_8006D928.cB4 = px;
-                                D_8006D928.c6C = py;
-                                D_8006D928.c98 = py;
-                                D_8006D928.cB8 = py;
-                                D_8006D928.c70 = pz;
-                                D_8006D928.c9C = pz;
-                                D_8006D928.cBC = pz;
-                                D_8006D928.cA4 = qx;
-                                D_8006D928.cA8 = qy;
-                                D_8006D928.cAC = qz;
+                                D_8006D928.vista_68_x = px;
+                                D_8006D928.vista_94_x = px;
+                                D_8006D928.vista_b4_x = px;
+                                D_8006D928.vista_68_y = py;
+                                D_8006D928.vista_94_y = py;
+                                D_8006D928.vista_b4_y = py;
+                                D_8006D928.vista_68_z = pz;
+                                D_8006D928.vista_94_z = pz;
+                                D_8006D928.vista_b4_z = pz;
+                                D_8006D928.mira_a4_x = qx;
+                                D_8006D928.mira_a4_y = qy;
+                                D_8006D928.mira_a4_z = qz;
                             }
                         }
                     }
@@ -620,7 +620,7 @@ void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* estado, V
         if (D_800694B0 < estado->w0E) {
             estado->w0E = D_800694B0;
         }
-        if (entidad->w2C == 9 || (entidad->flags0C & 0x20000000)) {
+        if (entidad->clase == 9 || (entidad->flags0C & 0x20000000)) {
             D_80069600 = 1;
             estado->w0C = 0x3FFF;
             estado->w0E = 0x3FFF;

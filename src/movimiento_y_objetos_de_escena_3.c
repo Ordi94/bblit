@@ -73,9 +73,9 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     }
     /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
     if (modo & 1) {
-        indice = (u16)c->h02;
+        indice = (u16)c->cuadro;
     } else {
-        indice = c->duraciones[(u16)c->h02].indice;
+        indice = c->duraciones[(u16)c->cuadro].indice;
     }
     r = c->fotogramas + indice;
     p = (SpritePlano*)((u8*)o->u78.p + 0xC);
@@ -118,9 +118,9 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 
     /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
     if (modo & 1) {
-        indice = (u16)c->h02;
+        indice = (u16)c->cuadro;
     } else {
-        indice = c->duraciones[(u16)c->h02].indice;
+        indice = c->duraciones[(u16)c->cuadro].indice;
     }
     r = c->fotogramas + indice;
     desplazamiento = 2 - ((r->pagina >> 7) & 3);
@@ -251,24 +251,24 @@ sigue:
             t = (m * o->param.escala.vx) >> 12;
             o->w2E = (u16)o->max.vx + t;
             o->alcance2 = o->w2E * o->w2E;
-            o->s20 = (u16)o->s20 + t;
+            o->radio = (u16)o->radio + t;
         }
         c->i14 = anim;
         c->sonidos = (RegistroSonido*)n->def->sonidos;
-        c->b07 = n->def->n_sonidos;
+        c->n_sonidos = n->def->n_sonidos;
         c->eventos = (RegistroEvento*)n->def->eventos;
-        c->b09 = n->def->n_eventos;
+        c->n_eventos = n->def->n_eventos;
         c->fotogramas = fot;
         c->b04 = 0;
         c->flags18 = modo | ANIM_RECIEN_INICIADA | ANIM_EN_CURSO;
         FLUJO_PISTAS(c) = (u32*)fot;
-        c->w00 = n->def->n_cuadros - 1;
+        c->ultimo = n->def->n_cuadros - 1;
         c->duraciones = (ParCuadro*)n->def->tabla;
-        c->h02 = 0;
-        c->b08 = c->b05 = c->duraciones->ticks;
+        c->cuadro = 0;
+        c->ticks = c->espera = c->duraciones->ticks;
     }
-    if ((u16)c->h02 == c->w00) {
-        if (c->b08 == 0) {
+    if ((u16)c->cuadro == c->ultimo) {
+        if (c->ticks == 0) {
             t = c->flags18;
             if (t & 2) {
                 t = (t & ~0x200) | 0x100;
@@ -282,28 +282,28 @@ sigue:
                 c->flags18 = t | 0x80;
             }
             t = c->duraciones->ticks;
-            c->h02 = 0;
+            c->cuadro = 0;
             c->flags18 = c->flags18 | ANIM_RECIEN_INICIADA;
-            c->b08 = c->b05 = t;
+            c->ticks = c->espera = t;
         }
     }
     ((DibujarSprite)func_8001E528)(o, c, 0, area);
-    if (c->b08 == 0) {
-        if (c->b07 != 0) {
-            for (i = 0; i < c->b07; i++) {
-                if ((u16)c->h02 == c->sonidos[i].cuadro) {
+    if (c->ticks == 0) {
+        if (c->n_sonidos != 0) {
+            for (i = 0; i < c->n_sonidos; i++) {
+                if ((u16)c->cuadro == c->sonidos[i].cuadro) {
                     func_8003F06C(o, c->sonidos[i].id, 1, D_8006967C);
                 }
             }
         }
     }
     r = 1;
-    if (c->b09 != 0) {
-        if (c->b08 == 0) {
+    if (c->n_eventos != 0) {
+        if (c->ticks == 0) {
             i = 0;
-            if (c->b08 < c->b09) {
+            if (c->ticks < c->n_eventos) {
                 do {
-                    if ((u16)c->h02 == c->eventos[i].cuadro && o->i68 != 0) {
+                    if ((u16)c->cuadro == c->eventos[i].cuadro && o->raiz_ayudantes != 0) {
                         r = TestLogicCond(o, c->eventos[i].cond);
                         if (r == 0) {
                             goto siguiente;
@@ -328,7 +328,7 @@ sigue:
                                 if (h->p70 != 0 && h->p70->p6C == h) {
                                     h->p70->p6C = 0;
                                 }
-                                h->coord.super = o->i68;
+                                h->coord.super = o->raiz_ayudantes;
                                 h->w26 = o->w26;
                                 h->p70 = o;
                                 h->coord.param = (GsCOORD2PARAM*)&h->portado;
@@ -356,10 +356,10 @@ sigue:
                         }
                         if (c->eventos[i].banderas & EVENTO_HIJO_CON_GIRO) {
                             h = func_80036734((s16)c->eventos[i].id, &o->objetivo.vx,
-                                              (u16*)((u8*)o->i68->param + 0x10));
+                                              (u16*)((u8*)o->raiz_ayudantes->param + 0x10));
                             if (h != 0) {
                                 h->w26 = o->w26;
-                                h->param.giro.u.y = h->param.giro.u.y + (u16)o->i68->super->param->rotate.vy;
+                                h->param.giro.u.y = h->param.giro.u.y + (u16)o->raiz_ayudantes->super->param->rotate.vy;
                                 func_8001CF50(h);
                             }
                         }
@@ -387,7 +387,7 @@ sigue:
                                         D_80069698->u18C.agarre.escala.vy = D_80069698->param.escala.vy;
                                         D_80069698->coord.param = (GsCOORD2PARAM*)&D_80069698->u18C.agarre;
                                         D_80069698->w17E = 0;
-                                        D_80069698->coord.super = o->i68;
+                                        D_80069698->coord.super = o->raiz_ayudantes;
                                         D_80069698->w17C = c->eventos[i].id;
                                         D_80069698->flags14 = 0x2000000;
                                         o->p6C = D_80069698;
@@ -432,16 +432,16 @@ sigue:
                     }
 siguiente:
                     i++;
-                } while (i < c->b09);
+                } while (i < c->n_eventos);
             }
         }
     }
-    if (c->b08 == 0) {
-        c->h02 = c->h02 + 1;
-        c->b08 = c->b05 = c->duraciones[(u16)c->h02].ticks;
+    if (c->ticks == 0) {
+        c->cuadro = c->cuadro + 1;
+        c->ticks = c->espera = c->duraciones[(u16)c->cuadro].ticks;
     }
-    c->b08 = c->b08 - 1;
-    if ((u16)c->h02 == c->w00) {
+    c->ticks = c->ticks - 1;
+    if ((u16)c->cuadro == c->ultimo) {
         c->flags18 = c->flags18 | ANIM_ULTIMO_CUADRO;
     }
     return 0x200;

@@ -236,7 +236,7 @@ void func_80020B90(Objeto* o)
     }
     if (sc->reg->flags10 & 0x2000) {
         o->flags18 |= 4;
-        if (D_80069698->w1B4 != 0) {
+        if (D_80069698->reiniciar_camara != 0) {
             D_8006965A = 5;
             D_8006965B = 0x50;
             D_8006965E = 0;
@@ -268,7 +268,7 @@ void func_80020B90(Objeto* o)
                             c = c * 0x1111 >> 12;
                         }
                         D_800693AC += c;
-                        o->trabajo.b05 = 5 - D_800693AC / 32;
+                        o->trabajo.espera = 5 - D_800693AC / 32;
                         D_800693AC = D_800693AC % 32;
                     }
                     a = (u32)(sc->reg->s14 * D_80069694 * a) >> 7;
@@ -639,8 +639,8 @@ void func_80020B90(Objeto* o)
                 } else if (o->p70->flags08 & 8) {
                     pj = sc->reg->s18;
                     sc->tmp = pj;
-                    if ((o->p70->flags08 & 0x8000) || (o->p70->w2C == 0xE && o->p70->registro184 != NULL && (((RegistroEstado*)o->p70->registro184)->flags10 & 0x10000000))) {
-                        if (o->p70->w2C == 5) {
+                    if ((o->p70->flags08 & 0x8000) || (o->p70->clase == 0xE && o->p70->registro184 != NULL && (((RegistroEstado*)o->p70->registro184)->flags10 & 0x10000000))) {
+                        if (o->p70->clase == 5) {
                             vj = o->p70->s1E;
                         } else {
                             vj = *(s16*)&o->p70->u18C.estado.w196;
@@ -701,7 +701,7 @@ llamar_salto:
             sc->tocado = func_80016C0C(o, 0x80, (ConsultaVolumen*)w);
             if (sc->tocado != NULL) {
                 a = 1;
-                if (sc->tocado->w2C == 0xE) {
+                if (sc->tocado->clase == 0xE) {
                     if (sc->tocado->registro184 == NULL || !(((RegistroEstado*)sc->tocado->registro184)->flags0C & 0x4000)) {
                         a = 0;
                     }
@@ -709,16 +709,16 @@ llamar_salto:
                 if (a != 0) {
                     sc->tocado->flags14 |= 0x04000000;
                     sc->tocado->w38 = 1;
-                    sc->tocado->i34 = 1;
-                    o->i34 = sc->tocado->w1C;
+                    sc->tocado->id_atacante = 1;
+                    o->id_atacante = sc->tocado->w1C;
                 }
             }
         }
-        if ((sc->reg->flags0C & 0x10000) && o->i68 != 0) {
+        if ((sc->reg->flags0C & 0x10000) && o->raiz_ayudantes != 0) {
             sc->tocado = func_800171E4(o, &o->objetivo, 0x80, 0, (ConsultaVolumen*)w);
             if (sc->tocado != NULL) {
                 a = 1;
-                if (sc->tocado->w2C == 0xE) {
+                if (sc->tocado->clase == 0xE) {
                     if (sc->tocado->registro184 == NULL || !(((RegistroEstado*)sc->tocado->registro184)->flags0C & 0x4000)) {
                         a = 0;
                     }
@@ -731,17 +731,17 @@ llamar_salto:
                         } else {
                             sc->tocado->w38 = 1;
                         }
-                        sc->tocado->i34 = o->p6C->w1C;
+                        sc->tocado->id_atacante = o->p6C->w1C;
                     } else {
                         sc->tocado->flags14 |= 0x04000000;
                         sc->tocado->w38 = 1;
-                        sc->tocado->i34 = 1;
+                        sc->tocado->id_atacante = 1;
                     }
-                    o->i34 = sc->tocado->w1C;
+                    o->id_atacante = sc->tocado->w1C;
                 }
             }
         }
-        if (((sc->reg->flags0C & 0x40) || (sc->reg->flags10 & 0x40000)) && o->i68 != 0) {
+        if (((sc->reg->flags0C & 0x40) || (sc->reg->flags10 & 0x40000)) && o->raiz_ayudantes != 0) {
             pp = o->p6C;
             if (pp != NULL) {
             pp->flags14 &= ~0x806;
@@ -875,7 +875,7 @@ llamar_salto:
         t2 = o->p6C;
         sc->tocado = t2;
         if (t2 != NULL) {
-            if (((t2->flags08 & 0x2000) || t2->w2C == 0x22) && !(sc->reg->flags0C & 0x40)) {
+            if (((t2->flags08 & 0x2000) || t2->clase == 0x22) && !(sc->reg->flags0C & 0x40)) {
                 if (!(sc->reg->flags10 & 0x40000)) {
                     D_80069D60[0].vx = D_80069D60[2].vx = o->min.vx;
                     D_80069D60[1].vx = D_80069D60[3].vx = o->max.vx;
@@ -1048,7 +1048,7 @@ aterrizar:
                     APOYO(o)->giro.u.y = o->param.giro.u.y - o->p70->param.giro.u.y;
                     if ((s32)o->p70->flags08 < 0 || (o->p70->flags0C & 0x400000)) {
                         if (o->p70->flags0C & 0x400000) {
-                            o->coord.super = (GsCOORDINATE2*)sc->tocado->i68;
+                            o->coord.super = (GsCOORDINATE2*)sc->tocado->raiz_ayudantes;
                         } else {
                             o->coord.super = *(GsCOORDINATE2**)((u8*)o->p70->u78.p + 0x10);
                         }
@@ -1064,12 +1064,12 @@ aterrizar:
                     if (!(o->flags14 & 0x10000) && (o->flags14 & 0x208) && (D_800693D4 & 0x208)) {
                         sc->tocado->flags14 |= 0x80;
                     }
-                    if (!(o->flags14 & 0x03000000) && ((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL) {
+                    if (!(o->flags14 & 0x03000000) && ((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->clase == 0xE && sc->tocado->registro184 != NULL) {
                         if (((RegistroEstado*)sc->tocado->registro184)->flags10 & 0x8000) {
                             sc->tocado->flags14 = f4 | 0x04000000;
                             sc->tocado->w38 = 1;
-                            sc->tocado->i34 = 1;
-                            o->i34 = sc->tocado->w1C;
+                            sc->tocado->id_atacante = 1;
+                            o->id_atacante = sc->tocado->w1C;
                         }
                         if (((RegistroEstado*)sc->tocado->registro184)->flags10 & 0x10000000) {
                             o->flags18 |= 0x40;
@@ -1080,11 +1080,11 @@ aterrizar:
                         o->flags14 &= ~0x209;
                     }
                     o->flags14 &= ~2;
-                    if (((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL && (((RegistroEstado*)sc->tocado->registro184)->flags10 & 0x8000)) {
+                    if (((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->clase == 0xE && sc->tocado->registro184 != NULL && (((RegistroEstado*)sc->tocado->registro184)->flags10 & 0x8000)) {
                         sc->tocado->flags14 = f4 | 0x04000000;
                         sc->tocado->w38 = 1;
-                        sc->tocado->i34 = 1;
-                        o->i34 = sc->tocado->w1C;
+                        sc->tocado->id_atacante = 1;
+                        o->id_atacante = sc->tocado->w1C;
                     }
                     if ((sc->tocado->flags0C & 0x800000) && !(o->flags14 & 0x10000000)) {
                         if ((D_80069D30[0] | D_80069D30[2]) == 0) {
@@ -1128,7 +1128,7 @@ aterrizar:
                 if (!(o->flags14 & 0x10000) && (o->flags14 & 0x208) && (s16)sc->paso_y >= -0x63) {
                     sc->tocado->flags14 |= 0x80;
                 }
-                if (!(o->flags14 & 0x03000000) && ((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL) {
+                if (!(o->flags14 & 0x03000000) && ((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->clase == 0xE && sc->tocado->registro184 != NULL) {
                     goto marcar_estado;
                 }
                 if (!(sc->tocado->flags08 & 0x02000000)) {
@@ -1140,13 +1140,13 @@ aterrizar:
                 if (!(o->flags14 & 0x10000) && (o->flags14 & 0x208) && (s16)sc->paso_y >= -0x63) {
                     sc->tocado->flags14 |= 0x80;
                 }
-                if (!(o->flags14 & 0x03000000) && ((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->w2C == 0xE && sc->tocado->registro184 != NULL) {
+                if (!(o->flags14 & 0x03000000) && ((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->clase == 0xE && sc->tocado->registro184 != NULL) {
 marcar_estado:
                     if (((RegistroEstado*)sc->tocado->registro184)->flags10 & 0x8000) {
                         sc->tocado->flags14 = f4 | 0x04000000;
                         sc->tocado->w38 = 1;
-                        sc->tocado->i34 = 1;
-                        o->i34 = sc->tocado->w1C;
+                        sc->tocado->id_atacante = 1;
+                        o->id_atacante = sc->tocado->w1C;
                     }
                     if (((RegistroEstado*)sc->tocado->registro184)->flags10 & 0x10000000) {
                         o->flags18 |= 0x40;
@@ -1369,7 +1369,7 @@ sin_rebote:
                         if (!(sc->cand->m20 & 0x8000)) {
                             continue;
                         }
-                        if (o->p70 != NULL && o->p70->w2C == 0xE && o->p70->registro184 != NULL) {
+                        if (o->p70 != NULL && o->p70->clase == 0xE && o->p70->registro184 != NULL) {
                             vs = ((RegistroEstado*)o->p70->registro184)->flags10 & 0x10000000;
                         } else {
                             vs = o->flags18 & 0x40;
@@ -1443,7 +1443,7 @@ sin_rebote:
                 o->p180 = sc->sec;
                 o->registro184 = (RegistroAnim*)sc->reg;
                 o->trabajo.i14 = 0;
-                o->i68 = 0;
+                o->raiz_ayudantes = 0;
                 o->nodo188 = (NodoSecuencia*)sc->trans;
                 D_80069584 = hw;
                 if (sc->reg->flags10 & 0x800) {
@@ -1452,7 +1452,7 @@ sin_rebote:
             }
         }
         GEO_CERO_WH(&sc->tmp_sv);
-        if (o->p6C == NULL && (sc->reg->flags0C & 0x20) && o->i68 != 0 && D_80069388 != NULL) {
+        if (o->p6C == NULL && (sc->reg->flags0C & 0x20) && o->raiz_ayudantes != 0 && D_80069388 != NULL) {
             sc->tocado = D_80069388;
             if ((sc->tocado->flags08 & 0x2802) && o->p70 != sc->tocado) {
                 if (sc->tocado->flags08 & 0x2000) {
@@ -1494,7 +1494,7 @@ sin_rebote:
                     o->p6C = sc->tocado;
                     sc->tocado->flags14 &= 0xFFF7EFED;
                     sc->tocado->flags14 |= 0x800;
-                    sc->tocado->coord.super = (GsCOORDINATE2*)o->i68;
+                    sc->tocado->coord.super = (GsCOORDINATE2*)o->raiz_ayudantes;
                     sc->tocado->coord.param = (GsCOORD2PARAM*)PORTADO(sc->tocado);
                     D_80069388 = NULL;
                     GEO_CERO_W(&PORTADO(sc->tocado)->trans);
@@ -1565,7 +1565,7 @@ sin_rebote:
                 o->max.vx = 0x46;
                 o->min.vx = -0x46;
                 o->min.vz = -0x28;
-                sum = (u16)sc->tocado->max.vz + ((u16)sc->tocado->s20 + 0x5A);
+                sum = (u16)sc->tocado->max.vz + ((u16)sc->tocado->radio + 0x5A);
                 o->max.vz = sum;
                 c = o->min.vx * o->min.vx + o->min.vz * o->min.vz;
                 a = 0x46 * 0x46 + sum * sum;
@@ -1589,7 +1589,7 @@ caja_defecto:
         }
     }
     pos = &o->param.trans;
-    if ((o->flags14 & 0x01000000) && !((u8)D_8006966A & 2) && (s16)((u16)o->trabajo.w00 - (u16)o->trabajo.h02) * o->trabajo.b05 < 9) {
+    if ((o->flags14 & 0x01000000) && !((u8)D_8006966A & 2) && (s16)((u16)o->trabajo.ultimo - (u16)o->trabajo.cuadro) * o->trabajo.espera < 9) {
         D_800694E0 = 0;
         D_800694E1 = 0;
         D_800694E8 = 0;
@@ -1630,9 +1630,9 @@ caja_defecto:
         func_8001E1A4(o, (ConsultaPlano*)w);
     }
     lo = sc->desp.x | sc->desp.y | sc->desp.z;
-    o->w1B4 = lo;
+    o->reiniciar_camara = lo;
     if (o->p70 != NULL && !(o->p70->flags08 & 8)) {
-        o->w1B4 = lo + 1;
+        o->reiniciar_camara = lo + 1;
     }
     if (o->p6C != NULL && D_80069558 != NULL) {
         o->p6C->w26 = *D_80069558;

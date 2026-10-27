@@ -77,7 +77,7 @@ Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o)
         rot = &o->rot;
         m = 0;
         do {
-            if ((o->actual->flags08 & mascara) && o->actual->s2A == 2 && a != o->actual
+            if ((o->actual->flags08 & mascara) && o->actual->tipo_volumen == 2 && a != o->actual
                 && a->p70 != o->actual && a->p6C != o->actual && o->actual->p70 != a) {
                 GEO_CARGAR_WH(&o->actual->min);
                 GEO_OR_WH(&o->actual->max);
@@ -88,7 +88,7 @@ Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o)
                     GEO_GUARDAR_H_T4(dif);
                     GEO_NORMA2_XZ(dif, &o->dist2);
                     if (o->actual->alcance2 >= o->dist2) {
-                        o->radio = o->actual->s20;
+                        o->radio = o->actual->radio;
                         GEO_COMPLEMENTO(&o->actual->param.giro.rotate);
                         GEO_GUARDAR_H_T1(rot);
                         m = &o->m;
@@ -132,11 +132,11 @@ Objeto* func_80016ED0(Objeto* a, u32 mascara, ConsultaCaja* o)
     GEO_GUARDAR_WH(&o->min);
     GEO_CARGAR_WH(&a->max);
     GEO_GUARDAR_WH(&o->max);
-    o->radio = a->s20;
+    o->radio = a->radio;
     o->actual = D_80069630;
     if (o->actual != 0) {
         do {
-            if ((o->actual->flags08 & mascara) && o->actual->s2A == 2 && a != o->actual
+            if ((o->actual->flags08 & mascara) && o->actual->tipo_volumen == 2 && a != o->actual
                 && a->p70 != o->actual && a->p6C != o->actual && o->actual->p70 != a) {
                 GEO_CARGAR_WH(&o->actual->min);
                 GEO_OR_WH(&o->actual->max);
@@ -188,7 +188,7 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
         dif = &o->dif;
         rot = &o->rot;
         do {
-            if ((n->flags08 & mascara) && n->s2A == 2 && n != a && !(n->flags08 & excluir)) {
+            if ((n->flags08 & mascara) && n->tipo_volumen == 2 && n != a && !(n->flags08 & excluir)) {
                 GEO_CARGAR_WH(&n->min);
                 GEO_OR_WH(&n->max);
                 GEO_GUARDAR_1W_T1(&o->caja);
@@ -198,7 +198,7 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
                     GEO_GUARDAR_H_T4(dif);
                     GEO_NORMA2_XZ(dif, &o->dist2);
                     if (o->dist2 <= n->alcance2) {
-                        r = n->s20 + 4;
+                        r = n->radio + 4;
                         GEO_COMPLEMENTO(&n->param.giro.rotate);
                         GEO_GUARDAR_H_T1(rot);
                         m = &o->m;
@@ -271,7 +271,7 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
         if (lista != 0 && (w->actual->flags08 & 0x20000) == 0) {
             goto siguiente;
         }
-        if ((w->actual->flags08 & mascara) == 0 || w->actual->s2A != 2 || a == w->actual
+        if ((w->actual->flags08 & mascara) == 0 || w->actual->tipo_volumen != 2 || a == w->actual
             || a->p70 == w->actual || a->p6C == w->actual || w->actual->p70 == a
             || w->actual->p6C == a || w->actual->p70 == (Objeto*)D_80069698) {
             goto siguiente;
@@ -298,7 +298,7 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
         GEO_RESTAR_W(&w->actual->param.trans);
         GEO_GUARDAR_H_T4(dif);
         GEO_NORMA2_XZ(dif, &w->dist2);
-        t2 = U16_2E(a) + U16_2E(w->actual) + w->actual->s20 + a->s20;
+        t2 = U16_2E(a) + U16_2E(w->actual) + w->actual->radio + a->radio;
         t2 = t2 * t2;
         if ((u32)t2 < w->dist2) {
             goto siguiente;
@@ -309,7 +309,7 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
         GEO_RESTAR_W(&w->b->param.trans);
         GEO_GUARDAR_H_T4(dif);
         w->dif.vy = w->dif.vy + v->vy;
-        w->radio = w->b->s20;
+        w->radio = w->b->radio;
         GEO_COMPLEMENTO(&w->b->param.giro.rotate);
         GEO_GUARDAR_H_T1(&w->rot);
         RotMatrixZYX(&w->rot, &w->m);
@@ -332,10 +332,10 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
             w->angs[2] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->max.vz + w->radio - w->p[0].vz);
             w->angs[3] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->min.vz - w->radio - w->p[0].vz);
         }
-        w->p[0].vx = w->p[2].vx = w->a->min.vx - w->a->s20;
-        w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->s20;
-        w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->s20;
-        w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->s20;
+        w->p[0].vx = w->p[2].vx = w->a->min.vx - w->a->radio;
+        w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->radio;
+        w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->radio;
+        w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->radio;
         w->p[4].vx = w->p[4].vy = w->p[4].vz = 0;
         w->p[0].vy = w->p[1].vy = w->p[2].vy = w->p[3].vy = 0;
         RotMatrix(&w->a->param.giro.rotate, &w->m2);
@@ -605,7 +605,7 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
     GEO_CARGAR_W(&w->a->param.trans);
     GEO_RESTAR_W(&w->b->param.trans);
     GEO_GUARDAR_H_T4(dif);
-    w->radio = w->b->s20;
+    w->radio = w->b->radio;
     GEO_COMPLEMENTO(&w->b->param.giro.rotate);
     GEO_GUARDAR_H_T1(&w->rot);
     RotMatrixZYX(&w->rot, &w->m);
@@ -620,10 +620,10 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
         w->angs[2] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->max.vz + w->radio - w->p[0].vz);
         w->angs[3] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->min.vz - w->radio - w->p[0].vz);
     }
-    w->p[0].vx = w->p[2].vx = w->a->min.vx - w->a->s20;
-    w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->s20;
-    w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->s20;
-    w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->s20;
+    w->p[0].vx = w->p[2].vx = w->a->min.vx - w->a->radio;
+    w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->radio;
+    w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->radio;
+    w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->radio;
     w->p[4].vx = w->p[4].vy = w->p[4].vz = 0;
     w->p[0].vy = w->p[1].vy = w->p[2].vy = w->p[3].vy = 0;
     m2 = &w->m2;
@@ -739,7 +739,7 @@ s32 func_80018D98(Objeto* a, VECTOR* p, ConsultaVolumen* o)
     if (o->dist2 > a->alcance2) {
         return 0;
     }
-    o->radio = a->s20;
+    o->radio = a->radio;
     GEO_COMPLEMENTO(&a->param.giro.rotate);
     GEO_GUARDAR_H_T1(&o->rot);
     GEO_IDENTIDAD(&o->m);
@@ -774,7 +774,7 @@ s32 func_80018F80(Objeto* a, Objeto* b, ConsultaVolumen* o)
     if (o->dist2 > a->alcance2) {
         return 0;
     }
-    o->radio = a->s20;
+    o->radio = a->radio;
     GEO_COMPLEMENTO(&a->param.giro.rotate);
     GEO_GUARDAR_H_T1(&o->rot);
     GEO_IDENTIDAD(&o->m);

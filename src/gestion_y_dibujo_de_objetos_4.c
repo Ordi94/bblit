@@ -132,7 +132,7 @@ Objeto* OrientarSombraSobreSuperficie(Objeto* o, ParametrosObjeto* d, u32 mascar
         }
         if (top >= o->param.trans.vy && d->trans.vy >= top &&
             ((cur->flags08 & mascara) || (cur->flags0C & 0x2000)) && !(cur->flags08 & 1) &&
-            cur->s2A == 2 && o != cur) {
+            cur->tipo_volumen == 2 && o != cur) {
             w->u.s.giro.vx = 0x1000 - cur->param.giro.u.x;
             w->u.s.giro.vy = 0x1000 - cur->param.giro.u.y;
             w->u.s.giro.vz = 0x1000 - cur->param.giro.u.z;
@@ -145,7 +145,7 @@ Objeto* OrientarSombraSobreSuperficie(Objeto* o, ParametrosObjeto* d, u32 mascar
             RotMatrixZ(w->u.s.giro.vz, &w->u.s.m);
             ApplyMatrixSV(&w->u.s.m, &w->u.s.dif, &w->u.s.local);
             /* El radio se extiende a 32 bits en esta sentencia (variable s32): el original carga s20 antes que la caja del solido. */
-            r = cur->s20;
+            r = cur->radio;
             if (w->u.s.local.vx >= cur->min.vx - r && cur->max.vx + r >= w->u.s.local.vx &&
                 w->u.s.local.vz >= cur->min.vz - r && cur->max.vz + r >= w->u.s.local.vz) {
                 w->u.s.giro.vx = 0;
