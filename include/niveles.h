@@ -295,6 +295,41 @@ typedef struct TrabajoBloque {
 #define TRABAJO_BLOQUE ((TrabajoBloque*)0x1F800000)
 
 /*
+ * Memoria de trabajo de la cadena oscilante (clase 8, scratchpad 0x1F800000): el cursor del ayudante
+ * que se cuenta en el primer cuadro en +0, el cabeceo base en +4, el angulo del eslabon en +8, el
+ * vector de giro de RotMatrix en +0xC (tres medias palabras que el original guarda con sh), el
+ * vector de extension que entra al GTE en +0x14, su resultado en +0x1C y el contador de eslabones
+ * en +0x2C. El area de las rutinas de animacion empieza en +0x30.
+ */
+typedef struct TrabajoCadena {
+    struct Ayuda* nodo;             /* +0x00: sw / lw 0x80025B98, 0x80025BCC, 0x80025BE0 */
+    s32 cabeceo;                    /* +0x04: sw 0x80025D38, lw 0x80025D88 */
+    s32 angulo;                     /* +0x08: sw 0x80025D2C, lw 0x80025D6C */
+    SVECTOR giro;                   /* +0x0C: sh 0x80025D1C, 0x80025D20, 0x80025D24; lhu 0x80025E30 */
+    SVECTOR ext;                    /* +0x14: sh zero 0x80025F64 y 0x80025F6C; lwc2 0x80025FBC */
+    VECTOR r;                       /* +0x1C: swc2 0x80025FD0; lw 0x80025FDC, 0x80025FF0, 0x80026080 */
+    u16 n;                          /* +0x2C: sh 0x80025BC8; lhu 0x80025BF4 */
+} TrabajoCadena;
+
+#define TRABAJO_CADENA ((TrabajoCadena*)0x1F800000)
+
+/*
+ * La cadena oscilante (clase 8) reutiliza la zona de portado y de trabajo de otras clases
+ * (+0x138..+0x160), igual que los objetos moviles reutilizan +0x184 (MOVIL_*): el campo declarado
+ * conserva el ancho del primer uso y la clase 8 accede con estos cast, cada uno con la instruccion
+ * que fija su ancho. La animacion de esta clase vive en +0x100 y no en +0x144.
+ */
+#define OSC_ULTIMO(o) (*(GsCOORDINATE2**)((u8*)(o) + 0x138))   /* sw 0x80025C58, lw 0x80025CEC */
+#define OSC_SEL(o) (*(GsCOORDINATE2**)((u8*)(o) + 0x13C))      /* lw 0x80025D58, sw zero 0x80025DF8 */
+#define OSC_FASE(o) (*(s32*)((u8*)(o) + 0x140))                /* sw 0x80025C4C, lw 0x80025CFC */
+#define OSC_AMPLITUD(o) (*(s32*)((u8*)(o) + 0x144))            /* sw 0x80025C44, lw 0x80025D10 */
+#define OSC_I148(o) (*(s32*)((u8*)(o) + 0x148))                /* sw zero 0x80025C50 */
+#define OSC_SIGNO(o) (*(s16*)((u8*)(o) + 0x14C))               /* lh 0x80025E4C, sh 0x80025EB8 */
+#define OSC_SONIDO(o) (*(s16*)((u8*)(o) + 0x160))              /* lh 0x80025E5C */
+
+extern s16 D_8005E08C[];    /* seno de 1 grado por paso (0x168 entradas, escala 1024): lh 0x80025D0C */
+
+/*
  * Registro de estado de la lista de +0xF8 del objeto (el estado vigente). El enlace va en +0 y
  * el identificador en +4 (tambien codigo de accion que recibe func_8001D414). s06 es la animacion
  * del estado (se compara con trabajo.i14), s08 sus parametros (el bit 0x8000 impide reiniciarla),
