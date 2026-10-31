@@ -54,7 +54,11 @@ typedef struct SpritePlano {
  * de indices del conjunto.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1535 con la configuracion versionada (g = 8 del archivo). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0. */
+/* Pendiente: puntuacion 1535 con la configuracion versionada (g = 8 del archivo). Mismos accesos y mismos
+ * almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y
+ * reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y
+ * t0.
+ */
 void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     Fotograma* r;
