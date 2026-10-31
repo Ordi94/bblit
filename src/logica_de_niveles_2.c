@@ -1,4 +1,5 @@
 #include "common.h"
+#include "globales.h"
 
 /*
  * Pendiente de traducir: tiene marco de pila (addiu sp inicial y epilogo simetrico), asi que no es una
@@ -7,10 +8,12 @@
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_2", func_80025938);
 
 /*
- * Pendiente de traducir: cuerpo vacio (jr ra con nop en el hueco, 8 bytes); pasarlo a C es solo cuestion de
- * decidirlo, no hay nada que igualar.
+ * Manejador vacio de la clase 7 de D_8005E35C: el objeto no tiene logica propia. Conserva el prototipo
+ * de la tabla (void (*)(Objeto*)) aunque no lea el parametro.
  */
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_2", func_80025B24);
+void func_80025B24(Objeto* o)
+{
+}
 
 /*
  * Pendiente de traducir: tiene marco de pila de 0x30 bytes con s0..s4 y ra guardados (no es manuscrita); la
