@@ -513,7 +513,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020240);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 9105 con la configuracion versionada (g = 8 del archivo). El original recorre los peldanos con punteros que avanzan 0x14 (x con uno y y, z con otro) y deja punto y mascara en s5 y s4; el compilador recalcula el indice en el bucle de busqueda y reparte punto y mascara al reves. */
+/* Pendiente: puntuacion 645 con la configuracion versionada (g = 8 del archivo). Solo difiere el reparto de registros: el original deja el nodo de la cadena en a3, el contador en t0 y la tercera componente en t1 (el compilador los asigna a t1, a3 y t0), usa a0 para la direccion de la distancia y reparte v0 y v1 de otro modo en el bloque del resultado. */
 /*
  * Busca el objeto solido que sirve de apoyo bajo un punto. Recorre la lista de solidos (D_80069630)
  * y, para cada uno que cumple la mascara, esta visible, es del mismo grupo, es un volumen solido
@@ -526,28 +526,35 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020240);
 ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara)
 {
     VECTOR cero;
+    u32 ms;
+    VECTOR* pt;
     GsCOORDINATE2* n;
+    PeldanoApoyo* p;
+    PeldanoApoyo* q;
     s16 i;
     s16 j;
     s16 k;
-    s16 x1;
-    s16 y1;
-    s16 z1;
+    s32 x1;
+    s32 y1;
+    s32 z1;
     s32 r;
+    s32 rs;
     s32 h;
 
+    pt = punto;
+    ms = mascara;
     w->caja_min.vx = o->min.vx;
     w->caja_min.vy = o->min.vy;
     w->caja_min.vz = o->min.vz;
     w->caja_max.vx = o->max.vx;
     w->caja_max.vy = o->max.vy;
-    w->cur = D_80069630;
     w->caja_max.vz = o->max.vz;
+    w->cur = D_80069630;
     if (w->cur != 0) {
         do {
-            if ((w->cur->flags08 & mascara) && !(w->cur->flags14 & 1) && (s16)w->cur->w26 == (s16)o->w26 &&
+            if ((w->cur->flags08 & ms) && !(w->cur->flags14 & 1) && (s16)w->cur->w26 == (s16)o->w26 &&
                 w->cur->tipo_volumen == 2 && o != w->cur && w->cur->u78.p != 0) {
-                GEO_CARGAR_W(punto);
+                GEO_CARGAR_W(pt);
                 GEO_RESTAR_W(&w->cur->param.trans);
                 GEO_GUARDAR_H_T4(&w->local);
                 GEO_NORMA2_XZ(&w->local, &w->dist);
@@ -584,65 +591,67 @@ ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara
                                 if (i >= 0x14) {
                                     break;
                                 }
-                                w->pel[i].x = (u16)n->param->trans.vx;
-                                w->pel[i].y = (u16)n->param->trans.vy;
-                                w->pel[i].z = (u16)n->param->trans.vz;
-                                w->pel[i].nodo = n;
+                                p = &w->pel[i];
+                                p->x = (u16)n->param->trans.vx;
+                                p->y = (u16)n->param->trans.vy;
+                                p->z = (u16)n->param->trans.vz;
+                                p->nodo = n;
                                 if (i >= 2) {
-                                    gte_SetRotMatrix(&w->pel[i - 1].nodo->coord);
-                                    x1 = w->pel[i - 1].x;
-                                    y1 = w->pel[i - 1].y;
-                                    z1 = w->pel[i - 1].z;
-                                    for (j = i - 2; j >= 0; j--) {
-                                        gte_ldv0(&w->pel[j]);
+                                    q = &w->pel[i - 1];
+                                    gte_SetRotMatrix(&q->nodo->coord);
+                                    x1 = q->x;
+                                    y1 = q->y;
+                                    z1 = q->z;
+                                    for (j = i - 2, q = &w->pel[j]; j >= 0; j--, q--) {
+                                        gte_ldv0(q);
                                         gte_rtv0();
-                                        gte_stsv(&w->pel[j]);
+                                        gte_stsv(q);
                                     }
-                                    for (j = i - 2; j >= 0; j--) {
-                                        w->pel[j].x += x1;
-                                        w->pel[j].y += y1;
-                                        w->pel[j].z += z1;
+                                    for (j = i - 2, q = &w->pel[j]; j >= 0; j--, q--) {
+                                        q->x += x1;
+                                        q->y += y1;
+                                        q->z += z1;
                                     }
                                 }
                                 n = n->super;
                             }
                         }
                         w->rot.vx = (u16)n->param->rotate.vx;
-                        w->rot.vy = 0;
                         w->rot.vz = 0;
+                        w->rot.vy = 0;
                         RotMatrixZYX(&w->rot, &w->m);
                         gte_SetRotMatrix(&w->m);
-                        for (k = 0; k < i; k++) {
-                            gte_ldv0(&w->pel[k]);
+                        for (k = 0, p = w->pel; k < i; k++, p++) {
+                            gte_ldv0(p);
                             gte_rtv0();
-                            gte_stsv(&w->pel[k]);
+                            gte_stsv(p);
                         }
-                        w->pel[0].largo = 0;
                         w->pel[0].alto = w->cur->trabajo.h0A;
+                        w->pel[0].largo = 0;
                         for (k = 1; k < i; k++) {
                             w->pel[k].alto = w->pel[k - 1].y - w->pel[k].y;
                             w->pel[k].largo = w->pel[k - 1].z - w->pel[k].z;
                         }
-                        for (k = 0; k < i; k++) {
-                            r = w->dist;
-                            if (w->out.vx >= -r && w->out.vx <= r) {
-                                if (w->pel[k].largo >= 0) {
-                                    if (w->pel[k].z + w->pel[k].largo + r < w->out.vz || w->out.vz < w->pel[k].z - r) {
+                        for (k = 0, p = w->pel; k < i; k++, p++) {
+                            rs = w->dist;
+                            if (w->out.vx >= -rs && w->out.vx <= rs) {
+                                if (p[0].largo >= 0) {
+                                    if (p[0].z + p[0].largo + rs < w->out.vz || w->out.vz < p[0].z - rs) {
                                         continue;
                                     }
                                 } else {
-                                    if (w->out.vz < w->pel[k].z + w->pel[k].largo - r || w->pel[k].z + r < w->out.vz) {
+                                    if (w->out.vz < p[0].z + p[0].largo - rs || p[0].z + rs < w->out.vz) {
                                         continue;
                                     }
                                 }
                                 h = w->out.vy - 0x12C;
-                                if (w->pel[k].y < h && h < w->pel[k].y + w->pel[k].alto) {
-                                    w->cur->portado.trans.vz = (s32)w->pel[k].nodo;
+                                if (p[0].y < h && h < p[0].y + p[0].alto) {
+                                    w->cur->portado.trans.vz = (s32)p[0].nodo;
                                     w->res.coord = &w->cur->coord;
                                     w->res.objeto = w->cur;
                                     w->res.h0A = w->out.vy;
-                                    w->res.x = w->pel[k].x;
-                                    w->res.z = w->pel[k].z;
+                                    w->res.x = p[0].x;
+                                    w->res.z = p[0].z;
                                     return &w->res;
                                 }
                             }
