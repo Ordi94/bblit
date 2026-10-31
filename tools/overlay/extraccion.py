@@ -20,6 +20,8 @@ from tools.reconstruccion.infraestructura import localizar_imagen
 from tools.toolchain import iso9660
 
 RUTA_CONFIG = Path("config") / "overlay.json"
+LF = "\n"
+CRLF = "\r\n"
 CARPETA_EXTRAIDOS = Path("expected") / "overlay"
 
 
@@ -177,6 +179,31 @@ def extraer_variantes(
     return dominio.identificar_variantes(dominio.agrupar_por_huella(secciones), conocidas)
 
 
+def final_de_linea_de(ruta: Path) -> str:
+    """
+    Da el final de linea que usa un archivo existente, o LF si no existe.
+
+    Contexto:
+        ``escribir_extraccion`` reescribe``config/overlay.json``. En una copia de trabajo con
+        conversion automatica de finales de linea el archivo esta en CRLF; reescribirlo con LF lo
+        deja distinto del que git espera y ``git status`` lo marca como modificado aunque el
+        contenido no haya cambiado. Se conserva el final que ya tiene.
+
+    Args:
+        ruta (Path): Archivo que se va a reescribir.
+
+    Returns:
+        str: ``CRLF`` (retorno y avance) si el archivo existe y contiene alguno; en otro caso LF.
+
+    Ejemplo:
+        fin = final_de_linea_de(Path("config/overlay.json"))
+    """
+    try:
+        return CRLF if CRLF.encode() in ruta.read_bytes() else LF
+    except OSError:
+        return LF
+
+
 def escribir_extraccion(
     raiz: Path, variantes: Sequence[VarianteExtraida], binarios: dict[str, bytes]
 ) -> None:
@@ -203,7 +230,10 @@ def escribir_extraccion(
     for variante in variantes:
         (destino / f"{variante.identificador}.bin").write_bytes(binarios[variante.identificador])
     (raiz / RUTA_CONFIG).parent.mkdir(parents=True, exist_ok=True)
-    (raiz / RUTA_CONFIG).write_text(dominio.serializar_config(variantes), encoding="utf-8", newline="\n")
+    ruta_config = raiz / RUTA_CONFIG
+    ruta_config.write_text(
+        dominio.serializar_config(variantes), encoding="utf-8", newline=final_de_linea_de(ruta_config)
+    )
 
 
 def leer_variantes(
