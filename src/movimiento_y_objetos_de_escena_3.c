@@ -2,6 +2,7 @@
 #include "gte.h"
 #include "motor.h"
 #include "animacion.h"
+#include "objetos.h"
 
 /*
  * Sprite del objeto en formato escalado: el bloque que sigue a los doce primeros bytes del
@@ -511,10 +512,161 @@ void func_80020240(Objeto* o)
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020240);
 #endif
 
-/* Pendiente de traducir: el particionador la marca Handwritten por 31 instrucciones sueltas (restas con
- * signo `sub` donde el compilador emite `subu`, y `mtc2` sueltos al GTE, por ejemplo en 0x8002046C y
- * 0x80020494), pero reserva un marco de 0x40 bytes y no es una rutina manuscrita. */
+#ifdef NON_MATCHING
+/* Pendiente: puntuacion 645 con la configuracion versionada (g = 8 del archivo). Solo difiere el reparto de registros: el original deja el nodo de la cadena en a3, el contador en t0 y la tercera componente en t1 (el compilador los asigna a t1, a3 y t0), usa a0 para la direccion de la distancia y reparte v0 y v1 de otro modo en el bloque del resultado. */
+/*
+ * Busca el objeto solido que sirve de apoyo bajo un punto. Recorre la lista de solidos (D_80069630)
+ * y, para cada uno que cumple la mascara, esta visible, es del mismo grupo, es un volumen solido
+ * distinto del consultante, tiene modelo y queda al alcance en el plano, pasa el punto al sistema
+ * local del solido (giro inverso). Si el solido es de caja plana (bandera 0x400000) comprueba el
+ * semilado y la altura de la caja; si no, recorre la cadena de ayudantes de su modelo, acumula con
+ * el GTE la posicion de cada peldano (hasta 20) y busca el que contiene el punto con holgura
+ * vertical de 0x12C. Devuelve el apoyo hallado (dentro del area de trabajo) o nulo.
+ */
+ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara)
+{
+    VECTOR cero;
+    u32 ms;
+    VECTOR* pt;
+    GsCOORDINATE2* n;
+    PeldanoApoyo* p;
+    PeldanoApoyo* q;
+    s16 i;
+    s16 j;
+    s16 k;
+    s32 x1;
+    s32 y1;
+    s32 z1;
+    s32 r;
+    s32 rs;
+    s32 h;
+
+    pt = punto;
+    ms = mascara;
+    w->caja_min.vx = o->min.vx;
+    w->caja_min.vy = o->min.vy;
+    w->caja_min.vz = o->min.vz;
+    w->caja_max.vx = o->max.vx;
+    w->caja_max.vy = o->max.vy;
+    w->caja_max.vz = o->max.vz;
+    w->cur = D_80069630;
+    if (w->cur != 0) {
+        do {
+            if ((w->cur->flags08 & ms) && !(w->cur->flags14 & 1) && (s16)w->cur->w26 == (s16)o->w26 &&
+                w->cur->tipo_volumen == 2 && o != w->cur && w->cur->u78.p != 0) {
+                GEO_CARGAR_W(pt);
+                GEO_RESTAR_W(&w->cur->param.trans);
+                GEO_GUARDAR_H_T4(&w->local);
+                GEO_NORMA2_XZ(&w->local, &w->dist);
+                if (w->cur->alcance2 >= w->dist) {
+                    GEO_COMPLEMENTO(&w->cur->param.giro);
+                    GEO_GUARDAR_H_T1(&w->rot);
+                    w->rot.vx = 0;
+                    w->rot.vz = 0;
+                    RotMatrixZYX(&w->rot, &w->m);
+                    ApplyMatrix(&w->m, &w->local, &w->out);
+                    r = w->cur->radio;
+                    w->dist = r;
+                    if (w->cur->flags08 & 0x400000) {
+                        if (w->out.vx >= -r && w->out.vx <= r && w->out.vz >= -r && w->out.vz <= r) {
+                            h = w->out.vy - 0x12C;
+                            if (h >= 0 && w->cur->trabajo.h0A >= h) {
+                                w->res.objeto = w->cur;
+                                w->res.coord = &w->cur->coord;
+                                w->res.h0A = w->out.vy;
+                                return &w->res;
+                            }
+                        }
+                    } else {
+                        w->ptr = w->cur->u78.ayudas;
+                        while (w->ptr->cab.siguiente != 0) {
+                            w->ptr = (Ayuda*)w->ptr->cab.siguiente;
+                        }
+                        n = w->ptr->pcoord;
+                        GEO_CERO_W(&cero);
+                        gte_SetTransVector(&cero);
+                        i = 0;
+                        if (n->super != 0) {
+                            for (; n->super != 0; i++) {
+                                if (i >= 0x14) {
+                                    break;
+                                }
+                                p = &w->pel[i];
+                                p->x = (u16)n->param->trans.vx;
+                                p->y = (u16)n->param->trans.vy;
+                                p->z = (u16)n->param->trans.vz;
+                                p->nodo = n;
+                                if (i >= 2) {
+                                    q = &w->pel[i - 1];
+                                    gte_SetRotMatrix(&q->nodo->coord);
+                                    x1 = q->x;
+                                    y1 = q->y;
+                                    z1 = q->z;
+                                    for (j = i - 2, q = &w->pel[j]; j >= 0; j--, q--) {
+                                        gte_ldv0(q);
+                                        gte_rtv0();
+                                        gte_stsv(q);
+                                    }
+                                    for (j = i - 2, q = &w->pel[j]; j >= 0; j--, q--) {
+                                        q->x += x1;
+                                        q->y += y1;
+                                        q->z += z1;
+                                    }
+                                }
+                                n = n->super;
+                            }
+                        }
+                        w->rot.vx = (u16)n->param->rotate.vx;
+                        w->rot.vz = 0;
+                        w->rot.vy = 0;
+                        RotMatrixZYX(&w->rot, &w->m);
+                        gte_SetRotMatrix(&w->m);
+                        for (k = 0, p = w->pel; k < i; k++, p++) {
+                            gte_ldv0(p);
+                            gte_rtv0();
+                            gte_stsv(p);
+                        }
+                        w->pel[0].alto = w->cur->trabajo.h0A;
+                        w->pel[0].largo = 0;
+                        for (k = 1; k < i; k++) {
+                            w->pel[k].alto = w->pel[k - 1].y - w->pel[k].y;
+                            w->pel[k].largo = w->pel[k - 1].z - w->pel[k].z;
+                        }
+                        for (k = 0, p = w->pel; k < i; k++, p++) {
+                            rs = w->dist;
+                            if (w->out.vx >= -rs && w->out.vx <= rs) {
+                                if (p[0].largo >= 0) {
+                                    if (p[0].z + p[0].largo + rs < w->out.vz || w->out.vz < p[0].z - rs) {
+                                        continue;
+                                    }
+                                } else {
+                                    if (w->out.vz < p[0].z + p[0].largo - rs || p[0].z + rs < w->out.vz) {
+                                        continue;
+                                    }
+                                }
+                                h = w->out.vy - 0x12C;
+                                if (p[0].y < h && h < p[0].y + p[0].alto) {
+                                    w->cur->portado.trans.vz = (s32)p[0].nodo;
+                                    w->res.coord = &w->cur->coord;
+                                    w->res.objeto = w->cur;
+                                    w->res.h0A = w->out.vy;
+                                    w->res.x = p[0].x;
+                                    w->res.z = p[0].z;
+                                    return &w->res;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            w->cur = w->cur->sig10;
+        } while (w->cur != 0);
+    }
+    return 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020354);
+#endif
 
 /*
  * Busca el peldano que corresponde a la altura del objeto sobre el objeto de apoyo (p70):

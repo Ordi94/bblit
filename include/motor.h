@@ -182,6 +182,59 @@ typedef struct ProyeccionSprite {
     u8 pad96[0x98 - 0x96];
     s16* coordenadas;
 } ProyeccionSprite;
+
+/*
+ * Apoyo hallado por func_80020354: el objeto al que el jugador se agarra en +0, su coordenada en
+ * +4 y el punto de contacto en el sistema local del objeto (x en +8, altura relativa en +0xA, que
+ * el jugador copia a la traslacion del apoyo, y z en +0xC). Las escrituras de func_80020354 fijan
+ * cada ancho (sw 0x80020A08, sh 0x80020A1C, 0x80020A18, 0x80020A2C).
+ */
+typedef struct ApoyoHallado {
+    Objeto* objeto;
+    GsCOORDINATE2* coord;
+    s16 x;
+    s16 h0A;
+    s16 z;
+    u8 pad0E[2];
+} ApoyoHallado;
+
+/*
+ * Un peldano de la cadena de ayudantes que func_80020354 recorre: posicion en el sistema del objeto
+ * apoyo (x, y, z), alto y largo del peldano (diferencias con el anterior, 0xA y 0xC) y la
+ * coordenada del ayudante que lo origina (+0x10). Mide 0x14 bytes y caben 20.
+ */
+typedef struct PeldanoApoyo {
+    s16 x;
+    s16 y;
+    s16 z;
+    u8 pad06[0x0A - 0x06];
+    s16 alto;
+    s16 largo;
+    u8 pad0E[0x10 - 0x0E];
+    GsCOORDINATE2* nodo;
+} PeldanoApoyo;
+
+/*
+ * Area de trabajo de func_80020354 (la que reserva el jugador en el scratchpad, +0x148): matriz del
+ * apoyo en +0, giro inverso en +0x20, punto local en +0x28, objeto solido en curso en +0x30,
+ * ayudante en curso en +0x34, caja del consultante en +0x38 y +0x40 (solo se copia), resultado en
+ * +0x48, hasta 20 peldanos desde +0x58, distancia al cuadrado o semilado en +0x1E8 y el punto en
+ * el sistema local del objeto en +0x1EC.
+ */
+typedef struct SondaApoyo {
+    MATRIX m;
+    SVECTOR rot;
+    SVECTOR local;
+    Objeto* cur;
+    struct Ayuda* ptr;
+    SVECTOR caja_min;
+    SVECTOR caja_max;
+    ApoyoHallado res;
+    PeldanoApoyo pel[20];
+    u32 dist;
+    VECTOR out;
+} SondaApoyo;
+
 extern void func_8001CF50(Objeto* o);
 extern void func_8001CFCC(GsCOORDINATE2* n);
 extern void func_8001D588(s32 modo, VECTOR* p);

@@ -1503,10 +1503,12 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaBloqueEmpujable);
 #endif
 
 /*
- * Pendiente de traducir: manejador vacio (jr ra; nop) que equivale a una funcion C sin cuerpo; se
- * traduce con el resto de los manejadores de la tabla de objetos.
+ * Manejador vacio de la clase 21 de D_8005E35C: el objeto no tiene logica propia. Conserva el prototipo
+ * de la tabla (void (*)(Objeto*)) aunque no lea el parametro.
  */
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002EA9C);
+void func_8002EA9C(Objeto* o)
+{
+}
 
 /*
  * Manejador del efecto anclado a un nodo de otro objeto (clase 34). Elige la secuencia de animacion
@@ -1886,10 +1888,12 @@ void LogicaZonaSonda(Objeto* o)
 }
 
 /*
- * Pendiente de traducir: manejador vacio (jr ra; nop) que equivale a una funcion C sin cuerpo; se
- * traduce con el resto de los manejadores de la tabla de objetos.
+ * Manejador vacio de las clases 3, 11, 15, 17, 30, 33 y 35 de D_8005E35C: esos objetos no tienen
+ * logica propia. Conserva el prototipo de la tabla (void (*)(Objeto*)) aunque no lea el parametro.
  */
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F968);
+void func_8002F968(Objeto* o)
+{
+}
 
 /*
  * Pendiente de traducir: envoltorio de func_80039094 (jal sin tocar a0, marco 0x18); se traduce junto
