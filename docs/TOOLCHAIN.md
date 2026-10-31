@@ -127,11 +127,11 @@ python tools/build.py clean               # elimina asm/, expected/ y los artefa
   plana con `objcopy`. La cabecera PS-X EXE de 0x800 bytes se regenera desde
   `config/ejecutable.json` (no se copia del original). El orden de enlace lo fija el script, así que
   es el mismo con o sin C.
-- `verificar-config` (y, al terminar, `split`) compara las claves de `[datos_pequenos]` de
-  `config/opciones_compilacion.toml` con `config/symbols.txt` y avisa por la salida de errores de cada
-  una cuya dirección ya declara la tabla de símbolos: con el mismo nombre (la clave puede retirarse), con otro
-  nombre o con el mismo nombre declarado como función. Solo informa: no cambia ningún archivo, devuelve 0 y no
-  necesita el disco. Hoy avisa de 29 claves, todas con el mismo nombre.
+- `verificar-config` compara las claves de `[datos_pequenos]` de `config/opciones_compilacion.toml` con
+  `config/symbols.txt` y falla (imprime `error:` por la salida de errores y devuelve 1) por cada una cuya
+  dirección ya declara la tabla de símbolos: con el mismo nombre (la clave sobra), con otro nombre o con el
+  mismo nombre declarado como función. No cambia ningún archivo y no necesita el disco. `split` imprime los
+  mismos hallazgos como `aviso:` al terminar, sin fallar. Hoy la tabla está vacía y la orden sale limpia.
 - `verify` imprime `OK esperado=<huella> obtenido=<huella>` y devuelve 0, o `FAIL ...` con
   el desplazamiento de la primera diferencia y devuelve 1.
 - `clean` elimina `asm/`, `expected/` y lo que `split`, `build`, `diff` y `progreso` generan

@@ -541,14 +541,15 @@ def verificar_configuracion(raiz: Path) -> list[str]:
     Compara ``[datos_pequenos]`` de las opciones de compilacion con ``config/symbols.txt``.
 
     Contexto:
-        Implementa ``verificar-config`` y el aviso que ``split`` imprime al terminar. Solo lee: no
-        modifica ningun archivo ni cambia lo que construyen ``build`` o ``verify``.
+        Implementa ``verificar-config`` (que trata cada resultado como error) y el aviso que ``split``
+        imprime al terminar sin tumbarse. Solo lee: no modifica ningun archivo ni cambia lo que
+        construyen ``build`` o ``verify``.
 
     Args:
         raiz (Path): Raiz del repositorio.
 
     Returns:
-        list[str]: Avisos de ``dominio.avisos_datos_pequenos``; vacia si no hay tabla o no hay
+        list[str]: Hallazgos de ``dominio.avisos_datos_pequenos``; vacia si no hay tabla o no hay
         direcciones repetidas.
 
     Raises:

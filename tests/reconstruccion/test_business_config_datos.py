@@ -114,18 +114,35 @@ def test_un_toml_con_claves_duplicadas_se_rechaza_sin_traza(tmp_path: Path) -> N
         infra.verificar_configuracion(tmp_path)
 
 
-def test_la_orden_verificar_config_solo_informa_y_no_modifica_nada(
+def test_la_orden_verificar_config_falla_por_cada_duplicacion_y_no_modifica_nada(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     preparar(tmp_path, "[datos_pequenos]\nD_80069330 = 0x80069330\nD_80069380 = 0x80069380\n")
     antes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (tmp_path / "config").iterdir()}
-    assert cli.main(["verificar-config"], {}, tmp_path) == 0
+    assert cli.main(["verificar-config"], {}, tmp_path) == 1
     salida = capsys.readouterr()
-    assert salida.out == "verificar-config: 2 avisos\n"
-    assert salida.err.count("aviso: [datos_pequenos]") == 2
+    assert salida.out == "verificar-config: 2 errores\n"
+    assert salida.err.count("error: [datos_pequenos]") == 2
     despues = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (tmp_path / "config").iterdir()}
     assert antes == despues
     assert sorted(p.name for p in tmp_path.iterdir()) == ["config"]
+
+
+def test_la_orden_verificar_config_sin_duplicaciones_sale_limpia(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    preparar(tmp_path, "[datos_pequenos]\nD_800699AA = 0x800699AA\n")
+    assert cli.main(["verificar-config"], {}, tmp_path) == 0
+    salida = capsys.readouterr()
+    assert (salida.out, salida.err) == ("verificar-config: 0 errores\n", "")
+
+
+def test_split_sigue_avisando_de_la_duplicacion_sin_fallar(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    preparar(tmp_path, "[datos_pequenos]\nD_80069330 = 0x80069330\n")
+    cli._avisar_configuracion(tmp_path)
+    assert capsys.readouterr().err.startswith("aviso: [datos_pequenos] D_80069330")
 
 
 def test_la_orden_verificar_config_con_un_toml_invalido_es_un_error_y_no_un_aviso(
@@ -146,9 +163,8 @@ def test_la_orden_verificar_config_sin_symbols_txt_es_un_error(
     assert capsys.readouterr().err == "error: falta config/symbols.txt\n"
 
 
-def test_el_repositorio_no_contradice_a_symbols_txt_en_ninguna_clave_de_datos_pequenos() -> None:
-    avisos = infra.verificar_configuracion(RAIZ_REPO)
-    assert not [aviso for aviso in avisos if "otro nombre" in aviso or "otro tipo" in aviso]
+def test_el_repositorio_no_repite_en_datos_pequenos_nada_que_symbols_txt_ya_declare() -> None:
+    assert infra.verificar_configuracion(RAIZ_REPO) == []
 
 
 def test_la_nota_del_lock_dice_aspsx_279_y_las_huellas_no_cambian() -> None:
