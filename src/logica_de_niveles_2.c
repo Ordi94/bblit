@@ -57,8 +57,6 @@ void func_80025B24(Objeto* o)
 {
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 760 con la configuracion versionada (-G0). El original reparte el lui de D_8006967C en a3 en las dos llamadas a func_8003F06C (v0 queda con la constante 1 y la segunda llamada la copia con move) y carga el pozo D_8006964C entre la lectura de u78 y su almacen; el compilador usa v0 para el lui y carga el pozo justo antes de la llamada. */
 /*
  * Manejador de la clase 8 de D_8005E35C: cadena de segmentos que se balancea. En el primer cuadro
  * devuelve al pozo el primer ayudante, cuenta los que quedan, reparte el largo del objeto entre
@@ -74,7 +72,6 @@ void func_80025B2C(Objeto* o)
     s16* tabla;
     s32 fase;
     s32 giro_y;
-    Ayuda* pozo;
     void* area;
 
     t = TRABAJO_CADENA;
@@ -83,11 +80,10 @@ void func_80025B2C(Objeto* o)
         o->flags18 |= 0x80;
         func_8001F268(o, (BloqueTrabajo*)&o->i100, 5, 2, area);
         func_8001CF50(o);
-        pozo = D_8006964C;
         t->nodo = o->u78.ayudas;
         o->u78.ayudas = (Ayuda*)t->nodo->cab.siguiente;
         o->u78.ayudas->pcoord->super = &o->coord;
-        RemoveListNode((NodoLista*)pozo, (NodoLista*)t->nodo);
+        RemoveListNode((NodoLista*)D_8006964C, (NodoLista*)t->nodo);
         t->nodo = o->u78.ayudas;
         t->n = 1;
         if (t->nodo->cab.siguiente != 0) {
@@ -159,7 +155,7 @@ void func_80025B2C(Objeto* o)
         } else {
             if (OSC_SIGNO(o) == 1) {
                 if (OSC_SONIDO(o) != 0) {
-                    func_8003F06C(o, OSC_SONIDO(o), OSC_SIGNO(o), D_8006967C);
+                    func_8003F06C(o, OSC_SONIDO(o), 1, D_8006967C);
                 }
             }
             OSC_SIGNO(o) = 0;
@@ -217,6 +213,3 @@ void func_80025B2C(Objeto* o)
         o->min.vy = t->r.vy;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_2", func_80025B2C);
-#endif
