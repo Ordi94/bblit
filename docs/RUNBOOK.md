@@ -42,6 +42,20 @@ La orden respeta los finales de linea del archivo y es idempotente. Con `--sin-r
 README. Regenerarla antes de cada commit que cambie `src/`; el hash que muestra es el del commit
 anterior, asi que el siguiente commit lo refresca.
 
+### Comparar una funcion
+
+```
+.venv\Scripts\python.exe tools\build.py diff <funcion>
+.venv\Scripts\python.exe tools\build.py probar <funcion> <carpeta de variantes>
+```
+
+Cada ejecucion de `diff` y de `probar` trabaja en su propia carpeta dentro de `build/diff/`
+(`<funcion>-<pid>-<sufijo aleatorio>`), la elimina al terminar y deja solo
+`build/diff/<funcion>.resultado.json`, escrito de forma atomica. Por eso se pueden lanzar varias
+comparaciones a la vez, sobre funciones distintas o del mismo archivo C, sin que se pisen el objeto
+candidato ni la configuracion de `asm-differ`. Si una ejecucion se interrumpe a la fuerza puede quedar
+una carpeta suelta en `build/diff/`; `clean` la elimina.
+
 ## 3. Imagen de prueba
 
 ```

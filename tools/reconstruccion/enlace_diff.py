@@ -13,10 +13,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from tools.reconstruccion.compilacion import HerramientasCompilacion
-from tools.reconstruccion.infraestructura import CARPETA_DIFF, ELF_SALIDA, Ejecutor, ProcesoError
+from tools.reconstruccion.infraestructura import ELF_SALIDA, Ejecutor, ProcesoError
 
 TIMEOUT_ENLACE_S = 120
 _PATRON_VALOR = re.compile(r"^[0-9a-f]{8,16}$")
@@ -159,8 +159,9 @@ def bytes_coinciden(
         ejecutar (Ejecutor): Ejecutor de procesos.
         funcion (str): Nombre de la funcion.
         direccion (int): Direccion de la funcion en el ejecutable.
-        candidato (str): Objeto compilado desde C (ruta relativa dentro de ``build/diff/``).
-        objetivo (str): Objeto del asm original (ruta relativa dentro de ``build/diff/``).
+        candidato (str): Objeto compilado desde C (ruta relativa, dentro de la carpeta de trabajo
+            de la ejecucion; los enlaces intermedios se escriben junto a el).
+        objetivo (str): Objeto del asm original (en la misma carpeta).
 
     Returns:
         bool | None: ``True`` si los bytes son iguales, ``False`` si difieren y ``None`` si no se
@@ -182,7 +183,8 @@ def bytes_coinciden(
     simbolos = simbolos_de_elf(
         ejecutar([str(herramientas.objdump), "-t", ELF_SALIDA], raiz, TIMEOUT_ENLACE_S)
     )
-    referencias = f"{CARPETA_DIFF}/referencias.ld"
+    carpeta = PurePosixPath(candidato).parent.as_posix()
+    referencias = f"{carpeta}/referencias.ld"
     (raiz / referencias).write_text(texto_simbolos_ld(simbolos), encoding="utf-8", newline="\n")
 
     def enlazar(objeto: str) -> bytes | None:
@@ -190,7 +192,7 @@ def bytes_coinciden(
         posicion = funcion_en_objeto(tabla, funcion)
         if posicion is None or posicion.desplazamiento > direccion:
             return None
-        base = f"{CARPETA_DIFF}/{Path(objeto).name}"
+        base = f"{carpeta}/{Path(objeto).name}"
         inicio = f"-Ttext=0x{direccion - posicion.desplazamiento:08X}"
         try:
             ejecutar(

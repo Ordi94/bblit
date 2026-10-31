@@ -16,6 +16,7 @@ from pathlib import Path
 from tools.reconstruccion import fuentes_c
 from tools.reconstruccion.compilacion import HerramientasCompilacion, compilar_archivo
 from tools.reconstruccion.diff import (
+    carpeta_de_trabajo,
     preparar_objetivo,
     puntuacion_desde_json,
     puntuar_objeto,
@@ -24,7 +25,6 @@ from tools.reconstruccion.diff import (
 )
 from tools.reconstruccion.enlace_diff import TIMEOUT_ENLACE_S, bytes_coinciden, funcion_en_objeto
 from tools.reconstruccion.infraestructura import (
-    CARPETA_DIFF,
     Ejecutor,
     ProcesoError,
     leer_direcciones_de_funciones,
@@ -241,49 +241,54 @@ def probar_variantes(
     archivo, _ = fuentes_c.ubicar_funcion(estados, funcion)
     valor_g = leer_valores_g(raiz).get(Path(archivo).stem, 0)
     direccion = leer_direcciones_de_funciones(raiz).get(funcion)
-    objetivo, retornos, max_lineas = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
-    resultados: list[ResultadoVariante] = []
-    for variante in variantes:
-        objeto = f"{CARPETA_DIFF}/probar.{variante.name}.o"
-        try:
-            compilar_archivo(
-                raiz,
-                str(variante.resolve()),
-                objeto,
-                herramientas,
-                ejecutar,
-                exigir_solo_texto=False,
-                valor_g=valor_g,
-            )
-            if not _define_funcion(raiz, herramientas, ejecutar, objeto, funcion):
-                resultados.append(ResultadoVariante(variante.name, None, f"la variante no define {funcion}"))
-                continue
-            salida = puntuar_objeto(
-                raiz,
-                herramientas,
-                script_diff,
-                ejecutar,
-                candidato=objeto,
-                objetivo=objetivo,
-                funcion=funcion,
-                retornos=retornos,
-                max_lineas=max_lineas,
-                formato="json",
-            )
-            puntuacion = puntuacion_desde_json(salida)
-            truncado = salida_truncada(salida, max_lineas)
-            iguales = None
-            if puntuacion != 0 and direccion is not None:
-                iguales = bytes_coinciden(
+    with carpeta_de_trabajo(raiz, f"probar-{funcion}") as trabajo:
+        objetivo, retornos, max_lineas = preparar_objetivo(
+            raiz, funcion, archivo, herramientas, ejecutar, carpeta=trabajo
+        )
+        resultados: list[ResultadoVariante] = []
+        for variante in variantes:
+            objeto = f"{trabajo}/probar.{variante.name}.o"
+            try:
+                compilar_archivo(
                     raiz,
+                    str(variante.resolve()),
+                    objeto,
                     herramientas,
                     ejecutar,
-                    funcion=funcion,
-                    direccion=direccion,
+                    exigir_solo_texto=False,
+                    valor_g=valor_g,
+                )
+                if not _define_funcion(raiz, herramientas, ejecutar, objeto, funcion):
+                    resultados.append(
+                        ResultadoVariante(variante.name, None, f"la variante no define {funcion}")
+                    )
+                    continue
+                salida = puntuar_objeto(
+                    raiz,
+                    herramientas,
+                    script_diff,
+                    ejecutar,
                     candidato=objeto,
                     objetivo=objetivo,
+                    funcion=funcion,
+                    retornos=retornos,
+                    max_lineas=max_lineas,
+                    formato="json",
                 )
-            resultados.append(ResultadoVariante(variante.name, puntuacion, None, iguales, truncado))
-        except (ProcesoError, ValueError, OSError) as error:
-            resultados.append(ResultadoVariante(variante.name, None, _primera_linea(str(error))))
+                puntuacion = puntuacion_desde_json(salida)
+                truncado = salida_truncada(salida, max_lineas)
+                iguales = None
+                if puntuacion != 0 and direccion is not None:
+                    iguales = bytes_coinciden(
+                        raiz,
+                        herramientas,
+                        ejecutar,
+                        funcion=funcion,
+                        direccion=direccion,
+                        candidato=objeto,
+                        objetivo=objetivo,
+                    )
+                resultados.append(ResultadoVariante(variante.name, puntuacion, None, iguales, truncado))
+            except (ProcesoError, ValueError, OSError) as error:
+                resultados.append(ResultadoVariante(variante.name, None, _primera_linea(str(error))))
     return ordenar_resultados(resultados)

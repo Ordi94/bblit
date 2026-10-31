@@ -13,11 +13,15 @@ ensamblador que el objetivo y la puntuacion 0 seria una coincidencia falsa.
 
 from __future__ import annotations
 
+import contextlib
 import json
+import os
 import re
-from collections.abc import Callable
+import shutil
+import tempfile
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from tools.reconstruccion import dominio, fuentes_c
 from tools.reconstruccion.compilacion import (
@@ -393,6 +397,42 @@ def elegir_asm_objetivo(archivo: str, funcion: str, existe: Callable[[str], bool
     raise FileNotFoundError(f"no existe el asm original de '{funcion}': ejecute primero 'split'")
 
 
+@contextlib.contextmanager
+def carpeta_de_trabajo(raiz: Path, etiqueta: str) -> Iterator[str]:
+    """
+    Crea una carpeta de trabajo exclusiva dentro de ``build/diff/`` y la elimina al terminar.
+
+    Contexto:
+        ``diff`` y ``probar`` generan objetos, enlaces y ``diff_settings.py`` con nombres que
+        dependen del archivo C o de la variante, no de quien los pide: dos ejecuciones
+        concurrentes sobre funciones del mismo archivo se pisarian el objeto candidato y una leeria
+        el resultado de la otra. Cada ejecucion trabaja en su propia carpeta, con el PID y un
+        sufijo aleatorio (el PID solo no basta si dos comparaciones corren en hilos del mismo
+        proceso).
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        etiqueta (str): Nombre que identifica la ejecucion (la funcion); forma parte del nombre.
+
+    Yields:
+        str: Ruta de la carpeta relativa a la raiz, con barras normales.
+
+    Raises:
+        OSError: Si no se puede crear la carpeta.
+
+    Ejemplo:
+        with carpeta_de_trabajo(Path("."), "func_80036204") as carpeta:
+            candidato = f"{carpeta}/code_a.c.o"
+    """
+    base = raiz / CARPETA_DIFF
+    base.mkdir(parents=True, exist_ok=True)
+    creada = Path(tempfile.mkdtemp(prefix=f"{etiqueta}-{os.getpid()}-", dir=base))
+    try:
+        yield f"{CARPETA_DIFF}/{creada.name}"
+    finally:
+        shutil.rmtree(creada, ignore_errors=True)
+
+
 def comparar_funcion(
     raiz: Path,
     funcion: str,
@@ -404,7 +444,9 @@ def comparar_funcion(
     Compara una funcion compilada desde C con su objetivo original.
 
     Contexto:
-        Implementa ``diff``. Todo lo que genera va a ``build/diff/``, que ``clean`` elimina.
+        Implementa ``diff``. Los intermedios van a una carpeta exclusiva de la ejecucion dentro de
+        ``build/diff/`` (ver ``carpeta_de_trabajo``), que se elimina al terminar; solo la puntuacion
+        queda en ``build/diff/<funcion>.resultado.json``, escrita de forma atomica.
 
     Args:
         raiz (Path): Raiz del repositorio.
@@ -434,8 +476,33 @@ def comparar_funcion(
         raise FuncionSinCError(
             f"'{funcion}' sigue en INCLUDE_ASM: escriba su C (bajo NON_MATCHING si aun no coincide)"
         )
-    objetivo, retornos, max_lineas = preparar_objetivo(raiz, funcion, archivo, herramientas, ejecutar)
-    candidato = f"{CARPETA_DIFF}/{Path(archivo).name}.o"
+    with carpeta_de_trabajo(raiz, funcion) as carpeta:
+        return _comparar_en(
+            raiz,
+            funcion,
+            archivo=archivo,
+            carpeta=carpeta,
+            herramientas=herramientas,
+            script_diff=script_diff,
+            ejecutar=ejecutar,
+        )
+
+
+def _comparar_en(
+    raiz: Path,
+    funcion: str,
+    *,
+    archivo: str,
+    carpeta: str,
+    herramientas: HerramientasCompilacion,
+    script_diff: Path,
+    ejecutar: Ejecutor,
+) -> ResultadoDiff:
+    """Compila el candidato y puntua la funcion dentro de la carpeta de trabajo ya creada."""
+    objetivo, retornos, max_lineas = preparar_objetivo(
+        raiz, funcion, archivo, herramientas, ejecutar, carpeta=carpeta
+    )
+    candidato = f"{carpeta}/{Path(archivo).name}.o"
     compilar_fuente(
         raiz,
         archivo,
@@ -513,7 +580,9 @@ def guardar_resultado(
 
     Contexto:
         ``progreso`` compara con ella la cifra del comentario ``Pendiente`` de cada ``NON_MATCHING``.
-        Vive en ``build/diff/``, que ``clean`` elimina, y no se versiona.
+        Vive en ``build/diff/``, que ``clean`` elimina, y no se versiona. Se escribe a un archivo
+        temporal de la misma carpeta y se renombra sobre el destino: un lector concurrente ve el
+        resultado anterior completo o el nuevo completo, nunca uno a medias.
 
     Args:
         raiz (Path): Raiz del repositorio.
@@ -527,11 +596,26 @@ def guardar_resultado(
         guardar_resultado(Path("."), "func_80036204", 0, 1024)
     """
     datos = {"funcion": funcion, "puntuacion": puntuacion, "maxLineas": max_lineas, "truncado": truncado}
-    (raiz / ruta_resultado(funcion)).write_text(json.dumps(datos) + "\n", encoding="utf-8", newline="\n")
+    destino = raiz / ruta_resultado(funcion)
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporal = tempfile.mkstemp(prefix=f"{funcion}.", suffix=".tmp", dir=destino.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as salida:
+            salida.write(json.dumps(datos) + "\n")
+        os.replace(temporal, destino)
+    except BaseException:
+        Path(temporal).unlink(missing_ok=True)
+        raise
 
 
 def preparar_objetivo(
-    raiz: Path, funcion: str, archivo: str, herramientas: HerramientasCompilacion, ejecutar: Ejecutor
+    raiz: Path,
+    funcion: str,
+    archivo: str,
+    herramientas: HerramientasCompilacion,
+    ejecutar: Ejecutor,
+    *,
+    carpeta: str,
 ) -> tuple[str, int, int]:
     """
     Ensambla el asm original de una funcion como objetivo de comparacion.
@@ -546,6 +630,8 @@ def preparar_objetivo(
         archivo (str): Archivo C que la contiene (``src/<segmento>.c``).
         herramientas (HerramientasCompilacion): Herramientas de compilacion.
         ejecutar (Ejecutor): Ejecutor de procesos.
+        carpeta (str): Carpeta de trabajo de la ejecucion, relativa a la raiz (ver
+            ``carpeta_de_trabajo``); recibe el envoltorio y el objeto objetivo.
 
     Returns:
         tuple[str, int, int]: Ruta relativa del objeto objetivo, numero de ``jr $ra`` del original y
@@ -556,15 +642,17 @@ def preparar_objetivo(
         ProcesoError: Si el ensamblador falla.
 
     Ejemplo:
-        objetivo, retornos, lineas = preparar_objetivo(Path("."), "f", "src/a.c", herramientas, ejecutar)
+        objetivo, retornos, lineas = preparar_objetivo(
+            Path("."), "f", "src/a.c", herramientas, ejecutar, carpeta="build/diff/f-1-x"
+        )
     """
     ruta_asm = elegir_asm_objetivo(archivo, funcion, lambda ruta: (raiz / ruta).is_file())
     asm = (raiz / ruta_asm).read_text(encoding="utf-8")
     retornos = contar_retornos(asm)
     max_lineas = limite_lineas(contar_instrucciones(asm))
-    (raiz / CARPETA_DIFF).mkdir(parents=True, exist_ok=True)
-    envoltorio = f"{CARPETA_DIFF}/{funcion}.objetivo.s"
-    objetivo = f"{CARPETA_DIFF}/{funcion}.objetivo.o"
+    (raiz / carpeta).mkdir(parents=True, exist_ok=True)
+    envoltorio = f"{carpeta}/{funcion}.objetivo.s"
+    objetivo = f"{carpeta}/{funcion}.objetivo.o"
     (raiz / envoltorio).write_text(envoltorio_objetivo(ruta_asm), encoding="utf-8", newline="\n")
     ejecutar(
         dominio.comando_ensamblar(herramientas.ensamblador, envoltorio, objetivo, CARPETA_MACROS),
@@ -591,16 +679,17 @@ def puntuar_objeto(
     Ejecuta ``asm-differ`` sobre un objeto candidato y el objetivo.
 
     Contexto:
-        Se ejecuta dentro de ``build/diff/`` porque ``asm-differ`` importa ``diff_settings.py``
-        del directorio de trabajo; este se genera aqui con la ruta de ``objdump`` resuelta.
+        Se ejecuta dentro de la carpeta de trabajo del candidato (la de ``carpeta_de_trabajo``)
+        porque ``asm-differ`` importa ``diff_settings.py`` del directorio de trabajo; este se
+        genera aqui con la ruta de ``objdump`` resuelta.
 
     Args:
         raiz (Path): Raiz del repositorio.
         herramientas (HerramientasCompilacion): Herramientas de compilacion.
         script_diff (Path): Ruta de ``diff.py`` de ``asm-differ``.
         ejecutar (Ejecutor): Ejecutor de procesos.
-        candidato (str): Objeto candidato (ruta relativa a la raiz, dentro de ``build/diff/``).
-        objetivo (str): Objeto objetivo (idem).
+        candidato (str): Objeto candidato (ruta relativa a la raiz, dentro de su carpeta de trabajo).
+        objetivo (str): Objeto objetivo (en la misma carpeta).
         funcion (str): Funcion a comparar.
         retornos (int): Retornos tras los cuales se corta el desensamblado.
         max_lineas (int): Instrucciones que ``asm-differ`` compara como maximo (ver ``limite_lineas``).
@@ -617,7 +706,7 @@ def puntuar_objeto(
         salida = puntuar_objeto(Path("."), herramientas, script, ejecutar, candidato=c, objetivo=t,
             funcion="f", retornos=1, max_lineas=1024, formato="json")
     """
-    carpeta = raiz / CARPETA_DIFF
+    carpeta = raiz / PurePosixPath(candidato).parent
     (carpeta / "diff_settings.py").write_text(
         texto_diff_settings(herramientas.objdump), encoding="utf-8", newline="\n"
     )

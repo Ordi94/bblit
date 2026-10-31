@@ -636,7 +636,8 @@ Los objetos intermedios (`.i`, `.s` y `.o` de cada compilación) quedan en `buil
   adicional.
 - **`asm-differ` y el tamaño de la función.** Con un archivo C entero como objeto, `asm-differ`
   volcaría todo lo que sigue a la función. `diff` lo corta tras tantos `jr $ra` como tiene el
-  original (opción `-s` repetida), y genera `diff_settings.py` en `build/diff/` con la ruta de
+  original (opción `-s` repetida), y genera `diff_settings.py` en la carpeta de trabajo de la
+  ejecucion (`build/diff/<función>-<pid>-<sufijo>/`, exclusiva y eliminada al terminar) con la ruta de
   `objdump` resuelta en ese momento.
 - **`asm-differ` y el límite de líneas.** `asm-differ` solo compara las primeras 1024 instrucciones de
   cada lado (`--max-lines`); lo que pasa de ahí no puntúa. `diff` y `probar` cuentan las instrucciones del
