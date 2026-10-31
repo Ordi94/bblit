@@ -69,42 +69,11 @@ g = 8
 [enlace]
 gp = 0x80069320
 
-# Datos pequenos que el codigo direcciona con desplazamiento($gp): simbolo = direccion. Un archivo C
-# que los usa los declara como definicion tentativa (sin extern) y maspsx los reescribe a $gp; el
-# enlace les da esta direccion (los fija junto a _gp). Se retiran cuando config/symbols.txt los declare.
+# Datos pequenos que el codigo direcciona con desplazamiento($gp) y que config/symbols.txt aun no
+# declara: simbolo = direccion. Un archivo C que los usa los declara como definicion tentativa (sin
+# extern) y maspsx los reescribe a $gp; el enlace les da esta direccion (los fija junto a _gp). Una
+# clave que symbols.txt ya declara sobra y `verificar-config` la rechaza como error. Hoy esta vacia.
 [datos_pequenos]
-D_8006935C = 0x8006935C
-D_80069360 = 0x80069360
-D_80069368 = 0x80069368
-D_80069330 = 0x80069330
-D_80069338 = 0x80069338
-D_80069380 = 0x80069380
-D_80069488 = 0x80069488
-D_800694A4 = 0x800694A4
-D_800694A8 = 0x800694A8
-D_80069478 = 0x80069478
-D_8006947C = 0x8006947C
-D_80069480 = 0x80069480
-D_80069484 = 0x80069484
-D_8006948C = 0x8006948C
-D_80069490 = 0x80069490
-D_80069494 = 0x80069494
-D_80069498 = 0x80069498
-D_8006949C = 0x8006949C
-D_800694A0 = 0x800694A0
-D_800694AC = 0x800694AC
-D_800693F0 = 0x800693F0
-D_800693F4 = 0x800693F4
-D_800693F6 = 0x800693F6
-D_800693F8 = 0x800693F8
-D_800693E0 = 0x800693E0
-D_8006940C = 0x8006940C
-D_80069414 = 0x80069414
-D_80069416 = 0x80069416
-D_80069424 = 0x80069424
-D_80069430 = 0x80069430
-D_80069434 = 0x80069434
-D_80069438 = 0x80069438
 
 [archivos.logica_de_niveles_3]
 g = 8

@@ -79,9 +79,14 @@ def test_preparar_objetivo_informa_el_limite_de_la_funcion(repo_diff: Any) -> No
     ruta = repo_diff / "asm" / "matchings" / "code_a" / "func_80036204.s"
     ruta.write_text(asm_sintetico(1500), encoding="utf-8")
     objetivo, retornos, max_lineas = diff.preparar_objetivo(
-        repo_diff, "func_80036204", "src/code_a.c", herramientas_compilacion(), EjecutorDiff(0)
+        repo_diff,
+        "func_80036204",
+        "src/code_a.c",
+        herramientas_compilacion(),
+        EjecutorDiff(0),
+        carpeta="build/diff/trabajo",
     )
-    assert (objetivo, retornos, max_lineas) == ("build/diff/func_80036204.objetivo.o", 1, 1564)
+    assert (objetivo, retornos, max_lineas) == ("build/diff/trabajo/func_80036204.objetivo.o", 1, 1564)
 
 
 def fila(mnemonico: str | None) -> dict[str, Any]:

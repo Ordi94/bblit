@@ -72,7 +72,7 @@ def construir_parser() -> argparse.ArgumentParser:
     )
     sub.add_parser(
         "verificar-config",
-        help="avisa de las claves de [datos_pequenos] que config/symbols.txt ya declara (solo informa)",
+        help="falla si una clave de [datos_pequenos] ya esta declarada en config/symbols.txt",
     )
     return parser
 
@@ -115,11 +115,12 @@ def _avisar_configuracion(raiz: Path) -> None:
 
 
 def _ejecutar_verificacion_configuracion(raiz: Path) -> int:
-    """Implementa ``verificar-config``; solo informa, asi que devuelve 0 aunque haya avisos."""
-    avisos = infra.verificar_configuracion(raiz)
-    _imprimir_avisos(avisos)
-    print(f"verificar-config: {len(avisos)} avisos")
-    return 0
+    """Implementa ``verificar-config``; cada duplicacion es un error y la orden devuelve 1."""
+    errores = infra.verificar_configuracion(raiz)
+    for error in errores:
+        print(f"error: {error}", file=sys.stderr)
+    print(f"verificar-config: {len(errores)} errores")
+    return 1 if errores else 0
 
 
 def _fecha_actual() -> str:

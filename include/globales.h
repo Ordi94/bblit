@@ -894,8 +894,8 @@ extern s16 D_800693F6;
 /* D_800693F8: accesos del ensamblador: lh(gp) x1, lhu(gp) x1, sh(gp) x4, sh x1 */
 extern s16 D_800693F8;
 
-/* D_80069416: accesos del ensamblador: sh(gp) x3, lhu(gp) x1, sh x3 */
-extern s16 D_80069416;
+/* D_80069416: accesos del ensamblador: sh(gp) x3, lhu(gp) x1, sh x3; la unica lectura es lhu (0x80034A7C) */
+extern u16 D_80069416;
 
 /* D_8006947C: accesos del ensamblador: sw(gp) x1, lw x1, lw(gp) x1 */
 extern u32 D_8006947C;

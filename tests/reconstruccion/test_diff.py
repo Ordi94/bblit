@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -163,19 +164,38 @@ def test_comparar_funcion_ensambla_el_objetivo_compila_con_non_matching_y_lee_la
     nombres = [Path(c[0]).name for c in ejecutor.comandos]
     assert nombres == ["as.exe", "CPPPSX.EXE", "CC1PSX.EXE", "py", "py", "py"]
     ensamblado = ejecutor.comandos[0]
+    carpeta = ensamblado[-2].rsplit("/", 1)[0]
+    assert re.fullmatch(r"build/diff/func_80036204-\d+-\w+", carpeta)
     assert ensamblado[-3:] == [
         "-o",
-        "build/diff/func_80036204.objetivo.o",
-        "build/diff/func_80036204.objetivo.s",
+        f"{carpeta}/func_80036204.objetivo.o",
+        f"{carpeta}/func_80036204.objetivo.s",
     ]
     assert "-DNON_MATCHING" in ejecutor.comandos[1]
     assert ejecutor.comandos[4][-1] == "func_80036204" and ejecutor.comandos[4].count("-s") == 2
-    assert ejecutor.directorios[4] == repo_diff / "build" / "diff"
-    envoltorio = (repo_diff / "build" / "diff" / "func_80036204.objetivo.s").read_text(encoding="utf-8")
-    assert '.include "asm/matchings/code_a/func_80036204.s"' in envoltorio
-    assert "objdump_executable" in (repo_diff / "build" / "diff" / "diff_settings.py").read_text(
-        encoding="utf-8"
+    assert ejecutor.directorios[4] == repo_diff / carpeta
+    # Los intermedios solo existen mientras dura la comparacion: la carpeta exclusiva se elimina.
+    assert not (repo_diff / carpeta).exists()
+    assert [p.name for p in (repo_diff / "build" / "diff").iterdir()] == ["func_80036204.resultado.json"]
+
+
+def test_los_intermedios_de_la_comparacion_son_el_envoltorio_y_la_configuracion_de_asm_differ(
+    repo_diff: Any,
+) -> None:
+    visto: dict[str, str] = {}
+
+    class EjecutorEspia(EjecutorDiff):
+        def __call__(self, comando: Any, directorio: Any, timeout_s: Any) -> Any:
+            if "--format=json" in comando:
+                visto["configuracion"] = (directorio / "diff_settings.py").read_text(encoding="utf-8")
+                visto["envoltorio"] = (directorio / "func_80036204.objetivo.s").read_text(encoding="utf-8")
+            return super().__call__(comando, directorio, timeout_s)
+
+    diff.comparar_funcion(
+        repo_diff, "func_80036204", herramientas_compilacion(), Path("diff.py"), EjecutorEspia(0)
     )
+    assert '.include "asm/matchings/code_a/func_80036204.s"' in visto["envoltorio"]
+    assert "objdump_executable" in visto["configuracion"]
 
 
 def test_comparar_funcion_no_coincidente_usa_el_asm_pendiente_y_informa_la_puntuacion(repo_diff: Any) -> None:

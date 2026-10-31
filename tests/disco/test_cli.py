@@ -38,16 +38,16 @@ def test_main_devuelve_1_con_mensaje_corto_si_la_validacion_falla(
     assert capsys.readouterr().out.startswith("error: tamano del ejecutable=5 distinto del registrado")
 
 
-def test_main_no_filtra_rutas_cuando_falta_un_archivo(
+def test_main_no_filtra_rutas_cuando_falla_la_escritura(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    ruta, _ = preparar(tmp_path)
-    inexistente = tmp_path / "no_esta.exe"
-    codigo = cli.main(
-        ["reempaquetar", "--imagen", str(ruta), "--exe", str(inexistente), "--salida", str(tmp_path / "s")]
-    )
+    ruta, exe = preparar(tmp_path)
+    ocupado = tmp_path / "ocupado"
+    ocupado.write_bytes(b"x")
+    codigo = cli.main(["reempaquetar", "--imagen", str(ruta), "--exe", str(exe), "--salida", str(ocupado)])
+    salida = capsys.readouterr().out
     assert codigo == 1
-    assert capsys.readouterr().out == "error de entrada/salida: FileNotFoundError\n"
+    assert salida.startswith("error de entrada/salida: ") and str(tmp_path) not in salida
 
 
 def test_modulo_principal_termina_con_el_codigo_de_main(
