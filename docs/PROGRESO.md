@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 362 | 59692 |
+| Código del juego | 450 | 201416 | 367 | 61724 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 59692 de 201416 (29.64 %).
-Funciones marcadas `NON_MATCHING`: 60.
-Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 61724 de 201416 (30.65 %).
+Funciones marcadas `NON_MATCHING`: 61.
+Coherencia con el ensamblador: correcta (735 `glabel` en `asm/` + 367 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -30,10 +30,10 @@ Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 110
 | graficos_y_gte | 3 | 13 | 6 | 0 | 3316 | 11812 |
 | inicializacion_de_motor | 1 | 7 | 4 | 5 | 1860 | 5276 |
 | interprete_de_eventos | 1 | 194 | 1 | 2 | 11656 | 11900 |
-| logica_de_niveles | 3 | 9 | 5 | 7 | 8480 | 60648 |
+| logica_de_niveles | 3 | 14 | 5 | 2 | 10512 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 22 | 4 | 1 | 9256 | 13644 |
-| movimiento_y_objetos_de_escena | 3 | 10 | 15 | 2 | 1896 | 18284 |
+| movimiento_y_objetos_de_escena | 3 | 10 | 16 | 1 | 1896 | 18284 |
 | tarjeta_de_memoria | 1 | 7 | 3 | 0 | 1672 | 5116 |
 
 ## Por archivo
@@ -57,13 +57,13 @@ Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 110
 | `src/inicializacion_de_motor.c` | 7 | 4 | 5 | 1860 | 5276 |
 | `src/interprete_de_eventos.c` | 194 | 1 | 2 | 11656 | 11900 |
 | `src/logica_de_niveles.c` | 0 | 1 | 0 | 0 | 19880 |
-| `src/logica_de_niveles_2.c` | 0 | 0 | 3 | 0 | 2016 |
-| `src/logica_de_niveles_3.c` | 9 | 4 | 4 | 8480 | 38752 |
+| `src/logica_de_niveles_2.c` | 3 | 0 | 0 | 2016 | 2016 |
+| `src/logica_de_niveles_3.c` | 11 | 4 | 2 | 8496 | 38752 |
 | `src/manejadores_por_tabla.c` | 12 | 0 | 0 | 384 | 384 |
 | `src/menus_e_interfaz.c` | 22 | 4 | 1 | 9256 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 1 | 3 | 0 | 176 | 2116 |
 | `src/movimiento_y_objetos_de_escena_2.c` | 8 | 7 | 0 | 1672 | 6336 |
-| `src/movimiento_y_objetos_de_escena_3.c` | 1 | 5 | 2 | 48 | 9832 |
+| `src/movimiento_y_objetos_de_escena_3.c` | 1 | 6 | 1 | 48 | 9832 |
 | `src/tarjeta_de_memoria.c` | 7 | 3 | 0 | 1672 | 5116 |
 
 ## Funciones `NON_MATCHING`
@@ -101,6 +101,7 @@ Coherencia con el ensamblador: correcta (740 `glabel` en `asm/` + 362 en C = 110
 - `func_8001E528`: Pendiente: puntuacion 1535 con la configuracion versionada (g = 8 del archivo). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0.
 - `func_8001E600`: Pendiente: puntuacion 2665 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; el original calcula el desplazamiento de color en t2 y deja el puntero al sprite en v1, el C reparte otros registros y reordena las lecturas del registro del cuadro.
 - `func_80020240`: Pendiente: puntuacion 605 con la configuracion versionada (g = 8 del archivo). La condicion de continuar (bit 4 apagado o bit 0x10 activo) y la reunion de las dos ramas de la altura no se reproducen: el compilador adelanta la carga de las banderas y repite el almacen de h10A en cada rama.
+- `func_80020354`: Pendiente: puntuacion 645 con la configuracion versionada (g = 8 del archivo). Solo difiere el reparto de registros: el original deja el nodo de la cadena en a3, el contador en t0 y la tercera componente en t1 (el compilador los asigna a t1, a3 y t0), usa a0 para la direccion de la distancia y reparte v0 y v1 de otro modo en el bloque del resultado.
 - `func_80020A90`: Pendiente: puntuacion 2360 con la configuracion versionada (g = 8 del archivo). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica.
 - `func_80020B90`: Pendiente: puntuacion 14290 con la configuracion versionada (g = 8 del archivo). Las diferencias son de reparto de registros (v0/v1/a0 y punteros s0-s2) y del orden en que el compilador planifica los almacenamientos de las transiciones de cada contacto; la logica coincide.
 - `func_8002F990`: Pendiente: puntuacion 60 con la configuracion versionada (g = 8 del archivo). Los dos bytes se leen y escriben con un unico lui y la copia del valor leido queda en el hueco del primer salto, como el original; difiere solo el reparto de registros: el original deja el resultado de la suma en a2 y GCC lo deja en v1 (los papeles de v1 y a2 estan invertidos). Operacion aritmetica sobre un registro de 16 bits repartido en dos bytes (D_80010047 es el bajo y D_8001013C el alto: r[7] y r[0xFC] del banco del estado principal de 0x80010000). El operando se trunca a un byte dentro de la rutina (andi 0xFF 
