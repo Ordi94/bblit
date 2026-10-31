@@ -14,6 +14,9 @@ from pathlib import Path
 
 from tools.disco import imagen
 
+CODIGO_ENTRADA_AUSENTE = 2
+ORDEN_QUE_PRODUCE_EL_EJECUTABLE = "python tools/build.py build"
+
 
 def construir_parser() -> argparse.ArgumentParser:
     """
@@ -38,6 +41,34 @@ def construir_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def comprobar_entradas(argumentos: argparse.Namespace) -> str | None:
+    """
+    Comprueba que los archivos de entrada de ``reempaquetar`` existen antes de abrirlos.
+
+    Contexto:
+        Lo usa ``main``. El ejecutable lo produce ``build`` y desaparece con ``split`` o ``clean``;
+        sin esta comprobacion la falta se veria como un error de entrada/salida sin causa. El
+        mensaje nombra la opcion y la orden que lo produce, y no incluye la ruta recibida.
+
+    Args:
+        argumentos (argparse.Namespace): Argumentos ya analizados de ``reempaquetar``.
+
+    Returns:
+        str | None: Mensaje de error, o ``None`` si los dos archivos existen.
+
+    Ejemplo:
+        mensaje = comprobar_entradas(construir_parser().parse_args(["reempaquetar", ...]))
+    """
+    if not argumentos.imagen.is_file():
+        return "error: --imagen: no existe el archivo indicado"
+    if not argumentos.exe.is_file():
+        return (
+            "error: --exe: no existe el archivo indicado; ejecute "
+            f"'{ORDEN_QUE_PRODUCE_EL_EJECUTABLE}' antes de reempaquetar"
+        )
+    return None
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """
     Ejecuta el comando solicitado y devuelve el codigo de salida del proceso.
@@ -49,12 +80,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         argv (Sequence[str], opcional): Argumentos; por defecto los de la linea de comandos.
 
     Returns:
-        int: 0 si termino bien, 1 si una validacion o una operacion de archivo fallo.
+        int: 0 si termino bien, 1 si una validacion o una operacion de archivo fallo, 2 si falta un
+        archivo de entrada.
 
     Ejemplo:
         codigo = main(["reempaquetar", "--imagen", "a.bin", "--exe", "x", "--salida", "build"])
     """
     argumentos = construir_parser().parse_args(argv)
+    ausente = comprobar_entradas(argumentos)
+    if ausente is not None:
+        print(ausente)
+        return CODIGO_ENTRADA_AUSENTE
     try:
         resultado = imagen.reempaquetar(
             argumentos.imagen, argumentos.exe, argumentos.salida, argumentos.archivo

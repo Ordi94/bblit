@@ -62,6 +62,10 @@ una carpeta suelta en `build/diff/`; `clean` la elimina.
 .venv\Scripts\python.exe -m tools.disco reempaquetar --imagen "<.bin>" --exe build\SLUS_008.38 --salida build
 ```
 
+Necesita el ejecutable producido por `build`; `split` y `clean` lo eliminan. Si falta, termina con
+codigo 2 y el mensaje `error: --exe: no existe el archivo indicado; ejecute 'python tools/build.py build'
+antes de reempaquetar`. Lo mismo ocurre con una `--imagen` inexistente (sin la pista de `build`).
+
 Con el ejecutable sin modificar: `0 de 249595 sectores modificados` y SHA-1
 `6024341f559c3789b5612e941c8d0ab227ff6361`.
 
