@@ -114,7 +114,7 @@ s16 D_80069402;
 s32 D_80069408;
 s16 D_8006940C;
 u16 D_80069414;
-s16 D_80069416;
+u16 D_80069416;
 s16 D_80069424;
 
 /* Desplazamiento de una sonda de apuntado en x y z (16 bits con signo; se aplica la mitad): la tabla D_8005E728 trae ocho pares. */
