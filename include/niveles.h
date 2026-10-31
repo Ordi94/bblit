@@ -374,16 +374,6 @@ typedef struct Transicion {
     u32 m28;
 } Transicion;
 
-/*
- * Apoyo hallado por func_80020354: el objeto al que el jugador se agarra en +0 y, en +0xA, la
- * altura relativa que se copia a la traslacion del apoyo.
- */
-typedef struct ApoyoHallado {
-    Objeto* objeto;
-    u8 pad04[6];
-    s16 h0A;
-} ApoyoHallado;
-
 /* Velocidad local del cuadro: x sin uso, altura en y, avance en z (carga GTE de VXY0 y VZ0). */
 typedef struct VelocidadLocal {
     s16 x;
