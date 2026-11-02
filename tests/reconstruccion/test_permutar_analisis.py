@@ -101,6 +101,36 @@ def test_la_tabla_recoge_campos_estructuras_globales_y_nombres_de_tipo() -> None
     assert {"Objeto", "SVECTOR", "u_char", "Local"} <= t.nombres_de_tipo
 
 
+def test_un_cierre_de_llave_seguido_de_una_palabra_reservada_no_define_un_tipo() -> None:
+    fuente = (
+        "void g(s32 a)\n{\n    if (a) {\n        a = 1;\n    }\n    return;\n}\n"
+        "void h(void)\n{\n    while (1) {\n    } break;\n}\n"
+    )
+    t = an.construir_tabla([fuente])
+    assert not {"return", "break"} & t.nombres_de_tipo
+    assert an.nombres_de_typedef("{ } return;") == set()
+
+
+def test_los_typedef_de_punteros_a_funcion_arreglos_y_varios_declaradores_son_tipos() -> None:
+    texto = (
+        "typedef void (*Rutina)(Objeto* o, s32 id);\n"
+        "typedef u32 ( *Digitos )(s32);\n"
+        "typedef u_short TABLA[34816];\n"
+        "typedef struct Par { s32 a; union { s32 b; } u; } Par, *PPar;\n"
+        "typedef unsigned long u_long;\n"
+        "typedef int typedef_sin_cierre"
+    )
+    assert an.nombres_de_typedef(texto) == {"Rutina", "Digitos", "TABLA", "Par", "PPar", "u_long"}
+    assert an.nombres_de_typedef("typedef {} {") == set()
+
+
+def test_un_tipo_con_calificador_tras_un_asterisco_o_declarador_abstracto_es_opaco() -> None:
+    for texto in ("u16* volatile*", "u8 (*)[64]", "void (*)(s32)", "u8* const"):
+        tipo = an.parsear_tipo(texto)
+        assert not tipo.es_escalar and tipo.texto == texto
+    assert an.parsear_tipo("u8 (*)[64]", 1).texto == "u8 (*)[64]*"
+
+
 def test_las_estructuras_sin_nombre_ni_typedef_se_omiten() -> None:
     t = an.construir_tabla(["struct {\n    s32 oculto;\n};\nstruct Con { s16 visible; };\n"])
     assert list(t.estructuras) == ["Con"]
@@ -161,7 +191,24 @@ def test_inferencia_de_tipos_de_expresiones() -> None:
     assert infer(expresion("o + o")) is None
     assert infer(expresion("k + desconocida")) is None
     assert infer(expresion("o + desconocida")) is None
-    assert infer(expresion("k ? 1 : 2")) is None
+    assert infer(expresion("k ? 1 : 2")) == an.S32
+    assert infer(expresion("k ? m : 2")) == an.U32
+    assert infer(expresion("k ? k : 2")) == an.S32
+    assert infer(expresion("k ? o : 0")) == an.parsear_tipo("Objeto", 1)
+    assert infer(expresion("k ? 0 : o")) == an.parsear_tipo("Objeto", 1)
+    assert infer(expresion("k ? o : o")) == an.parsear_tipo("Objeto", 1)
+    assert infer(expresion("k ? o : k")) is None
+    assert infer(expresion("k ? o->bytes : o->bytes")) is None
+    assert infer(expresion("k ? desconocida : 1")) is None
+    assert infer(expresion("k ? 1 : desconocida")) is None
+    assert infer(expresion("m % 3")) == an.U32
+    assert infer(expresion("k / m")) == an.U32
+    assert infer(expresion("k | m")) == an.U32
+    assert infer(expresion("k ^ k")) == an.S32
+    assert infer(expresion("k << m")) == an.S32
+    assert infer(expresion("m << k")) == an.U32
+    assert infer(expresion("k & 0xFF")) == an.S32
+    assert infer(expresion("k |= m")) == an.parsear_tipo("s16")
     assert infer(expresion("f(1)")) is None
     assert infer(expresion("o->bytes")) == an.Tipo("u8", 0, 8, False, True)
     assert not infer(expresion("o->bytes")).es_escalar  # type: ignore[union-attr]

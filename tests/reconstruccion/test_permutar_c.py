@@ -315,3 +315,232 @@ def test_los_tipos_con_varias_palabras_y_calificadores_se_leen_como_un_solo_tipo
         "    struct Nodo d;\n}"
     )
     assert "    const Objeto* a;\n    unsigned long long b;\n    long c0;\n    struct Nodo d;\n" in salida
+
+
+TIPOS_DE_MOLDES = frozenset({"Objeto", "Rutina", "Digitos"})
+
+
+def forma(nodo: object) -> object:
+    """Estructura de un arbol sin comentarios ni formato: dos lecturas con el mismo significado coinciden."""
+    if isinstance(nodo, list):
+        return [forma(elemento) for elemento in nodo]
+    if hasattr(nodo, "__dict__"):
+        campos = {
+            k: forma(v) for k, v in vars(nodo).items() if k not in ("comentarios", "finales", "cabecera")
+        }
+        return (type(nodo).__name__, campos)
+    return nodo
+
+
+def leer_expresion(texto: str, tipos: frozenset[str] = TIPOS) -> c.Expr:
+    funcion = c.analizar_funcion(f"void f(void)\n{{\n    {texto};\n}}", "f", tipos)
+    sentencia = funcion.cuerpo.items[0]
+    assert isinstance(sentencia, c.Expresion)
+    return sentencia.expr
+
+
+OPERADORES_BINARIOS = [
+    "|",
+    "&",
+    "^",
+    "<<",
+    ">>",
+    "&&",
+    "||",
+    "%",
+    "/",
+    "*",
+    "+",
+    "-",
+    "==",
+    "!=",
+    "<",
+    ">",
+    "<=",
+    ">=",
+]
+ASIGNACIONES = ["=", "|=", "&=", "^=", "<<=", ">>=", "%=", "/=", "*=", "+=", "-="]
+
+
+@pytest.mark.parametrize("operador", OPERADORES_BINARIOS)
+def test_cada_operador_binario_se_lee_y_se_escribe_igual(operador: str) -> None:
+    texto = f"x = a {operador} b"
+    expr = leer_expresion(texto)
+    assert isinstance(expr, c.Asigna) and isinstance(expr.valor, c.Binario) and expr.valor.op == operador
+    assert c.imprimir_expresion(expr) == texto
+
+
+@pytest.mark.parametrize("operador", ASIGNACIONES)
+def test_cada_asignacion_compuesta_se_lee_y_se_escribe_igual(operador: str) -> None:
+    texto = f"a->campo[i] {operador} b + 1"
+    expr = leer_expresion(texto)
+    assert isinstance(expr, c.Asigna) and expr.op == operador
+    assert c.imprimir_expresion(expr) == texto
+
+
+@pytest.mark.parametrize("operador", ["-", "+", "!", "~", "*", "&", "++", "--"])
+def test_cada_operador_unario_prefijo_se_lee_y_se_escribe_igual(operador: str) -> None:
+    texto = f"x = {operador}a"
+    expr = leer_expresion(texto)
+    assert isinstance(expr, c.Asigna) and isinstance(expr.valor, c.Unario) and expr.valor.op == operador
+    assert c.imprimir_expresion(expr) == texto
+
+
+# Cada par es (texto en C, el mismo texto con todos los parentesis que C implica): la precedencia y la
+# asociatividad de C son las del segundo, y el arbol de ambos debe ser el mismo.
+PRECEDENCIAS = [
+    ("a | b << 8", "a | (b << 8)"),
+    ("a << 8 | b", "(a << 8) | b"),
+    ("a || b && c", "a || (b && c)"),
+    ("a && b || c && d", "(a && b) || (c && d)"),
+    ("a ^ b & c | d", "(a ^ (b & c)) | d"),
+    ("a | b ^ c", "a | (b ^ c)"),
+    ("a << 1 + 2", "a << (1 + 2)"),
+    ("a + b << 2", "(a + b) << 2"),
+    ("a & b == c", "a & (b == c)"),
+    ("a == b & c", "(a == b) & c"),
+    ("a < b == c > d", "(a < b) == (c > d)"),
+    ("a % b * c / d", "((a % b) * c) / d"),
+    ("a - b - c", "(a - b) - c"),
+    ("a - (b - c)", "a - (b - c)"),
+    ("a ? b : c ? d : e", "a ? b : (c ? d : e)"),
+    ("a || b ? c : d", "(a || b) ? c : d"),
+    ("a ? b , c : d", "a ? (b , c) : d"),
+    ("a = b ? c : d", "a = (b ? c : d)"),
+    ("a = b = c | d", "a = (b = (c | d))"),
+    ("a <<= b |= c", "a <<= (b |= c)"),
+    ("~a & -b", "(~a) & (-b)"),
+    ("!a || !b && c", "(!a) || ((!b) && c)"),
+    ("-a * b", "(-a) * b"),
+    ("*p++ & 0xFF", "(*(p++)) & 0xFF"),
+    ("a , b = c , d", "(a , (b = c)) , d"),
+    ("(s16)a << 8 | (u8)b", "(((s16)a) << 8) | ((u8)b)"),
+    ("sizeof(Objeto) * 2 | 1", "(sizeof(Objeto) * 2) | 1"),
+    ("x = (a | b) & c", "x = (a | b) & c"),
+    ("x = (a & b) == 0", "x = (a & b) == 0"),
+]
+
+
+@pytest.mark.parametrize(("texto", "con_parentesis"), PRECEDENCIAS)
+def test_la_precedencia_y_la_asociatividad_son_las_de_c(texto: str, con_parentesis: str) -> None:
+    assert forma(leer_expresion(texto)) == forma(leer_expresion(con_parentesis))
+
+
+@pytest.mark.parametrize(("texto", "con_parentesis"), PRECEDENCIAS)
+def test_escribir_conserva_el_significado_y_releer_da_el_mismo_arbol(texto: str, con_parentesis: str) -> None:
+    arbol = leer_expresion(texto)
+    escrito = c.imprimir_expresion(arbol)
+    assert forma(leer_expresion(escrito)) == forma(arbol)
+    assert c.imprimir_expresion(leer_expresion(escrito)) == escrito
+
+
+def test_un_operador_de_bits_bajo_otro_se_escribe_con_parentesis_redundantes() -> None:
+    assert c.imprimir_expresion(leer_expresion("a | b << 8")) == "a | (b << 8)"
+    assert c.imprimir_expresion(leer_expresion("a | (b << 8)")) == "a | (b << 8)"
+    assert c.imprimir_expresion(leer_expresion("a ^ b & c | d")) == "(a ^ (b & c)) | d"
+    assert c.imprimir_expresion(leer_expresion("a | b | c")) == "a | b | c"
+    assert c.imprimir_expresion(leer_expresion("a | (b | c)")) == "a | (b | c)"
+
+
+def test_los_parentesis_necesarios_sobreviven_a_conmutar_operandos() -> None:
+    suma = leer_expresion("(a | b) << 8")
+    assert isinstance(suma, c.Binario)
+    suma.izq, suma.der = suma.der, suma.izq
+    assert c.imprimir_expresion(suma) == "8 << (a | b)"
+    producto = leer_expresion("(a + b) * (c << 2)")
+    assert isinstance(producto, c.Binario)
+    producto.izq, producto.der = producto.der, producto.izq
+    assert c.imprimir_expresion(producto) == "(c << 2) * (a + b)"
+
+
+def test_una_condicion_larga_con_or_entre_parentesis_no_pierde_los_parentesis_al_repartirse() -> None:
+    texto = (
+        "void func_X(s32 id, s32 a)\n{\n    if ((id == 0x41 || id == 0x73) && (((a ^ 0xFF) << 8) & 0x800) && "
+        "ESTADO_PRINCIPAL->registros[BANCO_DE_DEMOSTRACION_DEL_JUEGO] != 0) {\n        a = 1;\n    }\n}"
+    )
+    salida = reescribir(texto)
+    assert "    if ((id == 0x41 || id == 0x73)\n            && (((a ^ 0xFF) << 8) & 0x800)\n" in salida
+    assert forma(c.analizar_funcion(salida, "func_X", TIPOS)) == forma(
+        c.analizar_funcion(texto, "func_X", TIPOS)
+    )
+    assert reescribir(salida) == salida
+
+
+def test_una_condicion_larga_con_and_bajo_or_se_reparte_sin_cambiar_el_significado() -> None:
+    texto = (
+        "void func_X(s32 id, s32 a)\n{\n    if (id == 0x41 || id == 0x73 && (((a ^ 0xFF) << 8) & 0x800) && "
+        "ESTADO_PRINCIPAL->registros[BANCO_DE_DEMOSTRACION_DEL_JUEGO] != 0 || a) {\n        a = 1;\n    }\n}"
+    )
+    salida = reescribir(texto)
+    assert forma(c.analizar_funcion(salida, "func_X", TIPOS)) == forma(
+        c.analizar_funcion(texto, "func_X", TIPOS)
+    )
+    assert reescribir(salida) == salida
+
+
+def test_un_molde_a_un_typedef_de_puntero_a_funcion_se_llama_como_una_funcion() -> None:
+    salida = reescribir_con(
+        "void func_X(s32 a)\n{\n    s32 r;\n    r = ((Digitos)func_Y)((a << 8) | 1);\n"
+        "    ((Rutina)func_Z)(0, a, 1);\n}"
+    )
+    assert "    r = ((Digitos)func_Y)((a << 8) | 1);\n" in salida
+    assert "    ((Rutina)func_Z)(0, a, 1);\n" in salida
+
+
+def reescribir_con(texto: str) -> str:
+    return c.imprimir_funcion(c.analizar_funcion(texto, "func_X", TIPOS_DE_MOLDES))
+
+
+@pytest.mark.parametrize(
+    "tipo",
+    [
+        "u16* volatile*",
+        "u8 (*)[64]",
+        "u8* (*)[4][2]",
+        "void (*)(s32, Objeto*)",
+        "const u8* const",
+        "struct Nodo*",
+    ],
+)
+def test_los_moldes_con_calificadores_y_declaradores_abstractos_se_conservan(tipo: str) -> None:
+    salida = reescribir_con(f"void func_X(s32 a)\n{{\n    a = (s32)*({tipo})&a;\n}}")
+    assert f"    a = (s32)*({tipo})&a;\n" in salida
+
+
+def test_un_nombre_de_tipo_como_argumento_de_una_macro_se_conserva() -> None:
+    salida = reescribir_con(
+        "void func_X(u8* n)\n{\n    EN(u16, n, 0x108) = 0xA00;\n    EN(u8 *, n, 0xC0) = n;\n"
+        "    EN(unsigned long, n, 4) |= 1;\n    f(Objeto, 3);\n}"
+    )
+    assert (
+        "    EN(u16, n, 0x108) = 0xA00;\n    EN(u8*, n, 0xC0) = n;\n    EN(unsigned long, n, 4) |= 1;\n"
+        in salida
+    )
+    assert "    f(Objeto, 3);\n" in salida
+    assert reescribir_con(salida) == salida
+
+
+def test_un_nombre_de_tipo_que_no_cierra_el_argumento_se_lee_como_expresion() -> None:
+    salida = reescribir_con("void func_X(s32 a)\n{\n    f(Objeto(1), (Objeto)a, sizeof(Objeto));\n}")
+    assert "    f(Objeto(1), (Objeto)a, sizeof(Objeto));\n" in salida
+
+
+def test_una_palabra_reservada_nunca_es_un_tipo_aunque_la_tabla_la_incluya() -> None:
+    tipos = frozenset({"return", "break", "sizeof", "Objeto"})
+    funcion = c.analizar_funcion(
+        "s32 func_X(s32 a)\n{\n    while (a) {\n        a = a | (a << 8);\n        break;\n    }\n"
+        "    return a | (a << 8);\n}",
+        "func_X",
+        tipos,
+    )
+    assert "    return a | (a << 8);\n" in c.imprimir_funcion(funcion)
+
+
+def test_los_parametros_declarados_como_arreglo_siguen_fuera_del_subconjunto() -> None:
+    with pytest.raises(c.AnalisisCError, match="parametro no reconocido"):
+        c.analizar_funcion("void func_X(s32 tabla[4]) { }", "func_X", TIPOS)
+
+
+def test_un_molde_de_tipo_sin_cerrar_se_rechaza() -> None:
+    with pytest.raises(c.AnalisisCError, match="expresion no reconocida"):
+        c.analizar_funcion("void func_X(s32 a) { a = (Objeto (*)[4; }", "func_X", TIPOS)

@@ -38,6 +38,10 @@ PALABRAS_DE_TIPO = frozenset(
     }
 )
 TIPOS_DEL_PROYECTO = frozenset({"s8", "u8", "s16", "u16", "s32", "u32", "s64", "u64"})
+PALABRAS_RESERVADAS = frozenset(
+    {"return", "goto", "break", "continue", "else", "case", "default", "if", "while", "for", "do", "switch"}
+    | {"sizeof", "typedef"}
+)
 OPERADORES_DE_BITS = frozenset({"&", "|", "^", "<<", ">>"})
 OPERADORES_DE_ASIGNACION = frozenset({"=", "+=", "-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "|=", "^="})
 PRECEDENCIA_BINARIA = {
@@ -132,7 +136,7 @@ class Num(Expr):
 
 @dataclass(eq=False)
 class Texto(Expr):
-    """Atomo que no se analiza: cadena, caracter o ``sizeof``.
+    """Atomo que no se analiza: cadena, caracter, ``sizeof`` o nombre de tipo pasado a una macro.
 
     Attributes:
         texto: Texto tal como se escribio.
@@ -628,7 +632,7 @@ class _Analizador:
     def __init__(self, tokens: list[Token], tipos: frozenset[str]) -> None:
         self.tokens = tokens
         self.pos = 0
-        self.tipos = tipos | TIPOS_DEL_PROYECTO
+        self.tipos = (tipos | TIPOS_DEL_PROYECTO) - PALABRAS_RESERVADAS
         self.profundidad = 0
 
     # -- utilidades -------------------------------------------------------------------------------
@@ -675,13 +679,42 @@ class _Analizador:
         token = self.actual(desplazamiento)
         return token.tipo == "id" and (token.texto in PALABRAS_DE_TIPO or token.texto in self.tipos)
 
-    def leer_tipo(self) -> tuple[list[str], int]:
-        """Lee palabras de tipo y asteriscos (el tipo de un molde)."""
-        palabras = self.palabras_de_tipo()
-        estrellas = 0
-        while self.tomar("*"):
-            estrellas += 1
-        return palabras, estrellas
+    def leer_tipo(self) -> str:
+        """
+        Lee un nombre de tipo completo, como el de un molde o el de un argumento de macro.
+
+        Admite palabras de tipo, asteriscos, calificadores de puntero (``u16 * volatile *``) y un
+        declarador abstracto de puntero a arreglo o a funcion (``u8 (*)[64]``, ``void (*)(s32)``), que se
+        copia tal cual: la reescritura no necesita entenderlo, solo conservarlo.
+        """
+        texto = normalizar_tipo(self.palabras_de_tipo())
+        declarador = False
+        while True:
+            if self.tomar("*"):
+                texto += "*"
+            elif self.es("const") or self.es("volatile"):
+                texto += " " + self.avanzar().texto
+            elif not declarador and self.es("(") and self.es("*", 1):
+                texto += " " + self.copiar_balanceado("(", ")")
+                declarador = True
+            elif declarador and self.es("["):
+                texto += self.copiar_balanceado("[", "]")
+            elif declarador and self.es("("):
+                texto += self.copiar_balanceado("(", ")")
+            else:
+                return texto
+
+    def tipo_seguido_de(self, cierres: tuple[str, ...], desplazamiento: int = 0) -> bool:
+        """Indica si desde el token pedido hay un tipo completo seguido de alguno de los ``cierres``."""
+        inicio = self.pos
+        self.pos += desplazamiento
+        try:
+            self.leer_tipo()
+            return any(self.es(cierre) for cierre in cierres)
+        except AnalisisCError:
+            return False
+        finally:
+            self.pos = inicio
 
     def palabras_de_tipo(self) -> list[str]:
         """
@@ -706,12 +739,7 @@ class _Analizador:
 
     def es_molde(self) -> bool:
         """Indica si un ``(`` en posicion de operando abre un molde."""
-        if not self.es("(") or not self.inicia_tipo(1):
-            return False
-        indice = 1
-        while self.inicia_tipo(indice) or self.es("*", indice):
-            indice += 1
-        return self.es(")", indice)
+        return self.es("(") and self.inicia_tipo(1) and self.tipo_seguido_de((")",), 1)
 
     # -- expresiones ------------------------------------------------------------------------------
 
@@ -766,9 +794,9 @@ class _Analizador:
                 return Unario(token.texto, self.unaria())
             if self.es_molde():
                 self.consumir("(")
-                palabras, estrellas = self.leer_tipo()
+                tipo = self.leer_tipo()
                 self.consumir(")")
-                return Conversion(normalizar_tipo(palabras, estrellas), self.unaria())
+                return Conversion(tipo, self.unaria())
             if self.es("sizeof"):
                 return self.tamano()
             return self.posfija()
@@ -795,6 +823,12 @@ class _Analizador:
             if nivel == 0:
                 return unir_tokens(partes)
 
+    def argumento(self) -> Expr:
+        """Argumento de una llamada; el de una macro puede ser un nombre de tipo (``EN(u8*, p, 4)``)."""
+        if self.inicia_tipo() and self.tipo_seguido_de((",", ")")):
+            return Texto(self.leer_tipo())
+        return self.asignacion()
+
     def posfija(self) -> Expr:
         """Llamadas, indices, campos e incrementos posfijos."""
         expr = self.primaria()
@@ -802,9 +836,9 @@ class _Analizador:
             if self.tomar("("):
                 args: list[Expr] = []
                 if not self.es(")"):
-                    args.append(self.asignacion())
+                    args.append(self.argumento())
                     while self.tomar(","):
-                        args.append(self.asignacion())
+                        args.append(self.argumento())
                 self.consumir(")")
                 expr = Llamada(expr, args)
             elif self.tomar("["):
@@ -1352,8 +1386,16 @@ def _cabecera_con_condicion(palabra: str, cond: Expr, nivel: int) -> list[str]:
         return [una_linea]
     operandos: list[tuple[str, Expr]] = []
     pendiente = cond
-    while isinstance(pendiente, Binario) and pendiente.op in ("&&", "||"):
+    ligadura = 0
+    # Solo se baja por la izquierda mientras el operando se escriba sin parentesis bajo el operador que
+    # lo contiene: (a || b) && c lleva parentesis y repartirlo como a || b && c cambiaria su significado.
+    while (
+        isinstance(pendiente, Binario)
+        and pendiente.op in ("&&", "||")
+        and PRECEDENCIA_BINARIA[pendiente.op] >= ligadura
+    ):
         operandos.append((pendiente.op, pendiente.der))
+        ligadura = PRECEDENCIA_BINARIA[pendiente.op]
         pendiente = pendiente.izq
     if not operandos:
         return [una_linea]

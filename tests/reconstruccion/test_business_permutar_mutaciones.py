@@ -767,3 +767,61 @@ def test_con_nombres_unicos_las_mutaciones_siguen_funcionando() -> None:
     assert aplicar(mut.ancho_de_temporal, texto)[0] is not None
     assert aplicar(mut.introducir_temporal, texto)[0] is not None
     assert aplicar(mut.copiar_parametro, texto)[0] is not None
+
+
+FUENTE_CON_BARRERAS = """typedef struct Objeto {
+    s32 valor;
+} Objeto;
+u8 D_80069458;
+Objeto* D_80069698;
+
+void func_Previa(s32 a)
+{
+    if (a) {
+        a = 1;
+    }
+    return;
+}
+
+u32 func_Audio(Objeto* o)
+{
+    if (D_80069458 == 0) {
+        return 0;
+    }
+    if (o == D_80069698 || o == 0) {
+        return D_80069458 | (D_80069458 << 8);
+    }
+    return (D_80069458 << 8) | (o->valor & 0xFF) | 1;
+}
+"""
+
+
+def _sin_espacios(texto: str) -> str:
+    return re.sub(r"\s+", "", texto)
+
+
+def test_una_funcion_con_or_de_bits_y_desplazamientos_se_reescribe_identica_salvo_espacios() -> None:
+    """Una funcion que ya cierra con `|`, `||` y `<<` no debe rechazarse ni cambiar de significado.
+
+    El archivo trae antes un `}` seguido de `return;`, que la tabla de tipos no debe tomar por un typedef:
+    si lo hiciera, `return D | (...)` se leeria como una declaracion y la funcion no se podria permutar.
+    """
+    tabla = an.construir_tabla([FUENTE_CON_BARRERAS])
+    assert "return" not in tabla.nombres_de_tipo
+    inicio, fin = c.localizar_funcion(FUENTE_CON_BARRERAS, "func_Audio")
+    original = FUENTE_CON_BARRERAS[inicio:fin]
+    funcion = c.analizar_funcion(original, "func_Audio", tabla.nombres_de_tipo)
+    reescrito = c.imprimir_funcion(funcion)
+    assert _sin_espacios(reescrito) == _sin_espacios(original)
+    relectura = c.analizar_funcion(reescrito, "func_Audio", tabla.nombres_de_tipo)
+    assert c.imprimir_funcion(relectura) == reescrito
+
+
+def test_conmutar_operandos_de_un_or_de_bits_conserva_el_significado_al_reescribir() -> None:
+    texto = cuerpo("o->valor = x | (y << 8);", firma="void f(Objeto* o, s32 x, s32 y)")
+    for semilla in range(20):
+        descripcion, resultado = aplicar(mut.operandos_conmutados, texto, semilla)
+        assert descripcion is not None
+        relectura = c.analizar_funcion(resultado, "f", TIPOS)
+        assert c.imprimir_funcion(relectura) == resultado
+        assert resultado.count("<< 8") == 1 and "(y << 8)" in resultado

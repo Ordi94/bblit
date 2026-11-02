@@ -94,8 +94,10 @@ Como aplicar un candidato. `mejor.c` es una propuesta, no un parche: se lee ante
    ya generados) y ejecutar `diff` ahi.
 
 Limites. El analizador entiende el C que usa `src/` (declaraciones al inicio del bloque, `if`, bucles, `switch`,
-`goto`, llamadas y macros de funcion); un parametro declarado como arreglo, un tipo de funcion o una construccion
-fuera de ese subconjunto se rechazan con un mensaje en lugar de adivinarse. Las mutaciones suponen que dos
+`goto`, llamadas y macros de funcion, todos los operadores binarios, unarios y de asignacion de C con su
+precedencia, moldes a tipos con calificadores o a punteros a arreglo o funcion y nombres de tipo como argumento
+de una macro); un parametro declarado como arreglo, un tipo de funcion o una construccion fuera de ese
+subconjunto se rechazan con un mensaje en lugar de adivinarse. Las mutaciones suponen que dos
 accesos con rutas de campo distintas (`a->x` y `b->y`) no se solapan; un cambio que dependa de ese supuesto
 se revisa al leer el candidato. No cierra lo que solo cierra con un recurso que el proyecto no admite
 (ensamblador en linea, `volatile`, `register`, barreras): para esas funciones el resultado es 2. Las

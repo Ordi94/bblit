@@ -40,8 +40,10 @@ _PATRON_GLOBAL = re.compile(
     r"^(?:extern\s+)?((?:(?:unsigned|signed|const)\s+)*[A-Za-z_]\w*)\s*(\**)\s*([A-Za-z_]\w*)\s*;",
     re.MULTILINE,
 )
-_PATRON_TYPEDEF_ESTRUCTURA = re.compile(r"\}\s*([A-Za-z_]\w*)\s*;")
-_PATRON_TYPEDEF_SIMPLE = re.compile(r"typedef\s+[^;{}]*?\b([A-Za-z_]\w*)\s*;")
+_PATRON_TYPEDEF = re.compile(r"\btypedef\b")
+_PATRON_PUNTERO_A_FUNCION = re.compile(r"\(\s*\*+\s*([A-Za-z_]\w*)\s*\)")
+_PATRON_ULTIMO_NOMBRE = re.compile(r"([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$")
+_PATRON_TIPO_OPACO = re.compile(r"\(|\*\s*(?:const|volatile)\b")
 _PALABRAS_QUE_NO_SON_TIPO = frozenset(
     {"return", "goto", "break", "continue", "else", "case", "default", "typedef", "if", "while", "for", "do"}
 )
@@ -163,6 +165,8 @@ def parsear_tipo(base: str, estrellas: int = 0) -> Tipo:
         tipo = parsear_tipo("u8", 1)
     """
     texto = base.strip()
+    if _PATRON_TIPO_OPACO.search(texto):
+        return Tipo(" ".join(texto.split()) + "*" * estrellas)
     if texto.endswith("*"):
         return parsear_tipo(texto.rstrip("*").strip(), estrellas + texto.count("*"))
     palabras = [p for p in texto.split() if p not in CALIFICADORES]
@@ -189,6 +193,61 @@ class TablaTipos:
     estructuras: dict[str, dict[str, Tipo]] = field(default_factory=dict)
     globales: dict[str, Tipo] = field(default_factory=dict)
     nombres_de_tipo: frozenset[str] = frozenset()
+
+
+def _sin_llaves(texto: str) -> str:
+    """Quita de un texto el contenido entre llaves (con las llaves), anidado o no."""
+    nivel = 0
+    resto: list[str] = []
+    for caracter in texto:
+        nivel += (caracter == "{") - (caracter == "}")
+        if nivel == 0 and caracter != "}":
+            resto.append(caracter)
+    return "".join(resto)
+
+
+def _declarados_por(declaracion: str) -> list[str]:
+    """Nombres que declara un ``typedef`` sin cuerpos: el de un puntero a funcion o los de cada declarador."""
+    puntero = _PATRON_PUNTERO_A_FUNCION.search(declaracion)
+    if puntero is not None:
+        return [puntero.group(1)]
+    nombres: list[str] = []
+    for trozo in declaracion.split(","):
+        encontrado = _PATRON_ULTIMO_NOMBRE.search(trozo.strip())
+        if encontrado is not None:
+            nombres.append(encontrado.group(1))
+    return nombres
+
+
+def nombres_de_typedef(limpio: str) -> set[str]:
+    """
+    Reune los nombres que declara cada ``typedef`` de un texto C ya enmascarado.
+
+    Contexto:
+        El analizador de C distingue una declaracion o un molde de una expresion por si el primer nombre
+        es un tipo. Solo cuenta lo declarado tras la palabra ``typedef``: un ``}`` seguido de un
+        identificador y ``;`` tambien aparece en el cuerpo de las funciones (``} return;``) y no define
+        ningun tipo.
+
+    Args:
+        limpio (str): Texto sin comentarios ni literales de texto.
+
+    Returns:
+        set[str]: Nombres de tipo, incluidos los de punteros a funcion y de arreglos, y los
+        declaradores adicionales (``} Nodo, *PNodo;``).
+
+    Ejemplo:
+        nombres = nombres_de_typedef("typedef void (*Rutina)(s32); typedef struct { s32 a; } Par;")
+    """
+    nombres: set[str] = set()
+    for inicio in _PATRON_TYPEDEF.finditer(limpio):
+        nivel = 0
+        for posicion in range(inicio.end(), len(limpio)):
+            nivel += (limpio[posicion] == "{") - (limpio[posicion] == "}")
+            if limpio[posicion] == ";" and nivel <= 0:
+                nombres.update(_declarados_por(_sin_llaves(limpio[inicio.end() : posicion])))
+                break
+    return nombres - c.PALABRAS_RESERVADAS
 
 
 def _declaradores(texto: str) -> list[tuple[int, str, bool]]:
@@ -256,8 +315,7 @@ def construir_tabla(textos: Iterable[str]) -> TablaTipos:
     vistos: dict[str, set[Tipo | None]] = {}
     for texto in textos:
         limpio = c.enmascarar(texto)
-        nombres.update(_PATRON_TYPEDEF_ESTRUCTURA.findall(limpio))
-        nombres.update(_PATRON_TYPEDEF_SIMPLE.findall(limpio))
+        nombres.update(nombres_de_typedef(limpio))
         for encontrado in _PATRON_DECLARACION.finditer(limpio):
             if encontrado.group(1).split()[0] in _PALABRAS_QUE_NO_SON_TIPO:
                 continue
@@ -393,6 +451,8 @@ class Entorno:
             return self._binario(expr)
         if isinstance(expr, c.Indice):
             return self._elemento(self.inferir(expr.base))
+        if isinstance(expr, c.Ternario):
+            return self._ternario(expr)
         if isinstance(expr, c.Asigna):
             return self.inferir(expr.destino)
         if isinstance(expr, c.Postfijo):
@@ -433,6 +493,19 @@ class Entorno:
         if expr.op in ("++", "--"):
             return interior
         return promover(interior)
+
+    def _ternario(self, expr: c.Ternario) -> Tipo | None:
+        """Tipo comun de las ramas de ``?:``: aritmetico entre enteros; el mismo tipo si coinciden."""
+        si, no = self.inferir(expr.si), self.inferir(expr.no)
+        if si is None or no is None:
+            return None
+        if si.es_entero and no.es_entero:
+            return aritmetico(si, no)
+        if si.es_puntero and valor_de_literal(expr.no) == 0:
+            return si
+        if no.es_puntero and valor_de_literal(expr.si) == 0:
+            return no
+        return si if si == no and not si.arreglo else None
 
     def _binario(self, expr: c.Binario) -> Tipo | None:  # noqa: PLR0911 - una salida por clase de operador
         """Tipo de un operador binario."""
