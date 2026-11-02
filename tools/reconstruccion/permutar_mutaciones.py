@@ -154,6 +154,39 @@ def _nombres_de(funcion: c.Funcion) -> set[str]:
     return nombres
 
 
+def nombres_ambiguos(funcion: c.Funcion) -> set[str]:
+    """
+    Nombres que no identifican a una unica variable dentro de la funcion.
+
+    Contexto:
+        El seguimiento de tipos y de usos de las mutaciones de temporales, de ancho y de parametros
+        trabaja por nombre, sin ambito lexico: dos locales ``tmp`` en bloques hermanos, o una local
+        que sombrea a un parametro, se confundirian en una sola variable y una mutacion podria borrar
+        la declaracion equivocada o razonar con el tipo equivocado. Esas mutaciones solo actuan sobre
+        nombres que NO estan en este conjunto, ni toman subexpresiones que los mencionen.
+
+    Args:
+        funcion (c.Funcion): Funcion que se analiza.
+
+    Returns:
+        set[str]: Nombres declarados mas de una vez en cualquier bloque (incluidos los anidados) y
+        nombres de local que coinciden con un parametro.
+
+    Ejemplo:
+        ambiguos = nombres_ambiguos(funcion)
+    """
+    parametros = {p.nombre for p in funcion.parametros}
+    vistos: set[str] = set()
+    ambiguos: set[str] = set()
+    for _, _, sentencia in _sentencias(funcion):
+        if not isinstance(sentencia, c.Decl):
+            continue
+        if sentencia.nombre in vistos or sentencia.nombre in parametros:
+            ambiguos.add(sentencia.nombre)
+        vistos.add(sentencia.nombre)
+    return ambiguos
+
+
 def _fin_de_declaraciones(cuerpo: c.Bloque) -> int:
     """Posicion donde termina la serie inicial de declaraciones de un bloque."""
     posicion = 0
@@ -322,6 +355,7 @@ def _aparicion_unica_de_asignacion(raiz: c.Expr) -> bool:
 def _sitios_izables(ctx: Contexto) -> list[tuple[c.Bloque, int, Sitio, an.Tipo]]:
     """Subexpresiones puras de tipo escalar conocido que se pueden copiar a un temporal."""
     resultado: list[tuple[c.Bloque, int, Sitio, an.Tipo]] = []
+    ambiguos = nombres_ambiguos(ctx.funcion)
     for bloque, indice, sentencia in _sentencias(ctx.funcion):
         if isinstance(sentencia, c.Decl | c.Mientras | c.HacerMientras | c.Para | c.Caso):
             continue
@@ -337,6 +371,7 @@ def _sitios_izables(ctx: Contexto) -> list[tuple[c.Bloque, int, Sitio, an.Tipo]]
                     and not sitio.lvalue
                     and an.es_pura(sitio.nodo)
                     and not isinstance(sitio.nodo, c.Num)
+                    and not an.identificadores_de(sitio.nodo) & ambiguos
                     and not (sitio.padre is sentencia and isinstance(sentencia, c.Expresion))
                 )
                 if es_izable and tipo is not None:
@@ -447,7 +482,12 @@ def eliminar_temporal(ctx: Contexto) -> str | None:
         descripcion = eliminar_temporal(contexto)
     """
     candidatos: list[tuple[c.Bloque, int, Sitio]] = []
-    declaradas = {s.nombre for _, _, s in _sentencias(ctx.funcion) if isinstance(s, c.Decl) and not s.inicial}
+    ambiguos = nombres_ambiguos(ctx.funcion)
+    declaradas = {
+        s.nombre
+        for _, _, s in _sentencias(ctx.funcion)
+        if isinstance(s, c.Decl) and not s.inicial and s.nombre not in ambiguos
+    }
     for bloque, indice, sentencia in _sentencias(ctx.funcion):
         if not (
             isinstance(sentencia, c.Expresion)
@@ -476,6 +516,7 @@ def eliminar_temporal(ctx: Contexto) -> str | None:
         )
         if (
             compatible
+            and not an.identificadores_de(sentencia.expr.valor) & ambiguos
             and an.es_pura(sentencia.expr.valor)
             and not sitio.perezoso
             and raiz
@@ -505,8 +546,13 @@ def _quitar_declaracion(funcion: c.Funcion, nombre: str) -> None:
                 return
 
 
-def _ancho_permitido(ctx: Contexto, declaracion: c.Decl) -> list[an.Tipo] | None:
-    """Tipos a los que una local entera cambia sin perder valores, o ``None`` si no admite el cambio."""
+def _ancho_permitido(ctx: Contexto, declaracion: c.Decl, ambiguos: set[str]) -> list[an.Tipo] | None:
+    """Tipos a los que una local entera cambia sin perder valores, o ``None`` si no admite el cambio.
+
+    Una variable de nombre ambiguo, o que recibe expresiones que mencionan uno, no admite el cambio.
+    """
+    if declaracion.nombre in ambiguos:
+        return None
     actual = an.parsear_tipo(declaracion.base, declaracion.estrellas)
     if not actual.es_entero or declaracion.sufijo or actual.texto not in an.TIPOS_ENTEROS_PERMITIDOS:
         return None
@@ -524,7 +570,7 @@ def _ancho_permitido(ctx: Contexto, declaracion: c.Decl) -> list[an.Tipo] | None
         if sitio.lvalue:
             return None
         insensible = insensible and _uso_insensible_al_signo(sitio, sentencia)
-    if not fuentes:
+    if not fuentes or any(an.identificadores_de(fuente) & ambiguos for fuente in fuentes):
         return None
     permitidos = []
     for nombre in an.TIPOS_ENTEROS_PERMITIDOS:
@@ -583,9 +629,10 @@ def ancho_de_temporal(ctx: Contexto) -> str | None:
         descripcion = ancho_de_temporal(contexto)
     """
     candidatos: list[tuple[c.Decl, an.Tipo]] = []
+    ambiguos = nombres_ambiguos(ctx.funcion)
     for _, _, sentencia in _sentencias(ctx.funcion):
         if isinstance(sentencia, c.Decl):
-            permitidos = _ancho_permitido(ctx, sentencia)
+            permitidos = _ancho_permitido(ctx, sentencia, ambiguos)
             candidatos.extend((sentencia, nuevo) for nuevo in permitidos or [])
     elegido = _elegir(ctx.azar, candidatos)
     if elegido is None:
@@ -614,7 +661,10 @@ def copiar_parametro(ctx: Contexto) -> str | None:
         descripcion = copiar_parametro(contexto)
     """
     candidatos: list[tuple[str, an.Tipo]] = []
+    ambiguos = nombres_ambiguos(ctx.funcion)
     for declarado in ctx.funcion.parametros:
+        if declarado.nombre in ambiguos:
+            continue
         tipo = ctx.entorno.locales.get(declarado.nombre)
         usos = _usos_de(ctx.funcion, declarado.nombre)
         escrito = any(

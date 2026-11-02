@@ -1,6 +1,7 @@
 """Reglas de negocio de las mutaciones: que cambian el C y que casos no se tocan nunca."""
 
 import random
+import re
 from collections.abc import Callable
 
 import pytest
@@ -664,3 +665,105 @@ def test_ninguna_mutacion_genera_construcciones_prohibidas() -> None:
     for semilla in range(150):
         variante, _ = mut.mutar(base, tabla, azar(semilla), 3)
         assert mut.variante_permitida(c.imprimir_funcion(variante), texto_base)
+
+
+# --- nombres repetidos entre ambitos ----------------------------------------------------------------
+
+DOS_TMP_HERMANAS = cuerpo(
+    "if (x) {",
+    "    s16 tmp;",
+    "    tmp = o->radio;",
+    "    o->valor = tmp;",
+    "} else {",
+    "    s32 tmp;",
+    "    tmp = y;",
+    "    o->valor = tmp + tmp;",
+    "}",
+)
+
+
+def test_los_nombres_ambiguos_son_los_declarados_dos_veces_o_que_sombrean_un_parametro() -> None:
+    ctx = preparar(DOS_TMP_HERMANAS)
+    assert mut.nombres_ambiguos(ctx.funcion) == {"tmp"}
+    sombra = preparar(cuerpo("s32 x;", "s32 z;", "x = z;"))
+    assert mut.nombres_ambiguos(sombra.funcion) == {"x"}
+    assert mut.nombres_ambiguos(preparar(cuerpo("s32 a;", "a = x;")).funcion) == set()
+
+
+def test_eliminar_temporal_no_toca_locales_homonimas_de_bloques_hermanos() -> None:
+    for semilla in range(20):
+        descripcion, texto = aplicar(mut.eliminar_temporal, DOS_TMP_HERMANAS, semilla)
+        assert descripcion is None
+        assert texto.count("s16 tmp;") == 1 and texto.count("s32 tmp;") == 1
+
+
+def test_eliminar_temporal_no_usa_una_expresion_que_menciona_un_nombre_ambiguo() -> None:
+    texto = cuerpo(
+        "s32 t;",
+        "if (x) {",
+        "    s32 y;",
+        "    y = 1;",
+        "}",
+        "t = y;",
+        "o->valor = t;",
+    )
+    assert aplicar(mut.eliminar_temporal, texto)[0] is None
+
+
+def test_ancho_de_temporal_no_toca_locales_homonimas_de_bloques_hermanos() -> None:
+    for semilla in range(20):
+        descripcion, texto = aplicar(mut.ancho_de_temporal, DOS_TMP_HERMANAS, semilla)
+        assert descripcion is None
+        assert texto.count("s16 tmp;") == 1 and texto.count("s32 tmp;") == 1
+
+
+def test_ancho_de_temporal_no_acepta_valores_que_mencionan_un_nombre_ambiguo() -> None:
+    texto = cuerpo(
+        "s32 r;",
+        "if (x) {",
+        "    s16 y;",
+        "    y = 1;",
+        "}",
+        "r = y;",
+        "o->valor = r;",
+    )
+    for semilla in range(20):
+        assert aplicar(mut.ancho_de_temporal, texto, semilla)[0] is None
+
+
+def test_copiar_parametro_no_actua_si_una_local_de_un_bloque_anidado_lo_sombrea() -> None:
+    texto = cuerpo(
+        "o->radio = 1;", "if (x) {", "    s32 y;", "    y = 2;", "}", firma="void f(Objeto* o, s32 x, s32 y)"
+    )
+    for semilla in range(20):
+        descripcion, resultado = aplicar(mut.copiar_parametro, texto, semilla)
+        assert descripcion is not None and "(y en" not in descripcion
+        assert "s32 y;" in resultado
+    solo_homonimo = cuerpo("if (x) {", "    s32 o;", "    o = 2;", "}", firma="void f(s32 o, s32 x)")
+    assert "(o en" not in (aplicar(mut.copiar_parametro, solo_homonimo)[0] or "")
+
+
+def test_introducir_temporal_no_genera_un_nombre_declarado_en_un_bloque_anidado() -> None:
+    texto = cuerpo(
+        "if (x) {", "    s32 tmp1;", "    tmp1 = y;", "    o->valor = tmp1;", "}", "o->radio = o->valor + 1;"
+    )
+    for semilla in range(40):
+        descripcion, resultado = aplicar(mut.introducir_temporal, texto, semilla)
+        assert descripcion is not None and "tmp2" in descripcion
+        assert resultado.count("s32 tmp1;") == 1
+        assert len(re.findall(r"^ +\S+ tmp2;$", resultado, re.MULTILINE)) == 1
+
+
+def test_introducir_temporal_no_toma_expresiones_con_nombres_ambiguos() -> None:
+    texto = cuerpo("if (x) {", "    s16 y;", "    y = 1;", "}", "o->valor = y + 1;")
+    for semilla in range(30):
+        descripcion, _ = aplicar(mut.introducir_temporal, texto, semilla)
+        assert descripcion is None or ("= y" not in descripcion and "y +" not in descripcion)
+
+
+def test_con_nombres_unicos_las_mutaciones_siguen_funcionando() -> None:
+    texto = cuerpo("s16 a;", "s32 b;", "b = 5;", "a = o->radio;", "o->valor = a + b;")
+    assert aplicar(mut.eliminar_temporal, texto)[0] is not None
+    assert aplicar(mut.ancho_de_temporal, texto)[0] is not None
+    assert aplicar(mut.introducir_temporal, texto)[0] is not None
+    assert aplicar(mut.copiar_parametro, texto)[0] is not None
