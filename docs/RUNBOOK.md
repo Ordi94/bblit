@@ -56,6 +56,51 @@ comparaciones a la vez, sobre funciones distintas o del mismo archivo C, sin que
 candidato ni la configuracion de `asm-differ`. Si una ejecucion se interrumpe a la fuerza puede quedar
 una carpeta suelta en `build/diff/`; `clean` la elimina.
 
+### Permutar una funcion
+
+```
+.venv\Scripts\python.exe tools\build.py permutar <funcion> [--iteraciones N] [--minutos M] [--procesos P] [--semilla S] [--reanudar]
+```
+
+Busca por mutaciones la forma de C que hace coincidir una funcion `NON_MATCHING`: toma su C vigente, genera
+variantes que conservan su significado, compila y puntua cada una con la misma cadena y la misma cifra que
+`diff` y avanza por escalada con reinicios aleatorios. Necesita `split` y un `build` previo (el ELF de la ultima
+construccion sirve para comparar bytes enlazados, igual que `diff`). Nunca escribe en `src/`.
+
+- Limites: `--iteraciones` acota las variantes medidas y `--minutos` la duracion de la sesion; sin ninguno de
+  los dos dura 10 minutos. `--procesos` (1 a 16) son las mediciones simultaneas: cada una usa su propia carpeta de
+  `build/diff/`, como `diff`, y son hilos de un solo proceso, de modo que no queda nada vivo al terminar. Una
+  medicion tarda cerca de un segundo; con 4 procesos son entre 6 y 8 variantes por segundo.
+- `--semilla` fija la secuencia aleatoria (por omision se elige una y se imprime). Con la misma semilla, el
+  mismo C y el mismo limite de iteraciones la busqueda repite las mismas variantes.
+- Resultado en `build/permutar/<funcion>/`: `mejor.c` (definicion de la mejor variante, con un comentario que
+  declara su puntuacion), `actual.c` (desde donde continua la escalada), `registro.jsonl` (una linea por
+  mejora: iteracion, puntuacion y mutaciones) y `estado.json` (semilla y contadores). `clean` borra la carpeta.
+- `--reanudar` continua la busqueda guardada con su semilla y sus contadores acumulados; `--iteraciones` y
+  `--minutos` se aplican a la sesion nueva. Una interrupcion con Ctrl+C guarda el estado y deja un resumen.
+  Sin `--reanudar` se descarta el estado anterior de la funcion.
+- Salida: iteraciones, puntuacion de partida y mejor, ruta del candidato, variantes descartadas y tiempo.
+  Codigo 0 si alguna variante llego a puntuacion 0, 1 si mejoro sin cerrar y 2 si no mejoro (los errores de uso
+  se imprimen como `error: ...` y tambien salen con 1).
+
+Como aplicar un candidato. `mejor.c` es una propuesta, no un parche: se lee antes de usarla.
+
+1. Abrir `build/permutar/<funcion>/mejor.c` y copiar la definicion (todo salvo el primer comentario) sobre la de
+   la rama `#ifdef NON_MATCHING` de `src/<archivo>.c`, sin tocar el `#else` con el `INCLUDE_ASM`.
+2. `python tools/build.py diff <funcion>` debe dar la puntuacion que declara `mejor.c`. Si la cifra es 0 se
+   quita el bloque `NON_MATCHING` y el `INCLUDE_ASM` (la funcion pasa a C) y se ejecutan `build` y `verify`; si
+   no, se actualiza la linea `Pendiente: puntuacion N` del bloque.
+3. Para comprobarlo sin tocar el arbol de trabajo, hacerlo en una copia del repositorio (con `asm/` y `build/`
+   ya generados) y ejecutar `diff` ahi.
+
+Limites. El analizador entiende el C que usa `src/` (declaraciones al inicio del bloque, `if`, bucles, `switch`,
+`goto`, llamadas y macros de funcion); un parametro declarado como arreglo, un tipo de funcion o una construccion
+fuera de ese subconjunto se rechazan con un mensaje en lugar de adivinarse. Las mutaciones suponen que dos
+accesos con rutas de campo distintas (`a->x` y `b->y`) no se solapan; un cambio que dependa de ese supuesto
+se revisa al leer el candidato. No cierra lo que solo cierra con un recurso que el proyecto no admite
+(ensamblador en linea, `volatile`, `register`, barreras): para esas funciones el resultado es 2. Las
+mutaciones que se usan y las que no estan en `docs/DESCOMPILACION.md`, seccion «Permutador».
+
 ## 3. Imagen de prueba
 
 ```

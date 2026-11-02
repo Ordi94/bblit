@@ -485,10 +485,11 @@ def test_split_y_clean_respetan_lo_que_pertenece_a_otras_herramientas(raiz: Any,
     (raiz / "build" / "PRUEBA.EXE").write_bytes(b"x")
     (raiz / "build" / "src").mkdir()
     (raiz / "build" / "diff").mkdir()
+    (raiz / "build" / "permutar" / "func_X").mkdir(parents=True)
     eliminadas = infra.limpiar(raiz, "PRUEBA.EXE")
     assert "asm/text.s" in eliminadas and "expected/PRUEBA.EXE" in eliminadas
     assert "build/PRUEBA.EXE" in eliminadas and "build/src" in eliminadas and "build/diff" in eliminadas
-    assert "build" not in eliminadas
+    assert "build/permutar" in eliminadas and "build" not in eliminadas
     for relativa in AJENOS:
         assert (raiz / relativa).read_text(encoding="utf-8") == "ajeno", relativa
     assert not (raiz / "asm" / "text.s").exists() and not (raiz / "expected" / "PRUEBA.EXE").exists()

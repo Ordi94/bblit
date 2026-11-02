@@ -47,6 +47,7 @@ BINARIO_SALIDA = "build/SLUS_008.bin"
 OBJETOS_SALIDA = "build/asm"
 OBJETOS_C_SALIDA = "build/src"
 CARPETA_DIFF = "build/diff"
+CARPETA_PERMUTAR = "build/permutar"
 PROGRESO_JSON = "build/progreso.json"
 # Subcarpetas de asm/ y expected/ que pertenecen a otras herramientas del repositorio
 # (reconstruccion de superposiciones): 'split' y 'clean' no las tocan. Lo mismo vale para
@@ -603,6 +604,7 @@ def artefactos_de_build(nombre_ejecutable: str) -> tuple[str, ...]:
         OBJETOS_SALIDA,
         OBJETOS_C_SALIDA,
         CARPETA_DIFF,
+        CARPETA_PERMUTAR,
         PROGRESO_JSON,
         SCRIPT_ENLAZADOR,
         SCRIPT_GP,

@@ -18,6 +18,7 @@ from tools.reconstruccion import (
     variantes,
 )
 from tools.reconstruccion import infraestructura as infra
+from tools.reconstruccion import permutar as permutador
 from tools.reconstruccion.dominio import EjecutableReferencia
 from tools.reconstruccion.infraestructura import Ejecutor, ProcesoError, listar_fuentes_c
 from tools.toolchain.configuracion import Rutas, leer_local_toml, resolver_rutas
@@ -39,7 +40,7 @@ def construir_parser() -> argparse.ArgumentParser:
 
     Returns:
         argparse.ArgumentParser: Analizador con las ordenes ``split``, ``build``, ``verify``,
-        ``clean``, ``diff``, ``probar``, ``progreso`` y ``verificar-config``.
+        ``clean``, ``diff``, ``probar``, ``permutar``, ``progreso`` y ``verificar-config``.
 
     Ejemplo:
         args = construir_parser().parse_args(["clean"])
@@ -62,6 +63,18 @@ def construir_parser() -> argparse.ArgumentParser:
     ensayar.add_argument("funcion", help="nombre de la funcion (por ejemplo func_80035244)")
     ensayar.add_argument(
         "carpeta", type=Path, help="carpeta con una variante completa de la funcion por archivo .c"
+    )
+    buscar = sub.add_parser(
+        "permutar",
+        help="busca con mutaciones la forma de C que hace coincidir una funcion NON_MATCHING (no toca src/)",
+    )
+    buscar.add_argument("funcion", help="nombre de la funcion (por ejemplo func_80016C0C)")
+    buscar.add_argument("--iteraciones", type=int, help="variantes a medir como maximo")
+    buscar.add_argument("--minutos", type=float, help="duracion maxima de la sesion en minutos")
+    buscar.add_argument("--procesos", type=int, default=1, help="mediciones simultaneas (por omision 1)")
+    buscar.add_argument("--semilla", type=int, help="semilla aleatoria (por omision, una nueva)")
+    buscar.add_argument(
+        "--reanudar", action="store_true", help="continua la busqueda guardada en build/permutar/<funcion>/"
     )
     medir = sub.add_parser(
         "progreso",
@@ -281,6 +294,27 @@ def _ejecutar_probar(
     return 0 if resultados[0].coincide else 1
 
 
+def _ejecutar_permutar(
+    raiz: Path, rutas: Rutas, args: argparse.Namespace, *, python: str, ejecutar: Ejecutor
+) -> int:
+    """Implementa ``permutar``; devuelve 0 si la funcion coincide, 1 si mejoro y 2 si no mejoro."""
+    lock = leer_lock(raiz / RUTA_LOCK)
+    herramientas = compilacion.resolver_herramientas_compilacion(lock, rutas.toolchain, python)
+    script = resolver_herramienta(lock, rutas.toolchain, "asm-differ", "diff")
+    opciones = permutador.Opciones(
+        iteraciones=args.iteraciones,
+        minutos=args.minutos,
+        procesos=args.procesos,
+        semilla=args.semilla,
+        reanudar=args.reanudar,
+    )
+    resumen = permutador.permutar_funcion(
+        raiz, args.funcion, herramientas, script, ejecutar, opciones=opciones
+    )
+    print(permutador.formatear_resumen(resumen, raiz))
+    return resumen.codigo_de_salida
+
+
 def _ejecutar_construccion(
     raiz: Path, rutas: Rutas, referencia: EjecutableReferencia, orden: str, ejecutar: Ejecutor
 ) -> int:
@@ -315,6 +349,8 @@ def _despachar(
         return _ejecutar_probar(
             raiz, rutas, args.funcion, args.carpeta, python=sys.executable, ejecutar=ejecutar
         )
+    if args.orden == "permutar":
+        return _ejecutar_permutar(raiz, rutas, args, python=sys.executable, ejecutar=ejecutar)
     if args.orden == "verify":
         return _ejecutar_verificacion(raiz, rutas, referencia)
     return _ejecutar_construccion(raiz, rutas, referencia, args.orden, ejecutar)

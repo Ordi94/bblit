@@ -481,6 +481,49 @@ ok.c      70 (bytes iguales)
 otra.c    error: la variante no define func_800400C0
 ```
 
+## Permutador (`permutar`)
+
+`python tools/build.py permutar <funcion>` (uso y limites en `docs/RUNBOOK.md`) busca de forma automatica la
+reformulacion de C que cierra una funcion `NON_MATCHING`. Es una busqueda local: parte del C vigente, aplica de
+una a tres mutaciones a una variante elegida al azar, mide cada resultado con el compilador real y conserva el
+que no empeora. Antes de sortear recorre el vecindario completo del C original (todas las variantes de una sola
+mutacion, unas 700 distintas en una funcion de 6 KB): una mejora que esta a una mutacion se halla siempre, no
+por azar. Las mutaciones son transformaciones del arbol del C (`permutar_c.py` lo lee y lo vuelve a
+escribir; `permutar_analisis.py` calcula tipos y efectos; `permutar_mutaciones.py` las aplica) y todas conservan
+el significado de la funcion bajo la hipotesis de aliasing del RUNBOOK:
+
+| Mutacion | Que cambia | Por que puede mover el reparto de registros |
+|---|---|---|
+| Orden de declaraciones | Mueve una variable local a otro lugar de la serie inicial (nunca antes de una variable que su inicializador usa). | El numero de cada variable desempata la asignacion de registros y fija la reserva de pila. |
+| Orden de sentencias | Intercambia dos sentencias de expresion consecutivas que no se leen ni se escriben entre si; las llamadas, las macros de funcion y el flujo de control son barreras. | Cambia la vida de los valores y la planificacion de los huecos de salto. |
+| Introducir un temporal | Copia una subexpresion pura de tipo conocido a una local declarada antes y asignada justo antes de su sentencia (una aparicion o todas las iguales de la sentencia) y que puede subir la asignacion por encima de sentencias
+independientes; nunca desde un operando que solo se evalua a veces (`&&`, `\|\|`, `?:`). | Alarga la vida de un valor y le fija un registro. |
+| Eliminar un temporal | Sustituye por su expresion un temporal de un solo uso, asignado justo antes. | Es la operacion inversa; deshace los temporales que el original no tenia. |
+| Ancho de un temporal | Cambia una local entera entre `s32`, `u32`, `s16` y `u16` si todo valor que recibe cabe en ambos tipos y el cambio no altera el tipo de las expresiones donde se lee (o esas lecturas no dependen del signo). | Cambia las extensiones (`sll`/`sra`) y la instruccion de carga. |
+| Copiar un parametro | Copia un parametro de solo lectura a una local al inicio y usa la copia. | Libera el registro de argumento. |
+| Operandos conmutados | Intercambia los operandos puros de `+ * & \| ^ == !=` o invierte una comparacion y sus operandos. | Cambia cual operando se carga primero. |
+| Indice o puntero | `p[i]` por `*(p + i)` y a la inversa; `p->c` por `(*p).c` y a la inversa. | Cambia la variable de induccion y el modo de direccionamiento. |
+| Condicion invertida | Niega la condicion de un `if` con `else` (invirtiendo la comparacion, por De Morgan o con `!`) e intercambia las ramas. | Cambia cual rama queda como salto y cual como caida. |
+| `for` y `while` | `for` por `while` con su inicio antes y su paso al final, y `while` por `for` (a veces con su ultima sentencia como paso); nunca si el cuerpo tiene un `continue` propio. | Cambia la posicion de la inicializacion y del paso. |
+
+Las mutaciones que no se aplican, y por que:
+
+- **Ensamblador en linea, `volatile`, `register`, barreras y particion de sentencias de ensamblador.** Son los
+  recursos que «Ensamblador en linea admitido» no admite como estado final: no existen en el original y solo
+  mueven el reparto del compilador. Ninguna mutacion los escribe y, ademas, `variante_permitida` descarta antes
+  de compilar cualquier variante que tenga mas apariciones de `__asm__`, `asm(`, `volatile`, `register` o
+  `GLOBAL_ASM` que el C de partida (los comentarios y las cadenas no cuentan).
+- **Mover o partir las macros de funcion (`GEO_*`, `gte_*`) y las llamadas.** Cada una es una sentencia opaca:
+  ninguna sentencia se mueve a traves de ella y sus argumentos no se reescriben, para no cambiar el orden de
+  efectos ni el ensamblador que emiten.
+- **Cambios que alteran el valor o el tipo de una expresion** (mascaras, sumas de cero, moldes, relleno de la
+  pila, calificadores de tipo, duplicar asignaciones). Producirian un C que ya no hace lo mismo o que el original
+  no escribio: el permutador solo propone reformulaciones equivalentes.
+- **`goto` y desenrollado de bucles.** No se generan: introducir saltos o repetir cuerpos cambia la estructura
+  que se quiere reproducir, y desenrollar a mano un bucle que el original conserva no es una reformulacion.
+
+La busqueda guarda el mejor resultado en `build/permutar/<funcion>/` y nunca modifica `src/`.
+
 ## Invalidación de la salida
 
 Una construcción elimina antes de empezar el ejecutable (`build/SLUS_008.38`), el binario plano,
@@ -589,6 +632,7 @@ una decisión del desarrollador, así el progreso solo cuenta lo que alguien esc
 | `verify` | Compara el SHA-256 con el del original. Imprime `OK` o `FAIL` con el desplazamiento de la primera diferencia; si no existe el ejecutable reconstruido imprime `FAIL ... no existe` y devuelve 1. |
 | `diff <función>` | Compila el `.c` que contiene la función con `NON_MATCHING`, ensambla el original y ejecuta `asm-differ`. Código 0 si la puntuación informada es 0: instrucciones iguales o bytes enlazados iguales (en ese caso informa 0 y añade una nota con las referencias en forma numérica y la puntuación de `asm-differ`). Una función que sigue solo en `INCLUDE_ASM` se rechaza: compararla consigo misma daría 0 sin significar nada. |
 | `probar <función> <carpeta>` | Compila y puntúa cada variante `.c` de la carpeta contra el original y muestra la tabla ordenada. Código 0 si la mejor coincide (puntuación 0 o bytes iguales). |
+| `permutar <función>` | Busca con mutaciones que conservan el significado la forma de C que hace coincidir una función `NON_MATCHING`, midiendo cada variante como `diff`. Deja `mejor.c` y el estado en `build/permutar/<función>/`; no toca `src/`. Código 0 si llega a 0, 1 si mejora sin cerrar y 2 si no mejora (ver «Permutador»). |
 | `progreso` | Escribe `docs/PROGRESO.md`, `build/progreso.json` y la sección «Progreso» del `README.md` (`--sin-readme` la omite). No necesita el disco ni el toolchain. Termina con error si algún bloque `NON_MATCHING` no lleva la línea `Pendiente: puntuacion N`. |
 | `verificar-config` | Falla (código 1) por cada clave de `[datos_pequenos]` (`config/opciones_compilacion.toml`) cuya dirección ya declara `config/symbols.txt` (mismo nombre, otro nombre u otro tipo). `split` imprime los mismos hallazgos como avisos al terminar, sin fallar. No necesita el disco ni el toolchain. |
 | `clean` | Elimina `asm/`, `expected/` y los artefactos propios de `build/`. Conserva `asm/overlay/`, `expected/overlay/`, `build/overlay/`, `build/emulador/` y `build/bblit_prueba.*`, que son de otras herramientas. |
