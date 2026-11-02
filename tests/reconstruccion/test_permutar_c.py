@@ -544,3 +544,80 @@ def test_los_parametros_declarados_como_arreglo_siguen_fuera_del_subconjunto() -
 def test_un_molde_de_tipo_sin_cerrar_se_rechaza() -> None:
     with pytest.raises(c.AnalisisCError, match="expresion no reconocida"):
         c.analizar_funcion("void func_X(s32 a) { a = (Objeto (*)[4; }", "func_X", TIPOS)
+
+
+def test_un_comentario_entre_un_argumento_y_el_cierre_de_una_llamada_se_rechaza() -> None:
+    with pytest.raises(c.AnalisisCError, match="comentario dentro de una expresion, en la linea 4"):
+        reescribir("void func_X(s32 a)\n{\n    f(a,\n        3 /* nota */);\n}")
+
+
+def test_un_comentario_de_linea_entre_un_operador_y_su_operando_se_rechaza() -> None:
+    with pytest.raises(c.AnalisisCError, match="comentario dentro de una expresion, en la linea 3"):
+        reescribir("void func_X(s32 a)\n{\n    a = a + // nota\n        1;\n}")
+
+
+def test_un_comentario_antes_de_la_llave_de_un_cuerpo_se_rechaza_en_lugar_de_perderse() -> None:
+    with pytest.raises(c.AnalisisCError, match="comentario dentro de una expresion"):
+        reescribir("void func_X(s32 a)\n{\n    if (a) /* nota */ {\n        a = 1;\n    }\n}")
+
+
+def test_los_comentarios_al_inicio_de_una_sentencia_y_antes_de_la_llave_de_cierre_se_conservan() -> None:
+    texto = (
+        "void func_X(s32 a)\n{\n    /* uno */\n    a = 1;\n    if (a) {\n        // dos\n        a = 2;\n"
+        "        /* tres */\n    }\n}"
+    )
+    assert reescribir(texto) == texto
+
+
+def test_una_declaracion_local_de_puntero_a_funcion_o_a_arreglo_se_lee_como_declaracion() -> None:
+    texto = (
+        "void func_X(s32 a)\n{\n    void (*fp)(s32, Objeto*);\n    s16 (*pos)[2];\n    s16 otra;\n"
+        "    s32 (**tabla)[2][3] = 0;\n    fp(a);\n}"
+    )
+    agrupado = texto.replace("s16 (*pos)[2];\n    s16 otra;", "s16 (*pos)[2], otra;")
+    funcion = c.analizar_funcion(agrupado, "func_X", TIPOS_DE_MOLDES)
+    declaraciones = [s for s in funcion.cuerpo.items if isinstance(s, c.Decl)]
+    assert [(d.nombre, d.declarador) for d in declaraciones] == [
+        ("fp", "(*fp)(s32, Objeto*)"),
+        ("pos", "(*pos)[2]"),
+        ("otra", ""),
+        ("tabla", "(**tabla)[2][3]"),
+    ]
+    assert isinstance(funcion.cuerpo.items[-1], c.Expresion)
+    assert c.imprimir_funcion(funcion) == texto
+    assert reescribir_con(texto) == texto
+
+
+def test_un_declarador_parentetizado_sin_nombre_se_rechaza() -> None:
+    with pytest.raises(c.AnalisisCError, match="se esperaba el nombre de la variable"):
+        reescribir("void func_X(s32 a)\n{\n    s32 (*)[2];\n}")
+
+
+def test_una_llamada_real_no_se_confunde_con_una_declaracion_de_puntero_a_funcion() -> None:
+    expr = leer_expresion("fn(x)")
+    assert isinstance(expr, c.Llamada) and isinstance(expr.funcion, c.Id)
+    llamada = leer_expresion("Objeto(1)")
+    assert isinstance(llamada, c.Llamada)
+
+
+def test_un_else_con_un_unico_if_y_comentarios_finales_no_se_encadena() -> None:
+    texto = (
+        "void func_X(s32 x, s32 y)\n{\n    if (x) {\n        y = 0;\n    } else {\n        if (x) {\n"
+        "            y = 1;\n        }\n        /* nota final */\n    }\n}"
+    )
+    assert reescribir(texto) == texto
+
+
+def test_el_nombre_de_tipo_como_argumento_de_una_macro_es_un_nodo_de_texto_y_una_variable_un_id() -> None:
+    tipo = leer_expresion("f(Objeto, 3)")
+    assert isinstance(tipo, c.Llamada)
+    assert isinstance(tipo.args[0], c.Texto) and tipo.args[0].texto == "Objeto"
+    assert isinstance(tipo.args[1], c.Num)
+    variable = leer_expresion("f(a, 3)")
+    assert isinstance(variable, c.Llamada)
+    assert isinstance(variable.args[0], c.Id) and variable.args[0].nombre == "a"
+
+
+def test_un_declarador_parentetizado_sin_cerrar_cae_al_mensaje_de_la_expresion() -> None:
+    with pytest.raises(c.AnalisisCError, match=re.escape("se esperaba ')'")):
+        reescribir("void func_X(s32 a)\n{\n    void (*fp")

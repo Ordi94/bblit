@@ -825,3 +825,10 @@ def test_conmutar_operandos_de_un_or_de_bits_conserva_el_significado_al_reescrib
         relectura = c.analizar_funcion(resultado, "f", TIPOS)
         assert c.imprimir_funcion(relectura) == resultado
         assert resultado.count("<< 8") == 1 and "(y << 8)" in resultado
+
+
+def test_un_puntero_a_arreglo_declarado_con_tipo_entero_base_no_cambia_de_ancho() -> None:
+    texto = cuerpo("s16 (*pos)[2];", "s16 r;", "r = 5;", "o->valor = r;")
+    for semilla in range(6):
+        _, salida = aplicar(mut.ancho_de_temporal, texto, semilla)
+        assert "s16 (*pos)[2];" in salida

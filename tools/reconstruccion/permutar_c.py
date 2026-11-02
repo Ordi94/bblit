@@ -291,6 +291,9 @@ class Decl(Sentencia):
         nombre: Nombre de la variable.
         sufijo: Dimensiones de arreglo tal como se escribieron (``[3]``) o vacio.
         inicial: Inicializador, o ``None``.
+        declarador: Declarador parentetizado de puntero a funcion o a arreglo tal como se escribio
+            (``(*fp)(s32)``, ``(*tabla)[2]``), con el nombre dentro; vacio en el resto. Cuando existe,
+            el tipo de la variable es opaco para el analisis y ``sufijo`` queda vacio.
     """
 
     base: str
@@ -298,6 +301,7 @@ class Decl(Sentencia):
     nombre: str
     sufijo: str = ""
     inicial: Expr | None = None
+    declarador: str = ""
 
 
 @dataclass(eq=False)
@@ -508,11 +512,13 @@ class Token:
         tipo: ``id``, ``num``, ``cadena``, ``caracter``, ``op``, ``pre`` o ``fin``.
         texto: Texto del token.
         previos: Comentarios que lo preceden.
+        linea: Linea del primer comentario previo (1 es la primera del texto tokenizado); 0 si no hay.
     """
 
     tipo: str
     texto: str
     previos: tuple[str, ...] = ()
+    linea: int = 0
 
 
 def enmascarar(texto: str) -> str:
@@ -535,7 +541,7 @@ def enmascarar(texto: str) -> str:
     return _PATRON_ENMASCARAR.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), texto)
 
 
-def tokenizar(texto: str) -> list[Token]:
+def tokenizar(texto: str, linea_inicial: int = 1) -> list[Token]:
     """
     Divide un texto C en tokens, asociando cada comentario al token siguiente.
 
@@ -544,6 +550,7 @@ def tokenizar(texto: str) -> list[Token]:
 
     Args:
         texto (str): Texto C.
+        linea_inicial (int, opcional): Numero de linea de la primera linea de ``texto``.
 
     Returns:
         list[Token]: Tokens terminados por uno de tipo ``fin`` que recoge los comentarios finales.
@@ -556,21 +563,25 @@ def tokenizar(texto: str) -> list[Token]:
     """
     tokens: list[Token] = []
     previos: list[str] = []
+    linea_previos = 0
     posicion = 0
+    linea = linea_inicial
     while posicion < len(texto):
         encontrado = _PATRON_TOKEN.match(texto, posicion)
         if encontrado is None:
             raise AnalisisCError(f"caracter no reconocido: {texto[posicion]!r}")
         posicion = encontrado.end()
         tipo = encontrado.lastgroup or ""
-        if tipo in ("espacio", "salto"):
-            continue
+        fragmento = encontrado.group(0)
         if tipo in ("bloque", "linea"):
-            previos.append(encontrado.group(0))
-            continue
-        tokens.append(Token(tipo, encontrado.group(0), tuple(previos)))
-        previos = []
-    tokens.append(Token("fin", "", tuple(previos)))
+            if not previos:
+                linea_previos = linea
+            previos.append(fragmento)
+        elif tipo not in ("espacio", "salto"):
+            tokens.append(Token(tipo, fragmento, tuple(previos), linea_previos if previos else 0))
+            previos = []
+        linea += fragmento.count("\n")
+    tokens.append(Token("fin", "", tuple(previos), linea_previos if previos else 0))
     return tokens
 
 
@@ -632,6 +643,10 @@ class _Analizador:
     def __init__(self, tokens: list[Token], tipos: frozenset[str]) -> None:
         self.tokens = tokens
         self.pos = 0
+        # Posiciones de los tokens cuyos comentarios previos ya tienen dueno en el arbol (el primer
+        # token de una sentencia y la llave de cierre de un bloque). Un comentario en cualquier otra
+        # posicion no tiene donde guardarse y reescribir sin el cambiaria el texto en silencio.
+        self.reclamados: set[int] = set()
         self.tipos = (tipos | TIPOS_DEL_PROYECTO) - PALABRAS_RESERVADAS
         self.profundidad = 0
 
@@ -647,8 +662,15 @@ class _Analizador:
         return token.texto == texto and token.tipo in ("op", "id")
 
     def avanzar(self) -> Token:
-        """Consume y devuelve el token actual."""
+        """
+        Consume y devuelve el token actual.
+
+        Raises:
+            AnalisisCError: Si el token lleva comentarios previos que el arbol no puede conservar.
+        """
         token = self.actual()
+        if token.previos and self.pos not in self.reclamados:
+            raise AnalisisCError(f"comentario dentro de una expresion, en la linea {token.linea}")
         if token.tipo != "fin":
             self.pos += 1
         return token
@@ -884,6 +906,7 @@ class _Analizador:
                     raise AnalisisCError("bloque sin cerrar")
                 items.extend(self.sentencias())
             finales = self.actual().previos
+            self.reclamados.add(self.pos)
             self.consumir("}")
             return Bloque(items=items, finales=finales, comentarios=previos)
         finally:
@@ -899,10 +922,11 @@ class _Analizador:
         """Una sentencia o una declaracion (que puede producir varias)."""
         token = self.actual()
         previos = token.previos
+        self.reclamados.add(self.pos)
         if token.tipo == "pre":
             self.avanzar()
             return [Preprocesador(texto=token.texto.rstrip(), comentarios=previos)]
-        if self.inicia_tipo() and not self._es_expresion_de_tipo():
+        if self.inicia_tipo() and (self._es_declarador_parentetizado() or not self._es_expresion_de_tipo()):
             return self.declaracion(previos)
         sentencia = self.sentencia()
         sentencia.comentarios = previos
@@ -913,6 +937,25 @@ class _Analizador:
         siguiente = self.actual(1)
         return siguiente.tipo != "id" and siguiente.texto != "*"
 
+    def _es_declarador_parentetizado(self) -> bool:
+        """
+        Indica si lo que sigue es ``tipo (*nombre)(...)`` o ``tipo (*nombre)[...]``.
+
+        Es la declaracion de un puntero a funcion o a arreglo; sin esta comprobacion se tomaria por una
+        llamada a una funcion llamada como el tipo (``s16 (*pos)[2]`` leido como ``s16(*pos)[2]``).
+        """
+        inicio = self.pos
+        try:
+            self.palabras_de_tipo()
+            if not (self.es("(") and self.es("*", 1)):
+                return False
+            self.copiar_balanceado("(", ")")
+            return self.es("(") or self.es("[")
+        except AnalisisCError:
+            return False
+        finally:
+            self.pos = inicio
+
     def declaracion(self, previos: tuple[str, ...]) -> list[Sentencia]:
         """Declaracion con uno o varios declaradores."""
         palabras = self.palabras_de_tipo()
@@ -921,20 +964,50 @@ class _Analizador:
             estrellas = 0
             while self.tomar("*"):
                 estrellas += 1
-            nombre = self.avanzar()
-            if nombre.tipo != "id":
-                raise AnalisisCError("se esperaba el nombre de la variable")
+            declarador = ""
             sufijo = ""
-            while self.tomar("["):
-                sufijo += "[" + (imprimir_expresion(self.expresion()) if not self.es("]") else "") + "]"
-                self.consumir("]")
+            if self.es("(") and self.es("*", 1):
+                declarador, nombre = self.declarador_parentetizado()
+            else:
+                token = self.avanzar()
+                if token.tipo != "id":
+                    raise AnalisisCError("se esperaba el nombre de la variable")
+                nombre = token.texto
+                while self.tomar("["):
+                    sufijo += "[" + (imprimir_expresion(self.expresion()) if not self.es("]") else "") + "]"
+                    self.consumir("]")
             inicial = self.inicializador() if self.tomar("=") else None
-            resultado.append(Decl(normalizar_tipo(palabras), estrellas, nombre.texto, sufijo, inicial))
+            resultado.append(Decl(normalizar_tipo(palabras), estrellas, nombre, sufijo, inicial, declarador))
             if not self.tomar(","):
                 break
         self.consumir(";")
         resultado[0].comentarios = previos
         return resultado
+
+    def declarador_parentetizado(self) -> tuple[str, str]:
+        """
+        Lee ``(*nombre)`` seguido de sus dimensiones o parametros, como ``(*pos)[2]`` o ``(*fp)(s32)``.
+
+        Se copia tal cual: la reescritura no necesita entenderlo, solo conservarlo.
+
+        Returns:
+            tuple[str, str]: Texto del declarador y nombre de la variable.
+
+        Raises:
+            AnalisisCError: Si dentro de los parentesis no hay un nombre.
+        """
+        self.consumir("(")
+        asteriscos = ""
+        while self.tomar("*"):
+            asteriscos += "*"
+        nombre = self.avanzar()
+        if nombre.tipo != "id":
+            raise AnalisisCError("se esperaba el nombre de la variable")
+        self.consumir(")")
+        texto = f"({asteriscos}{nombre.texto})"
+        while self.es("[") or self.es("("):
+            texto += self.copiar_balanceado("[", "]") if self.es("[") else self.copiar_balanceado("(", ")")
+        return texto, nombre.texto
 
     def inicializador(self) -> Expr:
         """Inicializador de una declaracion; una lista entre llaves se conserva como texto."""
@@ -1120,7 +1193,7 @@ def analizar_funcion(texto: str, nombre: str, tipos: frozenset[str] = frozenset(
     if llave < 0:
         raise AnalisisCError("la definicion no tiene cuerpo")
     cabecera = texto[:llave].rstrip()
-    analizador = _Analizador(tokenizar(texto[llave:]), tipos)
+    analizador = _Analizador(tokenizar(texto[llave:], texto.count("\n", 0, llave) + 1), tipos)
     cuerpo = analizador.bloque()
     if analizador.actual().tipo != "fin":
         raise AnalisisCError("hay texto despues de la llave de cierre de la funcion")
@@ -1287,7 +1360,8 @@ def _sentencia_simple(sentencia: Sentencia) -> str | None:  # noqa: PLR0911 - de
         inicial = ""
         if sentencia.inicial is not None:
             inicial = f" = {imprimir_expresion(sentencia.inicial, PRECEDENCIA_ASIGNACION)}"
-        return f"{sentencia.base}{estrellas} {sentencia.nombre}{sentencia.sufijo}{inicial};"
+        nombre = sentencia.declarador or f"{sentencia.nombre}{sentencia.sufijo}"
+        return f"{sentencia.base}{estrellas} {nombre}{inicial};"
     if isinstance(sentencia, Expresion):
         return f"{imprimir_expresion(sentencia.expr)};"
     if isinstance(sentencia, Devolver):
@@ -1409,13 +1483,23 @@ def _cabecera_con_condicion(palabra: str, cond: Expr, nivel: int) -> list[str]:
 
 
 def _imprimir_si(sentencia: Si, nivel: int) -> list[str]:
-    """``if`` con su rama ``else``; un ``else`` que solo contiene un ``if`` se escribe ``else if``."""
+    """
+    ``if`` con su rama ``else``; un ``else`` que solo contiene un ``if`` se escribe ``else if``.
+
+    No se encadena si el ``if`` interno o el bloque ``else`` llevan comentarios: ``else if`` no tiene
+    donde escribirlos.
+    """
     sangria = SANGRIA * nivel
     lineas = _cabecera_con_condicion("if", sentencia.cond, nivel)
     lineas.extend(imprimir_bloque(sentencia.entonces, nivel + 1))
     sino = sentencia.sino
     while sino is not None:
-        if len(sino.items) == 1 and isinstance(sino.items[0], Si) and not sino.items[0].comentarios:
+        if (
+            len(sino.items) == 1
+            and isinstance(sino.items[0], Si)
+            and not sino.items[0].comentarios
+            and not sino.finales
+        ):
             encadenado = sino.items[0]
             lineas.extend(_cabecera_con_condicion("} else if", encadenado.cond, nivel))
             lineas.extend(imprimir_bloque(encadenado.entonces, nivel + 1))

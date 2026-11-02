@@ -554,7 +554,12 @@ def _ancho_permitido(ctx: Contexto, declaracion: c.Decl, ambiguos: set[str]) -> 
     if declaracion.nombre in ambiguos:
         return None
     actual = an.parsear_tipo(declaracion.base, declaracion.estrellas)
-    if not actual.es_entero or declaracion.sufijo or actual.texto not in an.TIPOS_ENTEROS_PERMITIDOS:
+    if (
+        not actual.es_entero
+        or declaracion.sufijo
+        or declaracion.declarador
+        or actual.texto not in an.TIPOS_ENTEROS_PERMITIDOS
+    ):
         return None
     fuentes: list[c.Expr] = []
     if declaracion.inicial is not None:

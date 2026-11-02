@@ -418,6 +418,12 @@ class Entorno:
         for interno in c.todos_los_bloques(bloque):
             for sentencia in interno.items:
                 if isinstance(sentencia, c.Decl):
+                    if sentencia.declarador:
+                        # Puntero a funcion o a arreglo: el tipo es opaco (el texto lleva parentesis).
+                        self.locales[sentencia.nombre] = parsear_tipo(
+                            f"{sentencia.base} {sentencia.declarador}", sentencia.estrellas
+                        )
+                        continue
                     tipo = parsear_tipo(sentencia.base, sentencia.estrellas)
                     self.locales[sentencia.nombre] = replace(tipo, arreglo=bool(sentencia.sufijo))
 

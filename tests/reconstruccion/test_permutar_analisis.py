@@ -300,3 +300,11 @@ def test_identificadores_y_texto_de_una_expresion() -> None:
     e = expresion("a->b + f(c, 1)")
     assert an.identificadores_de(e) == {"a", "f", "c"}
     assert an.texto_de(e) == "a->b + f(c, 1)"
+
+
+def test_una_local_de_puntero_a_arreglo_o_a_funcion_tiene_tipo_opaco() -> None:
+    env, _ = entorno("void f(void)\n{\n    s16 (*pos)[2];\n    void (*fp)(s32);\n    s16 n;\n}")
+    for nombre in ("pos", "fp"):
+        tipo = env.locales[nombre]
+        assert "(" in tipo.base and not tipo.es_escalar and not tipo.arreglo
+    assert env.locales["n"].es_entero
