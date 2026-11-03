@@ -60,6 +60,13 @@ typedef struct DefinicionAnimacion {
     u16 tipo;
     u16 n_cuadros;          /* +0x50: AvanzarAnimacionSprite lhu, ultimo cuadro = n_cuadros - 1 */
     u8 pad52[2];
+    /*
+     * +0x54: memoria polimorfica segun `tipo`. En la definicion de fotogramas (tipo 7) apunta a una
+     * TablaFotogramas (AvanzarAnimacionSprite: lw 0x54 y sw 0x28 del cursor, 0x8001E834 y 0x8001E83C).
+     * En la de sprites sin esqueleto es la lista de ParCuadro que el cursor guarda en +0x1C (lw 0x54 y
+     * sw 0x1C, 0x8001EA68 y 0x8001EA70). En la de esqueleto (tipo 4) es una CabeceraPistas (animacion.h;
+     * func_8001F268: lw 8, lhu 0xE y lbu 0x12 de la cabecera, 0x8001F52C a 0x8001F548).
+     */
     TablaFotogramas* tabla;
 } DefinicionAnimacion;
 
@@ -129,7 +136,7 @@ typedef struct BloqueTrabajo {
     struct RegistroEvento* eventos;     /* +0x10: sw / lw (AvanzarAnimacionSprite) */
     s32 i14;
     u32 flags18;
-    struct ParCuadro* duraciones;       /* +0x1C: sw / lw, lbu 1(par) (AvanzarAnimacionSprite) */
+    struct ParCuadro* duraciones;       /* +0x1C: sw / lw, lbu 1(par) (AvanzarAnimacionSprite). Polimorfico como DefinicionAnimacion.tabla: sin esqueleto es la lista de ParCuadro; con esqueleto (tipo 4) es la CabeceraPistas de la definicion (func_8001F268: sw 0x1C del cursor en 0x8001F51C y lw 0x1C en 0x8001F46C y 0x8001F5B0, vistos con CABECERA_PISTAS de animacion.h) */
     struct Fotograma* fotogramas;       /* +0x20: registros de los cuadros; func_8001E528 y func_8001E600 indexan por el indice de la tabla de duraciones (lw 0x20) */
     struct Fotograma* actual;   /* +0x24: cuadro en curso; sw en LogicaSpriteConCaja (0x8002CC54 y 0x8002CD84); AvanzarAnimacionSprite guarda aqui el cuadro y AplicarCuadro lo recorre como flujo de pistas (lw / sw) */
     struct TablaFotogramas* tabla;      /* +0x28: tabla de fotogramas activa; func_80044EA8 la guarda con sw y AvanzarAnimacionSprite la escribe con sw 0x28(cursor) */

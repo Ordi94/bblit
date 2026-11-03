@@ -485,11 +485,11 @@ u32 func_8001F268(Objeto* o, BloqueTrabajo* c, u32 anim, s32 modo_ancho, u8* are
     Objeto* h;
     GsCOORDINATE2* nc;
     u16 i;
-    u16 i0;
-    u32 f;
-    u32 g;
-    u8 e;
-    u8 ne;
+    u16 giro_z;
+    u32 banderas_cursor;
+    u32 banderas_cierre;
+    u8 espera_pistas;
+    u8 n_eventos_def;
     /* Las tres reservas no se usan: dejan el marco en 0xB8 y el vector de aparicion (giro y pos) en
      * +0x28 y +0x30 y el acumulador de nodos en +0x58 como el original. */
     s32 reserva[4];
@@ -503,33 +503,33 @@ u32 func_8001F268(Objeto* o, BloqueTrabajo* c, u32 anim, s32 modo_ancho, u8* are
         return AvanzarAnimacionSprite(o, c, anim, modo, area);
     }
     if (modo == 0) {
-        if (c->flags18 & 0x10) {
+        if (c->flags18 & ANIM_PAUSA) {
             return 0x200;
         }
-        if (c->flags18 & 0x100) {
-            if (c->flags18 & 0x800) {
+        if (c->flags18 & ANIM_TERMINADA) {
+            if (c->flags18 & ANIM_HIJO_VIVO) {
                 return 0x200;
             }
             return 0x100;
         }
     } else {
         if (modo & 0x20) {
-            c->flags18 = 0x100;
+            c->flags18 = ANIM_TERMINADA;
             return 0x20;
         }
         if (modo & 4) {
-            if (c->flags18 & 0x10) {
-                c->flags18 = c->flags18 & ~0x10;
+            if (c->flags18 & ANIM_PAUSA) {
+                c->flags18 = c->flags18 & ~ANIM_PAUSA;
                 goto sigue;
             }
         }
         if (modo & 0x10) {
-            c->flags18 = c->flags18 | 0x10;
+            c->flags18 = c->flags18 | ANIM_PAUSA;
             return 0x200;
         }
     }
 sigue:
-    c->flags18 = c->flags18 & ~0x3000;
+    c->flags18 = c->flags18 & ~(ANIM_RECIEN_INICIADA | ANIM_ULTIMO_CUADRO);
     if (o->u78.p == 0) {
         for (n = o->lista; n != 0; n = n->sig) {
             if (n->def->tipo == 7) {
@@ -563,7 +563,7 @@ sigue:
                 }
             }
             if (n == 0) {
-                c->flags18 = 0x100;
+                c->flags18 = ANIM_TERMINADA;
                 return 0x400;
             }
             cab = (CabeceraPistas*)n->def->tabla;
@@ -574,29 +574,29 @@ sigue:
         c->sonidos = (RegistroSonido*)n->def->sonidos;
         c->n_sonidos = n->def->n_sonidos;
         c->eventos = (RegistroEvento*)n->def->eventos;
-        ne = n->def->n_eventos;
+        n_eventos_def = n->def->n_eventos;
         c->duraciones = (ParCuadro*)cab;
         c->b04 = 0;
         c->flags18 = (modo | ANIM_RECIEN_INICIADA | ANIM_EN_CURSO) & 0xFFFF;
-        c->n_eventos = ne;
+        c->n_eventos = n_eventos_def;
         FLUJO_PISTAS(c) = cab->flujo;
         c->ultimo = cab->n_cuadros - 1;
-        e = CABECERA_PISTAS(c)->espera;
+        espera_pistas = CABECERA_PISTAS(c)->espera;
         c->cuadro = 0;
         c->ticks = 0;
-        c->espera = e;
+        c->espera = espera_pistas;
     }
     if (c->ticks == 0) {
         if ((u16)c->cuadro == c->ultimo) {
             o->flags14 = o->flags14 & 0xFFF7EFFF;
             /* Las banderas se leen una vez y la misma copia sirve al final de la animacion de una sola
              * pasada (termina) y al marcar el regreso al primer cuadro. */
-            f = c->flags18;
-            if (f & 2) {
+            banderas_cursor = c->flags18;
+            if (banderas_cursor & ANIM_UNA_PASADA) {
                 goto termina;
             }
-            if (f & 1) {
-                c->flags18 = f | 0x80;
+            if (banderas_cursor & ANIM_EN_BUCLE) {
+                c->flags18 = banderas_cursor | ANIM_VUELTA;
             }
             cab = CABECERA_PISTAS(c);
             FLUJO_PISTAS(c) = cab->flujo;
@@ -782,9 +782,12 @@ sigue:
                                         D_80069698->u18C.agarre.trans.vy = 0;
                                         D_80069698->u18C.agarre.trans.vz = 0;
                                     } else {
-                                        D_80069698->u18C.agarre.trans.vx = D_80069698->param.trans.vx - o->objetivo.vx;
-                                        D_80069698->u18C.agarre.trans.vy = D_80069698->param.trans.vy - o->objetivo.vy;
-                                        D_80069698->u18C.agarre.trans.vz = D_80069698->param.trans.vz - o->objetivo.vz;
+                                        D_80069698->u18C.agarre.trans.vx =
+                                            D_80069698->param.trans.vx - o->objetivo.vx;
+                                        D_80069698->u18C.agarre.trans.vy =
+                                            D_80069698->param.trans.vy - o->objetivo.vy;
+                                        D_80069698->u18C.agarre.trans.vz =
+                                            D_80069698->param.trans.vz - o->objetivo.vz;
                                     }
                                     D_80069698->param.trans.vx = o->objetivo.vx;
                                     D_80069698->param.trans.vy = o->objetivo.vy;
@@ -816,18 +819,18 @@ sigue:
                                     }
                                     D_80069698->param.giro.u.x = o->param.giro.u.x;
                                     D_80069698->param.giro.u.y = o->param.giro.u.y + 0x800;
-                                    i0 = o->param.giro.u.z;
+                                    giro_z = o->param.giro.u.z;
                                     D_80069698->coord.param = PARAMETROS_SDK(D_80069698);
                                     D_80069698->coord.super = 0;
                                     D_80069698->p70 = 0;
-                                    D_80069698->param.giro.u.z = i0;
+                                    D_80069698->param.giro.u.z = giro_z;
                                     o->p6C = 0;
                                     D_80069698->w17E = 0;
                                     D_80069698->w17C = c->eventos[i].id;
                                     func_8001D028(o, D_80069698, area);
-                                    /* D_80010041 es r[1] del estado principal: por esa vista el compilador comparte el
-                                     * lui entre la lectura y el almacen, como el original (con el simbolo suelto el
-                                     * almacen lleva su propio lui). */
+                                    /* D_80010041 es r[1] del estado principal: por esa vista el compilador
+                                     * comparte el lui entre la lectura y el almacen, como el original
+                                     * (con el simbolo suelto el almacen lleva su propio lui). */
                                     if (o->registro184 != 0) {
                                         ESTADO_PRINCIPAL->r[1] -= (u8)o->registro184->w16;
                                     }
@@ -861,14 +864,14 @@ sigue:
         c->flags18 = c->flags18 | ANIM_ULTIMO_CUADRO;
     }
     if (c->ticks == 0 && (u16)c->cuadro == c->ultimo) {
-        f = c->flags18;
-        if (f & 2) {
+        banderas_cursor = c->flags18;
+        if (banderas_cursor & ANIM_UNA_PASADA) {
 termina:
             /* Fin de una animacion de una sola pasada: deja de estar en curso, queda terminada y
              * devuelve 0x200 si hay un hijo vivo. */
-            g = (f & ~0x200) | 0x100;
-            c->flags18 = g;
-            if (g & 0x800) {
+            banderas_cierre = (banderas_cursor & ~ANIM_EN_CURSO) | ANIM_TERMINADA;
+            c->flags18 = banderas_cierre;
+            if (banderas_cierre & ANIM_HIJO_VIVO) {
                 return 0x200;
             }
             return 0x100;
