@@ -3,6 +3,7 @@
 #include "motor.h"
 #include "animacion.h"
 #include "objetos.h"
+#include "arranque.h"
 
 /*
  * Sprite del objeto en formato escalado: el bloque que sigue a los doce primeros bytes del
@@ -476,6 +477,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", AvanzarAnimacio
  * o reorientar el hijo, y agarrar, soltar o colocar al protagonista.
  */
 #ifdef NON_MATCHING
+/* Pendiente: puntuacion 45 con la configuracion versionada (g = 8 del archivo). Los bytes coinciden salvo el reparto de v0/v1 entre los contadores de 8 bits n_eventos y ticks en la prueba previa al bucle de eventos (el original carga n_eventos en v0 y ticks en v1) y la forma simbolica de D_80010041, que se escribe por ESTADO_PRINCIPAL para compartir el lui. */
 u32 func_8001F268(Objeto* o, BloqueTrabajo* c, u32 anim, u16 modo, u8* area)
 {
     NodoAnimacion* n;
@@ -484,6 +486,10 @@ u32 func_8001F268(Objeto* o, BloqueTrabajo* c, u32 anim, u16 modo, u8* area)
     GsCOORDINATE2* nc;
     u16 i;
     u16 i0;
+    u32 f;
+    u32 g;
+    u8 e;
+    u8 ne;
     s32 reserva[4];
     SVECTOR giro;
     VECTOR pos;
@@ -564,31 +570,34 @@ sigue:
         c->sonidos = (RegistroSonido*)n->def->sonidos;
         c->n_sonidos = n->def->n_sonidos;
         c->eventos = (RegistroEvento*)n->def->eventos;
+        ne = n->def->n_eventos;
         c->duraciones = (ParCuadro*)cab;
         c->b04 = 0;
         c->flags18 = (modo | ANIM_RECIEN_INICIADA | ANIM_EN_CURSO) & 0xFFFF;
-        c->n_eventos = n->def->n_eventos;
+        c->n_eventos = ne;
         FLUJO_PISTAS(c) = cab->flujo;
         c->ultimo = cab->n_cuadros - 1;
+        e = CABECERA_PISTAS(c)->espera;
         c->cuadro = 0;
         c->ticks = 0;
-        c->espera = CABECERA_PISTAS(c)->espera;
+        c->espera = e;
     }
     if (c->ticks == 0) {
         if ((u16)c->cuadro == c->ultimo) {
             o->flags14 = o->flags14 & 0xFFF7EFFF;
-            if (c->flags18 & 2) {
+            f = c->flags18;
+            if (f & 2) {
                 goto termina;
             }
-            if (c->flags18 & 1) {
-                c->flags18 = c->flags18 | 0x80;
+            if (f & 1) {
+                c->flags18 = f | 0x80;
             }
             cab = CABECERA_PISTAS(c);
             FLUJO_PISTAS(c) = cab->flujo;
+            c->ultimo = cab->n_cuadros - 1;
             c->cuadro = 0;
             c->ticks = 0;
             c->flags18 = c->flags18 | ANIM_RECIEN_INICIADA;
-            c->ultimo = cab->n_cuadros - 1;
             AplicarCuadro(o, c, (AreaCuadro*)area);
         } else if (c->b04 != 0) {
             if (c->b04 + (u16)c->cuadro < c->ultimo) {
@@ -772,6 +781,7 @@ sigue:
                                         }
                                         D_80069698->param.trans.vx = o->objetivo.vx;
                                         D_80069698->param.trans.vy = o->objetivo.vy;
+                                        D_80069698->param.trans.vz = o->objetivo.vz;
                                         D_80069698->u18C.agarre.escala.vx = 0x1000;
                                         D_80069698->u18C.agarre.escala.vy = 0x1000;
                                         D_80069698->u18C.agarre.escala.vz = 0x1000;
@@ -779,11 +789,10 @@ sigue:
                                         D_80069698->u18C.agarre.giro.u.y = 0;
                                         D_80069698->u18C.agarre.giro.u.z = 0;
                                         D_80069698->coord.param = (GsCOORD2PARAM*)&D_80069698->u18C.agarre;
-                                        D_80069698->param.trans.vz = o->objetivo.vz;
-                                        D_80069698->w17E = 0;
                                         D_80069698->coord.super = o->raiz_ayudantes;
-                                        D_80069698->flags14 = 4;
+                                        D_80069698->w17E = 0;
                                         D_80069698->w17C = c->eventos[i].id;
+                                        D_80069698->flags14 = 4;
                                         o->p6C = D_80069698;
                                         D_80069698->p70 = o;
                                         func_8001CFCC(&D_80069698->coord);
@@ -810,7 +819,7 @@ sigue:
                                         D_80069698->w17C = c->eventos[i].id;
                                         func_8001D028(o, D_80069698, area);
                                         if (o->registro184 != 0) {
-                                            D_80010041 -= (u8)o->registro184->w16;
+                                            ESTADO_PRINCIPAL->r[1] -= (u8)o->registro184->w16;
                                         }
                                         D_80069698->flags14 = D_80069698->flags14 & 0xFDFFFFDB;
                                     }
@@ -820,11 +829,10 @@ sigue:
                                 if (!(D_80069698->flags14 & 0x3000020)) {
                                     if (D_80069698->p70 == 0) {
                                         if ((s16)func_80018D98(D_80069698, &o->objetivo, area) != 0) {
-                                            h = D_80069698;
-                                            h->param.giro.u.y = o->param.giro.u.y + 0x800;
-                                            h->w17E = 0;
-                                            h->w17C = c->eventos[i].id;
-                                            h->flags14 = 0x2000000;
+                                            D_80069698->param.giro.u.y = o->param.giro.u.y + 0x800;
+                                            D_80069698->w17E = 0;
+                                            D_80069698->w17C = c->eventos[i].id;
+                                            D_80069698->flags14 = 0x2000000;
                                         }
                                     }
                                 }
@@ -836,8 +844,8 @@ sigue:
             }
         }
         if (c->ticks == 0) {
-            c->cuadro = c->cuadro + 1;
             c->ticks = c->espera;
+            c->cuadro = c->cuadro + 1;
         }
     }
     c->ticks = c->ticks - 1;
@@ -845,10 +853,12 @@ sigue:
         c->flags18 = c->flags18 | ANIM_ULTIMO_CUADRO;
     }
     if (c->ticks == 0 && (u16)c->cuadro == c->ultimo) {
-        if (c->flags18 & 2) {
+        f = c->flags18;
+        if (f & 2) {
 termina:
-            c->flags18 = (c->flags18 & ~0x200) | 0x100;
-            if (c->flags18 & 0x800) {
+            g = (f & ~0x200) | 0x100;
+            c->flags18 = g;
+            if (g & 0x800) {
                 return 0x200;
             }
             return 0x100;
