@@ -609,9 +609,9 @@ void func_80038884(s32 idx, s32 modo)
     /* Sin uso: el original deja 8 bytes de pila libres entre los argumentos y los registros salvados. */
     s32 reserva[2];
     Objeto** p;
-    Objeto** celda_dos;
-    Objeto** celda_uno;
-    Objeto** celda_cero;
+    Objeto** celda_par_completo;
+    Objeto** celda_par_parcial;
+    Objeto** celda_par_vacio;
     Objeto* o;
     s16* ids;
     s32 id0;
@@ -634,22 +634,22 @@ void func_80038884(s32 idx, s32 modo)
         p = v;
         do {
             nivel = D_80069524;
-            /* Cada rama lleva su propio puntero a la celda de 'v': con uno compartido, o leyendo
+            /* Cada rama lleva su propio puntero a la celda de 'v' (par completo: la unidad alcanza k + 2; parcial: k + 1; vacio: ninguna): con uno compartido, o leyendo
              * v[j] directamente, el asignador reparte los registros de otro modo. */
             if (nivel >= k + 2) {
                 j = k / 2;
-                celda_dos = p + j;
-                o = *celda_dos;
+                celda_par_completo = p + j;
+                o = *celda_par_completo;
                 id = id0;
             } else if (nivel >= k + 1) {
                 j = k / 2;
-                celda_uno = p + j;
-                o = *celda_uno;
+                celda_par_parcial = p + j;
+                o = *celda_par_parcial;
                 id = id1;
             } else {
                 j = k / 2;
-                celda_cero = p + j;
-                o = *celda_cero;
+                celda_par_vacio = p + j;
+                o = *celda_par_vacio;
                 id = id2;
             }
             ((ReiniciarSinConversion)func_80037DB4)(o, id, D_8005E86C[j + idx], modo);

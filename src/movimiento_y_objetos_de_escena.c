@@ -80,7 +80,7 @@ void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* orden)
 calculo:
     o->h116 = m->dy;
     if (m->dy + o->param.trans.vy == o->i100 + o->h10C && (s16)orden->flags != 8 && (s16)orden->flags != 1) {
-    despegue:
+despegue:
         /* El tipo de baldosa se lee antes de tocar las banderas: asi la mascara de banderas y el
          * tipo se reparten los registros de argumento como en el original. */
         tipo = orden->tipo;
