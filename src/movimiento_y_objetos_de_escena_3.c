@@ -54,23 +54,22 @@ typedef struct SpritePlano {
  * de indices del conjunto.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1535 con la configuracion versionada (g = 8 del archivo). Mismos accesos y mismos
- * almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y
- * reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y
- * t0.
- */
+/* Pendiente: puntuacion 470 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes, y el desplazamiento de 16 bytes del registro se hace tras la reunion de las dos ramas; difiere el reparto: el original deja el registro del cuadro en t0 hasta leer las banderas al final (y las coordenadas en a3, a1, a0, a2), mientras que el C debe leer las banderas antes para conservar esa reunion, de modo que el registro cae en v0 y la pagina y la paleta pasan por t0. */
 void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     Fotograma* r;
-    SpritePlano* p;
-    u16 indice;
     u8 u;
-    u8 v;
-    u16 w;
     u16 h;
-    u16 pagina;
+    u16 w;
+    SpritePlano* p;
     s8 u_fin;
     s8 v_fin;
+    u32 pagina;
+    u16 indice;
+    u8 v;
+    s32 ancho;
+    u16 clut;
+    s32 espejo;
 
     if (o->flags08 & 0x20) {
         func_8001E600(o, c, modo);
@@ -85,23 +84,30 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     r = c->fotogramas + indice;
     p = (SpritePlano*)((u8*)o->u78.p + 0xC);
     u = r->u;
-    v = r->v;
     w = r->w0C;
-    h = r->w0E;
+    v = r->v;
     pagina = r->pagina;
-    u_fin = u + (w - 1);
+    h = r->w0E;
+    /* La anchura menos uno pasa por una variable de 32 bits: con la suma en una sola expresion el
+     * compilador estrecha la carga de w a un byte (lbu) y el original carga media palabra (lhu). */
+    ancho = w - 1;
+    u_fin = u + ancho;
     p->tpage = pagina;
+    /* La paleta y las banderas se leen antes de los almacenes de coordenadas: es el orden en que
+     * el original reparte los registros y funde el desplazamiento del registro tras las ramas. */
+    clut = r->h0A;
     p->v0 = v;
     p->v1 = v;
-    v_fin = v + (h - 1);
+    espejo = r->flags & 8;
+    v_fin = h - 1 + v;
     p->u0 = u;
     p->u1 = u_fin;
     p->u2 = u;
     p->v2 = v_fin;
     p->u3 = u_fin;
     p->v3 = v_fin;
-    p->clut = r->h0A;
-    p->bandera = r->flags & 8;
+    p->clut = clut;
+    p->bandera = espejo;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E528);
