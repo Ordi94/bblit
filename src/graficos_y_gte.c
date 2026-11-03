@@ -60,11 +60,9 @@ s32 D_80069380;
  *
  * La matriz se asigna a una variable que vale 0 antes del bucle y se vuelve a asignar dentro: con una sola
  * asignacion el optimizador de bucles saca &o->m fuera del bucle, y el original lo calcula en cada vuelta.
- * El original la calcula justo despues de cargar el primer argumento de RotMatrixZYX; el C la calcula una
- * instruccion antes y esa es toda la diferencia (10).
+ * El puntero de destino de la norma al cuadrado queda en a0, como en el original, porque GEO_NORMA2_XZ
+ * declara v0 y v1 como destruidos.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 10 con la configuracion versionada (g = 8 del archivo). Solo difiere el registro del puntero de destino de la norma al cuadrado (v0 en lugar de a0). Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
 Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o)
 {
     SVECTOR* dif;
@@ -110,9 +108,6 @@ Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o)
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80016C0C);
-#endif
 
 /*
  * Variante de func_80016C0C que copia antes del bucle la posicion y la caja del objeto a al
