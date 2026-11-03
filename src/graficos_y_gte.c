@@ -168,7 +168,7 @@ Objeto* func_80016ED0(Objeto* a, u32 mascara, ConsultaCaja* o)
  * radio ampliado en s2 y s3 y el C los intercambia, ademas de la posicion del calculo de &o->m.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 113 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
+/* Pendiente: puntuacion 103 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
 Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o)
 {
     Objeto* n;
@@ -724,7 +724,7 @@ s32 func_80018C68(Objeto* a, ConsultaMatriz* o)
  * por distancia al cuadrado en el plano.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 108 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
+/* Pendiente: puntuacion 98 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
 s32 func_80018D98(Objeto* a, VECTOR* p, ConsultaVolumen* o)
 {
     GEO_CARGAR_W(p);
@@ -759,7 +759,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80018D98);
  * (extensiones en y) se suma al margen vertical.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 108 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Ademas el puntero de destino de la norma al cuadrado queda en v0 y el original lo mantiene en a0. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
+/* Pendiente: puntuacion 98 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
 s32 func_80018F80(Objeto* a, Objeto* b, ConsultaVolumen* o)
 {
     GEO_CARGAR_W(&b->param.trans);
