@@ -221,8 +221,9 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_800171E4);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 19749 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las
- * comparaciones de las regiones no se han ajustado al original.
+ * Pendiente: puntuacion 19849 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin
+ * afinar: el reparto de registros y el orden de las comparaciones de las regiones no se han ajustado al
+ * original. La lista de registros destruidos de GEO_NORMA2_XZ la mueve 100 puntos (antes 19749).
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con
  * mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la

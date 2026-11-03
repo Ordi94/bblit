@@ -322,8 +322,8 @@ typedef struct TrabajoRecorrido {
                       : : "r"(p) : "$8", "$9", "$10", "$11", "memory")
 /*
  * GEO_NORMA2_XZ declara ademas $2 y $3 (v0 y v1) como destruidos aunque su cuerpo solo escribe $8 y
- * $9. Es una lista conservadora, la forma habitual de las macros derivadas del SDK: el original deja
- * el puntero de destino en a0 y esos dos registros de retorno fuera del reparto durante la sentencia.
+ * $9. Es una lista conservadora: el original deja el puntero de destino en a0 y esos dos registros de
+ * retorno fuera del reparto durante la sentencia.
  * Evidencia (diff sobre las 240 funciones en C de los 17 archivos que incluyen esta cabecera,
  * antes -> despues): func_80016ED0 0 -> 0, func_80020354 10 -> 0, func_80016C0C 10 -> 0,
  * func_800171E4 113 -> 103, func_80018D98 108 -> 98, func_80018F80 108 -> 98, func_80032B2C
