@@ -72,14 +72,26 @@ def test_en_linux_los_alias_que_no_son_binutils_siguen_saliendo_del_toolchain(
 
 
 def test_en_linux_los_exe_del_sdk_se_encuentran_aunque_cambie_la_capitalizacion(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, sistema_sensible: None
 ) -> None:
     simular_linux(monkeypatch)
-    carpeta = tmp_path / "psyq-4.4" / "pssn" / "bin"
+    carpeta = tmp_path / "psyq-4.4" / "pssn" / "BIN"
     carpeta.mkdir(parents=True)
-    (carpeta / "CC1PSX.EXE").write_bytes(b"x")
+    (carpeta / "cc1psx.exe").write_bytes(b"x")
+    assert not (tmp_path / "psyq-4.4" / "pssn" / "bin" / "CC1PSX.EXE").exists()
     ruta = instalacion.resolver_herramienta(LOCK_BINUTILS, tmp_path, "psyq-4.4", "cc1psx")
-    assert ruta.name == "CC1PSX.EXE"
+    assert ruta == carpeta / "cc1psx.exe"
+
+
+def test_en_linux_un_exe_que_no_existe_con_ninguna_capitalizacion_da_error_claro(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, sistema_sensible: None
+) -> None:
+    simular_linux(monkeypatch)
+    carpeta = tmp_path / "psyq-4.4" / "pssn" / "BIN"
+    carpeta.mkdir(parents=True)
+    (carpeta / "otro.exe").write_bytes(b"x")
+    with pytest.raises(FileNotFoundError, match="'cc1psx' no esta instalado"):
+        instalacion.resolver_herramienta(LOCK_BINUTILS, tmp_path, "psyq-4.4", "cc1psx")
 
 
 def test_en_linux_un_exe_ausente_se_informa_como_no_instalado(
@@ -151,3 +163,46 @@ def test_en_linux_los_binutils_nativos_se_lanzan_sin_wine(
     monkeypatch.setattr(infra.subprocess, "run", falsa)
     infra.ejecutar_proceso(["/usr/bin/mipsel-none-elf-objdump", "-t", "a.o"], tmp_path, 5)
     assert falsa.comando[0] == "/usr/bin/mipsel-none-elf-objdump"
+
+
+def lanzar_inexistente(comando: list[str], **opciones: Any) -> subprocess.CompletedProcess[str]:
+    raise FileNotFoundError(2, "No such file", "/ruta/privada/de/la/maquina")
+
+
+def test_en_linux_sin_wine_el_error_dice_que_instalar_y_no_filtra_rutas(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    simular_linux(monkeypatch)
+    monkeypatch.setattr(infra.subprocess, "run", lanzar_inexistente)
+    monkeypatch.setenv("BBLIT_WINE", "/opt/secreto/wine")
+    with pytest.raises(infra.ProcesoError) as error:
+        infra.ejecutar_proceso(["/t/CC1PSX.EXE"], tmp_path, 5)
+    mensaje = str(error.value)
+    assert "CC1PSX.EXE: Wine no esta instalado" in mensaje
+    assert "wine32" in mensaje
+    assert "BBLIT_WINE" in mensaje
+    assert "/opt/secreto" not in mensaje
+    assert "/ruta/privada" not in mensaje
+
+
+def test_en_windows_un_ejecutable_ausente_da_proceso_error_claro(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(plataforma, "es_windows", lambda: True)
+    monkeypatch.setattr(infra.subprocess, "run", lanzar_inexistente)
+    with pytest.raises(infra.ProcesoError) as error:
+        infra.ejecutar_proceso(["C:/privado/tool/CC1PSX.EXE"], tmp_path, 5)
+    mensaje = str(error.value)
+    assert mensaje == "CC1PSX.EXE: el ejecutable no esta instalado o no esta en el PATH"
+
+
+def test_en_linux_un_binutils_nativo_ausente_da_proceso_error_sin_mencionar_wine(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    simular_linux(monkeypatch)
+    monkeypatch.setattr(infra.subprocess, "run", lanzar_inexistente)
+    with pytest.raises(
+        infra.ProcesoError, match="mipsel-none-elf-as: el ejecutable no esta instalado"
+    ) as error:
+        infra.ejecutar_proceso(["/x/mipsel-none-elf-as"], tmp_path, 5)
+    assert "Wine" not in str(error.value)

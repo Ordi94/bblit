@@ -65,6 +65,32 @@ class ProcesoError(RuntimeError):
     """Una herramienta externa termino con error o excedio su tiempo limite."""
 
 
+def _mensaje_ejecutable_ausente(herramienta: str, falta_wine: bool) -> str:
+    """
+    Redacta el error de un ejecutable que el sistema no encuentra.
+
+    Contexto:
+        Lo usa ``ejecutar_proceso``. No incluye rutas de la maquina (ni el valor de
+        ``BBLIT_WINE``) y es coherente con el aviso de binutils nativos ausentes.
+
+    Args:
+        herramienta (str): Nombre del programa que se queria lanzar.
+        falta_wine (bool): ``True`` si el ejecutable ausente es Wine y no el programa.
+
+    Returns:
+        str: Mensaje que indica que falta y como resolverlo.
+
+    Ejemplo:
+        mensaje = _mensaje_ejecutable_ausente("CC1PSX.EXE", True)
+    """
+    if falta_wine:
+        return (
+            f"{herramienta}: Wine no esta instalado; instale wine y wine32 "
+            f"o defina {plataforma.VARIABLE_WINE} con el ejecutable de Wine"
+        )
+    return f"{herramienta}: el ejecutable no esta instalado o no esta en el PATH"
+
+
 def ejecutar_proceso(comando: Sequence[str], directorio: Path, timeout_s: int) -> str:
     """
     Ejecuta un comando en primer plano, sin shell y con tiempo limite.
@@ -84,7 +110,8 @@ def ejecutar_proceso(comando: Sequence[str], directorio: Path, timeout_s: int) -
         str: Salida estandar del proceso.
 
     Raises:
-        ProcesoError: Si el codigo de salida no es cero o se excede el tiempo limite; el
+        ProcesoError: Si el codigo de salida no es cero, se excede el tiempo limite o el
+            ejecutable (o Wine, para los ``.EXE`` fuera de Windows) no esta instalado; el
             mensaje nombra la herramienta y un extracto acotado de su salida de error.
 
     Ejemplo:
@@ -92,9 +119,10 @@ def ejecutar_proceso(comando: Sequence[str], directorio: Path, timeout_s: int) -
     """
     herramienta = Path(comando[0]).name
     entorno = plataforma.entorno_proceso(os.environ)
+    lanzado = plataforma.adaptar_comando(comando, entorno)
     try:
         resultado = subprocess.run(
-            plataforma.adaptar_comando(comando, entorno),
+            lanzado,
             cwd=directorio,
             capture_output=True,
             text=True,
@@ -107,6 +135,8 @@ def ejecutar_proceso(comando: Sequence[str], directorio: Path, timeout_s: int) -
         )
     except subprocess.TimeoutExpired:
         raise ProcesoError(f"{herramienta}: excedio el tiempo limite de {timeout_s} s") from None
+    except FileNotFoundError:
+        raise ProcesoError(_mensaje_ejecutable_ausente(herramienta, lanzado[0] != comando[0])) from None
     if resultado.returncode != 0:
         extracto = (resultado.stderr or resultado.stdout).strip()[-1500:]
         raise ProcesoError(f"{herramienta}: termino con codigo {resultado.returncode}\n{extracto}")
