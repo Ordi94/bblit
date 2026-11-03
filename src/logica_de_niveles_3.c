@@ -8,6 +8,9 @@
 /* Identificador del sonido de arrastre del bloque empujable: sh y lh de 16 bits (LogicaBloqueEmpujable). */
 extern s16 D_800695DE;
 
+/* Actualizacion por cuadro de los indicadores de la interfaz (gestion_y_dibujo_de_objetos_2.c). */
+extern void func_80039094(void);
+
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 2925 con la configuracion versionada (g = 8 del archivo). Reparto de registros y orden de instrucciones: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1. */
 /*
@@ -1896,10 +1899,13 @@ void func_8002F968(Objeto* o)
 }
 
 /*
- * Pendiente de traducir: envoltorio de func_80039094 (jal sin tocar a0, marco 0x18); se traduce junto
- * con ella.
+ * Paso por cuadro de los indicadores de la interfaz de juego: no recibe argumentos (el llamado
+ * carga todo de globales) y no devuelve valor, de modo que solo guarda y restaura $ra.
  */
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F970);
+void func_8002F970(void)
+{
+    func_80039094();
+}
 
 #ifdef NON_MATCHING
 /*
