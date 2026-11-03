@@ -27,6 +27,7 @@ typedef struct Orden {
     s32 dato;
 } Orden;
 extern s32 D_global;
+extern s32 D_global2;
 """
 TIPOS = frozenset({"Objeto", "Orden"})
 FIRMA = "void f(Objeto* o, Orden* orden, s32* p, s32 x, s32 y)"
@@ -234,13 +235,19 @@ def test_la_lectura_no_cruza_una_etiqueta_ni_un_salto() -> None:
         assert resultado.index("tmp1 = orden->tipo") > resultado.index("ya:")
 
 
-def test_la_lectura_de_un_global_no_cruza_una_escritura_por_puntero() -> None:
+def test_la_lectura_de_un_acceso_con_indice_no_cruza_una_escritura_por_puntero() -> None:
     texto = cuerpo("x = 1;", "*p = 2;", "y = D_global + o->vec[x];")
+    adelantadas = 0
     for semilla in range(30):
         resultado = aplicar(mut.local_de_campo, texto, semilla)[1]
-        assert "tmp1 = D_global" not in resultado or resultado.index("tmp1 = D_global") > resultado.index(
-            "*p = 2;"
-        )
+        if "tmp1 = o->vec[x];" in resultado:
+            adelantadas += 1
+            assert resultado.index("tmp1 = o->vec[x];") > resultado.index("*p = 2;")
+    assert adelantadas > 0
+    for variante, _ in mut.vecinos(c.analizar_funcion(texto, "f", TIPOS), an.construir_tabla([CABECERA])):
+        escrito = c.imprimir_funcion(variante)
+        if "tmp1 = o->vec[x];" in escrito:
+            assert escrito.index("tmp1 = o->vec[x];") > escrito.index("*p = 2;")
 
 
 def test_la_lectura_no_sube_por_encima_de_la_variable_que_forma_su_direccion() -> None:
@@ -735,6 +742,48 @@ def test_una_local_no_se_parte_si_las_ramas_no_son_independientes(lineas: tuple[
     assert aplicar(mut.partir_local, cuerpo(*lineas))[0] is None
 
 
+def _cadena_con_comentario(comentario_propio: bool, usa_la_primera_rama: bool) -> str:
+    """Un ``if`` cuyo ``else`` encierra otro ``if`` con un comentario propio o un comentario final."""
+    primera = ("    celda = 0;", "    o->valor = celda;") if usa_la_primera_rama else ("    o->valor = 0;",)
+    interno = (("    /* segunda rama */", "    if (y) {") if comentario_propio else ("    if (y) {",)) + (
+        "        celda = o->vec[1];",
+        "        o->radio = celda;",
+        "    } else {",
+        "        celda = o->vec[2];",
+        "        o->h108 = celda;",
+        "    }",
+    )
+    final = () if comentario_propio else ("    /* fin del else */",)
+    lineas = ("s32 celda;", "if (x) {", *primera, "} else {", *interno, *final, "}")
+    return cuerpo(*lineas)
+
+
+@pytest.mark.parametrize("comentario_propio", [True, False])
+def test_un_else_con_comentario_no_se_trata_como_cadena_else_if_de_tres_ramas(
+    comentario_propio: bool,
+) -> None:
+    texto = _cadena_con_comentario(comentario_propio, usa_la_primera_rama=True)
+    descripcion, resultado = aplicar(mut.partir_local, texto)
+    assert descripcion is None
+    assert resultado == c.imprimir_funcion(c.analizar_funcion(texto, "f", TIPOS))
+    assert "} else {" in resultado and "} else if" not in resultado
+    assert ("/* segunda rama */" if comentario_propio else "/* fin del else */") in resultado
+
+
+@pytest.mark.parametrize("comentario_propio", [True, False])
+def test_un_if_anidado_en_un_else_con_comentario_se_parte_como_un_if_de_dos_ramas(
+    comentario_propio: bool,
+) -> None:
+    texto = _cadena_con_comentario(comentario_propio, usa_la_primera_rama=False)
+    descripcion, resultado = aplicar(mut.partir_local, texto)
+    assert descripcion == "partir_local(celda en tmp1)"
+    assert resultado.count("tmp1 = ") == 1 and "tmp2" not in resultado
+    assert "celda = o->vec[1];" in resultado and "tmp1 = o->vec[2];" in resultado
+    assert "o->radio = celda;" in resultado and "o->h108 = tmp1;" in resultado
+    assert "} else {" in resultado and "} else if" not in resultado
+    assert ("/* segunda rama */" if comentario_propio else "/* fin del else */") in resultado
+
+
 def test_partir_y_unificar_son_operaciones_inversas() -> None:
     texto = cuerpo(
         *CELDA_COMPARTIDA[:1],
@@ -819,3 +868,21 @@ def test_la_busqueda_al_azar_puede_encadenar_las_mutaciones_nuevas() -> None:
         texto = c.imprimir_funcion(variante)
         assert c.imprimir_funcion(c.analizar_funcion(texto, "f", TIPOS)) == texto
     assert set(NUEVAS) <= vistas
+
+
+def test_si_solo_hay_una_mutacion_posible_mutar_devuelve_esa_y_termina(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    llamadas: list[int] = []
+
+    def una_sola_vez(ctx: mut.Contexto) -> str | None:
+        llamadas.append(1)
+        return mut.orden_de_sentencias(ctx) if len(llamadas) == 1 else None
+
+    monkeypatch.setattr(mut, "MUTACIONES", (("una_sola_vez", una_sola_vez, 1.0),))
+    tabla = an.construir_tabla([CABECERA])
+    base = c.analizar_funcion(cuerpo("D_global = 1;", "D_global2 = 2;", firma="void f(void)"), "f", TIPOS)
+    variante, aplicadas = mut.mutar(base, tabla, azar(3), 3)
+    assert len(aplicadas) == 1 and aplicadas[0].startswith("orden_sentencias")
+    assert len(llamadas) == 3 * mut.INTENTOS_POR_MUTACION
+    assert c.imprimir_funcion(variante) != c.imprimir_funcion(base)
