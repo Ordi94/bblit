@@ -229,9 +229,10 @@ void func_80032A24(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 774 con la configuracion versionada (g = 8 del archivo). El flujo y las macros vectoriales
- * coinciden; difiere el reparto de los registros salvados (el original deja los argumentos en s5 y s2 y los
- * punteros hoisted &w->i58, &w->rot, &w->v28, &w->d30 en s6, s4, s3, s1).
+ * Pendiente: puntuacion 123 con la configuracion versionada (g = 8 del archivo). El flujo y las macros vectoriales
+ * coinciden; difiere el reparto de dos registros salvados (el original deja el argumento a0 en s5 y la direccion de
+ * i58 en s6, GCC los intercambia porque la prioridad de a0 queda por debajo de la de esa direccion) y la posicion de
+ * un almacen de cero (sh zero,0x4a) que sigue a ese reparto.
  *
  * Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la
  * mascara y cuya caja esta a menos de su alcance, lleva la posicion al sistema local del objeto, comprueba la caja
@@ -243,11 +244,15 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
     s32* p58;
     SVECTOR* pd30;
     SVECTOR* prot;
+    /* El original conserva el vector de salida en un registro salvado distinto del argumento:
+     * la copia local reproduce ese reparto. */
+    Vec3* salida;
 
-    w->suma.vx = a0->x + a1->x;
-    w->suma.vy = a0->y + a1->y;
+    salida = a1;
+    w->suma.vx = a0->x + salida->x;
+    w->suma.vy = a0->y + salida->y;
+    w->suma.vz = a0->z + salida->z;
     w->cur = D_80069630;
-    w->suma.vz = a0->z + a1->z;
     if (w->cur != NULL) {
         p58 = &w->i58;
         pd30 = &w->d30;
@@ -283,18 +288,20 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                             && w->cur->max.vx + w->i60 >= w->v28.vx
                             && w->v28.vz >= w->cur->min.vz - w->i60
                             && w->cur->max.vz + w->i60 >= w->v28.vz
-                            && w->cur->max.vy < w->v28.vy
+                            && w->v28.vy > w->cur->max.vy
                             && w->cur->min.vy >= w->v28.vy - 0xF0) {
                             w->i58 = w->cur->max.vy - w->v28.vy;
                             w->a48.vx = a0->x - w->cur->param.trans.vx;
                             w->a48.vy = 0;
                             w->a48.vz = a0->z - w->cur->param.trans.vz;
-                            RotMatrixZYX(prot, &w->m);
+                            /* Aqui el original calcula la direccion de la rotacion con un addiu propio en
+                             * lugar de reutilizar el puntero local, que queda para las otras dos llamadas. */
+                            RotMatrixZYX(&w->rot, &w->m);
                             ApplyMatrixSV(&w->m, &w->a48, &w->a50);
                             w->i5C = ratan2(w->a50.vx, w->a50.vz);
-                            w->v28.vx = a1->x;
-                            w->v28.vy = a1->y;
-                            w->v28.vz = a1->z;
+                            w->v28.vx = salida->x;
+                            w->v28.vy = salida->y;
+                            w->v28.vz = salida->z;
                             ApplyMatrixSV(&w->m, &w->v28, &w->v28);
                             w->i60 = w->i60 + 2;
                             if (w->i5C >= 0) {
@@ -317,9 +324,9 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                             }
                             RotMatrix(&w->cur->param.giro.rotate, &w->m);
                             ApplyMatrixSV(&w->m, &w->v28, &w->v28);
-                            a1->x = w->v28.vx;
-                            a1->y = w->i58;
-                            a1->z = w->v28.vz;
+                            salida->x = w->v28.vx;
+                            salida->y = w->i58;
+                            salida->z = w->v28.vz;
                             return (s32)w->cur;
                         }
                     }
