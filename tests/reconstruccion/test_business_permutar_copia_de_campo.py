@@ -27,6 +27,10 @@ typedef struct Objeto {
         s32 entero;
         s16 corto;
     } u78;
+    union {
+        s32 ancho;
+        s16 mitad;
+    };
 } Objeto;
 typedef struct Orden {
     s16 tipo;
@@ -139,7 +143,7 @@ def test_la_copia_puede_estar_separada_de_su_primer_uso_si_nada_toca_el_campo() 
 
 def test_una_local_estrecha_del_mismo_signo_que_el_campo_se_propaga() -> None:
     texto = cuerpo("u16 bandera;", "bandera = o->w10E | 1;", "o->w10E = bandera;", "o->w10E = bandera >> 1;")
-    assert aplicar(PROPAGAR, texto)[0] is not None
+    assert aplicar(PROPAGAR, texto)[1] == cuerpo("o->w10E |= 1;", "o->w10E >>= 1;")
 
 
 def test_con_el_mismo_signo_se_admiten_la_comparacion_de_orden_y_el_desplazamiento() -> None:
@@ -153,7 +157,9 @@ def test_con_el_mismo_signo_se_admiten_la_comparacion_de_orden_y_el_desplazamien
         "o->flags14 = bandera >> 1;",
     )
     resultado = aplicar(PROPAGAR, texto)[1]
-    assert "if (o->flags14 > 6) {" in resultado and "o->flags14 >>= 1;" in resultado
+    assert resultado == cuerpo(
+        "o->flags14 |= 2;", "if (o->flags14 > 6) {", "    x = 1;", "}", "o->flags14 >>= 1;"
+    )
 
 
 @pytest.mark.parametrize(
@@ -223,7 +229,7 @@ def test_una_escritura_a_otro_campo_no_impide_propagar() -> None:
     texto = cuerpo(
         "s32 bandera;", "bandera = o->flags14 | 2;", "o->flags14 = bandera;", "o->h108 = 3;", "o->valor = 4;"
     )
-    assert aplicar(PROPAGAR, texto)[0] is not None
+    assert aplicar(PROPAGAR, texto)[1] == cuerpo("o->flags14 |= 2;", "o->h108 = 3;", "o->valor = 4;")
 
 
 def test_una_escritura_a_un_miembro_de_union_se_trata_como_escritura_al_hermano() -> None:
@@ -242,7 +248,9 @@ def test_una_escritura_a_un_miembro_de_union_se_trata_como_escritura_al_hermano(
         "o->valor = 1;",
         "o->u78.entero = bandera & 3;",
     )
-    assert aplicar(PROPAGAR, texto)[0] is not None
+    assert aplicar(PROPAGAR, texto)[1] == cuerpo(
+        "o->u78.entero |= 2;", "o->valor = 1;", "o->u78.entero &= 3;"
+    )
     hermano = cuerpo(
         "s32 bandera;",
         "bandera = o->u78.entero | 2;",
@@ -449,6 +457,43 @@ def test_la_inversa_no_cruza_una_escritura_al_campo_ni_una_llamada(intermedia: s
 )
 def test_la_inversa_no_se_aplica_sin_dos_compuestas_validas_al_mismo_campo(lineas: tuple[str, ...]) -> None:
     assert aplicar(INTRODUCIR, cuerpo(*lineas))[0] is None
+
+
+@pytest.mark.parametrize(
+    ("campo", "hermano"),
+    [
+        ("o->u78.entero", "o->u78.corto = 5;"),
+        ("o->u78.corto", "o->u78.entero = 5;"),
+        ("o->u78.entero", "o->u78.corto |= 5;"),
+        ("o->ancho", "o->mitad = 5;"),
+        ("o->mitad", "o->ancho = 5;"),
+    ],
+)
+def test_la_inversa_no_cruza_una_escritura_a_un_miembro_hermano_de_la_union(campo: str, hermano: str) -> None:
+    texto = cuerpo(f"{campo} |= 2;", hermano, f"{campo} &= 1;")
+    assert aplicar(INTRODUCIR, texto)[0] is None
+
+
+@pytest.mark.parametrize(
+    ("campo", "tipo", "ajena"),
+    [
+        ("o->u78.entero", "s32", "o->valor = 5;"),
+        ("o->u78.corto", "s16", "o->h108 = 5;"),
+        ("o->u78.entero", "s32", "o->ancho = 5;"),
+        ("o->ancho", "s32", "o->u78.corto = 5;"),
+        ("o->mitad", "s16", "o->u78.entero = 5;"),
+    ],
+)
+def test_la_inversa_si_cruza_una_escritura_a_un_campo_ajeno_a_la_union(
+    campo: str, tipo: str, ajena: str
+) -> None:
+    texto = cuerpo(f"{campo} |= 2;", ajena, f"{campo} &= 1;")
+    descripcion, resultado = aplicar(INTRODUCIR, texto)
+    assert descripcion == f"introducir_copia_de_campo({tipo} tmp1 = {campo} | 2)"
+    esperado = cuerpo(
+        f"{tipo} tmp1;", f"tmp1 = {campo} | 2;", f"{campo} = tmp1;", ajena, f"{campo} = tmp1 & 1;"
+    )
+    assert resultado == esperado
 
 
 def test_la_inversa_no_toca_un_campo_cuyo_indice_depende_de_una_variable_con_direccion_tomada() -> None:
