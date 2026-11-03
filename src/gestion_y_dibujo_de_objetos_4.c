@@ -242,13 +242,12 @@ Objeto* OrientarSombraSobreSuperficie(Objeto* o, ParametrosObjeto* d, u32 mascar
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 316 con la configuracion versionada (g = 8 del archivo). El cuerpo y los
- * saltos coinciden; difiere solo el reparto de registros salvados: el original deja el area de
- * trabajo en $s0, la salida en $s1, el objeto en $s2 y la direccion de la baldosa en $s3; GCC da
- * $s0 a la salida y $s3 al objeto. Ni el orden de las declaraciones locales, ni izar la direccion
- * de la baldosa o la constante -1 antes de la primera rama, ni un bucle con salida explicita
- * cambian el reparto (las dos ultimas formas empeoran a 1144 y 1326); prescindir de la variable de
- * la baldosa (945) o calcularla dentro de la rama (748) tampoco mejora.
+ * Pendiente: puntuacion 38 con la configuracion versionada (g = 8 del archivo). El cuerpo, los
+ * saltos y el reparto de registros coinciden; difiere solo el orden de las dos primeras copias de
+ * argumento del prologo: el original copia a0 (objeto, $s2) antes que a1 (salida, $s1) y GCC
+ * emite primero la de a1, con cualquier orden de las copias y de las declaraciones. Copiar tambien
+ * la salida a un local empeora (130 a 176); prescindir de la copia del objeto o de la sonda sube a
+ * 91 y 171.
  */
 /*
  * Calcula la posicion de apoyo de 'o' en 'sal': parte de la posicion del primer ayudante
@@ -262,46 +261,54 @@ s32 func_8003A3D0(Objeto* o, SalidaSonda* sal, Sonda* s)
     Ayuda* b;
     Objeto* p;
     TrabajoBaldosa* w;
-    s32 sin_grupo;
+    s16 sin_grupo;
+    Sonda* sonda;
+    Objeto* objeto;
 
-    a = o->u78.ayudas;
-    w = &s->w;
+    /* El original conserva copias del objeto y de la sonda en registros salvados desde la
+     * entrada; sin ellas el asignador reparte $s0..$s3 de otro modo. */
+    objeto = o;
+    sonda = s;
+    a = objeto->u78.ayudas;
+    w = &sonda->w;
     if (a != 0 && (b = (Ayuda*)a->cab.siguiente) != 0) {
         if (b->visible == 0) {
             return 0;
         }
-        s->ent.nodo = &b->coord;
-        func_8001CE64(&s->ent);
-        GEO_CARGAR_W(&s->ent.acc);
+        sonda->ent.nodo = &b->coord;
+        func_8001CE64(&sonda->ent);
+        GEO_CARGAR_W(&sonda->ent.acc);
         GEO_GUARDAR_W_T1(&sal->pos);
     } else {
         if (a->visible == 0) {
             return 0;
         }
-        GEO_CARGAR_W(&o->param.trans);
+        GEO_CARGAR_W(&objeto->param.trans);
         GEO_GUARDAR_W_T1(&sal->pos);
     }
-    p = o->p70;
+    p = objeto->p70;
     if (p != 0 && ((p->flags08 & 8) || (p->flags0C & 0x2000))) {
-        sal->pos.vy = o->param.trans.vy;
+        sal->pos.vy = objeto->param.trans.vy;
     } else {
-        s->r.grupo = (s16)o->w26;
-        func_8001C134((s32*)&sal->pos, &s->r, w);
+        sonda->r.grupo = (s16)objeto->w26;
+        func_8001C134((s32*)&sal->pos, &sonda->r, w);
+        /* De 16 bits, como el campo de grupo que se compara: con 32 bits el codigo del bucle
+         * cambia de registros. */
         sin_grupo = -1;
-        while (s->r.flags & 8) {
-            if (s->r.grupo == sin_grupo) {
+        while (sonda->r.flags & 8) {
+            if (sonda->r.grupo == sin_grupo) {
                 break;
             }
             sal->pos.vy = sal->pos.vy + 1;
-            func_8001C134((s32*)&sal->pos, &s->r, w);
+            func_8001C134((s32*)&sal->pos, &sonda->r, w);
         }
-        sal->pos.vy = sal->pos.vy + (s16)s->r.pendiente_abs;
+        sal->pos.vy = sal->pos.vy + (s16)sonda->r.pendiente_abs;
         if (D_8006960C < sal->pos.vy) {
             sal->pos.vy = D_8006960C;
         }
         if (!(D_8006D9A8[0] & 0x100)) {
-            if (sal->pos.vy < o->param.trans.vy) {
-                sal->pos.vy = o->param.trans.vy;
+            if (sal->pos.vy < objeto->param.trans.vy) {
+                sal->pos.vy = objeto->param.trans.vy;
             }
         }
     }
