@@ -15,11 +15,15 @@
 /*
  * Sonido de un cuadro (4 bytes): identificador en +0 y cuadro en el que suena en +1
  * (AvanzarAnimacionSprite: lbu 0 y lbu 1 de cada entrada; el avance de la lista es de 4 bytes).
+ * El reproductor de animaciones con jerarquia de matrices (func_8001F268) usa ademas +2 como
+ * recarga y +3 como cuenta atras de repeticiones: el sonido suena cuando la cuenta llega a cero y
+ * entonces se recarga (lbu 0x2 y sb 0x3, 0x8001F6E0 y 0x8001F6E8; lbu 0x3 y sb 0x3, 0x8001F6D0).
  */
 typedef struct RegistroSonido {
     u8 id;
     u8 cuadro;
-    u8 pad02[2];
+    u8 recarga;
+    u8 cuenta;
 } RegistroSonido;
 
 /*
@@ -55,6 +59,37 @@ typedef struct ParCuadro {
 #define EVENTO_LIBERA_HIJO 0x0040
 #define EVENTO_AGARRE_SIN_DESFASE 0x0080
 #define EVENTO_SIN_SUSTITUIR 0x8000
+
+/*
+ * Banderas de RegistroEvento.banderas que solo interpreta el reproductor de animaciones con
+ * jerarquia de matrices (func_8001F268). EVENTO_SUELTA_HIJO (lhu 0x2 & 0x20, 0x8001FB1C) suelta el
+ * hijo acoplado en la posicion del objeto; EVENTO_HIJO_CON_GIRO_X (& 0x200, 0x8001FC9C) crea un hijo
+ * girado en X con el giro de la raiz de ayudantes (EVENTO_HIJO_CON_GIRO lo hace en Y); EVENTO_SIN_PRUEBA
+ * (& 0x1000, 0x8001FD60) agarra al protagonista sin probar que este dentro del volumen; EVENTO_COMPONE
+ * (& 0x2000, 0x8001FA2C) compone las matrices de los ancestros en la del hijo suelto.
+ */
+#define EVENTO_SUELTA_HIJO 0x0020
+#define EVENTO_HIJO_CON_GIRO_X 0x0200
+#define EVENTO_SIN_PRUEBA 0x1000
+#define EVENTO_COMPONE 0x2000
+
+/*
+ * Cabecera de las pistas de una animacion con jerarquia de matrices: es la tabla a la que apunta
+ * DefinicionAnimacion.tabla (+0x54) en las definiciones de tipo 4, y el cursor la guarda en +0x1C.
+ * El flujo de pistas del primer cuadro vive en +8 (lw 0x8001F40C y 0x8001F52C), el numero de cuadros
+ * en +0xE (lhu 0x8001F538) y los ticks de cada cuadro en +0x12 (lbu 0x8001F548).
+ */
+typedef struct CabeceraPistas {
+    u8 pad00[8];
+    u32* flujo;
+    u8 pad0C[2];
+    u16 n_cuadros;
+    u8 pad10[2];
+    u8 espera;
+} CabeceraPistas;
+
+/* La cabecera de pistas que el cursor tiene activa (BloqueTrabajo.duraciones, +0x1C). */
+#define CABECERA_PISTAS(c) ((CabeceraPistas*)(c)->duraciones)
 
 /* Bits del estado del cursor (BloqueTrabajo.flags18) que AvanzarAnimacionSprite maneja. */
 #define ANIM_UNA_PASADA 0x0002
@@ -141,6 +176,7 @@ extern void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo);
  */
 typedef void (*DibujarSprite)(Objeto*, BloqueTrabajo*, u32, u8*);
 extern void func_8003502C(Objeto* o);
+extern void func_8001D028(Objeto* origen, Objeto* destino, u8* p);
 extern s32 func_80018D98(Objeto* a, VECTOR* p, void* area);
 
 /*
