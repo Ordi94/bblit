@@ -40,7 +40,7 @@ Ranura* AllocListNode(u8* base, s32 paso, s32 total)
 }
 """
 COINCIDENTES = ("CondCiseq", "CondCisltu", "AllocListNode", "func_8001CE64", "func_80030D60")
-NO_COINCIDENTES = ("func_8002F990", "func_80035244")
+NO_COINCIDENTES = ("func_8002F990", "func_80032B2C")
 INICIO_JUEGO = 0x80014AC4
 FIN_JUEGO = 0x80045DA0
 
@@ -275,11 +275,11 @@ def test_ciclo_real_con_funciones_en_c_reproduce_el_ejecutable_y_discrimina(
     for funcion in ("AllocListNode", "func_8001CE64", "func_80030D60"):
         assert cli.main(["diff", funcion], variables, raiz) == 0
         assert "puntuacion 0" in capsys.readouterr().out
-    assert cli.main(["diff", "func_80035244"], variables, raiz) == 1
+    assert cli.main(["diff", "func_80032B2C"], variables, raiz) == 1
     # La puntuacion de una funcion pendiente baja con cada mejora de su traduccion, asi que la
     # cifra no es estable; lo estable es que sea distinta de cero y que el comando discrimine.
     ultima_linea = capsys.readouterr().out.rstrip("\n").splitlines()[-1]
-    patron = r"func_80035244 \(src/camara_y_bucle_logico\.c\): puntuacion [1-9][0-9]*"
+    patron = r"func_80032B2C \(src/camara_y_bucle_logico\.c\): puntuacion [1-9][0-9]*"
     assert re.fullmatch(patron, ultima_linea)
     # Una funcion que siga en ensamblador, la que sea: activar funciones no debe romper esta prueba.
     pendiente = next(
