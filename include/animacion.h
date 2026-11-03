@@ -168,6 +168,14 @@ extern void AplicarCuadro(Objeto* o, BloqueTrabajo* cursor, AreaCuadro* w);
 extern u32 AvanzarAnimacionSprite(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area);
 extern void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo);
 extern void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo);
+/*
+ * Reproductor de animaciones con jerarquia de matrices (movimiento_y_objetos_de_escena_3.c). `modo` se
+ * declara s32 aunque la rutina solo usa sus 16 bits bajos: con u16 en el prototipo el llamador recorta
+ * el argumento al pasarlo (lhu en lugar de lh al cargar el campo con signo del registro de animacion),
+ * y el original lo pasa sin recortar; el recorte lo hace la propia rutina al entrar. Esta es la unica
+ * declaracion del simbolo: no duplicarla con otra firma en los .c ni en otras cabeceras.
+ */
+extern u32 func_8001F268(Objeto* o, BloqueTrabajo* c, u32 anim, s32 modo, u8* area);
 
 /*
  * Rutinas que invoca el avance de animacion. func_8001E528 y func_8001E600 reciben el area de trabajo

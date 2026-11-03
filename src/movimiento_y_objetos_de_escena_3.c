@@ -476,8 +476,10 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", AvanzarAnimacio
  * sonidos y los eventos del cuadro actual: un evento puede crear un hijo acoplado o suelto, soltar
  * o reorientar el hijo, y agarrar, soltar o colocar al protagonista.
  */
-u32 func_8001F268(Objeto* o, BloqueTrabajo* c, u32 anim, u16 modo, u8* area)
+u32 func_8001F268(Objeto* o, BloqueTrabajo* c, u32 anim, s32 modo_ancho, u8* area)
 {
+    /* El recorte a 16 bits vive aqui y no en el prototipo (ver la declaracion en animacion.h). */
+    u16 modo = modo_ancho;
     NodoAnimacion* n;
     CabeceraPistas* cab;
     Objeto* h;

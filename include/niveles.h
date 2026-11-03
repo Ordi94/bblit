@@ -437,7 +437,6 @@ typedef struct ScratchJugador {
 extern s32 BugsRand(void);
 extern u32 func_80045C4C(u32 a0, void* a1, Objeto* a2);
 extern u32 func_80045498(Objeto* objeto, void* guion, BloqueTrabajo* bloque);
-extern s32 func_8001F268(Objeto* o, BloqueTrabajo* b, s32 id, s32 arg, void* w);
 extern Objeto* func_80036734(s16 id, s32* pos, u16* ang);
 extern void func_8001CD84(Objeto* o, u32 id, void* area);
 extern void func_8001D31C(s32 x, s32 y, s32 z);
