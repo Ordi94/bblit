@@ -64,16 +64,6 @@ extern u8 D_80010072;
 extern u8 D_80010073;
 extern u8 D_800100D0;
 
-/* Objetos de los tres iconos de estado (celdas de D_8006AB70 reservadas aparte) y sus tablas. */
-extern Objeto* D_8006ABD8;
-extern Objeto* D_8006ABDC;
-extern Objeto* D_8006ABE0;
-extern s16 D_8005E864;
-extern s16 D_8005E866;
-extern s16 D_8005E868;
-extern s16 D_8005E8D4[2];
-extern s16 D_8005E8D8[2];
-extern s16 D_8005E8DC[2];
 
 /* Nivel de unidades mostrado por los indicadores y nivel de fundido pedido. */
 
@@ -895,7 +885,12 @@ extern u8 ET[] __asm__("D_80010000");
 #define V8(x) (*(volatile u8*)&(x))
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 4105 con la configuracion versionada (g = 8 del archivo). Coincide la estructura y las secuencias de carga y almacenamiento; difiere el reparto de registros (base de 0x80010000 en a0 en lugar de a1, copia del valor mostrado de la barra 0, valor y puntero de cada temporizador) y el relleno de algunos huecos de retardo.
+ * Pendiente: puntuacion 2030 con la configuracion versionada (g = 8 del archivo). Coincide la
+ * estructura, las secuencias de carga y almacenamiento y los simbolos de las tablas; difiere en:
+ * reparto de registros (la base de 0x80010000 cae en a0 o a1 donde el original usa a1, v0 y a0
+ * segun el bloque, falta la copia del valor mostrado de la barra 0 y el producto por 30 de cada
+ * temporizador se calcula en un registro propio) y en el relleno de los huecos de retardo de los
+ * temporizadores.
  */
 /*
  * Una vez por cuadro de juego, con el estado principal distinto de 3, sin pantalla pedida
@@ -924,7 +919,7 @@ void func_80039094(void)
     s32 ant;
     s32 pantalla;
     u8* g;
-    s32 n;
+    s16 n;
     Objeto* ob;
     u16 cuadros;
     u8* e;
@@ -1134,26 +1129,26 @@ void func_80039094(void)
             }
         }
 
-        ob = D_8006ABD8;
+        ob = D_8006AB70[26];
         if (D_80010048 & 0x80) {
             if (!(ob->flags04 & 2)) {
-                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E864, D_8005E8D4, 1);
+                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E830[26], D_8005E86C[26], 1);
             }
         } else {
             ob->flags04 &= ~2;
         }
-        ob = D_8006ABE0;
+        ob = D_8006AB70[28];
         if (D_8001006D & 2) {
             if (!(ob->flags04 & 2)) {
-                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E868, D_8005E8DC, 1);
+                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E830[28], D_8005E86C[28], 1);
             }
         } else {
             ob->flags04 &= ~2;
         }
-        ob = D_8006ABDC;
+        ob = D_8006AB70[27];
         if (D_8001006D & 4) {
             if (!(ob->flags04 & 2)) {
-                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E866, D_8005E8D8, 1);
+                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E830[27], D_8005E86C[27], 1);
             }
         } else {
             ob->flags04 &= ~2;
