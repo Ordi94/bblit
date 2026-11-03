@@ -19,7 +19,7 @@ import copy
 import itertools
 import random
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -56,6 +56,11 @@ class Contexto:
     entorno: an.Entorno
     azar: random.Random
     nombres: set[str]
+
+    @property
+    def alias(self) -> Mapping[str, str]:
+        """Campos que comparten almacenamiento en una ``union``, para los efectos de las sentencias."""
+        return self.entorno.tabla.alias_de_campos
 
 
 @dataclass(frozen=True)
@@ -301,7 +306,8 @@ def orden_de_sentencias(ctx: Contexto) -> str | None:
     candidatos: list[tuple[c.Bloque, int]] = []
     for bloque in c.todos_los_bloques(ctx.funcion.cuerpo):
         for indice in range(len(bloque.items) - 1):
-            a, b = an.efectos_de(bloque.items[indice]), an.efectos_de(bloque.items[indice + 1])
+            a = an.efectos_de(bloque.items[indice], ctx.alias)
+            b = an.efectos_de(bloque.items[indice + 1], ctx.alias)
             # Una variable con direccion tomada puede escribirse por un puntero: no se mueve.
             tocadas = a.lee | a.escribe | b.lee | b.escribe
             if an.son_independientes(a, b) and not con_direccion & tocadas:
@@ -380,7 +386,7 @@ def _sitios_izables(ctx: Contexto) -> list[tuple[c.Bloque, int, Sitio, an.Tipo]]
 
 
 def _posicion_de_la_asignacion(
-    bloque: c.Bloque, indice: int, asignacion: c.Expresion, azar: random.Random
+    bloque: c.Bloque, indice: int, asignacion: c.Expresion, azar: random.Random, alias: Mapping[str, str]
 ) -> int:
     """
     Elige donde colocar la asignacion de un temporal: justo antes de su uso o mas arriba.
@@ -395,16 +401,17 @@ def _posicion_de_la_asignacion(
         indice (int): Posicion de esa sentencia.
         asignacion (c.Expresion): Asignacion del temporal.
         azar (random.Random): Generador de numeros aleatorios.
+        alias (Mapping[str, str]): Campos que comparten almacenamiento en una ``union``.
 
     Returns:
         int: Posicion de insercion, entre la mas alta posible y ``indice``.
 
     Ejemplo:
-        posicion = _posicion_de_la_asignacion(bloque, 5, asignacion, azar)
+        posicion = _posicion_de_la_asignacion(bloque, 5, asignacion, azar, alias)
     """
-    efectos = an.efectos_de(asignacion)
+    efectos = an.efectos_de(asignacion, alias)
     mas_alta = indice
-    while mas_alta > 0 and an.son_independientes(an.efectos_de(bloque.items[mas_alta - 1]), efectos):
+    while mas_alta > 0 and an.son_independientes(an.efectos_de(bloque.items[mas_alta - 1], alias), efectos):
         mas_alta -= 1
     return mas_alta + int(azar.random() * (indice - mas_alta + 1))
 
@@ -445,7 +452,9 @@ def introducir_temporal(ctx: Contexto) -> str | None:
     asignacion = c.Expresion(expr=c.Asigna("=", c.Id(nombre), copia))
     # La asignacion se inserta antes que la declaracion: esta se coloca al inicio del cuerpo y
     # desplazaria el indice de la sentencia.
-    bloque.items.insert(_posicion_de_la_asignacion(bloque, indice, asignacion, ctx.azar), asignacion)
+    bloque.items.insert(
+        _posicion_de_la_asignacion(bloque, indice, asignacion, ctx.azar, ctx.alias), asignacion
+    )
     _declarar_temporal(ctx, nombre, tipo)
     return f"introducir_temporal({tipo.texto} {nombre} = {clave})"
 
@@ -1101,13 +1110,13 @@ def _posiciones_de_lectura(
     ni de ``DISTANCIA_MAXIMA_DE_LECTURA`` sentencias. ``memoria`` guarda los efectos ya calculados de
     cada sentencia (por identidad) para no recorrerla otra vez en cada candidato.
     """
-    lectura = an.efectos_de(c.Expresion(expr=carga))
+    lectura = an.efectos_de(c.Expresion(expr=carga), ctx.alias)
     piso = max(_fin_de_declaraciones(bloque), indice - DISTANCIA_MAXIMA_DE_LECTURA)
     posiciones = [indice]
     posicion = indice
     while posicion > piso:
         vecina = bloque.items[posicion - 1]
-        efectos = memoria.setdefault(id(vecina), an.efectos_profundos(vecina))
+        efectos = memoria.setdefault(id(vecina), an.efectos_profundos(vecina, ctx.alias))
         if an.escritura_alcanza(efectos, lectura):
             break
         posicion -= 1
@@ -1250,10 +1259,10 @@ def _lecturas_de_local_guardada(
         return None
     if not any(_es_uso_en_condicion_de_bucle(s, sitio.nodo) for s, sitio in lecturas):
         return None
-    lectura = an.efectos_de(c.Expresion(expr=fuente))
+    lectura = an.efectos_de(c.Expresion(expr=fuente), ctx.alias)
     ultima = max(posicion_de[id(s)] for s, _ in lecturas)
     for intermedia in posteriores[: ultima + 1]:
-        if an.escritura_alcanza(an.efectos_profundos(intermedia), lectura):
+        if an.escritura_alcanza(an.efectos_profundos(intermedia, ctx.alias), lectura):
             return None
     return [sitio for _, sitio in lecturas]
 

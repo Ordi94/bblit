@@ -511,6 +511,18 @@ independientes; nunca desde un operando que solo se evalua a veces (`&&`, `\|\|`
 | Unificar locales | Funde dos locales del mismo tipo con vidas disjuntas (todas las sentencias del cuerpo que usan la primera terminan antes de la primera que usa la segunda, y esa sentencia asigna la segunda antes de leerla); sin `goto`, sin direccion tomada. | Una variable menos cambia la numeracion de pseudoregistros y el reparto de los registros salvados. |
 | Partir local | Reparte una local usada en dos o mas ramas de un `if`/`else if`/`switch` (sin usos fuera de ellas y asignada al empezar cada rama) en una local por rama. | Cada rama vive en su tramo y el compilador la reparte aparte. |
 
+Hipotesis de aliasing de las mutaciones (`permutar_analisis.py`). Un acceso a memoria se identifica por la ruta de
+sus campos (`orden->tipo` es `tipo`, `o->u78.b` es `u78.b`) y dos accesos con rutas distintas no se solapan.
+Se tratan como dependientes: las rutas iguales; las que son prefijo una de otra (`u78` y `u78.b`: la estructura
+o la union entera frente a un miembro); `*p`; y los indices sin campo (`p[i]`), que no dicen a que objeto
+apuntan y pueden caer sobre cualquier campo, de modo que ninguna sentencia con un acceso a memoria se mueve por
+encima de un `p[i] = x` ni al reves. Los campos de una misma `union`, con nombre (`Objeto.u78`, `GiroObjeto`) o
+anonima, son el mismo almacenamiento aunque se llamen distinto: `construir_tabla` los agrupa (`TablaTipos.uniones`,
+`grupos_anonimos`, `alias_de_campos`) y las rutas se escriben con el representante del grupo, de modo que una
+escritura a `o->u78.corto` alcanza una lectura de `o->u78.entero`. Un nombre de campo que aparece en dos uniones
+funde ambos grupos (mas conflictos, nunca menos). Limite: los campos de una estructura anonima dentro de una
+union no se funden con el resto de la union.
+
 Las mutaciones que no se aplican, y por que:
 
 - **Ensamblador en linea, `volatile`, `register`, barreras y particion de sentencias de ensamblador.** Son los

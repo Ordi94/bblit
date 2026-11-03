@@ -8,14 +8,19 @@ duda devuelve ``None`` o declara una dependencia, y la mutacion se descarta.
 
 Hipotesis de aliasing declarada: dos accesos a memoria con rutas de campo distintas (``a->x`` y
 ``b->y``) no se solapan. Las rutas iguales, las que son prefijo una de otra, los accesos por indice o
-por puntero sin campo y cualquier llamada se tratan como dependientes.
+por puntero sin campo (``p[i]``, ``*p``) y cualquier llamada se tratan como dependientes. La excepcion a
+la primera regla son las ``union``: dos campos de una misma union, con nombre o anonima, son el mismo
+almacenamiento aunque se llamen distinto, y una ruta que nombra la union entera o la estructura que la
+contiene ya es prefijo de la de sus miembros. Limite conocido: los campos de una estructura anonima
+dentro de una union no se funden con los demas miembros de esa union.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field, replace
+from types import MappingProxyType
 
 from tools.reconstruccion import permutar_c as c
 
@@ -25,12 +30,13 @@ ANCHOS_ENTEROS |= {"int": (32, True), "long": (32, True)}
 CALIFICADORES = frozenset({"const", "volatile", "register", "static", "extern"})
 CAMPO_DE_BITS = "*"
 COMODIN = "[]"
+SIN_ALIAS: Mapping[str, str] = MappingProxyType({})
 _PATRON_DECLARACION = re.compile(
     r"^[ \t]+((?:(?:unsigned|signed|const|struct)\s+)*[A-Za-z_]\w*(?:\s+(?:int|char|short|long))?)\s*"
     r"(\**)\s*([A-Za-z_]\w*(?:\s*\[[^\]]*\])*(?:\s*,\s*\**\s*[A-Za-z_]\w*(?:\s*\[[^\]]*\])*)*)\s*;",
     re.MULTILINE,
 )
-_PATRON_ESTRUCTURA = re.compile(r"\b(?:struct|union)\s*([A-Za-z_]\w*)?\s*\{")
+_PATRON_ESTRUCTURA = re.compile(r"\b(struct|union)\s*([A-Za-z_]\w*)?\s*\{")
 _PATRON_CAMPO = re.compile(
     r"^\s*((?:(?:unsigned|signed|const|struct|union)\s+)*[A-Za-z_]\w*(?:\s+(?:int|char|short|long))?)\s*"
     r"(\**)\s*([A-Za-z_]\w*(?:\s*\[[^\]]*\])*(?:\s*,\s*\**\s*[A-Za-z_]\w*(?:\s*\[[^\]]*\])*)*)\s*$",
@@ -187,12 +193,35 @@ class TablaTipos:
         estructuras: Campos con su tipo por nombre de estructura (etiqueta o ``typedef``).
         globales: Tipo por nombre de variable global escalar.
         nombres_de_tipo: Nombres definidos con ``typedef``.
+        uniones: Miembros de cada ``union`` con nombre (etiqueta, ``typedef`` o declarador).
+        grupos_anonimos: Miembros de cada ``union`` sin nombre, cuyos campos se acceden directamente
+            desde la estructura que la contiene.
+        alias_de_campos: Representante de cada campo que comparte almacenamiento con otro de una
+            union. Dos campos con el mismo representante son la misma memoria.
     """
 
     campos: dict[str, Tipo | None] = field(default_factory=dict)
     estructuras: dict[str, dict[str, Tipo]] = field(default_factory=dict)
     globales: dict[str, Tipo] = field(default_factory=dict)
     nombres_de_tipo: frozenset[str] = frozenset()
+    uniones: dict[str, frozenset[str]] = field(default_factory=dict)
+    grupos_anonimos: list[frozenset[str]] = field(default_factory=list)
+    alias_de_campos: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Agregado:
+    """Una ``struct`` o ``union`` con cuerpo hallada en un texto C.
+
+    Attributes:
+        nombres: Etiqueta, nombre de ``typedef`` o declarador; vacio si no tiene ninguno.
+        cuerpo: Texto de los campos de primer nivel (los cuerpos anidados se sustituyen por blancos).
+        es_union: Verdadero si es una ``union``.
+    """
+
+    nombres: list[str]
+    cuerpo: str
+    es_union: bool
 
 
 def _sin_llaves(texto: str) -> str:
@@ -260,8 +289,8 @@ def _declaradores(texto: str) -> list[tuple[int, str, bool]]:
     return resultado
 
 
-def _estructuras_de(limpio: str) -> Iterator[tuple[list[str], str]]:
-    """Cada estructura o union con cuerpo: sus nombres (etiqueta y ``typedef``) y el cuerpo sin anidadas."""
+def _estructuras_de(limpio: str) -> Iterator[Agregado]:
+    """Cada estructura o union con cuerpo (tambien las anonimas), con sus nombres y el cuerpo sin anidadas."""
     for encontrado in _PATRON_ESTRUCTURA.finditer(limpio):
         nivel, posicion = 1, encontrado.end()
         cuerpo: list[str] = []
@@ -274,9 +303,36 @@ def _estructuras_de(limpio: str) -> Iterator[tuple[list[str], str]]:
                 cuerpo.append(" ")
             posicion += 1
         cola = re.match(r"\s*([A-Za-z_]\w*)?\s*;", limpio[posicion:])
-        nombres = [n for n in (encontrado.group(1), cola.group(1) if cola else None) if n]
-        if nombres:
-            yield nombres, "".join(cuerpo)
+        nombres = [n for n in (encontrado.group(2), cola.group(1) if cola else None) if n]
+        yield Agregado(nombres, "".join(cuerpo), encontrado.group(1) == "union")
+
+
+def _fusionar_grupos(grupos: Iterable[frozenset[str]]) -> dict[str, str]:
+    """
+    Une los grupos de campos que comparten algun nombre y da un representante estable por campo.
+
+    Contexto:
+        El analisis de efectos identifica un acceso por el nombre de sus campos, sin saber de que
+        estructura son. Un mismo nombre puede aparecer en uniones distintas: se fusionan sus grupos,
+        lo que solo anade conflictos y por tanto es seguro.
+
+    Args:
+        grupos (Iterable[frozenset[str]]): Miembros de cada union.
+
+    Returns:
+        dict[str, str]: Representante (el menor nombre del grupo fusionado) por campo.
+
+    Ejemplo:
+        alias = _fusionar_grupos([frozenset({"a", "b"}), frozenset({"b", "c"})])
+    """
+    fusionados: list[set[str]] = []
+    for grupo in grupos:
+        union = set(grupo)
+        for existente in [g for g in fusionados if g & union]:
+            union |= existente
+            fusionados.remove(existente)
+        fusionados.append(union)
+    return {nombre: min(g) for g in fusionados for nombre in g}
 
 
 def _campos_de(cuerpo: str) -> dict[str, Tipo]:
@@ -323,10 +379,17 @@ def construir_tabla(textos: Iterable[str]) -> TablaTipos:
             for estrellas, nombre, arreglo in declaradores:
                 escalar = parsear_tipo(encontrado.group(1), estrellas)
                 vistos.setdefault(nombre, set()).add(None if arreglo or not escalar.es_escalar else escalar)
-        for nombres_de_estructura, cuerpo in _estructuras_de(limpio):
-            campos = _campos_de(cuerpo)
-            for nombre_de_estructura in nombres_de_estructura:
+        for agregado in _estructuras_de(limpio):
+            campos = _campos_de(agregado.cuerpo)
+            for nombre_de_estructura in agregado.nombres:
                 tabla.estructuras.setdefault(nombre_de_estructura, {}).update(campos)
+            if agregado.es_union and len(campos) > 1:
+                miembros = frozenset(campos)
+                if not agregado.nombres:
+                    tabla.grupos_anonimos.append(miembros)
+                for nombre_de_union in agregado.nombres:
+                    previos = tabla.uniones.get(nombre_de_union, frozenset())
+                    tabla.uniones[nombre_de_union] = previos | miembros
         for encontrado in _PATRON_GLOBAL.finditer(limpio):
             tipo = parsear_tipo(encontrado.group(1), len(encontrado.group(2)))
             if encontrado.group(1) not in _PALABRAS_QUE_NO_SON_TIPO and tipo.es_escalar:
@@ -335,6 +398,7 @@ def construir_tabla(textos: Iterable[str]) -> TablaTipos:
         nombre: (next(iter(tipos)) if len(tipos) == 1 else None) for nombre, tipos in vistos.items()
     }
     tabla.nombres_de_tipo = frozenset(nombres)
+    tabla.alias_de_campos = _fusionar_grupos([*tabla.uniones.values(), *tabla.grupos_anonimos])
     return tabla
 
 
@@ -614,11 +678,14 @@ class Efectos:
         escribe: Ubicaciones escritas.
         barrera: Verdadero si la sentencia hace algo que no se puede analizar (llamada, direccion de una
             variable local, flujo de control); nada se mueve a traves de ella.
+        alias: Representante de los campos que comparten almacenamiento en una ``union``; las rutas
+            de ``lee`` y ``escribe`` se escriben con el.
     """
 
     lee: set[str] = field(default_factory=set)
     escribe: set[str] = field(default_factory=set)
     barrera: bool = False
+    alias: Mapping[str, str] = field(default_factory=lambda: SIN_ALIAS, compare=False, repr=False)
 
 
 def es_pura(expr: c.Expr) -> bool:
@@ -645,28 +712,32 @@ def es_pura(expr: c.Expr) -> bool:
     return True
 
 
-def ruta_de_memoria(expr: c.Expr) -> str | None:
+def ruta_de_memoria(expr: c.Expr, alias: Mapping[str, str] = SIN_ALIAS) -> str | None:
     """
     Da la clave de memoria de un acceso (``caja_min.vx``, ``[]``, ``*``) o ``None`` si no es memoria.
 
     Contexto:
         Dos accesos con rutas de campo distintas se consideran independientes (hipotesis de aliasing del
-        modulo).
+        modulo), salvo que sus campos sean miembros de una misma ``union``: esos comparten almacenamiento
+        y se escriben con el mismo nombre (el representante de ``alias``) para que las rutas coincidan.
 
     Args:
         expr (c.Expr): Expresion lvalue.
+        alias (Mapping[str, str], opcional): ``TablaTipos.alias_de_campos``; sin ella cada campo es
+            su propia memoria.
 
     Returns:
         str | None: Clave del acceso.
 
     Ejemplo:
-        clave = ruta_de_memoria(c.Miembro(c.Id("o"), True, "radio"))
+        clave = ruta_de_memoria(c.Miembro(c.Id("o"), True, "radio"), tabla.alias_de_campos)
     """
     if isinstance(expr, c.Miembro):
-        previa = ruta_de_memoria(expr.base)
-        return f"{previa}.{expr.campo}" if previa and not previa.endswith(CAMPO_DE_BITS) else expr.campo
+        previa = ruta_de_memoria(expr.base, alias)
+        campo = alias.get(expr.campo, expr.campo)
+        return f"{previa}.{campo}" if previa and not previa.endswith(CAMPO_DE_BITS) else campo
     if isinstance(expr, c.Indice):
-        previa = ruta_de_memoria(expr.base)
+        previa = ruta_de_memoria(expr.base, alias)
         return f"{previa}{COMODIN}" if previa else COMODIN
     if isinstance(expr, c.Unario) and expr.op == "*":
         return CAMPO_DE_BITS
@@ -694,7 +765,7 @@ def _acumular(expr: c.Expr, efectos: Efectos, *, escritura: bool = False, direcc
             return
         _acumular(expr.operando, efectos, direccion=True)
         return
-    ruta = ruta_de_memoria(expr)
+    ruta = ruta_de_memoria(expr, efectos.alias)
     if isinstance(expr, c.Id):
         (efectos.escribe if escritura else efectos.lee).add(f"v:{expr.nombre}")
         return
@@ -704,7 +775,7 @@ def _acumular(expr: c.Expr, efectos: Efectos, *, escritura: bool = False, direcc
         _acumular(hijo, efectos, direccion=False)
 
 
-def efectos_de(sentencia: c.Sentencia) -> Efectos:
+def efectos_de(sentencia: c.Sentencia, alias: Mapping[str, str] = SIN_ALIAS) -> Efectos:
     """
     Calcula lo que lee y escribe una sentencia.
 
@@ -714,14 +785,16 @@ def efectos_de(sentencia: c.Sentencia) -> Efectos:
     Args:
         sentencia (c.Sentencia): Sentencia (solo las de expresion y declaracion con inicial se
             analizan; cualquier otra es una barrera).
+        alias (Mapping[str, str], opcional): ``TablaTipos.alias_de_campos``, para que los campos de una
+            misma ``union`` se vean como la misma memoria.
 
     Returns:
         Efectos: Lecturas, escrituras y si es una barrera.
 
     Ejemplo:
-        efectos = efectos_de(c.Expresion(expr=c.Asigna("=", c.Id("a"), c.Num("1"))))
+        efectos = efectos_de(c.Expresion(expr=c.Asigna("=", c.Id("a"), c.Num("1"))), tabla.alias_de_campos)
     """
-    efectos = Efectos()
+    efectos = Efectos(alias=alias)
     if isinstance(sentencia, c.Expresion):
         _acumular(sentencia.expr, efectos)
     else:
@@ -729,18 +802,24 @@ def efectos_de(sentencia: c.Sentencia) -> Efectos:
     return efectos
 
 
+def _es_ruta_opaca(ruta: str) -> bool:
+    """Un acceso por indice sin campo (``p[i]``) no dice a que objeto apunta: puede solapar memoria ajena."""
+    return ruta.replace(COMODIN, "") == ""
+
+
 def _rutas_en_conflicto(a: str, b: str) -> bool:
-    """Dos rutas de memoria se solapan si una es prefijo de la otra o alguna es un acceso opaco."""
-    if CAMPO_DE_BITS in (a, b):
+    """
+    Dos rutas de memoria se solapan si una es prefijo de la otra o alguna es un acceso opaco.
+
+    Un acceso opaco es ``*p`` o un indice sin campo (``p[i]``): no dice a que objeto apunta y puede
+    caer sobre cualquier campo. Se trata como dependiente de todo, que es la regla segura y la que
+    declara la hipotesis de aliasing del modulo.
+    """
+    if CAMPO_DE_BITS in (a, b) or _es_ruta_opaca(a) or _es_ruta_opaca(b):
         return True
     partes_a, partes_b = a.replace(COMODIN, ".[]").split("."), b.replace(COMODIN, ".[]").split(".")
     corto = min(len(partes_a), len(partes_b))
     return partes_a[:corto] == partes_b[:corto]
-
-
-def _es_ruta_opaca(ruta: str) -> bool:
-    """Un acceso por indice sin campo (``p[i]``) no dice a que objeto apunta: puede solapar memoria ajena."""
-    return ruta.replace(COMODIN, "") == ""
 
 
 def _se_cruzan(escribe: set[str], otras: set[str]) -> bool:
@@ -794,7 +873,7 @@ def _acumular_sentencia(sentencia: c.Sentencia, total: Efectos) -> None:
             _acumular_sentencia(interna, total)
 
 
-def efectos_profundos(sentencia: c.Sentencia) -> Efectos:
+def efectos_profundos(sentencia: c.Sentencia, alias: Mapping[str, str] = SIN_ALIAS) -> Efectos:
     """
     Calcula lo que lee y escribe una sentencia junto con todas las que contiene.
 
@@ -807,6 +886,7 @@ def efectos_profundos(sentencia: c.Sentencia) -> Efectos:
 
     Args:
         sentencia (c.Sentencia): Sentencia de cualquier tipo.
+        alias (Mapping[str, str], opcional): ``TablaTipos.alias_de_campos``.
 
     Returns:
         Efectos: Lecturas y escrituras de toda la sentencia; ``barrera`` si algo no se puede analizar.
@@ -814,7 +894,7 @@ def efectos_profundos(sentencia: c.Sentencia) -> Efectos:
     Ejemplo:
         efectos = efectos_profundos(c.Mientras(cond=c.Id("c"), cuerpo=c.Bloque()))
     """
-    total = Efectos()
+    total = Efectos(alias=alias)
     _acumular_sentencia(sentencia, total)
     return total
 
@@ -833,18 +913,14 @@ def escritura_alcanza(efectos: Efectos, lectura: Efectos) -> bool:
         lectura (Efectos): Efectos de la expresion que se mueve (solo lecturas).
 
     Returns:
-        bool: Verdadero si hay una barrera, una escritura a una ubicacion leida (variable o ruta de
-        memoria solapada) o un acceso por indice sin campo (``p[i]``) a un lado y cualquier acceso a
-        memoria al otro. Una escritura por puntero opaco (``*p = ...``) ya se solapa con toda ruta.
+        bool: Verdadero si hay una barrera o una escritura a una ubicacion leida: una variable o una
+        ruta de memoria solapada (prefijo, mismo miembro de una ``union``, ``*p`` o un indice sin
+        campo ``p[i]``, que se solapan con toda ruta).
 
     Ejemplo:
         conflicto = escritura_alcanza(efectos_profundos(s), efectos_de(c.Expresion(expr=lectura)))
     """
-    if efectos.barrera or lectura.barrera or _se_cruzan(efectos.escribe, lectura.lee):
-        return True
-    leidas = {u[2:] for u in lectura.lee if u[0] == "m"}
-    escritas = {u[2:] for u in efectos.escribe if u[0] == "m"}
-    return bool(escritas and leidas) and any(_es_ruta_opaca(ruta) for ruta in leidas | escritas)
+    return efectos.barrera or lectura.barrera or _se_cruzan(efectos.escribe, lectura.lee)
 
 
 def identificadores_de(expr: c.Expr) -> set[str]:
