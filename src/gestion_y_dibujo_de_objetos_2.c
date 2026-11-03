@@ -1,5 +1,6 @@
 #include "common.h"
 #include "objetos.h"
+#include "arranque.h"
 
 /*
  * Vista del ayudante (Ayuda, objetos.h) a partir de +0x0C: el puntero a su GsCOORDINATE2 (+0x10
@@ -17,6 +18,22 @@ typedef struct AyudaCuerpo {
 /* Estado principal del juego en 0x80010000: se accede con un puntero constante (un solo lui). */
 #define EST ((u8*)0x80010000)
 
+/*
+ * Desplazamientos, desde 0x80010000, de los bytes del estado principal que leen los indicadores:
+ * vida (barra del grupo 0), contador de golpes, indices de las barras de los grupos 3 y 7 dentro
+ * de la tabla de valores maximos (que arranca en 0x80010040) y registros de peticion de los
+ * cuatro temporizadores de poderes.
+ */
+#define ESTADO_VIDA 0x43
+#define ESTADO_GOLPES 0x41
+#define ESTADO_TABLA_BARRAS 0x40
+#define ESTADO_INDICE_BARRA3 0xB6
+#define ESTADO_INDICE_BARRA7 0xB8
+#define ESTADO_PODER_0 0x49
+#define ESTADO_PODER_1 0x4B
+#define ESTADO_PODER_2 0x70
+#define ESTADO_PODER_3 0x72
+
 /* Lista de objetos ya dibujados (se encadena por +0x10) y contador de cuadros. */
 
 /* Objeto de referencia respecto del que DibujarListaReflejada refleja los demas. */
@@ -29,6 +46,34 @@ extern u8 D_80010045;
 extern u8 D_800100F7;
 extern u8 D_800100F9;
 extern u8 D_800100FA;
+
+/*
+ * Indicadores y peticiones de la interfaz en el estado principal: banderas de los iconos
+ * (D_80010048 bit 7; D_8001006D bits 1 y 2), medidor del grupo 0xB, y por cada temporizador de
+ * poderes el registro de peticion (cuadros/30 o -1 = indefinido) y el de salida (segundos).
+ */
+extern u8 D_80010048;
+extern u8 D_80010049;
+extern u8 D_8001004A;
+extern u8 D_8001004B;
+extern u8 D_8001004C;
+extern u8 D_8001006D;
+extern u8 D_80010070;
+extern u8 D_80010071;
+extern u8 D_80010072;
+extern u8 D_80010073;
+extern u8 D_800100D0;
+
+/* Objetos de los tres iconos de estado (celdas de D_8006AB70 reservadas aparte) y sus tablas. */
+extern Objeto* D_8006ABD8;
+extern Objeto* D_8006ABDC;
+extern Objeto* D_8006ABE0;
+extern s16 D_8005E864;
+extern s16 D_8005E866;
+extern s16 D_8005E868;
+extern s16 D_8005E8D4[2];
+extern s16 D_8005E8D8[2];
+extern s16 D_8005E8DC[2];
 
 /* Nivel de unidades mostrado por los indicadores y nivel de fundido pedido. */
 
@@ -830,8 +875,294 @@ void func_80038E84(s32 idx, s32 paso)
     }
 }
 
+extern u8 ET[] __asm__("D_80010000");
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#define V8(x) (*(volatile u8*)&(x))
+#ifdef NON_MATCHING
 /*
- * Pendiente de traducir: actualizacion por cuadro de los indicadores de la interfaz (0x934 bytes, 21
- * llamadas); tiene marco de pila y no es una rutina manuscrita.
+ * Pendiente: puntuacion 4105 con la configuracion versionada (g = 8 del archivo). Coincide la estructura y las secuencias de carga y almacenamiento; difiere el reparto de registros (base de 0x80010000 en a0 en lugar de a1, copia del valor mostrado de la barra 0, valor y puntero de cada temporizador) y el relleno de algunos huecos de retardo.
  */
+/*
+ * Una vez por cuadro de juego, con el estado principal distinto de 3, sin pantalla pedida
+ * (D_80069662) y sin pausa (D_8006AA7C), lleva los indicadores de la interfaz al valor real de
+ * las variables del estado principal. Las barras de los grupos 0 (vida), 3 y 7 se acercan de uno
+ * en uno al valor pedido (0xFF en el valor mostrado = sin inicializar: se inicia de golpe) y se
+ * animan con func_80038E84; el contador de golpes (grupo 0xE) reaparece al jugador cuando llega a
+ * cero o menos; el medidor del grupo 0xB sigue a D_800100D0; los cuatro temporizadores de poderes
+ * (grupo 0x11) cargan su contador de cuadros desde el registro de peticion (-1 = indefinido, si no
+ * n * 30), lo descuentan cada cuadro sin pausa y publican los segundos restantes; los tres iconos
+ * de estado se crean o se apagan segun sus banderas. Cierra siempre limpiando D_80069554.
+ *
+ * Los bytes del estado principal se leen con un puntero local a 0x80010000 para que el
+ * compilador comparta la parte alta de la direccion, como el original; tras cada llamada el
+ * puntero se vuelve a formar porque el original no lo conserva en un registro salvado.
+ */
+void func_80039094(void)
+{
+    u8 mostrado;
+    s32 nuevo;
+    u8 vida;
+    u8 valor;
+    s32 modo;
+    s32 paso;
+    s32 idx;
+    s32 ant;
+    s32 pantalla;
+    u8* g;
+    s32 n;
+    Objeto* ob;
+    u16 cuadros;
+    u8* e;
+    u8* f;
+
+    e = EST;
+    if (*(s32*)e != 3 && D_80069662 == 0 && D_8006AA7C == 0) {
+        if (e[ESTADO_VIDA] != D_80069525) {
+            mostrado = D_80069525;
+            if (e[ESTADO_VIDA] >= 0x64) {
+                e[ESTADO_VIDA] = 0x63;
+            }
+            modo = 1;
+            if (mostrado == 0xFF) {
+                valor = e[ESTADO_VIDA];
+                D_80069525 = valor;
+                nuevo = valor;
+            } else {
+                modo = 0;
+                if (mostrado == e[ESTADO_VIDA]) {
+                    nuevo = D_80069525;
+                } else if (mostrado < e[ESTADO_VIDA]) {
+                    nuevo = D_80069525 + 1;
+                } else {
+                    nuevo = D_80069525 - 1;
+                }
+            }
+            if (func_80038C2C(0, nuevo, modo) != 0) {
+                mostrado = D_80069525;
+                vida = D_80010043;
+                if (mostrado < vida) {
+                    D_80069525 = mostrado + 1;
+                    if ((u8)(mostrado + 1) >= 0x64) {
+                        D_80069525 = 0x63;
+                    }
+                } else if (vida < mostrado) {
+                    D_80069525 = mostrado - 1;
+                }
+            }
+        }
+        func_80038E84(0, D_80069525 < D_80010043 ? (D_80010043 - D_80069525) * 0xC8 : 0xC8);
+
+        e = EST;
+        idx = e[ESTADO_INDICE_BARRA3];
+        valor = e[ESTADO_TABLA_BARRAS + idx];
+        if (valor != D_80069574) {
+            modo = 0;
+            if (D_80069574 == 0xFF) {
+                D_80069574 = valor;
+                modo = 1;
+                nuevo = valor;
+            } else if (D_80069574 < valor) {
+                nuevo = D_80069574 + 1;
+            } else {
+                nuevo = D_80069574 - 1;
+            }
+            if (func_80038C2C(3, nuevo, modo) != 0) {
+                mostrado = D_80069574;
+                f = EST;
+                valor = f[ESTADO_TABLA_BARRAS + idx];
+                if (mostrado < valor) {
+                    D_80069574 = mostrado + 1;
+                } else if (valor < mostrado) {
+                    D_80069574 = mostrado - 1;
+                }
+            }
+        }
+        func_80038E84(3, 0xC8);
+
+        e = EST;
+        idx = e[ESTADO_INDICE_BARRA7];
+        valor = e[ESTADO_TABLA_BARRAS + idx];
+        if (valor != D_80069514) {
+            modo = 0;
+            if (D_80069514 == 0xFF) {
+                D_80069514 = valor;
+                modo = 1;
+                nuevo = valor;
+            } else {
+                nuevo = D_80069514 + 1;
+            }
+            if (func_80038C2C(7, nuevo, modo) != 0) {
+                f = EST;
+                if (D_80069514 != f[ESTADO_TABLA_BARRAS + idx]) {
+                    D_80069514 = D_80069514 + 1;
+                }
+            }
+        }
+        func_80038E84(7, 0xC8);
+
+        f = EST;
+        if (f[ESTADO_GOLPES] != D_80069524) {
+            if ((s8)f[ESTADO_GOLPES] <= 0) {
+                if (!(D_80069698->flags14 & 0x01000000)) {
+                    pantalla = D_80069554;
+                    f[ESTADO_GOLPES] = 0;
+                    if (pantalla == 0) {
+                        pantalla = D_800694F8;
+                    }
+                    func_8001D588(pantalla, 0);
+                }
+            }
+            ant = D_80069524;
+            D_80069524 = D_80010041;
+            func_80038884(0xE, ant == 0xFF);
+        }
+        func_80038E84(0xE, 0xC8);
+
+        if (D_800100D0 != 0) {
+            func_8003861C(0xB);
+        } else {
+            D_8006AB70[11]->flags04 &= ~2;
+            D_8006AB70[12]->flags04 &= ~2;
+            D_8006AB70[13]->flags04 &= ~2;
+            D_800695F6 = 0;
+        }
+
+        g = EST;
+        if (g[ESTADO_PODER_0] != 0) {
+            n = 1;
+            if ((s8)g[ESTADO_PODER_0] != -1) {
+                n = g[ESTADO_PODER_0] * 30;
+            }
+            D_800695C0 = n;
+            D_80010049 = 0;
+        }
+        cuadros = D_800695C0;
+        if (D_800695C0 != 0) {
+            if (D_8006AA7C == 0 && (D_8006D9A8[0] & 0x100) == 0) {
+                D_800695C0 = cuadros - 1;
+            }
+            if (D_800695C0 != 0) {
+                func_800389FC(0x11, D_800695C0, 0);
+                D_8001004A = (s16)D_800695C0 / 30;
+            } else {
+                func_800389FC(0x11, 0, 1);
+                D_8001004A = 0;
+            }
+        }
+
+        g = EST;
+        if (g[ESTADO_PODER_1] != 0) {
+            n = 1;
+            if ((s8)g[ESTADO_PODER_1] != -1) {
+                n = g[ESTADO_PODER_1] * 30;
+            }
+            D_8006968A = n;
+            D_8001004B = 0;
+        }
+        cuadros = D_8006968A;
+        if (D_8006968A != 0) {
+            if (D_8006AA7C == 0 && (D_8006D9A8[0] & 0x100) == 0) {
+                D_8006968A = cuadros - 1;
+            }
+            if (D_8006968A != 0) {
+                func_800389FC(0x11, D_8006968A, 0);
+                D_8001004C = (s16)D_8006968A / 30 + 1;
+            } else {
+                func_800389FC(0x11, 0, 1);
+                D_8001004C = 0;
+            }
+        }
+
+        g = EST;
+        if (g[ESTADO_PODER_2] != 0) {
+            n = 1;
+            if ((s8)g[ESTADO_PODER_2] != -1) {
+                n = g[ESTADO_PODER_2] * 30;
+            }
+            D_8006969E = n;
+            D_80010070 = 0;
+        }
+        cuadros = D_8006969E;
+        if (D_8006969E != 0) {
+            if (D_8006AA7C == 0 && (D_8006D9A8[0] & 0x100) == 0) {
+                D_8006969E = cuadros - 1;
+            }
+            if (D_8006969E != 0) {
+                func_800389FC(0x11, D_8006969E, 0);
+                D_80010071 = (s16)D_8006969E / 30 + 1;
+            } else {
+                func_800389FC(0x11, 0, 1);
+                D_80010071 = 0;
+            }
+        }
+
+        g = EST;
+        if (g[ESTADO_PODER_3] != 0) {
+            n = 1;
+            if ((s8)g[ESTADO_PODER_3] != -1) {
+                n = g[ESTADO_PODER_3] * 30;
+            }
+            D_80069526 = n;
+            D_80010072 = 0;
+        }
+        cuadros = D_80069526;
+        if (D_80069526 != 0) {
+            if (D_8006AA7C == 0 && (D_8006D9A8[0] & 0x100) == 0) {
+                D_80069526 = cuadros - 1;
+            }
+            if (D_80069526 != 0) {
+                func_800389FC(0x11, D_80069526, 0);
+                D_80010073 = (s16)D_80069526 / 30 + 1;
+            } else {
+                func_800389FC(0x11, 0, 1);
+                D_80010073 = 0;
+            }
+        }
+
+        ob = D_8006ABD8;
+        if (D_80010048 & 0x80) {
+            if (!(ob->flags04 & 2)) {
+                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E864, D_8005E8D4, 1);
+            }
+        } else {
+            ob->flags04 &= ~2;
+        }
+        ob = D_8006ABE0;
+        if (D_8001006D & 2) {
+            if (!(ob->flags04 & 2)) {
+                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E868, D_8005E8DC, 1);
+            }
+        } else {
+            ob->flags04 &= ~2;
+        }
+        ob = D_8006ABDC;
+        if (D_8001006D & 4) {
+            if (!(ob->flags04 & 2)) {
+                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E866, D_8005E8D8, 1);
+            }
+        } else {
+            ob->flags04 &= ~2;
+        }
+    } else {
+        D_80069524 = D_80010041;
+    }
+    D_80069554 = 0;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80039094);
+#endif

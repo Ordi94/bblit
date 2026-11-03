@@ -976,4 +976,20 @@ extern u8* D_8006966C;
 extern int EnterCriticalSection(void);
 extern void ExitCriticalSection(void);
 
+/*
+ * Valores mostrados por los indicadores de la interfaz (0xFF = sin inicializar): barras de los
+ * grupos 0, 3 y 7 (lbu/sb en 0x800390DC, 0x80039240 y 0x800392F8) y contadores de cuadros de los
+ * cuatro temporizadores de poderes (lh/lhu/sh en 0x800394CC, 0x800395C8, 0x800396C8 y 0x800397C8).
+ */
+extern u8 D_80069525;
+extern u8 D_80069574;
+extern u8 D_80069514;
+extern s16 D_800695C0;
+extern s16 D_8006968A;
+extern s16 D_8006969E;
+extern s16 D_80069526;
+
+/* D_80069554: pantalla pedida a func_8001D588 (lw en 0x800393BC; sw zero en 0x800399BC). */
+extern s32 D_80069554;
+
 #endif
