@@ -7,15 +7,13 @@
  * seno, si sube o cae poco lo amortigua o lo limita a +-70, y fija o limpia las banderas de
  * suelo (0x2), salto (0x200) y caida libre segun toque el suelo o empiece un salto.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 1135 con la configuracion versionada (-G0). Misma estructura de ramas y mismos almacenes; en el bloque de despegue el original conserva dos copias de las banderas (move v1,v0) y ordena los almacenes de h108 y w10E de otro modo. */
 void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* orden)
 {
-    s32 dy;
     s32 nuevo;
-    s32 t;
     s32 v;
-    s32 f;
+    s32 dy;
+    s32 t;
+    s32 tipo;
 
     dy = m->dy;
     nuevo = o->param.trans.vy + dy;
@@ -26,7 +24,7 @@ void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* orden)
         if (o->h108 >= 0xC00) {
             o->h108 = 0xC00;
         }
-        t = 0x46 - ((-(rsin(o->h108 + 0x400) * 0x46)) >> 12);
+        t = 0x46 - (-(rsin(o->h108 + 0x400) * 0x46) >> 12);
         o->h108 += 0x44;
         o->h116 = t;
         if (o->flags14 & 0x10000) {
@@ -56,21 +54,21 @@ void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* orden)
             }
         }
         goto fin;
-    } else {
-        if (!(o->flags14 & 1)) {
-            if (o->flags14 & 2) {
-                if (dy > 0) {
-                    v = dy >> 1;
-                    if (v != 0) {
-                        m->dy = v;
-                    }
-                } else if (dy >= -0x45) {
-                    v = dy >> 1;
-                    if (v != 0) {
-                        m->dy = v;
-                    }
+    } else if (!(o->flags14 & 1)) {
+        if (o->flags14 & 2) {
+            if (dy > 0) {
+                v = dy >> 1;
+                if (v != 0) {
+                    m->dy = v;
                 }
-            } else if (!(o->flags14 & 4)) {
+            } else if (dy >= -0x45) {
+                v = dy >> 1;
+                if (v != 0) {
+                    m->dy = v;
+                }
+            }
+        } else {
+            if (!(o->flags14 & 4)) {
                 if (dy >= 0x47) {
                     m->dy = 0x46;
                 } else if (dy < -0x46) {
@@ -82,18 +80,18 @@ void func_8001C424(Objeto* o, Movimiento* m, ResultadoBaldosa* orden)
 calculo:
     o->h116 = m->dy;
     if (m->dy + o->param.trans.vy == o->i100 + o->h10C && (s16)orden->flags != 8 && (s16)orden->flags != 1) {
-despegue:
-        f = o->flags14 | 2;
-        o->flags14 = f;
+    despegue:
+        /* El tipo de baldosa se lee antes de tocar las banderas: asi la mascara de banderas y el
+         * tipo se reparten los registros de argumento como en el original. */
+        tipo = orden->tipo;
+        o->flags14 |= 2;
         o->h108 = 0x800;
-        o->w10E = orden->tipo;
-        o->flags14 = f & 0xFFFEFDFF;
-    } else {
-        if (!(o->flags14 & 2)) {
-            o->flags14 &= ~2;
-            if (!(o->flags14 & 5)) {
-                o->flags14 |= 0x200;
-            }
+        o->w10E = tipo;
+        o->flags14 &= 0xFFFEFDFF;
+    } else if (!(o->flags14 & 2)) {
+        o->flags14 &= ~2;
+        if (!(o->flags14 & 5)) {
+            o->flags14 |= 0x200;
         }
     }
 fin:
@@ -101,9 +99,6 @@ fin:
         m->dy = dy;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C424);
-#endif
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 100 con la configuracion versionada (-G0). Reparto de registros, llamadas y almacenes coinciden; difiere solo el hueco de retardo del salto previo a la comprobacion de D_80069698: el original lo deja en nop y GCC lo rellena con la parte alta de la direccion (lui), con las dos formas de la condicion compuesta. */
