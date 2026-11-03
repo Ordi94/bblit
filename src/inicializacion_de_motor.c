@@ -1,6 +1,7 @@
 #include "common.h"
 #include "globales.h"
 #include "objetos.h"
+#include "arranque.h"
 #include "psyq/LIBETC.H"
 #include "psyq/LIBCD.H"
 #include "psyq/LIBPRESS.H"
@@ -30,7 +31,20 @@ extern void func_8005595C(s32 valor);
 extern u16 D_80075FFE[5];
 extern u16 D_8006D018[];
 extern void func_80039CD0(s32 prim);
-extern u32 func_80045498(Objeto* objeto, void* guion, BloqueTrabajo* bloque);
+extern u32 func_80045498(Objeto* objeto, u8* guion, BloqueTrabajo* bloque);
+extern u32 func_80037D3C(u16 valor);
+extern u32 func_80045D98(u32 mascara);
+
+/* Posicion de la pluma de texto: func_800450E8 la lee por la direccion (x en +0, y en +4). */
+typedef struct PosicionTexto {
+    s32 x;
+    s32 y;
+} PosicionTexto;
+
+/* Tablas del texto: indice de glifo y avance horizontal por caracter, y nombres de boton por configuracion. */
+extern u8 D_8005F940[];
+extern u8 D_8005FA40[];
+extern u8 D_8005F920[];
 /*
  * Estado que func_80044A04 reinicia al empezar el nivel. Los de un tamano de dos o cuatro bytes se
  * declaran escalares: el original los escribe con la forma simbolica de -G8 (lui at).
@@ -305,7 +319,7 @@ void func_80044F20(void)
     func_8003502C(o);
 }
 
-void func_800450E8(Glifo* a0, u8 a1, OrigenEntrada* a2)
+void func_800450E8(Glifo* a0, u16 a1, OrigenEntrada* a2)
 {
     D_800694D4->glifo = a0;
     D_800694D4->x = a2->h0;
@@ -441,10 +455,262 @@ s32 func_800453D0(u8** p)
 }
 
 /*
+ * Interprete de guiones de texto: recorre los bytes de `guion` y deja en la lista de glifos un glifo por
+ * caracter imprimible, con la posicion que lleva en `pos`. Los codigos de control empiezan por '>'.
+ * Devuelve la mascara de opciones de ventana (0x10, 0x20, 0x40, 0x80), o cero si el guion queda en pausa.
+ */
+#ifdef NON_MATCHING
+/* Pendiente: puntuacion 245 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original inicializa la mascara con el registro cero y el ancho desde la mascara (no desde la paleta), el digito se suma con addiu y no con ori, y la x del cursor se trunca desde el valor devuelto y no desde su copia. */
+u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
+{
+    PosicionTexto pos;
+    s32 reserva[2];
+    u8 boton[3];
+    s16 y0;
+    s32 x0;
+    s16 primero;
+    s16 ancho;
+    u32 mascara;
+    u8 abierta;
+    s32 paleta;
+    s32 q;
+    u32 t;
+    u8 c;
+    u8 g;
+    u8 sub;
+    s32 i;
+
+    if (D_8006D018[0] == 0) {
+        func_80044F20();
+    }
+    paleta = 0;
+    primero = -1;
+    abierta = 0;
+    mascara = 0;
+    ancho = 0;
+    pos.x = -0xC8;
+    pos.y = -0x3C;
+    x0 = -0xC8;
+    c = *guion;
+    y0 = -0x3C;
+    while (c != 0) {
+        g = D_8005F940[c];
+        if (g != 0) {
+            if (primero < 0) {
+                primero = D_80069652;
+            }
+            q = paleta;
+            if (g == 0x6C) {
+                q = 9;
+            } else if (g == 0x6B) {
+                q = 0xA;
+            } else if (g == 0x68) {
+                q = 6;
+            } else if (g == 0x6A) {
+                q = 8;
+            } else if (g == 0x69) {
+                q = 7;
+            } else if (g == 0x67) {
+                q = 5;
+            } else if (g == 0x6D) {
+                q = 0xB;
+            } else if (g == 0x6E) {
+                q = 0xC;
+            }
+            func_800450E8((Glifo*)cursor->fotogramas + (g - 1), q, (OrigenEntrada*)&pos);
+            ancho += D_8005FA40[c];
+            pos.x += D_8005FA40[c];
+        } else if (c == 0xA) {
+            if (abierta) {
+                func_80045368(primero, ancho);
+            }
+            ancho = 0;
+            abierta = 0;
+            primero = -1;
+            pos.x = (s16)x0;
+            pos.y += 0xD;
+        } else if (c == 0x20) {
+            ancho += 6;
+            pos.x += 6;
+        } else if (c == 9) {
+            ancho += 0x18;
+            pos.x += 0x18;
+        } else if (c == 0x3E) {
+            guion++;
+            sub = *guion;
+            if (sub == 0x43) {
+                guion++;
+                c = *guion;
+                guion++;
+                if (c == 0x4C) {
+                    pos.x = (s16)x0;
+                    pos.y = (s16)y0;
+                    mascara = 0;
+                    o->u78.p = ClearList((NodoLista*)&o->u78);
+                } else if (c == 0x58) {
+                    goto leer_x;
+                } else if (c == 0x59) {
+                    y0 = func_800453D0(&guion);
+                    pos.y = y0;
+                } else if (c == sub) {
+                    abierta = 1;
+                    leer_x:
+                    x0 = func_800453D0(&guion);
+                    pos.x = (s16)x0;
+                } else if (c == 0x50) {
+                    paleta = func_800453D0(&guion);
+                }
+            } else if (sub == 0x50) {
+                guion++;
+g = *guion;
+                guion++;
+                if (g & 8) {
+                    mascara |= 0x80;
+                }
+                if (g & 2) {
+                    mascara |= 0x20;
+                }
+                if (g & 1) {
+                    mascara |= 0x10;
+                }
+                if (g & 4) {
+                    mascara |= 0x40;
+                }
+            } else if (sub == 0x57) {
+                guion++;
+                t = func_800453D0(&guion);
+                if (t == 0) {
+                    if (mascara == 0) {
+                        mascara = 0x40;
+                    }
+                    mascara = func_80045D98(mascara);
+                    o->w17C = 2;
+                } else {
+                    o->w22 = 0;
+                    o->w17C = t;
+                    if (guion[1] != 0) {
+                        o->p180 = (struct NodoSecuencia*)guion;
+                    }
+                    if (abierta) {
+                        func_80045368(primero, ancho);
+                    }
+                    return 0;
+                }
+            } else if (sub == 0x49) {
+                guion++;
+                c = *guion;
+                guion++;
+                if (c == 0x44) {
+                    o->w1C = *guion;
+                    guion++;
+                }
+            } else if (sub == 0x42) {
+                guion++;
+                c = *guion;
+                guion++;
+                t = *guion;
+                guion++;
+                if (c == 0x47) {
+                    if (t == 7) {
+                        t = (ESTADO_PRINCIPAL->r[0xFC] << 8) + ESTADO_PRINCIPAL->r[7];
+                    } else {
+                        t = ESTADO_PRINCIPAL->r[t];
+                    }
+                } else if (D_80010000 == 0) {
+                    if (t >= 0x2A && t <= 0x34) {
+                        t = (D_8006AA70[t + 1] << 8) + D_8006AA70[t];
+                    } else {
+                        t = D_8006AA70[t];
+                    }
+                } else {
+                    t = D_8006AA70[t];
+                }
+                t = func_80037D3C(t);
+q = 8;
+                if ((t & 0xF0000000) == 0) {
+                    t <<= 4;
+                    q = 7;
+                    while (q > 1 && (t & 0xF0000000) == 0) {
+                        t <<= 4;
+                        q--;
+                    }
+                }
+                if (q > 0) {
+                    do {
+                        if (primero < 0) {
+                            primero = D_80069652;
+                        }
+                        c = (t >> 28) + 0x30;
+                        func_800450E8((Glifo*)cursor->fotogramas + (D_8005F940[c] - 1), paleta, (OrigenEntrada*)&pos);
+                        ancho += D_8005FA40[c];
+                        pos.x += D_8005FA40[c];
+                        q--;
+                        t <<= 4;
+                    } while (q > 0);
+                }
+            } else if (sub == 0x44) {
+                guion++;
+                g = D_8005F920[*guion + ESTADO_PRINCIPAL->r[BANCO_CONFIG] * 8];
+                q = paleta;
+                boton[2] = 0;
+                boton[1] = 0;
+                if (g == 0) {
+                    boton[0] = 0xAD;
+                    q = 6;
+                } else if (g == 1) {
+                    boton[0] = 0xAF;
+                    q = 8;
+                } else if (g == 2) {
+                    boton[0] = 0xAE;
+                    q = 7;
+                } else if (g == 3) {
+                    boton[0] = 0xAC;
+                    q = 5;
+                } else if (g == 4) {
+                    boton[0] = 0x4C;
+                    boton[1] = 0x31;
+                } else if (g == 5) {
+                    boton[0] = 0x4C;
+                    boton[1] = 0x32;
+                } else if (g == 6) {
+                    boton[0] = 0x52;
+                    boton[1] = 0x31;
+                } else if (g == 7) {
+                    boton[0] = 0x52;
+                    boton[1] = 0x32;
+                }
+                c = boton[0];
+i = 0;
+                while (c != 0 && i < 3) {
+                    g = D_8005F940[c];
+                    if (g != 0) {
+                        if (primero < 0) {
+                            primero = D_80069652;
+                        }
+                        func_800450E8((Glifo*)cursor->fotogramas + (g - 1), q, (OrigenEntrada*)&pos);
+                        ancho += D_8005FA40[c];
+                        pos.x += D_8005FA40[c];
+                    }
+i++;
+                    c = boton[i];
+                }
+            }
+        }
+        guion++;
+        c = *guion;
+    }
+    if (abierta) {
+        func_80045368(primero, ancho);
+    }
+    return mascara;
+}
+#else
+/*
  * Pendiente de traducir: interprete de guiones de texto que compone una linea de glifos (0x7B4 bytes,
  * 14 llamadas); tiene marco de pila (0x58) y no es una rutina manuscrita.
  */
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045498);
+#endif
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Mismo flujo, mismas escrituras y mismo orden; el estado del lector se lee como D_8006AA70[0xC] (arreglo) para que el lui de la base pueda separarse de la carga, como en el original. Solo difiere la primera comparacion: el original la hace sobre una copia de a2 en v0 (move v0,a2 ; beqz v0) y GCC compara a2 directamente. */
@@ -498,6 +764,6 @@ u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045C4C);
 #endif
 
-void func_80045D98(void)
+u32 func_80045D98(u32 mascara)
 {
 }
