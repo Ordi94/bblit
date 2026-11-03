@@ -517,7 +517,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020240);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 645 con la configuracion versionada (g = 8 del archivo). Solo difiere el reparto de registros: el original deja el nodo de la cadena en a3, el contador en t0 y la tercera componente en t1 (el compilador los asigna a t1, a3 y t0), usa a0 para la direccion de la distancia y reparte v0 y v1 de otro modo en el bloque del resultado. */
+/* Pendiente: puntuacion 10 con la configuracion versionada (g = 8 del archivo). Solo difiere el registro del puntero a la distancia que recibe GEO_NORMA2_XZ: el original lo deja en a0 y GCC en v0 (solo se consigue declarando como destruidos registros que la macro no escribe, recurso no admitido). */
 /*
  * Busca el objeto solido que sirve de apoyo bajo un punto. Recorre la lista de solidos (D_80069630)
  * y, para cada uno que cumple la mascara, esta visible, es del mismo grupo, es un volumen solido
@@ -536,7 +536,6 @@ ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara
     PeldanoApoyo* p;
     PeldanoApoyo* q;
     s16 i;
-    s16 j;
     s16 k;
     s32 x1;
     s32 y1;
@@ -544,6 +543,8 @@ ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara
     s32 r;
     s32 rs;
     s32 h;
+    /* Copia de 16 bits de la x del peldano, tomada antes de los almacenes al resultado. */
+    s16 x_pel;
 
     pt = punto;
     ms = mascara;
@@ -606,12 +607,14 @@ ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara
                                     x1 = q->x;
                                     y1 = q->y;
                                     z1 = q->z;
-                                    for (j = i - 2, q = &w->pel[j]; j >= 0; j--, q--) {
+                                    /* Un solo contador (k) para todos los bucles de peldanos: con uno
+                                     * aparte en estos dos, el reparto de a3, t0 y t1 cambia. */
+                                    for (k = i - 2, q = &w->pel[k]; k >= 0; k--, q--) {
                                         gte_ldv0(q);
                                         gte_rtv0();
                                         gte_stsv(q);
                                     }
-                                    for (j = i - 2, q = &w->pel[j]; j >= 0; j--, q--) {
+                                    for (k = i - 2, q = &w->pel[k]; k >= 0; k--, q--) {
                                         q->x += x1;
                                         q->y += y1;
                                         q->z += z1;
@@ -651,10 +654,13 @@ ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara
                                 h = w->out.vy - 0x12C;
                                 if (p[0].y < h && h < p[0].y + p[0].alto) {
                                     w->cur->portado.trans.vz = (s32)p[0].nodo;
-                                    w->res.coord = &w->cur->coord;
+                                    /* El objeto se guarda antes que su sistema de coordenadas: asi
+                                     * la carga de w->cur queda en el registro que usa el original. */
                                     w->res.objeto = w->cur;
+                                    w->res.coord = &w->cur->coord;
+                                    x_pel = p[0].x;
                                     w->res.h0A = w->out.vy;
-                                    w->res.x = p[0].x;
+                                    w->res.x = x_pel;
                                     w->res.z = p[0].z;
                                     return &w->res;
                                 }
