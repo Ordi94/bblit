@@ -591,10 +591,11 @@ void func_8003861C(s32 idx)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 170 con la configuracion versionada (g = 8 del archivo). Coincide la
- * estructura y el marco de pila (la reserva de 8 bytes sin uso lo iguala); difiere la asignacion de
- * registros salvados (el original deja los tres identificadores en $s7, $s6 y $s5, el parametro
- * en $s4 y la tabla de posiciones en $s3) y el registro del indice j ($a2 en el original).
+ * Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Coincide la
+ * estructura y el marco de pila (la reserva de 8 bytes sin uso lo iguala); difiere solo la
+ * asignacion de registros: el original deja el parametro en $s4, la tabla de posiciones en $s3 y
+ * los tres identificadores en $s7, $s6 y $s5 (GCC da a los identificadores los tres primeros
+ * libres), y calcula la mitad de k directamente en $a2 en lugar de pasar por $v0.
  */
 /*
  * Reinicia, de dos en dos, los objetos del grupo 'idx' (tres consecutivos de la tabla
@@ -608,6 +609,9 @@ void func_80038884(s32 idx, s32 modo)
     /* Sin uso: el original deja 8 bytes de pila libres entre los argumentos y los registros salvados. */
     s32 reserva[2];
     Objeto** p;
+    Objeto** celda_dos;
+    Objeto** celda_uno;
+    Objeto** celda_cero;
     Objeto* o;
     s16* ids;
     s32 id0;
@@ -630,20 +634,25 @@ void func_80038884(s32 idx, s32 modo)
         p = v;
         do {
             nivel = D_80069524;
+            /* Cada rama lleva su propio puntero a la celda de 'v': con uno compartido, o leyendo
+             * v[j] directamente, el asignador reparte los registros de otro modo. */
             if (nivel >= k + 2) {
                 j = k / 2;
-                o = p[j];
+                celda_dos = p + j;
+                o = *celda_dos;
                 id = id0;
             } else if (nivel >= k + 1) {
                 j = k / 2;
-                o = p[j];
+                celda_uno = p + j;
+                o = *celda_uno;
                 id = id1;
             } else {
                 j = k / 2;
-                o = p[j];
+                celda_cero = p + j;
+                o = *celda_cero;
                 id = id2;
             }
-            ((ReiniciarSinConversion)func_80037DB4)(o, id, D_8005E86C[idx + j], modo);
+            ((ReiniciarSinConversion)func_80037DB4)(o, id, D_8005E86C[j + idx], modo);
             k += 2;
         } while (k < D_80010042);
     }
