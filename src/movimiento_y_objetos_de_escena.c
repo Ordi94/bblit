@@ -106,54 +106,58 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C424);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 498 con la configuracion versionada (-G0). Misma secuencia de llamadas y almacenes; el original reparte s1 al objeto y s0 al area de trabajo y ordena un almacen de d->z antes de la lectura de w->h18, el C los asigna al reves. */
+/* Pendiente: puntuacion 100 con la configuracion versionada (-G0). Reparto de registros, llamadas y almacenes coinciden; difiere solo el hueco de retardo del salto previo a la comprobacion de D_80069698: el original lo deja en nop y GCC lo rellena con la parte alta de la direccion (lui), con las dos formas de la condicion compuesta. */
 void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
 {
     s32* pos;
     u8* area;
     s32 v;
     u16 flags;
-
-    w->x = o->param.trans.vx;
-    w->y = o->param.trans.vy;
-    w->z = o->param.trans.vz;
-    area = w->consulta;
+    TrabajoMov* trab;
+    /* El original conserva el area de trabajo en un registro salvado desde la entrada; la
+     * copia local del parametro reproduce ese reparto de registros. */
+    trab = w;
+    trab->x = o->param.trans.vx;
+    trab->y = o->param.trans.vy;
+    trab->z = o->param.trans.vz;
+    area = trab->consulta;
     v = o->h10A;
     if (v < 0) {
         o->param.trans.vy = o->param.trans.vy + v;
     }
     pos = &o->param.trans.vx;
-    w->y10 = o->param.trans.vy;
-    w->h18 = d->x;
-    w->h1A = d->z;
+    trab->y10 = o->param.trans.vy;
+    trab->h18 = d->x;
+    trab->h1A = d->z;
     BarrerTerreno(pos, d, r, area);
-    w->dx = d->x;
-    w->dz = d->z;
+    trab->dx = d->x;
+    trab->dz = d->z;
     o->param.trans.vx = o->param.trans.vx + d->x;
     o->param.trans.vz = o->param.trans.vz + d->z;
     flags = r->flags;
     if (flags & 0x10) {
-        w->h1A = w->h1A - d->z;
+        trab->h1A = trab->h1A - d->z;
+        /* El original resta h18 de d->x antes de poner a cero d->z. */
+        d->x = trab->h18 - d->x;
         d->z = 0;
-        d->x = w->h18 - d->x;
-        o->param.trans.vy = w->y10;
+        o->param.trans.vy = trab->y10;
         BarrerTerreno(pos, d, r, area);
         v = d->x;
         if (v == 0) {
             o->h110 = 0;
         } else {
-            w->dx = w->dx + v;
+            trab->dx = trab->dx + v;
             o->param.trans.vx = o->param.trans.vx + d->x;
         }
         d->x = 0;
-        d->z = w->h1A;
-        o->param.trans.vy = w->y10;
+        d->z = trab->h1A;
+        o->param.trans.vy = trab->y10;
         BarrerTerreno(&o->param.trans.vx, d, r, area);
         v = d->z;
         if (v == 0) {
             o->h112 = 0;
         } else {
-            w->dz = w->dz + v;
+            trab->dz = trab->dz + v;
             o->param.trans.vz = o->param.trans.vz + d->z;
         }
     } else if (flags & 4) {
@@ -164,18 +168,18 @@ void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
     if (r->flags & 8) {
         if (o == D_80069698 || !(o->flags14 & 1)) {
             o->param.trans.vy = o->param.trans.vy + 1;
-            w->w1C = r->grupo;
+            trab->w1C = r->grupo;
             func_8001C134(&o->param.trans.vx, r, (TrabajoBaldosa*)area);
-            r->grupo = w->w1C;
+            r->grupo = trab->w1C;
         }
     }
     o->i100 = o->param.trans.vy;
     o->h10C = r->pendiente_abs;
-    o->param.trans.vx = w->x;
-    o->param.trans.vy = w->y;
-    o->param.trans.vz = w->z;
-    d->x = w->dx;
-    d->z = w->dz;
+    o->param.trans.vx = trab->x;
+    o->param.trans.vy = trab->y;
+    o->param.trans.vz = trab->z;
+    d->x = trab->dx;
+    d->z = trab->dz;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C6CC);
