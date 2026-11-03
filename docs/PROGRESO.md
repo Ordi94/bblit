@@ -13,7 +13,7 @@ construcción normal) y de la tabla de símbolos.
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
 Bytes de código del juego descompilados: 71088 de 201416 (35.29 %).
-Funciones marcadas `NON_MATCHING`: 55.
+Funciones marcadas `NON_MATCHING`: 56.
 Coherencia con el ensamblador: correcta (726 `glabel` en `asm/` + 376 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
@@ -28,7 +28,7 @@ Coherencia con el ensamblador: correcta (726 `glabel` en `asm/` + 376 en C = 110
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
 | gestion_y_dibujo_de_objetos | 4 | 25 | 9 | 8 | 8400 | 18624 |
 | graficos_y_gte | 3 | 14 | 5 | 0 | 4024 | 11812 |
-| inicializacion_de_motor | 1 | 8 | 3 | 5 | 2060 | 5276 |
+| inicializacion_de_motor | 1 | 8 | 4 | 4 | 2060 | 5276 |
 | interprete_de_eventos | 1 | 194 | 1 | 2 | 11656 | 11900 |
 | logica_de_niveles | 3 | 15 | 5 | 1 | 10544 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
@@ -54,7 +54,7 @@ Coherencia con el ensamblador: correcta (726 `glabel` en `asm/` + 376 en C = 110
 | `src/graficos_y_gte.c` | 4 | 5 | 0 | 2284 | 10072 |
 | `src/graficos_y_gte_10.c` | 6 | 0 | 0 | 1076 | 1076 |
 | `src/graficos_y_gte_12.c` | 4 | 0 | 0 | 664 | 664 |
-| `src/inicializacion_de_motor.c` | 8 | 3 | 5 | 2060 | 5276 |
+| `src/inicializacion_de_motor.c` | 8 | 4 | 4 | 2060 | 5276 |
 | `src/interprete_de_eventos.c` | 194 | 1 | 2 | 11656 | 11900 |
 | `src/logica_de_niveles.c` | 0 | 1 | 0 | 0 | 19880 |
 | `src/logica_de_niveles_2.c` | 3 | 0 | 0 | 2016 | 2016 |
@@ -121,6 +121,7 @@ Coherencia con el ensamblador: correcta (726 `glabel` en `asm/` + 376 en C = 110
 - `func_80040F78`: Pendiente: puntuacion 370 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones que el original, con el desplazamiento del indice como primer sumando de la direccion de cada seccion; solo difiere el reparto de registros de la ultima etapa (el original deja el puntero del bucle en a2 y la constante 4 en a3, el indice en t0 en todas las etapas, y copia el puntero de la segunda etapa de una direccion calculada en v1). Recorre la cabecera de secciones de un contenedor (n entradas de tipo, tamano y tamano alineado) y calcula la posicion, en bytes desde el inicio del archivo, de 
 - `func_80044EA8`: Pendiente: puntuacion 310 con la configuracion versionada (g = 8 del archivo). Misma estructura y mismo reparto de registros que el original (la tabla comparte registro con la definicion del nodo); difiere la planificacion: el original coloca la parte alta de D_8006D018 (lui) en el hueco de la carga de la definicion y carga el arreglo de fotogramas despues de guardar la tabla en el objeto, mientras que GCC carga el arreglo antes del almacen y deja un nop tras la lectura de la definicion.
 - `func_80045150`: Pendiente: puntuacion 3641 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s6 al contador y s7 y fp a las dimensiones del glifo, el C los reparte al reves y desplaza el resto de la planificacion.
+- `func_80045498`: Pendiente: puntuacion 35 con la configuracion versionada (g = 8 del archivo). Un operando de registro: la x del cursor se trunca desde su copia en s8 y el original la trunca desde v0 (el valor devuelto por la lectura del numero); sin la lectura posterior de x0 el objeto pasa a ocupar $fp. El resto son seis marcas de forma simbolica de las direcciones del estado principal (los bytes coinciden).
 - `func_80045C4C`: Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Mismo flujo, mismas escrituras y mismo orden; el estado del lector se lee como D_8006AA70[0xC] (arreglo) para que el lui de la base pueda separarse de la carga, como en el original. Solo difiere la primera comparacion: el original la hace sobre una copia de a2 en v0 (move v0,a2 ; beqz v0) y GCC compara a2 directamente.
 - `main`: Pendiente: puntuacion 1025 con la configuracion versionada (g = 8 del archivo). El flujo y los tipos coinciden (pausa y demostracion son s16, el contador de cuadros D_80069676 es volatile u16); difieren el reparto de registros salvados de las constantes 2 y 3 y de la tabla de tiempos D_8006CF68, y la base `lui` del estado se hoistea antes que en el original. Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la pausa y la maquina de estados D_80069662 (el estad
 

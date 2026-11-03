@@ -34,7 +34,11 @@ extern u16 D_8006D018[];
 extern void func_80039CD0(s32 prim);
 extern u32 func_80045D98(u32 mascara);
 
-/* Posicion de la pluma de texto: func_800450E8 la lee por la direccion (x en +0, y en +4). */
+/*
+ * Posicion de la pluma de texto: vista de 32 bits de la misma memoria que OrigenEntrada (x en +0, y en +4).
+ * El interprete la escribe con accesos de palabra y func_800450E8 la lee por la direccion con lhu y lb; no se
+ * funden en un solo tipo porque la lectura pasaria a lw y cambiaria el codigo de func_800450E8.
+ */
 typedef struct PosicionTexto {
     s32 x;
     s32 y;

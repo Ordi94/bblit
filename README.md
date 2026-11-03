@@ -8,16 +8,16 @@ estudiarlo y portarlo a plataformas modernas.
 <!-- progreso:inicio -->
 ## Progreso
 
-Medido el 2026-11-03 sobre el commit `79c3953`. Generado por `python tools/build.py progreso`;
+Medido el 2026-11-03 sobre el commit `ad8130a`. Generado por `python tools/build.py progreso`;
 no se edita a mano.
 
 | Estado | Cifra |
 |---|---:|
 | Funciones del juego | 450 |
 | Coincidentes byte a byte | 376 |
-| En C, pendientes de afinar (`NON_MATCHING`) | 55 |
+| En C, pendientes de afinar (`NON_MATCHING`) | 56 |
 | Escritas a mano, conservadas en ensamblador | 16 |
-| Sin traducir | 3 |
+| Sin traducir | 2 |
 | Bytes coincidentes | 71088 de 201416 |
 | Porcentaje de bytes coincidentes | 35.29 % |
 
