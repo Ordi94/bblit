@@ -45,6 +45,7 @@ typedef struct PosicionTexto {
 extern u8 D_8005F940[];
 extern u8 D_8005FA40[];
 extern u8 D_8005F920[];
+
 /*
  * Estado que func_80044A04 reinicia al empezar el nivel. Los de un tamano de dos o cuatro bytes se
  * declaran escalares: el original los escribe con la forma simbolica de -G8 (lui at).
@@ -319,6 +320,7 @@ void func_80044F20(void)
     func_8003502C(o);
 }
 
+/* La paleta es de 16 bits: los llamadores la recortan con andi 0xFFFF antes de pasarla. */
 void func_800450E8(Glifo* a0, u16 a1, OrigenEntrada* a2)
 {
     D_800694D4->glifo = a0;
@@ -769,6 +771,10 @@ u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
 INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045C4C);
 #endif
 
+/*
+ * Rutina vacia del original: func_80045498 la llama con la mascara de opciones en a0 y recoge v0 como
+ * nueva mascara, por eso lleva parametro y valor de retorno aunque no emita codigo.
+ */
 u32 func_80045D98(u32 mascara)
 {
 }
