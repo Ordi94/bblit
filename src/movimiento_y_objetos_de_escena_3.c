@@ -169,7 +169,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E600);
  * evento puede crear un hijo acoplado, un objeto suelto, agarrar o soltar al protagonista.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 570 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5; la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera), el reparto de $a0/$v1 en la lectura del estado y el orden de cuatro almacenes del bloque de parametros de agarre. */
+/* Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5; la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera), el reparto de $a0/$v1 en la lectura de las banderas del cuadro y de los dos contadores de 8 bits, y el orden de las cargas de las tres restas del bloque de agarre. */
 u32 AvanzarAnimacionSprite(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
 {
     NodoAnimacion* n;
@@ -391,10 +391,12 @@ sigue:
                                         D_80069698->u18C.agarre.giro.u.z = 0;
                                         D_80069698->u18C.agarre.escala.vy = D_80069698->param.escala.vy;
                                         D_80069698->coord.param = (GsCOORD2PARAM*)&D_80069698->u18C.agarre;
-                                        D_80069698->w17E = 0;
                                         D_80069698->coord.super = o->raiz_ayudantes;
                                         D_80069698->w17C = c->eventos[i].id;
                                         D_80069698->flags14 = 0x2000000;
+                                        /* El cero de w17E va despues de las banderas: con el cero antes, el
+                                         * planificador separa el almacen de 16 bits mas del original. */
+                                        D_80069698->w17E = 0;
                                         o->p6C = D_80069698;
                                         D_80069698->p70 = o;
                                         func_8001CFCC(&D_80069698->coord);
