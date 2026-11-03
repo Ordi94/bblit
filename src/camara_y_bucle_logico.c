@@ -1161,12 +1161,7 @@ void func_800351B4(Objeto* o)
     }
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 550 con la configuracion versionada (g = 8 del archivo). El original carga antes del
- * bucle las constantes 0x47 y 1 de la ultima rama (t2 y t1) y por eso la tabla de saltos cae en t3; GCC las deja
- * dentro de la rama. Variantes: indexado por D_8005E768[i], constantes en locales, paso++, puntero local al estado.
- *
  * Lee los botones (D_80010010 sin los bits 0 y 3) y, si cambiaron respecto al cuadro anterior (dato pequeno
  * 0x104($gp)), avanza siete secuencias de teclas de D_8005E768 (24 bytes cada una: caso, paso y diez teclas);
  * al completar una ejecuta su caso con un switch de siete entradas.
@@ -1174,16 +1169,17 @@ void func_800351B4(Objeto* o)
 void func_80035244(void)
 {
     s32 i;
-    Secuencia* e;
     s32 estado;
+    Secuencia* e;
 
     estado = D_80010010;
     estado &= 0xFFF6;
     if (D_80069424 != estado) {
         D_80069424 = estado;
         if (estado != 0) {
+            i = 0;
             e = D_8005E768;
-            for (i = 0; i < 7; i++, e++) {
+            while (i < 7) {
                 if (e->teclas[e->paso] == estado) {
                     e->paso = e->paso + 1;
                     if (e->teclas[e->paso] == 0) {
@@ -1211,6 +1207,13 @@ void func_80035244(void)
                             ESTADO_PRINCIPAL->r[0x07] = 0x4D;
                             ESTADO_PRINCIPAL->r[0xFC] = 1;
                             ESTADO_PRINCIPAL->r[0x05] = 0x7C;
+                            /* Las dos sentencias finales se repiten en el caso 6 en lugar de caer en el: con una sola
+                             * copia las constantes 0x47 y 1 tienen un unico uso y el optimizador de bucles las deja
+                             * dentro de la rama; con dos usos las saca del bucle, como el original, y el compilador
+                             * vuelve a unir las colas identicas. */
+                            ESTADO_PRINCIPAL->nivel = 0x47;
+                            D_80069662 = 1;
+                            break;
                         case 6:
                             ESTADO_PRINCIPAL->nivel = 0x47;
                             D_80069662 = 1;
@@ -1220,13 +1223,13 @@ void func_80035244(void)
                 } else {
                     e->paso = 0;
                 }
+                /* El puntero avanza antes que el contador, como en el original. */
+                e++;
+                i++;
             }
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80035244);
-#endif
 
 #ifdef NON_MATCHING
 /*
