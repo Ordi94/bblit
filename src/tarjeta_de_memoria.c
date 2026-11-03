@@ -47,7 +47,7 @@ extern u8 D_8006AA7A[];
  * (-G8), asi que se define aqui, sin extern, y el enlace le da la direccion de config/symbols.txt. Se declaran
  * ademas en la tabla de datos pequenos de la configuracion para que el ensamblador los reescriba a $gp: con
  * `base_gp` el almacen de la bandera +0x3C ocupaba el hueco de retardo del jal de func_80015E94 en lugar de
- * `li a0,1`. Los usan SondearTarjeta y func_80015E94 (func_80014AC4 accede a +0x38 y +0x3C con base_gp, forma transitoria).
+ * `li a0,1`. Los usan SondearTarjeta, func_80015E94 y func_80014AC4 (esta lee la cuenta por ranura en +0x38).
  * La bandera +0x3C se declara u8 (la escribe con sb func_80015E94); SondearTarjeta la lee con `lb`
  * (0x800157C0, 0x800158FC, 0x800159E8), de modo que sus lecturas pasan por un acceso s8.
  */
@@ -89,12 +89,7 @@ extern s32 func_80014BA0(void* destino, s32 cantidad, s32 desplazamiento);
 extern s32 func_80014EF8(void* origen, s32 cantidad, s32 desplazamiento);
 extern s32 func_80014FAC(void);
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 895 con la configuracion versionada (g = 8 del archivo). El original direcciona la tabla de
- * cuentas con `addiu v0,gp,0x38`, que maspsx emite desde ASPSX 2.80 (la version fijada), y calcula la base del nombre
- * una sola vez antes del bucle.
- *
  * Busca en el directorio de la ranura `ranura` la entrada cuyo nombre coincide con los 18
  * caracteres de D_8005E051 y devuelve su indice, o -1 si no esta.
  */
@@ -102,16 +97,17 @@ s32 func_80014AC4(s16 ranura)
 {
     s16 i;
     s16 j;
-    s32 n;
     s8* p;
     s8* q;
 
-    n = ((s32*)(base_gp + 0x38))[ranura];
-    for (i = 0; i < n; i++) {
-        p = &D_800697B0[ranura * 0x258] + i * 0x28;
+    /* El numero de entradas se vuelve a leer en la condicion: el original lo compara contra una
+     * copia de la misma carga, no contra una variable aparte. */
+    for (i = 0; i < D_80069358[ranura]; i++) {
+        /* Primero el nombre buscado y se compara en el orden q, p, como el original. */
         q = D_8005E051;
+        p = &D_800697B0[ranura * 0x258] + i * 0x28;
         for (j = 0; j < 0x12; j++) {
-            if (*p++ != *q++) {
+            if (*q++ != *p++) {
                 break;
             }
         }
@@ -121,9 +117,6 @@ s32 func_80014AC4(s16 ranura)
     }
     return -1;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_80014AC4);
-#endif
 
 /*
  * Lee `cantidad` bytes del archivo de partida a partir de `desplazamiento`; 1 si se leyo completo.
