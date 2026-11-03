@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 375 | 71056 |
+| Código del juego | 450 | 201416 | 376 | 71088 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 71056 de 201416 (35.28 %).
-Funciones marcadas `NON_MATCHING`: 54.
-Coherencia con el ensamblador: correcta (727 `glabel` en `asm/` + 375 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 71088 de 201416 (35.29 %).
+Funciones marcadas `NON_MATCHING`: 55.
+Coherencia con el ensamblador: correcta (726 `glabel` en `asm/` + 376 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -26,11 +26,11 @@ Coherencia con el ensamblador: correcta (727 `glabel` en `asm/` + 375 en C = 110
 | cargador_de_niveles_y_cd | 2 | 6 | 3 | 2 | 804 | 14264 |
 | colision_y_terreno | 1 | 2 | 2 | 0 | 680 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
-| gestion_y_dibujo_de_objetos | 4 | 25 | 8 | 9 | 8400 | 18624 |
+| gestion_y_dibujo_de_objetos | 4 | 25 | 9 | 8 | 8400 | 18624 |
 | graficos_y_gte | 3 | 14 | 5 | 0 | 4024 | 11812 |
 | inicializacion_de_motor | 1 | 8 | 3 | 5 | 2060 | 5276 |
 | interprete_de_eventos | 1 | 194 | 1 | 2 | 11656 | 11900 |
-| logica_de_niveles | 3 | 14 | 5 | 2 | 10512 | 60648 |
+| logica_de_niveles | 3 | 15 | 5 | 1 | 10544 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 22 | 4 | 1 | 9256 | 13644 |
 | movimiento_y_objetos_de_escena | 3 | 14 | 13 | 0 | 9736 | 18284 |
@@ -48,7 +48,7 @@ Coherencia con el ensamblador: correcta (727 `glabel` en `asm/` + 375 en C = 110
 | `src/colision_y_terreno.c` | 2 | 2 | 0 | 680 | 12480 |
 | `src/entrada_de_mando.c` | 5 | 1 | 0 | 1260 | 2784 |
 | `src/gestion_y_dibujo_de_objetos.c` | 12 | 3 | 0 | 1696 | 3812 |
-| `src/gestion_y_dibujo_de_objetos_2.c` | 8 | 3 | 9 | 4136 | 10604 |
+| `src/gestion_y_dibujo_de_objetos_2.c` | 8 | 4 | 8 | 4136 | 10604 |
 | `src/gestion_y_dibujo_de_objetos_3.c` | 1 | 0 | 0 | 564 | 564 |
 | `src/gestion_y_dibujo_de_objetos_4.c` | 4 | 2 | 0 | 2004 | 3644 |
 | `src/graficos_y_gte.c` | 4 | 5 | 0 | 2284 | 10072 |
@@ -58,7 +58,7 @@ Coherencia con el ensamblador: correcta (727 `glabel` en `asm/` + 375 en C = 110
 | `src/interprete_de_eventos.c` | 194 | 1 | 2 | 11656 | 11900 |
 | `src/logica_de_niveles.c` | 0 | 1 | 0 | 0 | 19880 |
 | `src/logica_de_niveles_2.c` | 3 | 0 | 0 | 2016 | 2016 |
-| `src/logica_de_niveles_3.c` | 11 | 4 | 2 | 8496 | 38752 |
+| `src/logica_de_niveles_3.c` | 12 | 4 | 1 | 8528 | 38752 |
 | `src/manejadores_por_tabla.c` | 12 | 0 | 0 | 384 | 384 |
 | `src/menus_e_interfaz.c` | 22 | 4 | 1 | 9256 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 2 | 2 | 0 | 856 | 2116 |
@@ -108,6 +108,7 @@ Coherencia con el ensamblador: correcta (727 `glabel` en `asm/` + 375 en C = 110
 - `func_80037D3C`: Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). Convierte un valor de 0 a 999 en tres digitos BCD (centenas, decenas, unidades); el original conserva las centenas en $a1 hasta el final y calcula centenas << 8 justo despues de la multiplicacion, mientras que GCC las deja en $v0 y las desplaza mas tarde (reparto de registros y orden de evaluacion).
 - `func_80037FE8`: Pendiente: puntuacion 3403 con la configuracion versionada (g = 8 del archivo). La estructura de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de otra forma.
 - `func_80038884`: Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Coincide la estructura y el marco de pila (la reserva de 8 bytes sin uso lo iguala); difiere solo la asignacion de registros: el original deja el parametro en $s4, la tabla de posiciones en $s3 y los tres identificadores en $s7, $s6 y $s5 (GCC da a los identificadores los tres primeros libres), y calcula la mitad de k directamente en $a2 en lugar de pasar por $v0.
+- `func_80039094`: Pendiente: puntuacion 2030 con la configuracion versionada (g = 8 del archivo). Coincide la estructura, las secuencias de carga y almacenamiento y los simbolos de las tablas; difiere en: reparto de registros (la base de 0x80010000 cae en a0 o a1 donde el original usa a1, v0 y a0 segun el bloque, falta la copia del valor mostrado de la barra 0 y el producto por 30 de cada temporizador se calcula en un registro propio) y en el relleno de los huecos de retardo de los temporizadores.
 - `func_8003A3D0`: Pendiente: puntuacion 38 con la configuracion versionada (g = 8 del archivo). El cuerpo, los saltos y el reparto de registros coinciden; difiere solo el orden de las dos primeras copias de argumento del prologo: el original copia a0 (objeto, $s2) antes que a1 (salida, $s1) y GCC emite primero la de a1, con cualquier orden de las copias y de las declaraciones. Copiar tambien la salida a un local empeora (130 a 176); prescindir de la copia del objeto o de la sonda sube a 91 y 171.
 - `func_8003AE08`: Pendiente: puntuacion 990 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de registros (la tabla de ordenacion y el cursor intercambian v1 y a1, y las constantes 1, 0x80000000 y 0x05000000 caen en t0/a3/a2 en lugar de t1/t0/a3) y la posicion de la carga del cursor en el segundo paquete.
 - `func_8003AF8C`: Pendiente: puntuacion 1680 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el desplazamiento de la textura cae en a0 y la plantilla en v1, en lugar de a2 y a0) y la posicion del almacen de la profundidad, que el original deja justo antes de indexar la lista de ordenacion.
