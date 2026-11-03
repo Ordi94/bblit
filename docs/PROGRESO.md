@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 369 | 62624 |
+| Código del juego | 450 | 201416 | 372 | 64488 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 62624 de 201416 (31.09 %).
-Funciones marcadas `NON_MATCHING`: 59.
-Coherencia con el ensamblador: correcta (733 `glabel` en `asm/` + 369 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 64488 de 201416 (32.02 %).
+Funciones marcadas `NON_MATCHING`: 56.
+Coherencia con el ensamblador: correcta (730 `glabel` en `asm/` + 372 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -22,18 +22,18 @@ Coherencia con el ensamblador: correcta (733 `glabel` en `asm/` + 369 en C = 110
 |---|---:|---:|---:|---:|---:|---:|
 | arranque_y_bucle_principal | 1 | 9 | 1 | 0 | 1364 | 3404 |
 | audio_xa_y_spu | 1 | 34 | 3 | 0 | 6316 | 8220 |
-| camara_y_bucle_logico | 1 | 7 | 4 | 0 | 2348 | 14576 |
+| camara_y_bucle_logico | 1 | 8 | 3 | 0 | 2712 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 6 | 3 | 2 | 804 | 14264 |
 | colision_y_terreno | 1 | 2 | 2 | 0 | 680 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
 | gestion_y_dibujo_de_objetos | 4 | 25 | 8 | 9 | 8400 | 18624 |
 | graficos_y_gte | 3 | 13 | 6 | 0 | 3316 | 11812 |
-| inicializacion_de_motor | 1 | 7 | 4 | 5 | 1860 | 5276 |
+| inicializacion_de_motor | 1 | 8 | 3 | 5 | 2060 | 5276 |
 | interprete_de_eventos | 1 | 194 | 1 | 2 | 11656 | 11900 |
 | logica_de_niveles | 3 | 14 | 5 | 2 | 10512 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 22 | 4 | 1 | 9256 | 13644 |
-| movimiento_y_objetos_de_escena | 3 | 11 | 15 | 1 | 2576 | 18284 |
+| movimiento_y_objetos_de_escena | 3 | 12 | 14 | 1 | 3876 | 18284 |
 | tarjeta_de_memoria | 1 | 8 | 2 | 0 | 1892 | 5116 |
 
 ## Por archivo
@@ -42,7 +42,7 @@ Coherencia con el ensamblador: correcta (733 `glabel` en `asm/` + 369 en C = 110
 |---|---:|---:|---:|---:|---:|
 | `src/arranque_y_bucle_principal_2.c` | 9 | 1 | 0 | 1364 | 3404 |
 | `src/audio_xa_y_spu.c` | 34 | 3 | 0 | 6316 | 8220 |
-| `src/camara_y_bucle_logico.c` | 7 | 4 | 0 | 2348 | 14576 |
+| `src/camara_y_bucle_logico.c` | 8 | 3 | 0 | 2712 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 6 | 3 | 0 | 804 | 13592 |
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 0 | 2 | 0 | 672 |
 | `src/colision_y_terreno.c` | 2 | 2 | 0 | 680 | 12480 |
@@ -54,7 +54,7 @@ Coherencia con el ensamblador: correcta (733 `glabel` en `asm/` + 369 en C = 110
 | `src/graficos_y_gte.c` | 3 | 6 | 0 | 1576 | 10072 |
 | `src/graficos_y_gte_10.c` | 6 | 0 | 0 | 1076 | 1076 |
 | `src/graficos_y_gte_12.c` | 4 | 0 | 0 | 664 | 664 |
-| `src/inicializacion_de_motor.c` | 7 | 4 | 5 | 1860 | 5276 |
+| `src/inicializacion_de_motor.c` | 8 | 3 | 5 | 2060 | 5276 |
 | `src/interprete_de_eventos.c` | 194 | 1 | 2 | 11656 | 11900 |
 | `src/logica_de_niveles.c` | 0 | 1 | 0 | 0 | 19880 |
 | `src/logica_de_niveles_2.c` | 3 | 0 | 0 | 2016 | 2016 |
@@ -62,7 +62,7 @@ Coherencia con el ensamblador: correcta (733 `glabel` en `asm/` + 369 en C = 110
 | `src/manejadores_por_tabla.c` | 12 | 0 | 0 | 384 | 384 |
 | `src/menus_e_interfaz.c` | 22 | 4 | 1 | 9256 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 2 | 2 | 0 | 856 | 2116 |
-| `src/movimiento_y_objetos_de_escena_2.c` | 8 | 7 | 0 | 1672 | 6336 |
+| `src/movimiento_y_objetos_de_escena_2.c` | 9 | 6 | 0 | 2972 | 6336 |
 | `src/movimiento_y_objetos_de_escena_3.c` | 1 | 6 | 1 | 48 | 9832 |
 | `src/tarjeta_de_memoria.c` | 8 | 2 | 0 | 1892 | 5116 |
 
@@ -70,7 +70,7 @@ Coherencia con el ensamblador: correcta (733 `glabel` en `asm/` + 369 en C = 110
 
 - `ActualizarCamaraSeguimiento`: Pendiente: puntuacion 10175 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y las constantes coinciden; difieren el reparto de registros temporales y la planificacion de las cargas y los almacenes en las sondas de apuntado (0x80033700-0x80033888), la direccion normalizada del modo guiado (0x80033CB4-0x80033D64), el giro lateral (0x80033F00-0x80034160), los barridos contra el terreno (0x80034348-0x80034720), las ocho sondas de empuje (0x800348C8-0x80034A9C) y el bloque de alturas (0x80034B00-0x80034E34).
 - `AplicarCuadro`: Pendiente: puntuacion 510 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difiere el reparto de registros callee-saved: el original deja el area de trabajo en $s1 y el puntero del flujo en $s2, GCC (prioridad de global-alloc por referencias y longitud de vida) los intercambia o adelanta el area a $s0 al copiar el parametro; ademas el sumando s20 de la caja cae en $a0 en lugar de $v1.
-- `AvanzarAnimacionSprite`: Pendiente: puntuacion 570 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5; la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera), el reparto de $a0/$v1 en la lectura del estado y el orden de cuatro almacenes del bloque de parametros de agarre.
+- `AvanzarAnimacionSprite`: Pendiente: puntuacion 160 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5: la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera; sin declararlo el C da $t4 y la puntuacion baja en 50), el reparto de $v0/$v1 en la lectura de los dos contadores de 8 bits y el orden de las tres copias de escala del bloque de agarre.
 - `BarrerTerreno`: Pendiente: puntuacion 2080 con la configuracion versionada (g = 0 del archivo). Difieren el orden de las escrituras del avance por subcelda y por baldosa del recorrido general (rangos 0x8001A050-0x8001A563), el reparto de v0/v1 en las banderas de los planos 0x7E y 0x7F del caso estatico (0x8001BCD4-0x8001BF6B) y la posicion de dos instrucciones del prologo.
 - `CargarContenedor`: Pendiente: puntuacion 259423 con la configuracion versionada (g = 8 del archivo). La estructura (bloques, bucles, llamadas, las cinco tablas de saltos) sigue el ensamblador completo y el marco de pila mide lo mismo (0x210 bytes); difieren el reparto de registros (s1 y s8 intercambiados desde el prologo), el orden de las cargas de la cabecera de secciones y el codigo de cada etiqueta, que GCC emite en otro orden. Las posiciones de pila de la tabla de tamanos y de los campos escalares tambien difieren (el original deja la imagen y el rectangulo en las direcciones mas bajas del marco, despues la 
 - `DibujarSombras`: Pendiente: puntuacion 930 con la configuracion versionada (g = 8 del archivo). Difiere el reparto de registros del prologo, el cierre del bucle de nodos (el original conserva el salto condicional hacia atras) y la direccion de la caja de relleno, que el original deriva de la base del scratchpad.
@@ -93,10 +93,9 @@ Coherencia con el ensamblador: correcta (733 `glabel` en `asm/` + 369 en C = 110
 - `func_8001D31C`: Pendiente: puntuacion 1624 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y mismo orden de almacenes; el original no conserva el puntero a la camara en un registro salvado (recalcula D_8006D928 en los dos caminos y no reserva s0) y copia el primer argumento a a3 antes de cargar D_80069698, el C mantiene la camara en s0 y reparte v1 y a0 de otro modo en el prologo.
 - `func_8001D588`: Pendiente: puntuacion 840 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y almacenes; el original ejecuta los dos almacenes de bytes de D_8006965A y D_80069659 antes de leer la lista del objeto, el planificador del C adelanta la lectura de p70.
 - `func_8001D75C`: Pendiente: puntuacion 8935 con la configuracion versionada (g = 8 del archivo). Misma logica de condiciones y mismos almacenes, primer borrador sin igualar el orden de bloques: el original reparte el dano por defecto (1) y el de la rama con atacante en bloques compartidos con saltos distintos y dos formas de cerrar el llamador.
-- `func_8001DA14`: Pendiente: puntuacion 590 con la configuracion versionada (g = 8 del archivo). Mismo bucle de prueba de rumbos y mismas llamadas GTE; el original asigna s4 al area de consulta, s7 al vector rotado y s6 al resultado de baldosa, el C reparte esos tres punteros y el modo centrado de otro modo, y calcula la mascara ~6 en un registro.
 - `func_8001DF28`: Pendiente: puntuacion 3500 con la configuracion versionada (g = 8 del archivo). Mismo codigo GTE (matriz de rotacion, vector de traslacion, rtps) y mismas operaciones; el original conserva el segundo argumento en a1 y copia solo el objeto a a2, y usa a3 como base de la matriz, el C copia ambos y usa t2.
 - `func_8001E1A4`: Pendiente: puntuacion 200 con la configuracion versionada (g = 8 del archivo). La unica diferencia es la carga del argumento de func_8003F06C: el original usa lw y el C con la conversion (s16) usa lh; sin la conversion el bucle tiene menos instrucciones antes de la optimizacion de bucles y el compilador iza la direccion de D_8006B558 fuera de el, con lo que la puntuacion sube a 692.
-- `func_8001E528`: Pendiente: puntuacion 1535 con la configuracion versionada (g = 8 del archivo). Mismos accesos y mismos almacenes; el original funde el desplazamiento de 16 bytes del registro tras la reunion de las dos ramas y reparte a0..a3 y t0 a las cuatro lecturas del registro, el C duplica el desplazamiento en cada rama y usa v0 y t0.
+- `func_8001E528`: Pendiente: puntuacion 470 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes, y el desplazamiento de 16 bytes del registro se hace tras la reunion de las dos ramas; difiere el reparto: el original deja el registro del cuadro en t0 hasta leer las banderas al final (y las coordenadas en a3, a1, a0, a2), mientras que el C debe leer las banderas antes para conservar esa reunion, de modo que el registro cae en v0 y la pagina y la paleta pasan por t0.
 - `func_8001E600`: Pendiente: puntuacion 2665 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; el original calcula el desplazamiento de color en t2 y deja el puntero al sprite en v1, el C reparte otros registros y reordena las lecturas del registro del cuadro.
 - `func_80020240`: Pendiente: puntuacion 605 con la configuracion versionada (g = 8 del archivo). La condicion de continuar (bit 4 apagado o bit 0x10 activo) y la reunion de las dos ramas de la altura no se reproducen: el compilador adelanta la carga de las banderas y repite el almacen de h10A en cada rama.
 - `func_80020354`: Pendiente: puntuacion 10 con la configuracion versionada (g = 8 del archivo). Solo difiere el registro del puntero a la distancia que recibe GEO_NORMA2_XZ: el original lo deja en a0 y GCC en v0 (solo se consigue declarando como destruidos registros que la macro no escribe, recurso no admitido).
@@ -104,8 +103,7 @@ Coherencia con el ensamblador: correcta (733 `glabel` en `asm/` + 369 en C = 110
 - `func_80020B90`: Pendiente: puntuacion 14290 con la configuracion versionada (g = 8 del archivo). Las diferencias son de reparto de registros (v0/v1/a0 y punteros s0-s2) y del orden en que el compilador planifica los almacenamientos de las transiciones de cada contacto; la logica coincide.
 - `func_8002F990`: Pendiente: puntuacion 60 con la configuracion versionada (g = 8 del archivo). Los dos bytes se leen y escriben con un unico lui y la copia del valor leido queda en el hueco del primer salto, como el original; difiere solo el reparto de registros: el original deja el resultado de la suma en a2 y GCC lo deja en v1 (los papeles de v1 y a2 estan invertidos). Operacion aritmetica sobre un registro de 16 bits repartido en dos bytes (D_80010047 es el bajo y D_8001013C el alto: r[7] y r[0xFC] del banco del estado principal de 0x80010000). El operando se trunca a un byte dentro de la rutina (andi 0xFF 
 - `func_8003147C`: Pendiente: puntuacion 85 con la configuracion versionada (g = 8 del archivo). Las instrucciones coinciden; solo difiere el reparto de registros: el original deja el objeto controlado en a2 y el enlace p70 en a0 (copia en v1) y GCC los reparte en a0 y a1 porque la carga del puntero se planifica despues de la ultima lectura del parametro.
-- `func_80032B2C`: Pendiente: puntuacion 774 con la configuracion versionada (g = 8 del archivo). El flujo y las macros vectoriales coinciden; difiere el reparto de los registros salvados (el original deja los argumentos en s5 y s2 y los punteros hoisted &w->i58, &w->rot, &w->v28, &w->d30 en s6, s4, s3, s1). Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la mascara y cuya caja esta a menos de su alcance, lleva la posicion al sistema local del objeto, comprueba la caja ensanchada por el radio y, si el punto cae sobre el objeto, desplaza el vector de sali
-- `func_80035244`: Pendiente: puntuacion 550 con la configuracion versionada (g = 8 del archivo). El original carga antes del bucle las constantes 0x47 y 1 de la ultima rama (t2 y t1) y por eso la tabla de saltos cae en t3; GCC las deja dentro de la rama. Variantes: indexado por D_8005E768[i], constantes en locales, paso++, puntero local al estado. Lee los botones (D_80010010 sin los bits 0 y 3) y, si cambiaron respecto al cuadro anterior (dato pequeno 0x104($gp)), avanza siete secuencias de teclas de D_8005E768 (24 bytes cada una: caso, paso y diez teclas); al completar una ejecuta su caso con un switch de siet
+- `func_80032B2C`: Pendiente: puntuacion 123 con la configuracion versionada (g = 8 del archivo). El flujo y las macros vectoriales coinciden; difiere el reparto de dos registros salvados (el original deja el argumento a0 en s5 y la direccion de i58 en s6, GCC los intercambia porque la prioridad de a0 queda por debajo de la de esa direccion) y la posicion de un almacen de cero (sh zero,0x4a) que sigue a ese reparto. Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la mascara y cuya caja esta a menos de su alcance, lleva la posicion al sistema local del ob
 - `func_800353B0`: Pendiente: puntuacion 7961 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y las constantes coinciden; difieren el reparto de registros (el original conserva el scratchpad, &sx, &z6C y la mascara -3 en s1..s4 y no hoistea &v80 ni &c104), el relleno de los huecos de retardo de la macro de distancia (maspsx anade un nop extra tras dos de sus saltos) y la forma de la busqueda en la tabla D_8006A940 (el original relee el puntero guardado en el scratchpad en cada vuelta). Reescribir en C la suma de vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W y GEO_
 - `func_80036164`: Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el original usa un solo puntero con desplazamientos 0x0C y 0x04. Ni el recorrido por indice sobre el arreglo ni la reordenacion de los incrementos eliminan el puntero derivado.
 - `func_800363D4`: Pendiente: puntuacion 205 con la configuracion versionada (g = 8 del archivo). El original mantiene el nodo en $a0 y deriva el puntero inducido en $a1; GCC los intercambia. Las 0x2E escrituras de sw $zero,0($a2) del original son un bucle real de 0x2E vueltas (contador en $v1, sltiu/bnez, la escritura en el hueco de retardo), no una secuencia desenrollada; escritas como 0x2E sentencias explicitas el resultado empeora (895), porque GCC no las pliega a ese bucle.
@@ -122,9 +120,8 @@ Coherencia con el ensamblador: correcta (733 `glabel` en `asm/` + 369 en C = 110
 - `func_8003F06C`: Pendiente: puntuacion 2792 con la configuracion versionada (g = 8 del archivo). El flujo coincide; el original recorre la tabla de efectos con dos punteros que avanzan juntos (entrada y entrada + 4) y aqui la reduccion de fuerza del bucle exterior reparte un tercero para los accesos de +2 y +3, lo que desplaza los registros s.
 - `func_8004048C`: Pendiente: puntuacion 7254 con la configuracion versionada (g = 8 del archivo). El marco de pila del original es 8 bytes mayor, el reparto de registros de la rama de grabacion es otro y GCC fusiona el xor de (D_8006CFF2 ^ 0xFF) << 8 con el desplazamiento. Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS (D_8006CFF1..7: id, botones invertidos y ejes) en botones logicos y ejes de +/-0x7F.
 - `func_80040F78`: Pendiente: puntuacion 370 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones que el original, con el desplazamiento del indice como primer sumando de la direccion de cada seccion; solo difiere el reparto de registros de la ultima etapa (el original deja el puntero del bucle en a2 y la constante 4 en a3, el indice en t0 en todas las etapas, y copia el puntero de la segunda etapa de una direccion calculada en v1). Recorre la cabecera de secciones de un contenedor (n entradas de tipo, tamano y tamano alineado) y calcula la posicion, en bytes desde el inicio del archivo, de 
-- `func_80044EA8`: Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). Misma estructura que el original; difiere la planificacion: el original carga la direccion de D_8006D018 (lui) justo despues de leer la lista de nodos y calcula la mascara andi 0xFFFF y el desplazamiento del indice despues de guardar la tabla, mientras que GCC los adelanta.
+- `func_80044EA8`: Pendiente: puntuacion 310 con la configuracion versionada (g = 8 del archivo). Misma estructura y mismo reparto de registros que el original (la tabla comparte registro con la definicion del nodo); difiere la planificacion: el original coloca la parte alta de D_8006D018 (lui) en el hueco de la carga de la definicion y carga el arreglo de fotogramas despues de guardar la tabla en el objeto, mientras que GCC carga el arreglo antes del almacen y deja un nop tras la lectura de la definicion.
 - `func_80045150`: Pendiente: puntuacion 3641 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s6 al contador y s7 y fp a las dimensiones del glifo, el C los reparte al reves y desplaza el resto de la planificacion.
-- `func_800453D0`: Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo). El bucle de digitos ya coincide (el incremento va en la condicion, t[n++], y el indice se corrige con n-- al salir); difiere el prologo del bucle: el original no pliega el primer incremento (addiu a1,a1,1 sobre la copia de valor, con la constante 3 cargada despues) y GCC lo resuelve como li a1,1.
 - `func_80045C4C`: Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Mismo flujo, mismas escrituras y mismo orden; el estado del lector se lee como D_8006AA70[0xC] (arreglo) para que el lui de la base pueda separarse de la carga, como en el original. Solo difiere la primera comparacion: el original la hace sobre una copia de a2 en v0 (move v0,a2 ; beqz v0) y GCC compara a2 directamente.
 - `main`: Pendiente: puntuacion 1025 con la configuracion versionada (g = 8 del archivo). El flujo y los tipos coinciden (pausa y demostracion son s16, el contador de cuadros D_80069676 es volatile u16); difieren el reparto de registros salvados de las constantes 2 y 3 y de la tabla de tiempos D_8006CF68, y la base `lui` del estado se hoistea antes que en el original. Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la pausa y la maquina de estados D_80069662 (el estad
 
