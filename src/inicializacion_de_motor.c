@@ -241,7 +241,7 @@ void func_80044E58(void)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 355 con la configuracion versionada (g = 8 del archivo). Misma estructura que el original; difiere la planificacion: el original carga la direccion de D_8006D018 (lui) justo despues de leer la lista de nodos y calcula la mascara andi 0xFFFF y el desplazamiento del indice despues de guardar la tabla, mientras que GCC los adelanta. */
+/* Pendiente: puntuacion 310 con la configuracion versionada (g = 8 del archivo). Misma estructura y mismo reparto de registros que el original (la tabla comparte registro con la definicion del nodo); difiere la planificacion: el original coloca la parte alta de D_8006D018 (lui) en el hueco de la carga de la definicion y carga el arreglo de fotogramas despues de guardar la tabla en el objeto, mientras que GCC carga el arreglo antes del almacen y deja un nop tras la lectura de la definicion. */
 void func_80044EA8(s32 a0, u32 a1, Objeto* a2)
 {
     NodoAnimacion* nodo;
@@ -253,8 +253,10 @@ void func_80044EA8(s32 a0, u32 a1, Objeto* a2)
         nodo = nodo->sig;
     }
     tabla = nodo->def->tabla;
-    a2->trabajo.tabla = tabla;
+    /* La direccion del arreglo de fotogramas se calcula antes de guardar la tabla en el objeto:
+     * con el almacen primero la tabla cae en otro registro que la definicion del nodo. */
     f = &tabla->fotogramas[a1 & 0xFFFF];
+    a2->trabajo.tabla = tabla;
     D_8006D018[(s16)a0] = f->h0A;
 }
 #else
