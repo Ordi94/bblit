@@ -220,3 +220,52 @@ umbral de datos pequenos `-G`; los archivos que no figuran compilan con `-G0`). 
 ese mismo archivo, asi que compilan cada fuente con las mismas banderas. Si una funcion no coincide con `-G0`,
 se prueba con el `g` del archivo antes de reescribir el C. Formato, archivos que hoy usan `g = 8` y criterio
 para anadir uno nuevo: `docs/DESCOMPILACION.md`, seccion «Opciones de compilacion por archivo».
+
+## 9. Linux (Wine)
+
+Las herramientas corren en Linux (probado en Debian 13). El SDK original (`CPPPSX.EXE`, `CC1PSX.EXE`) son
+ejecutables Win32: `tools/toolchain/plataforma.py` los lanza con Wine fuera de Windows. Los binutils de MIPS
+(`as`, `ld`, `objcopy`, `objdump`) no pasan por Wine: se usan binutils nativos del `PATH`, que arrancan en
+milisegundos (un `.exe` bajo Wine paga el arranque del emulador en cada llamada, y una busqueda del permutador
+hace miles). `maspsx` y `asm-differ` son Python y no cambian.
+
+Importante: los binutils deben ser los mismos que usa el toolchain de Windows (GNU binutils 2.40,
+`mipsel-none-elf`; PSn00bSDK v0.24 publica el build de Linux). Los `binutils-mipsel-linux-gnu` de Debian generan
+objetos con secciones alineadas a 16 bytes en lugar de 4: el ejecutable sale 208 bytes mayor, `build` se detiene
+con el aviso de `t_size` y nunca coincidiria byte a byte. `scripts/instalar_linux.sh` descarga los correctos
+(verificando su SHA-256).
+
+Paquetes Debian que instala el guion: `dpkg --add-architecture i386`, `apt-get update` y
+`apt-get install wine wine32:i386 python3 python3-venv python3-pip git ca-certificates curl unzip`; ademas crea
+`.venv` con `requirements.txt` e inicializa el prefijo de Wine.
+
+Variables:
+
+| Variable | Por omision | Efecto |
+|---|---|---|
+| `BBLIT_TOOLCHAIN` | `toolchain/` | Carpeta con `psyq-4.4`, `maspsx` y `asm-differ` (los binutils del lock no se usan en Linux) |
+| `BBLIT_DISC` | - | Ruta al `.bin` del disco (copia propia, nunca versionada) |
+| `BBLIT_WINE` | `wine` | Ejecutable de Wine |
+| `BBLIT_BINUTILS_PREFIX` | `mipsel-none-elf-` | Prefijo de los binutils nativos; sus carpetas `bin` van en el `PATH` |
+| `WINEPREFIX` | `~/.wine` | Prefijo de Wine; `WINEDEBUG=-all` se fija solo si no esta definida |
+
+Procedimiento:
+
+```
+bash scripts/instalar_linux.sh
+export PATH="$HOME/.local/mipsel-none-elf/bin:$PATH" PYTHONUTF8=1
+export BBLIT_TOOLCHAIN=/ruta/toolchain BBLIT_DISC=/ruta/disco.bin
+.venv/bin/python tools/build.py split
+.venv/bin/python tools/build.py build
+.venv/bin/python tools/build.py verify
+```
+
+El resultado de `verify` es el mismo SHA-256 que en Windows. El toolchain se copia desde una instalacion de
+Windows (`tar` conserva los nombres); la busqueda de los `.EXE` ignora diferencias de mayusculas. Las rutas con
+espacios funcionan porque ningun comando pasa por un shell.
+
+Series largas (`permutar`, `build` repetidos): Wine arranca su `wineserver` en cada llamada si no hay uno vivo
+(unos 2 s por compilacion, frente a ~70 ms con uno vivo). Lanzar `wineserver -p </dev/null >/dev/null 2>&1`
+antes de la serie lo mantiene persistente (sin redirigir la salida, una sesion `ssh` no termina) y
+`wineserver -k` lo cierra al acabar. Sin servidor persistente, el `wineserver` termina solo unos segundos
+despues de la ultima llamada; ese proceso no es una medicion colgada.

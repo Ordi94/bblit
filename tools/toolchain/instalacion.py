@@ -8,11 +8,13 @@ clave; en cualquier otro caso se reinstala desde cero.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 
+from tools.toolchain import plataforma
 from tools.toolchain.descarga import SesionHttp, descargar_verificado
 from tools.toolchain.dominio import Componente, cargar_lock, obtener_componente
 from tools.toolchain.extraccion import extraer
@@ -20,6 +22,7 @@ from tools.toolchain.extraccion import extraer
 NOMBRE_MARCA = "INSTALADO.json"
 CARPETA_DESCARGA = "_descarga"
 MAX_BYTES_LOCK = 1024 * 1024
+COMPONENTE_BINUTILS = "binutils-mipsel"
 
 
 def leer_lock(ruta: Path) -> dict[str, Componente]:
@@ -225,7 +228,9 @@ def resolver_herramienta(lock: dict[str, Componente], raiz: Path, nombre: str, a
 
     Contexto:
         La reconstruccion y la comparacion de funciones localizan ``as``, ``ld``,
-        ``CC1PSX.EXE``, etc. por componente y alias, nunca por rutas fijas.
+        ``CC1PSX.EXE``, etc. por componente y alias, nunca por rutas fijas. Fuera de Windows
+        ``as``, ``ld``, ``objcopy`` y ``objdump`` se toman del ``PATH`` (binutils nativos con el
+        prefijo de ``BBLIT_BINUTILS_PREFIX``) y el resto se busca sin distinguir mayusculas.
 
     Args:
         lock (dict[str, Componente]): Lock validado.
@@ -238,13 +243,24 @@ def resolver_herramienta(lock: dict[str, Componente], raiz: Path, nombre: str, a
 
     Raises:
         ValueError: Si el componente o el alias no existen en el lock.
-        FileNotFoundError: Si el archivo no esta instalado.
+        FileNotFoundError: Si el archivo no esta instalado (o, fuera de Windows, el binutils
+            nativo no esta en el ``PATH``).
 
     Ejemplo:
         ensamblador = resolver_herramienta(lock, Path("toolchain"), "binutils-mipsel", "as")
     """
     componente = obtener_componente(lock, nombre)
+    if nombre == COMPONENTE_BINUTILS and alias in plataforma.ALIAS_BINUTILS and not plataforma.es_windows():
+        nativo = plataforma.localizar_binutils(alias, os.environ)
+        if nativo is None:
+            raise FileNotFoundError(
+                f"binutils nativo '{plataforma.prefijo_binutils(os.environ)}{alias}' no esta en el PATH; "
+                "agregue al PATH los binutils 2.40 de mipsel-none-elf o defina BBLIT_BINUTILS_PREFIX"
+            )
+        return nativo
     ruta = carpeta_componente(raiz, componente) / componente.ruta_clave(alias)
+    if not plataforma.es_windows():
+        ruta = plataforma.buscar_sin_distinguir_mayusculas(ruta) or ruta
     if not ruta.is_file():
         raise FileNotFoundError(
             f"componente '{nombre}': '{alias}' no esta instalado; "

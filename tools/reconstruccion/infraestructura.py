@@ -24,7 +24,7 @@ import yaml
 from tools.reconstruccion import dominio
 from tools.reconstruccion.dominio import EjecutableReferencia
 from tools.reconstruccion.fuentes_c import MAX_BYTES_FUENTE
-from tools.toolchain import iso9660
+from tools.toolchain import iso9660, plataforma
 from tools.toolchain.dominio import Componente
 from tools.toolchain.instalacion import resolver_herramienta
 
@@ -72,7 +72,8 @@ def ejecutar_proceso(comando: Sequence[str], directorio: Path, timeout_s: int) -
     Contexto:
         Unico punto por el que la reconstruccion lanza procesos; las pruebas lo sustituyen
         por un doble. Fuerza UTF-8 en el entorno porque la consola de Windows no lo usa por
-        defecto y el particionador imprime texto no ASCII.
+        defecto y el particionador imprime texto no ASCII. Fuera de Windows antepone Wine a
+        los ``.EXE`` del SDK (ver ``tools.toolchain.plataforma``).
 
     Args:
         comando (Sequence[str]): Ejecutable y argumentos como lista.
@@ -90,10 +91,10 @@ def ejecutar_proceso(comando: Sequence[str], directorio: Path, timeout_s: int) -
         salida = ejecutar_proceso(["python", "--version"], Path("."), 30)
     """
     herramienta = Path(comando[0]).name
-    entorno = {**os.environ, "PYTHONUTF8": "1"}
+    entorno = plataforma.entorno_proceso(os.environ)
     try:
         resultado = subprocess.run(
-            list(comando),
+            plataforma.adaptar_comando(comando, entorno),
             cwd=directorio,
             capture_output=True,
             text=True,
