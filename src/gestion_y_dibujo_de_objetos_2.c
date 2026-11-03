@@ -15,25 +15,6 @@ typedef struct AyudaCuerpo {
     u8 visible;
 } AyudaCuerpo;
 
-/* Estado principal del juego en 0x80010000: se accede con un puntero constante (un solo lui). */
-#define EST ((u8*)0x80010000)
-
-/*
- * Desplazamientos, desde 0x80010000, de los bytes del estado principal que leen los indicadores:
- * vida (barra del grupo 0), contador de golpes, indices de las barras de los grupos 3 y 7 dentro
- * de la tabla de valores maximos (que arranca en 0x80010040) y registros de peticion de los
- * cuatro temporizadores de poderes.
- */
-#define ESTADO_VIDA 0x43
-#define ESTADO_GOLPES 0x41
-#define ESTADO_TABLA_BARRAS 0x40
-#define ESTADO_INDICE_BARRA3 0xB6
-#define ESTADO_INDICE_BARRA7 0xB8
-#define ESTADO_PODER_0 0x49
-#define ESTADO_PODER_1 0x4B
-#define ESTADO_PODER_2 0x70
-#define ESTADO_PODER_3 0x72
-
 /* Lista de objetos ya dibujados (se encadena por +0x10) y contador de cuadros. */
 
 /* Objeto de referencia respecto del que DibujarListaReflejada refleja los demas. */
@@ -63,7 +44,6 @@ extern u8 D_80010071;
 extern u8 D_80010072;
 extern u8 D_80010073;
 extern u8 D_800100D0;
-
 
 /* Nivel de unidades mostrado por los indicadores y nivel de fundido pedido. */
 
@@ -447,13 +427,13 @@ void func_80037FE8(void* lista)
     s32 pct;
     Objeto* o;
     s16 (*tpos)[2];
-    u8* e;
+    EstadoPrincipal* e;
 
     func_80038C2C(0, D_80010043, 1);
     func_80038884(0xE, 1);
 
-    e = EST;
-    bcd = ((DigitosSinConversion)func_80037D3C)((e[0x13C] << 8) | e[0x47]);
+    e = ESTADO_PRINCIPAL;
+    bcd = ((DigitosSinConversion)func_80037D3C)((e->r[0xFC] << 8) | e->r[0x07]);
     ids[0] = D_8005E830[3];
     ids[1] = D_8005E81C[(bcd & 0xF00) >> 8];
     ids[2] = D_8005E81C[(bcd & 0xF0) >> 4];
@@ -475,8 +455,8 @@ void func_80037FE8(void* lista)
     }
 
     i = 0;
-    e = EST;
-    pct = ((e[0x13C] << 8) + e[0x47] + e[0x45]) * 100 / 457;
+    e = ESTADO_PRINCIPAL;
+    pct = ((e->r[0xFC] << 8) + e->r[0x07] + e->r[0x05]) * 100 / 457;
     bcd = ((DigitosSinConversion)func_80037D3C)(pct);
     ids[0] = D_8005E81C[(bcd & 0xF00) >> 8];
     ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
@@ -497,13 +477,13 @@ void func_80037FE8(void* lista)
     }
 
     if (D_800100F7 != 0) {
-        e = EST;
-        bcd = ((DigitosSinConversion)func_80037D3C)(e[0x40 + e[0xF6]]);
+        e = ESTADO_PRINCIPAL;
+        bcd = ((DigitosSinConversion)func_80037D3C)(e->r[e->r[0xB6]]);
         ids[0] = D_8005E830[3];
         ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
         ids[2] = D_8005E81C[bcd & 0xF];
         i = 0;
-        bcd = ((DigitosSinConversion)func_80037D3C)(e[0xF7]);
+        bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0xB7]);
         ids[3] = D_8005E830[0x19];
         ids[4] = D_8005E81C[(bcd & 0xF0) >> 4];
         ids[5] = D_8005E81C[bcd & 0xF];
@@ -516,13 +496,13 @@ void func_80037FE8(void* lista)
     }
 
     if (D_800100F9 != 0) {
-        e = EST;
-        bcd = ((DigitosSinConversion)func_80037D3C)(e[0x40 + e[0xF8]]);
+        e = ESTADO_PRINCIPAL;
+        bcd = ((DigitosSinConversion)func_80037D3C)(e->r[e->r[0xB8]]);
         ids[0] = D_8005E830[7];
         ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
         ids[2] = D_8005E81C[bcd & 0xF];
         i = 0;
-        bcd = ((DigitosSinConversion)func_80037D3C)(e[0xF9]);
+        bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0xB9]);
         ids[3] = D_8005E830[0x19];
         ids[4] = D_8005E81C[(bcd & 0xF0) >> 4];
         ids[5] = D_8005E81C[bcd & 0xF];
@@ -540,13 +520,13 @@ void func_80037FE8(void* lista)
     }
 
     if (D_800100FA != 0) {
-        e = EST;
-        bcd = ((DigitosSinConversion)func_80037D3C)(e[0x44]);
+        e = ESTADO_PRINCIPAL;
+        bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0x04]);
         ids[0] = D_8005E830[0x18];
         ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
         ids[2] = D_8005E81C[bcd & 0xF];
         i = 0;
-        bcd = ((DigitosSinConversion)func_80037D3C)(e[0xFA]);
+        bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0xBA]);
         ids[3] = D_8005E830[0x19];
         ids[4] = D_8005E81C[(bcd & 0xF0) >> 4];
         ids[5] = D_8005E81C[bcd & 0xF];
@@ -865,32 +845,14 @@ void func_80038E84(s32 idx, s32 paso)
     }
 }
 
-extern u8 ET[] __asm__("D_80010000");
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
-#define V8(x) (*(volatile u8*)&(x))
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2030 con la configuracion versionada (g = 8 del archivo). Coincide la
- * estructura, las secuencias de carga y almacenamiento y los simbolos de las tablas; difiere en:
- * reparto de registros (la base de 0x80010000 cae en a0 o a1 donde el original usa a1, v0 y a0
- * segun el bloque, falta la copia del valor mostrado de la barra 0 y el producto por 30 de cada
- * temporizador se calcula en un registro propio) y en el relleno de los huecos de retardo de los
- * temporizadores.
+ * Pendiente: puntuacion 1950 con la configuracion versionada (g = 8 del archivo). Coinciden la
+ * estructura, los desplazamientos y los simbolos; difiere en el reparto de registros (la base de
+ * 0x80010000, el indice y el valor de las barras 3 y 7 caen en registros distintos de los del
+ * original, que usa a1, v0 y a0 segun el bloque), en el orden de dos copias y tres huecos de
+ * retardo de la barra 0 y de las barras 3 y 7, y en una recarga de la parte alta de D_8006AA7C
+ * que el compilador anade en los tres ultimos temporizadores.
  */
 /*
  * Una vez por cuadro de juego, con el estado principal distinto de 3, sin pantalla pedida
@@ -903,8 +865,11 @@ extern u8 ET[] __asm__("D_80010000");
  * n * 30), lo descuentan cada cuadro sin pausa y publican los segundos restantes; los tres iconos
  * de estado se crean o se apagan segun sus banderas. Cierra siempre limpiando D_80069554.
  *
- * Los bytes del estado principal se leen con un puntero local a 0x80010000 para que el
- * compilador comparta la parte alta de la direccion, como el original; tras cada llamada el
+ * Los campos del estado principal se leen por la vista EstadoPrincipal (arranque.h) con un
+ * puntero local a 0x80010000 para que el compilador comparta la parte alta de la direccion,
+ * como el original: r[0x03] es la vida, r[0x01] el contador de golpes, r[0xB6] y r[0xB8] los
+ * indices de las barras 3 y 7 dentro del propio banco (r[indice] es su valor maximo) y r[0x09],
+ * r[0x0B], r[0x30] y r[0x32] los registros de peticion de los temporizadores; tras cada llamada el
  * puntero se vuelve a formar porque el original no lo conserva en un registro salvado.
  */
 void func_80039094(void)
@@ -918,30 +883,30 @@ void func_80039094(void)
     s32 idx;
     s32 ant;
     s32 pantalla;
-    u8* g;
+    EstadoPrincipal* g;
     s16 n;
     Objeto* ob;
     u16 cuadros;
-    u8* e;
-    u8* f;
+    EstadoPrincipal* e;
+    EstadoPrincipal* f;
 
-    e = EST;
-    if (*(s32*)e != 3 && D_80069662 == 0 && D_8006AA7C == 0) {
-        if (e[ESTADO_VIDA] != D_80069525) {
+    e = ESTADO_PRINCIPAL;
+    if (e->nivel != 3 && D_80069662 == 0 && D_8006AA7C == 0) {
+        if (e->r[0x03] != D_80069525) {
             mostrado = D_80069525;
-            if (e[ESTADO_VIDA] >= 0x64) {
-                e[ESTADO_VIDA] = 0x63;
+            if (e->r[0x03] >= 0x64) {
+                e->r[0x03] = 0x63;
             }
             modo = 1;
             if (mostrado == 0xFF) {
-                valor = e[ESTADO_VIDA];
+                valor = e->r[0x03];
                 D_80069525 = valor;
                 nuevo = valor;
             } else {
                 modo = 0;
-                if (mostrado == e[ESTADO_VIDA]) {
+                if (mostrado == e->r[0x03]) {
                     nuevo = D_80069525;
-                } else if (mostrado < e[ESTADO_VIDA]) {
+                } else if (mostrado < e->r[0x03]) {
                     nuevo = D_80069525 + 1;
                 } else {
                     nuevo = D_80069525 - 1;
@@ -962,9 +927,9 @@ void func_80039094(void)
         }
         func_80038E84(0, D_80069525 < D_80010043 ? (D_80010043 - D_80069525) * 0xC8 : 0xC8);
 
-        e = EST;
-        idx = e[ESTADO_INDICE_BARRA3];
-        valor = e[ESTADO_TABLA_BARRAS + idx];
+        g = ESTADO_PRINCIPAL;
+        idx = g->r[0xB6];
+        valor = g->r[idx];
         if (valor != D_80069574) {
             modo = 0;
             if (D_80069574 == 0xFF) {
@@ -978,8 +943,8 @@ void func_80039094(void)
             }
             if (func_80038C2C(3, nuevo, modo) != 0) {
                 mostrado = D_80069574;
-                f = EST;
-                valor = f[ESTADO_TABLA_BARRAS + idx];
+                f = ESTADO_PRINCIPAL;
+                valor = f->r[idx];
                 if (mostrado < valor) {
                     D_80069574 = mostrado + 1;
                 } else if (valor < mostrado) {
@@ -989,9 +954,9 @@ void func_80039094(void)
         }
         func_80038E84(3, 0xC8);
 
-        e = EST;
-        idx = e[ESTADO_INDICE_BARRA7];
-        valor = e[ESTADO_TABLA_BARRAS + idx];
+        g = ESTADO_PRINCIPAL;
+        idx = g->r[0xB8];
+        valor = g->r[idx];
         if (valor != D_80069514) {
             modo = 0;
             if (D_80069514 == 0xFF) {
@@ -1002,20 +967,20 @@ void func_80039094(void)
                 nuevo = D_80069514 + 1;
             }
             if (func_80038C2C(7, nuevo, modo) != 0) {
-                f = EST;
-                if (D_80069514 != f[ESTADO_TABLA_BARRAS + idx]) {
+                f = ESTADO_PRINCIPAL;
+                if (D_80069514 != f->r[idx]) {
                     D_80069514 = D_80069514 + 1;
                 }
             }
         }
         func_80038E84(7, 0xC8);
 
-        f = EST;
-        if (f[ESTADO_GOLPES] != D_80069524) {
-            if ((s8)f[ESTADO_GOLPES] <= 0) {
+        f = ESTADO_PRINCIPAL;
+        if (f->r[0x01] != D_80069524) {
+            if ((s8)f->r[0x01] <= 0) {
                 if (!(D_80069698->flags14 & 0x01000000)) {
                     pantalla = D_80069554;
-                    f[ESTADO_GOLPES] = 0;
+                    f->r[0x01] = 0;
                     if (pantalla == 0) {
                         pantalla = D_800694F8;
                     }
@@ -1037,11 +1002,11 @@ void func_80039094(void)
             D_800695F6 = 0;
         }
 
-        g = EST;
-        if (g[ESTADO_PODER_0] != 0) {
+        g = ESTADO_PRINCIPAL;
+        if (g->r[0x09] != 0) {
             n = 1;
-            if ((s8)g[ESTADO_PODER_0] != -1) {
-                n = g[ESTADO_PODER_0] * 30;
+            if ((s8)g->r[0x09] != -1) {
+                n = g->r[0x09] * 30;
             }
             D_800695C0 = n;
             D_80010049 = 0;
@@ -1060,11 +1025,11 @@ void func_80039094(void)
             }
         }
 
-        g = EST;
-        if (g[ESTADO_PODER_1] != 0) {
+        g = ESTADO_PRINCIPAL;
+        if (g->r[0x0B] != 0) {
             n = 1;
-            if ((s8)g[ESTADO_PODER_1] != -1) {
-                n = g[ESTADO_PODER_1] * 30;
+            if ((s8)g->r[0x0B] != -1) {
+                n = g->r[0x0B] * 30;
             }
             D_8006968A = n;
             D_8001004B = 0;
@@ -1083,11 +1048,11 @@ void func_80039094(void)
             }
         }
 
-        g = EST;
-        if (g[ESTADO_PODER_2] != 0) {
+        g = ESTADO_PRINCIPAL;
+        if (g->r[0x30] != 0) {
             n = 1;
-            if ((s8)g[ESTADO_PODER_2] != -1) {
-                n = g[ESTADO_PODER_2] * 30;
+            if ((s8)g->r[0x30] != -1) {
+                n = g->r[0x30] * 30;
             }
             D_8006969E = n;
             D_80010070 = 0;
@@ -1106,11 +1071,11 @@ void func_80039094(void)
             }
         }
 
-        g = EST;
-        if (g[ESTADO_PODER_3] != 0) {
+        g = ESTADO_PRINCIPAL;
+        if (g->r[0x32] != 0) {
             n = 1;
-            if ((s8)g[ESTADO_PODER_3] != -1) {
-                n = g[ESTADO_PODER_3] * 30;
+            if ((s8)g->r[0x32] != -1) {
+                n = g->r[0x32] * 30;
             }
             D_80069526 = n;
             D_80010072 = 0;

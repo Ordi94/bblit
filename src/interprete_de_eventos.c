@@ -44,7 +44,6 @@ extern s32 D_800693C0;
  * estructura ESTADO_PRINCIPAL daria un lui compartido distinto.
  */
 extern u16 D_8001003E;
-extern s32 D_80069554;
 
 /* Dato pequeno: el original lo direcciona como 0xC0($gp). */
 s32 D_800693E0;
