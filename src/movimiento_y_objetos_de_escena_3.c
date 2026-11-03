@@ -175,7 +175,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E600);
  * evento puede crear un hijo acoplado, un objeto suelto, agarrar o soltar al protagonista.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5; la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera), el reparto de $a0/$v1 en la lectura de las banderas del cuadro y de los dos contadores de 8 bits, y el orden de las cargas de las tres restas del bloque de agarre. */
+/* Pendiente: puntuacion 370 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5: la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera), el reparto de $v0/$v1 en la lectura de los dos contadores de 8 bits y el orden de las cargas de las tres restas del bloque de agarre. */
 u32 AvanzarAnimacionSprite(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
 {
     NodoAnimacion* n;
@@ -280,17 +280,17 @@ sigue:
     }
     if ((u16)c->cuadro == c->ultimo) {
         if (c->ticks == 0) {
-            t = c->flags18;
-            if (t & 2) {
-                t = (t & ~0x200) | 0x100;
-                c->flags18 = t;
-                if (t & 0x800) {
+            /* Las banderas se releen de la memoria en cada prueba, sin local: el original no las
+             * conserva en un registro y la local cambia el reparto de los registros de argumento. */
+            if (c->flags18 & 2) {
+                c->flags18 = (c->flags18 & ~0x200) | 0x100;
+                if (c->flags18 & 0x800) {
                     return 0x200;
                 }
                 return 0x100;
             }
-            if (t & 1) {
-                c->flags18 = t | 0x80;
+            if (c->flags18 & 1) {
+                c->flags18 = c->flags18 | 0x80;
             }
             t = c->duraciones->ticks;
             c->cuadro = 0;
