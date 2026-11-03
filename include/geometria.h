@@ -215,7 +215,7 @@ typedef struct TrabajoRecorrido {
 /*
  * Este archivo contiene solo macros que reproducen las instrucciones del original, y la lista de
  * registros destruidos de cada una contiene unicamente los registros que su ensamblador escribe
- * (mas "memory" cuando almacena).
+ * (mas "memory" cuando almacena), salvo GEO_NORMA2_XZ, cuya lista ampliada se justifica en su comentario.
  *
  * Macros de vector del motor. El original las escribio como sentencias de ensamblador en linea
  * con los temporales fijos $8..$14 (t0..t6): el ejecutable las delata porque cada vector entra
@@ -320,10 +320,20 @@ typedef struct TrabajoRecorrido {
 #define GEO_CARGAR_H(p) \
     __asm__ volatile ("move $8, %0\n\tlh $9, 0($8)\n\tlh $10, 2($8)\n\tlh $11, 4($8)" \
                       : : "r"(p) : "$8", "$9", "$10", "$11", "memory")
+/*
+ * GEO_NORMA2_XZ declara ademas $2 y $3 (v0 y v1) como destruidos aunque su cuerpo solo escribe $8 y
+ * $9. Es una lista conservadora, la forma habitual de las macros derivadas del SDK: el original deja
+ * el puntero de destino en a0 y esos dos registros de retorno fuera del reparto durante la sentencia.
+ * Evidencia (diff sobre las 240 funciones en C de los 17 archivos que incluyen esta cabecera,
+ * antes -> despues): func_80016ED0 0 -> 0, func_80020354 10 -> 0, func_80016C0C 10 -> 0,
+ * func_800171E4 113 -> 103, func_80018D98 108 -> 98, func_80018F80 108 -> 98, func_80032B2C
+ * 123 -> 123. Ninguna usuaria con puntuacion inferior a 1000 empeora; la unica funcion que sube,
+ * func_80017478 (19749 -> 19849), esta muy lejos del original y no cuenta como evidencia.
+ */
 #define GEO_NORMA2_XZ(v, d) \
     __asm__ volatile ("lh $8, 0(%1)\n\tlh $9, 4(%1)\n\tmtc2 $8, $9\n\tmtc2 $9, $11\n\tnop\n\tnop\n\t" \
                       "sqr 0\n\tmfc2 $8, $25\n\tmfc2 $9, $27\n\tnop\n\tadd $8, $8, $9\n\tsw $8, 0(%0)" \
-                      : : "r"(d), "r"(v) : "$8", "$9", "memory")
+                      : : "r"(d), "r"(v) : "$2", "$3", "$8", "$9", "memory")
 /*
  * GEO_SUMAR_W(p): las tres palabras de p += t1..t3 (los temporales que dejo la macro anterior,
  * normalmente GEO_CARGAR_W). Queda en ensamblador en linea (no es GTE) porque consume t1..t3 de la
