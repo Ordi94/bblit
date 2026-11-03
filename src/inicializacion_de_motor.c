@@ -455,6 +455,74 @@ s32 func_800453D0(u8** p)
     return valor;
 }
 
+/* Posicion inicial de la pluma de texto: esquina superior izquierda de la ventana, en pixeles con signo. */
+#define TEXTO_X_INICIAL (-0xC8)
+#define TEXTO_Y_INICIAL (-0x3C)
+/* Avance vertical del salto de linea y anchos fijos del espacio y del tabulador. */
+#define TEXTO_AVANCE_LINEA 0xD
+#define TEXTO_ANCHO_ESPACIO 6
+#define TEXTO_ANCHO_TABULADOR 0x18
+
+/*
+ * Glifos de color: estos ocho indices de la tabla de glifos fuerzan la paleta de la derecha, sea cual sea la
+ * paleta activa (el resto de los glifos usa la que fijo '>CP').
+ */
+#define GLIFO_COLOR_67 0x67
+#define GLIFO_COLOR_68 0x68
+#define GLIFO_COLOR_69 0x69
+#define GLIFO_COLOR_6A 0x6A
+#define GLIFO_COLOR_6B 0x6B
+#define GLIFO_COLOR_6C 0x6C
+#define GLIFO_COLOR_6D 0x6D
+#define GLIFO_COLOR_6E 0x6E
+#define PALETA_67 5
+#define PALETA_68 6
+#define PALETA_69 7
+#define PALETA_6A 8
+#define PALETA_6B 0xA
+#define PALETA_6C 9
+#define PALETA_6D 0xB
+#define PALETA_6E 0xC
+
+/* Glifos de los cuatro primeros nombres de boton; los otros cuatro se escriben con letras ('L1', 'L2', 'R1', 'R2'). */
+#define GLIFO_BOTON_0 0xAD
+#define GLIFO_BOTON_1 0xAF
+#define GLIFO_BOTON_2 0xAE
+#define GLIFO_BOTON_3 0xAC
+
+/* Codigo de control: un '>' seguido de una letra que elige la orden. */
+#define CODIGO_CONTROL '>'
+#define CTRL_COLOR 'C'          /* '>C?': subordenes de posicion y paleta */
+#define CTRL_COLOR_LIMPIAR 'L'  /* '>CL': reinicia la pluma y vacia la lista de glifos */
+#define CTRL_COLOR_X 'X'        /* '>CX n': fija la x de inicio de linea */
+#define CTRL_COLOR_Y 'Y'        /* '>CY n': fija la y */
+#define CTRL_COLOR_PALETA 'P'   /* '>CP n': fija la paleta */
+#define CTRL_OPCIONES 'P'       /* '>P b': opciones de ventana (cuatro bits) */
+#define CTRL_PAUSA 'W'          /* '>W n': pausa de n cuadros, o cierra la ventana si es cero */
+#define CTRL_ICONO 'I'          /* '>I?': icono */
+#define CTRL_ICONO_DATO 'D'     /* '>ID b': guarda el byte b en el campo w1C del objeto */
+#define CTRL_NUMERO 'B'         /* '>B? n': escribe el valor de una variable */
+#define CTRL_NUMERO_GLOBAL 'G'  /* '>BG n': variable del estado principal; otra letra: banco de variables */
+#define CTRL_BOTON 'D'          /* '>D n': nombre del boton n segun la configuracion elegida */
+
+/*
+ * Opciones de ventana que devuelve el interprete. Los bits del byte de '>P' (1, 2, 4, 8) se reordenan a
+ * 0x10, 0x20, 0x40, 0x80; si no hay opciones y la pausa es cero se usa 0x40.
+ */
+#define OPCION_VENTANA_10 0x10
+#define OPCION_VENTANA_20 0x20
+#define OPCION_VENTANA_40 0x40
+#define OPCION_VENTANA_80 0x80
+
+/*
+ * Variables del estado principal: la numero 7 ocupa dos bytes (bajo en r[7], alto en r[0xFC]). En el banco
+ * comun, las variables 0x2A..0x34 ocupan dos bytes consecutivos (bajo primero) cuando D_80010000 es cero.
+ */
+#define VARIABLE_DOBLE 7
+#define VARIABLE_DOBLE_ALTO 0xFC
+#define BANCO_DOBLE_MIN 0x2A
+#define BANCO_DOBLE_MAX 0x34
+
 /*
  * Interprete de guiones de texto: recorre los bytes de `guion` y deja en la lista de glifos un glifo por
  * caracter imprimible, con la posicion que lleva en `pos`. Los codigos de control empiezan por '>'.
@@ -493,11 +561,11 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
     abierta = 0;
     mascara = 0;
     ancho = 0;
-    pos.x = -0xC8;
-    pos.y = -0x3C;
-    x0 = -0xC8;
+    pos.x = TEXTO_X_INICIAL;
+    pos.y = TEXTO_Y_INICIAL;
+    x0 = TEXTO_X_INICIAL;
     c = *guion;
-    y0 = -0x3C;
+    y0 = TEXTO_Y_INICIAL;
     while (c != 0) {
         g = D_8005F940[c];
         if (g != 0) {
@@ -505,22 +573,22 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
                 primero = D_80069652;
             }
             pal = paleta;
-            if (g == 0x6C) {
-                pal = 9;
-            } else if (g == 0x6B) {
-                pal = 0xA;
-            } else if (g == 0x68) {
-                pal = 6;
-            } else if (g == 0x6A) {
-                pal = 8;
-            } else if (g == 0x69) {
-                pal = 7;
-            } else if (g == 0x67) {
-                pal = 5;
-            } else if (g == 0x6D) {
-                pal = 0xB;
-            } else if (g == 0x6E) {
-                pal = 0xC;
+            if (g == GLIFO_COLOR_6C) {
+                pal = PALETA_6C;
+            } else if (g == GLIFO_COLOR_6B) {
+                pal = PALETA_6B;
+            } else if (g == GLIFO_COLOR_68) {
+                pal = PALETA_68;
+            } else if (g == GLIFO_COLOR_6A) {
+                pal = PALETA_6A;
+            } else if (g == GLIFO_COLOR_69) {
+                pal = PALETA_69;
+            } else if (g == GLIFO_COLOR_67) {
+                pal = PALETA_67;
+            } else if (g == GLIFO_COLOR_6D) {
+                pal = PALETA_6D;
+            } else if (g == GLIFO_COLOR_6E) {
+                pal = PALETA_6E;
             }
             func_800450E8((Glifo*)cursor->fotogramas + (g - 1), pal, (OrigenEntrada*)&pos);
             ancho += D_8005FA40[c];
@@ -533,28 +601,28 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
             abierta = 0;
             primero = -1;
             pos.x = (s16)x0;
-            pos.y += 0xD;
+            pos.y += TEXTO_AVANCE_LINEA;
         } else if (c == ' ') {
-            ancho += 6;
-            pos.x += 6;
+            ancho += TEXTO_ANCHO_ESPACIO;
+            pos.x += TEXTO_ANCHO_ESPACIO;
         } else if (c == '\t') {
-            ancho += 0x18;
-            pos.x += 0x18;
-        } else if (c == '>') {
+            ancho += TEXTO_ANCHO_TABULADOR;
+            pos.x += TEXTO_ANCHO_TABULADOR;
+        } else if (c == CODIGO_CONTROL) {
             guion++;
             sub = *guion;
-            if (sub == 'C') {
+            if (sub == CTRL_COLOR) {
                 guion++;
                 c = *guion;
                 guion++;
-                if (c == 'L') {
+                if (c == CTRL_COLOR_LIMPIAR) {
                     pos.x = (s16)x0;
                     pos.y = (s16)y0;
                     mascara = 0;
                     o->u78.p = ClearList((NodoLista*)&o->u78);
-                } else if (c == 'X') {
+                } else if (c == CTRL_COLOR_X) {
                     goto leer_x;
-                } else if (c == 'Y') {
+                } else if (c == CTRL_COLOR_Y) {
                     y0 = func_800453D0(&guion);
                     pos.y = y0;
                 } else if (c == sub) {
@@ -562,31 +630,31 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
                     leer_x:
                     x0 = func_800453D0(&guion);
                     pos.x = (s16)x0;
-                } else if (c == 'P') {
+                } else if (c == CTRL_COLOR_PALETA) {
                     paleta = func_800453D0(&guion);
                 }
-            } else if (sub == 'P') {
+            } else if (sub == CTRL_OPCIONES) {
                 guion++;
                 g = *guion;
                 guion++;
                 if (g & 8) {
-                    mascara |= 0x80;
+                    mascara |= OPCION_VENTANA_80;
                 }
                 if (g & 2) {
-                    mascara |= 0x20;
+                    mascara |= OPCION_VENTANA_20;
                 }
                 if (g & 1) {
-                    mascara |= 0x10;
+                    mascara |= OPCION_VENTANA_10;
                 }
                 if (g & 4) {
-                    mascara |= 0x40;
+                    mascara |= OPCION_VENTANA_40;
                 }
-            } else if (sub == 'W') {
+            } else if (sub == CTRL_PAUSA) {
                 guion++;
                 t = func_800453D0(&guion);
                 if (t == 0) {
                     if (mascara == 0) {
-                        mascara = 0x40;
+                        mascara = OPCION_VENTANA_40;
                     }
                     mascara = func_80045D98(mascara);
                     o->w17C = 2;
@@ -601,28 +669,28 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
                     }
                     return 0;
                 }
-            } else if (sub == 'I') {
+            } else if (sub == CTRL_ICONO) {
                 guion++;
                 c = *guion;
                 guion++;
-                if (c == 'D') {
+                if (c == CTRL_ICONO_DATO) {
                     o->w1C = *guion;
                     guion++;
                 }
-            } else if (sub == 'B') {
+            } else if (sub == CTRL_NUMERO) {
                 guion++;
                 c = *guion;
                 guion++;
                 t = *guion;
                 guion++;
-                if (c == 'G') {
-                    if (t == 7) {
-                        t = (ESTADO_PRINCIPAL->r[0xFC] << 8) + ESTADO_PRINCIPAL->r[7];
+                if (c == CTRL_NUMERO_GLOBAL) {
+                    if (t == VARIABLE_DOBLE) {
+                        t = (ESTADO_PRINCIPAL->r[VARIABLE_DOBLE_ALTO] << 8) + ESTADO_PRINCIPAL->r[VARIABLE_DOBLE];
                     } else {
                         t = ESTADO_PRINCIPAL->r[t];
                     }
                 } else if (D_80010000 == 0) {
-                    if (t >= 0x2A && t <= 0x34) {
+                    if (t >= BANCO_DOBLE_MIN && t <= BANCO_DOBLE_MAX) {
                         t = (D_8006AA70[t + 1] << 8) + D_8006AA70[t];
                     } else {
                         t = D_8006AA70[t];
@@ -654,24 +722,24 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
                         t <<= 4;
                     } while (n > 0);
                 }
-            } else if (sub == 'D') {
+            } else if (sub == CTRL_BOTON) {
                 guion++;
                 g = D_8005F920[*guion + ESTADO_PRINCIPAL->r[BANCO_CONFIG] * 8];
                 pal = paleta;
                 boton[2] = 0;
                 boton[1] = 0;
                 if (g == 0) {
-                    boton[0] = 0xAD;
-                    pal = 6;
+                    boton[0] = GLIFO_BOTON_0;
+                    pal = PALETA_68;
                 } else if (g == 1) {
-                    boton[0] = 0xAF;
-                    pal = 8;
+                    boton[0] = GLIFO_BOTON_1;
+                    pal = PALETA_6A;
                 } else if (g == 2) {
-                    boton[0] = 0xAE;
-                    pal = 7;
+                    boton[0] = GLIFO_BOTON_2;
+                    pal = PALETA_69;
                 } else if (g == 3) {
-                    boton[0] = 0xAC;
-                    pal = 5;
+                    boton[0] = GLIFO_BOTON_3;
+                    pal = PALETA_67;
                 } else if (g == 4) {
                     boton[0] = 'L';
                     boton[1] = '1';
