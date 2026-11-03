@@ -610,18 +610,27 @@ extern u16 D_8005E078[];
  * el borde de los precipicios y 0x40000000 fija la orientacion del objeto al resultado. El
  * desplazamiento realizado queda en `mov`.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 590 con la configuracion versionada (g = 8 del archivo). Mismo bucle de prueba de rumbos y mismas llamadas GTE; el original asigna s4 al area de consulta, s7 al vector rotado y s6 al resultado de baldosa, el C reparte esos tres punteros y el modo centrado de otro modo, y calcula la mascara ~6 en un registro. */
 void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
 {
     u16* tabla;
-    s32 i;
+    s32 intento;
     s32 centrado;
-    s32 f;
-    s32 v;
-    s32 a1;
-    s32 a0;
+    s32 estado;
+    s32 banderas_paso;
+    u16 banderas;
+    s32 banderas_enlace;
+    s32 bloqueos;
+    s32 quitar_apoyo;
+    /* Direcciones de los tres bloques del area que se pasan a BarrerTerreno y a func_8001C134.
+     * Se guardan en locales (y no se escriben &w->campo en cada llamada) porque el original las
+     * mantiene en registros salvados con este reparto: el bloque de trabajo de baldosa en el
+     * primero, el modo centrado en el segundo, el resultado en el tercero y el desplazamiento
+     * en el cuarto; el orden de asignacion fija la prioridad de cada uno. */
+    s32* desplazamiento;
+    ResultadoBaldosa* resultado;
+    TrabajoBaldosa* trabajo;
 
+    trabajo = &w->tb;
     w->pos40 = o->param.trans.vx;
     w->pos44 = o->param.trans.vy;
     w->pos48 = o->param.trans.vz;
@@ -635,67 +644,72 @@ void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
     } else {
         tabla = D_8005E064;
     }
-    i = 0;
+    intento = 0;
+    desplazamiento = &w->v30;
+    resultado = &w->res;
     centrado = a2 & 0x80000;
     do {
-        w->rot.vy = tabla[i];
+        w->rot.vy = tabla[intento];
         RotMatrix(&w->rot, &w->m);
         gte_SetRotMatrix(&w->m);
         gte_ldv0(&w->delta);
         gte_rtv0();
-        gte_stlvnl(&w->v30);
+        gte_stlvnl(desplazamiento);
         w->w50 = w->v30 + w->v38;
         w->pos44 = o->param.trans.vy;
-        w->tb.x_local = 0;
+        trabajo->x_local = 0;
         w->res.grupo = o->w26;
-        BarrerTerreno(&w->pos40, &w->v30, &w->res, &w->tb);
+        BarrerTerreno(&w->pos40, desplazamiento, resultado, trabajo);
         w->w8C = (s16)w->res.grupo;
         w->w50 = w->w50 - (w->v30 + w->v38);
-        f = o->flags14;
-        if (!(f & 4)) {
-            a1 = w->res.flags;
-            if (a1 & 8) {
+        estado = o->flags14;
+        if (!(estado & 4)) {
+            banderas = w->res.flags;
+            if (banderas & 8) {
                 w->p7C = w->pos40 + w->v30;
                 w->p80 = w->pos44 + 1;
                 w->p84 = w->pos48 + w->v38;
                 w->res.grupo = o->w26;
-                func_8001C134(&w->p7C, &w->res, &w->tb);
+                func_8001C134(&w->p7C, resultado, trabajo);
                 if ((s16)w->res.grupo == -1) {
                     w->res.flags = w->res.flags | 8;
                     w->res.grupo = o->w26;
                 } else {
-                    a0 = w->res.flags;
-                    if ((a0 & 2) && (w->res.suelo - o->param.trans.vy) >= 0xC9) {
-                        w->res.flags = (a0 & ~6) | 8;
+                    banderas_enlace = w->res.flags;
+                    if ((banderas_enlace & 2) && (w->res.suelo - o->param.trans.vy) >= 0xC9) {
+                        w->res.flags = (banderas_enlace & ~6) | 8;
                     }
                 }
-            } else if ((a1 & 2) && !(f & 0x219) && (((s16)w->res.pendiente_abs + w->pos44) - o->param.trans.vy) >= 0xC9) {
-                w->res.flags = (a1 & ~6) | 8;
+            } else if ((banderas & 2) && !(estado & 0x219) && (((s16)w->res.pendiente_abs + w->pos44) - o->param.trans.vy) >= 0xC9) {
+                /* La mascara pasa por una local: con la constante en la expresion el compilador
+                 * la pliega y reparte los registros de otro modo. */
+                quitar_apoyo = ~6;
+                w->res.flags = (banderas & quitar_apoyo) | 8;
             }
         } else {
             w->res.flags = (w->res.flags & ~8) | 2;
         }
         o->h10C = w->res.pendiente_abs;
-        v = w->res.flags;
-        if ((v & 4) || (centrado == 0 && (v & 8)) || w->w50 != 0) {
+        banderas_paso = w->res.flags;
+        if ((banderas_paso & 4) || (centrado == 0 && (banderas_paso & 8)) || w->w50 != 0) {
             o->flags14 |= 0x100000;
         }
         if (w->res.flags & 8) {
             o->flags18 |= 0x20;
         }
         if ((a2 & 0x40000000) || w->w8C == (s16)o->w26) {
-            v = (s16)w->res.flags;
+            bloqueos = (s16)w->res.flags;
             if (centrado == 0) {
-                v = v & 0xC;
+                bloqueos = bloqueos & 0xC;
             } else {
-                v = v & 4;
+                bloqueos = bloqueos & 4;
             }
-            if (v == 0 && w->w50 == 0) {
+            if (bloqueos == 0 && w->w50 == 0) {
                 break;
             }
         }
-        i++;
-    } while (i < 9);
+        intento++;
+    } while (intento < 9);
     if (a2 & 0x40000000) {
         if (o->p70 == D_80069698) {
             o->w26 = *D_80069558;
@@ -704,12 +718,12 @@ void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
         }
     }
     if (((o->flags18 & 0x20) && !(a2 & 0x80000))
-        || (!(a2 & 0x40000000) && !(o->flags14 & 0x100000) && i < 9)) {
+        || (!(a2 & 0x40000000) && !(o->flags14 & 0x100000) && intento < 9)) {
         o->param.giro.u.y = o->param.giro.u.y + w->rot.vy;
     } else {
-        o->param.giro.u.y = o->param.giro.u.y + ((s16)tabla[i] >> 3);
+        o->param.giro.u.y = o->param.giro.u.y + ((s16)tabla[intento] >> 3);
     }
-    if (i == 9 && (o->flags14 & 0x100000)) {
+    if (intento == 9 && (o->flags14 & 0x100000)) {
         o->param.giro.u.y = o->param.giro.u.y + 0x800;
         mov->z = 0;
         mov->dy = 0;
@@ -720,9 +734,6 @@ void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
     mov->dy = w->v34;
     mov->z = w->v38;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001DA14);
-#endif
 
 /*
  * Proyecta el objeto en pantalla y calcula las esquinas de su sprite: si esta mas cerca de 150
