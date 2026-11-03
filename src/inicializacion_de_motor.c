@@ -409,8 +409,10 @@ void func_80045368(s16 a0, s16 a1)
     }
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo). El bucle de digitos ya coincide (el incremento va en la condicion, t[n++], y el indice se corrige con n-- al salir); difiere el prologo del bucle: el original no pliega el primer incremento (addiu a1,a1,1 sobre la copia de valor, con la constante 3 cargada despues) y GCC lo resuelve como li a1,1. */
+/*
+ * Lee un entero decimal con signo opcional ('-') en la cadena apuntada por *p y deja *p justo
+ * despues de la ultima cifra. Cifra = byte cuyo nibble alto es 3 (0x30..0x3F).
+ */
 s32 func_800453D0(u8** p)
 {
     s32 signo;
@@ -426,12 +428,13 @@ s32 func_800453D0(u8** p)
     }
     valor = 0;
     n = 0;
+    /* La primera cifra se prueba fuera del bucle y el bucle recorre una copia del puntero:
+     * asi la cuenta no se pliega con el primer incremento, como en el original. */
     if ((**p >> 4) == 3) {
         t = *p;
-        n++;
-        do {
-        } while ((t[n++] >> 4) == 3);
-        n--;
+        while ((t[n] >> 4) == 3) {
+            n++;
+        }
     }
     i = n - 1;
     for (; i >= 0; i--) {
@@ -441,9 +444,6 @@ s32 func_800453D0(u8** p)
     *p = *p + n;
     return valor;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_800453D0);
-#endif
 
 /*
  * Pendiente de traducir: interprete de guiones de texto que compone una linea de glifos (0x7B4 bytes,
