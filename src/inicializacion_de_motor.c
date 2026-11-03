@@ -7,6 +7,7 @@
 #include "psyq/LIBPRESS.H"
 #include "psyq/LIBSPU.H"
 #include "motor.h"
+#include "niveles.h"
 
 /* Origen de una entrada: un u16 en +0 y un byte en +4. */
 typedef struct OrigenEntrada {
@@ -31,8 +32,6 @@ extern void func_8005595C(s32 valor);
 extern u16 D_80075FFE[5];
 extern u16 D_8006D018[];
 extern void func_80039CD0(s32 prim);
-extern u32 func_80045498(Objeto* objeto, u8* guion, BloqueTrabajo* bloque);
-extern u32 func_80037D3C(u16 valor);
 extern u32 func_80045D98(u32 mascara);
 
 /* Posicion de la pluma de texto: func_800450E8 la lee por la direccion (x en +0, y en +4). */

@@ -114,6 +114,7 @@ typedef struct EscenaDibujo {
 #define ESCENA_DIBUJO ((EscenaDibujo*)0x1F800000)
 
 extern void func_80037CF8(s32* origen, s32* destino);
+extern u32 func_80037D3C(u16 valor);
 
 /* Pozos de objetos y plantillas de la escena. */
 extern Objeto* D_80069504;

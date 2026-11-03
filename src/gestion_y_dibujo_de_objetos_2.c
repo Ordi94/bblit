@@ -76,7 +76,6 @@ s32 D_80069438;
 extern s32 func_80038C2C(s32 idx, s32 valor, s32 modo);
 extern void func_80038884(s32 idx, s32 modo);
 extern void func_80037DB4(Objeto* o, s16 id, s16* pos, s16 modo);
-extern u32 func_80037D3C(u16 valor);
 
 /*
  * Algunos llamadores pasan a func_80037DB4 enteros de 32 bits ya extendidos sin la conversion
