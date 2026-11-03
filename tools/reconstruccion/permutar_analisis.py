@@ -738,6 +738,11 @@ def _rutas_en_conflicto(a: str, b: str) -> bool:
     return partes_a[:corto] == partes_b[:corto]
 
 
+def _es_ruta_opaca(ruta: str) -> bool:
+    """Un acceso por indice sin campo (``p[i]``) no dice a que objeto apunta: puede solapar memoria ajena."""
+    return ruta.replace(COMODIN, "") == ""
+
+
 def _se_cruzan(escribe: set[str], otras: set[str]) -> bool:
     """Indica si alguna escritura toca una de las ubicaciones del otro conjunto."""
     for escrita in escribe:
@@ -771,6 +776,75 @@ def son_independientes(a: Efectos, b: Efectos) -> bool:
     if a.barrera or b.barrera:
         return False
     return not (_se_cruzan(a.escribe, b.lee | b.escribe) or _se_cruzan(b.escribe, a.lee | a.escribe))
+
+
+def _acumular_sentencia(sentencia: c.Sentencia, total: Efectos) -> None:
+    """Anota en ``total`` lo que una sentencia y todo lo que contiene lee y escribe."""
+    if isinstance(sentencia, c.Etiqueta | c.Saltar | c.Preprocesador):
+        total.barrera = True
+        return
+    if isinstance(sentencia, c.Decl):
+        if sentencia.inicial is not None:
+            _acumular(c.Asigna("=", c.Id(sentencia.nombre), sentencia.inicial), total)
+        return
+    for raiz in c.expresiones_de(sentencia):
+        _acumular(raiz, total)
+    for bloque in c.bloques_hijos(sentencia):
+        for interna in bloque.items:
+            _acumular_sentencia(interna, total)
+
+
+def efectos_profundos(sentencia: c.Sentencia) -> Efectos:
+    """
+    Calcula lo que lee y escribe una sentencia junto con todas las que contiene.
+
+    Contexto:
+        ``efectos_de`` trata cualquier sentencia compuesta como una barrera. Las mutaciones que
+        adelantan o retrasan una lectura de memoria necesitan saber si un ``if`` o un bucle entero
+        escribe esa memoria; este calculo suma los efectos de todo su contenido. Una llamada, una
+        direccion de variable local, un ``goto`` o una etiqueta dentro de la sentencia la vuelven
+        barrera: se puede entrar o salir por ellos sin que el analisis lo vea.
+
+    Args:
+        sentencia (c.Sentencia): Sentencia de cualquier tipo.
+
+    Returns:
+        Efectos: Lecturas y escrituras de toda la sentencia; ``barrera`` si algo no se puede analizar.
+
+    Ejemplo:
+        efectos = efectos_profundos(c.Mientras(cond=c.Id("c"), cuerpo=c.Bloque()))
+    """
+    total = Efectos()
+    _acumular_sentencia(sentencia, total)
+    return total
+
+
+def escritura_alcanza(efectos: Efectos, lectura: Efectos) -> bool:
+    """
+    Indica si lo que hace una sentencia puede cambiar lo que lee una expresion.
+
+    Contexto:
+        Condicion de legalidad de las mutaciones que mueven una lectura de memoria por encima de otras
+        sentencias o que la repiten en lugar de guardarla en una local: entre el punto original y el
+        nuevo no puede haber una escritura que llegue a esa memoria.
+
+    Args:
+        efectos (Efectos): Efectos de las sentencias que se cruzan (``efectos_profundos``).
+        lectura (Efectos): Efectos de la expresion que se mueve (solo lecturas).
+
+    Returns:
+        bool: Verdadero si hay una barrera, una escritura a una ubicacion leida (variable o ruta de
+        memoria solapada) o un acceso por indice sin campo (``p[i]``) a un lado y cualquier acceso a
+        memoria al otro. Una escritura por puntero opaco (``*p = ...``) ya se solapa con toda ruta.
+
+    Ejemplo:
+        conflicto = escritura_alcanza(efectos_profundos(s), efectos_de(c.Expresion(expr=lectura)))
+    """
+    if efectos.barrera or lectura.barrera or _se_cruzan(efectos.escribe, lectura.lee):
+        return True
+    leidas = {u[2:] for u in lectura.lee if u[0] == "m"}
+    escritas = {u[2:] for u in efectos.escribe if u[0] == "m"}
+    return bool(escritas and leidas) and any(_es_ruta_opaca(ruta) for ruta in leidas | escritas)
 
 
 def identificadores_de(expr: c.Expr) -> set[str]:

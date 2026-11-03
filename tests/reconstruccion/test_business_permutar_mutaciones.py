@@ -585,7 +585,7 @@ def test_una_funcion_sin_nada_que_mutar_devuelve_cero_mutaciones() -> None:
 
 def test_cada_mutacion_registrada_tiene_nombre_peso_y_funcion() -> None:
     nombres = [nombre for nombre, _, _ in mut.MUTACIONES]
-    assert len(nombres) == len(set(nombres)) == 10
+    assert len(nombres) == len(set(nombres)) == 15
     assert all(peso > 0 for _, _, peso in mut.MUTACIONES)
 
 
