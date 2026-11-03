@@ -460,11 +460,14 @@ s32 func_800453D0(u8** p)
  * Devuelve la mascara de opciones de ventana (0x10, 0x20, 0x40, 0x80), o cero si el guion queda en pausa.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 245 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original inicializa la mascara con el registro cero y el ancho desde la mascara (no desde la paleta), el digito se suma con addiu y no con ori, y la x del cursor se trunca desde el valor devuelto y no desde su copia. */
+/* Pendiente: puntuacion 35 con la configuracion versionada (g = 8 del archivo). Un operando de registro: la x del cursor se trunca desde su copia en s8 y el original la trunca desde v0 (el valor devuelto por la lectura del numero); sin la lectura posterior de x0 el objeto pasa a ocupar $fp. El resto son seis marcas de forma simbolica de las direcciones del estado principal (los bytes coinciden). */
 u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
 {
+    /* pos es la pluma de texto (x en +0, y en +4) que func_800450E8 lee por la direccion. */
     PosicionTexto pos;
+    /* Reserva sin uso: el original deja 8 bytes entre la pluma y la lista de botones. */
     s32 reserva[2];
+    /* Hasta tres caracteres del nombre de un boton, terminados en cero. */
     u8 boton[3];
     s16 y0;
     s32 x0;
@@ -472,13 +475,14 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
     s16 ancho;
     u32 mascara;
     u8 abierta;
-    s32 paleta;
-    s32 q;
-    u32 t;
+    u16 paleta;
+    u16 pal;
+    s32 n;
+    s32 d;
+    s32 t;
     u8 c;
     u8 g;
     u8 sub;
-    s32 i;
 
     if (D_8006D018[0] == 0) {
         func_80044F20();
@@ -499,28 +503,28 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
             if (primero < 0) {
                 primero = D_80069652;
             }
-            q = paleta;
+            pal = paleta;
             if (g == 0x6C) {
-                q = 9;
+                pal = 9;
             } else if (g == 0x6B) {
-                q = 0xA;
+                pal = 0xA;
             } else if (g == 0x68) {
-                q = 6;
+                pal = 6;
             } else if (g == 0x6A) {
-                q = 8;
+                pal = 8;
             } else if (g == 0x69) {
-                q = 7;
+                pal = 7;
             } else if (g == 0x67) {
-                q = 5;
+                pal = 5;
             } else if (g == 0x6D) {
-                q = 0xB;
+                pal = 0xB;
             } else if (g == 0x6E) {
-                q = 0xC;
+                pal = 0xC;
             }
-            func_800450E8((Glifo*)cursor->fotogramas + (g - 1), q, (OrigenEntrada*)&pos);
+            func_800450E8((Glifo*)cursor->fotogramas + (g - 1), pal, (OrigenEntrada*)&pos);
             ancho += D_8005FA40[c];
             pos.x += D_8005FA40[c];
-        } else if (c == 0xA) {
+        } else if (c == '\n') {
             if (abierta) {
                 func_80045368(primero, ancho);
             }
@@ -529,27 +533,27 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
             primero = -1;
             pos.x = (s16)x0;
             pos.y += 0xD;
-        } else if (c == 0x20) {
+        } else if (c == ' ') {
             ancho += 6;
             pos.x += 6;
-        } else if (c == 9) {
+        } else if (c == '\t') {
             ancho += 0x18;
             pos.x += 0x18;
-        } else if (c == 0x3E) {
+        } else if (c == '>') {
             guion++;
             sub = *guion;
-            if (sub == 0x43) {
+            if (sub == 'C') {
                 guion++;
                 c = *guion;
                 guion++;
-                if (c == 0x4C) {
+                if (c == 'L') {
                     pos.x = (s16)x0;
                     pos.y = (s16)y0;
                     mascara = 0;
                     o->u78.p = ClearList((NodoLista*)&o->u78);
-                } else if (c == 0x58) {
+                } else if (c == 'X') {
                     goto leer_x;
-                } else if (c == 0x59) {
+                } else if (c == 'Y') {
                     y0 = func_800453D0(&guion);
                     pos.y = y0;
                 } else if (c == sub) {
@@ -557,12 +561,12 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
                     leer_x:
                     x0 = func_800453D0(&guion);
                     pos.x = (s16)x0;
-                } else if (c == 0x50) {
+                } else if (c == 'P') {
                     paleta = func_800453D0(&guion);
                 }
-            } else if (sub == 0x50) {
+            } else if (sub == 'P') {
                 guion++;
-g = *guion;
+                g = *guion;
                 guion++;
                 if (g & 8) {
                     mascara |= 0x80;
@@ -576,7 +580,7 @@ g = *guion;
                 if (g & 4) {
                     mascara |= 0x40;
                 }
-            } else if (sub == 0x57) {
+            } else if (sub == 'W') {
                 guion++;
                 t = func_800453D0(&guion);
                 if (t == 0) {
@@ -596,21 +600,21 @@ g = *guion;
                     }
                     return 0;
                 }
-            } else if (sub == 0x49) {
+            } else if (sub == 'I') {
                 guion++;
                 c = *guion;
                 guion++;
-                if (c == 0x44) {
+                if (c == 'D') {
                     o->w1C = *guion;
                     guion++;
                 }
-            } else if (sub == 0x42) {
+            } else if (sub == 'B') {
                 guion++;
                 c = *guion;
                 guion++;
                 t = *guion;
                 guion++;
-                if (c == 0x47) {
+                if (c == 'G') {
                     if (t == 7) {
                         t = (ESTADO_PRINCIPAL->r[0xFC] << 8) + ESTADO_PRINCIPAL->r[7];
                     } else {
@@ -625,74 +629,75 @@ g = *guion;
                 } else {
                     t = D_8006AA70[t];
                 }
+                /* Valor en BCD de ocho digitos: se descartan los ceros de la izquierda (queda al menos uno). */
                 t = func_80037D3C(t);
-q = 8;
+                n = 8;
                 if ((t & 0xF0000000) == 0) {
                     t <<= 4;
-                    q = 7;
-                    while (q > 1 && (t & 0xF0000000) == 0) {
+                    n = 7;
+                    while (n > 1 && (t & 0xF0000000) == 0) {
                         t <<= 4;
-                        q--;
+                        n--;
                     }
                 }
-                if (q > 0) {
+                if (n > 0) {
                     do {
                         if (primero < 0) {
                             primero = D_80069652;
                         }
-                        c = (t >> 28) + 0x30;
-                        func_800450E8((Glifo*)cursor->fotogramas + (D_8005F940[c] - 1), paleta, (OrigenEntrada*)&pos);
-                        ancho += D_8005FA40[c];
-                        pos.x += D_8005FA40[c];
-                        q--;
+                        d = ((u32)t >> 28) + '0';
+                        func_800450E8((Glifo*)cursor->fotogramas + (D_8005F940[d] - 1), paleta, (OrigenEntrada*)&pos);
+                        ancho += D_8005FA40[d];
+                        pos.x += D_8005FA40[d];
+                        n--;
                         t <<= 4;
-                    } while (q > 0);
+                    } while (n > 0);
                 }
-            } else if (sub == 0x44) {
+            } else if (sub == 'D') {
                 guion++;
                 g = D_8005F920[*guion + ESTADO_PRINCIPAL->r[BANCO_CONFIG] * 8];
-                q = paleta;
+                pal = paleta;
                 boton[2] = 0;
                 boton[1] = 0;
                 if (g == 0) {
                     boton[0] = 0xAD;
-                    q = 6;
+                    pal = 6;
                 } else if (g == 1) {
                     boton[0] = 0xAF;
-                    q = 8;
+                    pal = 8;
                 } else if (g == 2) {
                     boton[0] = 0xAE;
-                    q = 7;
+                    pal = 7;
                 } else if (g == 3) {
                     boton[0] = 0xAC;
-                    q = 5;
+                    pal = 5;
                 } else if (g == 4) {
-                    boton[0] = 0x4C;
-                    boton[1] = 0x31;
+                    boton[0] = 'L';
+                    boton[1] = '1';
                 } else if (g == 5) {
-                    boton[0] = 0x4C;
-                    boton[1] = 0x32;
+                    boton[0] = 'L';
+                    boton[1] = '2';
                 } else if (g == 6) {
-                    boton[0] = 0x52;
-                    boton[1] = 0x31;
+                    boton[0] = 'R';
+                    boton[1] = '1';
                 } else if (g == 7) {
-                    boton[0] = 0x52;
-                    boton[1] = 0x32;
+                    boton[0] = 'R';
+                    boton[1] = '2';
                 }
                 c = boton[0];
-i = 0;
-                while (c != 0 && i < 3) {
+                t = 0;
+                while (c != 0 && t < 3) {
                     g = D_8005F940[c];
                     if (g != 0) {
                         if (primero < 0) {
                             primero = D_80069652;
                         }
-                        func_800450E8((Glifo*)cursor->fotogramas + (g - 1), q, (OrigenEntrada*)&pos);
+                        func_800450E8((Glifo*)cursor->fotogramas + (g - 1), pal, (OrigenEntrada*)&pos);
                         ancho += D_8005FA40[c];
                         pos.x += D_8005FA40[c];
                     }
-i++;
-                    c = boton[i];
+                    t++;
+                    c = boton[t];
                 }
             }
         }
