@@ -1526,6 +1526,395 @@ def partir_local(ctx: Contexto) -> str | None:
 
 
 # ---------------------------------------------------------------------------------------------------
+# Copia de un campo en una local
+# ---------------------------------------------------------------------------------------------------
+
+OPERADORES_DE_COMPARACION = frozenset({"==", "!=", "<", ">", "<=", ">="})
+OPERADORES_SENSIBLES_AL_SIGNO = frozenset({">>", "<", ">", "<=", ">="})
+OPERADORES_DE_ASIGNACION_COMPUESTA = frozenset(f"{op}=" for op in OPERADORES_COMPUESTOS)
+
+
+@dataclass(frozen=True)
+class CopiaDeCampo:
+    """Una local que copia el resultado de ``campo operador operando`` y se vuelve a almacenar en el campo.
+
+    Attributes:
+        bloque: Bloque que contiene la asignacion de la local y todos sus usos.
+        indice: Posicion de la sentencia que da valor a la local.
+        nombre: Nombre de la local.
+        campo: Acceso a memoria cuyo valor se copia (``o->flags14``).
+        operador: Operador de la primera operacion (``|``).
+        operando: Segundo operando de esa operacion.
+        primer_uso: Sentencia ``campo = local;`` que devuelve la copia al campo.
+        almacen: Ultima sentencia ``campo = local op2 operando2;``, si existe.
+        comparaciones: Lecturas de la local como operando de una comparacion.
+    """
+
+    bloque: c.Bloque
+    indice: int
+    nombre: str
+    campo: c.Expr
+    operador: str
+    operando: c.Expr
+    primer_uso: c.Expresion
+    almacen: c.Expresion | None
+    comparaciones: tuple[Sitio, ...]
+
+
+def _es_acceso_a_memoria(expr: c.Expr) -> bool:
+    """Un campo o un elemento sin efectos: el unico destino que admite la copia."""
+    return isinstance(expr, c.Miembro | c.Indice) and an.es_pura(expr)
+
+
+def _descomponer_copia(fuente: c.Expr) -> tuple[c.Expr, str, c.Expr] | None:
+    """
+    Separa ``campo op operando`` (o ``operando op campo`` si ``op`` conmuta) en sus tres partes.
+
+    Devuelve ``None`` si la expresion no tiene esa forma, tiene efectos o el operando repite el campo.
+    """
+    if not (isinstance(fuente, c.Binario) and fuente.op in OPERADORES_COMPUESTOS and an.es_pura(fuente)):
+        return None
+    if _es_acceso_a_memoria(fuente.izq):
+        campo, resto = fuente.izq, fuente.der
+    elif fuente.op in OPERADORES_COMPUESTOS_CONMUTATIVOS and _es_acceso_a_memoria(fuente.der):
+        campo, resto = fuente.der, fuente.izq
+    else:
+        return None
+    clave = an.texto_de(campo)
+    if any(an.texto_de(nodo) == clave for nodo in c.recorrer(resto)):
+        return None
+    return campo, fuente.op, resto
+
+
+def _tipos_de_copia(campo: an.Tipo | None, local: an.Tipo | None) -> bool | None:
+    """
+    Compara el tipo del campo con el de la local que lo copia.
+
+    Devuelve ``None`` si sustituir la local por el campo podria cambiar un valor: ambos deben ser
+    enteros del mismo ancho, y si el ancho es menor de 32 bits tambien del mismo signo (la copia
+    trunca igual que el campo). Si son de 32 bits con distinto signo la sustitucion conserva los bits
+    pero no el resultado de ``>>`` ni el de las comparaciones de orden; se devuelve ``False`` para que
+    el llamador las excluya. ``True`` si el signo coincide.
+    """
+    if campo is None or local is None or not (campo.es_entero and local.es_entero):
+        return None
+    if campo.ancho != local.ancho or (campo.ancho < 32 and campo.con_signo != local.con_signo):
+        return None
+    return campo.con_signo == local.con_signo
+
+
+def _es_copia_al_campo(sentencia: c.Sentencia, clave: str, nombre: str) -> bool:
+    """La sentencia es ``campo = local;``."""
+    return (
+        isinstance(sentencia, c.Expresion)
+        and isinstance(sentencia.expr, c.Asigna)
+        and sentencia.expr.op == "="
+        and an.texto_de(sentencia.expr.destino) == clave
+        and isinstance(sentencia.expr.valor, c.Id)
+        and sentencia.expr.valor.nombre == nombre
+    )
+
+
+def _es_almacen_al_campo(sentencia: c.Sentencia, clave: str, nombre: str) -> bool:
+    """La sentencia es ``campo = local op2 operando2;`` con ``operando2`` puro y sin la local."""
+    if not (
+        isinstance(sentencia, c.Expresion)
+        and isinstance(sentencia.expr, c.Asigna)
+        and sentencia.expr.op == "="
+        and an.texto_de(sentencia.expr.destino) == clave
+    ):
+        return False
+    valor = sentencia.expr.valor
+    return (
+        isinstance(valor, c.Binario)
+        and valor.op in OPERADORES_COMPUESTOS
+        and isinstance(valor.izq, c.Id)
+        and valor.izq.nombre == nombre
+        and an.es_pura(valor.der)
+        and nombre not in an.identificadores_de(valor.der)
+    )
+
+
+def _operador_de_comparacion(sitio: Sitio) -> str | None:
+    """Operador de comparacion que tiene al sitio como operando, o ``None`` si el padre es otra cosa."""
+    padre = sitio.padre
+    if isinstance(padre, c.Binario) and padre.op in OPERADORES_DE_COMPARACION:
+        return padre.op
+    return None
+
+
+def _operador_de_almacen(almacen: c.Expresion | None) -> str | None:
+    """Operador ``op2`` del almacen ``campo = local op2 operando2;``, o ``None`` si no hay almacen."""
+    if (
+        almacen is not None
+        and isinstance(almacen.expr, c.Asigna)
+        and isinstance(almacen.expr.valor, c.Binario)
+    ):
+        return almacen.expr.valor.op
+    return None
+
+
+def _clasificar_usos(
+    posteriores: list[c.Sentencia],
+    lecturas: list[tuple[c.Sentencia, Sitio]],
+    posicion_de: dict[int, int],
+    clave: str,
+    nombre: str,
+) -> tuple[c.Expresion, c.Expresion | None, list[Sitio]] | None:
+    """
+    Reparte las lecturas de la local en su primer uso, su almacen final y sus comparaciones.
+
+    El primer uso debe ser ``campo = local;`` y el unico de su sentencia. Cualquier otra lectura es una
+    comparacion o la ultima sentencia ``campo = local op2 operando2;`` (solo puede haber una y debe ir
+    la ultima, porque despues de almacenarla el campo deja de valer lo mismo que la local). Una lectura
+    de otro tipo hace que la local no se pueda propagar.
+    """
+    primero = min(posicion_de[id(s)] for s, _ in lecturas)
+    ultimo = max(posicion_de[id(s)] for s, _ in lecturas)
+    primer_uso = posteriores[primero]
+    en_primero = [sitio for s, sitio in lecturas if posicion_de[id(s)] == primero]
+    if len(en_primero) != 1 or not _es_copia_al_campo(primer_uso, clave, nombre):
+        return None
+    almacen: c.Expresion | None = None
+    comparaciones: list[Sitio] = []
+    for sentencia, sitio in lecturas:
+        posicion = posicion_de[id(sentencia)]
+        if posicion == primero:
+            continue
+        if sentencia is posteriores[posicion] and _es_almacen_al_campo(sentencia, clave, nombre):
+            if posicion != ultimo or not isinstance(sentencia, c.Expresion):
+                return None
+            almacen = sentencia
+        elif _operador_de_comparacion(sitio) is not None:
+            comparaciones.append(sitio)
+        else:
+            return None
+    assert isinstance(primer_uso, c.Expresion)  # noqa: S101 - ``_es_copia_al_campo`` lo garantiza
+    return primer_uso, almacen, comparaciones
+
+
+def _sin_escrituras_en_el_tramo(
+    ctx: Contexto,
+    tramo: list[c.Sentencia],
+    lectura: an.Efectos,
+    salvo: c.Sentencia | None = None,
+) -> bool:
+    """Ninguna sentencia del tramo (con su contenido) escribe lo que lee la expresion ni es barrera."""
+    return not any(
+        an.escritura_alcanza(an.efectos_profundos(sentencia, ctx.alias), lectura)
+        for sentencia in tramo
+        if sentencia is not salvo
+    )
+
+
+def _copia_propagable(
+    ctx: Contexto, bloque: c.Bloque, indice: int, nombre: str, partes: tuple[c.Expr, str, c.Expr]
+) -> CopiaDeCampo | None:
+    """
+    Comprueba que la local asignada en ``bloque.items[indice]`` se puede sustituir por su campo.
+
+    Reglas: tipos compatibles (``_tipos_de_copia``), una sola asignacion de la local, todas sus
+    lecturas despues de ella y en el mismo bloque, primer uso ``campo = local;``, usos restantes en
+    comparaciones o en el almacen final, y ninguna escritura que alcance al campo ni llamada entre la
+    copia y el ultimo uso, ni a lo que lee la primera operacion entre la asignacion y la copia.
+    """
+    campo, operador, operando = partes
+    mismo_signo = _tipos_de_copia(ctx.entorno.inferir(campo), ctx.entorno.locales.get(nombre))
+    usos = _usos_de(ctx.funcion, nombre)
+    lecturas = [(s, sitio) for s, sitio in usos if not sitio.lvalue]
+    esperadas = 0 if isinstance(bloque.items[indice], c.Decl) else 1
+    if mismo_signo is None or len(usos) - len(lecturas) != esperadas or not lecturas:
+        return None
+    posteriores = bloque.items[indice + 1 :]
+    posicion_de = {id(interna): j for j, s in enumerate(posteriores) for interna in _anidadas(s)}
+    if any(id(s) not in posicion_de for s, _ in lecturas):
+        return None
+    clave = an.texto_de(campo)
+    clasificados = _clasificar_usos(posteriores, lecturas, posicion_de, clave, nombre)
+    if clasificados is None:
+        return None
+    primer_uso, almacen, comparaciones = clasificados
+    operadores = {_operador_de_comparacion(s) for s in comparaciones} | {_operador_de_almacen(almacen)}
+    if operadores & OPERADORES_SENSIBLES_AL_SIGNO and not mismo_signo:
+        return None
+    primero = min(posicion_de[id(s)] for s, _ in lecturas)
+    ultimo = max(posicion_de[id(s)] for s, _ in lecturas)
+    inicial = an.efectos_de(c.Expresion(expr=c.Binario(operador, campo, operando)), ctx.alias)
+    lectura_del_campo = an.efectos_de(c.Expresion(expr=campo), ctx.alias)
+    libre = _sin_escrituras_en_el_tramo(ctx, posteriores[:primero], inicial) and _sin_escrituras_en_el_tramo(
+        ctx, posteriores[primero + 1 : ultimo + 1], lectura_del_campo, almacen
+    )
+    if not libre:
+        return None
+    return CopiaDeCampo(
+        bloque, indice, nombre, campo, operador, operando, primer_uso, almacen, tuple(comparaciones)
+    )
+
+
+def _copias_de_campo(ctx: Contexto) -> list[CopiaDeCampo]:
+    """Locales asignadas una vez desde ``campo op operando`` cuya copia al campo se puede eliminar."""
+    declaraciones = _declaraciones_simples(ctx)
+    vedados = _nombres_vedados(ctx) - ctx.entorno.parametros
+    resultado: list[CopiaDeCampo] = []
+    for bloque, indice, sentencia in _sentencias(ctx.funcion):
+        asignacion = _asignacion_unica_de_local(sentencia, declaraciones)
+        if asignacion is None or sentencia.comentarios:
+            continue
+        nombre, fuente = asignacion
+        partes = _descomponer_copia(fuente)
+        if partes is None or nombre in an.identificadores_de(fuente):
+            continue
+        if an.identificadores_de(partes[0]) & vedados:
+            continue
+        copia = _copia_propagable(ctx, bloque, indice, nombre, partes)
+        if copia is not None:
+            resultado.append(copia)
+    return resultado
+
+
+def propagar_copia_de_campo(ctx: Contexto) -> str | None:
+    """
+    Elimina una local que copia ``campo op c`` y la devuelve al campo, usando asignaciones compuestas.
+
+    Contexto:
+        ``f = o->flags14 | 2; o->flags14 = f; ...; o->flags14 = f & mascara;`` crea una copia ``move``
+        que el compilador mantiene en otro registro mientras vive ``f``. Con ``o->flags14 |= 2; ...;
+        o->flags14 &= mascara;`` el valor cargado se reutiliza en el mismo registro y la copia
+        desaparece. Es la forma en que se cierra ``func_8001C424``. Solo se aplica si la local se asigna
+        una vez desde un campo o elemento puro y un operando puro, su primer uso es ``campo = local;``,
+        el resto de sus usos son comparaciones o un almacen final ``campo = local op2 c2;``, y entre la
+        copia y el ultimo uso nada escribe el campo (ruta solapada, alias de union, ``*p``, ``p[i]``) ni
+        llama a funciones: asi la local vale siempre lo mismo que el campo y sustituirla no cambia nada.
+        El campo y la local deben ser enteros del mismo ancho; con distinto signo se excluyen ``>>`` y
+        las comparaciones de orden.
+
+    Args:
+        ctx (Contexto): Contexto de la ronda.
+
+    Returns:
+        str | None: Descripcion, o ``None`` si ninguna local cumple las condiciones.
+
+    Ejemplo:
+        descripcion = propagar_copia_de_campo(contexto)
+    """
+    copia = _elegir(ctx.azar, _copias_de_campo(ctx))
+    if copia is None:
+        return None
+    asignacion = copia.primer_uso.expr
+    assert isinstance(asignacion, c.Asigna)  # noqa: S101 - ``_es_copia_al_campo`` lo garantiza
+    asignacion.op = f"{copia.operador}="
+    asignacion.valor = copia.operando
+    for sitio in copia.comparaciones:
+        c.reemplazar_hijo(sitio.padre, sitio.nodo, copy.deepcopy(copia.campo))
+    if copia.almacen is not None:
+        reescritura = copia.almacen.expr
+        assert isinstance(reescritura, c.Asigna)  # noqa: S101 - ``_es_almacen_al_campo`` lo garantiza
+        valor = reescritura.valor
+        assert isinstance(valor, c.Binario)  # noqa: S101 - ``_es_almacen_al_campo`` lo garantiza
+        reescritura.op = f"{valor.op}="
+        reescritura.valor = valor.der
+    expandida = an.texto_de(c.Binario(copia.operador, copia.campo, copia.operando))
+    descripcion = f"propagar_copia_de_campo({copia.nombre} = {expandida})"
+    sentencia = copia.bloque.items.pop(copia.indice)
+    if not isinstance(sentencia, c.Decl):
+        _quitar_declaracion(ctx.funcion, copia.nombre)
+    ctx.entorno.locales.pop(copia.nombre, None)
+    return descripcion
+
+
+def _compuesta_sobre_campo(
+    sentencia: c.Sentencia, clave: str | None = None
+) -> tuple[c.Asigna, c.Binario] | None:
+    """
+    Reconoce ``campo op= operando;`` con campo y operando puros.
+
+    Con ``clave`` solo acepta el campo cuyo texto coincida. Devuelve la asignacion y su forma expandida
+    ``campo op operando`` (un nodo nuevo que comparte los hijos).
+    """
+    if not (
+        isinstance(sentencia, c.Expresion)
+        and isinstance(sentencia.expr, c.Asigna)
+        and sentencia.expr.op in OPERADORES_DE_ASIGNACION_COMPUESTA
+        and _es_acceso_a_memoria(sentencia.expr.destino)
+        and an.es_pura(sentencia.expr.valor)
+    ):
+        return None
+    asignacion = sentencia.expr
+    if clave is not None and an.texto_de(asignacion.destino) != clave:
+        return None
+    return asignacion, c.Binario(asignacion.op[:-1], asignacion.destino, asignacion.valor)
+
+
+def _pares_de_compuestas(ctx: Contexto) -> list[tuple[c.Bloque, int, int, an.Tipo]]:
+    """
+    Pares (primera, siguiente) de asignaciones compuestas al mismo campo con una local posible entre ellas.
+
+    Para cada ``campo op= c`` se toma la siguiente ``campo op2= c2`` del bloque si entre las dos nada
+    (con todo lo que contiene) escribe el campo ni hace llamadas. El campo debe ser un entero y no
+    depender de variables con la direccion tomada.
+    """
+    vedados = _nombres_vedados(ctx) - ctx.entorno.parametros
+    pares: list[tuple[c.Bloque, int, int, an.Tipo]] = []
+    for bloque, indice, sentencia in _sentencias(ctx.funcion):
+        primera = _compuesta_sobre_campo(sentencia)
+        if primera is None or an.identificadores_de(primera[0].destino) & vedados:
+            continue
+        tipo = ctx.entorno.inferir(primera[0].destino)
+        if tipo is None or not tipo.es_entero:
+            continue
+        clave = an.texto_de(primera[0].destino)
+        lectura = an.efectos_de(c.Expresion(expr=primera[0].destino), ctx.alias)
+        for posicion in range(indice + 1, len(bloque.items)):
+            if _compuesta_sobre_campo(bloque.items[posicion], clave) is not None:
+                pares.append((bloque, indice, posicion, tipo))
+                break
+            if an.escritura_alcanza(an.efectos_profundos(bloque.items[posicion], ctx.alias), lectura):
+                break
+    return pares
+
+
+def introducir_copia_de_campo(ctx: Contexto) -> str | None:
+    """
+    Pasa dos asignaciones compuestas al mismo campo a una local que se copia al campo y se reutiliza.
+
+    Contexto:
+        Operacion inversa de ``propagar_copia_de_campo``: ``o->flags14 |= 2; ...; o->flags14 &= m;``
+        pasa a ``f = o->flags14 | 2; o->flags14 = f; ...; o->flags14 = f & m;``. Permite que el barrido
+        deshaga la propagacion y explore la forma con la copia explicita. La local lleva el tipo exacto
+        del campo y la sustitucion solo se hace entre dos sentencias del mismo bloque sin escrituras
+        al campo ni llamadas entre ellas, de modo que la local vale lo mismo que el campo en el segundo
+        uso.
+
+    Args:
+        ctx (Contexto): Contexto de la ronda.
+
+    Returns:
+        str | None: Descripcion, o ``None`` si la funcion no tiene dos compuestas al mismo campo.
+
+    Ejemplo:
+        descripcion = introducir_copia_de_campo(contexto)
+    """
+    elegido = _elegir(ctx.azar, _pares_de_compuestas(ctx))
+    if elegido is None:
+        return None
+    bloque, primera_posicion, segunda_posicion, tipo = elegido
+    primera = _compuesta_sobre_campo(bloque.items[primera_posicion])
+    segunda = _compuesta_sobre_campo(bloque.items[segunda_posicion])
+    assert primera is not None and segunda is not None  # noqa: S101 - ``_pares_de_compuestas`` lo garantiza
+    nombre = _nombre_temporal(ctx)
+    campo = primera[0].destino
+    obtener = c.Expresion(
+        expr=c.Asigna("=", c.Id(nombre), primera[1]), comentarios=bloque.items[primera_posicion].comentarios
+    )
+    devolver = c.Expresion(expr=c.Asigna("=", copy.deepcopy(campo), c.Id(nombre)))
+    segunda[0].valor = c.Binario(segunda[1].op, c.Id(nombre), segunda[0].valor)
+    segunda[0].op = "="
+    bloque.items[primera_posicion : primera_posicion + 1] = [obtener, devolver]
+    _declarar_temporal(ctx, nombre, tipo)
+    return f"introducir_copia_de_campo({tipo.texto} {nombre} = {an.texto_de(primera[1])})"
+
+
+# ---------------------------------------------------------------------------------------------------
 # Orquestacion
 # ---------------------------------------------------------------------------------------------------
 
@@ -1546,6 +1935,8 @@ MUTACIONES: tuple[tuple[str, Mutacion, float], ...] = (
     ("releer_en_condicion", releer_en_condicion, 1.5),
     ("unificar_locales", unificar_locales, 1.5),
     ("partir_local", partir_local, 1.5),
+    ("propagar_copia_de_campo", propagar_copia_de_campo, 2.0),
+    ("introducir_copia_de_campo", introducir_copia_de_campo, 1.0),
 )
 INTENTOS_POR_MUTACION = 12
 MAX_VECINOS_POR_MUTACION = 5000
