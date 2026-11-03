@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 372 | 64488 |
+| Código del juego | 450 | 201416 | 373 | 68496 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 64488 de 201416 (32.02 %).
+Bytes de código del juego descompilados: 68496 de 201416 (34.01 %).
 Funciones marcadas `NON_MATCHING`: 56.
-Coherencia con el ensamblador: correcta (730 `glabel` en `asm/` + 372 en C = 1102; la tabla declara 1102).
+Coherencia con el ensamblador: correcta (729 `glabel` en `asm/` + 373 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -33,7 +33,7 @@ Coherencia con el ensamblador: correcta (730 `glabel` en `asm/` + 372 en C = 110
 | logica_de_niveles | 3 | 14 | 5 | 2 | 10512 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 22 | 4 | 1 | 9256 | 13644 |
-| movimiento_y_objetos_de_escena | 3 | 12 | 14 | 1 | 3876 | 18284 |
+| movimiento_y_objetos_de_escena | 3 | 13 | 14 | 0 | 7884 | 18284 |
 | tarjeta_de_memoria | 1 | 8 | 2 | 0 | 1892 | 5116 |
 
 ## Por archivo
@@ -63,7 +63,7 @@ Coherencia con el ensamblador: correcta (730 `glabel` en `asm/` + 372 en C = 110
 | `src/menus_e_interfaz.c` | 22 | 4 | 1 | 9256 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 2 | 2 | 0 | 856 | 2116 |
 | `src/movimiento_y_objetos_de_escena_2.c` | 9 | 6 | 0 | 2972 | 6336 |
-| `src/movimiento_y_objetos_de_escena_3.c` | 1 | 6 | 1 | 48 | 9832 |
+| `src/movimiento_y_objetos_de_escena_3.c` | 2 | 6 | 0 | 4056 | 9832 |
 | `src/tarjeta_de_memoria.c` | 8 | 2 | 0 | 1892 | 5116 |
 
 ## Funciones `NON_MATCHING`
