@@ -938,8 +938,6 @@ void func_80020240(Objeto* o)
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020240);
 #endif
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 10 con la configuracion versionada (g = 8 del archivo). Solo difiere el registro del puntero a la distancia que recibe GEO_NORMA2_XZ: el original lo deja en a0 y GCC en v0 (solo se consigue declarando como destruidos registros que la macro no escribe, recurso no admitido). */
 /*
  * Busca el objeto solido que sirve de apoyo bajo un punto. Recorre la lista de solidos (D_80069630)
  * y, para cada uno que cumple la mascara, esta visible, es del mismo grupo, es un volumen solido
@@ -1096,9 +1094,6 @@ ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020354);
-#endif
 
 /*
  * Busca el peldano que corresponde a la altura del objeto sobre el objeto de apoyo (p70):
