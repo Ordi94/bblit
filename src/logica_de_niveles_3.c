@@ -385,6 +385,7 @@ void func_80026FEC(Objeto* o)
     s32 choco;
     s32 id_sec;
     s32 onda;
+    GsCOORD2PARAM* pr;
     s32 jy;
     s32 portador;
     s32 rflags;
@@ -1105,10 +1106,11 @@ L_80028B94:
     if (t->banderas & 0x1000) {
         /* giro directo hacia el objetivo, relativo al ayudante si lo hay */
         giro = t->w114;
+        pr = o->coord.param;
         if (o->coord.super != 0) {
             giro = giro - o->coord.super->param->rotate.vy;
         }
-        o->coord.param->rotate.vy = giro;
+        pr->rotate.vy = giro;
         goto L_80028FD0;
     }
     if (t->w114 < 0) {
@@ -1263,7 +1265,7 @@ L_800291A8:
         ((o->flags08 & 0x40000) || (t->fot->w10 & 0x20000000)) &&
         o->p70 == 0 &&
         !(o->flags14 & 0x10) &&
-        (!(o->flags14 & 0x1) || (o->flags14 & 0x8)) &&
+        ((o->flags14 & 0x1) ? (o->flags14 & 0x8) : 1) &&
         (s16)t->r.sv.b.vy >= -0x63 &&
         t->aux->u78.p != 0 &&
         o->u78.p != 0) {
