@@ -385,6 +385,7 @@ void func_80026FEC(Objeto* o)
     s32 choco;
     s32 id_sec;
     s32 onda;
+    s32 rflags;
     s32 giro;
     s32 suelo;
     s32 fase;
@@ -1368,7 +1369,8 @@ L_800291A8:
     o->flags14 |= 0x40000000;
     t->aux->flags14 |= 0x40000000;
     /* con 0x80000 en el fotograma solo cuenta la rampa (bit 4); sin el, rampa y salto (bits 4 y 8) */
-    if ((t->fot->w0C & 0x80000) ? ((s16)t->res.flags & 0x4) : ((s16)t->res.flags & 0xC)) {
+    rflags = (s16)t->res.flags;
+    if ((t->fot->w0C & 0x80000) ? (rflags & 0x4) : (rflags & 0xC)) {
         goto L_80029A74;
     }
     if (o->flags08 & 0x2000000) {
@@ -1423,8 +1425,12 @@ L_80029B6C:
     if (!(o->flags14 & 0x12)) goto L_80029C44;
     o->u18C.estado.h194 = o->u18C.estado.h194 + 1;
     t->w118 = (s16)t->fot->w18 * (s16)o->u18C.estado.h194;
-    if (t->w118 < 0x400) {
-        /* Aun dentro del umbral: se suelta al portador y se empuja con el giro actual. */
+    if (t->w118 >= 0x400) {
+        o->flags14 = (o->flags14 | 0x800000) & 0xFFF7EFFF;
+        goto L_80029EF8;
+    }
+    /* Aun dentro del umbral: se suelta al portador y se empuja con el giro actual. */
+    {
         if (o->p70 != 0) {
             if (o->p70->p6C == o) {
                 o->p70->p6C = 0;
@@ -1438,8 +1444,6 @@ L_80029B6C:
         arg_giro = t->w118;
         goto L_80029EEC;
     }
-    o->flags14 = (o->flags14 | 0x800000) & 0xFFF7EFFF;
-    goto L_80029EF8;
 
 L_80029C44:
     /* Quien es el portador candidato: el jugador cuando el objeto ya esta marcado o el fotograma lo pide;
