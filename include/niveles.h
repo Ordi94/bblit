@@ -85,8 +85,8 @@ typedef struct TrabajoMovil {
  * primer uso y el segundo se accede con estos cast, cada uno con la instruccion que lo fija.
  */
 #define MOVIL_LIMITE_BAJO(o) (*(s32*)&(o)->registro184)
-#define MOVIL_ORIGEN_X(o) (*(s32*)((u8*)(o) + 0x190))
-#define MOVIL_LIMITE_ALTO(o) (*(s32*)((u8*)(o) + 0x194))
+#define MOVIL_ORIGEN_X(o) (*(s32*)((u8*)(o) + 0x190)) /* en el personaje animado el mismo desplazamiento es u18C.estado.h190 */
+#define MOVIL_LIMITE_ALTO(o) (*(s32*)((u8*)(o) + 0x194)) /* en el personaje animado el mismo desplazamiento es u18C.estado.h194 */
 #define MOVIL_ORIGEN_Z(o) (*(s32*)((u8*)(o) + 0x198))
 
 /*
@@ -441,7 +441,7 @@ extern Objeto* func_80036734(s16 id, s32* pos, u16* ang);
 extern void func_8001CD84(Objeto* o, u32 id, void* area);
 extern void func_8001D31C(s32 x, s32 y, s32 z);
 extern s16 func_80018F80(Objeto* a, Objeto* b, void* area);
-/* Aplica al jugador el dano del fotograma en curso (DatosGolpe de movimiento_y_objetos_de_escena_2.c es la misma memoria que RegistroAnim). */
+/* Aplica al jugador el dano del fotograma en curso (golpe es el RegistroAnim del atacante; la definicion en C solo declara los dos primeros argumentos). */
 extern s32 func_8001D75C(Objeto* o, RegistroAnim* golpe, void* area);
 extern Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o);
 extern Objeto* func_80016ED0(Objeto* a, u32 mascara, void* area);
@@ -457,6 +457,10 @@ extern void func_8001D0FC(Objeto* o, s32 id, void* area);
  * 0x88 bytes con varias disposiciones segun la fase: el resultado de RotMatrix (MATRIX), el vector
  * de velocidad local (SVECTOR, lhu / sh), el vector de desplazamiento rotado y el giro. Los campos de
  * 32 bits sin nombre propio llevan su desplazamiento en el nombre. VECTOR ocupa 16 bytes (con relleno).
+ * Es una vista por funcion, como TrabajoMovil, TrabajoDisparo, TrabajoZona, TrabajoSonda, TrabajoProyectil,
+ * TrabajoEfecto, TrabajoBloque, TrabajoCadena, Escritorio y EstadoCamara sobre el mismo scratchpad: no
+ * sustituye a ninguna. El area de consulta que se pasa a las rutinas del motor (0x1F800128) no tiene
+ * estructura propia y se recibe como void*. Esta vista reutiliza ResultadoBaldosa en +0x88.
  */
 typedef struct TrabajoPersonaje {
     union {

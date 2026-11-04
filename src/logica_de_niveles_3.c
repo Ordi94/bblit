@@ -370,7 +370,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 #define GIRO_Y(p) (((ParametrosObjeto*)(p))->giro.u.y)
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2815 con la configuracion versionada (g = 8 del archivo). Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0 en lugar de t7). */
+/* Pendiente: puntuacion 2815 con la configuracion versionada (g = 8 del archivo). Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0 en lugar de t7), el ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi 0xffff aqui) y el orden de un sw adicional a 0x14(s3). */
 /*
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
@@ -909,7 +909,8 @@ orientar_al_mando:
     if ((s16)ESTADO_PRINCIPAL->mando.eje_x == 0 && ESTADO_PRINCIPAL->mando.eje_y == 0) {
         goto mando_en_reposo;
     }
-    t->w114 = SquareRoot0((s16)ESTADO_PRINCIPAL->mando.eje_x * (s16)ESTADO_PRINCIPAL->mando.eje_x + (s16)ESTADO_PRINCIPAL->mando.eje_y * (s16)ESTADO_PRINCIPAL->mando.eje_y);
+    t->w114 = SquareRoot0((s16)ESTADO_PRINCIPAL->mando.eje_x * (s16)ESTADO_PRINCIPAL->mando.eje_x
+                          + (s16)ESTADO_PRINCIPAL->mando.eje_y * (s16)ESTADO_PRINCIPAL->mando.eje_y);
     t->w114 = (t->w114 - D_8006952C) * (0x80 / D_8006952C);
     if (t->w114 > 0x80) {
         t->w114 = 0x80;
@@ -1739,9 +1740,11 @@ evaluar_disparador:
     }
     if (t->banderas == 0) goto condicion_del_disparador;
 
-    /* coord_o es s1 (= &o->coord, fijado en 0x8002A878); pila_nodo es el area de la pila (+0x18) que recibe func_8001CE64 */
+    /* coord_o es s1 (= &o->coord, fijado en 0x8002A878); pila_nodo es el area de la pila (+0x18) que
+     * recibe func_8001CE64 */
 
-    /* Arranque del rango: 0x8002A8FC es el hueco de retardo del beqz de 0x8002A8F8 (flags == 0 salta a condicion_del_disparador). */
+    /* Arranque del rango: 0x8002A8FC es el hueco de retardo del beqz de 0x8002A8F8 (flags == 0 salta
+     * a condicion_del_disparador). */
     if (t->banderas & 0x40) {
         if (t->nodo->p1C != (u16)o->trabajo.cuadro) {
             goto siguiente_disparador;
@@ -1877,7 +1880,8 @@ accion_del_disparador:
                 goto efectos_tras_disparadores;
             }
             if (t->banderas & 0x1000000) {
-                *(u16*)&t->hijo->s1E = *(u16*)&o->s1E; /* lhu / sh 0x1E (0x8002AD98): el campo es s16, la copia es sin signo */
+                /* lhu / sh 0x1E (0x8002AD98): el campo es s16, la copia es sin signo */
+                *(u16*)&t->hijo->s1E = *(u16*)&o->s1E;
             }
             if (t->banderas & 0x80) {
                 GEO_CERO_W(&t->hijo->portado.trans);

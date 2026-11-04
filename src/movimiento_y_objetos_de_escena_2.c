@@ -6,17 +6,6 @@
 
 
 /*
- * Datos de golpe del atacante: banderas en +0xC (0x200000 = golpe leve, siempre resta 1) y
- * dano en +0x16.
- */
-typedef struct DatosGolpe {
-    u8 pad00[0x0C];
-    u32 flags;
-    u8 pad10[0x16 - 0x10];
-    s16 danio;
-} DatosGolpe;
-
-/*
  * Dato pequeno direccionado con desplazamiento($gp): lo define este archivo (definicion
  * tentativa) para que el ensamblador lo reescriba a $gp, y el enlace lo coloca en 0x800693B8.
  * La declaracion compartida vive en globales.h; la definicion se conserva aqui porque
@@ -461,10 +450,14 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D588);
  * golpes recibidos) y 0 si lo impiden el estado del juego (menus, pausa, bandera 0x1000000
  * del objeto controlado) o el fotograma actual no admite golpe (bit 0x4000). El dano es el
  * del propio objeto (w1E) si es del tipo 0x1F, el del atacante `a1` (2 como maximo) o 1.
+ * `a1` es el fotograma de animacion del atacante (w0C con el bit 0x200000 = golpe leve, w16 =
+ * dano). El prototipo compartido de niveles.h declara ademas un tercer argumento (el area de trabajo
+ * del llamador) que esta definicion no usa y no declara: con el parametro el reparto de registros
+ * de `otro` cambia y la puntuacion sube.
  */
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 8935 con la configuracion versionada (g = 8 del archivo). Misma logica de condiciones y mismos almacenes, primer borrador sin igualar el orden de bloques: el original reparte el dano por defecto (1) y el de la rama con atacante en bloques compartidos con saltos distintos y dos formas de cerrar el llamador. */
-s32 func_8001D75C(Objeto* otro, DatosGolpe* a1)
+s32 func_8001D75C(Objeto* otro, RegistroAnim* a1)
 {
     Objeto* j;
     u32 estado;
@@ -508,8 +501,8 @@ s32 func_8001D75C(Objeto* otro, DatosGolpe* a1)
         goto marcar;
     }
     if (a1 != NULL) {
-        if (!((otro->flags08 & 0x10000000) && (otro->flags14 & 1)) && !(a1->flags & 0x200000)) {
-            danio = a1->danio;
+        if (!((otro->flags08 & 0x10000000) && (otro->flags14 & 1)) && !(a1->w0C & 0x200000)) {
+            danio = (s16)a1->w16;
             if (danio != 0) {
                 if (danio >= 3) {
                     danio = 2;

@@ -273,9 +273,9 @@ typedef struct Objeto {
         struct {
             u8 pad00[0x18E - 0x18C];
             u16 w18E;           /* func_80026FEC: lhu / sh 0x80028A74, cuenta atras del vaiven ocioso del giro */
-            s16 h190;           /* func_80026FEC: lh / sh 0x80028A84, sentido del vaiven ocioso del giro */
+            s16 h190;           /* func_80026FEC: lh / sh 0x80028A84, sentido del vaiven ocioso del giro; mismo desplazamiento que MOVIL_ORIGEN_X de la clase de objeto movil (niveles.h), otra vista de la misma memoria segun la clase */
             u16 w192;           /* func_80031B78: solo sh $zero, 0x192($a0) en 0x80031B8C; func_80026FEC: lhu 0x80027F24 y lh 0x80027F20 (cuenta del vuelo), sh */
-            s16 h194;           /* func_80026FEC: lh 0x80027F30 y sh 0x80027F1C (sentido del vuelo) */
+            s16 h194;           /* func_80026FEC: lh 0x80027F30 y sh 0x80027F1C (sentido del vuelo); mismo desplazamiento que MOVIL_LIMITE_ALTO de la clase de objeto movil (niveles.h), otra vista de la misma memoria segun la clase */
             u16 w196;           /* func_80031B78: solo sh 0x196($a0) en 0x80031B94; func_80026FEC lo lee con lh y lhu (0x80028ED8, 0x80028F0C, 0x80028F40: paso de giro) */
             u8 pad0C[0x28 - 0x0C];
         } estado;
