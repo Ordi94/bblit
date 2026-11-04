@@ -844,8 +844,8 @@ L_80027D04:
         t->s50.vy = 0;
         t->s50.vx = 0;
         t->r.sv.g.vz = 0;
-        t->r.sv.g.vx = 0;
         t->s50.vz = 0x64;
+        t->r.sv.g.vx = 0;
         if ((s16)t->r.h[2] < 0) {
             t->r.sv.g.vy = (u16)o->coord.param->rotate.vy - 0x400;
         } else {
@@ -863,8 +863,8 @@ L_80027D04:
         BarrerTerreno(&t->p58, 0, &t->res, area);
         if (!(t->res.flags & 0xC)) {
             t->w_a0 = (s16)t->res.pendiente_abs;
-            t->p40.vz = -t->p40.vz;
             t->p40.vx = -t->p40.vx;
+            t->p40.vz = -t->p40.vz;
             t->res.grupo = o->w26;
             GEO_CARGAR_W(&t->p40);
             GEO_CARGAR_SUMAR_W(&o->param.trans);
@@ -1658,8 +1658,8 @@ L_8002A448:
             BarrerTerreno(&t->vC0, &t->pF0, &t->res, area);
             o->param.trans.vx = o->p70->param.trans.vx + t->pF0.vx;
             o->coord.param = PARAMETROS_SDK(o);
-            o->coord.super = 0;
             o->param.trans.vz = o->p70->param.trans.vz + t->pF0.vz;
+            o->coord.super = 0;
             o->param.giro.u.x = o->p70->param.giro.u.x;
             o->param.giro.u.y = o->p70->param.giro.u.y;
             /* El giro en Z se lee del portador antes de soltarlo y se escribe despues. */
