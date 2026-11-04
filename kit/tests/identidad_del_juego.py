@@ -30,4 +30,4 @@ PATRONES_PROHIBIDOS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bD_800[0-9A-Fa-f]{5}\b"),
     re.compile(r"0x800[1-6][0-9A-Fa-f]{4}\b"),
 )
-"""Nombres automaticos y direcciones del espacio de codigo de un ejecutable real, en cualquier archivo del kit."""
+"""Nombres automaticos y direcciones del espacio de codigo de un ejecutable real, en todo el kit."""

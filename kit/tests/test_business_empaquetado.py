@@ -38,7 +38,10 @@ def _modulos_importados() -> set[str]:
 def _dependencias_declaradas(pyproject: dict[str, object]) -> set[str]:
     proyecto = pyproject["project"]
     assert isinstance(proyecto, dict)
-    return {re.split(r"[<>=!~\[ ]", dependencia, maxsplit=1)[0].lower() for dependencia in proyecto["dependencies"]}
+    nombres = (
+        re.split(r"[<>=!~\[ ]", dependencia, maxsplit=1)[0] for dependencia in proyecto["dependencies"]
+    )
+    return {nombre.lower() for nombre in nombres}
 
 
 def test_toda_importacion_de_terceros_esta_declarada_como_dependencia(pyproject: dict[str, object]) -> None:

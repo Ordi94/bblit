@@ -1,36 +1,184 @@
 # psx-decomp-kit
 
 Herramientas para descompilar juegos de PlayStation 1 hasta obtener C que, compilado con el
-compilador original del SDK, reproduce el ejecutable byte a byte: particion con splat,
-compilacion, comparacion funcion a funcion, medicion de progreso y busqueda de formas de C.
+compilador original del SDK, reproduce el ejecutable byte a byte (descompilacion "matching").
 
-El kit es el paquete Python `psxdecomp` (Python 3.13 o superior, licencia MIT).
+## Que es
+
+Un paquete Python, `psxdecomp`, con las piezas genericas de un proyecto de descompilacion matching:
+
+- particion del ejecutable con `splat` y construccion completa (compilar los `.c`, ensamblar el resto, enlazar);
+- verificacion del ejecutable reconstruido por huella SHA-256;
+- comparacion funcion a funcion contra el original con `asm-differ` (`diff`) y banco de variantes (`probar`);
+- busqueda automatica de la forma de C que hace coincidir una funcion (`permutar`);
+- medicion de progreso (`progreso`): cuanto del ejecutable ya esta en C, por zona y por subsistema;
+- instalacion verificada del toolchain externo (SDK, binutils, `maspsx`, `asm-differ`);
+- cargador y validador del manifiesto `psxdecomp.toml`, unica fuente de todo lo que depende del proyecto.
+
+Version 0.1.0, Python 3.13 o superior, licencia MIT.
 
 ## Que no es
 
 - No incluye binarios del SDK, del compilador ni del juego: cada proyecto los descarga o los
-  aporta por su cuenta y declara donde estan.
+  aporta por su cuenta y declara donde estan (el kit solo descarga con verificacion de huella lo
+  que el archivo de bloqueo del proyecto enumera).
 - No contiene datos de ningun juego. Todo lo que depende del proyecto (nombre del ejecutable,
   rutas, zonas de memoria, convenciones de los comentarios) se declara en el manifiesto
   `psxdecomp.toml` de la raiz del proyecto consumidor.
+- No traduce funciones: automatiza construir, comparar y medir; el C lo escribe el proyecto.
+
+## Requisitos
+
+| Requisito | Detalle |
+|---|---|
+| Python | 3.13 o superior |
+| Windows | Funciona de forma nativa con las herramientas del SDK empaquetadas |
+| Linux | Necesita Wine (`WINE` o `<PREFIJO>_WINE`) para el compilador del SDK y binutils MIPS nativos (`mipsel-linux-gnu-as`, `ld`, `objcopy`, `objdump`; prefijo en `BINUTILS_PREFIX`) |
+| Dependencias de ejecucion | `requests`, `PyYAML` |
+| Particion (`split`) | extra `particion`: `splat64[mips]` |
+| Comparacion (`diff`, `probar`, `permutar`) | extra `comparacion`: `rapidfuzz`, `Levenshtein`, `cxxfilt`, `colorama`, `watchdog` |
+| Desarrollo | extra `desarrollo`: `pytest`, `pytest-cov`, `mypy`, `ruff` |
 
 ## Instalacion
 
-Desde la raiz del repositorio que lo contiene, dentro del entorno virtual del proyecto:
+Desde el repositorio publicado, fijando una version:
 
 ```
-python -m pip install -e ./kit
+python -m pip install "psx-decomp-kit[particion,comparacion] @ git+https://github.com/Ordi94/psx-decomp-kit@v0.1.0"
 ```
 
-La unica dependencia de ejecucion es `requests` (descarga del toolchain); el resto usa la biblioteca estandar.
+En modo editable, desde una copia local del kit (por ejemplo `kit/` dentro de un proyecto):
+
+```
+python -m pip install -e "./kit[particion,comparacion,desarrollo]"
+```
+
+Para fijar el kit en el `requirements.txt` de un proyecto:
+
+```
+psx-decomp-kit[particion,comparacion] @ git+https://github.com/Ordi94/psx-decomp-kit@v0.1.0
+```
+
+## Uso minimo
+
+1. Crear `psxdecomp.toml` en la raiz del proyecto (ver "Manifiesto"); basta `[proyecto]` y `[zonas]`.
+2. `python -m psxdecomp.cli comprobar` valida el manifiesto e imprime el resumen.
+3. `python -m psxdecomp.toolchain instalar` descarga el toolchain que declare el archivo de bloqueo.
+4. `python -m psxdecomp.cli split`, `build` y `verify` reconstruyen y comprueban el ejecutable.
+
+La raiz del proyecto es `--proyecto <raiz>` o la carpeta actual.
 
 ## Manifiesto
 
-`python -m psxdecomp.cli comprobar [ruta]` (ver "Linea de ordenes") carga y valida el `psxdecomp.toml` de la
-carpeta indicada (por omision la actual) e imprime el resumen. Las secciones son `[proyecto]`,
-`[rutas]`, `[zonas]`, `[convenciones]`, `[compilacion]` y `[plugins]`; toda clave desconocida es un error.
-`[proyecto]` admite ademas `comando` (como invoca el proyecto al kit; defecto `python -m psxdecomp.cli`) y
-`funcion_ejemplo` (opcional, la funcion que cita el texto de `diff`); `[rutas]`, `readme` (defecto `README.md`).
+`psxdecomp.toml` se lee con `tomllib`; toda seccion o clave desconocida es un error, y los valores se validan
+con listas de admitidos y cotas. Las rutas son relativas a la raiz del proyecto, no pueden contener `..` ni salir
+de ella (tampoco por enlaces simbolicos). Obligatorias: `[proyecto]` con `nombre` y `ejecutable`, y `[zonas]`.
+
+### `[proyecto]`
+
+| Clave | Defecto | Contenido |
+|---|---|---|
+| `nombre` | obligatoria | Nombre del proyecto. |
+| `ejecutable` | obligatoria | Nombre del ejecutable original (por ejemplo `EJEC_001.00`). |
+| `referencia` | `config/ejecutable.json` | Archivo JSON con el nombre, las huellas y la cabecera PS-X EXE del ejecutable original. |
+| `prefijo_entorno` | `PSXDECOMP` | Alias de las variables de entorno del proyecto (ver "Variables de entorno"). |
+| `comando` | `python -m psxdecomp.cli` | Como invoca el proyecto al kit; solo aparece en los textos generados, nunca se ejecuta. |
+| `funcion_ejemplo` | ninguna | Funcion que cita el texto de ayuda de `diff`. |
+
+### `[rutas]` (todas opcionales)
+
+| Clave | Defecto | Contenido |
+|---|---|---|
+| `fuentes` | `src` | Archivos C del proyecto. |
+| `incluir` | `include` | Cabeceras. |
+| `asm` | `asm` | Ensamblador generado por la particion. |
+| `macros` | `asm/include` | Macros del ensamblador. |
+| `asm_coincidente` | `asm/matchings` | Ensamblador original de las funciones ya escritas en C. |
+| `asm_pendiente` | `asm/nonmatchings` | Ensamblador original de las que siguen pendientes. |
+| `build` | `build` | Salidas de la construccion. |
+| `expected` | `expected` | Segmentos extraidos del ejecutable original. |
+| `splat` | `config/splat.yaml` | Configuracion del particionador. |
+| `simbolos` | `["config/symbols.txt"]` | Archivos de simbolos, en orden (el ultimo que repite un nombre gana); al menos uno. |
+| `simbolos_adicionales` | `config/simbolos_adicionales.txt` | Simbolos que se suman a los anteriores (el ultimo que declara una direccion manda). |
+| `opciones_compilacion` | `config/opciones_compilacion.toml` | Umbral `-G` y datos pequenos por archivo. |
+| `toolchain_lock` | `config/toolchain.lock.json` | Archivo de bloqueo del toolchain. |
+| `local` | `config/local.toml` | Rutas locales de la maquina (disco, toolchain); no se versiona. |
+| `documento_progreso` | `docs/PROGRESO.md` | Documento que escribe `progreso`. |
+| `readme` | `README.md` | README con los marcadores `<!-- progreso:inicio -->` y `<!-- progreso:fin -->`. |
+| `subcarpetas_ajenas` | `[]` | Carpetas de `asm/` y `expected/` de otras herramientas: `split` y `clean` no las tocan. |
+| `asm_auxiliares` | `[]` | Carpetas de `asm/` que el medidor no cuenta como codigo propio. |
+
+### `[zonas]` (obligatoria)
+
+| Clave | Contenido |
+|---|---|
+| `juego_desde` | Primera direccion del codigo propio del juego (inclusive). |
+| `librerias_desde` | Primera direccion del codigo de librerias del SDK (inclusive). |
+| `librerias_hasta` | Fin del codigo de librerias (exclusivo). |
+
+Deben cumplir `juego_desde < librerias_desde < librerias_hasta`, dentro de la RAM de PlayStation
+(`0x80000000` a `0x80800000`). Lo anterior a `juego_desde` es `arranque`; lo posterior a `librerias_hasta`, `otra`.
+
+### `[convenciones]` (todas opcionales)
+
+| Clave | Defecto | Contenido |
+|---|---|---|
+| `macro_no_coincidente` | `NON_MATCHING` | Macro bajo la que vive el intento en C de una funcion pendiente. |
+| `macro_ensamblador` | `INCLUDE_ASM` | Macro que incluye el ensamblador original de una funcion. |
+| `pendiente` | `\APendiente:\s*puntuacion\s+(\d+)\b` | Linea de pendiente; un grupo de captura: la puntuacion. |
+| `sufijo_subsistema` | `_\d+$` | Sufijo numerico que se quita al agrupar archivos por subsistema. |
+| `manuscrita` | `\brutina(?:\s+de\s+\w+)?\s+escrita\s+a\s+mano\s+en\s+el\s+original\b` | Frase que marca una rutina escrita a mano. |
+| `patron_simbolo_datos` | `^D_([0-9A-F]{8})$` | Nombre de un simbolo de datos pequenos; un grupo: la direccion. |
+| `patron_linea_simbolo` | `^([A-Za-z_]\w*)\s*=\s*0x([0-9A-Fa-f]{1,8})\s*;\s*//(.*)$` | Linea del archivo de simbolos; tres grupos: nombre, direccion y atributos. |
+| `max_valor_g` | `64` | Mayor umbral `-G` admitido, de 0 a 4096. |
+
+### `[compilacion]` (todas opcionales)
+
+| Clave | Defecto | Contenido |
+|---|---|---|
+| `version_aspsx` | `"2.80"` | Version del ensamblador original que imita `maspsx`, `major.minor`. Es un dato del binario. |
+| `opciones_compilador` | `["-quiet", "-O2"]` | Hasta 16 opciones del compilador, sin `-G` ni `-o`. Una lista vacia es valida. |
+
+### `[plugins]` (todas opcionales)
+
+`subcomandos`, `antes_de_construir`, `despues_de_verificar` (listas) y `entrada_progreso` (una referencia),
+todas como `paquete.modulo:funcion`; el contrato esta en "Plugins y ganchos".
+
+### Variables de entorno
+
+Las rutas se resuelven con la regla: argumento, `PSXDECOMP_X`, `<alias>_X`, archivo local, valor por
+defecto. `X` es `DISC` (imagen del disco), `TOOLCHAIN` (carpeta del toolchain), `7ZIP`, `WINE` o
+`BINUTILS_PREFIX`; `<alias>` es `proyecto.prefijo_entorno`.
+
+## Como lo consume un proyecto
+
+El proyecto conserva su propia entrada con una orden estable (`python tools/build.py <orden>`) que carga el
+manifiesto una vez y delega en el kit:
+
+```python
+"""Entrada del proyecto: ``python tools/build.py <orden>``."""
+
+import sys
+from pathlib import Path
+
+from psxdecomp.cli import main
+from psxdecomp.lectura import cargar_proyecto
+
+RAIZ = Path(__file__).resolve().parents[1]
+PROYECTO = cargar_proyecto(RAIZ)
+
+if __name__ == "__main__":
+    sys.exit(
+        main(
+            proyecto=PROYECTO,
+            prog=PROYECTO.identidad.comando,
+            descripcion="Reconstruccion del proyecto.",
+        )
+    )
+```
+
+Lo propio del proyecto (formatos del juego, herramientas de analisis) vive en sus paquetes y se engancha por
+`[plugins]` o importando `psxdecomp`; el kit nunca importa codigo del proyecto.
 
 ## Pruebas
 
@@ -38,7 +186,9 @@ carpeta indicada (por omision la actual) e imprime el resumen. Las secciones son
 python -m pytest
 ```
 
-Ejecutado desde `kit/`, exige cobertura del 100 % (lineas y ramas) del paquete.
+Ejecutado desde `kit/` (con el extra `desarrollo`), exige cobertura del 100 % de lineas y ramas del paquete.
+`mypy` en modo estricto y `ruff` deben pasar sin avisos. Las pruebas de coherencia del consumidor se omiten, con
+el motivo visible, cuando el kit no esta dentro de un proyecto con `psxdecomp.toml`.
 
 ## Capas del cargador
 
