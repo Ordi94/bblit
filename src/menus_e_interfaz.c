@@ -217,8 +217,8 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
     actual = D_80076188;
     /* El cursor se copia aqui y se relee en la comprobacion final con la misma variable. */
     cursor = actual;
-    tabla = (u32*)(*(D_8006967C + D_8006AEA0)).org;
-    *((u32*)actual + 0) = 0x05000000 | *tabla;
+    tabla = (u32*)D_8006967C[D_8006AEA0].org;
+    *(u32*)actual = 0x05000000 | *tabla;
     ((u32*)actual)[1] = 1;
     ((u32*)cursor)[2] = 0x80000000;
     ((u32*)actual)[3] = datos[3];
@@ -226,18 +226,18 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
     ((u32*)actual)[5] = datos[7];
     *tabla = (actual << 8) >> 8;
     actual = D_80076188;
-    siguiente = 0x18 + actual;
+    siguiente = actual + 0x18;
     D_80076188 = siguiente;
     if (datos[8] != 0) {
         tabla = (u32*)D_8006AEA0[D_8006967C].org;
-        *((u32*)actual + 6) = *tabla | 0x05000000;
+        ((u32*)actual)[6] = *tabla | 0x05000000;
         ((u32*)siguiente)[1] = 1;
-        *((u32*)siguiente + 2) = 0x80000000;
+        ((u32*)siguiente)[2] = 0x80000000;
         ((u32*)siguiente)[3] = datos[4];
         ((u32*)siguiente)[4] = datos[6];
         ((u32*)siguiente)[5] = datos[8];
         *tabla = (siguiente << 8) >> 8;
-        D_80076188 = D_80076188 + 0x18;
+        D_80076188 += 0x18;
     }
     cursor = D_80076188;
     if (ctx->limite < cursor) {
@@ -363,7 +363,9 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     EntradaVisible* entrada;
     u16 cuenta;
     u16 sala_actual;
-    s32 sala_o_marca; /* Una sola variable para la sala ensanchada y la marca de varias salas: con dos, el reparto de v0/v1 empeora. */
+    /* Una sola variable para la sala ensanchada y la marca de varias salas:
+     * con dos, el reparto de v0/v1 empeora. */
+    s32 sala_o_marca;
 
     D_800695C4 = D_8006D1C8;
     D_800695DA = 0;

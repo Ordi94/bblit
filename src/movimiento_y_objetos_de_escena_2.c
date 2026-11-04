@@ -384,7 +384,7 @@ void func_8001D414(s16 accion)
 void func_8001D588(s32 modo, VECTOR* p)
 {
     Objeto* e;
-    long pos_z;
+    s32 pos_z;
     Objeto* j;
     EstadoCamara* c;
     Objeto* t;
@@ -407,7 +407,8 @@ void func_8001D588(s32 modo, VECTOR* p)
         j->coord.super = NULL;
         j->coord.param = PARAMETROS_SDK(j);
         t->p6C = NULL;
-        /* Alias del objeto controlado en la misma variable que luego recibe el hijo suelto: separarlas sube la cifra de 660 a 720. */
+        /* Alias del objeto controlado en la misma variable que luego recibe el hijo suelto:
+         * separarlas sube la cifra de 660 a 720. */
         e = j;
         e->p70 = NULL;
         j->flags14 &= ~0x14;

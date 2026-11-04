@@ -764,7 +764,8 @@ void func_8003147C(Objeto* a0, Accion* a1)
     if (D_80069698->p70 != 0) {
         D_80069698->coord.super = NULL;
         D_80069698->coord.param = PARAMETROS_SDK(D_80069698);
-        /* El enlace se relee y la comparacion usa esa copia a ambos lados: asi el original conserva la copia en v1. */
+        /* El enlace se relee y la comparacion usa esa copia a ambos lados:
+         * asi el original conserva la copia en v1. */
         c = D_80069698->p70;
         if (c == c->p6C) {
             c->p6C = 0;
