@@ -1,6 +1,7 @@
 """Reglas del contrato de la tabla de simbolos y de la verificacion de la carga."""
 
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -239,7 +240,7 @@ def test_dos_subsistemas_no_pueden_repartirse_las_mismas_direcciones() -> None:
 def test_una_funcion_cuyo_borrador_agota_el_tiempo_queda_registrada_y_la_corrida_sigue(
     tmp_path: Path,
 ) -> None:
-    def lanzador(comando, segundos):
+    def lanzador(comando: Sequence[str], segundos: int) -> tuple[int, str, str]:
         if "func_80014AC4" in comando[-1]:
             raise TimeoutError("agotado")
         return 0, "void f(void) {\n}\n", ""

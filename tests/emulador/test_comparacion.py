@@ -1,12 +1,14 @@
 """Lectura de volcados y archivos para `comparar`, con archivos temporales."""
 
+from pathlib import Path
+
 import pytest
 from tools.emulador import comparacion
 from tools.emulador.dominio import RAM_TAMANO
 
 
 @pytest.fixture
-def ram(tmp_path):
+def ram(tmp_path: Path) -> Path:
     datos = bytearray(RAM_TAMANO)
     datos[0x14A00:0x14A10] = bytes(range(16))
     ruta = tmp_path / "ram.bin"
@@ -14,7 +16,7 @@ def ram(tmp_path):
     return ruta
 
 
-def test_comparar_con_archivo_usa_lo_que_aporta_el_archivo(ram, tmp_path):
+def test_comparar_con_archivo_usa_lo_que_aporta_el_archivo(ram: Path, tmp_path: Path) -> None:
     archivo = tmp_path / "exe.bin"
     archivo.write_bytes(b"\xff" * 0x800 + bytes(range(16)))
     resultado = comparacion.comparar_con_archivo(ram, 0x80014A00, archivo, 0x800)
@@ -23,14 +25,14 @@ def test_comparar_con_archivo_usa_lo_que_aporta_el_archivo(ram, tmp_path):
     assert not resultado.tamano_distinto
 
 
-def test_comparar_con_archivo_reporta_diferencias(ram, tmp_path):
+def test_comparar_con_archivo_reporta_diferencias(ram: Path, tmp_path: Path) -> None:
     archivo = tmp_path / "exe.bin"
     archivo.write_bytes(bytes([0, 1, 9, 3]))
     resultado = comparacion.comparar_con_archivo(ram, 0x80014A00, archivo)
     assert (resultado.bytes_iguales, resultado.bytes_distintos, resultado.primer_offset_distinto) == (3, 1, 2)
 
 
-def test_comparar_con_archivo_con_longitud_explicita_marca_tamano_distinto(ram, tmp_path):
+def test_comparar_con_archivo_con_longitud_explicita_marca_tamano_distinto(ram: Path, tmp_path: Path) -> None:
     archivo = tmp_path / "exe.bin"
     archivo.write_bytes(bytes(range(4)))
     resultado = comparacion.comparar_con_archivo(ram, 0x80014A00, archivo, longitud=8)
@@ -39,28 +41,28 @@ def test_comparar_con_archivo_con_longitud_explicita_marca_tamano_distinto(ram, 
     assert resultado.tamano_distinto
 
 
-def test_comparar_con_archivo_rechaza_offset_pasado_el_final(ram, tmp_path):
+def test_comparar_con_archivo_rechaza_offset_pasado_el_final(ram: Path, tmp_path: Path) -> None:
     archivo = tmp_path / "exe.bin"
     archivo.write_bytes(b"abc")
     with pytest.raises(ValueError, match="sobrepasa el tamano"):
         comparacion.comparar_con_archivo(ram, 0x80014A00, archivo, 4)
 
 
-def test_comparar_con_archivo_rechaza_offset_negativo(ram, tmp_path):
+def test_comparar_con_archivo_rechaza_offset_negativo(ram: Path, tmp_path: Path) -> None:
     archivo = tmp_path / "exe.bin"
     archivo.write_bytes(b"abc")
     with pytest.raises(ValueError, match="mayor o igual a 0"):
         comparacion.comparar_con_archivo(ram, 0x80014A00, archivo, -1)
 
 
-def test_comparar_rechaza_volcado_de_otro_tamano(tmp_path):
+def test_comparar_rechaza_volcado_de_otro_tamano(tmp_path: Path) -> None:
     corto = tmp_path / "corto.bin"
     corto.write_bytes(bytes(100))
     with pytest.raises(ValueError, match="2097152"):
         comparacion.comparar_con_archivo(corto, 0x80000000, corto)
 
 
-def test_comparar_volcados_ve_los_cambios(ram, tmp_path):
+def test_comparar_volcados_ve_los_cambios(ram: Path, tmp_path: Path) -> None:
     otro = bytearray(ram.read_bytes())
     otro[0x14A05] = 0xEE
     ruta_b = tmp_path / "b.bin"
@@ -73,12 +75,12 @@ def test_comparar_volcados_ve_los_cambios(ram, tmp_path):
     )
 
 
-def test_comparar_volcados_sin_longitud_cubre_hasta_el_final(ram):
+def test_comparar_volcados_sin_longitud_cubre_hasta_el_final(ram: Path) -> None:
     resultado = comparacion.comparar_volcados(ram, ram, 0x80100000)
     assert resultado.bytes_comparados == 0x100000
     assert resultado.porcentaje_igual == 100.0
 
 
-def test_comparar_volcados_rechaza_longitud_que_sobrepasa_la_ram(ram):
+def test_comparar_volcados_rechaza_longitud_que_sobrepasa_la_ram(ram: Path) -> None:
     with pytest.raises(ValueError, match="sobrepasa"):
         comparacion.comparar_volcados(ram, ram, 0x801FFFF0, 32)

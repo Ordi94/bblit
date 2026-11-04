@@ -3,6 +3,7 @@
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
 
 import pytest
 from tools.emulador import cliente
@@ -14,11 +15,11 @@ from tests.emulador import sintetica
 class Transporte:
     """Doble del transporte: responde segun la ruta y registra las peticiones."""
 
-    def __init__(self, respuestas):
+    def __init__(self, respuestas: dict[str, bytes | Exception | list[bytes | Exception]]) -> None:
         self.respuestas = respuestas
-        self.peticiones = []
+        self.peticiones: list[tuple[str, str, float]] = []
 
-    def __call__(self, metodo, url, tiempo_espera):
+    def __call__(self, metodo: str, url: str, tiempo_espera: float) -> bytes:
         self.peticiones.append((metodo, url, tiempo_espera))
         respuesta = self.respuestas[url.split("/api/v1/")[1]]
         if isinstance(respuesta, list):
@@ -28,26 +29,28 @@ class Transporte:
         return respuesta
 
 
-def _cliente(respuestas, **kwargs):
+def _cliente(
+    respuestas: dict[str, bytes | Exception | list[bytes | Exception]], **kwargs: Any
+) -> tuple[cliente.ClienteRedux, Transporte, list[float]]:
     transporte = Transporte(respuestas)
     pausas: list[float] = []
     return cliente.ClienteRedux(8080, transporte, pausas.append, **kwargs), transporte, pausas
 
 
-def test_esta_corriendo_lee_el_campo_running():
+def test_esta_corriendo_lee_el_campo_running() -> None:
     c, transporte, _ = _cliente({"execution-flow": json.dumps({"running": True}).encode()})
     assert c.esta_corriendo() is True
     assert transporte.peticiones[0][:2] == ("GET", "http://127.0.0.1:8080/api/v1/execution-flow")
 
 
 @pytest.mark.parametrize("cuerpo", [b"no json", b"[1]", b'{"running": "si"}', b"{}"])
-def test_esta_corriendo_rechaza_respuestas_inesperadas(cuerpo):
+def test_esta_corriendo_rechaza_respuestas_inesperadas(cuerpo: bytes) -> None:
     c, _, _ = _cliente({"execution-flow": cuerpo})
     with pytest.raises(EmuladorError, match="execution-flow"):
         c.esta_corriendo()
 
 
-def test_pausar_y_reanudar_usan_post_con_la_funcion_correcta():
+def test_pausar_y_reanudar_usan_post_con_la_funcion_correcta() -> None:
     c, transporte, _ = _cliente({"execution-flow?function=pause": b"", "execution-flow?function=resume": b""})
     c.pausar()
     c.reanudar()
@@ -56,7 +59,7 @@ def test_pausar_y_reanudar_usan_post_con_la_funcion_correcta():
     assert transporte.peticiones[1][1].endswith("function=resume")
 
 
-def test_volcar_ram_valida_el_tamano():
+def test_volcar_ram_valida_el_tamano() -> None:
     c, _, _ = _cliente({"cpu/ram/raw": bytes(RAM_TAMANO)})
     assert len(c.volcar_ram()) == RAM_TAMANO
     corto, _, _ = _cliente({"cpu/ram/raw": bytes(10)})
@@ -64,7 +67,7 @@ def test_volcar_ram_valida_el_tamano():
         corto.volcar_ram()
 
 
-def test_capturar_pantalla_exige_un_png():
+def test_capturar_pantalla_exige_un_png() -> None:
     png = sintetica.png_negro()
     c, _, _ = _cliente({"screen/still": png})
     assert c.capturar_pantalla() == png
@@ -73,14 +76,14 @@ def test_capturar_pantalla_exige_un_png():
         roto.capturar_pantalla()
 
 
-def test_reintenta_ante_fallos_de_conexion_y_luego_responde():
+def test_reintenta_ante_fallos_de_conexion_y_luego_responde() -> None:
     c, transporte, pausas = _cliente({"execution-flow": [OSError("x"), b'{"running": false}']})
     assert c.esta_corriendo() is False
     assert len(transporte.peticiones) == 2
     assert pausas == [cliente.PAUSA_REINTENTO]
 
 
-def test_agota_los_reintentos_sin_filtrar_la_url():
+def test_agota_los_reintentos_sin_filtrar_la_url() -> None:
     c, transporte, _ = _cliente({"execution-flow": [OSError("a"), OSError("b"), OSError("c")]})
     with pytest.raises(EmuladorError) as info:
         c.esta_corriendo()
@@ -89,16 +92,16 @@ def test_agota_los_reintentos_sin_filtrar_la_url():
 
 
 @pytest.mark.parametrize("puerto", [0, 80, 1023, 65536])
-def test_rechaza_puertos_fuera_de_rango(puerto):
+def test_rechaza_puertos_fuera_de_rango(puerto: int) -> None:
     with pytest.raises(ValueError, match="puerto"):
         cliente.ClienteRedux(puerto)
 
 
-def test_transporte_real_contra_un_servidor_local():
+def test_transporte_real_contra_un_servidor_local() -> None:
     visto = {}
 
     class Manejador(BaseHTTPRequestHandler):
-        def _responder(self):
+        def _responder(self) -> None:
             visto["metodo"] = self.command
             self.send_response(200)
             self.end_headers()
@@ -107,7 +110,7 @@ def test_transporte_real_contra_un_servidor_local():
         do_GET = _responder  # noqa: N815
         do_POST = _responder  # noqa: N815
 
-        def log_message(self, *args):
+        def log_message(self, *args: Any) -> None:
             pass
 
     servidor = HTTPServer(("127.0.0.1", 0), Manejador)

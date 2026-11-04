@@ -4,6 +4,7 @@ import socket
 import sys
 import time
 from collections.abc import Sequence
+from pathlib import Path
 
 import pytest
 from tools.emulador import proceso
@@ -21,10 +22,10 @@ def _registrar(ordenes: list[list[str]], orden: Sequence[str]) -> str:
     return ""
 
 
-def test_listar_procesos_extrae_los_nombres_de_imagen():
-    ordenes = []
+def test_listar_procesos_extrae_los_nombres_de_imagen() -> None:
+    ordenes: list[list[str]] = []
 
-    def ejecutor(orden):
+    def ejecutor(orden: Sequence[str]) -> str:
         ordenes.append(list(orden))
         return SALIDA_CON_PROCESOS
 
@@ -32,11 +33,11 @@ def test_listar_procesos_extrae_los_nombres_de_imagen():
     assert ordenes[0][:3] == ["tasklist", "/FI", "IMAGENAME eq pcsx-redux*"]
 
 
-def test_listar_procesos_sin_coincidencias_devuelve_lista_vacia():
+def test_listar_procesos_sin_coincidencias_devuelve_lista_vacia() -> None:
     assert proceso.listar_procesos(lambda orden: SALIDA_SIN_PROCESOS) == []
 
 
-def test_terminar_procesos_mata_el_arbol_y_despues_por_nombre():
+def test_terminar_procesos_mata_el_arbol_y_despues_por_nombre() -> None:
     ordenes: list[list[str]] = []
     proceso.terminar_procesos(4321, lambda orden: _registrar(ordenes, orden))
     assert ordenes == [
@@ -45,13 +46,13 @@ def test_terminar_procesos_mata_el_arbol_y_despues_por_nombre():
     ]
 
 
-def test_terminar_procesos_sin_pid_solo_termina_por_nombre():
+def test_terminar_procesos_sin_pid_solo_termina_por_nombre() -> None:
     ordenes: list[list[str]] = []
     proceso.terminar_procesos(None, lambda orden: _registrar(ordenes, orden))
     assert ordenes == [["taskkill", "/F", "/T", "/IM", "pcsx-redux*"]]
 
 
-def test_construir_argumentos_resuelve_rutas_y_activa_el_servidor_web(tmp_path):
+def test_construir_argumentos_resuelve_rutas_y_activa_el_servidor_web(tmp_path: Path) -> None:
     exe, cue, bios = tmp_path / "r.exe", tmp_path / "i.cue", tmp_path / "b.bin"
     argumentos = proceso.construir_argumentos(exe, cue, bios, 8123)
     assert argumentos == [
@@ -68,12 +69,12 @@ def test_construir_argumentos_resuelve_rutas_y_activa_el_servidor_web(tmp_path):
     ]
 
 
-def test_lanzar_emulador_crea_la_carpeta_y_delega_en_el_lanzador(tmp_path):
+def test_lanzar_emulador_crea_la_carpeta_y_delega_en_el_lanzador(tmp_path: Path) -> None:
     for nombre in ("r.exe", "i.cue", "b.bin"):
         (tmp_path / nombre).write_bytes(b"x")
-    llamadas = []
+    llamadas: list[tuple[list[str], Path]] = []
 
-    def lanzador(argumentos, carpeta):
+    def lanzador(argumentos: Sequence[str], carpeta: Path) -> int:
         llamadas.append((list(argumentos), carpeta))
         return 99
 
@@ -88,7 +89,7 @@ def test_lanzar_emulador_crea_la_carpeta_y_delega_en_el_lanzador(tmp_path):
 
 
 @pytest.mark.parametrize("faltante", ["r.exe", "i.cue", "b.bin"])
-def test_lanzar_emulador_rechaza_archivos_inexistentes_sin_crear_nada(tmp_path, faltante):
+def test_lanzar_emulador_rechaza_archivos_inexistentes_sin_crear_nada(tmp_path: Path, faltante: str) -> None:
     for nombre in ("r.exe", "i.cue", "b.bin"):
         if nombre != faltante:
             (tmp_path / nombre).write_bytes(b"x")
@@ -100,7 +101,7 @@ def test_lanzar_emulador_rechaza_archivos_inexistentes_sin_crear_nada(tmp_path, 
     assert not trabajo.exists()
 
 
-def test_puerto_ocupado_detecta_un_oyente_real():
+def test_puerto_ocupado_detecta_un_oyente_real() -> None:
     with socket.socket() as servidor:
         servidor.bind(("127.0.0.1", 0))
         servidor.listen()
@@ -109,17 +110,17 @@ def test_puerto_ocupado_detecta_un_oyente_real():
     assert not proceso.puerto_ocupado(puerto)
 
 
-def test_ejecutar_orden_devuelve_la_salida_estandar():
+def test_ejecutar_orden_devuelve_la_salida_estandar() -> None:
     assert proceso.ejecutar_orden([sys.executable, "-c", "print('hola')"]).strip() == "hola"
 
 
-def test_ejecutar_orden_ignora_el_codigo_de_salida():
+def test_ejecutar_orden_ignora_el_codigo_de_salida() -> None:
     assert (
         proceso.ejecutar_orden([sys.executable, "-c", "import sys; print('x'); sys.exit(3)"]).strip() == "x"
     )
 
 
-def test_lanzar_proceso_devuelve_el_pid_y_usa_la_carpeta_de_trabajo(tmp_path):
+def test_lanzar_proceso_devuelve_el_pid_y_usa_la_carpeta_de_trabajo(tmp_path: Path) -> None:
     pid = proceso.lanzar_proceso(
         [sys.executable, "-c", "from pathlib import Path; Path('marca.txt').write_text('ok')"], tmp_path
     )

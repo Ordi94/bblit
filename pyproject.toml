@@ -26,16 +26,6 @@ warn_unreachable = true
 files = ["tools", "tests", "kit/psxdecomp", "kit/tests"]
 mypy_path = ["kit", "kit/tests"]
 
-# Las pruebas del proyecto se tipan con strict salvo la exigencia de anotar cada funcion y de
-# no llamar a funciones sin anotar. Deuda a cerrar: quedan 163 funciones de tests/ sin anotar
-# (13 archivos); al anotarlas se elimina este bloque.
-[[tool.mypy.overrides]]
-module = ["tests.*"]
-disallow_untyped_defs = false
-disallow_incomplete_defs = false
-disallow_untyped_calls = false
-check_untyped_defs = true
-
 [tool.pytest.ini_options]
 testpaths = ["tests", "kit/tests"]
 pythonpath = [".", "kit", "kit/tests"]

@@ -6,7 +6,7 @@ from tools.ghidra import subsistemas
 from tools.ghidra.dominio import Simbolo
 from tools.ghidra.ensamblador import dividir_por_funcion
 from tools.ghidra.exportaciones import Cadena
-from tools.ghidra.grafo import construir_grafo
+from tools.ghidra.grafo import Grafo, construir_grafo
 from tools.ghidra.subsistemas import (
     COLUMNAS_SUBSISTEMAS,
     Rango,
@@ -25,7 +25,7 @@ from tests.ghidra.segmentos import BASE
 CABECERA = "nombre,inicio,fin\n"
 
 
-def _grafo():
+def _grafo() -> Grafo:
     corridas = detectar_corridas(
         segmento_programa(), BASE, (0x8005DEA0, 0x80069A00), (0x80014AC4, 0x80045DA0)
     )

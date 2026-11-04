@@ -3,6 +3,7 @@
 import struct
 import zlib
 from pathlib import Path
+from typing import Any
 
 import pytest
 from tools.emulador import pantalla
@@ -19,13 +20,13 @@ def _degradado(ancho: int, alto: int, canales: int) -> bytes:
 
 
 @pytest.mark.parametrize("filtro", [0, 1, 2, 3, 4])
-def test_cada_filtro_de_fila_se_revierte_a_los_pixeles_originales(filtro):
+def test_cada_filtro_de_fila_se_revierte_a_los_pixeles_originales(filtro: int) -> None:
     pixeles = _degradado(9, 6, 4)
     png = sintetica.construir_png(9, 6, pixeles, tipo=6, filtros=(filtro,))
     assert pantalla.decodificar_png(png).pixeles == pixeles
 
 
-def test_filtros_mezclados_por_fila_se_revierten():
+def test_filtros_mezclados_por_fila_se_revierten() -> None:
     pixeles = _degradado(7, 10, 3)
     png = sintetica.construir_png(7, 10, pixeles, tipo=2, filtros=(1, 2, 3, 4, 0))
     imagen = pantalla.decodificar_png(png)
@@ -36,14 +37,14 @@ def test_filtros_mezclados_por_fila_se_revierten():
 @pytest.mark.parametrize(
     ("tipo", "canales", "color"), [(0, 1, (0,)), (4, 2, (0,)), (2, 3, (0, 1, 2)), (6, 4, (0, 1, 2))]
 )
-def test_tipos_de_color_declaran_sus_canales(tipo, canales, color):
+def test_tipos_de_color_declaran_sus_canales(tipo: int, canales: int, color: tuple[int, ...]) -> None:
     png = sintetica.construir_png(4, 3, _degradado(4, 3, canales), tipo=tipo)
     imagen = pantalla.decodificar_png(png)
     assert imagen.canales == canales
     assert imagen.canales_color == color
 
 
-def test_png_indexado_se_expande_a_rgb():
+def test_png_indexado_se_expande_a_rgb() -> None:
     paleta = bytes([0, 0, 0, 255, 128, 0])
     png = sintetica.construir_png(2, 2, bytes([0, 1, 1, 0]), tipo=3, paleta=paleta)
     imagen = pantalla.decodificar_png(png)
@@ -51,47 +52,47 @@ def test_png_indexado_se_expande_a_rgb():
     assert imagen.pixeles == bytes([0, 0, 0, 255, 128, 0, 255, 128, 0, 0, 0, 0])
 
 
-def test_png_indexado_sin_paleta_se_rechaza():
+def test_png_indexado_sin_paleta_se_rechaza() -> None:
     png = sintetica.construir_png(2, 2, bytes([0, 0, 0, 0]), tipo=3)
     with pytest.raises(ValueError, match="PLTE"):
         pantalla.decodificar_png(png)
 
 
-def test_indice_fuera_de_la_paleta_se_rechaza():
+def test_indice_fuera_de_la_paleta_se_rechaza() -> None:
     png = sintetica.construir_png(2, 1, bytes([0, 5]), tipo=3, paleta=bytes([0, 0, 0, 1, 1, 1]))
     with pytest.raises(ValueError, match="fuera de rango"):
         pantalla.decodificar_png(png)
 
 
-def test_png_negro_tiene_fraccion_cero_y_es_negro():
+def test_png_negro_tiene_fraccion_cero_y_es_negro() -> None:
     png = sintetica.png_negro()
     assert pantalla.fraccion_con_contenido(pantalla.decodificar_png(png)) == 0.0
     assert pantalla.es_pantalla_negra(png)
 
 
-def test_png_con_contenido_no_es_negro_y_mide_su_fraccion():
+def test_png_con_contenido_no_es_negro_y_mide_su_fraccion() -> None:
     png = sintetica.png_con_contenido(64, 48, 200, 600)
     assert pantalla.fraccion_con_contenido(pantalla.decodificar_png(png)) == pytest.approx(600 / (64 * 48))
     assert not pantalla.es_pantalla_negra(png)
 
 
-def test_gris_con_contenido_usa_el_unico_canal_de_color():
+def test_gris_con_contenido_usa_el_unico_canal_de_color() -> None:
     pixeles = bytes([200] * 10 + [0] * 90)
     png = sintetica.construir_png(10, 10, pixeles, tipo=0)
     assert pantalla.fraccion_con_contenido(pantalla.decodificar_png(png)) == 0.1
 
 
-def test_el_alfa_no_cuenta_como_contenido():
+def test_el_alfa_no_cuenta_como_contenido() -> None:
     pixeles = bytes([0, 0, 0, 255]) * 100
     assert pantalla.es_pantalla_negra(sintetica.construir_png(10, 10, pixeles))
 
 
-def test_pixeles_por_debajo_del_umbral_no_cuentan():
+def test_pixeles_por_debajo_del_umbral_no_cuentan() -> None:
     pixeles = bytes([20, 20, 20, 255]) * 100
     assert pantalla.es_pantalla_negra(sintetica.construir_png(10, 10, pixeles))
 
 
-def test_un_png_negro_pesado_sigue_siendo_negro():
+def test_un_png_negro_pesado_sigue_siendo_negro() -> None:
     # El tamano del archivo no sirve: con ruido en el alfa un PNG negro pesa mucho mas que uno vacio.
     pixeles = b"".join(bytes([0, 0, 0, 255 - (i % 3)]) for i in range(64 * 48))
     png = sintetica.construir_png(64, 48, pixeles, filtros=(0,))
@@ -105,19 +106,19 @@ def test_un_png_negro_pesado_sigue_siendo_negro():
         (sintetica.png_negro()[:-5], "IEND"),
     ],
 )
-def test_png_corrupto_se_rechaza(datos, mensaje):
+def test_png_corrupto_se_rechaza(datos: bytes, mensaje: str) -> None:
     with pytest.raises(ValueError, match=mensaje):
         pantalla.decodificar_png(datos)
 
 
-def test_crc_incorrecto_se_rechaza():
+def test_crc_incorrecto_se_rechaza() -> None:
     png = bytearray(sintetica.png_negro())
     png[20] ^= 0xFF
     with pytest.raises(ValueError, match="CRC"):
         pantalla.decodificar_png(bytes(png))
 
 
-def test_png_sin_ihdr_se_rechaza():
+def test_png_sin_ihdr_se_rechaza() -> None:
     chunks = b"\x89PNG\r\n\x1a\n" + sintetica._chunk(b"IEND", b"")
     with pytest.raises(ValueError, match="IHDR"):
         pantalla.decodificar_png(chunks)
@@ -130,13 +131,13 @@ def test_png_sin_ihdr_se_rechaza():
         ({"entrelazado": 1}, "entrelazado"),
     ],
 )
-def test_formatos_no_soportados_se_rechazan(kwargs, mensaje):
+def test_formatos_no_soportados_se_rechazan(kwargs: dict[str, Any], mensaje: str) -> None:
     png = sintetica.construir_png(2, 2, bytes(16), **kwargs)
     with pytest.raises(ValueError, match=mensaje):
         pantalla.decodificar_png(png)
 
 
-def test_tipo_de_color_desconocido_se_rechaza():
+def test_tipo_de_color_desconocido_se_rechaza() -> None:
     png = bytearray(sintetica.construir_png(2, 2, bytes(16)))
     png[25] = 5
     # recalcula el CRC de IHDR tras cambiar el tipo
@@ -146,14 +147,14 @@ def test_tipo_de_color_desconocido_se_rechaza():
         pantalla.decodificar_png(bytes(png))
 
 
-def test_dimensiones_excesivas_se_rechazan():
+def test_dimensiones_excesivas_se_rechazan() -> None:
     cabecera = struct.pack(">IIBBBBB", 100000, 100000, 8, 6, 0, 0, 0)
     png = b"\x89PNG\r\n\x1a\n" + sintetica._chunk(b"IHDR", cabecera) + sintetica._chunk(b"IEND", b"")
     with pytest.raises(ValueError, match="fuera de rango"):
         pantalla.decodificar_png(png)
 
 
-def test_datos_comprimidos_corruptos_se_rechazan():
+def test_datos_comprimidos_corruptos_se_rechazan() -> None:
     base = sintetica.png_negro(4, 4)
     cabecera = base[8 : 8 + 25]
     png = (
@@ -166,7 +167,7 @@ def test_datos_comprimidos_corruptos_se_rechazan():
         pantalla.decodificar_png(png)
 
 
-def test_datos_de_imagen_incompletos_se_rechazan():
+def test_datos_de_imagen_incompletos_se_rechazan() -> None:
     cabecera = struct.pack(">IIBBBBB", 4, 4, 8, 6, 0, 0, 0)
     png = (
         b"\x89PNG\r\n\x1a\n"
@@ -178,7 +179,7 @@ def test_datos_de_imagen_incompletos_se_rechazan():
         pantalla.decodificar_png(png)
 
 
-def test_filtro_de_fila_desconocido_se_rechaza():
+def test_filtro_de_fila_desconocido_se_rechaza() -> None:
     cabecera = struct.pack(">IIBBBBB", 1, 1, 8, 0, 0, 0, 0)
     png = (
         b"\x89PNG\r\n\x1a\n"
@@ -192,7 +193,7 @@ def test_filtro_de_fila_desconocido_se_rechaza():
 
 @pytest.mark.skipif(not (ANALISIS / "e2e_titulo.png").exists(), reason="sin capturas de referencia")
 @pytest.mark.parametrize("nombre", ["e2e_titulo.png", "titulo.png", "nivel1.png"])
-def test_capturas_reales_con_contenido_no_son_negras(nombre):
+def test_capturas_reales_con_contenido_no_son_negras(nombre: str) -> None:
     assert not pantalla.es_pantalla_negra((ANALISIS / nombre).read_bytes())
 
 
@@ -200,13 +201,13 @@ def test_capturas_reales_con_contenido_no_son_negras(nombre):
     not (ANALISIS / "captura_negra.png").exists(), reason="sin la captura negra de referencia"
 )
 @pytest.mark.parametrize("nombre", ["captura_negra.png", "captura_negra_inicio.png"])
-def test_capturas_negras_reales_se_clasifican_como_negras(nombre):
+def test_capturas_negras_reales_se_clasifican_como_negras(nombre: str) -> None:
     ruta = ANALISIS / nombre
     assert pantalla.fraccion_con_contenido(pantalla.decodificar_png(ruta.read_bytes())) == 0.0
     assert pantalla.es_pantalla_negra(ruta.read_bytes())
 
 
-def test_chunk_con_longitud_mayor_que_el_archivo_se_rechaza():
+def test_chunk_con_longitud_mayor_que_el_archivo_se_rechaza() -> None:
     png = sintetica.png_negro()
     truncado = png[:8] + (10**6).to_bytes(4, "big") + png[12:]
     with pytest.raises(ValueError, match="truncado"):

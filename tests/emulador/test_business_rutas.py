@@ -127,7 +127,9 @@ def test_un_local_toml_invalido_se_informa_sin_traza_y_con_codigo_uno(
 
 
 @pytest.mark.parametrize("subcomando", ["volcar", "capturar"])
-def test_guardado_toma_el_disco_del_entorno_inyectado_y_no_del_proceso(tmp_path, monkeypatch, subcomando):
+def test_guardado_toma_el_disco_del_entorno_inyectado_y_no_del_proceso(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, subcomando: str
+) -> None:
     """BBLIT_DISC sale del entorno que recibe `main`, no de `os.environ`."""
     (tmp_path / "disc").mkdir()
     disco = tmp_path / "disc" / "juego.bin"
@@ -142,8 +144,8 @@ def test_guardado_toma_el_disco_del_entorno_inyectado_y_no_del_proceso(tmp_path,
 
 @pytest.mark.parametrize("subcomando", ["volcar", "capturar"])
 def test_guardado_ignora_el_disco_del_proceso_si_el_entorno_inyectado_difiere(
-    tmp_path, monkeypatch, subcomando
-):
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, subcomando: str
+) -> None:
     """Un BBLIT_DISC real distinto no protege nada: manda el mapping inyectado."""
     (tmp_path / "disc").mkdir()
     disco = tmp_path / "disc" / "juego.bin"

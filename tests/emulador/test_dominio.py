@@ -6,40 +6,40 @@ from tools.emulador import dominio
 from tests.emulador import sintetica
 
 
-def test_validar_ram_acepta_el_tamano_exacto():
+def test_validar_ram_acepta_el_tamano_exacto() -> None:
     datos = bytes(dominio.RAM_TAMANO)
     assert dominio.validar_ram(datos) is datos
 
 
 @pytest.mark.parametrize("tamano", [0, dominio.RAM_TAMANO - 1, dominio.RAM_TAMANO + 1])
-def test_validar_ram_rechaza_otros_tamanos(tamano):
+def test_validar_ram_rechaza_otros_tamanos(tamano: int) -> None:
     with pytest.raises(ValueError, match="2097152"):
         dominio.validar_ram(bytes(tamano))
 
 
-def test_offset_de_ram_traduce_direcciones():
+def test_offset_de_ram_traduce_direcciones() -> None:
     assert dominio.offset_de_ram(0x80000000) == 0
     assert dominio.offset_de_ram(0x80014A00) == 0x14A00
     assert dominio.offset_de_ram(0x801FFFFF, 1) == 0x1FFFFF
 
 
 @pytest.mark.parametrize("direccion", [0x7FFFFFFF, 0x80200000, 0, 0xFFFFFFFF])
-def test_offset_de_ram_rechaza_direcciones_fuera_de_la_ram(direccion):
+def test_offset_de_ram_rechaza_direcciones_fuera_de_la_ram(direccion: int) -> None:
     with pytest.raises(ValueError, match="direccion"):
         dominio.offset_de_ram(direccion)
 
 
-def test_offset_de_ram_rechaza_regiones_que_sobrepasan_el_final():
+def test_offset_de_ram_rechaza_regiones_que_sobrepasan_el_final() -> None:
     with pytest.raises(ValueError, match="sobrepasa"):
         dominio.offset_de_ram(0x801FFFFF, 2)
 
 
-def test_offset_de_ram_rechaza_longitud_negativa():
+def test_offset_de_ram_rechaza_longitud_negativa() -> None:
     with pytest.raises(ValueError, match="longitud"):
         dominio.offset_de_ram(0x80000000, -1)
 
 
-def test_comparar_regiones_iguales():
+def test_comparar_regiones_iguales() -> None:
     resultado = dominio.comparar_regiones(0x80000000, b"abcd", b"abcd")
     assert (resultado.bytes_iguales, resultado.bytes_distintos) == (4, 0)
     assert resultado.primer_offset_distinto is None
@@ -47,30 +47,30 @@ def test_comparar_regiones_iguales():
     assert not resultado.tamano_distinto
 
 
-def test_comparar_regiones_reporta_el_primer_offset_distinto():
+def test_comparar_regiones_reporta_el_primer_offset_distinto() -> None:
     resultado = dominio.comparar_regiones(0x80000000, b"abXd", b"abcY")
     assert (resultado.bytes_iguales, resultado.bytes_distintos) == (2, 2)
     assert resultado.primer_offset_distinto == 2
     assert resultado.porcentaje_igual == 50.0
 
 
-def test_comparar_regiones_de_distinto_tamano_compara_el_minimo():
+def test_comparar_regiones_de_distinto_tamano_compara_el_minimo() -> None:
     resultado = dominio.comparar_regiones(0x80000000, b"abc", b"abcdef")
     assert resultado.bytes_comparados == 3
     assert (resultado.longitud_a, resultado.longitud_b) == (3, 6)
     assert resultado.tamano_distinto
 
 
-def test_comparar_regiones_vacias_dan_cien_por_ciento():
+def test_comparar_regiones_vacias_dan_cien_por_ciento() -> None:
     assert dominio.comparar_regiones(0x80000000, b"", b"x").porcentaje_igual == 100.0
 
 
-def test_comparar_regiones_rechaza_direccion_fuera_de_la_ram():
+def test_comparar_regiones_rechaza_direccion_fuera_de_la_ram() -> None:
     with pytest.raises(ValueError, match="direccion"):
         dominio.comparar_regiones(0x1000, b"a", b"a")
 
 
-def test_a_json_usa_camel_case():
+def test_a_json_usa_camel_case() -> None:
     claves = dominio.comparar_regiones(0x80014A00, b"ab", b"aX").a_json()
     assert claves == {
         "direccion": "0x80014A00",
@@ -85,23 +85,23 @@ def test_a_json_usa_camel_case():
     }
 
 
-def test_prefijo_de_ejecutable_devuelve_direccion_y_huella():
+def test_prefijo_de_ejecutable_devuelve_direccion_y_huella() -> None:
     exe = sintetica.ejecutable_psx(0x80014A00)
     direccion, huella = dominio.prefijo_de_ejecutable(exe)
     assert direccion == 0x80014A00
     assert huella == exe[0x800:0x900]
 
 
-def test_prefijo_de_ejecutable_rechaza_firma_incorrecta():
+def test_prefijo_de_ejecutable_rechaza_firma_incorrecta() -> None:
     with pytest.raises(ValueError, match="PS-X EXE"):
         dominio.prefijo_de_ejecutable(bytes(0x1000))
 
 
-def test_prefijo_de_ejecutable_rechaza_archivos_cortos():
+def test_prefijo_de_ejecutable_rechaza_archivos_cortos() -> None:
     with pytest.raises(ValueError, match="al menos"):
         dominio.prefijo_de_ejecutable(sintetica.ejecutable_psx()[:0x850])
 
 
-def test_prefijo_de_ejecutable_rechaza_direccion_de_carga_fuera_de_la_ram():
+def test_prefijo_de_ejecutable_rechaza_direccion_de_carga_fuera_de_la_ram() -> None:
     with pytest.raises(ValueError, match="direccion"):
         dominio.prefijo_de_ejecutable(sintetica.ejecutable_psx(0x10000000))

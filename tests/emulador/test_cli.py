@@ -2,6 +2,7 @@
 
 import json
 import runpy
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,25 +14,33 @@ from tests.emulador import sintetica
 from tests.emulador.dobles import ClienteFalso, ram_con
 
 
-def _salida_json(capsys):
+class ClienteConPuertos(ClienteFalso):
+    """Cliente falso que ademas registra los puertos con que se le construyo."""
+
+    puertos: list[int]
+
+
+def _salida_json(capsys: pytest.CaptureFixture[str]) -> Any:
     return json.loads(capsys.readouterr().out)
 
 
 @pytest.fixture
-def cliente_falso(monkeypatch):
-    cliente = ClienteFalso(pantallas=[sintetica.png_negro()], rams=[ram_con(0, b"x")])
-    puertos = []
+def cliente_falso(monkeypatch: pytest.MonkeyPatch) -> ClienteConPuertos:
+    cliente = ClienteConPuertos(pantallas=[sintetica.png_negro()], rams=[ram_con(0, b"x")])
+    puertos: list[int] = []
 
-    def fabrica(puerto):
+    def fabrica(puerto: int) -> ClienteConPuertos:
         puertos.append(puerto)
         return cliente
 
     monkeypatch.setattr(cli, "ClienteRedux", fabrica)
-    cliente.puertos = puertos  # type: ignore[attr-defined]
+    cliente.puertos = puertos
     return cliente
 
 
-def test_comparar_con_archivo_imprime_json_camel_case(tmp_path, capsys):
+def test_comparar_con_archivo_imprime_json_camel_case(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     ram = tmp_path / "ram.bin"
     ram.write_bytes(ram_con(0x14A00, bytes(range(8))))
     exe = tmp_path / "exe.bin"
@@ -57,7 +66,7 @@ def test_comparar_con_archivo_imprime_json_camel_case(tmp_path, capsys):
     assert salida["porcentajeIgual"] == 100.0
 
 
-def test_comparar_dos_volcados(tmp_path, capsys):
+def test_comparar_dos_volcados(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     a, b = tmp_path / "a.bin", tmp_path / "b.bin"
     a.write_bytes(ram_con(0x100, b"abc"))
     b.write_bytes(ram_con(0x100, b"abX"))
@@ -79,7 +88,9 @@ def test_comparar_dos_volcados(tmp_path, capsys):
     assert (salida["bytesIguales"], salida["bytesDistintos"], salida["primerOffsetDistinto"]) == (2, 1, 2)
 
 
-def test_comparar_con_direccion_invalida_falla_con_exit_1(tmp_path, capsys):
+def test_comparar_con_direccion_invalida_falla_con_exit_1(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     ram = tmp_path / "ram.bin"
     ram.write_bytes(bytes(RAM_TAMANO))
     codigo = cli.main(["comparar", "--volcado", str(ram), "--direccion", "0x1000", "--volcado-b", str(ram)])
@@ -87,7 +98,9 @@ def test_comparar_con_direccion_invalida_falla_con_exit_1(tmp_path, capsys):
     assert "direccion 0x00001000" in capsys.readouterr().out
 
 
-def test_comparar_con_archivo_inexistente_no_filtra_la_ruta(tmp_path, capsys):
+def test_comparar_con_archivo_inexistente_no_filtra_la_ruta(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     ram = tmp_path / "ram.bin"
     ram.write_bytes(bytes(RAM_TAMANO))
     codigo = cli.main(
@@ -107,17 +120,19 @@ def test_comparar_con_archivo_inexistente_no_filtra_la_ruta(tmp_path, capsys):
     assert str(tmp_path) not in salida
 
 
-def test_comparar_rechaza_un_entero_mal_escrito():
+def test_comparar_rechaza_un_entero_mal_escrito() -> None:
     with pytest.raises(SystemExit):
         cli.main(["comparar", "--volcado", "a", "--direccion", "xyz", "--volcado-b", "b"])
 
 
-def test_comparar_exige_archivo_o_segundo_volcado():
+def test_comparar_exige_archivo_o_segundo_volcado() -> None:
     with pytest.raises(SystemExit):
         cli.main(["comparar", "--volcado", "a", "--direccion", "0x80000000"])
 
 
-def test_volcar_guarda_la_ram_en_el_puerto_indicado(tmp_path, capsys, cliente_falso):
+def test_volcar_guarda_la_ram_en_el_puerto_indicado(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], cliente_falso: ClienteConPuertos
+) -> None:
     destino = tmp_path / "sub" / "ram.bin"
     assert cli.main(["volcar", "--salida", str(destino), "--puerto", "8123"]) == 0
     assert len(destino.read_bytes()) == RAM_TAMANO
@@ -125,7 +140,9 @@ def test_volcar_guarda_la_ram_en_el_puerto_indicado(tmp_path, capsys, cliente_fa
     assert _salida_json(capsys) == {"salida": "ram.bin", "bytes": RAM_TAMANO}
 
 
-def test_capturar_guarda_la_pantalla(tmp_path, capsys, cliente_falso):
+def test_capturar_guarda_la_pantalla(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], cliente_falso: ClienteConPuertos
+) -> None:
     destino = tmp_path / "p.png"
     assert cli.main(["capturar", "--salida", str(destino)]) == 0
     assert destino.read_bytes() == sintetica.png_negro()
@@ -133,7 +150,12 @@ def test_capturar_guarda_la_pantalla(tmp_path, capsys, cliente_falso):
     assert _salida_json(capsys)["bytes"] == len(sintetica.png_negro())
 
 
-def test_volcar_rechaza_salida_dentro_del_disco(tmp_path, capsys, cliente_falso, monkeypatch):
+def test_volcar_rechaza_salida_dentro_del_disco(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    cliente_falso: ClienteConPuertos,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     (tmp_path / "disc").mkdir()
     (tmp_path / "disc" / "juego.bin").write_bytes(b"x")
     monkeypatch.setenv("BBLIT_DISC", str(tmp_path / "disc" / "juego.bin"))
@@ -142,7 +164,12 @@ def test_volcar_rechaza_salida_dentro_del_disco(tmp_path, capsys, cliente_falso,
     assert cliente_falso.puertos == []
 
 
-def test_capturar_rechaza_salida_dentro_del_disco(tmp_path, capsys, cliente_falso, monkeypatch):
+def test_capturar_rechaza_salida_dentro_del_disco(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    cliente_falso: ClienteConPuertos,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     (tmp_path / "disc").mkdir()
     (tmp_path / "disc" / "juego.bin").write_bytes(b"x")
     monkeypatch.setenv("BBLIT_DISC", str(tmp_path / "disc" / "juego.bin"))
@@ -153,7 +180,9 @@ def test_capturar_rechaza_salida_dentro_del_disco(tmp_path, capsys, cliente_fals
 
 
 @pytest.mark.parametrize("subcomando", ["capturar", "volcar"])
-def test_salida_fuera_del_disco_no_se_rechaza(tmp_path, cliente_falso, monkeypatch, subcomando):
+def test_salida_fuera_del_disco_no_se_rechaza(
+    tmp_path: Path, cliente_falso: ClienteConPuertos, monkeypatch: pytest.MonkeyPatch, subcomando: str
+) -> None:
     (tmp_path / "disc").mkdir()
     (tmp_path / "disc" / "juego.bin").write_bytes(b"x")
     monkeypatch.setenv("BBLIT_DISC", str(tmp_path / "disc" / "juego.bin"))
@@ -162,7 +191,7 @@ def test_salida_fuera_del_disco_no_se_rechaza(tmp_path, cliente_falso, monkeypat
     assert destino.is_file()
 
 
-def test_pausar_y_reanudar(capsys, cliente_falso):
+def test_pausar_y_reanudar(capsys: pytest.CaptureFixture[str], cliente_falso: ClienteConPuertos) -> None:
     assert cli.main(["pausar"]) == 0
     assert _salida_json(capsys) == {"estado": "pausado"}
     assert cliente_falso.pausado
@@ -171,9 +200,11 @@ def test_pausar_y_reanudar(capsys, cliente_falso):
     assert not cliente_falso.pausado
 
 
-def test_un_emulador_que_no_responde_da_exit_1(capsys, monkeypatch):
+def test_un_emulador_que_no_responde_da_exit_1(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     class Mudo:
-        def pausar(self):
+        def pausar(self) -> None:
             raise EmuladorError("el emulador no responde a POST execution-flow")
 
     monkeypatch.setattr(cli, "ClienteRedux", lambda puerto: Mudo())
@@ -181,7 +212,9 @@ def test_un_emulador_que_no_responde_da_exit_1(capsys, monkeypatch):
     assert "no responde" in capsys.readouterr().out
 
 
-def test_apagar_termina_por_nombre_aunque_no_haya_cliente(capsys, monkeypatch):
+def test_apagar_termina_por_nombre_aunque_no_haya_cliente(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     terminados: list[int | None] = []
     monkeypatch.setattr(proceso, "terminar_procesos", terminados.append)
     monkeypatch.setattr(proceso, "listar_procesos", lambda: [])
@@ -192,7 +225,9 @@ def test_apagar_termina_por_nombre_aunque_no_haya_cliente(capsys, monkeypatch):
 
 
 @pytest.mark.parametrize(("vivos", "ocupado"), [(["pcsx-redux.main.exe"], False), ([], True)])
-def test_apagar_falla_si_queda_algo(capsys, monkeypatch, vivos, ocupado):
+def test_apagar_falla_si_queda_algo(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, vivos: list[str], ocupado: bool
+) -> None:
     monkeypatch.setattr(proceso, "terminar_procesos", lambda pid: None)
     monkeypatch.setattr(proceso, "listar_procesos", lambda: vivos)
     monkeypatch.setattr(proceso, "puerto_ocupado", lambda puerto: ocupado)
@@ -200,7 +235,9 @@ def test_apagar_falla_si_queda_algo(capsys, monkeypatch, vivos, ocupado):
     assert "siguen" in capsys.readouterr().out
 
 
-def test_arrancar_lanza_espera_running_y_deja_el_emulador_vivo(capsys, monkeypatch, cliente_falso):
+def test_arrancar_lanza_espera_running_y_deja_el_emulador_vivo(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, cliente_falso: ClienteConPuertos
+) -> None:
     llamadas: dict[str, Any] = {}
     monkeypatch.setattr(proceso, "puerto_ocupado", lambda puerto: False)
     monkeypatch.setattr(proceso, "lanzar_emulador", lambda *a: llamadas.setdefault("lanzar", a) and 555)
@@ -212,7 +249,9 @@ def test_arrancar_lanza_espera_running_y_deja_el_emulador_vivo(capsys, monkeypat
     assert llamadas["lanzar"][4] == 8200
 
 
-def test_arrancar_con_puerto_ocupado_falla_sin_lanzar(capsys, monkeypatch):
+def test_arrancar_con_puerto_ocupado_falla_sin_lanzar(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     lanzado = []
     monkeypatch.setattr(proceso, "puerto_ocupado", lambda puerto: True)
     monkeypatch.setattr(proceso, "lanzar_emulador", lambda *a: lanzado.append(a))
@@ -221,12 +260,14 @@ def test_arrancar_con_puerto_ocupado_falla_sin_lanzar(capsys, monkeypatch):
     assert lanzado == []
 
 
-def test_arrancar_termina_lo_lanzado_si_no_llega_a_running(capsys, monkeypatch, cliente_falso):
+def test_arrancar_termina_lo_lanzado_si_no_llega_a_running(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, cliente_falso: ClienteConPuertos
+) -> None:
     terminados: list[int | None] = []
     monkeypatch.setattr(proceso, "puerto_ocupado", lambda puerto: False)
     monkeypatch.setattr(proceso, "lanzar_emulador", lambda *a: 321)
 
-    def sin_running(*argumentos):
+    def sin_running(*argumentos: Any) -> None:
         raise EmuladorError("el emulador no llego a `running`")
 
     monkeypatch.setattr(sesion, "esperar_running", sin_running)
@@ -235,10 +276,12 @@ def test_arrancar_termina_lo_lanzado_si_no_llega_a_running(capsys, monkeypatch, 
     assert terminados == [321]
 
 
-def test_sesion_traduce_los_argumentos_a_la_configuracion(capsys, monkeypatch, tmp_path):
-    recibido = {}
+def test_sesion_traduce_los_argumentos_a_la_configuracion(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    recibido: dict[str, Any] = {}
 
-    def falsa(config):
+    def falsa(config: sesion.ConfigSesion) -> dict[str, str]:
         recibido["config"] = config
         return {"sha256Ram": "abc"}
 
@@ -280,7 +323,9 @@ def test_sesion_traduce_los_argumentos_a_la_configuracion(capsys, monkeypatch, t
     assert _salida_json(capsys) == {"sha256Ram": "abc"}
 
 
-def test_sesion_usa_los_valores_por_defecto_y_las_variables_del_entorno(monkeypatch, tmp_path):
+def test_sesion_usa_los_valores_por_defecto_y_las_variables_del_entorno(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     recibido: dict[str, Any] = {}
     monkeypatch.setenv("BBLIT_REDUX", "otro/redux.exe")
     monkeypatch.setenv("BBLIT_BIOS", "otra/bios.bin")
@@ -294,8 +339,10 @@ def test_sesion_usa_los_valores_por_defecto_y_las_variables_del_entorno(monkeypa
     assert (config.hito, config.puerto, config.tope_hito) == ("pantalla", 8080, 90.0)
 
 
-def test_sesion_con_fallo_de_hito_da_exit_1(capsys, monkeypatch, tmp_path):
-    def falla(config):
+def test_sesion_con_fallo_de_hito_da_exit_1(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def falla(config: sesion.ConfigSesion) -> dict[str, object]:
         raise EmuladorError("la pantalla sigue negra tras 90 s")
 
     monkeypatch.setattr(sesion, "ejecutar_sesion", falla)
@@ -303,7 +350,7 @@ def test_sesion_con_fallo_de_hito_da_exit_1(capsys, monkeypatch, tmp_path):
     assert "sigue negra" in capsys.readouterr().out
 
 
-def test_punto_de_entrada_del_modulo(monkeypatch):
+def test_punto_de_entrada_del_modulo(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("sys.argv", ["tools.emulador", "comparar"])
     with pytest.raises(SystemExit) as salida:
         runpy.run_module("tools.emulador", run_name="__main__")

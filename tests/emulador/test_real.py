@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+from pathlib import Path
 
 import pytest
 from tools.emulador import cli, proceso
@@ -21,7 +22,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_sesion_real_deja_ram_y_pantalla_y_no_deja_procesos(tmp_path, capsys):
+def test_sesion_real_deja_ram_y_pantalla_y_no_deja_procesos(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     if proceso.puerto_ocupado(PUERTO_PRUEBA) or proceso.listar_procesos():
         pytest.skip("hay un emulador en ejecucion; no se interfiere con el")
     try:
