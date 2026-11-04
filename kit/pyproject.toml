@@ -47,7 +47,7 @@ packages = ["psxdecomp"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "-q --cov=psxdecomp --cov-branch --cov-report=term-missing --cov-fail-under=100"
+addopts = "-rs --cov=psxdecomp --cov-branch --cov-report=term-missing --cov-fail-under=100"
 
 [tool.coverage.run]
 branch = true

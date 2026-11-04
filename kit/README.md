@@ -48,3 +48,11 @@ Ejecutado desde `kit/`, exige cobertura del 100 % (lineas y ramas) del paquete.
 | `lectura` | Lectura del archivo, analisis TOML y comprobacion de confinamiento. |
 | `cli` | Linea de ordenes (`comprobar`). |
 | `proyecto` | Fachada: reexporta `Proyecto`, `cargar_proyecto` y `ManifiestoError`. |
+
+## Prueba de coherencia
+
+`tests/test_coherencia_consumidor.py` compara el manifiesto del proyecto consumidor con las constantes de
+su paquete `tools`. Se ejecuta contra el proyecto que contiene al kit: si la carpeta superior a `kit/`
+tiene un `psxdecomp.toml`, `tests/conftest.py` pone esa raiz en `sys.path` y la comprobacion corre igual
+desde `kit/` que desde la raiz. Si el kit se usa fuera de un proyecto consumidor, esas pruebas se omiten
+y el resumen de `pytest` (`-rs`) lista el motivo de cada salto.
