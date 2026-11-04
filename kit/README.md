@@ -86,3 +86,19 @@ su paquete `tools`. Se ejecuta contra el proyecto que contiene al kit: si la car
 tiene un `psxdecomp.toml`, `tests/conftest.py` pone esa raiz en `sys.path` y la comprobacion corre igual
 desde `kit/` que desde la raiz. Si el kit se usa fuera de un proyecto consumidor, esas pruebas se omiten
 y el resumen de `pytest` (`-rs`) lista el motivo de cada salto.
+
+## Permutador
+
+`psxdecomp.permutador` reune las piezas que no dependen del proyecto consumidor de la busqueda de
+la forma de C que hace coincidir una funcion: no importa nada fuera de `psxdecomp` y no conoce
+ejecutables, rutas ni convenciones de ningun juego.
+
+| Modulo | Responsabilidad |
+|---|---|
+| `permutador.c` | Analizador y generador de C del cuerpo de una funcion (tokens, arbol, impresion). |
+| `permutador.analisis` | Tipos de campos y globales, efectos de lectura y escritura, hipotesis de aliasing. |
+| `permutador.mutaciones` | Reformulaciones del arbol que conservan el significado y filtro `variante_permitida`. |
+| `permutador.estado` | Estado persistente de una busqueda en `<build>/permutar/<funcion>/` (`estado.json`, `registro.jsonl`, `mejor.c`, `actual.c`). `carpeta_de` recibe la carpeta de build del proyecto. |
+
+El orquestador de la busqueda (`permutar`), la medicion de variantes y la comparacion tras enlazar
+dependen todavia de las capas de construccion y comparacion y se trasladan cuando estas pasen al kit.

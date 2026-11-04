@@ -489,8 +489,8 @@ reformulacion de C que cierra una funcion `NON_MATCHING`. Es una busqueda local:
 una a tres mutaciones a una variante elegida al azar, mide cada resultado con el compilador real y conserva el
 que no empeora. Antes de sortear recorre el vecindario completo del C original (todas las variantes de una sola
 mutacion, unas 700 distintas en una funcion de 6 KB): una mejora que esta a una mutacion se halla siempre, no
-por azar. Las mutaciones son transformaciones del arbol del C (`permutar_c.py` lo lee y lo vuelve a
-escribir; `permutar_analisis.py` calcula tipos y efectos; `permutar_mutaciones.py` las aplica) y todas conservan
+por azar. Las mutaciones son transformaciones del arbol del C (`psxdecomp.permutador.c` lo lee y lo vuelve a
+escribir; `psxdecomp.permutador.analisis` calcula tipos y efectos; `psxdecomp.permutador.mutaciones` las aplica) y todas conservan
 el significado de la funcion bajo la hipotesis de aliasing del RUNBOOK:
 
 | Mutacion | Que cambia | Por que puede mover el reparto de registros |
@@ -514,7 +514,7 @@ independientes; nunca desde un operando que solo se evalua a veces (`&&`, `\|\|`
 | Propagar la copia de un campo | Elimina una local `f` asignada una vez desde `x op c` (`x` es un campo o elemento puro) cuyo primer uso es `x = f;` y cuyos demas usos son comparaciones o un almacen final `x = f op2 c2;`: la copia pasa a `x op= c;` y el almacen a `x op2= c2;`. Exige que entre la copia y el ultimo uso nada escriba `x` (ruta solapada, miembro de la misma union, `*p`, `p[i]`) ni llame a funciones, que `f` y `x` sean enteros del mismo ancho (y del mismo signo si son de menos de 32 bits; con distinto signo de 32 bits se excluyen `>>` y las comparaciones de orden) y que `f` no se lea de otra forma. | La copia explicita crea un `move` que el compilador mantiene en otro registro mientras vive `f`; la asignacion compuesta reutiliza el valor cargado. |
 | Introducir la copia de un campo | Inversa: dos asignaciones compuestas al mismo campo, en el mismo bloque y sin escrituras ni llamadas entre ellas, pasan a `f = x op c; x = f;` y `x = f op2 c2;` con `f` del tipo exacto del campo. Peso menor que la directa. | Permite al barrido deshacer la propagacion y explorar la forma con la copia. |
 
-Hipotesis de aliasing de las mutaciones (`permutar_analisis.py`). Un acceso a memoria se identifica por la ruta de
+Hipotesis de aliasing de las mutaciones (`psxdecomp.permutador.analisis`). Un acceso a memoria se identifica por la ruta de
 sus campos (`orden->tipo` es `tipo`, `o->u78.b` es `u78.b`) y dos accesos con rutas distintas no se solapan.
 Se tratan como dependientes: las rutas iguales; las que son prefijo una de otra (`u78` y `u78.b`: la estructura
 o la union entera frente a un miembro); `*p`; y los indices sin campo (`p[i]`), que no dicen a que objeto
