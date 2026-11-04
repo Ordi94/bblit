@@ -13,9 +13,9 @@ ejecutable = "EJEC_001.00"
 
 ZONAS_MINIMAS = """\
 [zonas]
-juego_desde = 0x80010100
-librerias_desde = 0x80020000
-librerias_hasta = 0x80030000
+juego_desde = 0x80110100
+librerias_desde = 0x80120000
+librerias_hasta = 0x80130000
 """
 
 MANIFIESTO_MINIMO = PROYECTO_MINIMO + "\n" + ZONAS_MINIMAS
@@ -50,9 +50,9 @@ subcarpetas_ajenas = ["extra"]
 asm_auxiliares = ["macros", "comunes"]
 
 [zonas]
-juego_desde = 0x80010100
-librerias_desde = 0x80020000
-librerias_hasta = 0x80030000
+juego_desde = 0x80110100
+librerias_desde = 0x80120000
+librerias_hasta = 0x80130000
 
 [convenciones]
 macro_no_coincidente = "NO_COINCIDE"

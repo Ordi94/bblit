@@ -189,7 +189,7 @@ def leer_simbolos(texto: str, convenciones: Convenciones) -> list[FuncionSimbolo
             mensaje nombra la linea.
 
     Ejemplo:
-        funciones = leer_simbolos("f = 0x80010000; // type:func size:0x10", convenciones)
+        funciones = leer_simbolos("f = 0x80110000; // type:func size:0x10", convenciones)
     """
     patron = re.compile(convenciones.patron_linea_simbolo)
     funciones: list[FuncionSimbolo] = []
@@ -246,7 +246,7 @@ def zona_de(direccion: int, zonas: Zonas) -> str:
         str: ``arranque``, ``juego``, ``libreria`` u ``otra``.
 
     Ejemplo:
-        zona = zona_de(0x80020000, zonas)
+        zona = zona_de(0x80120000, zonas)
     """
     if direccion < zonas.juego_desde:
         return ZONA_ARRANQUE

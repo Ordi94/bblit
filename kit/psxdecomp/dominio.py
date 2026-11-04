@@ -476,8 +476,8 @@ def construir_zonas(tabla: Mapping[str, Any]) -> Zonas:
         ManifiestoError: Si falta alguna direccion, esta fuera de rango o el orden no es estricto.
 
     Ejemplo:
-        zonas = construir_zonas({"juego_desde": 0x80010000, "librerias_desde": 0x80020000,
-                                 "librerias_hasta": 0x80030000})
+        zonas = construir_zonas({"juego_desde": 0x80110000, "librerias_desde": 0x80120000,
+                                 "librerias_hasta": 0x80130000})
     """
     zonas = Zonas(
         juego_desde=val.leer_direccion(tabla, "juego_desde", "zonas"),

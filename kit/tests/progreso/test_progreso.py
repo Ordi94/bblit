@@ -10,14 +10,14 @@ from progreso.ayudantes import EstadoFuncion, FuncionSimbolo, ResumenZona
 
 SIMBOLOS = """\
 // comentario
-__main = 0x80010000; // type:func size:0x8
-rutina_80010008 = 0x80010008; // type:func size:0xAC
-rutina_80010100 = 0x80010100; // type:func size:0x10
-rutina_80010108 = 0x80010108; // type:func size:0x20
-rutina_80010118 = 0x80010118; // type:func size:0x30
-rutina_80020000 = 0x80020000; // type:func size:0x34
-D_8003B7F8 = 0x8003B7F8; // size:0x4
-D_8003B860 = 0x8003B860; // type:u32
+__main = 0x80110000; // type:func size:0x8
+rutina_80110008 = 0x80110008; // type:func size:0xAC
+rutina_80110100 = 0x80110100; // type:func size:0x10
+rutina_80110108 = 0x80110108; // type:func size:0x20
+rutina_80110118 = 0x80110118; // type:func size:0x30
+rutina_80120000 = 0x80120000; // type:func size:0x34
+D_8013B7F8 = 0x8013B7F8; // size:0x4
+D_8013B860 = 0x8013B860; // type:u32
 """
 
 
@@ -27,16 +27,16 @@ def tabla() -> list[FuncionSimbolo]:
 
 def test_leer_simbolos_toma_solo_funciones_con_su_tamano() -> None:
     assert [(f.nombre, f.direccion, f.tamano) for f in tabla()] == [
-        ("__main", 0x80010000, 8),
-        ("rutina_80010008", 0x80010008, 0xAC),
-        ("rutina_80010100", 0x80010100, 0x10),
-        ("rutina_80010108", 0x80010108, 0x20),
-        ("rutina_80010118", 0x80010118, 0x30),
-        ("rutina_80020000", 0x80020000, 0x34),
+        ("__main", 0x80110000, 8),
+        ("rutina_80110008", 0x80110008, 0xAC),
+        ("rutina_80110100", 0x80110100, 0x10),
+        ("rutina_80110108", 0x80110108, 0x20),
+        ("rutina_80110118", 0x80110118, 0x30),
+        ("rutina_80120000", 0x80120000, 0x34),
     ]
 
 
-@pytest.mark.parametrize("linea", ["f = 0x80010100; // type:func", "f = 0x80010100; // type:func size:0x0"])
+@pytest.mark.parametrize("linea", ["f = 0x80110100; // type:func", "f = 0x80110100; // type:func size:0x0"])
 def test_leer_simbolos_exige_un_tamano_valido_y_nombra_la_linea(linea: Any) -> None:
     with pytest.raises(ValueError, match="linea 2: 'f' no declara un size valido"):
         progreso.leer_simbolos("// x\n" + linea + "\n")
@@ -56,13 +56,13 @@ def test_combinar_simbolos_el_ultimo_manda_por_direccion_y_ordena() -> None:
 @pytest.mark.parametrize(
     ("direccion", "zona"),
     [
-        (0x80010000, "arranque"),
-        (0x800100FF, "arranque"),
-        (0x80010100, "juego"),
-        (0x8001FFFF, "juego"),
-        (0x80020000, "libreria"),
-        (0x8002FFFF, "libreria"),
-        (0x80030000, "otra"),
+        (0x80110000, "arranque"),
+        (0x801100FF, "arranque"),
+        (0x80110100, "juego"),
+        (0x8011FFFF, "juego"),
+        (0x80120000, "libreria"),
+        (0x8012FFFF, "libreria"),
+        (0x80130000, "otra"),
     ],
 )
 def test_zona_de_respeta_los_limites_exactos(direccion: Any, zona: Any) -> None:
@@ -71,13 +71,13 @@ def test_zona_de_respeta_los_limites_exactos(direccion: Any, zona: Any) -> None:
 
 ESTADOS = {
     "src/a.c": {
-        "rutina_80010100": EstadoFuncion.C,
-        "rutina_80010108": EstadoFuncion.NO_COINCIDENTE,
-        "rutina_80010118": EstadoFuncion.ENSAMBLADOR,
+        "rutina_80110100": EstadoFuncion.C,
+        "rutina_80110108": EstadoFuncion.NO_COINCIDENTE,
+        "rutina_80110118": EstadoFuncion.ENSAMBLADOR,
         "ayudante": EstadoFuncion.C,
         "rutina_sin_tabla": EstadoFuncion.ENSAMBLADOR,
     },
-    "src/b.c": {"rutina_80020000": EstadoFuncion.C},
+    "src/b.c": {"rutina_80120000": EstadoFuncion.C},
 }
 
 
@@ -88,7 +88,7 @@ def test_calcular_progreso_cuenta_por_zona_archivo_y_estado() -> None:
     assert p.librerias == ResumenZona(1, 0x34)
     assert p.c_juego == ResumenZona(1, 0x10)
     assert p.c_librerias == ResumenZona(1, 0x34)
-    assert p.no_coincidentes == ("rutina_80010108",)
+    assert p.no_coincidentes == ("rutina_80110108",)
     assert p.auxiliares == ("ayudante",)
     assert p.sin_simbolo == ("rutina_sin_tabla",)
     assert [
@@ -128,7 +128,7 @@ def test_a_json_usa_camel_case_y_refleja_los_conteos() -> None:
     }
     assert datos["descompiladas"]["juego"] == {"funciones": 1, "bytes": 0x10}
     assert datos["descompiladas"]["funciones"] == 2
-    assert datos["noCoincidentes"] == ["rutina_80010108"]
+    assert datos["noCoincidentes"] == ["rutina_80110108"]
     assert datos["archivos"][0] == {
         "archivo": "src/a.c",
         "funcionesC": 1,
@@ -157,7 +157,7 @@ def test_a_markdown_incluye_resumen_tabla_por_archivo_y_listas() -> None:
         in texto
     )
     assert "| `src/a.c` | 1 | 1 | 1 | 16 | 96 |" in texto
-    assert "- `rutina_80010108`" in texto
+    assert "- `rutina_80110108`" in texto
     assert "## Ayudantes definidos en C" in texto and "- `ayudante`" in texto
     assert "## Menciones sin símbolo de función" in texto and "- `rutina_sin_tabla`" in texto
 
@@ -184,7 +184,7 @@ def test_contar_glabel_ignora_macros_matchings_y_otras_herramientas(tmp_path: Pa
     escribir(tmp_path / "asm" / "nonmatchings" / "x" / "f.s", "glabel f\ndlabel d\nalabel e\n")
     escribir(tmp_path / "asm" / "include" / "macro.inc", ".macro glabel label\nglabel x\n")
     escribir(tmp_path / "asm" / "matchings" / "x" / "g.s", "glabel g\n")
-    escribir(tmp_path / "asm" / "overlay" / "a" / "h.s", "glabel h\n")
+    escribir(tmp_path / "asm" / "modulo_ajeno" / "a" / "h.s", "glabel h\n")
     escribir(tmp_path / "asm" / "data" / "data.s", "dlabel D_1\n")
     assert progreso.contar_glabel(tmp_path) == 3
 
@@ -193,13 +193,13 @@ def repo_progreso(raiz: Path) -> None:
     escribir(raiz / "config" / "symbols.txt", SIMBOLOS)
     escribir(
         raiz / "src" / "a.c",
-        'INCLUDE_ASM("asm/nonmatchings/a", rutina_80010108);\n'
-        "s32 rutina_80010100(void)\n{\n    return 0;\n}\n"
-        'INCLUDE_ASM("asm/nonmatchings/a", rutina_80010118);\n',
+        'INCLUDE_ASM("asm/nonmatchings/a", rutina_80110108);\n'
+        "s32 rutina_80110100(void)\n{\n    return 0;\n}\n"
+        'INCLUDE_ASM("asm/nonmatchings/a", rutina_80110118);\n',
     )
-    escribir(raiz / "asm" / "boot.s", "glabel __main\nglabel rutina_80010008\n")
-    escribir(raiz / "asm" / "nonmatchings" / "a" / "f.s", "glabel rutina_80010108\nglabel rutina_80010118\n")
-    escribir(raiz / "asm" / "libs.s", "glabel rutina_80020000\n")
+    escribir(raiz / "asm" / "boot.s", "glabel __main\nglabel rutina_80110008\n")
+    escribir(raiz / "asm" / "nonmatchings" / "a" / "f.s", "glabel rutina_80110108\nglabel rutina_80110118\n")
+    escribir(raiz / "asm" / "libs.s", "glabel rutina_80120000\n")
 
 
 def test_generar_progreso_escribe_documento_y_json_deterministas(tmp_path: Path) -> None:
@@ -218,7 +218,7 @@ def test_generar_progreso_aplica_los_simbolos_adicionales_sobre_la_tabla(tmp_pat
     repo_progreso(tmp_path)
     escribir(
         tmp_path / "config" / "simbolos_adicionales.txt",
-        "rutina_80010100 = 0x80010100; // type:func size:0x8\n",
+        "rutina_80110100 = 0x80110100; // type:func size:0x8\n",
     )
     assert progreso.generar_progreso(tmp_path).c_juego == ResumenZona(1, 8)
 

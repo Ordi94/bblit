@@ -4,21 +4,48 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "psx-decomp-kit"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Herramientas de descompilacion matching para juegos de PlayStation 1"
 readme = "README.md"
 requires-python = ">=3.13"
 license = "MIT"
 license-files = ["LICENSE"]
-dependencies = ["requests>=2.32"]
+authors = [{ name = "Jairo Ornelas" }]
+keywords = ["playstation", "ps1", "decompilation", "matching", "splat", "gcc"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Disassemblers",
+    "Typing :: Typed",
+]
+dependencies = ["requests>=2.32", "PyYAML>=6.0"]
+
+[project.urls]
+Repository = "https://github.com/Ordi94/psx-decomp-kit"
+Issues = "https://github.com/Ordi94/psx-decomp-kit/issues"
+Changelog = "https://github.com/Ordi94/psx-decomp-kit/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
+particion = ["splat64[mips]>=0.50"]
+comparacion = [
+    "rapidfuzz>=3.14",
+    "Levenshtein>=0.27",
+    "cxxfilt>=0.3",
+    "colorama>=0.4",
+    "watchdog>=6.0",
+]
 desarrollo = [
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
     "mypy==2.4.0",
     "ruff==0.17.2",
     "types-requests==2.33.0.20261006",
+    "types-PyYAML==6.0.12.20260906",
 ]
 
 [tool.setuptools.packages.find]
@@ -53,3 +80,6 @@ addopts = "-rs --cov=psxdecomp --cov-branch --cov-report=term-missing --cov-fail
 [tool.coverage.run]
 branch = true
 source = ["psxdecomp"]
+
+[tool.setuptools.package-data]
+psxdecomp = ["py.typed"]

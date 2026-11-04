@@ -21,8 +21,8 @@ OTRAS = construir_convenciones(
 
 def test_valor_gp_lee_la_tabla_enlace_y_valida_el_valor() -> None:
     assert dominio.valor_gp({}) is None
-    assert dominio.valor_gp({"enlace": {"gp": 0x80050000}}) == 0x80050000
-    for malo in (0, -4, True, "0x80050000", 0x80050001, 0x1_0000_0000):
+    assert dominio.valor_gp({"enlace": {"gp": 0x80150000}}) == 0x80150000
+    for malo in (0, -4, True, "0x80150000", 0x80150001, 0x1_0000_0000):
         with pytest.raises(ValueError, match=r"enlace.gp"):
             dominio.valor_gp({"enlace": {"gp": malo}})
     malos_enlace: list[Any] = [[], {"otra": 1}, {"gp": 4, "otra": 1}]
@@ -35,20 +35,20 @@ def test_valor_gp_lee_la_tabla_enlace_y_valida_el_valor() -> None:
 
 def test_datos_pequenos_exige_nombre_con_su_direccion() -> None:
     assert dominio.datos_pequenos({}, POR_DEFECTO) == {}
-    validos = {"datos_pequenos": {"D_80020010": 0x80020010, "D_80020020": 0x80020020}}
+    validos = {"datos_pequenos": {"D_80120010": 0x80120010, "D_80120020": 0x80120020}}
     assert dominio.datos_pequenos(validos, POR_DEFECTO) == {
-        "D_80020010": 0x80020010,
-        "D_80020020": 0x80020020,
+        "D_80120010": 0x80120010,
+        "D_80120020": 0x80120020,
     }
     casos = [
         ({"datos_pequenos": []}, "debe ser una tabla"),
-        ({"datos_pequenos": {"x_80020010": 0x80020010}}, "no valido"),
-        ({"datos_pequenos": {"D_80020010a": 0x80020010}}, "no cumple el patron de datos"),
-        ({"datos_pequenos": {"D_80020010": True}}, "direccion de 'D_80020010' no valida"),
-        ({"datos_pequenos": {"D_80020010": "x"}}, "direccion de 'D_80020010' no valida"),
-        ({"datos_pequenos": {"D_80020010": 0}}, "direccion de 'D_80020010' no valida"),
-        ({"datos_pequenos": {"D_80020010": 0x1_0000_0000}}, "direccion de 'D_80020010' no valida"),
-        ({"datos_pequenos": {"D_80020010": 0x80020014}}, "no coincide con su direccion"),
+        ({"datos_pequenos": {"x_80120010": 0x80120010}}, "no valido"),
+        ({"datos_pequenos": {"D_80020010a": 0x80120010}}, "no cumple el patron de datos"),
+        ({"datos_pequenos": {"D_80120010": True}}, "direccion de 'D_80120010' no valida"),
+        ({"datos_pequenos": {"D_80120010": "x"}}, "direccion de 'D_80120010' no valida"),
+        ({"datos_pequenos": {"D_80120010": 0}}, "direccion de 'D_80120010' no valida"),
+        ({"datos_pequenos": {"D_80120010": 0x1_0000_0000}}, "direccion de 'D_80120010' no valida"),
+        ({"datos_pequenos": {"D_80120010": 0x80120014}}, "no coincide con su direccion"),
     ]
     for datos, mensaje in casos:
         with pytest.raises(ValueError, match=mensaje):
@@ -65,13 +65,13 @@ def test_el_nombre_de_un_dato_pequeno_se_valida_con_el_patron_del_proyecto() -> 
         "dato_020010": 0x20010
     }
     with pytest.raises(ValueError, match="no cumple el patron de datos"):
-        dominio.datos_pequenos({"datos_pequenos": {"D_80020010": 0x80020010}}, OTRAS)
+        dominio.datos_pequenos({"datos_pequenos": {"D_80120010": 0x80120010}}, OTRAS)
 
 
 def test_texto_gp_ld_define_gp_y_los_datos_pequenos_ordenados() -> None:
-    assert dominio.texto_gp_ld(0x80050000) == "_gp = 0x80050000;\n"
-    texto = dominio.texto_gp_ld(0x80050000, {"D_80020020": 0x80020020, "D_80020010": 0x80020010})
-    assert texto == "_gp = 0x80050000;\nD_80020010 = 0x80020010;\nD_80020020 = 0x80020020;\n"
+    assert dominio.texto_gp_ld(0x80150000) == "_gp = 0x80150000;\n"
+    texto = dominio.texto_gp_ld(0x80150000, {"D_80120020": 0x80120020, "D_80120010": 0x80120010})
+    assert texto == "_gp = 0x80150000;\nD_80120010 = 0x80120010;\nD_80120020 = 0x80120020;\n"
 
 
 # --- valor -G por archivo ---------------------------------------------------------------------
@@ -113,56 +113,56 @@ def test_las_opciones_por_archivo_invalidas_se_rechazan_nombrando_el_campo(datos
 # --- archivo de simbolos ----------------------------------------------------------------------
 
 TEXTO_SIMBOLOS = (
-    "rutina_a = 0x80020100; // type:func size:0x4c\n"
-    "D_80020010 = 0x80020010; // type:s32\n"
-    "  rutina_b = 0x80020200; // type:func\n"
-    "sin_tipo = 0x80020300; // size:0x4\n"
+    "rutina_a = 0x80120100; // type:func size:0x4c\n"
+    "D_80120010 = 0x80120010; // type:s32\n"
+    "  rutina_b = 0x80120200; // type:func\n"
+    "sin_tipo = 0x80120300; // size:0x4\n"
     "basura sin forma\n"
 )
 
 
 def test_direcciones_de_funciones_solo_toma_las_funciones() -> None:
     assert dominio.direcciones_de_funciones(TEXTO_SIMBOLOS, POR_DEFECTO) == {
-        "rutina_a": 0x80020100,
-        "rutina_b": 0x80020200,
+        "rutina_a": 0x80120100,
+        "rutina_b": 0x80120200,
     }
 
 
 def test_simbolos_declarados_agrupa_por_direccion_con_su_tipo() -> None:
     declarados = dominio.simbolos_declarados(TEXTO_SIMBOLOS, POR_DEFECTO)
-    assert declarados[0x80020100] == [dominio.SimboloDeclarado("rutina_a", "func")]
-    assert declarados[0x80020010] == [dominio.SimboloDeclarado("D_80020010", "s32")]
-    assert declarados[0x80020300] == [dominio.SimboloDeclarado("sin_tipo", "")]
+    assert declarados[0x80120100] == [dominio.SimboloDeclarado("rutina_a", "func")]
+    assert declarados[0x80120010] == [dominio.SimboloDeclarado("D_80120010", "s32")]
+    assert declarados[0x80120300] == [dominio.SimboloDeclarado("sin_tipo", "")]
     assert len(declarados) == 4
 
 
 def test_la_forma_de_las_lineas_de_simbolos_la_fija_la_convencion_del_proyecto() -> None:
-    texto = "rutina_c @ 0x20400 type:func\nrutina_d = 0x80020500; // type:func\n"
+    texto = "rutina_c @ 0x20400 type:func\nrutina_d = 0x80120500; // type:func\n"
     assert dominio.direcciones_de_funciones(texto, OTRAS) == {"rutina_c": 0x20400}
-    assert dominio.direcciones_de_funciones(texto, POR_DEFECTO) == {"rutina_d": 0x80020500}
+    assert dominio.direcciones_de_funciones(texto, POR_DEFECTO) == {"rutina_d": 0x80120500}
     assert list(dominio.simbolos_declarados(texto, OTRAS)) == [0x20400]
 
 
 def test_los_avisos_de_datos_pequenos_distinguen_tres_casos_y_nombran_el_archivo_de_simbolos() -> None:
     texto = (
-        "D_80020010 = 0x80020010; // type:s32\n"
-        "otro_nombre = 0x80020020; // type:s32\n"
-        "D_80020030 = 0x80020030; // type:func\n"
+        "D_80120010 = 0x80120010; // type:s32\n"
+        "otro_nombre = 0x80120020; // type:s32\n"
+        "D_80120030 = 0x80120030; // type:func\n"
     )
     declarados = dominio.simbolos_declarados(texto, POR_DEFECTO)
     datos = {
-        "D_80020010": 0x80020010,
-        "D_80020020": 0x80020020,
-        "D_80020030": 0x80020030,
-        "D_80020040": 0x80020040,
+        "D_80120010": 0x80120010,
+        "D_80120020": 0x80120020,
+        "D_80120030": 0x80120030,
+        "D_80120040": 0x80120040,
     }
     avisos = dominio.avisos_datos_pequenos(datos, declarados, "datos/simbolos.txt")
     assert avisos == [
-        "[datos_pequenos] D_80020010 = 0x80020010: mismo nombre: ya figura en datos/simbolos.txt, "
+        "[datos_pequenos] D_80120010 = 0x80120010: mismo nombre: ya figura en datos/simbolos.txt, "
         "la clave puede retirarse",
-        "[datos_pequenos] D_80020020 = 0x80020020: otro nombre: datos/simbolos.txt declara otro_nombre "
+        "[datos_pequenos] D_80120020 = 0x80120020: otro nombre: datos/simbolos.txt declara otro_nombre "
         "en esa direccion",
-        "[datos_pequenos] D_80020030 = 0x80020030: otro tipo: datos/simbolos.txt lo declara como funcion",
+        "[datos_pequenos] D_80120030 = 0x80120030: otro tipo: datos/simbolos.txt lo declara como funcion",
     ]
 
 

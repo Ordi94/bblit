@@ -66,7 +66,7 @@ def test_el_manifiesto_completo_conserva_cada_valor_declarado() -> None:
     assert proyecto.rutas.simbolos == ("datos/a.txt", "datos/b.txt")
     assert proyecto.rutas.asm_auxiliares == ("macros", "comunes")
     assert proyecto.rutas.documento_progreso == "notas/avance.md"
-    assert proyecto.zonas.librerias_hasta == 0x80030000
+    assert proyecto.zonas.librerias_hasta == 0x80130000
     assert proyecto.convenciones.pendiente == r"\APendiente (\d+)"
     assert proyecto.rutas.macros == "ensamblador/macros"
     assert proyecto.rutas.asm_coincidente == "ensamblador/cerradas"
@@ -175,12 +175,12 @@ def test_una_subcarpeta_ajena_con_separadores_se_rechaza() -> None:
 @pytest.mark.parametrize(
     ("texto", "campo"),
     [
-        (con_zonas("0x7FFFFFFF", "0x80020000", "0x80030000"), "juego_desde"),
-        (con_zonas("0x80010100", "0x80020000", "0x80800001"), "librerias_hasta"),
-        (con_zonas('"0x80010100"', "0x80020000", "0x80030000"), "juego_desde"),
-        (con_zonas("true", "0x80020000", "0x80030000"), "juego_desde"),
+        (con_zonas("0x7FFFFFFF", "0x80120000", "0x80130000"), "juego_desde"),
+        (con_zonas("0x80110100", "0x80120000", "0x80800001"), "librerias_hasta"),
+        (con_zonas('"0x80110100"', "0x80120000", "0x80130000"), "juego_desde"),
+        (con_zonas("true", "0x80120000", "0x80130000"), "juego_desde"),
         (
-            PROYECTO_MINIMO + "\n[zonas]\njuego_desde = 0x80010100\nlibrerias_desde = 0x80020000\n",
+            PROYECTO_MINIMO + "\n[zonas]\njuego_desde = 0x80110100\nlibrerias_desde = 0x80120000\n",
             "librerias_hasta",
         ),
     ],
@@ -193,10 +193,10 @@ def test_una_zona_fuera_de_rango_mal_tipada_o_ausente_se_rechaza(texto: str, cam
 @pytest.mark.parametrize(
     ("desde", "librerias", "hasta"),
     [
-        (0x80020000, 0x80020000, 0x80030000),
-        (0x80030000, 0x80020000, 0x80040000),
-        (0x80010000, 0x80020000, 0x80020000),
-        (0x80010000, 0x80040000, 0x80030000),
+        (0x80120000, 0x80120000, 0x80130000),
+        (0x80130000, 0x80120000, 0x80140000),
+        (0x80110000, 0x80120000, 0x80120000),
+        (0x80110000, 0x80140000, 0x80130000),
     ],
 )
 def test_las_zonas_deben_estar_en_orden_estricto(desde: int, librerias: int, hasta: int) -> None:
@@ -439,8 +439,8 @@ def test_la_ruta_absoluta_rechaza_rutas_que_no_son_relativas_a_la_raiz(relativa:
 
 def test_el_resumen_muestra_las_zonas_en_hexadecimal_y_no_filtra_la_raiz() -> None:
     resumen = cargar(MANIFIESTO_COMPLETO).resumen()
-    assert "0x80010100" in resumen
-    assert "0x80020000-0x80030000" in resumen
+    assert "0x80110100" in resumen
+    assert "0x80120000-0x80130000" in resumen
     assert "subcarpetas_ajenas: extra" in resumen
     assert str(RAIZ_FICTICIA) not in resumen
     assert str(RAIZ_FICTICIA.resolve()) not in resumen

@@ -107,9 +107,9 @@ def test_el_limite_de_elementos_de_una_lista_es_inclusivo() -> None:
 
 
 def test_una_lista_de_texto_valida_se_devuelve_como_tupla() -> None:
-    tabla = {"p": ["overlay"]}
+    tabla = {"p": ["modulo_ajeno"]}
     resultado = val.leer_lista_texto(tabla, "p", "rutas", patron=val.PATRON_SEGMENTO, defecto=())
-    assert resultado == ("overlay",)
+    assert resultado == ("modulo_ajeno",)
 
 
 @pytest.mark.parametrize("invalido", [["a/b"], [3], ["a", "a"], "texto"])
@@ -118,12 +118,12 @@ def test_una_lista_de_texto_exige_que_cada_elemento_cumpla_el_patron(invalido: o
         val.leer_lista_texto({"p": invalido}, "p", "rutas", patron=val.PATRON_SEGMENTO, defecto=())
 
 
-@pytest.mark.parametrize("valor", [0x80000000, 0x80010100, 0x80800000])
+@pytest.mark.parametrize("valor", [0x80000000, 0x80110100, 0x80800000])
 def test_las_direcciones_dentro_del_rango_ram_se_aceptan_incluidos_los_extremos(valor: int) -> None:
     assert val.leer_direccion({"d": valor}, "d", "zonas") == valor
 
 
-@pytest.mark.parametrize("valor", [0x7FFFFFFF, 0x80800001, 0, -1, True, 1.5, "0x80010000", None])
+@pytest.mark.parametrize("valor", [0x7FFFFFFF, 0x80800001, 0, -1, True, 1.5, "0x80110000", None])
 def test_las_direcciones_fuera_de_rango_o_de_otro_tipo_se_rechazan(valor: object) -> None:
     with pytest.raises(ManifiestoError, match=r"\[zonas\]\.d: se esperaba un entero entre 0x80000000"):
         val.leer_direccion({"d": valor}, "d", "zonas")

@@ -5,6 +5,7 @@ from psxdecomp.cli import PluginInvalidoError, construir_parser
 from psxdecomp.dominio import Proyecto
 from psxdecomp.lectura import cargar_proyecto
 
+from identidad_del_juego import TERMINOS_PROHIBIDOS
 from manifiestos_de_prueba import MANIFIESTO_COMPLETO, EscribirManifiesto
 
 
@@ -41,7 +42,7 @@ def test_la_ayuda_de_los_subcomandos_no_contiene_literales_de_un_juego(
     ordenes = ("split", "build", "verify", "clean", "diff", "probar", "permutar", "verificar-config")
     for orden in ((), *((nombre,) for nombre in ordenes)):
         texto = texto_de_ayuda(proyecto_completo, capsys, *orden)
-        for prohibido in ("src/", "SLUS", "NON_MATCHING", "func_80", "BBLIT", "config/"):
+        for prohibido in (*TERMINOS_PROHIBIDOS, "func_80"):
             assert prohibido not in texto, (orden, prohibido)
 
 

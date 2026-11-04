@@ -379,7 +379,7 @@ def leer_direccion(tabla: Mapping[str, Any], clave: str, seccion: str) -> int:
         ManifiestoError: Si falta, no es entero (un booleano tampoco lo es) o esta fuera de rango.
 
     Ejemplo:
-        desde = leer_direccion({"d": 0x80010000}, "d", "zonas")
+        desde = leer_direccion({"d": 0x80110000}, "d", "zonas")
     """
     valor = _obtener(tabla, clave, seccion, None)
     if (

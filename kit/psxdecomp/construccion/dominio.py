@@ -128,7 +128,7 @@ def cabecera_desde_datos(datos: object) -> CabeceraPsx:
             o no cabe entre el desplazamiento 0x4C y el final de la cabecera.
 
     Ejemplo:
-        cabecera = cabecera_desde_datos({"pc0": "0x80011000", ...})
+        cabecera = cabecera_desde_datos({"pc0": "0x80111000", ...})
     """
     if not isinstance(datos, dict):
         raise ValueError("la cabecera debe ser un objeto")
@@ -349,7 +349,7 @@ def texto_simbolos_entrada(pc0: int, simbolos_existentes: str) -> str:
         str: Linea de simbolo en formato splat, o cadena vacia si la direccion ya figura.
 
     Ejemplo:
-        texto = texto_simbolos_entrada(0x80011000, "")
+        texto = texto_simbolos_entrada(0x80111000, "")
     """
     patron = re.compile(rf"=\s*0x0*{pc0:X}\s*;", re.IGNORECASE)
     if patron.search(simbolos_existentes):
@@ -444,7 +444,7 @@ def valor_gp(datos: object) -> int | None:
         ValueError: Si la forma no es la esperada o ``gp`` no es un entero de 32 bits alineado a 4.
 
     Ejemplo:
-        gp = valor_gp({"enlace": {"gp": 0x80050000}})
+        gp = valor_gp({"enlace": {"gp": 0x80150000}})
     """
     if not isinstance(datos, dict):
         raise ValueError("opciones de compilacion: se esperaba una tabla")
@@ -475,7 +475,7 @@ def direcciones_de_funciones(texto: str, convenciones: Convenciones) -> dict[str
         dict[str, int]: Direccion por nombre; las lineas que no son funciones se ignoran.
 
     Ejemplo:
-        direcciones = direcciones_de_funciones("f = 0x80011000; // type:func size:0x10", convenciones)
+        direcciones = direcciones_de_funciones("f = 0x80111000; // type:func size:0x10", convenciones)
     """
     direcciones: dict[str, int] = {}
     patron = _patron_linea_simbolo(convenciones)
@@ -519,7 +519,7 @@ def simbolos_declarados(texto: str, convenciones: Convenciones) -> dict[int, lis
         dict[int, list[SimboloDeclarado]]: Simbolos por direccion, en el orden del archivo.
 
     Ejemplo:
-        declarados = simbolos_declarados("D_80020010 = 0x80020010; // type:u8 size:0x8", convenciones)
+        declarados = simbolos_declarados("D_80120010 = 0x80120010; // type:u8 size:0x8", convenciones)
     """
     declarados: dict[int, list[SimboloDeclarado]] = {}
     patron = _patron_linea_simbolo(convenciones)
@@ -559,7 +559,7 @@ def avisos_datos_pequenos(
 
     Ejemplo:
         avisos = avisos_datos_pequenos(
-            {"D_80020010": 0x80020010}, simbolos_declarados(texto, convenciones), "datos/simbolos.txt"
+            {"D_80120010": 0x80120010}, simbolos_declarados(texto, convenciones), "datos/simbolos.txt"
         )
     """
     avisos: list[str] = []
@@ -581,7 +581,7 @@ def datos_pequenos(datos: object, convenciones: Convenciones) -> dict[str, int]:
 
     Contexto:
         Un archivo C que accede a una variable pequena con ``desplazamiento($gp)`` la declara como
-        definicion tentativa (``s32 D_80020010;``): ``maspsx`` la emite como simbolo comun y
+        definicion tentativa (``s32 D_80120010;``): ``maspsx`` la emite como simbolo comun y
         reescribe sus accesos a ``$gp``. El enlace debe fijar la direccion real de esos simbolos
         (el ejecutable original no los nombra porque su codigo los direcciona por desplazamiento);
         esta tabla da nombre y direccion a cada uno hasta que el archivo de simbolos los declare.
@@ -600,7 +600,7 @@ def datos_pequenos(datos: object, convenciones: Convenciones) -> dict[str, int]:
             o la direccion no es un entero de 32 bits ni coincide con la del nombre.
 
     Ejemplo:
-        simbolos = datos_pequenos({"datos_pequenos": {"D_80020010": 0x80020010}}, convenciones)
+        simbolos = datos_pequenos({"datos_pequenos": {"D_80120010": 0x80120010}}, convenciones)
     """
     if not isinstance(datos, dict):
         raise ValueError("opciones de compilacion: se esperaba una tabla")
@@ -639,7 +639,7 @@ def texto_gp_ld(gp: int, simbolos: dict[str, int] | None = None) -> str:
         str: Lineas de asignacion para el enlazador.
 
     Ejemplo:
-        texto = texto_gp_ld(0x80050000)
+        texto = texto_gp_ld(0x80150000)
     """
     lineas = [f"_gp = 0x{gp:08X};\n"]
     lineas += [f"{nombre} = 0x{direccion:08X};\n" for nombre, direccion in sorted((simbolos or {}).items())]
@@ -812,7 +812,7 @@ def funciones_con_nombre_local(texto_asm: str) -> frozenset[str]:
 
     Contexto:
         Cuando otra funcion salta con ``j`` a la direccion de inicio de una funcion que la tabla
-        de simbolos no nombra, ``splat`` la trata como etiqueta local y la llama ``.L80044904``: un
+        de simbolos no nombra, ``splat`` la trata como etiqueta local y la llama ``.L80144904``: un
         nombre que no es un identificador de C y que, como nombre de archivo, empieza por punto.
         Las etiquetas locales genuinas de dentro de una funcion no se declaran con ``glabel``, asi
         que solo se consideran las que si lo hacen. ``split`` las renombra a ``func_<direccion>``.
@@ -821,7 +821,7 @@ def funciones_con_nombre_local(texto_asm: str) -> frozenset[str]:
         texto_asm (str): Contenido de un archivo ``.s`` generado por el particionador.
 
     Returns:
-        frozenset[str]: Nombres con punto inicial (``.L80044904``) declarados con ``glabel``.
+        frozenset[str]: Nombres con punto inicial (``.L80144904``) declarados con ``glabel``.
 
     Ejemplo:
         nombres = funciones_con_nombre_local(texto_del_asm)
@@ -846,7 +846,7 @@ def renombrar_funciones_locales(texto: str, nombres: frozenset[str]) -> str:
         str: Texto con los nombres sustituidos.
 
     Ejemplo:
-        nuevo = renombrar_funciones_locales("j .L80044904", frozenset({".L80044904"}))
+        nuevo = renombrar_funciones_locales("j .L80144904", frozenset({".L80144904"}))
     """
     if not nombres:
         return texto

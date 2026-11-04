@@ -7,9 +7,9 @@ from psxdecomp.construccion import dominio
 from psxdecomp.construccion.dominio import CabeceraPsx
 
 CAMPOS = {
-    "pc0": "0x80010100",
+    "pc0": "0x80110100",
     "gp0": 0,
-    "t_addr": "0x80010000",
+    "t_addr": "0x80110000",
     "t_size": "0x55000",
     "d_addr": "0x0",
     "d_size": "0",
@@ -35,7 +35,7 @@ def referencia_datos(**cambios: Any) -> Any:
 
 def test_cabecera_desde_datos_acepta_hexadecimal_y_decimal() -> None:
     cabecera = dominio.cabecera_desde_datos(CAMPOS)
-    assert cabecera.pc0 == 0x80010100
+    assert cabecera.pc0 == 0x80110100
     assert cabecera.gp0 == 0
     assert cabecera.t_size == 0x55000
     assert cabecera.d_size == 0
@@ -75,7 +75,7 @@ def test_referencia_valida() -> None:
     referencia = dominio.referencia_desde_datos(referencia_datos())
     assert referencia.nombre == "EJEC_000.01"
     assert referencia.tamano == 350208
-    assert referencia.cabecera.t_addr == 0x80010000
+    assert referencia.cabecera.t_addr == 0x80110000
 
 
 @pytest.mark.parametrize(
@@ -122,7 +122,7 @@ def test_leer_cabecera_invalida(datos: Any) -> None:
 
 
 def test_ensamblar_ejecutable_valida_la_longitud_del_cuerpo() -> None:
-    cabecera = CabeceraPsx(0, 0, 0x80010000, 8, 0, 0, 0, 0, 0, 0, "r")
+    cabecera = CabeceraPsx(0, 0, 0x80110000, 8, 0, 0, 0, 0, 0, 0, "r")
     ejecutable = dominio.ensamblar_ejecutable(cabecera, b"12345678")
     assert ejecutable[0x800:] == b"12345678"
     assert ejecutable[:8] == b"PS-X EXE"
@@ -174,7 +174,7 @@ def test_simbolo_de_entrada_no_se_duplica(existente: Any) -> None:
 
 
 SCRIPT = """
-    .main 0x80010000 : AT(main_ROM_START) SUBALIGN(16)
+    .main 0x80110000 : AT(main_ROM_START) SUBALIGN(16)
     {
         build/asm/text.s.o(.text);
         build/asm/data/data.data.s.o(.data);
@@ -252,9 +252,9 @@ def test_comandos_son_listas_con_cada_ruta_como_un_unico_argumento() -> None:
 def test_estructura_binaria_de_la_cabecera_campo_a_campo() -> None:
     datos = dominio.serializar_cabecera(dominio.cabecera_desde_datos(CAMPOS))
     assert struct.unpack_from("<10I", datos, 0x10) == (
-        0x80010100,
+        0x80110100,
         0,
-        0x80010000,
+        0x80110000,
         0x55000,
         0,
         0,

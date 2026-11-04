@@ -17,10 +17,10 @@ from progreso.ayudantes import (
 )
 
 SIMBOLOS = (
-    "rutina_a = 0x80010100; // type:func size:0x10\n"
-    "rutina_b = 0x80010110; // type:func size:0x44\n"
-    "rutina_c = 0x80010160; // type:func size:0x20\n"
-    "rutina_d = 0x80010180; // type:func size:0x30\n"
+    "rutina_a = 0x80110100; // type:func size:0x10\n"
+    "rutina_b = 0x80110110; // type:func size:0x44\n"
+    "rutina_c = 0x80110160; // type:func size:0x20\n"
+    "rutina_d = 0x80110180; // type:func size:0x30\n"
 )
 
 

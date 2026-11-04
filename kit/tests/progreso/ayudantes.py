@@ -53,7 +53,7 @@ MANIFIESTO_BASE = (
     MANIFIESTO_MINIMO
     + """
 [rutas]
-subcarpetas_ajenas = ["overlay"]
+subcarpetas_ajenas = ["modulo_ajeno"]
 asm_auxiliares = ["include", "matchings"]
 """
 )
@@ -85,9 +85,9 @@ subcarpetas_ajenas = ["externo"]
 asm_auxiliares = ["macros", "cerradas"]
 
 [zonas]
-juego_desde = 0x80010100
-librerias_desde = 0x80020000
-librerias_hasta = 0x80030000
+juego_desde = 0x80110100
+librerias_desde = 0x80120000
+librerias_hasta = 0x80130000
 
 [plugins]
 """
@@ -223,7 +223,7 @@ def crear_proyecto_propio(
     escribir(raiz / "psxdecomp.toml", MANIFIESTO_PROPIO + extra_manifiesto)
     escribir(
         raiz / "datos" / "simbolos.txt",
-        "rutina_a = 0x80010100; // type:func size:0x10\nrutina_b = 0x80020000; // type:func size:0x20\n",
+        "rutina_a = 0x80110100; // type:func size:0x10\nrutina_b = 0x80120000; // type:func size:0x20\n",
     )
     escribir(raiz / "datos" / "ejecutable.json", json.dumps(_referencia_json()))
     escribir(raiz / "codigo" / "modulo_a.c", "int rutina_a(void)\n{\n    return 0;\n}\n")

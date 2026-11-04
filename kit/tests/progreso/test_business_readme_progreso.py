@@ -41,13 +41,13 @@ AVISO_README = "aviso: no se pudo actualizar la seccion de progreso del README: 
 
 def progreso_de_prueba() -> Any:
     simbolos = [
-        FuncionSimbolo("rutina_a", 0x80010100, 0x10),
-        FuncionSimbolo("rutina_b", 0x80010110, 0x20),
-        FuncionSimbolo("rutina_c", 0x80010130, 0x30),
-        FuncionSimbolo("rutina_d", 0x80010160, 0x40),
-        FuncionSimbolo("rutina_e", 0x800101A0, 0x50),
-        FuncionSimbolo("rutina_f", 0x80020000, 0x60),
-        FuncionSimbolo("rutina_g", 0x80020060, 0x70),
+        FuncionSimbolo("rutina_a", 0x80110100, 0x10),
+        FuncionSimbolo("rutina_b", 0x80110110, 0x20),
+        FuncionSimbolo("rutina_c", 0x80110130, 0x30),
+        FuncionSimbolo("rutina_d", 0x80110160, 0x40),
+        FuncionSimbolo("rutina_e", 0x801101A0, 0x50),
+        FuncionSimbolo("rutina_f", 0x80120000, 0x60),
+        FuncionSimbolo("rutina_g", 0x80120060, 0x70),
     ]
     estados = {
         "src/a.c": {
