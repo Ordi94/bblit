@@ -379,6 +379,11 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * objetos), mueve al personaje con colision contra el terreno y contra el objeto portador,
  * recorre los disparadores del grupo del fotograma y avanza la animacion. Las variables de trabajo
  * viven en el scratchpad: se vuelven a leer tras cada escritura por otro puntero.
+ *
+ * Bits de flags14 que se repiten y no tienen nombre en las cabeceras (se dejan como literal): 0x100
+ * el objeto esta inactivo (un portador con este bit se suelta), 0x10 lo lleva otro objeto, 0x08 lleva
+ * a otro, 0x06000000 lo golpearon. En flags08 el bit 0x08000000 marca al objeto para tomar como
+ * portador al jugador; en la palabra de comportamiento del fotograma (w10) 0x100 pide lo mismo.
  */
 void func_80026FEC(Objeto* o)
 {
@@ -473,9 +478,9 @@ void func_80026FEC(Objeto* o)
             /* Sin secuencia de herido: la de muerte (4) sigue su camino en otro bloque,
              * salvo que el objeto no pueda morir (bandera 0x200). */
             if (!(o->flags08 & 0x200) && t->w_bc == 4) {
-                goto L_8002B994;
+                goto marcar_portador_inactivo;
             }
-            goto L_800274A8;
+            goto efectos_de_ataque;
         }
         t->fot = (RegistroAnim*)(o->bloque + t->sec->desplazamiento);
         o->w17C = 0;
@@ -527,7 +532,7 @@ void func_80026FEC(Objeto* o)
         }
     }
 
-L_800274A8:
+efectos_de_ataque:
     /* Efectos de ataque de las banderas del fotograma (bits 0x830000). */
     t->banderas = t->fot->w0C;
     if ((t->banderas & 0x830000) && !(o->flags14 & 0x81000)) {
@@ -559,22 +564,22 @@ L_800274A8:
             if (t->banderas & 0x20000) {
                 t->aux = func_80016ED0(o, 0x80, area);
                 if (t->aux == 0) {
-                    goto L_80027808;
+                    goto golpe_por_volumen;
                 }
                 if (o->p70 == D_80069698) {
                     if (!(D_80069698->flags14 & 0x40)) {
-                        goto L_80027808;
+                        goto golpe_por_volumen;
                     }
                     if (D_80069698->raiz_ayudantes == 0) {
-                        goto L_80027808;
+                        goto golpe_por_volumen;
                     }
                     t->aux->id_atacante = o->w1C;
                     o->id_atacante = t->aux->w1C;
                     t->aux->w38 = t->fot->w16;
-                    goto L_80027808;
+                    goto golpe_por_volumen;
                 }
                 if (t->aux == D_80069698) {
-                    goto L_80027808;
+                    goto golpe_por_volumen;
                 }
                 t->aux->flags14 |= 0x02000000;
                 t->aux->id_atacante = o->w1C;
@@ -584,24 +589,24 @@ L_800274A8:
             }
         } else if (t->banderas & 0x20000) {
             if (o->raiz_ayudantes == 0) {
-                goto L_80027808;
+                goto golpe_por_volumen;
             }
             t->aux = func_800171E4(o, &o->objetivo, 0x80, 0, area);
             if (t->aux == 0) {
-                goto L_80027808;
+                goto golpe_por_volumen;
             }
             if (o->p70 == D_80069698) {
                 if (!(D_80069698->flags14 & 0x40)) {
-                    goto L_80027808;
+                    goto golpe_por_volumen;
                 }
                 if (D_80069698->raiz_ayudantes == 0) {
-                    goto L_80027808;
+                    goto golpe_por_volumen;
                 }
                 t->aux->flags14 |= 0x06000000;
                 t->aux->id_atacante = o->w1C;
                 o->id_atacante = t->aux->w1C;
                 t->aux->w38 = t->fot->w16;
-                goto L_80027808;
+                goto golpe_por_volumen;
             }
             t->aux->flags14 |= 0x02000000;
             t->aux->id_atacante = o->w1C;
@@ -613,7 +618,7 @@ L_800274A8:
         o->flags14 &= 0xDFFFFFBF;
     }
 
-L_80027808:
+golpe_por_volumen:
     /* Golpe por volumen (bit 0x1000000 de las banderas de comportamiento). */
     if (t->fot->w10 & 0x1000000) {
         if (o->raiz_ayudantes != 0) {
@@ -650,14 +655,14 @@ L_80027808:
     }
 
     if (t->banderas & 1) {
-        goto L_8002A11C;
+        goto coherencia_con_portador;
     }
     if (o->flags14 & 0x800) {
-        goto L_8002A11C;
+        goto coherencia_con_portador;
     }
     if (!(t->fot->w10 & 1)) {
         if (!(t->banderas & 0x20040060)) {
-            goto L_80028370;
+            goto control_por_mando;
         }
     } else {
         /* Oscilacion vertical: la fase y la amplitud se fijan al entrar (flags14 bit 0). */
@@ -676,13 +681,13 @@ L_80027808:
         /* Lanzar el objeto que lleva: se busca en un punto fijo delante del personaje y se
          * engancha a su cadena de ayudantes. */
         if (o->raiz_ayudantes == 0) {
-            goto L_80027D04;
+            goto flotador_de_ave;
         }
         if (o->p6C != 0) {
-            goto L_80027D04;
+            goto flotador_de_ave;
         }
         if (t->aux->p70 != 0) {
-            goto L_80027D04;
+            goto flotador_de_ave;
         }
         /* Matriz de 0x1F800068: salida de RotMatrix, la vista MATRIX de pad58 + 0x10. */
         t->sE8.vy = -0x32;
@@ -695,7 +700,7 @@ L_80027808:
         t->pF0.vz = t->pF0.vz + o->param.trans.vz;
         t->aux = func_800171E4(o, &t->pF0, 0x800, 0x2000000, area);
         if (t->aux == 0) {
-            goto L_80027D04;
+            goto flotador_de_ave;
         }
         o->flags18 |= 0x800;
         o->p6C = t->aux;
@@ -709,17 +714,17 @@ L_80027808:
         GEO_CARGAR_W(&t->aux->param.escala);
         GEO_GUARDAR_W_T1(&t->aux->portado.escala);
         func_8001CFCC(&t->aux->coord);
-        goto L_80027D04;
+        goto flotador_de_ave;
     }
     if (t->banderas & 0x40) {
         /* Soltar el objeto que lleva: vuelve al sistema global en la posicion del punto de
          * interaccion y con el giro del que lo soltaba. */
         if (o->raiz_ayudantes == 0) {
-            goto L_80027D04;
+            goto flotador_de_ave;
         }
         t->hijo = o->p6C;
         if (t->hijo == 0) {
-            goto L_80027D04;
+            goto flotador_de_ave;
         }
         t->hijo->flags14 &= 0xFFFFF7FD;
         t->hijo->flags14 |= 0x1000;
@@ -737,7 +742,7 @@ L_80027808:
     }
 
 
-L_80027D04:
+flotador_de_ave:
     /* El lw de banderas (0x80027D04) cae en este rango: el rango anterior termina en la etiqueta. */
     if (t->banderas & 0x20000000) {
         o->flags14 |= 4;
@@ -878,17 +883,17 @@ L_80027D04:
             }
         }
     }
-L_80028370:
+control_por_mando:
     /* Entrada desde el rango previo con t->banderas ya cargado. */
     if ((t->banderas & 0x02000C02) == 0 && (s32)t->fot->w10 >= 0) {
-        goto L_80028AD8;
+        goto velocidad_del_fotograma;
     }
     if ((s32)t->fot->w10 >= 0) {
         /* La rama de mando por teclas empieza probando banderas & 2 (queda en v0 en la ranura del salto). */
-        goto L_800289B8;
+        goto ajuste_de_giro_del_ayudante;
     }
     if (!(t->banderas & 0x100000)) {
-        goto L_80028410;
+        goto orientar_al_mando;
     }
     if (t->fot->w10 & 0x400000) {
         factor_a = D_80069694;
@@ -899,10 +904,10 @@ L_80028370:
     }
     t->r.h[2] += factor_a * factor_b;
 
-L_80028410:
+orientar_al_mando:
     t->w118 = ratan2(D_8006D928.x - D_8006D928.vpx, D_8006D928.z - D_8006D928.vpz);
     if ((s16)ESTADO_PRINCIPAL->mando.eje_x == 0 && ESTADO_PRINCIPAL->mando.eje_y == 0) {
-        goto L_80028928;
+        goto mando_en_reposo;
     }
     t->w114 = SquareRoot0((s16)ESTADO_PRINCIPAL->mando.eje_x * (s16)ESTADO_PRINCIPAL->mando.eje_x + (s16)ESTADO_PRINCIPAL->mando.eje_y * (s16)ESTADO_PRINCIPAL->mando.eje_y);
     t->w114 = (t->w114 - D_8006952C) * (0x80 / D_8006952C);
@@ -919,7 +924,7 @@ L_80028410:
         t->w114 = 1;
     }
     if (o->coord.super == 0) {
-        goto L_80028740;
+        goto giro_sin_ayudante;
     }
     /* seguimiento con ayudante: se rota (0,0,0x3E8) por la cadena de nodos para obtener el rumbo */
     t->sE8.vz = 0x3E8;
@@ -958,9 +963,9 @@ L_80028410:
         t->w_a0 = t->w_a0 >> 2;
     }
     GIRO_Y(o->coord.param) -= (u16)t->w_a0;
-    goto L_80028A08;
+    goto incrementos_de_giro;
 
-L_80028740:
+giro_sin_ayudante:
     /* seguimiento sin ayudante: el giro del propio objeto converge al rumbo del mando */
     t->w_a0 = ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
     t->w_a0 = t->w_a0 + t->w118;
@@ -1004,12 +1009,12 @@ L_80028740:
         t->r.h[2] += (u16)t->w114;
     }
     o->param.giro.u.y += (u16)t->w_a0;
-    goto L_80028A08;
+    goto incrementos_de_giro;
 
-L_80028928:
+mando_en_reposo:
     /* mando en reposo: el ayudante recupera su giro hacia cero */
     if (!(t->banderas & 0x100000)) {
-        goto L_80028A08;
+        goto incrementos_de_giro;
     }
     giro = (s16)GIRO_Y(o->u78.ayudas->pcoord->param);
     t->w114 = giro;
@@ -1018,11 +1023,11 @@ L_80028928:
     }
     GIRO_Y(o->u78.ayudas->pcoord->param) -= (u16)t->w114;
     func_8001CFCC(o->u78.ayudas->pcoord);
-    goto L_80028A08;
+    goto incrementos_de_giro;
 
-L_800289B8:
+ajuste_de_giro_del_ayudante:
     if ((t->banderas & 2) == 0) {
-        goto L_80028A08;
+        goto incrementos_de_giro;
     }
     if (t->fot->w10 & 0x400000) {
         t->r.h[2] += (s8)D_8006AA70[t->fot->h14] << 1;
@@ -1030,7 +1035,7 @@ L_800289B8:
         t->r.h[2] += (u16)t->fot->h14;
     }
 
-L_80028A08:
+incrementos_de_giro:
     if (t->banderas & 0x400) {
         t->r.h[1] -= t->fot->w1A;
     }
@@ -1052,9 +1057,9 @@ L_80028A08:
         }
     }
 
-L_80028AD8:
+velocidad_del_fotograma:
     if (!(t->fot->w10 & 0x10010)) {
-        goto L_80028B94;
+        goto avance_por_banderas;
     }
     if (t->fot->w10 & 0x10000) {
         if (t->fot->w10 & 0x400000) {
@@ -1070,15 +1075,15 @@ L_80028AD8:
         o->param.giro.u.y = ratan2(t->p30.vx, t->p30.vz);
     }
 
-L_80028B94:
+avance_por_banderas:
     if (!(t->banderas & 0x10209000)) {
-        goto L_80028FD0;
+        goto mover_con_colision;
     }
     if (t->banderas & 0x200000) {
         /* busqueda por identificador en la lista de objetos de escena, saltando los marcados con 0x100 */
         t->aux = D_80069518;
         if (t->aux == 0) {
-            goto L_80028FD0;
+            goto mover_con_colision;
         }
         for (; t->aux != 0; t->aux = t->aux->siguiente) {
             if (t->aux->w1C == (s16)t->fot->w16 && !(t->aux->flags14 & 0x100)) {
@@ -1089,7 +1094,7 @@ L_80028B94:
         t->aux = D_80069698;
     }
     if (t->aux == 0) {
-        goto L_80028FD0;
+        goto mover_con_colision;
     }
     if (t->banderas & 0x10000000) {
         /* el vector se mide desde el objetivo hacia el objeto; la altura (+0x34) no se toca */
@@ -1117,7 +1122,7 @@ L_80028B94:
             giro = giro - o->coord.super->param->rotate.vy;
         }
         pr->rotate.vy = giro;
-        goto L_80028FD0;
+        goto mover_con_colision;
     }
     if (t->w114 < 0) {
         t->w114 += 0x1000;
@@ -1142,13 +1147,13 @@ L_80028B94:
         if (t->w114 < 0) {
             if (t->w114 < -(s16)o->u18C.estado.w196) {
                 GIRO_Y(o->coord.param) -= (u16)o->u18C.estado.w196;
-                goto L_80028FD0;
+                goto mover_con_colision;
             }
         }
         if ((s16)o->u18C.estado.w196 < t->w114) {
             GIRO_Y(o->coord.param) += (u16)o->u18C.estado.w196;
         }
-        goto L_80028FD0;
+        goto mover_con_colision;
     }
     t->w_a0 = (s16)o->u18C.estado.w196;
     if (t->w_a0 == 0) {
@@ -1156,7 +1161,7 @@ L_80028B94:
     }
     if (t->fot->w10 & 0x20) {
         GIRO_Y(o->coord.param) += t->w114 >> 1;
-        goto L_80028FD0;
+        goto mover_con_colision;
     }
     t->w_a0 = t->w114 >> t->w_a0;
     if (t->w_a0 != 0) {
@@ -1165,7 +1170,7 @@ L_80028B94:
         GIRO_Y(o->coord.param) += (u16)t->w114;
     }
 
-L_80028FD0:
+mover_con_colision:
     RotMatrix(&o->param.giro.rotate, &t->m68);
     gte_SetRotMatrix(&t->m68);
     gte_ldv0(&t->r.sv.a);
@@ -1175,7 +1180,7 @@ L_80028FD0:
     t->r.sv.b.vy = 0;
     t->r.sv.b.vx = 0;
     if (t->banderas & 0x400000) {
-        goto L_80029A74;
+        goto barrido_de_terreno;
     }
     /* copia de 12 bytes del desplazamiento rotado a +0x08 (invade c.vx y c.vy) */
     GEO_CARGAR_W(&t->d);
@@ -1185,7 +1190,7 @@ L_80028FD0:
     /* Busca el objeto portador bajo el punto desplazado (t->r.sv.b); sin portador no hay enganche */
     t->aux = func_80017478(o, &t->r.sv.b, area, 0x20108);
     if (t->aux == 0) {
-        goto L_80029A74;
+        goto barrido_de_terreno;
     }
     t->aux->id_atacante = o->w1C;
     o->id_atacante = t->aux->w1C;
@@ -1207,7 +1212,7 @@ L_80028FD0:
         if (o->p70 != 0 && o->p70->p6C == o) {
             /* el portador actual ya apuntaba a este objeto: se limpia su enlace y se conserva el nodo */
             o->p70->p6C = 0;
-            goto L_800291A8;
+            goto enlazar_portado;
         }
         if (t->aux->raiz_ayudantes != 0) {
             /* la escala del portador se copia a la propia: el nodo cuelga de la raiz de ayudantes */
@@ -1219,7 +1224,7 @@ L_80028FD0:
         }
         o->w26 = t->aux->w26;
         o->p70 = t->aux;
-L_800291A8:
+enlazar_portado:
         o->coord.param = (GsCOORD2PARAM*)&o->portado;
         t->aux->p6C = o;
         o->w26 = t->aux->w26;
@@ -1333,7 +1338,7 @@ L_800291A8:
      * desplazamiento sale de rotar su vector; en otro caso se consulta el suelo bajo el objeto.
      */
     if ((t->aux->flags08 & 0x2000000) || o->p70 == t->aux) {
-        goto L_80029A4C;
+        goto marcar_choque;
     }
     if (t->banderas & 0x40000) {
         t->r.sv.b.vx = (u16)o->param.trans.vx - (u16)t->aux->param.trans.vx;
@@ -1362,10 +1367,10 @@ L_800291A8:
         gte_ldv0(&t->r.sv.a);
         gte_rtv0();
         gte_stlvnl(&t->d);
-        goto L_80029A4C;
+        goto marcar_choque;
     }
     if (t->aux == D_80069698) {
-        goto L_80029A74;
+        goto barrido_de_terreno;
     }
     t->vC0.vx = (s16)t->r.sv.b.vx + o->param.trans.vx;
     t->vC0.vy = o->param.trans.vy;
@@ -1377,13 +1382,13 @@ L_800291A8:
     /* con 0x80000 en el fotograma solo cuenta la rampa (bit 4); sin el, rampa y salto (bits 4 y 8) */
     rflags = (s16)t->res.flags;
     if ((t->fot->w0C & 0x80000) ? (rflags & 0x4) : (rflags & 0xC)) {
-        goto L_80029A74;
+        goto barrido_de_terreno;
     }
     if (o->flags08 & 0x2000000) {
-        goto L_80029A74;
+        goto barrido_de_terreno;
     }
     if (!(t->aux->flags08 & 0x20100)) {
-        goto L_80029A74;
+        goto barrido_de_terreno;
     }
     if (o->p70 == 0 &&
         (t->aux->flags08 & 0x8) &&
@@ -1395,21 +1400,21 @@ L_800291A8:
         t->d.vx = (s16)t->r.sv.b.vx;
         t->d.vz = (s16)t->r.sv.b.vz;
     }
-    goto L_80029A74;
-L_80029A4C:
+    goto barrido_de_terreno;
+marcar_choque:
     o->flags14 |= 0x40000000;
     t->aux->flags14 |= 0x40000000;
-L_80029A74:
+barrido_de_terreno:
     /* Sin colision previa, con el bit 0x10 del fotograma y sin salto en curso, el barrido de terreno corre */
     if (!(t->banderas & 0x10) || choco != 0) {
-        goto L_80029F28;
+        goto barrido_de_colision;
     }
     f14 = o->flags14;
     if ((t->fot->w10 & 0x800) ? (f14 & 0x9) : (f14 & 0x209)) {
-        goto L_80029EF8;
+        goto fin_de_busqueda_de_portador;
     }
     if (!(o->flags14 & 0x10)) {
-        goto L_80029B6C;
+        goto andadura_del_portado;
     }
     /* enganchado a un portador: el punto de barrido es la posicion del portador y el desplazamiento es el desfase relativo */
     t->p30.vx = o->param.trans.vx - o->p70->param.trans.vx;
@@ -1425,16 +1430,16 @@ L_80029A74:
     o->param.trans.vx = o->p70->param.trans.vx + t->p30.vx;
     o->param.trans.vz = o->p70->param.trans.vz + t->p30.vz;
 
-L_80029B6C:
+andadura_del_portado:
     /* Con el fotograma pidiendo cuenta de andadura y el objeto en el suelo o portado, se cuenta el cuadro y
     se suelta al portador si la andadura supera el umbral. */
-    if (!(t->banderas & 0x08000000)) goto L_80029C44;
-    if (!(o->flags14 & 0x12)) goto L_80029C44;
+    if (!(t->banderas & 0x08000000)) goto buscar_portador;
+    if (!(o->flags14 & 0x12)) goto buscar_portador;
     o->u18C.estado.h194 = o->u18C.estado.h194 + 1;
     t->w118 = (s16)t->fot->w18 * (s16)o->u18C.estado.h194;
     if (t->w118 >= 0x400) {
         o->flags14 = (o->flags14 | 0x800000) & 0xFFF7EFFF;
-        goto L_80029EF8;
+        goto fin_de_busqueda_de_portador;
     }
     /* Aun dentro del umbral: se suelta al portador y se empuja con el giro actual. */
     if (o->p70 != 0) {
@@ -1448,9 +1453,9 @@ L_80029B6C:
     o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x2;
     func_8001CFCC(&o->coord);
     func_80020210(o, t->w118, (s16)t->fot->w1A);
-    goto L_80029EF8;
+    goto fin_de_busqueda_de_portador;
 
-L_80029C44:
+buscar_portador:
     /* Quien es el portador candidato: el jugador cuando el objeto ya esta marcado o el fotograma lo pide;
     si no, el primer solido de la lista con la plantilla del fotograma. */
     portador = 0;
@@ -1458,27 +1463,27 @@ L_80029C44:
         portador = 1;
     }
     t->w114 = portador;
-    if (portador != 0) goto L_80029CB0;
-    if (o->flags08 & 0x10000000) goto L_80029CB0;
-    if ((t->fot->w10 & 0x100000) == 0) goto L_80029E9C;
+    if (portador != 0) goto portador_del_jugador;
+    if (o->flags08 & 0x10000000) goto portador_del_jugador;
+    if ((t->fot->w10 & 0x100000) == 0) goto soltar_portador;
 
-L_80029CB0:
+portador_del_jugador:
     if (t->w114 != 0) {
         t->aux = D_80069698;
-        goto L_80029D24;
+        goto distancia_al_portador;
     }
     t->aux = D_80069630;
-    if (D_80069630 == 0) goto L_80029EF8;
+    if (D_80069630 == 0) goto fin_de_busqueda_de_portador;
     do {
         /* Busqueda en linea por plantilla: se salta el solido si no coincide o si esta marcado como inactivo. */
         if (t->aux->w1C == (s16)t->fot->w16) {
-            if (!(t->aux->flags14 & 0x100)) goto L_80029D24;
+            if (!(t->aux->flags14 & 0x100)) goto distancia_al_portador;
         }
         t->aux = t->aux->sig10;
     } while (t->aux != 0);
 
-L_80029D24:
-    if (t->aux == 0) goto L_80029EF8;
+distancia_al_portador:
+    if (t->aux == 0) goto fin_de_busqueda_de_portador;
     t->r.sv.c.vx = (u16)t->aux->param.trans.vx - (u16)o->param.trans.vx;
     t->r.sv.c.vz = (u16)t->aux->param.trans.vz - (u16)o->param.trans.vz;
     t->w_a4 = SquareRoot0(t->r.sv.c.vx * t->r.sv.c.vx + t->r.sv.c.vz * t->r.sv.c.vz);
@@ -1499,13 +1504,13 @@ L_80029D24:
         if (t->w_a4 != 0) {
             t->w_a4 = 0x800 / t->w_a4;
             func_80020210(o, t->w_a4, (s16)t->fot->w1A);
-            goto L_80029EF8;
+            goto fin_de_busqueda_de_portador;
         }
     }
     o->flags14 |= 0x200;
-    goto L_80029EF8;
+    goto fin_de_busqueda_de_portador;
 
-L_80029E9C:
+soltar_portador:
     o->coord.super = 0;
     o->coord.param = PARAMETROS_SDK(o);
     if (o->p70 != 0) {
@@ -1518,26 +1523,26 @@ L_80029E9C:
     func_8001CFCC(&o->coord);
     func_80020210(o, (s16)t->fot->w18, (s16)t->fot->w1A);
 
-L_80029EF8:
+fin_de_busqueda_de_portador:
     if (t->banderas & 0x10) {
         if (o->flags14 & 0x1) {
             func_80020240(o);
         }
     }
 
-L_80029F28:
+barrido_de_colision:
     /* Sin desplazamiento pedido no hay barrido de colision. */
     giro = t->d.vx | t->d.vy;
     if (t->d.vz == 0) {
-        if (giro == 0) goto L_8002A034;
+        if (giro == 0) goto aplicar_movimiento;
     }
     if (t->banderas >= 0) {
         if (!(t->fot->w10 & 0x20002) && o->p70 == 0) {
             func_8001DA14(o, &t->d, t->banderas, t->fot->w10, area);
-            goto L_8002A034;
+            goto aplicar_movimiento;
         }
     }
-    if (!(t->banderas & 0x40000000)) goto L_8002A034;
+    if (!(t->banderas & 0x40000000)) goto aplicar_movimiento;
     GEO_CARGAR_W(&o->param.trans);
     GEO_GUARDAR_W_T1(&t->p30);
     GEO_CARGAR_W(&t->d);
@@ -1546,10 +1551,10 @@ L_80029F28:
     func_8001C134((s32*)&t->p30, &t->res, (TrabajoBaldosa*)area);
     o->w26 = t->res.grupo;
 
-L_8002A034:
+aplicar_movimiento:
     if (t->banderas < 0) {
         if (!(t->fot->w10 & 0x4)) {
-            if (o->coord.super == 0) goto L_8002A448;
+            if (o->coord.super == 0) goto componer_con_portador;
         }
     }
     t->w114 = t->d.vx + t->d.vz;
@@ -1566,12 +1571,12 @@ L_8002A034:
         o->flags14 |= 0x100000;
     }
 
-L_8002A11C:
-    if (o->coord.super == 0) goto L_8002A448;
+coherencia_con_portador:
+    if (o->coord.super == 0) goto componer_con_portador;
     if (o->p70 != 0) {
         if (o->p70->flags14 & 0x100) {
             /* El portador esta inactivo: el objeto no puede seguir encima de el, salvo que ya este en la fase de suelta (0x400 de flags18), que resuelve otro bloque. */
-            if (o->flags18 & 0x400) goto L_8002B994;
+            if (o->flags18 & 0x400) goto marcar_portador_inactivo;
             o->coord.param = PARAMETROS_SDK(o);
             o->coord.super = 0;
             o->p70 = 0;
@@ -1630,7 +1635,7 @@ L_8002A11C:
     GEO_CARGAR_H(&t->sE8);
     GEO_GUARDAR_W_T1(&o->param.trans);
 
-L_8002A448:
+componer_con_portador:
     if (o->flags14 & 0x10) {
         /* Con portador: se decide entre soltarlo, seguirlo por el barrido o recoger su movimiento. */
         if ((o->p70->flags14 & 0x100) || !(o->p70->flags08 & 0x8)) {
@@ -1660,9 +1665,9 @@ L_8002A448:
             arg_giro = o->p70->param.giro.u.z;
             o->p70 = 0;
             o->param.giro.u.z = arg_giro;
-            goto L_8002A6A0;
+            goto fin_de_composicion;
         } else {
-            if (func_80018664(o, o->p70, area) != 0) goto L_8002A6A8;
+            if (func_80018664(o, o->p70, area) != 0) goto sin_portador;
             t->p30.vx = o->param.trans.vx - o->p70->param.trans.vx;
             t->p30.vy = 0;
             t->p30.vz = o->param.trans.vz - o->p70->param.trans.vz;
@@ -1680,14 +1685,14 @@ L_8002A448:
             o->p70 = 0;
             o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x200;
             o->param.trans.vz = arg_giro + giro;
-L_8002A6A0:
+fin_de_composicion:
             func_8001CFCC(&o->coord);
         }
     }
 
-L_8002A6A8:
+sin_portador:
     /* Sin portador y con el fotograma pidiendo movimiento propio, no hay nodo padre que componer. */
-    if ((t->fot->w0C & 0x1) && !(t->fot->w10 & 0x4) && o->coord.super == 0) goto L_8002A804;
+    if ((t->fot->w0C & 0x1) && !(t->fot->w10 & 0x4) && o->coord.super == 0) goto preparar_disparadores;
     if (o->coord.super != 0) {
         t->sE8.vz = 0;
         t->sE8.vx = 0;
@@ -1708,72 +1713,72 @@ L_8002A6A8:
         func_8001CF50(o);
     }
 
-L_8002A804:
+preparar_disparadores:
     if (o->flags0C & 0x200) {
         D_8006AA70[1] = (o->s1E << 7) / D_800693D0;
     }
-    if (t->fot->w0A == 0) goto L_8002B6D4;
+    if (t->fot->w0A == 0) goto fin_de_disparadores;
     t->w_b0 = (s32)((u8*)o->apoyos + t->fot->w1E);
     t->w_d4 = 0;
     t->w_d8 = 0;
     t->w_dc = -1;
     t->nodo = (NodoDisparador*)t->w_b0;
-    if (t->nodo == 0) goto L_8002B6D4;
+    if (t->nodo == 0) goto fin_de_disparadores;
     coord_o = &o->coord;
     /* La lista de disparadores del fotograma se recorre en linea: termina al cambiar el grupo (id). */
 
-L_8002A87C:
-    if (t->nodo->id != t->fot->w0A) goto L_8002B6D4;
+evaluar_disparador:
+    if (t->nodo->id != t->fot->w0A) goto fin_de_disparadores;
     t->w_e0 = t->nodo->desplazamiento;
     t->banderas = t->nodo->flags;
     if (t->nodo->req14 != 0) {
-        if (!(o->flags14 & t->nodo->req14)) goto L_8002B6BC;
+        if (!(o->flags14 & t->nodo->req14)) goto siguiente_disparador;
     }
     if (t->nodo->req18 != 0) {
-        if (!(o->flags18 & t->nodo->req18)) goto L_8002B6BC;
+        if (!(o->flags18 & t->nodo->req18)) goto siguiente_disparador;
     }
-    if (t->banderas == 0) goto L_8002A9A8;
+    if (t->banderas == 0) goto condicion_del_disparador;
 
     /* coord_o es s1 (= &o->coord, fijado en 0x8002A878); pila_nodo es el area de la pila (+0x18) que recibe func_8001CE64 */
 
-    /* Arranque del rango: 0x8002A8FC es el hueco de retardo del beqz de 0x8002A8F8 (flags == 0 salta a L_8002A9A8). */
+    /* Arranque del rango: 0x8002A8FC es el hueco de retardo del beqz de 0x8002A8F8 (flags == 0 salta a condicion_del_disparador). */
     if (t->banderas & 0x40) {
         if (t->nodo->p1C != (u16)o->trabajo.cuadro) {
-            goto L_8002B6BC;
+            goto siguiente_disparador;
         }
         if (o->trabajo.ticks != 0) {
-            goto L_8002B6BC;
+            goto siguiente_disparador;
         }
     } else if (t->banderas & 4) {
         if (!(o->trabajo.flags18 & 0x2000)) {
-            goto L_8002B6BC;
+            goto siguiente_disparador;
         }
         if (o->trabajo.ticks != 0) {
-            goto L_8002B6BC;
+            goto siguiente_disparador;
         }
     }
     if (t->banderas & 2) {
         nd_azar = t->nodo;
         azar = BugsRand() & 0xFFFF;
         if (!(nd_azar->p1C < (u32)azar)) {
-            goto L_8002B6BC;
+            goto siguiente_disparador;
         }
     } else if (t->banderas & 0x20000) {
         nd_azar = t->nodo;
         azar = BugsRand() & 0xFFFF;
         if (!((u32)nd_azar->p20 < (u32)azar)) {
-            goto L_8002B6BC;
+            goto siguiente_disparador;
         }
     }
-L_8002A9A8:
+condicion_del_disparador:
     if (t->nodo->cond != 0) {
         if (TestLogicCond(o, &t->nodo->cond) == 0) {
-            goto L_8002B6BC;
+            goto siguiente_disparador;
         }
     }
     if (t->banderas & 0x2000) {
         if (o->id_atacante != t->nodo->p20) {
-            goto L_8002B6BC;
+            goto siguiente_disparador;
         }
     }
     if (t->banderas & 0x58400000) {
@@ -1799,11 +1804,11 @@ L_8002A9A8:
             t->aux = t->w_d4;
         }
         if (t->aux == 0) {
-            goto L_8002B6BC;
+            goto siguiente_disparador;
         }
         if (t->banderas & 0x400000) {
             func_8001CD84(t->aux, t->nodo->p1C, area);
-            goto L_8002AC3C;
+            goto accion_del_disparador;
         }
         if (t->banderas & 0x18000000) {
             t->p30.vx = t->aux->param.trans.vx - o->param.trans.vx;
@@ -1819,27 +1824,27 @@ L_8002A9A8:
             t->w_a4 = t->w_dc = SquareRoot0(t->p30.vx + t->p30.vy + t->p30.vz);
             if (t->banderas & 0x200000) {
                 if ((u32)t->w_a4 < t->nodo->p1C) {
-                    goto L_8002B6BC;
+                    goto siguiente_disparador;
                 }
-                goto L_8002AC3C;
+                goto accion_del_disparador;
             }
             if (t->nodo->p1C < (u32)t->w_a4) {
-                goto L_8002B6BC;
+                goto siguiente_disparador;
             }
-            goto L_8002AC3C;
+            goto accion_del_disparador;
         }
         if (t->banderas & 0x40000000) {
             if ((u16)t->aux->trabajo.cuadro != t->nodo->p1C) {
-                goto L_8002B6BC;
+                goto siguiente_disparador;
             }
         }
     }
-L_8002AC3C:
+accion_del_disparador:
     if (t->nodo->accion != 0) {
         RunLogicAction(o, &t->nodo->cond);
     }
     if (t->banderas == 0) {
-        goto L_8002B610;
+        goto ultimo_fotograma;
     }
     if (t->banderas & 8) {
         /* Suelta al objeto que este lleva (p70): el portado vuelve a coordenadas de mundo. */
@@ -1869,7 +1874,7 @@ L_8002AC3C:
         if (t->banderas & 0x40100) {
             t->hijo = func_80036734((s16)t->nodo->p20, (s32*)(o->raiz_ayudantes != 0 ? (void*)&o->objetivo : (void*)&o->param.trans), &o->param.giro.u.x);
             if (t->hijo == 0) {
-                goto L_8002B3B4;
+                goto efectos_tras_disparadores;
             }
             if (t->banderas & 0x1000000) {
                 *(u16*)&t->hijo->s1E = *(u16*)&o->s1E; /* lhu / sh 0x1E (0x8002AD98): el campo es s16, la copia es sin signo */
@@ -1897,7 +1902,7 @@ L_8002AC3C:
                     o->flags18 |= 0x800;
                 }
                 t->hijo->coord.param = (GsCOORD2PARAM*)&t->hijo->portado;
-                goto L_8002B1B8;
+                goto posicion_del_hijo;
             }
             /* Sin bandera 0x80 el hijo hereda la escala de la raiz de ayudantes y no se re-ancla. */
             if (o->raiz_ayudantes != 0) {
@@ -1910,13 +1915,13 @@ L_8002AC3C:
                 azar = BugsRand();
                 t->hijo->param.giro.u.y = azar & 0xFFF;
             }
-            goto L_8002B3B4;
+            goto efectos_tras_disparadores;
         }
         if (t->banderas & 0x20000000) {
             /* Reutiliza un objeto ya existente: se busca por identificador entre los vivos. */
             t->hijo = D_80069518;
             if (t->hijo == 0) {
-                goto L_8002B3B4;
+                goto efectos_tras_disparadores;
             }
             for (; t->hijo != 0; t->hijo = t->hijo->siguiente) {
                 if (t->hijo->w1C == t->nodo->p20 && !(t->hijo->flags14 & 0x100)) {
@@ -1924,7 +1929,7 @@ L_8002AC3C:
                 }
             }
             if (t->hijo == 0) {
-                goto L_8002B3B4;
+                goto efectos_tras_disparadores;
             }
             if (t->banderas & 0x1000000) {
                 *(u16*)&t->hijo->s1E = *(u16*)&o->s1E; /* lhu / sh 0x1E (0x8002B018) */
@@ -1960,7 +1965,7 @@ L_8002AC3C:
             if (!(t->banderas & 0x80)) {
                 o->p6C = t->hijo;
             }
-L_8002B1B8:
+posicion_del_hijo:
             t->hijo->w26 = o->w26;
             func_8001CFCC(&t->hijo->coord);
             pila_nodo.nodo = &t->hijo->coord;
@@ -1968,7 +1973,7 @@ L_8002B1B8:
             t->hijo->param.trans.vx = pila_nodo.acc.vx;
             t->hijo->param.trans.vy = pila_nodo.acc.vy;
             t->hijo->param.trans.vz = pila_nodo.acc.vz;
-            goto L_8002B3B4;
+            goto efectos_tras_disparadores;
         }
         if (t->banderas & 0x1000) {
             /* El propio objeto pasa a colgar del jugador: se reinicia su transformacion portada. */
@@ -1987,26 +1992,26 @@ L_8002B1B8:
             o->param.trans.vx = pila_nodo.acc.vx;
             o->param.trans.vy = pila_nodo.acc.vy;
             o->param.trans.vz = pila_nodo.acc.vz;
-            goto L_8002B3B4;
+            goto efectos_tras_disparadores;
         }
         if (t->banderas & 0x20) {
             t->w114 = func_80018C68(o, area);
             if (t->w114 == 1) {
                 t->w_e0 = t->nodo->p1C;
-                goto L_8002B3B4;
+                goto efectos_tras_disparadores;
             }
             if (t->w114 != 2) {
-                goto L_8002B6BC;
+                goto siguiente_disparador;
             }
             t->w_e0 = t->nodo->p20;
-            goto L_8002B3B4;
+            goto efectos_tras_disparadores;
         }
         if (!(t->banderas & 0x4000000)) {
-            goto L_8002B3B4;
+            goto efectos_tras_disparadores;
         }
         t->aux = D_80069518;
         if (t->aux == 0) {
-            goto L_8002B3B4;
+            goto efectos_tras_disparadores;
         }
         for (; t->aux != 0; t->aux = t->aux->siguiente) {
             if (t->aux->w1C == t->nodo->p20 && !(t->aux->flags14 & 0x100)) {
@@ -2014,13 +2019,13 @@ L_8002B1B8:
             }
         }
         if (t->aux == 0) {
-            goto L_8002B3B4;
+            goto efectos_tras_disparadores;
         }
         t->aux->flags14 |= 0x100;
     }
-L_8002B3B4:
+efectos_tras_disparadores:
     if (!(t->banderas & 0x82194800)) {
-        goto L_8002B5F8;
+        goto salida_del_disparador;
     }
     if (t->banderas & 0x80000) {
         D_80069662 = 1;
@@ -2063,21 +2068,21 @@ L_8002B3B4:
     }
     if (t->banderas & 0x10000) {
         if (t->nodo->p20 != 1) {
-            goto L_8002B994;
+            goto marcar_portador_inactivo;
         }
         func_8001D588(t->nodo->p1C, 0);
     }
     if (t->banderas & 0x2000000) {
-        goto L_8002B994;
+        goto marcar_portador_inactivo;
     }
-L_8002B5F8:
+salida_del_disparador:
     if (t->banderas & 0x8000) {
-        goto L_8002B6BC;
+        goto siguiente_disparador;
     }
     if (t->banderas & 0x10) {
-        goto L_8002B6D4;
+        goto fin_de_disparadores;
     }
-L_8002B610:
+ultimo_fotograma:
     /* Ultimo fotograma consumido: sirve para decidir si el estado del salto se conserva al cambiar de secuencia. */
     if (t->fot != 0) {
         t->previo = t->fot->w06;
@@ -2094,13 +2099,13 @@ L_8002B610:
     o->w17C = 0;
     o->u18C.estado.h194 = 0; /* sh 0x194 (0x8002B6AC) */
     o->flags14 &= 0xF9FFFDF6;
-    goto L_8002B6D4;
-L_8002B6BC:
+    goto fin_de_disparadores;
+siguiente_disparador:
     t->nodo = t->nodo->sig;
     if (t->nodo != 0) {
-        goto L_8002A87C;
+        goto evaluar_disparador;
     }
-L_8002B6D4:
+fin_de_disparadores:
     if ((o->flags08 & 0x1000000) || (t->fot->w10 & 0x800000)) {
         func_8001E1A4(o, area);
     }
@@ -2118,10 +2123,10 @@ L_8002B6D4:
         o->trabajo.i14 = 0;
         o->flags14 &= 0xF9F7EFFF;
         if (t->fot->w0C & 4) {
-            goto L_8002B994;
+            goto marcar_portador_inactivo;
         }
         o->w17C += 1;
-        goto L_8002B868;
+        goto siguiente_paso_de_secuencia;
     }
     if (t->w118 != 0 && (t->fot->w0C & 0x80) && (o->flags14 & 0x12)) {
         f14 = o->flags14;
@@ -2129,11 +2134,11 @@ L_8002B6D4:
         o->flags14 = f14;
         if (t->fot->w0C & 4) {
             o->flags14 = f14 | 0x100;
-            goto L_8002BA58;
+            goto fin_de_funcion;
         }
         o->flags14 = f14 & ~0x1000;
         o->w17C += 1;
-L_8002B868:
+siguiente_paso_de_secuencia:
         t->w_bc = *(u16*)((u8*)t->sec + (o->w17C << 1) + 6);
         if (t->w_bc != 0xFFF0 && o->w17C < 5) {
             o->registro184 = t->fot = (RegistroAnim*)(o->bloque + t->w_bc);
@@ -2156,10 +2161,10 @@ L_8002B868:
             D_8006D9B8[0] = o;
         } else if (t->fot->w10 & 0x40) {
             D_8006D9B8[0] = o;
-            goto L_8002BA00;
-L_8002B994:
+            goto cierre_del_cuadro;
+marcar_portador_inactivo:
             o->flags14 |= 0x100;
-            goto L_8002BA58;
+            goto fin_de_funcion;
         } else {
             t->p30.vx = D_80069698->param.trans.vx - o->param.trans.vx;
             t->p30.vy = 0;
@@ -2169,7 +2174,7 @@ L_8002B994:
             }
         }
     }
-L_8002BA00:
+cierre_del_cuadro:
     if (o->flags0C & 0x20000000) {
         o->param.trans.vx = D_8006D928.vpx;
         o->param.trans.vy = D_8006D928.vpy + o->s1E;
@@ -2179,7 +2184,7 @@ L_8002BA00:
     o->id_atacante = 0;
     o->flags14 &= 0xB76F777F;
     o->flags18 &= ~0x6020;
-L_8002BA58: ;
+fin_de_funcion: ;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_80026FEC);
