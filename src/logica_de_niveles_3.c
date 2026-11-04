@@ -1657,8 +1657,8 @@ L_8002A448:
             t->res.grupo = o->w26;
             BarrerTerreno(&t->vC0, &t->pF0, &t->res, area);
             o->param.trans.vx = o->p70->param.trans.vx + t->pF0.vx;
-            o->coord.param = PARAMETROS_SDK(o);
             o->param.trans.vz = o->p70->param.trans.vz + t->pF0.vz;
+            o->coord.param = PARAMETROS_SDK(o);
             o->coord.super = 0;
             o->param.giro.u.x = o->p70->param.giro.u.x;
             o->param.giro.u.y = o->p70->param.giro.u.y;
