@@ -1449,8 +1449,8 @@ L_80029B6C:
         o->p70 = 0;
         o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x2;
         func_8001CFCC(&o->coord);
-        arg_giro = t->w118;
-        goto L_80029EEC;
+        func_80020210(o, t->w118, (s16)t->fot->w1A);
+        goto L_80029EF8;
     }
 
 L_80029C44:
@@ -1501,8 +1501,8 @@ L_80029D24:
         t->w_a4 = t->w_a4 / t->fot->h14;
         if (t->w_a4 != 0) {
             t->w_a4 = 0x800 / t->w_a4;
-            arg_giro = t->w_a4;
-            goto L_80029EEC;
+            func_80020210(o, t->w_a4, (s16)t->fot->w1A);
+            goto L_80029EF8;
         }
     }
     o->flags14 |= 0x200;
@@ -1519,10 +1519,7 @@ L_80029E9C:
     o->p70 = 0;
     o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x2;
     func_8001CFCC(&o->coord);
-    arg_giro = (s16)t->fot->w18;
-
-L_80029EEC:
-    func_80020210(o, arg_giro, (s16)t->fot->w1A);
+    func_80020210(o, (s16)t->fot->w18, (s16)t->fot->w1A);
 
 L_80029EF8:
     if (t->banderas & 0x10) {
