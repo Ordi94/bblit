@@ -1,5 +1,7 @@
 """Analizador de la linea de ordenes: los textos de ayuda salen del manifiesto, no de un juego."""
 
+import sys
+
 import pytest
 from psxdecomp.cli import PluginInvalidoError, construir_parser
 from psxdecomp.dominio import Proyecto
@@ -82,8 +84,26 @@ def test_la_entrada_del_kit_anade_proyecto_y_comprobar_y_la_de_un_proyecto_no(
 
 
 def test_los_plugins_declarados_se_registran_salvo_que_se_pidan_sin_ellos(
-    proyecto_completo: Proyecto,
+    proyecto_completo: Proyecto, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     with pytest.raises(PluginInvalidoError, match=r"paquete\.modulo"):
         construir_parser(proyecto_completo)
-    assert construir_parser(proyecto_completo, con_plugins=False) is not None
+    sin_plugins = texto_de_ayuda(proyecto_completo, capsys)
+    assert "split" in sin_plugins
+    assert "build" in sin_plugins
+    assert "saludar" not in sin_plugins
+
+    carpeta = proyecto_completo.raiz / "paquete"
+    carpeta.mkdir()
+    (carpeta / "modulo.py").write_text(
+        "def registrar(subparsers, proyecto):\n"
+        "    subparsers.add_parser('saludar', help='saluda').set_defaults(manejador=print)\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delitem(sys.modules, "paquete", raising=False)
+    monkeypatch.delitem(sys.modules, "paquete.modulo", raising=False)
+    ayuda = construir_parser(proyecto_completo, con_plugins=True).format_help()
+    assert "saludar" in ayuda
+    assert "split" in ayuda
+    sys.modules.pop("paquete.modulo", None)
+    sys.modules.pop("paquete", None)

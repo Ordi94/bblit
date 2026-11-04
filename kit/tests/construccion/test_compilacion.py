@@ -194,7 +194,13 @@ def test_leer_secciones_extrae_nombre_y_tamano() -> None:
 
 def test_verificar_solo_texto_acepta_codigo_y_secciones_de_control() -> None:
     secciones = {".text": 100, ".data": 0, ".bss": 0, ".reginfo": 24, ".pdr": 8}
+    copia = dict(secciones)
     comp.verificar_solo_texto("a.o", secciones, rutas=RUTAS)
+    assert secciones == copia
+    con_datos = {**secciones, ".data": 4}
+    with pytest.raises(ValueError, match=r"\.data"):
+        comp.verificar_solo_texto("a.o", con_datos, rutas=RUTAS)
+    comp.verificar_solo_texto("a.o", con_datos, {".data"}, rutas=RUTAS)
 
 
 @pytest.mark.parametrize(

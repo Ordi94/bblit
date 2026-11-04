@@ -27,8 +27,15 @@ def test_el_nombre_de_una_clave_desconocida_se_trunca_en_el_mensaje() -> None:
     assert "k" * (largo + 1) not in str(error.value)
 
 
-def test_con_todas_las_claves_admitidas_no_hay_error() -> None:
-    val.rechazar_claves_desconocidas({"a": 1}, {"a", "b"}, "rutas")
+def test_con_claves_admitidas_no_lanza_ni_modifica_la_tabla_ni_el_conjunto() -> None:
+    admitidas = {"a", "b"}
+    for tabla in ({}, {"a": 1}, {"a": 1, "b": [2]}):
+        copia = {clave: valor for clave, valor in tabla.items()}
+        val.rechazar_claves_desconocidas(tabla, admitidas, "rutas")
+        assert tabla == copia
+    assert admitidas == {"a", "b"}
+    with pytest.raises(ManifiestoError):
+        val.rechazar_claves_desconocidas({"a": 1, "c": 2}, admitidas, "rutas")
 
 
 def test_una_clave_obligatoria_ausente_se_nombra_en_el_error() -> None:

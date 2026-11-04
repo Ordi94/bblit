@@ -37,6 +37,14 @@ def aplicar(
     return descripcion, c.imprimir_funcion(ctx.funcion)
 
 
+def aplica_y_cambia(mutacion: Callable[[mut.Contexto], str | None], texto: str) -> None:
+    """Afirma que la mutacion se aplica y que el texto de la funcion resultante difiere del original."""
+    sin_mutar = aplicar(lambda _contexto: None, texto)[1]
+    descripcion, mutado = aplicar(mutacion, texto)
+    assert descripcion is not None
+    assert mutado != sin_mutar
+
+
 def cuerpo(*lineas: str, firma: str = "void f(Objeto* o, s32 x, s32 y)") -> str:
     return firma + "\n{\n" + "\n".join(f"    {linea}" for linea in lineas) + "\n}"
 
@@ -500,7 +508,9 @@ def test_el_continue_de_un_bucle_interior_no_impide_convertir_el_exterior() -> N
     )
     ctx = preparar(texto)
     ctx.azar = Fijo(0.9)
+    antes = c.imprimir_funcion(ctx.funcion)
     assert mut.bucle_for_o_while(ctx) is not None
+    assert c.imprimir_funcion(ctx.funcion) != antes
 
 
 def test_una_funcion_sin_bucles_ni_condicionales_no_admite_esas_mutaciones() -> None:
@@ -763,10 +773,10 @@ def test_introducir_temporal_no_toma_expresiones_con_nombres_ambiguos() -> None:
 
 def test_con_nombres_unicos_las_mutaciones_siguen_funcionando() -> None:
     texto = cuerpo("s16 a;", "s32 b;", "b = 5;", "a = o->radio;", "o->valor = a + b;")
-    assert aplicar(mut.eliminar_temporal, texto)[0] is not None
-    assert aplicar(mut.ancho_de_temporal, texto)[0] is not None
-    assert aplicar(mut.introducir_temporal, texto)[0] is not None
-    assert aplicar(mut.copiar_parametro, texto)[0] is not None
+    aplica_y_cambia(mut.eliminar_temporal, texto)
+    aplica_y_cambia(mut.ancho_de_temporal, texto)
+    aplica_y_cambia(mut.introducir_temporal, texto)
+    aplica_y_cambia(mut.copiar_parametro, texto)
 
 
 FUENTE_CON_BARRERAS = """typedef struct Objeto {

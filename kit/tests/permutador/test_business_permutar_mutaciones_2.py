@@ -44,6 +44,14 @@ def preparar(texto: str, semilla: int = 0) -> mut.Contexto:
     return mut.Contexto(funcion, an.Entorno(tabla, funcion), azar(semilla), mut._nombres_de(funcion))
 
 
+def aplica_y_cambia(mutacion: Callable[[mut.Contexto], str | None], texto: str) -> None:
+    """Afirma que la mutacion se aplica y que el texto de la funcion resultante difiere del original."""
+    sin_mutar = aplicar(lambda _contexto: None, texto)[1]
+    descripcion, mutado = aplicar(mutacion, texto)
+    assert descripcion is not None
+    assert mutado != sin_mutar
+
+
 def cuerpo(*lineas: str, firma: str = FIRMA) -> str:
     return firma + "\n{\n" + "\n".join(f"    {linea}" for linea in lineas) + "\n}"
 
@@ -394,7 +402,7 @@ def test_la_relectura_si_es_legal_si_el_bucle_solo_escribe_otras_rutas_de_memori
     texto = cuerpo(
         "s32 i;", "s32 n;", "n = orden->dato;", "for (i = 0; i < n; i++) {", "    o->valor = i;", "}"
     )
-    assert aplicar(mut.releer_en_condicion, texto)[0] is not None
+    aplica_y_cambia(mut.releer_en_condicion, texto)
 
 
 @pytest.mark.parametrize(

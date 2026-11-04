@@ -93,4 +93,9 @@ def test_cuerpo_que_excede_la_cota(tmp_path: Any) -> None:
 
 
 def test_borrar_si_existe_tolera_ausencia(tmp_path: Any) -> None:
+    presente = tmp_path / "presente"
+    presente.write_bytes(b"x")
     descarga._borrar_si_existe(tmp_path / "no_existe")
+    assert [ruta.name for ruta in tmp_path.iterdir()] == ["presente"]
+    descarga._borrar_si_existe(presente)
+    assert list(tmp_path.iterdir()) == []

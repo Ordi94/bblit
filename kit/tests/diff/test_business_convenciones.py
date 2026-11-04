@@ -32,7 +32,9 @@ PENDIENTE = "/* Pendiente: puntuacion 120 con la configuracion versionada. Repar
 
 
 def verificar(textos: dict[str, str], convenciones: Convenciones = POR_DEFECTO) -> None:
+    copia = dict(textos)
     fuentes_c.verificar_pendientes(textos, convenciones)
+    assert textos == copia
 
 
 # --- guardia de pendientes --------------------------------------------------------------------

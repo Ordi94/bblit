@@ -168,6 +168,8 @@ def test_obtener_componente_existente_y_ausente() -> None:
 def test_verificar_sha256_acepta_igual_sin_importar_mayusculas() -> None:
     componente = parsear_componente("m2c", bloque_componente(b"x"))
     dominio.verificar_sha256(componente, componente.sha256.upper())
+    with pytest.raises(ValueError, match="huella SHA-256 distinta"):
+        dominio.verificar_sha256(componente, "0" * 64)
 
 
 def test_verificar_sha256_rechaza_distinta_y_nombra_ambas() -> None:

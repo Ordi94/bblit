@@ -53,6 +53,14 @@ def azar(semilla: int) -> random.Random:
     return random.Random(semilla)  # noqa: S311
 
 
+def aplica_y_cambia(mutacion: Callable[[mut.Contexto], str | None], texto: str) -> None:
+    """Afirma que la mutacion se aplica y que el texto de la funcion resultante difiere del original."""
+    sin_mutar = aplicar(lambda _contexto: None, texto)[1]
+    descripcion, mutado = aplicar(mutacion, texto)
+    assert descripcion is not None
+    assert mutado != sin_mutar
+
+
 def cuerpo(*lineas: str, firma: str = FIRMA) -> str:
     return firma + "\n{\n" + "\n".join(f"    {linea}" for linea in lineas) + "\n}"
 
@@ -240,7 +248,7 @@ def test_se_relee_la_cuenta_si_el_bucle_escribe_un_campo_ajeno() -> None:
     texto = cuerpo(
         "s32 i;", "s32 n;", "n = o->u78.entero;", "for (i = 0; i < n; i++) {", "    o->radio = i;", "}"
     )
-    assert aplicar(mut.releer_en_condicion, texto)[0] is not None
+    aplica_y_cambia(mut.releer_en_condicion, texto)
 
 
 @pytest.mark.parametrize(
@@ -307,5 +315,5 @@ def test_el_orden_de_sentencias_no_cruza_un_indice_sin_campo_con_un_acceso_a_cam
 
 
 def test_el_orden_de_sentencias_si_intercambia_un_indice_sin_campo_con_una_variable_ajena() -> None:
-    assert aplicar(mut.orden_de_sentencias, cuerpo("p[1] = y;", "x = 3;"))[0] is not None
-    assert aplicar(mut.orden_de_sentencias, cuerpo("o->valor = 1;", "o->radio = 2;"))[0] is not None
+    aplica_y_cambia(mut.orden_de_sentencias, cuerpo("p[1] = y;", "x = 3;"))
+    aplica_y_cambia(mut.orden_de_sentencias, cuerpo("o->valor = 1;", "o->radio = 2;"))
