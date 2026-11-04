@@ -26,7 +26,7 @@ El kit no tiene dependencias de ejecucion: solo usa la biblioteca estandar.
 
 ## Manifiesto
 
-`python -m psxdecomp.proyecto --comprobar [ruta]` carga y valida el `psxdecomp.toml` de la
+`python -m psxdecomp.cli comprobar [ruta]` carga y valida el `psxdecomp.toml` de la
 carpeta indicada (por omision la actual) e imprime el resumen. Las secciones son `[proyecto]`,
 `[rutas]`, `[zonas]`, `[convenciones]` y `[plugins]`; toda clave desconocida es un error.
 
@@ -37,3 +37,14 @@ python -m pytest
 ```
 
 Ejecutado desde `kit/`, exige cobertura del 100 % (lineas y ramas) del paquete.
+
+## Capas del cargador
+
+| Modulo | Responsabilidad |
+|---|---|
+| `dominio` | Secciones inmutables del manifiesto y su construccion desde tablas ya leidas; no toca disco. |
+| `validacion` | Validadores primitivos de datos externos (listas de admitidos, cotas); no toca disco. |
+| `confinamiento` | Unica regla que consulta el disco: ninguna ruta del proyecto sale de su raiz. |
+| `lectura` | Lectura del archivo, analisis TOML y comprobacion de confinamiento. |
+| `cli` | Linea de ordenes (`comprobar`). |
+| `proyecto` | Fachada: reexporta `Proyecto`, `cargar_proyecto` y `ManifiestoError`. |

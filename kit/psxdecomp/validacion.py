@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import re
 from collections.abc import Collection, Mapping
-from pathlib import Path, PureWindowsPath
 from typing import Any
 
 from psxdecomp.constantes import NOMBRE_MANIFIESTO
@@ -34,7 +33,7 @@ class ManifiestoError(ValueError):
     """Error de validacion del manifiesto: el mensaje nombra el campo y lo esperado, nada mas."""
 
 
-def _fallo(seccion: str, clave: str | None, esperado: str) -> ManifiestoError:
+def fallo(seccion: str, clave: str | None, esperado: str) -> ManifiestoError:
     """
     Construye el error uniforme de validacion.
 
@@ -50,7 +49,7 @@ def _fallo(seccion: str, clave: str | None, esperado: str) -> ManifiestoError:
         ManifiestoError: Excepcion lista para lanzar.
 
     Ejemplo:
-        raise _fallo("rutas", "fuentes", "una cadena")
+        raise fallo("rutas", "fuentes", "una cadena")
     """
     campo = f"[{seccion}]" if clave is None else f"[{seccion}].{clave}"
     return ManifiestoError(f"{NOMBRE_MANIFIESTO}: {campo}: se esperaba {esperado}")
@@ -77,7 +76,7 @@ def exigir_tabla(valor: object, seccion: str) -> Mapping[str, Any]:
         tabla = exigir_tabla({"nombre": "demo"}, "proyecto")
     """
     if not isinstance(valor, dict):
-        raise _fallo(seccion, None, "una tabla")
+        raise fallo(seccion, None, "una tabla")
     return valor
 
 
@@ -104,7 +103,7 @@ def rechazar_claves_desconocidas(tabla: Mapping[str, Any], admitidas: Collection
     desconocidas = sorted(str(clave) for clave in tabla if clave not in admitidas)
     if desconocidas:
         nombre = desconocidas[0][:MAX_LARGO_CLAVE_EN_MENSAJE]
-        raise _fallo(seccion, nombre, "una clave admitida (esta no existe en el contrato)")
+        raise fallo(seccion, nombre, "una clave admitida (esta no existe en el contrato)")
 
 
 def _obtener(tabla: Mapping[str, Any], clave: str, seccion: str, defecto: object) -> object:
@@ -132,7 +131,7 @@ def _obtener(tabla: Mapping[str, Any], clave: str, seccion: str, defecto: object
     if clave in tabla:
         return tabla[clave]
     if defecto is None:
-        raise _fallo(seccion, clave, "la clave obligatoria (falta)")
+        raise fallo(seccion, clave, "la clave obligatoria (falta)")
     return defecto
 
 
@@ -168,7 +167,7 @@ def leer_cadena(
     """
     valor = _obtener(tabla, clave, seccion, defecto)
     if not isinstance(valor, str) or patron.fullmatch(valor) is None:
-        raise _fallo(seccion, clave, "una cadena con los caracteres y la longitud admitidos")
+        raise fallo(seccion, clave, "una cadena con los caracteres y la longitud admitidos")
     return valor
 
 
@@ -197,9 +196,9 @@ def _validar_ruta(valor: object, clave: str, seccion: str) -> str:
     """
     esperado = "una ruta relativa a la raiz del proyecto, con barras normales y sin salir de ella"
     if not isinstance(valor, str) or len(valor) > MAX_LARGO_RUTA or PATRON_RUTA.fullmatch(valor) is None:
-        raise _fallo(seccion, clave, esperado)
+        raise fallo(seccion, clave, esperado)
     if any(segmento in {"", ".", ".."} for segmento in valor.split("/")):
-        raise _fallo(seccion, clave, esperado)
+        raise fallo(seccion, clave, esperado)
     return valor
 
 
@@ -256,7 +255,7 @@ def _leer_lista(
     """
     valor = tabla[clave] if clave in tabla else list(defecto)
     if not isinstance(valor, list) or not minimo <= len(valor) <= MAX_ELEMENTOS_LISTA:
-        raise _fallo(seccion, clave, f"una lista de {minimo} a {MAX_ELEMENTOS_LISTA} elementos")
+        raise fallo(seccion, clave, f"una lista de {minimo} a {MAX_ELEMENTOS_LISTA} elementos")
     return valor
 
 
@@ -282,7 +281,7 @@ def _sin_repetidos(elementos: tuple[str, ...], clave: str, seccion: str) -> tupl
         _sin_repetidos(("a", "b"), "simbolos", "rutas")
     """
     if len(set(elementos)) != len(elementos):
-        raise _fallo(seccion, clave, "elementos sin repetir")
+        raise fallo(seccion, clave, "elementos sin repetir")
     return elementos
 
 
@@ -349,7 +348,7 @@ def leer_lista_texto(
     elementos = _leer_lista(tabla, clave, seccion, defecto, minimo=0)
     for elemento in elementos:
         if not isinstance(elemento, str) or patron.fullmatch(elemento) is None:
-            raise _fallo(seccion, clave, "elementos de texto con los caracteres y la longitud admitidos")
+            raise fallo(seccion, clave, "elementos de texto con los caracteres y la longitud admitidos")
     return _sin_repetidos(tuple(str(elemento) for elemento in elementos), clave, seccion)
 
 
@@ -380,7 +379,7 @@ def leer_direccion(tabla: Mapping[str, Any], clave: str, seccion: str) -> int:
         or not isinstance(valor, int)
         or not DIRECCION_MINIMA <= valor <= DIRECCION_MAXIMA
     ):
-        raise _fallo(seccion, clave, f"un entero entre 0x{DIRECCION_MINIMA:08X} y 0x{DIRECCION_MAXIMA:08X}")
+        raise fallo(seccion, clave, f"un entero entre 0x{DIRECCION_MINIMA:08X} y 0x{DIRECCION_MAXIMA:08X}")
     return valor
 
 
@@ -416,70 +415,11 @@ def leer_regex(
     if grupos is not None:
         esperado += f" con {grupos} grupo(s) de captura"
     if not isinstance(valor, str) or not valor or len(valor) > MAX_LARGO_REGEX:
-        raise _fallo(seccion, clave, esperado)
+        raise fallo(seccion, clave, esperado)
     try:
         compilada = re.compile(valor)
     except re.error:
-        raise _fallo(seccion, clave, esperado) from None
+        raise fallo(seccion, clave, esperado) from None
     if grupos is not None and compilada.groups != grupos:
-        raise _fallo(seccion, clave, esperado)
+        raise fallo(seccion, clave, esperado)
     return valor
-
-
-def esta_confinada(raiz: Path, relativa: str) -> bool:
-    """
-    Indica si una ruta relativa permanece dentro de la raiz del proyecto.
-
-    Contexto:
-        Unica regla de confinamiento del kit: la usan tanto la validacion del manifiesto al cargarlo
-        (``comprobar_dentro_de_raiz``) como ``Proyecto.ruta_absoluta``. Se aplican dos barreras
-        independientes, cada una suficiente por si sola, y no deben simplificarse en una: la
-        lexica rechaza lo que ``pathlib`` interpretaria como salto de raiz (en Windows ``/x``
-        no es absoluta pero ``raiz / "/x"`` descarta la raiz; ``C:/x`` y las rutas de red tambien),
-        y la de resolucion detecta enlaces simbolicos que apuntan fuera. La parte lexica se evalua
-        con semantica Windows en cualquier plataforma para que el resultado no dependa del sistema.
-
-    Args:
-        raiz (Path): Raiz del proyecto.
-        relativa (str): Ruta relativa a comprobar.
-
-    Returns:
-        bool: ``True`` solo si la ruta no tiene byte nulo, unidad, raiz ni ``..`` y su resolucion
-        queda bajo la raiz resuelta; ``False`` en cualquier otro caso, incluida una ruta que el
-        sistema operativo no pueda resolver.
-
-    Ejemplo:
-        if not esta_confinada(Path("."), "src"):
-            raise ValueError("fuera de la raiz")
-    """
-    lexica = PureWindowsPath(relativa)
-    if "\x00" in relativa or lexica.anchor or lexica.drive or ".." in lexica.parts:
-        return False
-    try:
-        return (raiz / relativa).resolve().is_relative_to(raiz.resolve())
-    except (OSError, ValueError):
-        return False
-
-
-def comprobar_dentro_de_raiz(raiz: Path, relativa: str, clave: str, seccion: str) -> None:
-    """
-    Comprueba que una ruta relativa del manifiesto sigue dentro de la raiz del proyecto.
-
-    Contexto:
-        Segunda barrera tras el patron de ``leer_ruta``: si un tramo existente es un enlace
-        simbolico que apunta fuera de la raiz, la ruta lexicamente valida escaparia de ella.
-
-    Args:
-        raiz (Path): Raiz del proyecto.
-        relativa (str): Ruta relativa ya validada.
-        clave (str): Clave de origen, para el mensaje.
-        seccion (str): Seccion de origen, para el mensaje.
-
-    Raises:
-        ManifiestoError: Si ``esta_confinada`` rechaza la ruta.
-
-    Ejemplo:
-        comprobar_dentro_de_raiz(Path("."), "src", "fuentes", "rutas")
-    """
-    if not esta_confinada(raiz, relativa):
-        raise _fallo(seccion, clave, "una ruta que permanezca dentro de la raiz del proyecto")

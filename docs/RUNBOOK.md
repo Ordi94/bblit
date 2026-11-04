@@ -12,7 +12,7 @@ comprueba el manifiesto:
 
 ```
 .venv\Scripts\python.exe -m pip install -r requirements.txt
-.venv\Scripts\python.exe -m psxdecomp.proyecto --comprobar
+.venv\Scripts\python.exe -m psxdecomp.cli comprobar
 ```
 
 La segunda orden valida `psxdecomp.toml`, el manifiesto del proyecto (rutas, zonas de memoria y
