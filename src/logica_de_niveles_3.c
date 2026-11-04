@@ -403,7 +403,6 @@ void func_80026FEC(Objeto* o)
     s32 arg_giro;
     s32 azar;
     u32 f14;
-    u16 id_golpe;
 
     t = (TrabajoPersonaje*)0x1F800000;
     area = (void*)0x1F800128;
@@ -659,7 +658,7 @@ L_80027808:
             goto L_80028370;
         }
     } else {
-        /* Oscilacion vertical: la temp_b y la amplitud se fijan al entrar (flags14 bit 0). */
+        /* Oscilacion vertical: la fase y la amplitud se fijan al entrar (flags14 bit 0). */
         if (!(o->flags14 & 1)) {
             o->h106 = (u16)o->param.trans.vy;
             o->h108 = 0;
@@ -741,7 +740,7 @@ L_80027D04:
     if (t->banderas & 0x20000000) {
         o->flags14 |= 4;
         if (!(o->flags14 & 1)) {
-            /* Primera vez: la temp_a arranca en 0xC00 con la amplitud y la velocidad del fotograma. */
+            /* Primera vez: la onda arranca en 0xC00 con la amplitud y la velocidad del fotograma. */
             o->h10A = 0;
             o->h108 = 0xC00;
             o->h106 = t->fot->w18;
@@ -755,7 +754,7 @@ L_80027D04:
         if ((s16)temp_b >= 0x1000) {
             o->h108 = temp_b - 0x1000;
         }
-        /* Sin zona de colision bajo el objeto no hay referencia de altura: se deja la temp_a tal cual. */
+        /* Sin zona de colision bajo el objeto no hay referencia de altura: se deja la onda tal cual. */
         if ((t->zona = func_8001BF9C((s32*)&o->param.trans, (s16)o->w26)) != 0) {
             GEO_CARGAR_W(&o->param.trans);
             GEO_GUARDAR_W_T1(&t->p30);
@@ -1254,9 +1253,8 @@ L_800291A8:
         t->aux == D_80069698 &&
         !(t->aux->flags14 & 0x2000000)) {
         if (func_8001D75C(o, t->fot, area) != 0) {
-            id_golpe = t->fot->w1C;
-            if (id_golpe != 0) {
-                func_8001D0FC(o, id_golpe, area);
+            if (t->fot->w1C != 0) {
+                func_8001D0FC(o, t->fot->w1C, area);
             }
         }
     }
@@ -1570,7 +1568,7 @@ L_8002A11C:
     if (o->coord.super == 0) goto L_8002A448;
     if (o->p70 != 0) {
         if (o->p70->flags14 & 0x100) {
-            /* El portador esta inactivo: el objeto no puede seguir encima de el, salvo que ya este en la temp_b de suelta (0x400 de flags18), que resuelve otro bloque. */
+            /* El portador esta inactivo: el objeto no puede seguir encima de el, salvo que ya este en la fase de suelta (0x400 de flags18), que resuelve otro bloque. */
             if (o->flags18 & 0x400) goto L_8002B994;
             o->coord.param = PARAMETROS_SDK(o);
             o->coord.super = 0;
