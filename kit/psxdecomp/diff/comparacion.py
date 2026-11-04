@@ -1,6 +1,6 @@
 """Comparacion de una funcion compilada contra su objetivo original con ``asm-differ``.
 
-``python tools/build.py diff <funcion>`` hace tres cosas: compila el archivo C que contiene la
+La orden ``diff <funcion>`` del proyecto hace tres cosas: compila el archivo C que contiene la
 funcion (con ``NON_MATCHING`` definida, para ver tambien los intentos que la construccion normal
 no usa), ensambla el asm original de la funcion como objetivo y ejecuta ``asm-differ`` sobre
 ambos objetos. La puntuacion 0 significa que las instrucciones y los simbolos coinciden o que,
@@ -23,38 +23,34 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from tools.reconstruccion import dominio, fuentes_c
-from tools.reconstruccion.compilacion import (
-    CARPETA_MACROS,
-    HerramientasCompilacion,
-    compilar_fuente,
-)
-from tools.reconstruccion.enlace_diff import bytes_coinciden, contar_referencias_numericas
-from tools.reconstruccion.fuentes_c import EstadoFuncion
-from tools.reconstruccion.infraestructura import (
-    CARPETA_DIFF,
+from psxdecomp.construccion import dominio
+from psxdecomp.construccion.compilacion import HerramientasCompilacion, compilar_fuente
+from psxdecomp.construccion.infraestructura import (
     Ejecutor,
     leer_direcciones_de_funciones,
     leer_valores_g,
     listar_fuentes_c,
 )
+from psxdecomp.construccion.salidas import SUBCARPETA_DIFF, calcular_salidas
+from psxdecomp.diff import fuentes_c
+from psxdecomp.diff.enlace_diff import bytes_coinciden, contar_referencias_numericas
+from psxdecomp.diff.fuentes_c import EstadoFuncion
+from psxdecomp.dominio import Compilacion, Convenciones, Rutas
 
 TIMEOUT_DIFF_S = 300
 LIMITE_MINIMO_LINEAS = 1024
 MARGEN_LINEAS = 64
 """Instrucciones que se suman a las del original para fijar el limite de ``asm-differ``.
 
-Cubre el caso en que el candidato en C es mas largo que el original. Medido con ``build/diff`` en
-93 funciones del juego (30 ya cerradas en C, repartidas por tamano de 2 a 198 instrucciones, y las
-63 ``NON_MATCHING``, de 12 a 4971): en las cerradas el candidato nunca supera al original (rango
--3 a 0); en las ``NON_MATCHING`` la diferencia va de -405 a +41 instrucciones (mediana -1,
+Cubre el caso en que el candidato en C es mas largo que el original. Medido con la carpeta de trabajo
+de la comparacion en 93 funciones de un proyecto real (30 ya cerradas en C, repartidas por tamano de 2
+a 198 instrucciones, y las 63 pendientes, de 12 a 4971): en las cerradas el candidato nunca supera al
+original (rango -3 a 0); en las pendientes la diferencia va de -405 a +41 instrucciones (mediana -1,
 percentil 90 en +4, percentil 99 y maximo en +41; las tres mayores: +41, +24 y +14). El menor
 margen que lo cubre todo es 41; se redondea hacia arriba a la potencia de 2 siguiente, 64, que deja
 23 instrucciones de holgura. Si un intento temprano aun asi lo supera, ``diff`` lo detecta y lo
 avisa (ver ``salida_truncada``) en lugar de informar una puntuacion parcial sin decirlo.
 """
-CARPETA_ASM_COINCIDENTE = "asm/matchings"
-CARPETA_ASM_PENDIENTE = "asm/nonmatchings"
 _PATRON_FUNCION = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 _PATRON_RETORNO = re.compile(r"^\s*/\*.*?\*/\s+jr\s+\$ra\b", re.MULTILINE)
 _PATRON_INSTRUCCION = re.compile(r"^\s*/\*.*?\*/\s+[A-Za-z.]", re.MULTILINE)
@@ -110,7 +106,7 @@ def validar_funcion(nombre: str) -> str:
     Valida el nombre de una funcion recibido por linea de ordenes.
 
     Contexto:
-        El nombre termina formando rutas (``asm/nonmatchings/<archivo>/<nombre>.s``) y argumentos
+        El nombre termina formando rutas (``<asm_pendiente>/<archivo>/<nombre>.s``) y argumentos
         de procesos: solo se aceptan identificadores C razonables.
 
     Args:
@@ -123,7 +119,7 @@ def validar_funcion(nombre: str) -> str:
         ValueError: Si no es un identificador de hasta 64 caracteres.
 
     Ejemplo:
-        funcion = validar_funcion("func_80036204")
+        funcion = validar_funcion("rutina_a")
     """
     if not _PATRON_FUNCION.match(nombre):
         raise ValueError("el nombre de la funcion debe ser un identificador C de hasta 64 caracteres")
@@ -211,7 +207,7 @@ def envoltorio_objetivo(ruta_asm: str) -> str:
         str: Texto del ensamblador envoltorio.
 
     Ejemplo:
-        texto = envoltorio_objetivo("asm/matchings/a/func_X.s")
+        texto = envoltorio_objetivo("ensamblador/cerradas/a/rutina_a.s")
     """
     return f'.include "macro.inc"\n.section .text\n.set noat\n.set noreorder\n.include "{ruta_asm}"\n'
 
@@ -221,7 +217,7 @@ def texto_diff_settings(objdump: Path) -> str:
     Genera el ``diff_settings.py`` que ``asm-differ`` exige en su directorio de trabajo.
 
     Contexto:
-        ``asm-differ`` importa ese modulo del directorio actual. Se genera en ``build/diff/`` con
+        ``asm-differ`` importa ese modulo del directorio actual. Se genera en la carpeta de trabajo con
         la ruta de ``objdump`` resuelta en ese momento, de modo que el repositorio no contiene
         rutas de ninguna maquina.
 
@@ -259,7 +255,7 @@ def comando_diff(
     Devuelve los argumentos que ejecutan ``asm-differ`` sobre dos objetos.
 
     Contexto:
-        El comando se ejecuta con el directorio de trabajo en ``build/diff/``, por eso los
+        El comando se ejecuta con el directorio de trabajo en la carpeta de la comparacion, por eso los
         objetos se pasan por nombre.
 
     Args:
@@ -280,7 +276,9 @@ def comando_diff(
         ValueError: Si el formato no es ``json`` ni ``plain``, o ``max_lineas`` no es positivo.
 
     Ejemplo:
-        comando = comando_diff("python", Path("diff.py"), "c.o", "t.o", "func_X", retornos=1, formato="json")
+        comando = comando_diff(
+            "python", Path("diff.py"), "c.o", "t.o", "rutina_a", retornos=1, formato="json"
+        )
     """
     if formato not in ("json", "plain"):
         raise ValueError("el formato debe ser 'json' o 'plain'")
@@ -366,19 +364,20 @@ def salida_truncada(salida: str, max_lineas: int) -> bool:
     return instrucciones >= max_lineas
 
 
-def elegir_asm_objetivo(archivo: str, funcion: str, existe: Callable[[str], bool]) -> str:
+def elegir_asm_objetivo(archivo: str, funcion: str, existe: Callable[[str], bool], *, rutas: Rutas) -> str:
     """
     Elige el ``.s`` original de una funcion.
 
     Contexto:
-        Una funcion ya escrita en C tiene su asm original en ``asm/matchings/`` (lo genera el
+        Una funcion ya escrita en C tiene su asm original en ``rutas.asm_coincidente`` (lo genera el
         particionador al estar activada la opcion de desensamblarlo todo); una que sigue en
-        ``INCLUDE_ASM`` lo tiene en ``asm/nonmatchings/``.
+        ensamblador lo tiene en ``rutas.asm_pendiente``.
 
     Args:
-        archivo (str): Archivo C de la funcion (``src/<segmento>.c``).
+        archivo (str): Archivo C de la funcion (``<fuentes>/<segmento>.c``).
         funcion (str): Nombre de la funcion.
         existe (Callable[[str], bool]): Indica si una ruta relativa existe.
+        rutas (Rutas): Seccion ``[rutas]``: carpetas del ensamblador original.
 
     Returns:
         str: Ruta relativa del ``.s``.
@@ -387,10 +386,10 @@ def elegir_asm_objetivo(archivo: str, funcion: str, existe: Callable[[str], bool
         FileNotFoundError: Si no existe en ninguna de las dos carpetas.
 
     Ejemplo:
-        ruta = elegir_asm_objetivo("src/code_80032874.c", "func_80036204", existe)
+        ruta = elegir_asm_objetivo("codigo/modulo_a.c", "rutina_a", existe, rutas=rutas)
     """
     segmento = Path(archivo).stem
-    for carpeta in (CARPETA_ASM_COINCIDENTE, CARPETA_ASM_PENDIENTE):
+    for carpeta in (rutas.asm_coincidente, rutas.asm_pendiente):
         ruta = f"{carpeta}/{segmento}/{funcion}.s"
         if existe(ruta):
             return ruta
@@ -398,9 +397,9 @@ def elegir_asm_objetivo(archivo: str, funcion: str, existe: Callable[[str], bool
 
 
 @contextlib.contextmanager
-def carpeta_de_trabajo(raiz: Path, etiqueta: str) -> Iterator[str]:
+def carpeta_de_trabajo(raiz: Path, etiqueta: str, *, rutas: Rutas) -> Iterator[str]:
     """
-    Crea una carpeta de trabajo exclusiva dentro de ``build/diff/`` y la elimina al terminar.
+    Crea una carpeta de trabajo exclusiva dentro de la carpeta de la comparacion y la elimina al terminar.
 
     Contexto:
         ``diff`` y ``probar`` generan objetos, enlaces y ``diff_settings.py`` con nombres que
@@ -413,6 +412,7 @@ def carpeta_de_trabajo(raiz: Path, etiqueta: str) -> Iterator[str]:
     Args:
         raiz (Path): Raiz del repositorio.
         etiqueta (str): Nombre que identifica la ejecucion (la funcion); forma parte del nombre.
+        rutas (Rutas): Seccion ``[rutas]``; la carpeta de la comparacion es ``<build>/diff``.
 
     Yields:
         str: Ruta de la carpeta relativa a la raiz, con barras normales.
@@ -421,14 +421,15 @@ def carpeta_de_trabajo(raiz: Path, etiqueta: str) -> Iterator[str]:
         OSError: Si no se puede crear la carpeta.
 
     Ejemplo:
-        with carpeta_de_trabajo(Path("."), "func_80036204") as carpeta:
+        with carpeta_de_trabajo(Path("."), "rutina_a", rutas=rutas) as carpeta:
             candidato = f"{carpeta}/code_a.c.o"
     """
-    base = raiz / CARPETA_DIFF
+    carpeta_diff = f"{rutas.build}/{SUBCARPETA_DIFF}"
+    base = raiz / carpeta_diff
     base.mkdir(parents=True, exist_ok=True)
     creada = Path(tempfile.mkdtemp(prefix=f"{etiqueta}-{os.getpid()}-", dir=base))
     try:
-        yield f"{CARPETA_DIFF}/{creada.name}"
+        yield f"{carpeta_diff}/{creada.name}"
     finally:
         shutil.rmtree(creada, ignore_errors=True)
 
@@ -439,14 +440,19 @@ def comparar_funcion(
     herramientas: HerramientasCompilacion,
     script_diff: Path,
     ejecutar: Ejecutor,
+    *,
+    rutas: Rutas,
+    convenciones: Convenciones,
+    compilacion: Compilacion,
+    nombre_ejecutable: str,
 ) -> ResultadoDiff:
     """
     Compara una funcion compilada desde C con su objetivo original.
 
     Contexto:
         Implementa ``diff``. Los intermedios van a una carpeta exclusiva de la ejecucion dentro de
-        ``build/diff/`` (ver ``carpeta_de_trabajo``), que se elimina al terminar; solo la puntuacion
-        queda en ``build/diff/<funcion>.resultado.json``, escrita de forma atomica.
+        ``<build>/diff/`` (ver ``carpeta_de_trabajo``), que se elimina al terminar; solo la puntuacion
+        queda en ``<build>/diff/<funcion>.resultado.json``, escrita de forma atomica.
 
     Args:
         raiz (Path): Raiz del repositorio.
@@ -454,29 +460,39 @@ def comparar_funcion(
         herramientas (HerramientasCompilacion): Herramientas de compilacion.
         script_diff (Path): Ruta de ``diff.py`` de ``asm-differ``.
         ejecutar (Ejecutor): Ejecutor de procesos.
+        rutas (Rutas): Seccion ``[rutas]`` del manifiesto.
+        convenciones (Convenciones): Seccion ``[convenciones]`` (macros y formato de simbolos).
+        compilacion (Compilacion): Seccion ``[compilacion]`` (version de ``ASPSX`` y opciones).
+        nombre_ejecutable (str): Nombre del ejecutable reconstruido; fija el ELF contra el que se
+            resuelven los simbolos al comparar por bytes.
 
     Returns:
         ResultadoDiff: Puntuacion y diferencias.
 
     Raises:
-        ValueError: Si el nombre no es valido, la funcion no figura en ``src/`` o la salida de
-            ``asm-differ`` no tiene la forma esperada.
-        FuncionSinCError: Si la funcion sigue solo en ``INCLUDE_ASM``.
+        ValueError: Si el nombre no es valido, la funcion no figura en la carpeta de fuentes o la
+            salida de ``asm-differ`` no tiene la forma esperada.
+        FuncionSinCError: Si la funcion sigue solo en ensamblador.
         FileNotFoundError: Si falta el asm original (hay que ejecutar ``split``).
         ProcesoError: Si una herramienta falla.
 
     Ejemplo:
-        resultado = comparar_funcion(Path("."), "func_80036204", herramientas, script, ejecutar)
+        resultado = comparar_funcion(
+            Path("."), "rutina_a", herramientas, script, ejecutar,
+            rutas=rutas, convenciones=convenciones, compilacion=compilacion,
+            nombre_ejecutable="EJEC_001.00",
+        )
     """
     validar_funcion(funcion)
-    textos = listar_fuentes_c(raiz)
-    estados = fuentes_c.analizar_fuentes(textos)
-    archivo, estado = fuentes_c.ubicar_funcion(estados, funcion)
+    textos = listar_fuentes_c(raiz, rutas=rutas)
+    estados = fuentes_c.analizar_fuentes(textos, convenciones)
+    archivo, estado = fuentes_c.ubicar_funcion(estados, funcion, rutas.fuentes)
     if estado is EstadoFuncion.ENSAMBLADOR:
         raise FuncionSinCError(
-            f"'{funcion}' sigue en INCLUDE_ASM: escriba su C (bajo NON_MATCHING si aun no coincide)"
+            f"'{funcion}' sigue en {convenciones.macro_ensamblador}: escriba su C "
+            f"(bajo {convenciones.macro_no_coincidente} si aun no coincide)"
         )
-    with carpeta_de_trabajo(raiz, funcion) as carpeta:
+    with carpeta_de_trabajo(raiz, funcion, rutas=rutas) as carpeta:
         return _comparar_en(
             raiz,
             funcion,
@@ -485,6 +501,10 @@ def comparar_funcion(
             herramientas=herramientas,
             script_diff=script_diff,
             ejecutar=ejecutar,
+            rutas=rutas,
+            convenciones=convenciones,
+            compilacion=compilacion,
+            nombre_ejecutable=nombre_ejecutable,
         )
 
 
@@ -497,10 +517,14 @@ def _comparar_en(
     herramientas: HerramientasCompilacion,
     script_diff: Path,
     ejecutar: Ejecutor,
+    rutas: Rutas,
+    convenciones: Convenciones,
+    compilacion: Compilacion,
+    nombre_ejecutable: str,
 ) -> ResultadoDiff:
     """Compila el candidato y puntua la funcion dentro de la carpeta de trabajo ya creada."""
     objetivo, retornos, max_lineas = preparar_objetivo(
-        raiz, funcion, archivo, herramientas, ejecutar, carpeta=carpeta
+        raiz, funcion, archivo, herramientas, ejecutar, carpeta=carpeta, rutas=rutas
     )
     candidato = f"{carpeta}/{Path(archivo).name}.o"
     compilar_fuente(
@@ -509,9 +533,12 @@ def _comparar_en(
         candidato,
         herramientas,
         ejecutar,
-        definiciones=(fuentes_c.MACRO_NO_COINCIDENTE,),
+        definiciones=(convenciones.macro_no_coincidente,),
         exigir_solo_texto=False,
-        valor_g=leer_valores_g(raiz).get(Path(archivo).stem, 0),
+        valor_g=leer_valores_g(raiz, rutas=rutas, convenciones=convenciones).get(Path(archivo).stem, 0),
+        rutas=rutas,
+        convenciones=convenciones,
+        compilacion=compilacion,
     )
 
     def lanzar(formato: str) -> str:
@@ -534,7 +561,7 @@ def _comparar_en(
     texto = lanzar("plain").rstrip("\n")
     iguales = None
     referencias = 0
-    direccion = leer_direcciones_de_funciones(raiz).get(funcion)
+    direccion = leer_direcciones_de_funciones(raiz, rutas=rutas, convenciones=convenciones).get(funcion)
     # Una medicion truncada solo cubre una ventana del candidato: aunque puntue 0, el enlace byte a
     # byte de la funcion completa es la unica prueba definitiva de que la cola tambien coincide.
     if (puntuacion != 0 or truncado) and direccion is not None:
@@ -546,14 +573,15 @@ def _comparar_en(
             direccion=direccion,
             candidato=candidato,
             objetivo=objetivo,
+            elf=calcular_salidas(nombre_ejecutable, rutas).elf,
         )
         referencias = contar_referencias_numericas(texto) if iguales else 0
     informada = 0 if iguales else puntuacion
-    guardar_resultado(raiz, funcion, informada, max_lineas, truncado=truncado)
+    guardar_resultado(raiz, funcion, informada, max_lineas, truncado=truncado, rutas=rutas)
     return ResultadoDiff(funcion, archivo, informada, texto, iguales, referencias, puntuacion, truncado)
 
 
-def ruta_resultado(funcion: str) -> str:
+def ruta_resultado(funcion: str, *, rutas: Rutas) -> str:
     """
     Da la ruta, relativa a la raiz, donde ``diff`` deja la ultima puntuacion de una funcion.
 
@@ -562,25 +590,26 @@ def ruta_resultado(funcion: str) -> str:
 
     Args:
         funcion (str): Nombre de la funcion (ya validado).
+        rutas (Rutas): Seccion ``[rutas]``; el resultado vive en ``<build>/diff``.
 
     Returns:
-        str: Ruta dentro de ``build/diff/``.
+        str: Ruta dentro de la carpeta de la comparacion.
 
     Ejemplo:
-        ruta = ruta_resultado("func_80036204")
+        ruta = ruta_resultado("rutina_a", rutas=rutas)
     """
-    return f"{CARPETA_DIFF}/{funcion}.resultado.json"
+    return f"{rutas.build}/{SUBCARPETA_DIFF}/{funcion}.resultado.json"
 
 
 def guardar_resultado(
-    raiz: Path, funcion: str, puntuacion: int, max_lineas: int, *, truncado: bool = False
+    raiz: Path, funcion: str, puntuacion: int, max_lineas: int, *, rutas: Rutas, truncado: bool = False
 ) -> None:
     """
     Registra la puntuacion informada por ``diff`` para que otras ordenes la contrasten sin repetirlo.
 
     Contexto:
-        ``progreso`` compara con ella la cifra del comentario ``Pendiente`` de cada ``NON_MATCHING``.
-        Vive en ``build/diff/``, que ``clean`` elimina, y no se versiona. Se escribe a un archivo
+        ``progreso`` compara con ella la cifra del comentario de pendiente de cada intento no coincidente.
+        Vive en la carpeta de la comparacion, que ``clean`` elimina, y no se versiona. Se escribe a un archivo
         temporal de la misma carpeta y se renombra sobre el destino: un lector concurrente ve el
         resultado anterior completo o el nuevo completo, nunca uno a medias.
 
@@ -589,14 +618,15 @@ def guardar_resultado(
         funcion (str): Funcion comparada.
         puntuacion (int): Puntuacion informada.
         max_lineas (int): Limite de lineas con que se midio.
+        rutas (Rutas): Seccion ``[rutas]`` del manifiesto.
         truncado (bool, opcional): Si la medicion es parcial porque ``asm-differ`` corto el
             candidato en el limite.
 
     Ejemplo:
-        guardar_resultado(Path("."), "func_80036204", 0, 1024)
+        guardar_resultado(Path("."), "rutina_a", 0, 1024, rutas=rutas)
     """
     datos = {"funcion": funcion, "puntuacion": puntuacion, "maxLineas": max_lineas, "truncado": truncado}
-    destino = raiz / ruta_resultado(funcion)
+    destino = raiz / ruta_resultado(funcion, rutas=rutas)
     destino.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporal = tempfile.mkstemp(prefix=f"{funcion}.", suffix=".tmp", dir=destino.parent)
     try:
@@ -616,6 +646,7 @@ def preparar_objetivo(
     ejecutar: Ejecutor,
     *,
     carpeta: str,
+    rutas: Rutas,
 ) -> tuple[str, int, int]:
     """
     Ensambla el asm original de una funcion como objetivo de comparacion.
@@ -627,11 +658,12 @@ def preparar_objetivo(
     Args:
         raiz (Path): Raiz del repositorio.
         funcion (str): Nombre de la funcion (ya validado).
-        archivo (str): Archivo C que la contiene (``src/<segmento>.c``).
+        archivo (str): Archivo C que la contiene (``<fuentes>/<segmento>.c``).
         herramientas (HerramientasCompilacion): Herramientas de compilacion.
         ejecutar (Ejecutor): Ejecutor de procesos.
         carpeta (str): Carpeta de trabajo de la ejecucion, relativa a la raiz (ver
             ``carpeta_de_trabajo``); recibe el envoltorio y el objeto objetivo.
+        rutas (Rutas): Seccion ``[rutas]``: carpetas del ensamblador original y de macros.
 
     Returns:
         tuple[str, int, int]: Ruta relativa del objeto objetivo, numero de ``jr $ra`` del original y
@@ -643,10 +675,10 @@ def preparar_objetivo(
 
     Ejemplo:
         objetivo, retornos, lineas = preparar_objetivo(
-            Path("."), "f", "src/a.c", herramientas, ejecutar, carpeta="build/diff/f-1-x"
+            Path("."), "f", "codigo/a.c", herramientas, ejecutar, carpeta="salida/diff/f-1-x", rutas=rutas
         )
     """
-    ruta_asm = elegir_asm_objetivo(archivo, funcion, lambda ruta: (raiz / ruta).is_file())
+    ruta_asm = elegir_asm_objetivo(archivo, funcion, lambda ruta: (raiz / ruta).is_file(), rutas=rutas)
     asm = (raiz / ruta_asm).read_text(encoding="utf-8")
     retornos = contar_retornos(asm)
     max_lineas = limite_lineas(contar_instrucciones(asm))
@@ -655,7 +687,7 @@ def preparar_objetivo(
     objetivo = f"{carpeta}/{funcion}.objetivo.o"
     (raiz / envoltorio).write_text(envoltorio_objetivo(ruta_asm), encoding="utf-8", newline="\n")
     ejecutar(
-        dominio.comando_ensamblar(herramientas.ensamblador, envoltorio, objetivo, CARPETA_MACROS),
+        dominio.comando_ensamblar(herramientas.ensamblador, envoltorio, objetivo, rutas.macros),
         raiz,
         TIMEOUT_DIFF_S,
     )

@@ -1,8 +1,8 @@
 """Comparacion de una funcion por sus bytes tras enlazar, para distinguir forma de referencia de bytes.
 
 ``asm-differ`` compara instruccion por instruccion con los simbolos tal como los escribe el
-objeto: el original dice ``%hi(D_80010040)`` y un C que usa un puntero a la direccion constante
-dice ``0x8001``, aunque tras enlazar los dos produzcan los mismos bytes. Para no penalizar eso, la
+objeto: el original dice ``%hi(D_80100040)`` y un C que usa un puntero a la direccion constante
+dice ``0x8010``, aunque tras enlazar los dos produzcan los mismos bytes. Para no penalizar eso, la
 funcion candidata y el objetivo se enlazan por separado en la direccion que tienen en el ejecutable,
 resolviendo los simbolos contra el ELF de la ultima construccion correcta, y se comparan los bytes
 de la funcion. Si coinciden, la funcion cuenta como coincidente con un aviso por las referencias
@@ -15,8 +15,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from tools.reconstruccion.compilacion import HerramientasCompilacion
-from tools.reconstruccion.infraestructura import ELF_SALIDA, Ejecutor, ProcesoError
+from psxdecomp.construccion.compilacion import HerramientasCompilacion
+from psxdecomp.construccion.infraestructura import Ejecutor, ProcesoError
 
 TIMEOUT_ENLACE_S = 120
 _PATRON_VALOR = re.compile(r"^[0-9a-f]{8,16}$")
@@ -82,7 +82,7 @@ def texto_simbolos_ld(simbolos: dict[str, int]) -> str:
         str: Una asignacion por simbolo, ordenadas por nombre.
 
     Ejemplo:
-        texto = texto_simbolos_ld({"func_X": 0x80014AC4})
+        texto = texto_simbolos_ld({"rutina_a": 0x80100100})
     """
     return "".join(f"{nombre} = 0x{simbolos[nombre]:08X};\n" for nombre in sorted(simbolos))
 
@@ -104,7 +104,7 @@ def funcion_en_objeto(salida_objdump: str, funcion: str) -> FuncionEnObjeto | No
         con un tamano mayor que cero.
 
     Ejemplo:
-        posicion = funcion_en_objeto(salida, "func_80036204")
+        posicion = funcion_en_objeto(salida, "rutina_a")
     """
     for linea in salida_objdump.splitlines():
         campos = linea.split()
@@ -144,14 +144,15 @@ def bytes_coinciden(
     direccion: int,
     candidato: str,
     objetivo: str,
+    elf: str,
 ) -> bool | None:
     """
     Compara los bytes de una funcion candidata y de su objetivo tras enlazarlos.
 
     Contexto:
         Segundo criterio de coincidencia de ``diff`` y de ``probar``. Necesita el ELF de la
-        ultima construccion correcta (``build/SLUS_008.elf``) y el enlazador y ``objcopy`` en las
-        herramientas; si falta algo no se puede decidir.
+        ultima construccion correcta (el ELF que produce el enlace del proyecto) y el enlazador y
+        ``objcopy`` en las herramientas; si falta algo no se puede decidir.
 
     Args:
         raiz (Path): Raiz del repositorio.
@@ -162,6 +163,7 @@ def bytes_coinciden(
         candidato (str): Objeto compilado desde C (ruta relativa, dentro de la carpeta de trabajo
             de la ejecucion; los enlaces intermedios se escriben junto a el).
         objetivo (str): Objeto del asm original (en la misma carpeta).
+        elf (str): Ruta relativa del ELF de la ultima construccion correcta (``SalidasDeBuild.elf``).
 
     Returns:
         bool | None: ``True`` si los bytes son iguales, ``False`` si difieren y ``None`` si no se
@@ -173,16 +175,14 @@ def bytes_coinciden(
 
     Ejemplo:
         iguales = bytes_coinciden(
-            Path("."), h, e, funcion="func_X", direccion=0x80014AC4,
-            candidato="build/diff/a.o", objetivo="build/diff/t.o",
+            Path("."), h, e, funcion="rutina_a", direccion=0x80100100,
+            candidato="build/diff/a.o", objetivo="build/diff/t.o", elf="build/EJEC_001.elf",
         )
     """
     enlazador, objcopy = herramientas.enlazador, herramientas.objcopy
-    if enlazador is None or objcopy is None or not (raiz / ELF_SALIDA).is_file():
+    if enlazador is None or objcopy is None or not (raiz / elf).is_file():
         return None
-    simbolos = simbolos_de_elf(
-        ejecutar([str(herramientas.objdump), "-t", ELF_SALIDA], raiz, TIMEOUT_ENLACE_S)
-    )
+    simbolos = simbolos_de_elf(ejecutar([str(herramientas.objdump), "-t", elf], raiz, TIMEOUT_ENLACE_S))
     carpeta = PurePosixPath(candidato).parent.as_posix()
     referencias = f"{carpeta}/referencias.ld"
     (raiz / referencias).write_text(texto_simbolos_ld(simbolos), encoding="utf-8", newline="\n")

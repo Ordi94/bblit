@@ -10,6 +10,9 @@ es la unica funcion que lanza procesos y lo hace mediante el ejecutor recibido. 
 proyecto (fuentes, cabeceras, macros de ensamblador) llegan en ``Rutas``, el tope del umbral
 ``-G`` en ``Convenciones`` y la version de ``ASPSX`` y las opciones del compilador en
 ``Compilacion``: son secciones del manifiesto y este modulo no guarda estado.
+
+``construir_mixto`` orquesta la construccion completa (compilar los C, ensamblar el resto y
+enlazar) sobre las funciones de ``construccion.infraestructura``.
 """
 
 from __future__ import annotations
@@ -19,6 +22,13 @@ from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from psxdecomp.construccion.dominio import EjecutableReferencia
+from psxdecomp.construccion.infraestructura import (
+    Herramientas,
+    construir_con_compilador,
+    ejecutar_proceso,
+    leer_valores_g,
+)
 from psxdecomp.dominio import Compilacion, Convenciones, Rutas
 from psxdecomp.toolchain.dominio import Componente
 from psxdecomp.toolchain.instalacion import resolver_herramienta
@@ -519,3 +529,77 @@ def compilar_archivo(
     if exigir_solo_texto:
         salida = ejecutar(comando_secciones(herramientas.objdump, objeto), raiz, TIMEOUT_ENSAMBLAR_S)
         verificar_solo_texto(objeto, leer_secciones(salida), secciones_declaradas, rutas=rutas)
+
+
+def construir_mixto(
+    raiz: Path,
+    referencia: EjecutableReferencia,
+    herramientas: Herramientas,
+    obtener_compilacion: Callable[[], HerramientasCompilacion],
+    ejecutar: Ejecutor = ejecutar_proceso,
+    *,
+    declaradas: Mapping[str, Collection[str]] | None = None,
+    rutas: Rutas,
+    convenciones: Convenciones,
+    compilacion: Compilacion,
+) -> Path:
+    """
+    Construye el ejecutable con los archivos C compilados y el resto ensamblado.
+
+    Contexto:
+        Implementa ``build``. El script del enlazador que genera el particionador decide que
+        objetos entran y en que orden; los fuentes C se compilan con ``compilar_fuente`` en la
+        construccion normal (sin la macro de intentos no coincidentes) y exigiendo que solo aporten
+        codigo. Las herramientas de compilacion se piden solo cuando aparece el primer archivo C, de
+        modo que una construccion solo de ensamblador no necesita el SDK instalado.
+
+    Args:
+        raiz (Path): Raiz del repositorio.
+        referencia (EjecutableReferencia): Hechos del ejecutable.
+        herramientas (Herramientas): Ensamblador, enlazador y objcopy.
+        obtener_compilacion (Callable[[], HerramientasCompilacion]): Resuelve las herramientas
+            de compilacion; puede lanzar ``FileNotFoundError`` si no estan instaladas.
+        ejecutar (Ejecutor, opcional): Ejecutor de procesos, sustituible en pruebas.
+        declaradas (Mapping[str, Collection[str]], opcional): Secciones de datos que la particion
+            declara por archivo (clave: nombre sin carpeta ni ``.c``), de ``secciones_declaradas``.
+        rutas (Rutas): Seccion ``[rutas]`` del manifiesto.
+        convenciones (Convenciones): Seccion ``[convenciones]`` (tope de ``-G`` y formato de simbolos).
+        compilacion (Compilacion): Seccion ``[compilacion]`` (version de ``ASPSX`` y opciones).
+
+    Returns:
+        Path: Ruta del ejecutable generado (``<build>/<nombre>``).
+
+    Raises:
+        FileNotFoundError: Si falta el script del enlazador, un fuente o una herramienta.
+        ValueError: Si un objeto aporta datos o el cuerpo enlazado no mide ``t_size``.
+        ProcesoError: Si una herramienta falla.
+
+    Ejemplo:
+        destino = construir_mixto(
+            Path("."), referencia, herramientas, lambda: compilacion_herramientas,
+            rutas=rutas, convenciones=convenciones, compilacion=compilacion,
+        )
+    """
+    resueltas: list[HerramientasCompilacion] = []
+    valores_g = leer_valores_g(raiz, rutas=rutas, convenciones=convenciones)
+
+    def compilar(fuente: str, objeto: str) -> None:
+        if not resueltas:
+            resueltas.append(obtener_compilacion())
+        permitidas = (declaradas or {}).get(Path(fuente).stem, ())
+        compilar_fuente(
+            raiz,
+            fuente,
+            objeto,
+            resueltas[0],
+            ejecutar,
+            secciones_declaradas=permitidas,
+            valor_g=valores_g.get(Path(fuente).stem, 0),
+            rutas=rutas,
+            convenciones=convenciones,
+            compilacion=compilacion,
+        )
+
+    return construir_con_compilador(
+        raiz, referencia, herramientas, compilar, ejecutar, rutas=rutas, convenciones=convenciones
+    )
