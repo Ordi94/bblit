@@ -44,6 +44,7 @@ def test_el_manifiesto_minimo_carga_con_rutas_y_convenciones_por_defecto() -> No
     assert proyecto.convenciones.macro_no_coincidente == "NON_MATCHING"
     assert proyecto.convenciones.macro_ensamblador == "INCLUDE_ASM"
     assert proyecto.rutas.macros == "asm/include"
+    assert (proyecto.rutas.asm_coincidente, proyecto.rutas.asm_pendiente) == ("asm/matchings", "asm/nonmatchings")
     assert proyecto.convenciones.max_valor_g == 64
     assert proyecto.convenciones.patron_simbolo_datos == r"^D_([0-9A-F]{8})$"
     assert r"escrita\s+a\s+mano" in proyecto.convenciones.manuscrita
@@ -61,6 +62,8 @@ def test_el_manifiesto_completo_conserva_cada_valor_declarado() -> None:
     assert proyecto.zonas.librerias_hasta == 0x80030000
     assert proyecto.convenciones.pendiente == r"\APendiente (\d+)"
     assert proyecto.rutas.macros == "ensamblador/macros"
+    assert proyecto.rutas.asm_coincidente == "ensamblador/cerradas"
+    assert proyecto.rutas.asm_pendiente == "ensamblador/pendientes"
     assert proyecto.convenciones.manuscrita == "a mano"
     assert proyecto.convenciones.patron_simbolo_datos == "^X_([0-9A-F]{8})$"
     assert proyecto.convenciones.patron_linea_simbolo == r"^(\w+) @ 0x([0-9A-F]+) (.*)$"

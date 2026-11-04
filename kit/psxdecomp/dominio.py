@@ -29,6 +29,8 @@ CLAVES_RUTAS = frozenset(
         "incluir",
         "asm",
         "macros",
+        "asm_coincidente",
+        "asm_pendiente",
         "build",
         "expected",
         "splat",
@@ -70,6 +72,8 @@ RUTAS_SENCILLAS_POR_DEFECTO = {
     "incluir": "include",
     "asm": "asm",
     "macros": "asm/include",
+    "asm_coincidente": "asm/matchings",
+    "asm_pendiente": "asm/nonmatchings",
     "build": "build",
     "expected": "expected",
     "splat": "config/splat.yaml",
@@ -99,6 +103,8 @@ class Rutas:
     incluir: str
     asm: str
     macros: str
+    asm_coincidente: str
+    asm_pendiente: str
     build: str
     expected: str
     splat: str
