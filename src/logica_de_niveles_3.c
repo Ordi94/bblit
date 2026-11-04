@@ -747,12 +747,12 @@ L_80027D04:
             o->h104 = t->fot->w1A;
             o->flags14 |= 1;
         }
-        temp_a = o->h104 * rsin(o->h108);
-        temp_b = (u16)o->h108 + (u16)o->h106;
-        o->h108 = temp_b;
-        o->param.trans.vy += temp_a >> 12;
-        if ((s16)temp_b >= 0x1000) {
-            o->h108 = temp_b - 0x1000;
+        temp_b = o->h104 * rsin(o->h108);
+        temp_a = (u16)o->h108 + (u16)o->h106;
+        o->h108 = temp_a;
+        o->param.trans.vy += temp_b >> 12;
+        if ((s16)temp_a >= 0x1000) {
+            o->h108 = temp_a - 0x1000;
         }
         /* Sin zona de colision bajo el objeto no hay referencia de altura: se deja la onda tal cual. */
         if ((t->zona = func_8001BF9C((s32*)&o->param.trans, (s16)o->w26)) != 0) {
