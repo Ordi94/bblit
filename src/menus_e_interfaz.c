@@ -202,38 +202,45 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 990 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de registros (la tabla de ordenacion y el cursor intercambian v1 y a1, y las constantes 1, 0x80000000 y 0x05000000 caen en t0/a3/a2 en lugar de t1/t0/a3) y la posicion de la carga del cursor en el segundo paquete. */
+/* Pendiente: puntuacion 605 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere la posicion de la carga de la palabra 8 de los puntos (el original la hace despues del almacen del cursor), el planificado de los desplazamientos del segundo paquete (el original adelanta el sll) y el registro destino del desplazamiento del primer paquete (v1 en el original, v0 aqui). La copia del parametro de puntos y la variable que une la copia del cursor con su relectura final bajan de 990. */
 s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
 {
     u32* tabla;
+    u32* datos;
     s32 actual;
     s32 siguiente;
+    s32 cursor;
 
+    /* Copia local del parametro de puntos: sin ella el reparto de registros empeora de 605 a 943. */
+    datos = puntos;
     func_80039CD0(D_80076188);
-    tabla = (u32*)D_8006AEA0[D_8006967C].org;
     actual = D_80076188;
-    ((u32*)actual)[0] = *tabla | 0x05000000;
+    /* El cursor se copia aqui y se relee en la comprobacion final con la misma variable. */
+    cursor = actual;
+    tabla = (u32*)(*(D_8006967C + D_8006AEA0)).org;
+    *((u32*)actual + 0) = 0x05000000 | *tabla;
     ((u32*)actual)[1] = 1;
-    ((u32*)actual)[2] = 0x80000000;
-    ((u32*)actual)[3] = puntos[3];
-    ((u32*)actual)[4] = puntos[5];
-    ((u32*)actual)[5] = puntos[7];
+    ((u32*)cursor)[2] = 0x80000000;
+    ((u32*)actual)[3] = datos[3];
+    ((u32*)actual)[4] = datos[5];
+    ((u32*)actual)[5] = datos[7];
     *tabla = (actual << 8) >> 8;
     actual = D_80076188;
-    siguiente = actual + 0x18;
+    siguiente = 0x18 + actual;
     D_80076188 = siguiente;
-    if (puntos[8] != 0) {
+    if (datos[8] != 0) {
         tabla = (u32*)D_8006AEA0[D_8006967C].org;
-        ((u32*)actual)[6] = *tabla | 0x05000000;
+        *((u32*)actual + 6) = *tabla | 0x05000000;
         ((u32*)siguiente)[1] = 1;
-        ((u32*)siguiente)[2] = 0x80000000;
-        ((u32*)siguiente)[3] = puntos[4];
-        ((u32*)siguiente)[4] = puntos[6];
-        ((u32*)siguiente)[5] = puntos[8];
+        *((u32*)siguiente + 2) = 0x80000000;
+        ((u32*)siguiente)[3] = datos[4];
+        ((u32*)siguiente)[4] = datos[6];
+        ((u32*)siguiente)[5] = datos[8];
         *tabla = (siguiente << 8) >> 8;
-        D_80076188 += 0x18;
+        D_80076188 = D_80076188 + 0x18;
     }
-    if (ctx->limite < D_80076188) {
+    cursor = D_80076188;
+    if (ctx->limite < cursor) {
         D_80076188 = ctx->inicio;
     }
     return 0;
