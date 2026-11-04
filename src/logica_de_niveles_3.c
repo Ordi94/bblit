@@ -385,6 +385,7 @@ void func_80026FEC(Objeto* o)
     s32 choco;
     s32 id_sec;
     s32 onda;
+    s32 suelo;
     s32 fase;
     s32 factor_a;
     s32 factor_b;
@@ -405,19 +406,17 @@ void func_80026FEC(Objeto* o)
     if (o->u78.p == 0 && !(o->trabajo.flags18 & 0x4000)) {
         o->flags18 |= 0x80;
         t->sec = o->secuencias;
-        id_sec = 2;
-        t->w114 = id_sec;
+        t->w114 = 2;
         for (; t->sec != 0; t->sec = t->sec->sig) {
-            if (t->sec->id == id_sec) {
+            if (t->sec->id == t->w114) {
                 break;
             }
         }
         if (t->sec == 0) {
             t->sec = o->secuencias;
-            id_sec = 1;
-            t->w114 = id_sec;
+            t->w114 = 1;
             for (; t->sec != 0; t->sec = t->sec->sig) {
-                if (t->sec->id == id_sec) {
+                if (t->sec->id == t->w114) {
                     break;
                 }
             }
@@ -425,12 +424,12 @@ void func_80026FEC(Objeto* o)
         /* Sin comprobar nulo: el original asume que al menos la secuencia 1 existe. */
         t->fot = (RegistroAnim*)(o->bloque + t->sec->desplazamiento);
         o->p180 = t->sec;
+        o->registro184 = t->fot;
         o->h108 = 0x800;
         o->w17C = 0;
         o->u18C.estado.h194 = 0;
         o->u18C.estado.w192 = 0;
         o->h104 = 0x80;
-        o->registro184 = t->fot;
         if (o->flags0C & 0x200) {
             D_8006AA70[1] = 0x80;
             D_800693D0 = (u16)o->s1E;
@@ -456,10 +455,9 @@ void func_80026FEC(Objeto* o)
             t->previo = 0;
         }
         t->sec = o->secuencias;
-        id_sec = t->w_bc;
-        t->w114 = id_sec;
+        t->w114 = t->w_bc;
         for (; t->sec != 0; t->sec = t->sec->sig) {
-            if (t->sec->id == id_sec) {
+            if (t->sec->id == t->w114) {
                 break;
             }
         }
@@ -480,7 +478,7 @@ void func_80026FEC(Objeto* o)
         if (!(t->fot->w08 & 0x40) || t->fot->w06 != t->previo) {
             o->trabajo.ticks = 0xFF;
             o->trabajo.i14 = 0;
-            o->trabajo.cuadro = 0xFFFF;
+            *(u16*)&o->trabajo.cuadro = 0xFFFF;
         }
         o->flags14 &= 0xFFFFFFF6;
         if (t->fot->w10 & 0x4000) {
@@ -493,7 +491,7 @@ void func_80026FEC(Objeto* o)
     } else {
         /* Paso de secuencia: el fotograma siguiente sale de la tabla de pasos de la secuencia
          * en curso; 0xFFF0 o cinco pasos agotados reinician en la secuencia 1. */
-        t->w_bc = ((u16*)o->p180)[o->w17C + 3];
+        t->w_bc = *(u16*)((u8*)o->p180 + (o->w17C << 1) + 6);
         if (t->w_bc == 0xFFF0 || o->w17C >= 5) {
             if (o->registro184 != 0) {
                 t->previo = o->registro184->w06;
@@ -501,10 +499,9 @@ void func_80026FEC(Objeto* o)
                 t->previo = 0;
             }
             t->sec = o->secuencias;
-            id_sec = 1;
-            t->w114 = id_sec;
+            t->w114 = 1;
             for (; t->sec != 0; t->sec = t->sec->sig) {
-                if (t->sec->id == id_sec) {
+                if (t->sec->id == t->w114) {
                     break;
                 }
             }
@@ -530,7 +527,7 @@ L_800274A8:
         if (t->banderas & 0x10000) {
             if (o->raiz_ayudantes != 0) {
                 if (!(D_80069698->flags14 & 0x3000000)) {
-                    if (func_80018D98(D_80069698, &o->objetivo, area) != 0) {
+                    if ((s16)func_80018D98(D_80069698, &o->objetivo, area) != 0) {
                         /* func_8001D75C recibe aqui el puntero al fotograma (lw 0x1F8000AC). */
                         if (func_8001D75C(o, (s32)t->fot, area) != 0) {
                             if (t->fot->w1C != 0) {
@@ -651,19 +648,21 @@ L_80027808:
     if (o->flags14 & 0x800) {
         goto L_8002A11C;
     }
-    if (t->fot->w10 & 1) {
+    if (!(t->fot->w10 & 1)) {
+        if (!(t->banderas & 0x20040060)) {
+            goto L_80028370;
+        }
+    } else {
         /* Oscilacion vertical: la fase y la amplitud se fijan al entrar (flags14 bit 0). */
         if (!(o->flags14 & 1)) {
             o->h106 = (u16)o->param.trans.vy;
             o->h108 = 0;
             o->h10A = 0;
-            o->flags14 |= 1;
             o->h104 = t->fot->w1A;
+            o->flags14 |= 1;
         }
         o->param.trans.vy = o->h106 + ((o->h104 * rsin(o->h108)) >> 12);
         o->h108 = ((u16)o->h108 + t->fot->w18) & 0xFFF;
-    } else if (!(t->banderas & 0x20040060)) {
-        goto L_80028370;
     }
 
     if (t->banderas & 0x20) {
@@ -740,8 +739,8 @@ L_80027D04:
             o->h10A = 0;
             o->h108 = 0xC00;
             o->h106 = t->fot->w18;
-            o->flags14 |= 1;
             o->h104 = t->fot->w1A;
+            o->flags14 |= 1;
         }
         onda = o->h104 * rsin(o->h108);
         fase = (u16)o->h108 + (u16)o->h106;
@@ -761,16 +760,18 @@ L_80027D04:
                 t->w118 = D_80069698->param.trans.vy - 0x190;
             } else if ((t->banderas & 0x810000) && ((s16)o->w26 == (s16)D_80069698->w26)) {
                 /* Acompana al jugador: el techo del vuelo es la menor altura entre el suelo y el jugador. */
-                if (t->p30.vy + (s16)t->res.pendiente < D_80069698->param.trans.vy) {
-                    t->w114 = t->p30.vy + (s16)t->res.pendiente - 0xC8;
-                    t->w118 = t->p30.vy + (s16)t->res.pendiente - 0x190;
+                suelo = t->p30.vy + (s16)t->res.pendiente;
+                if (suelo < D_80069698->param.trans.vy) {
+                    t->w114 = suelo - 0xC8;
+                    t->w118 = suelo - 0x190;
                 } else {
                     t->w114 = D_80069698->param.trans.vy - 0x64;
                     t->w118 = D_80069698->param.trans.vy - 0x12C;
                 }
             } else {
-                t->w114 = t->p30.vy + (s16)t->res.pendiente - 0x190;
-                t->w118 = t->p30.vy + (s16)t->res.pendiente - 0x258;
+                suelo = t->p30.vy + (s16)t->res.pendiente;
+                t->w114 = suelo - 0x190;
+                t->w118 = suelo - 0x258;
             }
             /* Histeresis: el sentido solo cambia al salir de la banda [w118, w114]. */
             if (t->w114 < o->param.trans.vy) {
@@ -806,7 +807,8 @@ L_80027D04:
         gte_stlvnl(&t->p40);
         t->res.grupo = o->w26;
         GEO_CARGAR_W(&t->p40);
-        GEO_SUMAR_W_A(&o->param.trans, &t->p58);
+        GEO_CARGAR_SUMAR_W(&o->param.trans);
+        GEO_GUARDAR_W_T4(&t->p58);
         func_8001C134((s32*)&t->p58, &t->res, area);
         if (!(t->res.flags & 0xC)) {
             t->w_a0 = (s16)t->res.pendiente_abs;
@@ -826,12 +828,12 @@ L_80027D04:
                 }
             }
         }
+        /* El avance (+0x04) se lee y escribe como u16 (lhu / sh) y su signo elige el lado del sondeo. */
+        t->r.h[2] += (t->fot->h14 * (s16)o->u18C.estado.w192) >> 12;
         t->s50.vy = 0;
         t->s50.vx = 0;
         t->r.sv.g.vz = 0;
         t->r.sv.g.vx = 0;
-        /* El avance (+0x04) se lee y escribe como u16 (lhu / sh) y su signo elige el lado del sondeo. */
-        t->r.h[2] += (t->fot->h14 * (s16)o->u18C.estado.w192) >> 12;
         t->s50.vz = 0x64;
         if ((s16)t->r.h[2] < 0) {
             t->r.sv.g.vy = (u16)o->coord.param->rotate.vy - 0x400;
@@ -845,7 +847,8 @@ L_80027D04:
         gte_stlvnl(&t->p40);
         t->res.grupo = o->w26;
         GEO_CARGAR_W(&t->p40);
-        GEO_SUMAR_W_A(&o->param.trans, &t->p58);
+        GEO_CARGAR_SUMAR_W(&o->param.trans);
+        GEO_GUARDAR_W_T4(&t->p58);
         BarrerTerreno(&t->p58, 0, &t->res, area);
         if (!(t->res.flags & 0xC)) {
             t->w_a0 = (s16)t->res.pendiente_abs;
@@ -853,7 +856,8 @@ L_80027D04:
             t->p40.vx = -t->p40.vx;
             t->res.grupo = o->w26;
             GEO_CARGAR_W(&t->p40);
-            GEO_SUMAR_W_A(&o->param.trans, &t->p58);
+            GEO_CARGAR_SUMAR_W(&o->param.trans);
+        GEO_GUARDAR_W_T4(&t->p58);
             BarrerTerreno(&t->p58, 0, &t->res, area);
             if (!(t->res.flags & 0xC)) {
                 t->w_a0 = t->w_a0 - (s16)t->res.pendiente_abs;

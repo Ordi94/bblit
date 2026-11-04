@@ -349,16 +349,18 @@ typedef struct TrabajoRecorrido {
                       "sw $12, 0($8)\n\tsw $13, 4($8)\n\tsw $14, 8($8)" \
                       : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
 /*
- * GEO_SUMAR_W_A(origen, destino): la palabra de cada eje de destino = la de origen + t1..t3 (tras
- * GEO_CARGAR_W). Igual que GEO_SUMAR_W pero el resultado va a otro vector: el original
- * (func_80026FEC, 0x80028048 y 0x800282EC) carga el origen en t4..t6, suma, copia la direccion de
- * destino a t0 y almacena. El cuerpo escribe $8 y $12..$14.
+ * GEO_CARGAR_SUMAR_W(p): t4..t6 = las tres palabras de p + t1..t3 (tras GEO_CARGAR_W). Igual que
+ * GEO_SUMAR_W pero sin almacenar el resultado: el original (func_80026FEC, 0x80028048 y 0x800282EC)
+ * calcula la suma y guarda t4..t6 en otro vector con GEO_GUARDAR_W_T4, con la direccion de destino
+ * calculada entre las dos secuencias. El cuerpo escribe $8 y $12..$14.
  */
-#define GEO_SUMAR_W_A(origen, destino) \
-    __asm__ volatile ("move $8, %0\n\tlw $12, 0($8)\n\tlw $13, 4($8)\n\tlw $14, 8($8)\n\t" \
-                      "add $12, $12, $9\n\tadd $13, $13, $10\n\tadd $14, $14, $11\n\t" \
-                      "move $8, %1\n\tsw $12, 0($8)\n\tsw $13, 4($8)\n\tsw $14, 8($8)" \
-                      : : "r"(origen), "r"(destino) : "$8", "$12", "$13", "$14", "memory")
+#define GEO_CARGAR_SUMAR_W(p)     __asm__ volatile ("move $8, %0
+	lw $12, 0($8)
+	lw $13, 4($8)
+	lw $14, 8($8)
+	"                       "add $12, $12, $9
+	add $13, $13, $10
+	add $14, $14, $11"                       : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
 /*
  * GEO_SUMAR_H(p): las tres medias palabras de p += t1..t3, con los temporales que dejo la macro
  * anterior (GEO_CARGAR_H) y los mismos $8, $12..$14 y add con captura de desbordamiento que
