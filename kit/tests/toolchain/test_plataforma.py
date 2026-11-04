@@ -2,7 +2,8 @@ import sys
 from pathlib import Path
 
 import pytest
-from tools.toolchain import plataforma
+from psxdecomp.entorno import Variables
+from psxdecomp.toolchain import plataforma
 
 
 def test_es_windows_sigue_a_sys_platform(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -14,14 +15,14 @@ def test_es_windows_sigue_a_sys_platform(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_comando_wine_por_omision_y_configurado() -> None:
     assert plataforma.comando_wine({}) == "wine"
-    assert plataforma.comando_wine({"BBLIT_WINE": "  "}) == "wine"
-    assert plataforma.comando_wine({"BBLIT_WINE": "/opt/wine/bin/wine64"}) == "/opt/wine/bin/wine64"
+    assert plataforma.comando_wine({"PSXDECOMP_WINE": "  "}) == "wine"
+    assert plataforma.comando_wine({"PSXDECOMP_WINE": "/opt/wine/bin/wine64"}) == "/opt/wine/bin/wine64"
 
 
 def test_prefijo_binutils_por_omision_configurado_y_vacio() -> None:
     assert plataforma.prefijo_binutils({}) == "mipsel-none-elf-"
-    assert plataforma.prefijo_binutils({"BBLIT_BINUTILS_PREFIX": "x-"}) == "x-"
-    assert plataforma.prefijo_binutils({"BBLIT_BINUTILS_PREFIX": ""}) == ""
+    assert plataforma.prefijo_binutils({"PSXDECOMP_BINUTILS_PREFIX": "x-"}) == "x-"
+    assert plataforma.prefijo_binutils({"PSXDECOMP_BINUTILS_PREFIX": ""}) == ""
 
 
 @pytest.mark.parametrize(
@@ -45,7 +46,7 @@ def test_adaptar_comando_en_windows_no_cambia_nada() -> None:
 
 def test_adaptar_comando_antepone_wine_a_los_exe_fuera_de_windows() -> None:
     comando = ["/root/toolchain/psyq-4.4/pssn/bin/CC1PSX.EXE", "-O2", "build/a b.i"]
-    adaptado = plataforma.adaptar_comando(comando, {"BBLIT_WINE": "wine64"}, windows=False)
+    adaptado = plataforma.adaptar_comando(comando, {"PSXDECOMP_WINE": "wine64"}, windows=False)
     assert adaptado == ["wine64", *comando]
 
 
@@ -118,7 +119,7 @@ def test_localizar_binutils_usa_el_prefijo_y_el_buscador_inyectado() -> None:
         return f"/usr/bin/{nombre}" if "objdump" in nombre else None
 
     assert plataforma.localizar_binutils("objdump", {}, buscar) == Path("/usr/bin/mipsel-none-elf-objdump")
-    assert plataforma.localizar_binutils("ld", {"BBLIT_BINUTILS_PREFIX": "x-"}, buscar) is None
+    assert plataforma.localizar_binutils("ld", {"PSXDECOMP_BINUTILS_PREFIX": "x-"}, buscar) is None
     assert consultas == ["mipsel-none-elf-objdump", "x-ld"]
 
 
@@ -128,4 +129,28 @@ def test_localizar_binutils_rechaza_alias_desconocidos() -> None:
 
 
 def test_localizar_binutils_usa_which_por_omision() -> None:
-    assert plataforma.localizar_binutils("as", {"BBLIT_BINUTILS_PREFIX": "prefijo-inexistente-"}) is None
+    assert plataforma.localizar_binutils("as", {"PSXDECOMP_BINUTILS_PREFIX": "prefijo-inexistente-"}) is None
+
+
+def test_el_alias_del_proyecto_configura_wine_y_el_prefijo_de_binutils() -> None:
+    variables = Variables(alias="JUEGO")
+    assert plataforma.comando_wine({"JUEGO_WINE": "wine64"}, variables) == "wine64"
+    assert (
+        plataforma.comando_wine({"PSXDECOMP_WINE": "propio", "JUEGO_WINE": "wine64"}, variables) == "propio"
+    )
+    assert plataforma.comando_wine({"PSXDECOMP_WINE": "  ", "JUEGO_WINE": "wine64"}, variables) == "wine64"
+    assert plataforma.comando_wine({"JUEGO_WINE": "wine64"}) == "wine"
+    assert plataforma.prefijo_binutils({"JUEGO_BINUTILS_PREFIX": "x-"}, variables) == "x-"
+    assert (
+        plataforma.prefijo_binutils(
+            {"PSXDECOMP_BINUTILS_PREFIX": "", "JUEGO_BINUTILS_PREFIX": "x-"}, variables
+        )
+        == ""
+    )
+    adaptado = plataforma.adaptar_comando(
+        ["CC1PSX.EXE"], {"JUEGO_WINE": "wine64"}, windows=False, variables=variables
+    )
+    assert adaptado == ["wine64", "CC1PSX.EXE"]
+    assert plataforma.localizar_binutils(
+        "ld", {"JUEGO_BINUTILS_PREFIX": "x-"}, lambda n: f"/b/{n}", variables
+    ) == Path("/b/x-ld")

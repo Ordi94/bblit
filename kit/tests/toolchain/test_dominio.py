@@ -2,8 +2,8 @@ from pathlib import PurePosixPath
 from typing import Any
 
 import pytest
-from tools.toolchain import dominio
-from tools.toolchain.dominio import Componente, cargar_lock, parsear_componente
+from psxdecomp.toolchain import dominio
+from psxdecomp.toolchain.dominio import Componente, cargar_lock, parsear_componente
 
 from .ayudantes import bloque_componente, lock_de
 

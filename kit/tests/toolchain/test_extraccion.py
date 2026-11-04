@@ -4,8 +4,8 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import pytest
-from tools.toolchain import extraccion
-from tools.toolchain.dominio import parsear_componente
+from psxdecomp.toolchain import extraccion
+from psxdecomp.toolchain.dominio import parsear_componente
 
 from .ayudantes import bloque_componente, construir_iso, zip_de
 
@@ -148,7 +148,7 @@ def test_verificar_arbol_detecta_archivo_fuera_del_destino(
     destino.mkdir()
     fuera = tmp_path / "otro"
     fuera.mkdir()
-    monkeypatch.setattr("tools.toolchain.extraccion.os.walk", lambda base: [(str(fuera), [], ["x.txt"])])
+    monkeypatch.setattr("psxdecomp.toolchain.extraccion.os.walk", lambda base: [(str(fuera), [], ["x.txt"])])
     with pytest.raises(ValueError, match="'pieza': el archivo extraido salio del destino"):
         extraccion._verificar_arbol(destino, "pieza")
 

@@ -2,8 +2,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.toolchain import configuracion
-from tools.toolchain.configuracion import leer_local_toml, resolver_rutas
+from psxdecomp.entorno import Variables
+from psxdecomp.toolchain import configuracion
+from psxdecomp.toolchain.configuracion import leer_local_toml, resolver_rutas
 
 RAIZ = Path("repo")
 
@@ -58,7 +59,11 @@ def test_local_demasiado_grande(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 
 
 def test_prioridad_argumento_sobre_entorno_sobre_local() -> None:
-    entorno = {"BBLIT_DISC": "entorno/disc", "BBLIT_TOOLCHAIN": "entorno/tc", "BBLIT_7ZIP": "entorno/7z"}
+    entorno = {
+        "PSXDECOMP_DISC": "entorno/disc",
+        "PSXDECOMP_TOOLCHAIN": "entorno/tc",
+        "PSXDECOMP_7ZIP": "entorno/7z",
+    }
     local = {"disc": "local/disc", "toolchain": "local/tc", "siete_zip": "local/7z"}
     rutas = resolver_rutas(RAIZ, entorno, local, disc="arg/disc", toolchain="arg/tc")
     assert (rutas.disc, rutas.toolchain, rutas.siete_zip) == (
@@ -82,3 +87,19 @@ def test_valores_por_defecto() -> None:
     assert rutas.toolchain == RAIZ / "toolchain"
     assert rutas.disc is None
     assert rutas.siete_zip is None
+
+
+def test_el_alias_del_proyecto_resuelve_las_rutas_y_el_prefijo_propio_gana() -> None:
+    variables = Variables(alias="JUEGO")
+    entorno = {"JUEGO_DISC": "alias/disc", "JUEGO_TOOLCHAIN": "alias/tc", "PSXDECOMP_TOOLCHAIN": "propio/tc"}
+    rutas = resolver_rutas(RAIZ, entorno, {"disc": "local/disc"}, variables=variables)
+    assert (rutas.disc, rutas.toolchain) == (Path("alias/disc"), Path("propio/tc"))
+    sin_alias = resolver_rutas(RAIZ, entorno, {"disc": "local/disc"})
+    assert (sin_alias.disc, sin_alias.toolchain) == (Path("local/disc"), Path("propio/tc"))
+
+
+def test_los_errores_del_archivo_local_usan_la_etiqueta_recibida(tmp_path: Path) -> None:
+    ruta = tmp_path / "local.toml"
+    ruta.write_text("[rutas\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"^datos/local.toml no es un TOML valido$"):
+        leer_local_toml(ruta, "datos/local.toml")

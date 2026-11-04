@@ -13,7 +13,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
-from tools.toolchain.dominio import ruta_miembro_segura
+from psxdecomp.toolchain.dominio import ruta_miembro_segura
 
 TAMANO_DATOS = 2048
 TAMANO_SECTOR_BRUTO = 2352

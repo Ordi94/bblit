@@ -14,10 +14,11 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tools.toolchain import plataforma
-from tools.toolchain.descarga import SesionHttp, descargar_verificado
-from tools.toolchain.dominio import Componente, cargar_lock, obtener_componente
-from tools.toolchain.extraccion import extraer
+from psxdecomp.entorno import SUFIJO_PREFIJO_BINUTILS, VARIABLES_PROPIAS, Variables
+from psxdecomp.toolchain import plataforma
+from psxdecomp.toolchain.descarga import SesionHttp, descargar_verificado
+from psxdecomp.toolchain.dominio import Componente, cargar_lock, obtener_componente
+from psxdecomp.toolchain.extraccion import extraer
 
 NOMBRE_MARCA = "INSTALADO.json"
 CARPETA_DESCARGA = "_descarga"
@@ -43,7 +44,7 @@ def leer_lock(ruta: Path) -> dict[str, Componente]:
         ValueError: Si es demasiado grande, no es JSON o no cumple el esquema.
 
     Ejemplo:
-        lock = leer_lock(Path("config/toolchain.lock.json"))
+        lock = leer_lock(Path("toolchain.lock.json"))
     """
     if not ruta.is_file():
         raise FileNotFoundError("no se encontro el archivo de bloqueo del toolchain")
@@ -192,7 +193,7 @@ def instalar(
     Instala todos los componentes pedidos (o todos los del lock) saltando los ya vigentes.
 
     Contexto:
-        Implementa ``python -m tools.toolchain instalar``.
+        Implementa ``python -m psxdecomp.toolchain instalar``.
 
     Args:
         lock (dict[str, Componente]): Lock validado.
@@ -222,7 +223,13 @@ def instalar(
     return estados
 
 
-def resolver_herramienta(lock: dict[str, Componente], raiz: Path, nombre: str, alias: str) -> Path:
+def resolver_herramienta(
+    lock: dict[str, Componente],
+    raiz: Path,
+    nombre: str,
+    alias: str,
+    variables: Variables = VARIABLES_PROPIAS,
+) -> Path:
     """
     Devuelve la ruta absoluta de una herramienta instalada.
 
@@ -230,13 +237,15 @@ def resolver_herramienta(lock: dict[str, Componente], raiz: Path, nombre: str, a
         La reconstruccion y la comparacion de funciones localizan ``as``, ``ld``,
         ``CC1PSX.EXE``, etc. por componente y alias, nunca por rutas fijas. Fuera de Windows
         ``as``, ``ld``, ``objcopy`` y ``objdump`` se toman del ``PATH`` (binutils nativos con el
-        prefijo de ``BBLIT_BINUTILS_PREFIX``) y el resto se busca sin distinguir mayusculas.
+        prefijo de la variable ``BINUTILS_PREFIX`` del entorno) y el resto se busca sin distinguir mayusculas.
 
     Args:
         lock (dict[str, Componente]): Lock validado.
         raiz (Path): Raiz del toolchain.
         nombre (str): Componente que contiene la herramienta.
         alias (str): Alias declarado en ``archivos_clave``.
+        variables (Variables, opcional): Nombres de variable del proyecto, para el prefijo de
+            los binutils nativos; por omision solo el prefijo propio del kit.
 
     Returns:
         Path: Ruta del archivo.
@@ -251,11 +260,12 @@ def resolver_herramienta(lock: dict[str, Componente], raiz: Path, nombre: str, a
     """
     componente = obtener_componente(lock, nombre)
     if nombre == COMPONENTE_BINUTILS and alias in plataforma.ALIAS_BINUTILS and not plataforma.es_windows():
-        nativo = plataforma.localizar_binutils(alias, os.environ)
+        nativo = plataforma.localizar_binutils(alias, os.environ, variables=variables)
         if nativo is None:
             raise FileNotFoundError(
-                f"binutils nativo '{plataforma.prefijo_binutils(os.environ)}{alias}' no esta en el PATH; "
-                "agregue al PATH los binutils 2.40 de mipsel-none-elf o defina BBLIT_BINUTILS_PREFIX"
+                f"binutils nativo '{plataforma.prefijo_binutils(os.environ, variables)}{alias}' "
+                "no esta en el PATH; agregue al PATH los binutils 2.40 de mipsel-none-elf o defina "
+                f"{variables.describir(SUFIJO_PREFIJO_BINUTILS)}"
             )
         return nativo
     ruta = carpeta_componente(raiz, componente) / componente.ruta_clave(alias)
@@ -264,6 +274,6 @@ def resolver_herramienta(lock: dict[str, Componente], raiz: Path, nombre: str, a
     if not ruta.is_file():
         raise FileNotFoundError(
             f"componente '{nombre}': '{alias}' no esta instalado; "
-            "ejecute 'python -m tools.toolchain instalar'"
+            "ejecute 'python -m psxdecomp.toolchain instalar'"
         )
     return ruta

@@ -10,7 +10,6 @@ diccionarios. La unica excepcion declarada es ``Proyecto.ruta_absoluta``, que re
 from __future__ import annotations
 
 import os
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,10 +18,8 @@ from typing import Any
 from psxdecomp import validacion as val
 from psxdecomp.confinamiento import esta_confinada
 from psxdecomp.constantes import NOMBRE_MANIFIESTO
+from psxdecomp.entorno import PREFIJO_PROPIO, Variables
 from psxdecomp.validacion import ManifiestoError
-
-PREFIJO_PROPIO = "PSXDECOMP"
-PATRON_SUFIJO_ENTORNO = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
 
 SECCIONES = frozenset({"proyecto", "rutas", "zonas", "convenciones", "plugins"})
 CLAVES_PROYECTO = frozenset({"nombre", "ejecutable", "referencia", "prefijo_entorno"})
@@ -154,6 +151,22 @@ class Proyecto:
     convenciones: Convenciones
     plugins: Plugins
 
+    def variables(self) -> Variables:
+        """
+        Entrega los nombres de variable de entorno del proyecto.
+
+        Contexto:
+            Los modulos del kit reciben este objeto en vez de construir nombres a mano: el prefijo
+            propio manda y el ``prefijo_entorno`` del manifiesto es el alias de transicion.
+
+        Returns:
+            Variables: Prefijo propio del kit con el alias declarado en ``[proyecto]``.
+
+        Ejemplo:
+            nombre = proyecto.variables().describir("DISC")
+        """
+        return Variables(alias=self.identidad.prefijo_entorno)
+
     def variable_entorno(self, sufijo: str, entorno: Mapping[str, str] | None = None) -> str | None:
         """
         Resuelve una variable de entorno del proyecto con su alias de transicion.
@@ -178,15 +191,8 @@ class Proyecto:
         Ejemplo:
             disco = proyecto.variable_entorno("DISC")
         """
-        if PATRON_SUFIJO_ENTORNO.fullmatch(sufijo) is None:
-            raise ValueError("el sufijo de variable de entorno debe ser un identificador en mayusculas")
         fuente = os.environ if entorno is None else entorno
-        prefijos = (PREFIJO_PROPIO, self.identidad.prefijo_entorno)
-        for prefijo in dict.fromkeys(prefijos):
-            valor = fuente.get(f"{prefijo}_{sufijo}")
-            if valor:
-                return valor
-        return None
+        return self.variables().leer(sufijo, fuente)
 
     def ruta_absoluta(self, relativa: str) -> Path:
         """

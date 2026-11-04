@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 
 import requests
 
-from tools.toolchain.dominio import (
+from psxdecomp.toolchain.dominio import (
     Componente,
     host_admitido,
     nombre_archivo_desde_url,

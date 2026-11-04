@@ -14,15 +14,21 @@ import zipfile
 from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
 
-from tools.toolchain import iso9660
-from tools.toolchain.dominio import Componente, coincide_patron, ruta_miembro_segura
+from psxdecomp.entorno import SUFIJO_7ZIP, VARIABLES_PROPIAS, Variables
+from psxdecomp.toolchain import iso9660
+from psxdecomp.toolchain.dominio import Componente, coincide_patron, ruta_miembro_segura
 
 MAX_MIEMBROS = 100000
 MAX_BYTES_EXTRAIDOS = 2 * 1024 * 1024 * 1024
 TIMEOUT_7ZIP_S = 900
 
 
-def localizar_7zip(configurado: Path | None, entorno: Mapping[str, str]) -> Path:
+def localizar_7zip(
+    configurado: Path | None,
+    entorno: Mapping[str, str],
+    variables: Variables = VARIABLES_PROPIAS,
+    archivo_local: str = "el archivo local de rutas",
+) -> Path:
     """
     Encuentra el ejecutable de 7-Zip.
 
@@ -31,8 +37,10 @@ def localizar_7zip(configurado: Path | None, entorno: Mapping[str, str]) -> Path
         PATH, y la carpeta ``7-Zip`` bajo la variable de entorno ``ProgramFiles``.
 
     Args:
-        configurado (Path, opcional): Ruta fijada por variable o ``config/local.toml``.
+        configurado (Path, opcional): Ruta fijada por variable o por el archivo local de rutas.
         entorno (Mapping[str, str]): Variables de entorno.
+        variables (Variables, opcional): Nombres de variable del proyecto, solo para el mensaje.
+        archivo_local (str, opcional): Nombre del archivo local de rutas, solo para el mensaje.
 
     Returns:
         Path: Ruta del ejecutable.
@@ -57,7 +65,8 @@ def localizar_7zip(configurado: Path | None, entorno: Mapping[str, str]) -> Path
         if candidato.is_file():
             return candidato
     raise FileNotFoundError(
-        "no se encontro 7-Zip: instalelo o defina BBLIT_7ZIP / siete_zip en config/local.toml"
+        f"no se encontro 7-Zip: instalelo o defina {variables.describir(SUFIJO_7ZIP)} "
+        f"o siete_zip en {archivo_local}"
     )
 
 

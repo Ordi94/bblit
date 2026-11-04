@@ -331,7 +331,7 @@ def cargar_lock(datos: object) -> dict[str, Componente]:
         Punto de entrada de la capa de dominio: la CLI lee el JSON y lo pasa tal cual.
 
     Args:
-        datos (object): Resultado de ``json.load`` sobre ``config/toolchain.lock.json``.
+        datos (object): Resultado de ``json.load`` sobre el archivo de bloqueo del toolchain.
 
     Returns:
         dict[str, Componente]: Componentes indexados por nombre, en el orden del archivo.

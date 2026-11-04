@@ -2,9 +2,9 @@ from typing import Any
 
 import pytest
 import requests
-from tools.toolchain import descarga
-from tools.toolchain.descarga import descargar_verificado
-from tools.toolchain.dominio import parsear_componente
+from psxdecomp.toolchain import descarga
+from psxdecomp.toolchain.descarga import descargar_verificado
+from psxdecomp.toolchain.dominio import parsear_componente
 
 from .ayudantes import RespuestaFalsa, SesionFalsa, bloque_componente
 

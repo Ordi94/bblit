@@ -1,8 +1,8 @@
-"""Permite ejecutar ``python -m tools.toolchain``."""
+"""Permite ejecutar ``python -m psxdecomp.toolchain``."""
 
 import sys
 
-from tools.toolchain.cli import main
+from psxdecomp.toolchain.cli import main
 
 __all__ = ["main"]
 

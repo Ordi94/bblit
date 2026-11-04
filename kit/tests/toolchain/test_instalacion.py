@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.toolchain import instalacion
-from tools.toolchain.dominio import cargar_lock
+from psxdecomp.toolchain import instalacion
+from psxdecomp.toolchain.dominio import cargar_lock
 
 from .ayudantes import RespuestaFalsa, SesionFalsa, bloque_componente, lock_de, zip_de
 
@@ -135,10 +135,3 @@ def test_leer_lock_inexistente_demasiado_grande_o_corrupto(
     monkeypatch.setattr(instalacion, "MAX_BYTES_LOCK", 3)
     with pytest.raises(ValueError, match="excede el tamano permitido"):
         instalacion.leer_lock(ruta)
-
-
-def test_el_lock_real_del_repositorio_es_valido() -> None:
-    lock = instalacion.leer_lock(Path(__file__).resolve().parents[2] / "config" / "toolchain.lock.json")
-    assert set(lock) >= {"psyq-4.4", "psyq-4.1", "binutils-mipsel", "maspsx", "m2c", "asm-differ"}
-    assert lock["psyq-4.4"].ruta_clave("cc1psx") == "pssn/bin/CC1PSX.EXE"
-    assert lock["binutils-mipsel"].ruta_clave("as") == "bin/mipsel-none-elf-as.exe"

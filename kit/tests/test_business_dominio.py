@@ -260,7 +260,7 @@ def test_sin_entorno_explicito_se_consulta_el_entorno_del_proceso(monkeypatch: p
     assert proyecto.variable_entorno("DISC") == "del-proceso"
 
 
-@pytest.mark.parametrize("sufijo", ["disc", "", "CON ESPACIO", "A=B", "1INICIO", "X" * 65])
+@pytest.mark.parametrize("sufijo", ["disc", "", "CON ESPACIO", "A=B", "-INICIO", "X" * 65])
 def test_un_sufijo_de_variable_fuera_de_la_lista_de_admitidos_se_rechaza(sufijo: str) -> None:
     proyecto = cargar(MANIFIESTO_MINIMO)
     with pytest.raises(ValueError, match="identificador en mayusculas"):

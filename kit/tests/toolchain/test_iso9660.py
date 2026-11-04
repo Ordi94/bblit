@@ -2,8 +2,8 @@ import struct
 from typing import Any
 
 import pytest
-from tools.toolchain import iso9660
-from tools.toolchain.iso9660 import crear_lector, leer_archivo, listar_archivos
+from psxdecomp.toolchain import iso9660
+from psxdecomp.toolchain.iso9660 import crear_lector, leer_archivo, listar_archivos
 
 from .ayudantes import construir_iso
 

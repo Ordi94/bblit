@@ -1,13 +1,11 @@
 """Reglas de negocio de la ejecucion multiplataforma de la cadena de compilacion."""
 
-import subprocess
+import shutil
 from pathlib import Path
-from typing import Any
 
 import pytest
-from tools.reconstruccion import infraestructura as infra
-from tools.toolchain import instalacion, plataforma
-from tools.toolchain.dominio import cargar_lock
+from psxdecomp.toolchain import instalacion, plataforma
+from psxdecomp.toolchain.dominio import cargar_lock
 
 from .ayudantes import bloque_componente, lock_de, zip_de
 
@@ -34,8 +32,8 @@ def test_en_linux_el_ensamblador_es_el_binutils_nativo_y_no_el_exe_del_toolchain
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     simular_linux(monkeypatch)
-    monkeypatch.setattr(plataforma.shutil, "which", lambda nombre: f"/usr/bin/{nombre}")
-    monkeypatch.delenv("BBLIT_BINUTILS_PREFIX", raising=False)
+    monkeypatch.setattr(shutil, "which", lambda nombre: f"/usr/bin/{nombre}")
+    monkeypatch.delenv("PSXDECOMP_BINUTILS_PREFIX", raising=False)
     ruta = instalacion.resolver_herramienta(LOCK_BINUTILS, tmp_path, "binutils-mipsel", "as")
     assert ruta == Path("/usr/bin/mipsel-none-elf-as")
 
@@ -44,8 +42,8 @@ def test_el_prefijo_de_binutils_se_configura_por_entorno(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     simular_linux(monkeypatch)
-    monkeypatch.setattr(plataforma.shutil, "which", lambda nombre: f"/opt/{nombre}")
-    monkeypatch.setenv("BBLIT_BINUTILS_PREFIX", "otro-")
+    monkeypatch.setattr(shutil, "which", lambda nombre: f"/opt/{nombre}")
+    monkeypatch.setenv("PSXDECOMP_BINUTILS_PREFIX", "otro-")
     ruta = instalacion.resolver_herramienta(LOCK_BINUTILS, tmp_path, "binutils-mipsel", "as")
     assert ruta == Path("/opt/otro-as")
 
@@ -54,8 +52,8 @@ def test_sin_binutils_nativo_el_error_dice_que_instalar(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     simular_linux(monkeypatch)
-    monkeypatch.setattr(plataforma.shutil, "which", lambda nombre: None)
-    monkeypatch.delenv("BBLIT_BINUTILS_PREFIX", raising=False)
+    monkeypatch.setattr(shutil, "which", lambda nombre: None)
+    monkeypatch.delenv("PSXDECOMP_BINUTILS_PREFIX", raising=False)
     with pytest.raises(FileNotFoundError, match=r"mipsel-none-elf-as.*agregue al PATH"):
         instalacion.resolver_herramienta(LOCK_BINUTILS, tmp_path, "binutils-mipsel", "as")
 
@@ -106,103 +104,9 @@ def test_en_windows_los_binutils_salen_del_toolchain_sin_consultar_el_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(plataforma, "es_windows", lambda: True)
-    monkeypatch.setattr(plataforma.shutil, "which", lambda nombre: pytest.fail("no debe consultar el PATH"))
+    monkeypatch.setattr(shutil, "which", lambda nombre: pytest.fail("no debe consultar el PATH"))
     carpeta = tmp_path / "binutils-mipsel" / "bin"
     carpeta.mkdir(parents=True)
     (carpeta / "mipsel-none-elf-as.exe").write_bytes(b"x")
     ruta = instalacion.resolver_herramienta(LOCK_BINUTILS, tmp_path, "binutils-mipsel", "as")
     assert ruta == carpeta / "mipsel-none-elf-as.exe"
-
-
-class EjecucionFalsa:
-    """Captura la llamada a ``subprocess.run`` que haria ``ejecutar_proceso``."""
-
-    def __init__(self) -> None:
-        self.comando: list[str] = []
-        self.entorno: dict[str, str] = {}
-
-    def __call__(self, comando: list[str], **opciones: Any) -> subprocess.CompletedProcess[str]:
-        self.comando = comando
-        self.entorno = opciones["env"]
-        return subprocess.CompletedProcess(comando, 0, stdout="ok", stderr="")
-
-
-def test_en_linux_ejecutar_proceso_lanza_los_exe_con_wine_y_sin_ruido_de_depuracion(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    simular_linux(monkeypatch)
-    falsa = EjecucionFalsa()
-    monkeypatch.setattr(infra.subprocess, "run", falsa)
-    monkeypatch.delenv("WINEDEBUG", raising=False)
-    monkeypatch.delenv("BBLIT_WINE", raising=False)
-    ruta = "/root/tool chain/pssn/bin/CPPPSX.EXE"
-    assert infra.ejecutar_proceso([ruta, "-Iinclude", "src/a.c"], tmp_path, 5) == "ok"
-    assert falsa.comando == ["wine", ruta, "-Iinclude", "src/a.c"]
-    assert falsa.entorno["WINEDEBUG"] == "-all"
-    assert falsa.entorno["PYTHONUTF8"] == "1"
-
-
-def test_en_linux_un_fallo_de_wine_nombra_el_programa_y_no_a_wine(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    simular_linux(monkeypatch)
-
-    def falla(comando: list[str], **opciones: Any) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(comando, 3, stdout="", stderr="boom")
-
-    monkeypatch.setattr(infra.subprocess, "run", falla)
-    with pytest.raises(infra.ProcesoError, match=r"CC1PSX\.EXE: termino con codigo 3"):
-        infra.ejecutar_proceso(["/t/CC1PSX.EXE"], tmp_path, 5)
-
-
-def test_en_linux_los_binutils_nativos_se_lanzan_sin_wine(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    simular_linux(monkeypatch)
-    falsa = EjecucionFalsa()
-    monkeypatch.setattr(infra.subprocess, "run", falsa)
-    infra.ejecutar_proceso(["/usr/bin/mipsel-none-elf-objdump", "-t", "a.o"], tmp_path, 5)
-    assert falsa.comando[0] == "/usr/bin/mipsel-none-elf-objdump"
-
-
-def lanzar_inexistente(comando: list[str], **opciones: Any) -> subprocess.CompletedProcess[str]:
-    raise FileNotFoundError(2, "No such file", "/ruta/privada/de/la/maquina")
-
-
-def test_en_linux_sin_wine_el_error_dice_que_instalar_y_no_filtra_rutas(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    simular_linux(monkeypatch)
-    monkeypatch.setattr(infra.subprocess, "run", lanzar_inexistente)
-    monkeypatch.setenv("BBLIT_WINE", "/opt/secreto/wine")
-    with pytest.raises(infra.ProcesoError) as error:
-        infra.ejecutar_proceso(["/t/CC1PSX.EXE"], tmp_path, 5)
-    mensaje = str(error.value)
-    assert "CC1PSX.EXE: Wine no esta instalado" in mensaje
-    assert "wine32" in mensaje
-    assert "BBLIT_WINE" in mensaje
-    assert "/opt/secreto" not in mensaje
-    assert "/ruta/privada" not in mensaje
-
-
-def test_en_windows_un_ejecutable_ausente_da_proceso_error_claro(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(plataforma, "es_windows", lambda: True)
-    monkeypatch.setattr(infra.subprocess, "run", lanzar_inexistente)
-    with pytest.raises(infra.ProcesoError) as error:
-        infra.ejecutar_proceso(["C:/privado/tool/CC1PSX.EXE"], tmp_path, 5)
-    mensaje = str(error.value)
-    assert mensaje == "CC1PSX.EXE: el ejecutable no esta instalado o no esta en el PATH"
-
-
-def test_en_linux_un_binutils_nativo_ausente_da_proceso_error_sin_mencionar_wine(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    simular_linux(monkeypatch)
-    monkeypatch.setattr(infra.subprocess, "run", lanzar_inexistente)
-    with pytest.raises(
-        infra.ProcesoError, match="mipsel-none-elf-as: el ejecutable no esta instalado"
-    ) as error:
-        infra.ejecutar_proceso(["/x/mipsel-none-elf-as"], tmp_path, 5)
-    assert "Wine" not in str(error.value)

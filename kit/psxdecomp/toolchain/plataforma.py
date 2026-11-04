@@ -3,11 +3,11 @@
 El SDK original (``CPPPSX.EXE``, ``CC1PSX.EXE``) y los binutils del toolchain son ejecutables de
 Windows. En Windows se lanzan tal cual; en cualquier otro sistema:
 
-* los ``.EXE`` se anteponen con Wine (variable ``BBLIT_WINE``, por omision ``wine``) y se silencia
-  su depuracion con ``WINEDEBUG=-all``, porque su salida mezclada con la del compilador
+* los ``.EXE`` se anteponen con Wine (variable ``WINE`` del entorno del kit, por omision ``wine``)
+  y se silencia su depuracion con ``WINEDEBUG=-all``, porque su salida mezclada con la del compilador
   corromperia el ensamblador que se lee de la salida estandar;
 * ``as``, ``ld``, ``objcopy`` y ``objdump`` de MIPS no se ejecutan con Wine: se usan binutils
-  nativos del ``PATH`` con el prefijo de ``BBLIT_BINUTILS_PREFIX`` (por omision
+  nativos del ``PATH`` con el prefijo de la variable ``BINUTILS_PREFIX`` (por omision
   ``mipsel-none-elf-``). Deben ser la misma version que usa el toolchain de Windows (GNU binutils
   2.40 de ``mipsel-none-elf``, que PSn00bSDK publica tambien para Linux): los binutils de Debian
   (``mipsel-linux-gnu-``) alinean las secciones a 16 bytes en lugar de 4, el ejecutable crece y
@@ -16,6 +16,9 @@ Windows. En Windows se lanzan tal cual; en cualquier otro sistema:
   variantes es la diferencia entre aprovechar o no la maquina.
 
 ``maspsx`` y ``asm-differ`` son Python y no necesitan adaptacion.
+
+Los nombres completos de las variables (``PSXDECOMP_WINE``, ``PSXDECOMP_BINUTILS_PREFIX``) y el
+alias que el proyecto consumidor declare en su manifiesto los resuelve ``psxdecomp.entorno``.
 """
 
 from __future__ import annotations
@@ -25,8 +28,8 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
-VARIABLE_WINE = "BBLIT_WINE"
-VARIABLE_PREFIJO_BINUTILS = "BBLIT_BINUTILS_PREFIX"
+from psxdecomp.entorno import SUFIJO_PREFIJO_BINUTILS, SUFIJO_WINE, VARIABLES_PROPIAS, Variables
+
 WINE_POR_OMISION = "wine"
 PREFIJO_BINUTILS_NATIVO = "mipsel-none-elf-"
 ALIAS_BINUTILS = frozenset({"as", "ld", "objcopy", "objdump"})
@@ -51,7 +54,7 @@ def es_windows() -> bool:
     return sys.platform == "win32"
 
 
-def comando_wine(entorno: Mapping[str, str]) -> str:
+def comando_wine(entorno: Mapping[str, str], variables: Variables = VARIABLES_PROPIAS) -> str:
     """
     Devuelve el ejecutable de Wine configurado.
 
@@ -60,17 +63,21 @@ def comando_wine(entorno: Mapping[str, str]) -> str:
 
     Args:
         entorno (Mapping[str, str]): Variables de entorno.
+        variables (Variables, opcional): Nombres de variable del proyecto; por omision solo el
+            prefijo propio del kit.
 
     Returns:
-        str: Valor de ``BBLIT_WINE`` o ``wine`` si no esta definida o esta vacia.
+        str: Valor de la variable ``WINE`` (prefijo propio o alias) o ``wine`` si no esta definida
+        o esta en blanco.
 
     Ejemplo:
-        wine = comando_wine({"BBLIT_WINE": "/opt/wine/bin/wine"})
+        wine = comando_wine({"PSXDECOMP_WINE": "/opt/wine/bin/wine"})
     """
-    return entorno.get(VARIABLE_WINE, "").strip() or WINE_POR_OMISION
+    valores = (valor.strip() for valor in variables.definidas(SUFIJO_WINE, entorno))
+    return next((valor for valor in valores if valor), WINE_POR_OMISION)
 
 
-def prefijo_binutils(entorno: Mapping[str, str]) -> str:
+def prefijo_binutils(entorno: Mapping[str, str], variables: Variables = VARIABLES_PROPIAS) -> str:
     """
     Devuelve el prefijo de los binutils MIPS nativos.
 
@@ -81,15 +88,18 @@ def prefijo_binutils(entorno: Mapping[str, str]) -> str:
 
     Args:
         entorno (Mapping[str, str]): Variables de entorno.
+        variables (Variables, opcional): Nombres de variable del proyecto; por omision solo el
+            prefijo propio del kit.
 
     Returns:
-        str: Valor de ``BBLIT_BINUTILS_PREFIX`` o ``mipsel-none-elf-`` si no esta definida.
-        Una variable definida pero vacia se respeta (binutils sin prefijo).
+        str: Valor de la variable ``BINUTILS_PREFIX`` (prefijo propio o alias) o
+        ``mipsel-none-elf-`` si ninguna esta definida. Una variable definida pero vacia se respeta
+        (binutils sin prefijo).
 
     Ejemplo:
         prefijo = prefijo_binutils({})
     """
-    return entorno.get(VARIABLE_PREFIJO_BINUTILS, PREFIJO_BINUTILS_NATIVO)
+    return next(variables.definidas(SUFIJO_PREFIJO_BINUTILS, entorno), PREFIJO_BINUTILS_NATIVO)
 
 
 def es_ejecutable_windows(ejecutable: str) -> bool:
@@ -113,7 +123,11 @@ def es_ejecutable_windows(ejecutable: str) -> bool:
 
 
 def adaptar_comando(
-    comando: Sequence[str], entorno: Mapping[str, str], *, windows: bool | None = None
+    comando: Sequence[str],
+    entorno: Mapping[str, str],
+    *,
+    windows: bool | None = None,
+    variables: Variables = VARIABLES_PROPIAS,
 ) -> list[str]:
     """
     Antepone Wine a los comandos que lanzan un ejecutable de Windows fuera de Windows.
@@ -127,6 +141,7 @@ def adaptar_comando(
         comando (Sequence[str]): Ejecutable y argumentos.
         entorno (Mapping[str, str]): Variables de entorno, para localizar Wine.
         windows (bool, opcional): Fuerza la plataforma; por omision se consulta ``es_windows``.
+        variables (Variables, opcional): Nombres de variable del proyecto, para localizar Wine.
 
     Returns:
         list[str]: El mismo comando en Windows o si el programa no es ``.exe``; si no, con Wine delante.
@@ -137,7 +152,7 @@ def adaptar_comando(
     en_windows = es_windows() if windows is None else windows
     if en_windows or not comando or not es_ejecutable_windows(comando[0]):
         return list(comando)
-    return [comando_wine(entorno), *comando]
+    return [comando_wine(entorno, variables), *comando]
 
 
 def entorno_proceso(base: Mapping[str, str], *, windows: bool | None = None) -> dict[str, str]:
@@ -201,6 +216,7 @@ def localizar_binutils(
     alias: str,
     entorno: Mapping[str, str],
     buscar: Callable[[str], str | None] | None = None,
+    variables: Variables = VARIABLES_PROPIAS,
 ) -> Path | None:
     """
     Localiza un binutils MIPS nativo en el ``PATH``.
@@ -214,6 +230,7 @@ def localizar_binutils(
         entorno (Mapping[str, str]): Variables de entorno, para el prefijo.
         buscar (Callable[[str], str | None], opcional): Buscador de ejecutables; por omision
             ``shutil.which``, resuelto en cada llamada.
+        variables (Variables, opcional): Nombres de variable del proyecto, para el prefijo.
 
     Returns:
         Path | None: Ruta absoluta del binutils, o ``None`` si no esta instalado.
@@ -227,5 +244,5 @@ def localizar_binutils(
     if alias not in ALIAS_BINUTILS:
         raise ValueError(f"'{alias}' no es un binutils conocido")
     buscador = buscar or shutil.which
-    encontrado = buscador(f"{prefijo_binutils(entorno)}{alias}")
+    encontrado = buscador(f"{prefijo_binutils(entorno, variables)}{alias}")
     return Path(encontrado) if encontrado else None

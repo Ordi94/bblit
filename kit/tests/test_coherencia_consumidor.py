@@ -27,10 +27,11 @@ def proyecto() -> Proyecto:
 
 
 def modulo(nombre: str) -> ModuleType:
-    return pytest.importorskip(
+    encontrado: ModuleType = pytest.importorskip(
         f"tools.{nombre}",
         reason="el proyecto consumidor no ofrece el paquete tools: la coherencia no se ejercita",
     )
+    return encontrado
 
 
 def test_el_manifiesto_del_consumidor_es_valido_y_no_declara_plugins_inexistentes(proyecto: Proyecto) -> None:
