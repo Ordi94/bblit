@@ -1348,8 +1348,8 @@ L_800291A8:
         if (o->p70 != 0) {
             o->portado.giro.u.y = (u16)t->w114 - o->p70->param.giro.u.y;
         }
-        o->u18C.estado.w192 = 0x1000;
         o->param.giro.u.y = (u16)t->w114;
+        o->u18C.estado.w192 = 0x1000;
         /* +0x14 del fotograma: lhu sin campo con nombre en RegistroAnim; es la distancia del empuje */
         t->r.sv.a.vz = (u16)t->fot->h14;
         RotMatrix(&o->param.giro.rotate, &t->m68);
@@ -2159,6 +2159,10 @@ L_8002B868:
             D_8006D9B8[0] = o;
         } else if (t->fot->w10 & 0x40) {
             D_8006D9B8[0] = o;
+            goto L_8002BA00;
+L_8002B994:
+            o->flags14 |= 0x100;
+            goto L_8002BA58;
         } else {
             t->p30.vy = 0;
             t->p30.vx = D_80069698->param.trans.vx - o->param.trans.vx;
@@ -2168,6 +2172,7 @@ L_8002B868:
             }
         }
     }
+L_8002BA00:
     if (o->flags0C & 0x20000000) {
         o->param.trans.vx = D_8006D928.vpx;
         o->param.trans.vy = D_8006D928.vpy + o->s1E;
@@ -2176,10 +2181,7 @@ L_8002B868:
     }
     o->id_atacante = 0;
     o->flags14 &= 0xB76F777F;
-    o->flags18 &= ~0x6021;
-    goto L_8002BA58;
-L_8002B994:
-    o->flags14 |= 0x100;
+    o->flags18 &= ~0x6020;
 L_8002BA58: ;
 }
 #else
