@@ -20,9 +20,11 @@ def test_una_clave_fuera_de_la_lista_de_admitidas_se_rechaza_sin_volcar_su_valor
 
 
 def test_el_nombre_de_una_clave_desconocida_se_trunca_en_el_mensaje() -> None:
+    largo = val.MAX_LARGO_CLAVE_EN_MENSAJE
     with pytest.raises(ManifiestoError) as error:
-        val.rechazar_claves_desconocidas({"k" * 500: 1}, set(), "rutas")
-    assert len(str(error.value)) < 200
+        val.rechazar_claves_desconocidas({"k" * (largo + 1): 1}, set(), "rutas")
+    assert "k" * largo in str(error.value)
+    assert "k" * (largo + 1) not in str(error.value)
 
 
 def test_con_todas_las_claves_admitidas_no_hay_error() -> None:
