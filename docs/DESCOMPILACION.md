@@ -387,8 +387,9 @@ como común); un símbolo `extern` queda como `lui`. Por eso:
    `graficos_y_gte_10` y `graficos_y_gte_12`, y `D_800694A4` y `D_80069488` en los dos primeros, porque
    las funciones de cada archivo los direccionan por `$gp` y ya coinciden: el enlazador funde las
    definiciones comunes en un solo símbolo, y declararlos `extern` en cabecera empeora cuatro funciones.
-   `D_800693B8` (`s16`, `sh`/`lhu` con `0x98($gp)`) se define en `logica_de_niveles` y en
-   `movimiento_y_objetos_de_escena_2` por el mismo motivo. Esa es la lista completa de datos pequeños definidos
+   `D_800693B8` (`s16`, `sh`/`lhu` con `0x98($gp)`) se define en `logica_de_niveles`,
+   `logica_de_niveles_3` y `movimiento_y_objetos_de_escena_2`, y `D_800693C0` (`s32`, `lw`/`sw` con
+   `0xA0($gp)`) en `logica_de_niveles` y `logica_de_niveles_3`, por el mismo motivo. Esa es la lista completa de datos pequeños definidos
    en más de un archivo; los demás (`D_800693F0`, `D_800693F6`, `D_800693F8`, `D_80069402`, `D_80069416`,
    `D_8006947C`, `D_80069480`, `D_80069490` y `D_8006949C`) se definen en un solo archivo.
 

@@ -11,12 +11,14 @@ extern s16 D_800695DE;
 /*
  * Datos pequenos direccionados con desplazamiento($gp) por func_80026FEC: definiciones tentativas en
  * este archivo para que el ensamblador las reescriba a $gp (el enlace las coloca en 0x800693B4,
- * 0x800693B8, 0x800693C0 y 0x800693D0). D_800693B8 se declara ademas en globales.h.
+ * 0x800693B8, 0x800693C0 y 0x800693D0). D_800693B8 y D_800693C0 se definen igual en otros archivos
+ * que las direccionan por $gp (lista en docs/DESCOMPILACION.md); D_800693B8 se declara ademas en
+ * globales.h. D_800693D0 es s16 porque su unica lectura es lh.
  */
 s32 D_800693B4;
 s16 D_800693B8;
 s32 D_800693C0;
-u16 D_800693D0;
+s16 D_800693D0;
 
 /* Actualizacion por cuadro de los indicadores de la interfaz (gestion_y_dibujo_de_objetos_2.c). */
 extern void func_80039094(void);
@@ -438,7 +440,7 @@ void func_80026FEC(Objeto* o)
         o->h104 = 0x80;
         if (o->flags0C & 0x200) {
             D_8006AA70[1] = 0x80;
-            D_800693D0 = (u16)o->s1E;
+            D_800693D0 = o->s1E;
         }
     }
 
@@ -1708,7 +1710,7 @@ L_8002A6A8:
 
 L_8002A804:
     if (o->flags0C & 0x200) {
-        D_8006AA70[1] = (o->s1E << 7) / (s16)D_800693D0;
+        D_8006AA70[1] = (o->s1E << 7) / D_800693D0;
     }
     if (t->fot->w0A == 0) goto L_8002B6D4;
     t->w_b0 = (s32)((u8*)o->apoyos + t->fot->w1E);
