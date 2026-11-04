@@ -304,22 +304,24 @@ INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037CF8);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 120 con la configuracion versionada (g = 8 del archivo). Convierte un
- * valor de 0 a 999 en tres digitos BCD (centenas, decenas, unidades); el original conserva las
- * centenas en $a1 hasta el final y calcula centenas << 8 justo despues de la multiplicacion,
- * mientras que GCC las deja en $v0 y las desplaza mas tarde (reparto de registros y orden de
- * evaluacion).
+ * Pendiente: puntuacion 110 con la configuracion versionada (g = 8 del archivo). Convierte un
+ * valor de 0 a 999 en tres digitos BCD (centenas, decenas, unidades); el original guarda las
+ * centenas desplazadas en $v0 y el digito de las decenas en $a1, y une las tres partes como
+ * (centenas | decenas) | unidades; GCC desplaza las centenas sobre su propio registro, une las
+ * decenas con las unidades antes y reparte $v0/$a1 al reves (reparto de registros y orden de
+ * evaluacion). La variable de digito unica y el desplazamiento en una local son los que bajan de 120.
  */
 u32 func_80037D3C(u16 valor)
 {
-    u16 centenas;
-    u16 decenas;
+    s32 centenas_en_alto;
+    u16 digito;
 
-    centenas = valor / 100;
-    valor -= centenas * 100;
-    decenas = valor / 10;
-    valor -= decenas * 10;
-    return (decenas << 4) | valor | (centenas << 8);
+    digito = valor / 100;
+    valor = valor - digito * 100;
+    centenas_en_alto = digito << 8;
+    digito = valor / 10;
+    valor -= digito * 10;
+    return (digito << 4) | valor | centenas_en_alto;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80037D3C);
