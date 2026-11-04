@@ -4,6 +4,7 @@ import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import pytest
 from tools.ghidra.borradores import (
@@ -111,7 +112,7 @@ def test_genera_el_desensamblado_con_el_lanzador_y_lo_reutiliza(tmp_path: Path) 
         (carpeta / "asm" / "text.s").write_text("texto del desensamblado\n", encoding="utf-8")
         return ResultadoEjecucion(0, "")
 
-    kwargs = {"base": 0x80014A00, "tamano_archivo": 0x55800, "lanzador": lanzador}
+    kwargs: dict[str, Any] = {"base": 0x80014A00, "tamano_archivo": 0x55800, "lanzador": lanzador}
     assert (
         asegurar_desensamblado(exe, tmp_path / "symbols.txt", carpeta, **kwargs)
         == "texto del desensamblado\n"

@@ -3,6 +3,7 @@
 import socket
 import sys
 import time
+from collections.abc import Sequence
 
 import pytest
 from tools.emulador import proceso
@@ -13,6 +14,11 @@ SALIDA_CON_PROCESOS = (
     '"pcsx-redux.main.exe","5678","Console","1","90,000 K"\n'
 )
 SALIDA_SIN_PROCESOS = "INFO: No tasks are running which match the specified criteria.\n"
+
+
+def _registrar(ordenes: list[list[str]], orden: Sequence[str]) -> str:
+    ordenes.append(list(orden))
+    return ""
 
 
 def test_listar_procesos_extrae_los_nombres_de_imagen():
@@ -31,8 +37,8 @@ def test_listar_procesos_sin_coincidencias_devuelve_lista_vacia():
 
 
 def test_terminar_procesos_mata_el_arbol_y_despues_por_nombre():
-    ordenes = []
-    proceso.terminar_procesos(4321, lambda orden: ordenes.append(list(orden)) or "")
+    ordenes: list[list[str]] = []
+    proceso.terminar_procesos(4321, lambda orden: _registrar(ordenes, orden))
     assert ordenes == [
         ["taskkill", "/F", "/T", "/PID", "4321"],
         ["taskkill", "/F", "/T", "/IM", "pcsx-redux*"],
@@ -40,8 +46,8 @@ def test_terminar_procesos_mata_el_arbol_y_despues_por_nombre():
 
 
 def test_terminar_procesos_sin_pid_solo_termina_por_nombre():
-    ordenes = []
-    proceso.terminar_procesos(None, lambda orden: ordenes.append(list(orden)) or "")
+    ordenes: list[list[str]] = []
+    proceso.terminar_procesos(None, lambda orden: _registrar(ordenes, orden))
     assert ordenes == [["taskkill", "/F", "/T", "/IM", "pcsx-redux*"]]
 
 

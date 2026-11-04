@@ -1,5 +1,6 @@
 """Decodificacion de PNG y deteccion de pantalla negra sobre imagenes sinteticas y reales."""
 
+import struct
 import zlib
 from pathlib import Path
 
@@ -146,7 +147,7 @@ def test_tipo_de_color_desconocido_se_rechaza():
 
 
 def test_dimensiones_excesivas_se_rechazan():
-    cabecera = sintetica.struct.pack(">IIBBBBB", 100000, 100000, 8, 6, 0, 0, 0)
+    cabecera = struct.pack(">IIBBBBB", 100000, 100000, 8, 6, 0, 0, 0)
     png = b"\x89PNG\r\n\x1a\n" + sintetica._chunk(b"IHDR", cabecera) + sintetica._chunk(b"IEND", b"")
     with pytest.raises(ValueError, match="fuera de rango"):
         pantalla.decodificar_png(png)
@@ -166,7 +167,7 @@ def test_datos_comprimidos_corruptos_se_rechazan():
 
 
 def test_datos_de_imagen_incompletos_se_rechazan():
-    cabecera = sintetica.struct.pack(">IIBBBBB", 4, 4, 8, 6, 0, 0, 0)
+    cabecera = struct.pack(">IIBBBBB", 4, 4, 8, 6, 0, 0, 0)
     png = (
         b"\x89PNG\r\n\x1a\n"
         + sintetica._chunk(b"IHDR", cabecera)
@@ -178,7 +179,7 @@ def test_datos_de_imagen_incompletos_se_rechazan():
 
 
 def test_filtro_de_fila_desconocido_se_rechaza():
-    cabecera = sintetica.struct.pack(">IIBBBBB", 1, 1, 8, 0, 0, 0, 0)
+    cabecera = struct.pack(">IIBBBBB", 1, 1, 8, 0, 0, 0, 0)
     png = (
         b"\x89PNG\r\n\x1a\n"
         + sintetica._chunk(b"IHDR", cabecera)

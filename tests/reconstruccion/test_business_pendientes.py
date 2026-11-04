@@ -128,7 +128,7 @@ def test_dos_bloques_consecutivos_se_comprueban_por_separado() -> None:
 
 def test_un_archivo_sin_funciones_en_c_ni_bloques_no_da_error() -> None:
     fuentes_c.verificar_pendientes({"src/vacio.c": "", "src/datos.c": "int tabla[4];\n"})
-    assert fuentes_c.verificar_pendientes({}) is None
+    fuentes_c.verificar_pendientes({})
 
 
 def test_progreso_termina_con_error_y_no_escribe_nada_si_falta_la_linea_pendiente(tmp_path: Path) -> None:

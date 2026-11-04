@@ -7,7 +7,7 @@ from typing import Any
 
 from tools.reconstruccion.infraestructura import ProcesoError
 
-from .test_compilacion import herramientas_compilacion  # noqa: F401 - se reexporta a las pruebas
+from .test_compilacion import herramientas_compilacion as herramientas_compilacion  # noqa: PLC0414 - reexportacion explicita para mypy
 
 FUNCION = "func_80036204"
 ASM_FUNCION = """

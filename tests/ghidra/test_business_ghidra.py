@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from typing import Any
 
 import pytest
 from tools.ghidra.borradores import generar_borradores, seleccionar_funciones
@@ -166,7 +167,7 @@ def test_una_funcion_cuyo_cuerpo_no_tiene_salto_final_no_se_emite() -> None:
 # --- Reglas del analisis de llamadas, borradores y subsistemas -------------------------------
 
 
-def _grafo_del_escenario(funciones: list | None = None):  # type: ignore[no-untyped-def]
+def _grafo_del_escenario(funciones: list[Any] | None = None) -> Any:
     corridas = detectar_corridas(
         escenario.segmento_programa(), BASE, (0x8005DEA0, 0x80069A00), (INICIO_JUEGO, FIN_JUEGO)
     )
@@ -238,7 +239,7 @@ def test_dos_subsistemas_no_pueden_repartirse_las_mismas_direcciones() -> None:
 def test_una_funcion_cuyo_borrador_agota_el_tiempo_queda_registrada_y_la_corrida_sigue(
     tmp_path: Path,
 ) -> None:
-    def lanzador(comando, segundos):  # type: ignore[no-untyped-def]
+    def lanzador(comando, segundos):
         if "func_80014AC4" in comando[-1]:
             raise TimeoutError("agotado")
         return 0, "void f(void) {\n}\n", ""

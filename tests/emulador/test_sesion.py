@@ -142,7 +142,7 @@ def test_un_fallo_al_lanzar_aun_pasa_por_el_apagado(tmp_path):
     with pytest.raises(EmuladorError, match="no existe"):
         sesion.ejecutar_sesion(
             entorno.config,
-            cliente=ClienteFalso(),
+            cliente=ClienteFalso(),  # type: ignore[arg-type]
             lanzar=lanzar_roto,
             terminar=entorno.terminados.append,
             listar=lambda: [],

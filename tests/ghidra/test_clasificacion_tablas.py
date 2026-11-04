@@ -1,3 +1,4 @@
+import bisect
 import csv
 import io
 
@@ -314,7 +315,7 @@ def test_el_seguimiento_calcula_los_inicios_una_vez_y_los_reutiliza_en_cada_cons
 ) -> None:
     """La optimizacion: ninguna consulta reconstruye la lista de inicios de las corridas."""
     consultadas: list[list[int]] = []
-    original = tablas.bisect_right
+    original = bisect.bisect_right
 
     def registra(inicios: list[int], valor: int) -> int:
         consultadas.append(inicios)

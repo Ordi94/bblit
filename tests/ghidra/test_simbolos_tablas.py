@@ -1,9 +1,9 @@
 import csv
 import io
+import os
 from pathlib import Path
 
 import pytest
-from tools.ghidra import simbolos as modulo_simbolos
 from tools.ghidra.cli import main
 from tools.ghidra.dominio import Simbolo
 from tools.ghidra.simbolos import COLUMNAS_NUEVAS, escribir_atomico, formatear_nuevas_csv
@@ -32,7 +32,7 @@ def test_si_el_reemplazo_falla_queda_el_archivo_anterior_y_ningun_temporal(
     def falla(_origen: Path, _destino: Path) -> None:
         raise OSError("disco lleno")
 
-    monkeypatch.setattr(modulo_simbolos.os, "replace", falla)
+    monkeypatch.setattr(os, "replace", falla)
     with pytest.raises(OSError, match="disco lleno"):
         escribir_atomico(destino, "nuevo\n")
     assert destino.read_text(encoding="utf-8") == "anterior\n"

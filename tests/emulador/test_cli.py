@@ -2,9 +2,10 @@
 
 import json
 import runpy
+from typing import Any
 
 import pytest
-from tools.emulador import cli
+from tools.emulador import cli, proceso, sesion
 from tools.emulador.dominio import RAM_TAMANO, EmuladorError
 
 from tests.emulador import sintetica
@@ -25,7 +26,7 @@ def cliente_falso(monkeypatch):
         return cliente
 
     monkeypatch.setattr(cli, "ClienteRedux", fabrica)
-    cliente.puertos = puertos
+    cliente.puertos = puertos  # type: ignore[attr-defined]
     return cliente
 
 
@@ -180,10 +181,10 @@ def test_un_emulador_que_no_responde_da_exit_1(capsys, monkeypatch):
 
 
 def test_apagar_termina_por_nombre_aunque_no_haya_cliente(capsys, monkeypatch):
-    terminados = []
-    monkeypatch.setattr(cli.proceso, "terminar_procesos", terminados.append)
-    monkeypatch.setattr(cli.proceso, "listar_procesos", lambda: [])
-    monkeypatch.setattr(cli.proceso, "puerto_ocupado", lambda puerto: False)
+    terminados: list[int | None] = []
+    monkeypatch.setattr(proceso, "terminar_procesos", terminados.append)
+    monkeypatch.setattr(proceso, "listar_procesos", lambda: [])
+    monkeypatch.setattr(proceso, "puerto_ocupado", lambda puerto: False)
     assert cli.main(["apagar"]) == 0
     assert terminados == [None]
     assert _salida_json(capsys) == {"procesosVivos": 0, "puerto": 8080}
@@ -191,19 +192,19 @@ def test_apagar_termina_por_nombre_aunque_no_haya_cliente(capsys, monkeypatch):
 
 @pytest.mark.parametrize(("vivos", "ocupado"), [(["pcsx-redux.main.exe"], False), ([], True)])
 def test_apagar_falla_si_queda_algo(capsys, monkeypatch, vivos, ocupado):
-    monkeypatch.setattr(cli.proceso, "terminar_procesos", lambda pid: None)
-    monkeypatch.setattr(cli.proceso, "listar_procesos", lambda: vivos)
-    monkeypatch.setattr(cli.proceso, "puerto_ocupado", lambda puerto: ocupado)
+    monkeypatch.setattr(proceso, "terminar_procesos", lambda pid: None)
+    monkeypatch.setattr(proceso, "listar_procesos", lambda: vivos)
+    monkeypatch.setattr(proceso, "puerto_ocupado", lambda puerto: ocupado)
     assert cli.main(["apagar"]) == 1
     assert "siguen" in capsys.readouterr().out
 
 
 def test_arrancar_lanza_espera_running_y_deja_el_emulador_vivo(capsys, monkeypatch, cliente_falso):
-    llamadas = {}
-    monkeypatch.setattr(cli.proceso, "puerto_ocupado", lambda puerto: False)
-    monkeypatch.setattr(cli.proceso, "lanzar_emulador", lambda *a: llamadas.setdefault("lanzar", a) and 555)
-    monkeypatch.setattr(cli.sesion, "esperar_running", lambda *a: 0.75)
-    monkeypatch.setattr(cli.proceso, "terminar_procesos", lambda pid: llamadas.setdefault("terminar", pid))
+    llamadas: dict[str, Any] = {}
+    monkeypatch.setattr(proceso, "puerto_ocupado", lambda puerto: False)
+    monkeypatch.setattr(proceso, "lanzar_emulador", lambda *a: llamadas.setdefault("lanzar", a) and 555)
+    monkeypatch.setattr(sesion, "esperar_running", lambda *a: 0.75)
+    monkeypatch.setattr(proceso, "terminar_procesos", lambda pid: llamadas.setdefault("terminar", pid))
     assert cli.main(["arrancar", "--puerto", "8200"]) == 0
     assert _salida_json(capsys) == {"pid": 555, "puerto": 8200, "segundosHastaRunning": 0.75}
     assert "terminar" not in llamadas
@@ -212,23 +213,23 @@ def test_arrancar_lanza_espera_running_y_deja_el_emulador_vivo(capsys, monkeypat
 
 def test_arrancar_con_puerto_ocupado_falla_sin_lanzar(capsys, monkeypatch):
     lanzado = []
-    monkeypatch.setattr(cli.proceso, "puerto_ocupado", lambda puerto: True)
-    monkeypatch.setattr(cli.proceso, "lanzar_emulador", lambda *a: lanzado.append(a))
+    monkeypatch.setattr(proceso, "puerto_ocupado", lambda puerto: True)
+    monkeypatch.setattr(proceso, "lanzar_emulador", lambda *a: lanzado.append(a))
     assert cli.main(["arrancar"]) == 1
     assert "ya esta ocupado" in capsys.readouterr().out
     assert lanzado == []
 
 
 def test_arrancar_termina_lo_lanzado_si_no_llega_a_running(capsys, monkeypatch, cliente_falso):
-    terminados = []
-    monkeypatch.setattr(cli.proceso, "puerto_ocupado", lambda puerto: False)
-    monkeypatch.setattr(cli.proceso, "lanzar_emulador", lambda *a: 321)
+    terminados: list[int | None] = []
+    monkeypatch.setattr(proceso, "puerto_ocupado", lambda puerto: False)
+    monkeypatch.setattr(proceso, "lanzar_emulador", lambda *a: 321)
 
     def sin_running(*argumentos):
         raise EmuladorError("el emulador no llego a `running`")
 
-    monkeypatch.setattr(cli.sesion, "esperar_running", sin_running)
-    monkeypatch.setattr(cli.proceso, "terminar_procesos", terminados.append)
+    monkeypatch.setattr(sesion, "esperar_running", sin_running)
+    monkeypatch.setattr(proceso, "terminar_procesos", terminados.append)
     assert cli.main(["arrancar"]) == 1
     assert terminados == [321]
 
@@ -240,7 +241,7 @@ def test_sesion_traduce_los_argumentos_a_la_configuracion(capsys, monkeypatch, t
         recibido["config"] = config
         return {"sha256Ram": "abc"}
 
-    monkeypatch.setattr(cli.sesion, "ejecutar_sesion", falsa)
+    monkeypatch.setattr(sesion, "ejecutar_sesion", falsa)
     codigo = cli.main(
         [
             "sesion",
@@ -279,10 +280,10 @@ def test_sesion_traduce_los_argumentos_a_la_configuracion(capsys, monkeypatch, t
 
 
 def test_sesion_usa_los_valores_por_defecto_y_las_variables_del_entorno(monkeypatch, tmp_path):
-    recibido = {}
+    recibido: dict[str, Any] = {}
     monkeypatch.setenv("BBLIT_REDUX", "otro/redux.exe")
     monkeypatch.setenv("BBLIT_BIOS", "otra/bios.bin")
-    monkeypatch.setattr(cli.sesion, "ejecutar_sesion", lambda config: recibido.setdefault("c", config) and {})
+    monkeypatch.setattr(sesion, "ejecutar_sesion", lambda config: recibido.setdefault("c", config) and {})
     assert cli.main(["sesion", "--salida", str(tmp_path)]) == 0
     config = recibido["c"]
     assert config.ejecutable.as_posix() == "otro/redux.exe"
@@ -296,7 +297,7 @@ def test_sesion_con_fallo_de_hito_da_exit_1(capsys, monkeypatch, tmp_path):
     def falla(config):
         raise EmuladorError("la pantalla sigue negra tras 90 s")
 
-    monkeypatch.setattr(cli.sesion, "ejecutar_sesion", falla)
+    monkeypatch.setattr(sesion, "ejecutar_sesion", falla)
     assert cli.main(["sesion", "--salida", str(tmp_path)]) == 1
     assert "sigue negra" in capsys.readouterr().out
 

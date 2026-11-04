@@ -133,7 +133,7 @@ def test_el_resultado_se_escribe_completo_o_no_se_escribe(
     def fallar(origen: Any, destino: Any) -> None:
         raise OSError("disco lleno")
 
-    monkeypatch.setattr(diff.os, "replace", fallar)
+    monkeypatch.setattr(os, "replace", fallar)
     with pytest.raises(OSError, match="disco lleno"):
         diff.guardar_resultado(tmp_path, "func_A", 999, 1024)
     assert (tmp_path / diff.ruta_resultado("func_A")).read_text(encoding="utf-8") == anterior

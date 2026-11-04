@@ -123,7 +123,7 @@ def test_la_misma_union_leida_en_dos_textos_conserva_todos_sus_miembros() -> Non
 def test_la_ruta_de_dos_miembros_de_una_union_coincide_solo_con_alias() -> None:
     alias = an.construir_tabla([CABECERA]).alias_de_campos
     funcion = c.analizar_funcion(cuerpo("x = o->u78.entero + o->u78.corto;"), "f", TIPOS)
-    suma = funcion.cuerpo.items[0].expr.valor  # type: ignore[union-attr]
+    suma = funcion.cuerpo.items[0].expr.valor  # type: ignore[attr-defined]
     izq, der = suma.izq, suma.der
     assert an.ruta_de_memoria(izq) != an.ruta_de_memoria(der)
     assert an.ruta_de_memoria(izq, alias) == an.ruta_de_memoria(der, alias)

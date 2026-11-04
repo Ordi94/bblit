@@ -30,7 +30,7 @@ class Transporte:
 
 def _cliente(respuestas, **kwargs):
     transporte = Transporte(respuestas)
-    pausas = []
+    pausas: list[float] = []
     return cliente.ClienteRedux(8080, transporte, pausas.append, **kwargs), transporte, pausas
 
 

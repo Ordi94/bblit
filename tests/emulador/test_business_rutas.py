@@ -1,9 +1,10 @@
 """Reglas de negocio de la resolucion de rutas del emulador: toolchain compartido y raiz del repositorio."""
 
 from pathlib import Path
+from typing import Any
 
 import pytest
-from tools.emulador import cli
+from tools.emulador import cli, sesion
 
 from tests.emulador.dobles import ClienteFalso, ram_con
 
@@ -109,8 +110,8 @@ def test_un_argumento_explicito_gana_a_las_variables_y_al_toolchain(
 def test_sesion_desde_otra_carpeta_con_solo_el_toolchain_define_usa_el_emulador_del_toolchain(
     repositorio: Path, tmp_path: Path, otro_directorio: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    recibido = {}
-    monkeypatch.setattr(cli.sesion, "ejecutar_sesion", lambda config: recibido.setdefault("c", config) and {})
+    recibido: dict[str, Any] = {}
+    monkeypatch.setattr(sesion, "ejecutar_sesion", lambda config: recibido.setdefault("c", config) and {})
     entorno = {"BBLIT_TOOLCHAIN": str(tmp_path / "tc")}
     assert cli.main(["sesion", "--salida", str(tmp_path / "salida")], entorno, repositorio) == 0
     assert recibido["c"].ejecutable == tmp_path / "tc" / "pcsx-redux" / "pcsx-redux.exe"

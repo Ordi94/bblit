@@ -1,7 +1,7 @@
 """Reglas de negocio del oraculo: entradas rechazadas, deteccion de pantalla y apagado garantizado."""
 
 import pytest
-from tools.emulador import cli, comparacion, pantalla, sesion
+from tools.emulador import cli, comparacion, pantalla, proceso, sesion
 from tools.emulador.cliente import ClienteRedux
 from tools.emulador.dominio import RAM_TAMANO, EmuladorError, comparar_regiones, offset_de_ram
 
@@ -73,7 +73,7 @@ def test_un_logo_pequeno_sobre_fondo_negro_cuenta_como_contenido():
 
 def test_el_apagado_ocurre_aunque_la_espera_falle(tmp_path):
     reloj = Reloj()
-    terminados = []
+    terminados: list[int | None] = []
     config = sesion.ConfigSesion(
         imagen=tmp_path / "i.cue",
         bios=tmp_path / "b.bin",
@@ -85,7 +85,7 @@ def test_el_apagado_ocurre_aunque_la_espera_falle(tmp_path):
     with pytest.raises(EmuladorError):
         sesion.ejecutar_sesion(
             config,
-            cliente=ClienteFalso(pantallas=[sintetica.png_negro()]),
+            cliente=ClienteFalso(pantallas=[sintetica.png_negro()]),  # type: ignore[arg-type]
             lanzar=lambda *a: 42,
             terminar=terminados.append,
             listar=lambda: [],
@@ -100,10 +100,10 @@ def test_apagar_no_depende_del_cliente_http(monkeypatch):
     def cliente_roto(puerto):
         raise AssertionError("apagar no debe crear un cliente HTTP")
 
-    terminados = []
+    terminados: list[int | None] = []
     monkeypatch.setattr(cli, "ClienteRedux", cliente_roto)
-    monkeypatch.setattr(cli.proceso, "terminar_procesos", terminados.append)
-    monkeypatch.setattr(cli.proceso, "listar_procesos", lambda: [])
-    monkeypatch.setattr(cli.proceso, "puerto_ocupado", lambda puerto: False)
+    monkeypatch.setattr(proceso, "terminar_procesos", terminados.append)
+    monkeypatch.setattr(proceso, "listar_procesos", lambda: [])
+    monkeypatch.setattr(proceso, "puerto_ocupado", lambda puerto: False)
     assert cli.main(["apagar"]) == 0
     assert terminados == [None]
