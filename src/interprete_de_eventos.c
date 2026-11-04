@@ -754,31 +754,25 @@ void func_80031424(Objeto* a0, Accion* a1)
     }
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 85 con la configuracion versionada (g = 8 del archivo). Las instrucciones coinciden; solo difiere el reparto de registros: el original deja el objeto controlado en a2 y el enlace p70 en a0 (copia en v1) y GCC los reparte en a0 y a1 porque la carga del puntero se planifica despues de la ultima lectura del parametro. */
 void func_8003147C(Objeto* a0, Accion* a1)
 {
     Objeto* c;
-    Objeto* p;
     D_80069698->param.giro.u.y = a0->param.giro.u.y + 0x800;
     D_80069698->w17E = 0;
     D_80069698->w17C = ACC_W4(a1);
     D_80069698->flags14 |= 0x2000000;
-    p = D_80069698->p70;
-    if (p != 0) {
+    if (D_80069698->p70 != 0) {
         D_80069698->coord.super = NULL;
         D_80069698->coord.param = PARAMETROS_SDK(D_80069698);
+        /* El enlace se relee y la comparacion usa esa copia a ambos lados: asi el original conserva la copia en v1. */
         c = D_80069698->p70;
-        if (c->p6C == p) {
+        if (c == c->p6C) {
             c->p6C = 0;
         }
         D_80069698->p70 = 0;
         D_80069698->flags14 &= ~0x14;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/interprete_de_eventos", func_8003147C);
-#endif
 
 void func_80031500(Objeto* a0, Accion* a1) { a0->flags14 = (a0->flags14 & 0xFFBFFFFF) | 0x200000; }
 
