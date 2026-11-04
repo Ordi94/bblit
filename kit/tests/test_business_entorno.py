@@ -53,3 +53,9 @@ def test_un_alias_que_no_es_identificador_en_mayusculas_se_rechaza(prefijo: str)
         Variables(alias=prefijo)
     with pytest.raises(ValueError, match="prefijo"):
         Variables(prefijo_principal=prefijo)
+
+
+def test_un_sufijo_de_exactamente_64_caracteres_es_valido() -> None:
+    sufijo = "X" * 64
+    assert VARIABLES_PROPIAS.nombres(sufijo) == (f"PSXDECOMP_{sufijo}",)
+    assert VARIABLES_PROPIAS.leer(sufijo, {f"PSXDECOMP_{sufijo}": "valor"}) == "valor"

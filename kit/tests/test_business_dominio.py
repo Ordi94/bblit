@@ -303,12 +303,13 @@ def test_la_ruta_absoluta_rechaza_rutas_que_no_son_relativas_a_la_raiz(relativa:
         proyecto.ruta_absoluta(relativa)
 
 
-def test_el_resumen_muestra_las_zonas_en_hexadecimal_y_no_filtra_la_raiz(tmp_path: Path) -> None:
+def test_el_resumen_muestra_las_zonas_en_hexadecimal_y_no_filtra_la_raiz() -> None:
     resumen = cargar(MANIFIESTO_COMPLETO).resumen()
     assert "0x80010100" in resumen
     assert "0x80020000-0x80030000" in resumen
     assert "subcarpetas_ajenas: extra" in resumen
-    assert str(tmp_path) not in resumen
+    assert str(RAIZ_FICTICIA) not in resumen
+    assert str(RAIZ_FICTICIA.resolve()) not in resumen
 
 
 def test_el_resumen_indica_que_no_hay_subcarpetas_ajenas() -> None:
