@@ -100,8 +100,8 @@ ejecutables, rutas ni convenciones de ningun juego.
 | `permutador.mutaciones` | Reformulaciones del arbol que conservan el significado y filtro `variante_permitida`. |
 | `permutador.estado` | Estado persistente de una busqueda en `<build>/permutar/<funcion>/` (`estado.json`, `registro.jsonl`, `mejor.c`, `actual.c`). `carpeta_de` recibe la carpeta de build del proyecto. |
 
-La funcion que dirige la busqueda (`permutar`), la medicion de variantes y la comparacion tras enlazar
-dependen todavia de la capa de infraestructura y se trasladan cuando esta pase al kit.
+La funcion que dirige la busqueda (`permutar`) y la medicion de variantes dependen de la
+capa de construccion y de comparacion, que ya viven en el kit, y se trasladan en el paso siguiente.
 
 ## Construccion
 
@@ -112,15 +112,38 @@ llega por parametro explicito, sin estado global.
 | Modulo | Responsabilidad |
 |---|---|
 | `construccion.dominio` | Reglas puras (sin E/S): cabecera PS-X EXE, comandos de `splat`, `as`, `ld` y `objcopy`, verificacion por huella, opciones de compilacion por archivo (`-G`), valor de `_gp`, datos pequenos y lectura del archivo de simbolos. |
-| `construccion.compilacion` | Cadena preprocesador, compilador, `maspsx` y ensamblador para un archivo C; validacion de las secciones del objeto. Recibe `Rutas`, `Convenciones` y `Compilacion` en cada llamada. |
+| `construccion.compilacion` | Cadena preprocesador, compilador, `maspsx` y ensamblador para un archivo C; validacion de las secciones del objeto. Recibe `Rutas`, `Convenciones` y `Compilacion` en cada llamada. `construir_mixto` construye el ejecutable completo: compila los C, ensambla el resto y enlaza en el orden del script del enlazador. |
+| `construccion.salidas` | Nombres puros de lo que genera la construccion (`calcular_salidas`): script del enlazador, ELF, mapa, binario, carpetas de objetos, de `diff` y de `permutar`. Se derivan del nombre del ejecutable y de `rutas.build`. |
+| `construccion.infraestructura` | Disco y procesos: ejecutar herramientas con tiempo limite, extraer el ejecutable de la imagen del disco, dividir con `splat`, ensamblar, enlazar, verificar por huella y limpiar. Lee los archivos de configuracion del proyecto con cotas de tamano. |
 
 Las funciones de `construccion.dominio` que interpretan formatos reciben `Convenciones`
 (`patron_linea_simbolo`, `patron_simbolo_datos`, `max_valor_g`); las de `construccion.compilacion`
 reciben `Rutas` (`fuentes`, `incluir`, `macros`, `splat`), `Convenciones` (`max_valor_g`) y `Compilacion`
-(`version_aspsx`, `opciones_compilador`). La funcion
-que construye el ejecutable completo (enlace incluido) se traslada junto con la infraestructura.
+(`version_aspsx`, `opciones_compilador`). Las de `construccion.infraestructura` reciben `Rutas` y,
+cuando interpretan simbolos u opciones, `Convenciones`; el nombre del ejecutable llega como argumento
+(`referencia.nombre` o `nombre_ejecutable`) y el kit nunca lo supone.
+
+Suposiciones de la infraestructura, que un proyecto debe respetar:
+
+- El particionador nombra el script del enlazador y las salidas del enlace con el nombre del ejecutable
+  sin su ultima extension (`EJEC_001.00` produce `EJEC_001.ld`, `.elf`, `.map` y `.bin`).
+- El script del enlazador referencia los objetos como `build/<ruta>.s.o` y `build/<ruta>.c.o`; los
+  objetos de ensamblador y de C viven en `<build>/<asm>` y `<build>/<fuentes>`.
+- Si `rutas.simbolos` lista varios archivos, se combinan en el orden declarado (el ultimo gana si repiten
+  un nombre) y los que no existen se omiten; `verificar_configuracion` exige que existan todos.
+- Una imagen de disco con el sistema de archivos ya extraido se busca en `<disco>/fs/<ejecutable>`.
+- Los mensajes de error nombran las variables de entorno con `Variables.describir`: el prefijo propio y el
+  alias del proyecto. `ejecutar_proceso` recibe `variables` para localizar Wine con ese alias.
 
 ## Comparacion
+
+`psxdecomp.diff.comparacion` compara una funcion compilada desde C con su objetivo original usando
+`asm-differ` y guarda la ultima puntuacion en `<build>/diff/<funcion>.resultado.json`. Se llama
+`comparacion` y no `diff` para que `psxdecomp.diff.diff` no repita el nombre del paquete.
+`psxdecomp.diff.enlace_diff` decide, enlazando cada objeto en la direccion de la funcion, si los bytes
+coinciden aunque `asm-differ` puntue la forma simbolica de una referencia frente a la numerica; recibe la
+ruta del ELF de la ultima construccion (`SalidasDeBuild.elf`). `comparar_funcion` recibe `Rutas`,
+`Convenciones`, `Compilacion` y el nombre del ejecutable.
 
 `psxdecomp.diff.fuentes_c` analiza el texto de los archivos C y deduce el estado de cada funcion (en C,
 intento no coincidente o ensamblador), la linea de pendiente de cada intento y las rutinas escritas a
@@ -134,6 +157,8 @@ listas de admitidos y cotas):
 | Clave | Contenido |
 |---|---|
 | `rutas.macros` | Carpeta de macros del ensamblador (defecto `asm/include`). |
+| `rutas.asm_coincidente` | Ensamblador original, por funcion, de las funciones ya escritas en C (defecto `asm/matchings`). |
+| `rutas.asm_pendiente` | Ensamblador original, por funcion, de las que siguen en ensamblador o pendientes (defecto `asm/nonmatchings`). |
 | `convenciones.manuscrita` | Expresion de la frase que marca una rutina escrita a mano. |
 | `convenciones.patron_simbolo_datos` | Nombre de un simbolo de datos pequenos; su unico grupo es la direccion en hexadecimal. |
 | `convenciones.patron_linea_simbolo` | Linea del archivo de simbolos; tres grupos: nombre, direccion y atributos. |
