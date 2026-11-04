@@ -1,5 +1,7 @@
 """Reglas de negocio de la configuracion: nota del lock y aviso de datos pequenos ya declarados."""
 
+import argparse
+import dataclasses
 import hashlib
 import json
 from pathlib import Path
@@ -8,7 +10,9 @@ import pytest
 from tools.reconstruccion import cli, dominio
 from tools.reconstruccion import infraestructura as infra
 from tools.reconstruccion.dominio import SimboloDeclarado
+from tools.toolchain.contexto import PROYECTO
 
+from psxdecomp.cli import Contexto, comandos
 from psxdecomp.construccion import infraestructura as infra_kit
 
 RAIZ_REPO = Path(__file__).resolve().parents[2]
@@ -143,7 +147,13 @@ def test_split_sigue_avisando_de_la_duplicacion_sin_fallar(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     preparar(tmp_path, "[datos_pequenos]\nD_80069330 = 0x80069330\n")
-    cli._avisar_configuracion(tmp_path)
+    contexto = Contexto(
+        proyecto=dataclasses.replace(PROYECTO, raiz=tmp_path),
+        args=argparse.Namespace(),
+        entorno={},
+        ejecutar=infra.ejecutar_proceso,
+    )
+    comandos._avisar_configuracion(contexto)
     assert capsys.readouterr().err.startswith("aviso: [datos_pequenos] D_80069330")
 
 

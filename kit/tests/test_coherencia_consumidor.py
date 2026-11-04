@@ -12,6 +12,7 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+from psxdecomp.cli.plugins import resolver_referencia
 from psxdecomp.proyecto import Proyecto, cargar_proyecto
 
 RAIZ_CONSUMIDOR = Path(__file__).resolve().parents[2]
@@ -34,10 +35,13 @@ def modulo(nombre: str) -> ModuleType:
     return encontrado
 
 
-def test_el_manifiesto_del_consumidor_es_valido_y_no_declara_plugins_inexistentes(proyecto: Proyecto) -> None:
-    assert proyecto.plugins.subcomandos == ()
+def test_el_manifiesto_del_consumidor_declara_plugins_que_se_pueden_resolver(proyecto: Proyecto) -> None:
+    assert proyecto.plugins.subcomandos == ("tools.reconstruccion.cli:registrar_progreso",)
     assert proyecto.plugins.antes_de_construir == ()
     assert proyecto.plugins.despues_de_verificar == ()
+    modulo("reconstruccion.cli")
+    for referencia in proyecto.plugins.subcomandos:
+        assert callable(resolver_referencia(referencia, proyecto.raiz))
 
 
 def test_el_ejecutable_coincide_con_la_referencia_versionada(proyecto: Proyecto) -> None:
@@ -98,11 +102,12 @@ def test_la_cadena_de_compilacion_sale_del_manifiesto_y_los_comandos_la_usan(pro
     assert f"--aspsx-version={declarada.version_aspsx}" in comando_as
 
 
-def test_las_rutas_de_la_linea_de_ordenes_coinciden_con_el_manifiesto(proyecto: Proyecto) -> None:
+def test_la_linea_de_ordenes_del_juego_nombra_las_rutas_del_manifiesto(proyecto: Proyecto) -> None:
     cli = modulo("reconstruccion.cli")
-    assert cli.RUTA_REFERENCIA.as_posix() == proyecto.identidad.referencia
-    assert cli.RUTA_LOCK.as_posix() == proyecto.rutas.toolchain_lock
-    assert cli.RUTA_LOCAL.as_posix() == proyecto.rutas.local
+    ayuda = cli.construir_parser().format_help()
+    assert proyecto.rutas.local in ayuda
+    assert f"{proyecto.rutas.fuentes}/*.c" in ayuda
+    assert "progreso" in ayuda
 
 
 def test_las_rutas_y_zonas_del_medidor_de_progreso_coinciden_con_el_manifiesto(proyecto: Proyecto) -> None:

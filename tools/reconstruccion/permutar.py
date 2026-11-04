@@ -7,6 +7,7 @@ que el kit recibe parametrizadas.
 
 from functools import partial
 
+from psxdecomp.diff.fuentes_c import MAX_BYTES_FUENTE
 from psxdecomp.permutador import busqueda as _kit
 from psxdecomp.permutador.busqueda import (
     CANTIDADES_DE_MUTACIONES,
@@ -42,6 +43,7 @@ __all__ = [
     "CANTIDADES_DE_MUTACIONES",
     "INTENTOS_POR_VARIANTE",
     "LIMITE_RONDAS_SIN_MEJORA",
+    "MAX_BYTES_FUENTE",
     "MAX_ITERACIONES",
     "MAX_MINUTOS",
     "MAX_PROCESOS",

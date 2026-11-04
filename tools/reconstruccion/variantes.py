@@ -8,6 +8,7 @@ el kit recibe parametrizada: el resto del repositorio la sigue llamando con la f
 from functools import partial
 
 from psxdecomp.diff import variantes as _kit
+from psxdecomp.diff.enlace_diff import TIMEOUT_ENLACE_S
 from psxdecomp.diff.variantes import (
     MAX_BYTES_VARIANTE,
     MAX_CARACTERES_ERROR,
@@ -31,6 +32,7 @@ __all__ = [
     "MAX_BYTES_VARIANTE",
     "MAX_CARACTERES_ERROR",
     "MAX_VARIANTES",
+    "TIMEOUT_ENLACE_S",
     "ResultadoVariante",
     "formatear_tabla",
     "listar_variantes",

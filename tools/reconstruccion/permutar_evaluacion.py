@@ -7,6 +7,7 @@ el kit recibe parametrizada.
 
 from functools import partial
 
+from psxdecomp.diff.enlace_diff import TIMEOUT_ENLACE_S
 from psxdecomp.permutador import evaluacion as _kit
 from psxdecomp.permutador.evaluacion import (
     MAX_CARACTERES_MOTIVO,
@@ -27,6 +28,7 @@ preparar_medicion = partial(
 
 __all__ = [
     "MAX_CARACTERES_MOTIVO",
+    "TIMEOUT_ENLACE_S",
     "ObjetivoMedicion",
     "ResultadoEvaluacion",
     "evaluar",

@@ -95,6 +95,17 @@ def test_comando_preprocesar_rechaza_definiciones_que_no_son_macros(definicion: 
         comp.comando_preprocesar(Path("c.exe"), "src/a.c", "o.i", "include", (definicion,))
 
 
+def test_el_nombre_de_una_macro_admite_hasta_32_caracteres() -> None:
+    nombre_justo = "M" * 32
+    comando = comp.comando_preprocesar(Path("c.exe"), "src/a.c", "o.i", "include", (nombre_justo,))
+    assert f"-D{nombre_justo}" in comando
+
+
+def test_el_nombre_de_una_macro_de_33_caracteres_se_rechaza_con_el_mismo_mensaje() -> None:
+    with pytest.raises(ValueError, match="identificador en mayusculas"):
+        comp.comando_preprocesar(Path("c.exe"), "src/a.c", "o.i", "include", ("M" * 33,))
+
+
 def test_comando_compilar_fija_las_opciones_del_compilador_original() -> None:
     comando = comp.comando_compilar(Path("CC1PSX.EXE"), "a.i", "a.s", max_valor_g=64, compilacion=COMPILACION)
     assert comando == ["CC1PSX.EXE", "-quiet", "-O2", "-G0", "a.i", "-o", "a.s"]

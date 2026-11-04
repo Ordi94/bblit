@@ -14,9 +14,9 @@ from toolchain.ayudantes import bloque_componente, lock_de
 
 from .ayudantes_diff import ASM_FUNCION, EjecutorDiff
 from .ayudantes_infra import EJECUTABLE, REFERENCIA, Registro, referencia_json
+from .ayudantes_variantes import EjecutorVariantes, crear_repo, crear_variantes
 from .test_compilacion import SALIDA_OBJDUMP, EjecutorC
 from .test_gp import EjecutorEnlace
-from .test_variantes import EjecutorVariantes, crear_repo, crear_variantes
 
 
 @pytest.fixture

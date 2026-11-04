@@ -12,7 +12,6 @@ from pathlib import Path
 from psxdecomp.cli import Contexto, describir_error_de_sistema, motivo_sin_rutas, resumir_comparacion
 from psxdecomp.cli import construir_parser as construir_parser_del_kit
 from psxdecomp.cli import main as main_del_kit
-from psxdecomp.cli.comandos import imprimir_avisos
 from psxdecomp.dominio import Proyecto
 from tools.reconstruccion import coherencia_pendientes, progreso, readme_progreso
 from tools.reconstruccion import infraestructura as infra
@@ -85,16 +84,6 @@ def registrar_progreso(
 def _manejar_progreso(contexto: Contexto) -> int:
     """Adapta el contexto del kit a ``_ejecutar_progreso``."""
     return _ejecutar_progreso(contexto.raiz, contexto.ejecutar, not contexto.args.sin_readme)
-
-
-def _avisar_configuracion(raiz: Path) -> None:
-    """Avisa de la configuracion repetida sin tumbar la orden que la pide."""
-    try:
-        avisos = infra.verificar_configuracion(raiz)
-    except (ValueError, FileNotFoundError, OSError) as error:
-        print(f"aviso: no se pudo verificar la configuracion: {error}", file=sys.stderr)
-        return
-    imprimir_avisos(avisos)
 
 
 def _fecha_actual() -> str:

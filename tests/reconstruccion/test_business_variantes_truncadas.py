@@ -1,15 +1,18 @@
-"""Reglas de negocio de ``probar``: una medicion cortada por ``asm-differ`` no es una coincidencia."""
+"""Reglas de negocio de ``probar`` en el proyecto: una medicion cortada no es una coincidencia.
+
+Las reglas del banco de variantes en si (orden, coincidencia, truncado) se prueban en el kit; aqui solo
+se comprueban la reexportacion con el manifiesto del proyecto y el escenario de la linea de ordenes.
+"""
 
 from pathlib import Path
 from typing import Any, ClassVar
 
 import pytest
 from tools.reconstruccion import diff, variantes
-from tools.reconstruccion.variantes import ResultadoVariante
 
+from .ayudantes_variantes import EjecutorVariantes, crear_repo, crear_variantes
 from .test_cli import ejecutar_cli, entorno_completo, entorno_repo  # noqa: F401 - fixtures reutilizadas
 from .test_compilacion import SALIDA_OBJDUMP, herramientas_compilacion
-from .test_variantes import EjecutorVariantes, crear_repo, crear_variantes
 
 
 class EjecutorTruncando(EjecutorVariantes):
@@ -38,19 +41,6 @@ def test_una_variante_truncada_con_puntuacion_cero_no_se_reporta_como_coincident
         ("completa.c", 0, False, True),
         ("cortada.c", 0, True, False),
     ]
-    assert variantes.formatear_tabla(resultados).splitlines() == [
-        "variante    puntuacion",
-        "completa.c  0",
-        "cortada.c   0 (medicion truncada)",
-    ]
-
-
-def test_una_variante_truncada_no_gana_a_una_completa_peor_puntuada() -> None:
-    resultados = [ResultadoVariante("a.c", 0, truncado=True), ResultadoVariante("b.c", 40)]
-    ordenados = variantes.ordenar_resultados(resultados)
-    assert [r.nombre for r in ordenados] == ["b.c", "a.c"]
-    assert ordenados[0].coincide is False
-    assert not ResultadoVariante("c.c", 50, bytes_iguales=True, truncado=True).coincide
 
 
 def test_probar_por_linea_de_ordenes_falla_si_la_unica_variante_con_cero_esta_truncada(

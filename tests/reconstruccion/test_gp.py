@@ -15,6 +15,7 @@ from psxdecomp.construccion import infraestructura as infra_kit
 
 from .ayudantes_diff import ASM_FUNCION, EjecutorDiff
 from .ayudantes_infra import REFERENCIA
+from .ayudantes_variantes import EjecutorVariantes, crear_variantes, escribir_opciones
 from .test_compilacion import (
     SALIDA_OBJDUMP,
     SCRIPT_MIXTO,
@@ -23,7 +24,6 @@ from .test_compilacion import (
     herramientas_compilacion,
     preparar_construccion,
 )
-from .test_variantes import EjecutorVariantes, crear_variantes, escribir_opciones
 
 # ---------------------------------------------------------------- dominio
 

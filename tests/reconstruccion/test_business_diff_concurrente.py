@@ -17,8 +17,8 @@ from tools.reconstruccion import diff, variantes
 from tools.reconstruccion.infraestructura import ProcesoError
 
 from .ayudantes_diff import ASM_FUNCION
+from .ayudantes_variantes import EjecutorVariantes, crear_repo, crear_variantes
 from .test_compilacion import SALIDA_OBJDUMP, herramientas_compilacion
-from .test_variantes import EjecutorVariantes, crear_repo, crear_variantes
 
 PUNTUACIONES = {"func_A": 111, "func_B": 222}
 

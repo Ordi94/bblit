@@ -1,7 +1,9 @@
-"""Reglas de negocio del aviso de coherencia: el comentario Pendiente contra la ultima medicion de diff."""
+"""Aviso de coherencia en el proyecto: reexportacion, progreso y medicion guardada por ``diff``.
+
+Las reglas del contraste (medicion obsoleta, truncada, ilegible, cifras distintas) se prueban en el kit.
+"""
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -55,49 +57,10 @@ def test_sin_medicion_no_se_avisa_ni_se_ejecuta_diff(raiz: Path) -> None:
     assert not (raiz / "build").exists()
 
 
-def test_una_medicion_anterior_a_la_ultima_edicion_del_c_no_es_reciente(raiz: Path) -> None:
-    ruta = escribir_medicion(raiz, medicion(340))
-    antes = (raiz / "src" / "a.c").stat().st_mtime - 100
-    os.utime(ruta, (antes, antes))
-    assert avisos(raiz) == []
-
-
-def test_una_medicion_con_la_misma_fecha_que_el_c_si_se_contrasta(raiz: Path) -> None:
-    ruta = escribir_medicion(raiz, medicion(340))
-    igual = (raiz / "src" / "a.c").stat().st_mtime
-    os.utime(ruta, (igual, igual))
-    assert len(avisos(raiz)) == 1
-
-
-@pytest.mark.parametrize(
-    "contenido",
-    [
-        "no es json",
-        "[]",
-        {"funcion": "otra", "puntuacion": 340},
-        {"funcion": FUNCION, "puntuacion": "340"},
-        {"funcion": FUNCION, "puntuacion": -1},
-        {"funcion": FUNCION, "puntuacion": True},
-        {"funcion": FUNCION},
-        "x" * 5000,
-    ],
-)
-def test_una_medicion_ilegible_o_de_otra_funcion_se_ignora(raiz: Path, contenido: Any) -> None:
-    escribir_medicion(raiz, contenido)
-    assert avisos(raiz) == []
-
-
-def test_un_bloque_sin_linea_pendiente_no_genera_aviso(tmp_path: Path) -> None:
-    preparar_repositorio(tmp_path, bloque(FUNCION, ""))
-    escribir_medicion(tmp_path, medicion(340))
-    assert avisos(tmp_path) == []
-
-
-def test_un_archivo_ausente_o_un_nombre_invalido_se_omiten(tmp_path: Path) -> None:
-    texto = bloque("f" * 65, PENDIENTE)
-    preparar_repositorio(tmp_path, texto)
-    assert coherencia_pendientes.avisos_puntuacion_pendiente(tmp_path, {"src/a.c": texto}) == []
-    assert coherencia_pendientes.avisos_puntuacion_pendiente(tmp_path, {"src/no_existe.c": texto}) == []
+def test_la_reexportacion_lee_la_medicion_de_la_carpeta_de_build_del_manifiesto(raiz: Path) -> None:
+    escribir_medicion(raiz, medicion(340))
+    assert coherencia_pendientes.leer_puntuacion_medida(raiz, FUNCION, 0.0) == 340
+    assert coherencia_pendientes.leer_puntuacion_medida(raiz, "func_otra", 0.0) is None
 
 
 def test_puntuacion_pendiente_lee_el_numero_del_primer_comentario() -> None:
@@ -159,10 +122,3 @@ def test_diff_guarda_cero_si_los_bytes_son_iguales_aunque_asm_differ_puntue_mas(
     datos = leer_medicion_guardada(tmp_path, "func_80036204")
     assert (resultado.bytes_iguales, resultado.puntuacion_asm) == (True, 5)
     assert (resultado.puntuacion, datos["puntuacion"]) == (0, 0)
-
-
-def test_una_medicion_truncada_no_se_contrasta_con_el_comentario(raiz: Path) -> None:
-    escribir_medicion(raiz, {**medicion(340), "truncado": True})
-    assert avisos(raiz) == []
-    escribir_medicion(raiz, {**medicion(340), "truncado": False})
-    assert len(avisos(raiz)) == 1

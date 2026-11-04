@@ -15,10 +15,20 @@ PARES = [
     ("tools.reconstruccion.infraestructura", "psxdecomp.construccion.infraestructura"),
     ("tools.reconstruccion.enlace_diff", "psxdecomp.diff.enlace_diff"),
     ("tools.reconstruccion.diff", "psxdecomp.diff.comparacion"),
+    ("tools.reconstruccion.variantes", "psxdecomp.diff.variantes"),
+    ("tools.reconstruccion.coherencia_pendientes", "psxdecomp.diff.coherencia_pendientes"),
+    ("tools.reconstruccion.permutar_evaluacion", "psxdecomp.permutador.evaluacion"),
+    ("tools.reconstruccion.permutar", "psxdecomp.permutador.busqueda"),
 ]
 
 RUTAS: Mapping[str, object] = {"rutas": PROYECTO.rutas}
 RUTAS_Y_CONVENCIONES: Mapping[str, object] = {"rutas": PROYECTO.rutas, "convenciones": PROYECTO.convenciones}
+CADENA_COMPLETA: Mapping[str, object] = {
+    "rutas": PROYECTO.rutas,
+    "convenciones": PROYECTO.convenciones,
+    "compilacion": PROYECTO.compilacion,
+    "nombre_ejecutable": PROYECTO.identidad.ejecutable,
+}
 
 # Funciones que el kit recibe parametrizadas y la reexportacion enlaza con el manifiesto de este proyecto.
 ENLAZADAS: Mapping[str, Mapping[str, Mapping[str, object]]] = {
@@ -105,6 +115,13 @@ ENLAZADAS: Mapping[str, Mapping[str, Mapping[str, object]]] = {
         "guardar_resultado": RUTAS,
         "preparar_objetivo": RUTAS,
     },
+    "tools.reconstruccion.variantes": {"probar_variantes": CADENA_COMPLETA},
+    "tools.reconstruccion.coherencia_pendientes": {
+        "leer_puntuacion_medida": RUTAS,
+        "avisos_puntuacion_pendiente": RUTAS_Y_CONVENCIONES,
+    },
+    "tools.reconstruccion.permutar_evaluacion": {"preparar_medicion": CADENA_COMPLETA},
+    "tools.reconstruccion.permutar": {"leer_cabeceras": RUTAS, "permutar_funcion": CADENA_COMPLETA},
 }
 
 # Nombres que solo existen en la reexportacion (constantes del proyecto o codigo que aun no esta en el kit).
@@ -154,6 +171,10 @@ PROPIOS: dict[str, set[str]] = {
         "NOMBRE_EJECUTABLE",
         "RUTAS",
     },
+    "tools.reconstruccion.variantes": set(),
+    "tools.reconstruccion.coherencia_pendientes": set(),
+    "tools.reconstruccion.permutar_evaluacion": set(),
+    "tools.reconstruccion.permutar": set(),
 }
 
 

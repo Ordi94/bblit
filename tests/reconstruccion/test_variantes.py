@@ -1,20 +1,22 @@
-"""Opciones de compilacion por archivo y banco de variantes (``probar``)."""
+"""Opciones de compilacion por archivo y reexportacion del banco de variantes (``probar``).
 
-import json
+El banco de variantes vive en el kit y sus reglas se prueban alli; estas pruebas comprueban que el
+enlace con el manifiesto de este proyecto compone las rutas y la cadena de compilacion correctas.
+"""
+
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
 import pytest
 from tools.reconstruccion import compilacion as comp
 from tools.reconstruccion import diff, dominio, variantes
 from tools.reconstruccion import infraestructura as infra
-from tools.reconstruccion.infraestructura import ProcesoError
-from tools.reconstruccion.variantes import ResultadoVariante
 
 from psxdecomp.construccion import infraestructura as infra_kit
 
 from .ayudantes_diff import ASM_FUNCION, EjecutorDiff
 from .ayudantes_infra import REFERENCIA
+from .ayudantes_variantes import EjecutorVariantes, crear_repo, crear_variantes, escribir_opciones
 from .test_compilacion import (
     SALIDA_OBJDUMP,
     SCRIPT_MIXTO,
@@ -52,11 +54,6 @@ def test_valores_g_por_archivo_acepta_la_forma_documentada() -> None:
 def test_valores_g_por_archivo_rechaza_entradas_no_confiables(datos: Any, mensaje: Any) -> None:
     with pytest.raises(ValueError, match=mensaje):
         dominio.valores_g_por_archivo(datos)
-
-
-def escribir_opciones(raiz: Path, texto: str) -> None:
-    (raiz / "config").mkdir(parents=True, exist_ok=True)
-    (raiz / infra.OPCIONES_COMPILACION).write_text(texto, encoding="utf-8")
 
 
 def test_leer_valores_g(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -119,106 +116,7 @@ def test_construir_mixto_aplica_el_g_solo_al_archivo_que_lo_declara(tmp_path: Pa
     assert gs == ["-G8", "-G0"]
 
 
-# ---------------------------------------------------------------- listar y formatear
-
-
-def crear_variantes(carpeta: Path, nombres: list[str]) -> Path:
-    carpeta.mkdir(exist_ok=True)
-    for nombre in nombres:
-        (carpeta / nombre).write_text("int x;\n", encoding="utf-8")
-    return carpeta
-
-
-def test_listar_variantes_ordena_y_solo_toma_archivos_c(tmp_path: Path) -> None:
-    carpeta = crear_variantes(tmp_path / "v", ["b.c", "a.c", "nota.txt"])
-    (carpeta / "sub.c").mkdir()
-    assert [p.name for p in variantes.listar_variantes(carpeta)] == ["a.c", "b.c"]
-
-
-def test_listar_variantes_rechaza_carpetas_y_nombres_inutilizables(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    with pytest.raises(FileNotFoundError, match="la carpeta de variantes no existe"):
-        variantes.listar_variantes(tmp_path / "no_existe")
-    with pytest.raises(ValueError, match=r"no contiene archivos .c"):
-        variantes.listar_variantes(crear_variantes(tmp_path / "vacia", ["nota.txt"]))
-    with pytest.raises(ValueError, match=r"nombre de variante no valido: 'a b.c'"):
-        variantes.listar_variantes(crear_variantes(tmp_path / "malo", ["a b.c"]))
-    grande = crear_variantes(tmp_path / "grande", ["a.c", "b.c", "c.c"])
-    monkeypatch.setattr(variantes, "MAX_VARIANTES", 2)
-    with pytest.raises(ValueError, match="hay mas de 2 variantes"):
-        variantes.listar_variantes(grande)
-    monkeypatch.setattr(variantes, "MAX_VARIANTES", 200)
-    monkeypatch.setattr(variantes, "MAX_BYTES_VARIANTE", 3)
-    with pytest.raises(ValueError, match=r"la variante 'a.c' excede el tamano permitido"):
-        variantes.listar_variantes(grande)
-
-
-def test_ordenar_resultados_deja_al_final_las_que_fallaron_y_desempata_por_nombre() -> None:
-    resultados = [
-        ResultadoVariante("e.c", None, "no compila"),
-        ResultadoVariante("b.c", 20),
-        ResultadoVariante("c.c", 0),
-        ResultadoVariante("a.c", 20),
-    ]
-    assert [r.nombre for r in variantes.ordenar_resultados(resultados)] == ["c.c", "a.c", "b.c", "e.c"]
-
-
-def test_formatear_tabla_alinea_las_columnas() -> None:
-    tabla = variantes.formatear_tabla(
-        [ResultadoVariante("larga_variante.c", 0), ResultadoVariante("b.c", None, "no compila")]
-    )
-    assert tabla.splitlines() == [
-        "variante          puntuacion",
-        "larga_variante.c  0",
-        "b.c               error: no compila",
-    ]
-
-
-# ---------------------------------------------------------------- probar_variantes
-
-
-class EjecutorVariantes(EjecutorC):
-    """Compila y puntua con puntuaciones por variante; una variante 'rota' no compila."""
-
-    PUNTUACIONES: ClassVar[dict[str, int]] = {"mejor.c": 0, "peor.c": 120, "otra.c": 9800, "vacia.c": 400}
-    TABLA_CON_FUNCION = (
-        "SYMBOL TABLE:\n"
-        "00000000 l    d  .text\t00000000 .text\n"
-        "00000000 g     F .text\t00000020 func_80036204\n"
-    )
-    TABLA_DE_OTRA_FUNCION = "SYMBOL TABLE:\n00000000 g     F .text\t00000020 func_80099999\n"
-    TABLA_VACIA = "SYMBOL TABLE:\n00000000 l    d  .text\t00000000 .text\n"
-    FILAS: ClassVar[dict[str, int]] = {}
-
-    def __call__(self, comando: Any, directorio: Any, timeout_s: Any) -> Any:
-        salida = super().__call__(comando, directorio, timeout_s)
-        nombre = Path(comando[0]).name
-        if nombre == "objdump.exe" and "-t" in comando:
-            if "otra.c" in comando[-1]:
-                return self.TABLA_DE_OTRA_FUNCION
-            return self.TABLA_VACIA if "vacia.c" in comando[-1] else self.TABLA_CON_FUNCION
-        if nombre == "CC1PSX.EXE" and "rota" in comando[-3]:
-            raise ProcesoError("CC1PSX.EXE: termino con codigo 33\nparse error")
-        if "--format=json" in comando:
-            variante = comando[comando.index("--file") + 1].split("probar.")[1].removesuffix(".o")
-            if variante == "ilegible.c":
-                return "no es json"
-            salida_json: dict[str, Any] = {"current_score": self.PUNTUACIONES[variante]}
-            if variante in self.FILAS:
-                filas = [{"current": {"mnemonic": "addiu"}}] * self.FILAS[variante]
-                salida_json["rows"] = filas
-            return json.dumps(salida_json)
-        return salida
-
-
-def crear_repo(raiz: Path) -> None:
-    (raiz / "src").mkdir(parents=True)
-    (raiz / "src" / "code_a.c").write_text(
-        'INCLUDE_ASM("asm/nonmatchings/code_a", func_80036204);\n', encoding="utf-8"
-    )
-    (raiz / "asm" / "nonmatchings" / "code_a").mkdir(parents=True)
-    (raiz / "asm" / "nonmatchings" / "code_a" / "func_80036204.s").write_text(ASM_FUNCION, encoding="utf-8")
+# ---------------------------------------------------------------- probar_variantes (reexportacion)
 
 
 def test_probar_variantes_ordena_y_aisla_los_fallos_de_cada_variante(tmp_path: Path) -> None:
@@ -248,76 +146,6 @@ def test_probar_variantes_ordena_y_aisla_los_fallos_de_cada_variante(tmp_path: P
     ensamblados = [c for c in ejecutor.comandos if Path(c[0]).name == "as.exe"]
     assert len(ensamblados) == 1, "el objetivo se ensambla una sola vez"
     assert not (raiz / "src" / "mejor.c").exists()
-
-
-def test_probar_variantes_marca_como_error_la_variante_que_no_define_la_funcion(tmp_path: Path) -> None:
-    raiz = tmp_path / "repo"
-    crear_repo(raiz)
-    carpeta = crear_variantes(tmp_path / "v", ["peor.c", "otra.c", "mejor.c", "vacia.c"])
-    ejecutor = EjecutorVariantes(secciones=SALIDA_OBJDUMP)
-    resultados = variantes.probar_variantes(
-        raiz,
-        "func_80036204",
-        carpeta,
-        herramientas_compilacion(),
-        script_diff=Path("diff.py"),
-        ejecutar=ejecutor,
-    )
-    assert [(r.nombre, r.puntuacion, r.error) for r in resultados] == [
-        ("mejor.c", 0, None),
-        ("peor.c", 120, None),
-        ("otra.c", None, "la variante no define func_80036204"),
-        ("vacia.c", None, "la variante no define func_80036204"),
-    ]
-    assert variantes.formatear_tabla(resultados).splitlines()[-2:] == [
-        "otra.c    error: la variante no define func_80036204",
-        "vacia.c   error: la variante no define func_80036204",
-    ]
-    puntuadas = [c for c in ejecutor.comandos if "--format=json" in c]
-    assert len(puntuadas) == 2, "las variantes sin la funcion no llegan a asm-differ"
-
-
-def test_probar_variantes_con_la_unica_variante_sin_funcion_no_hay_mejor(tmp_path: Path) -> None:
-    raiz = tmp_path / "repo"
-    crear_repo(raiz)
-    carpeta = crear_variantes(tmp_path / "v", ["vacia.c"])
-    resultados = variantes.probar_variantes(
-        raiz,
-        "func_80036204",
-        carpeta,
-        herramientas_compilacion(),
-        script_diff=Path("diff.py"),
-        ejecutar=EjecutorVariantes(secciones=SALIDA_OBJDUMP),
-    )
-    assert resultados == [ResultadoVariante("vacia.c", None, "la variante no define func_80036204")]
-    assert not resultados[0].coincide
-
-
-def test_probar_variantes_valida_la_funcion_y_exige_que_figure_en_src(tmp_path: Path) -> None:
-    raiz = tmp_path / "repo"
-    crear_repo(raiz)
-    carpeta = crear_variantes(tmp_path / "v", ["mejor.c"])
-    ejecutor = EjecutorVariantes()
-    for funcion, mensaje in (
-        ("../x", "identificador C"),
-        ("func_nada", "no figura en ningun archivo de src/"),
-    ):
-        with pytest.raises(ValueError, match=mensaje):
-            variantes.probar_variantes(
-                raiz,
-                funcion,
-                carpeta,
-                herramientas_compilacion(),
-                script_diff=Path("d.py"),
-                ejecutar=ejecutor,
-            )
-    assert ejecutor.comandos == []
-
-
-def test_un_mensaje_de_error_vacio_se_resume() -> None:
-    assert variantes._primera_linea("") == "fallo sin mensaje"
-    assert variantes._primera_linea("\n\n x" + "y" * 300).startswith("x")
-    assert len(variantes._primera_linea("z" * 500)) == variantes.MAX_CARACTERES_ERROR
 
 
 # ---------------------------------------------------------------- diff usa el g del archivo

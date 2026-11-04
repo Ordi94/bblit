@@ -7,8 +7,6 @@ from typing import Any
 
 from tools.reconstruccion.infraestructura import ProcesoError
 
-from .test_compilacion import herramientas_compilacion as herramientas_compilacion  # noqa: PLC0414 - reexportacion explicita para mypy
-
 FUNCION = "func_80036204"
 ASM_FUNCION = """
 nonmatching func_80036204, 0x10
@@ -73,26 +71,3 @@ class EjecutorPermutar:
                 datos["rows"] = self.filas
             return json.dumps(datos)
         return ""
-
-
-def crear_repositorio(
-    raiz: Path, *, con_elf: bool = True, con_simbolos: bool = False, valor_g: int | None = None
-) -> None:
-    """Crea un repositorio minimo con una funcion ``NON_MATCHING`` y su asm original."""
-    (raiz / "src").mkdir(parents=True)
-    (raiz / "src" / "code_a.c").write_text(ARCHIVO_C, encoding="utf-8")
-    (raiz / "asm" / "nonmatchings" / "code_a").mkdir(parents=True)
-    (raiz / "asm" / "nonmatchings" / "code_a" / f"{FUNCION}.s").write_text(ASM_FUNCION, encoding="utf-8")
-    if con_elf:
-        (raiz / "build").mkdir()
-        (raiz / "build" / "SLUS_008.elf").write_bytes(b"elf")
-    if con_simbolos:
-        (raiz / "config").mkdir(exist_ok=True)
-        (raiz / "config" / "symbols.txt").write_text(
-            f"{FUNCION} = 0x80036204; // type:func size:0x10\n", encoding="utf-8"
-        )
-    if valor_g is not None:
-        (raiz / "config").mkdir(exist_ok=True)
-        (raiz / "config" / "opciones_compilacion.toml").write_text(
-            f"[archivos.code_a]\ng = {valor_g}\n", encoding="utf-8"
-        )

@@ -1,4 +1,4 @@
-"""Reglas de negocio de la busqueda: escalada, limites, reanudacion y que ``src/`` nunca cambia."""
+"""Reglas de negocio de la busqueda: escalada, limites, reanudacion y fuentes intactas."""
 
 import json
 from collections import Counter
@@ -6,26 +6,31 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import permutar as pm
-from tools.reconstruccion import permutar_analisis as an
-from tools.reconstruccion import permutar_c as c
-from tools.reconstruccion import permutar_estado as est
-from tools.reconstruccion import permutar_evaluacion as ev
-from tools.reconstruccion import permutar_mutaciones as mut
-from tools.reconstruccion.diff import FuncionSinCError
+from psxdecomp.diff.comparacion import FuncionSinCError
+from psxdecomp.permutador import analisis as an
+from psxdecomp.permutador import busqueda as pm
+from psxdecomp.permutador import c
+from psxdecomp.permutador import estado as est
+from psxdecomp.permutador import evaluacion as ev
+from psxdecomp.permutador import mutaciones as mut
 
-from .ayudantes_permutar import (
+from construccion.test_compilacion import herramientas
+from permutador.ayudantes import (
+    ARCHIVO,
     ARCHIVO_C,
+    COMPILACION,
+    CONVENCIONES,
     CUERPO_FUNCION,
+    EJECUTABLE,
     FUNCION,
+    RUTAS,
     EjecutorPermutar,
     crear_repositorio,
-    herramientas_compilacion,
 )
 
 CABECERA = "typedef struct Objeto {\n    s16 radio;\n    s32 valor;\n} Objeto;\n"
 FUNCION_RICA = (
-    "s32 func_80036204(Objeto* o, s32 x)\n{\n    s32 y;\n    y = o->radio + x;\n    o->valor = y;\n"
+    "s32 rutina_a(Objeto* o, s32 x)\n{\n    s32 y;\n    y = o->radio + x;\n    o->valor = y;\n"
     "    return y + o->valor;\n}"
 )
 
@@ -67,7 +72,7 @@ def crear_busqueda(
     tabla = an.construir_tabla([CABECERA])
     base = c.analizar_funcion(texto, FUNCION, frozenset({"Objeto"}))
     carpeta = tmp_path / "estado"
-    estado = est.Estado(FUNCION, "src/a.c", 5, partida, partida, partida)
+    estado = est.Estado(FUNCION, "codigo/modulo_a.c", 5, partida, partida, partida)
     return pm.Busqueda(
         base,
         tabla,
@@ -107,17 +112,27 @@ def test_las_opciones_fuera_de_rango_se_rechazan(opciones: pm.Opciones, mensaje:
         pm.validar_opciones(opciones)
 
 
-def test_leer_cabeceras_toma_los_h_de_include_y_omite_los_demasiado_grandes(
+def test_leer_cabeceras_toma_los_h_de_la_carpeta_de_inclusion_y_omite_los_demasiado_grandes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    assert pm.leer_cabeceras(tmp_path) == []
-    (tmp_path / "include" / "psyq").mkdir(parents=True)
-    (tmp_path / "include" / "a.h").write_text("A", encoding="utf-8")
-    (tmp_path / "include" / "psyq" / "B.H").write_text("B", encoding="utf-8")
-    (tmp_path / "include" / "c.txt").write_text("C", encoding="utf-8")
-    (tmp_path / "include" / "grande.h").write_text("x" * 50, encoding="utf-8")
+    assert pm.leer_cabeceras(tmp_path, rutas=RUTAS) == []
+    (tmp_path / "cabeceras" / "psyq").mkdir(parents=True)
+    (tmp_path / "cabeceras" / "a.h").write_text("A", encoding="utf-8")
+    (tmp_path / "cabeceras" / "psyq" / "B.H").write_text("B", encoding="utf-8")
+    (tmp_path / "cabeceras" / "c.txt").write_text("C", encoding="utf-8")
+    (tmp_path / "cabeceras" / "grande.h").write_text("x" * 50, encoding="utf-8")
     monkeypatch.setattr(pm, "MAX_BYTES_FUENTE", 10)
-    assert pm.leer_cabeceras(tmp_path) == ["A", "B"]
+    assert pm.leer_cabeceras(tmp_path, rutas=RUTAS) == ["A", "B"]
+
+
+def test_leer_cabeceras_ignora_la_carpeta_de_inclusion_por_defecto_si_el_manifiesto_fija_otra(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "include").mkdir()
+    (tmp_path / "include" / "ajena.h").write_text("AJENA", encoding="utf-8")
+    (tmp_path / "cabeceras").mkdir()
+    (tmp_path / "cabeceras" / "propia.h").write_text("PROPIA", encoding="utf-8")
+    assert pm.leer_cabeceras(tmp_path, rutas=RUTAS) == ["PROPIA"]
 
 
 # --- resumen ----------------------------------------------------------------------------------------
@@ -148,7 +163,7 @@ def test_el_resumen_impreso_incluye_iteraciones_puntuaciones_candidato_y_tiempo(
         resumen(30, descartadas=Counter({"regla": 2, "evaluacion": 5})), Path("repo")
     )
     assert texto.splitlines() == [
-        "func_80036204: 120 iteraciones en 1.5 min (4 procesos, semilla 3)",
+        "rutina_a: 120 iteraciones en 1.5 min (4 procesos, semilla 3)",
         "puntuacion de partida 50, mejor 30 (mejora sin cerrar)",
         "candidato: build/permutar/f/mejor.c",
         "descartadas: evaluacion 5, regla 2",
@@ -300,7 +315,7 @@ def test_una_funcion_sin_mutaciones_posibles_termina_tras_cinco_rondas_vacias(tm
         tmp_path,
         lambda texto, umbral: ev.ResultadoEvaluacion(50),
         pm.Opciones(iteraciones=1000, procesos=2),
-        texto="void func_80036204(void)\n{\n    return;\n}",
+        texto="void rutina_a(void)\n{\n    return;\n}",
     )
     resultado = busqueda.ejecutar()
     assert resultado.iteraciones == pm.RONDAS_VACIAS_MAXIMAS * 2
@@ -359,8 +374,8 @@ def test_el_aviso_de_progreso_sale_cada_veinticinco_rondas(tmp_path: Path) -> No
 def raiz(tmp_path: Path) -> Path:
     repo = tmp_path / "repo con espacios (x)"
     crear_repositorio(repo)
-    (repo / "include").mkdir()
-    (repo / "include" / "tipos.h").write_text(CABECERA, encoding="utf-8")
+    (repo / "cabeceras").mkdir()
+    (repo / "cabeceras" / "tipos.h").write_text(CABECERA, encoding="utf-8")
     return repo
 
 
@@ -370,27 +385,33 @@ def correr(
     return pm.permutar_funcion(
         raiz,
         FUNCION,
-        herramientas_compilacion(),
+        herramientas(),
         Path("diff.py"),
         ejecutor,
         opciones=opciones,
+        rutas=RUTAS,
+        convenciones=CONVENCIONES,
+        compilacion=COMPILACION,
+        nombre_ejecutable=EJECUTABLE,
         salida=(avisos if avisos is not None else []).append,
         reloj=Reloj(0.01),
     )
 
 
-def test_permutar_no_toca_src_y_deja_el_candidato_y_el_estado_en_build(raiz: Path) -> None:
-    antes = (raiz / "src" / "code_a.c").read_bytes()
+def test_permutar_no_toca_la_carpeta_de_fuentes_y_deja_el_candidato_y_el_estado_en_build(
+    raiz: Path,
+) -> None:
+    antes = (raiz / ARCHIVO).read_bytes()
     ejecutor = EjecutorPermutar(lambda texto: 40 - 5 * texto.count("tmp1 ="))
     resultado = correr(raiz, ejecutor, pm.Opciones(iteraciones=24, procesos=3, semilla=2))
-    assert (raiz / "src" / "code_a.c").read_bytes() == antes
+    assert (raiz / ARCHIVO).read_bytes() == antes
     assert resultado.puntuacion_partida == 40
-    assert resultado.candidato == raiz / "build" / "permutar" / FUNCION / "mejor.c"
+    assert resultado.candidato == raiz / "salida" / "permutar" / FUNCION / "mejor.c"
     assert resultado.candidato.is_file()
     assert resultado.semilla == 2
-    guardados = {p.name for p in (raiz / "build" / "permutar" / FUNCION).iterdir()}
+    guardados = {p.name for p in (raiz / "salida" / "permutar" / FUNCION).iterdir()}
     assert {"estado.json", "mejor.c", "actual.c"} <= guardados <= set(est.ARCHIVOS_DEL_ESTADO)
-    assert [p.name for p in (raiz / "build" / "diff").iterdir()] == []
+    assert [p.name for p in (raiz / "salida" / "diff").iterdir()] == []
 
 
 def test_el_candidato_se_puede_aplicar_en_el_archivo_y_compila_de_nuevo(raiz: Path) -> None:
@@ -405,7 +426,7 @@ def test_el_candidato_se_puede_aplicar_en_el_archivo_y_compila_de_nuevo(raiz: Pa
 def test_reanudar_continua_con_los_contadores_acumulados_y_el_mismo_estado(raiz: Path) -> None:
     ejecutor = EjecutorPermutar(lambda texto: 40 - 5 * texto.count("tmp1 ="))
     primera = correr(raiz, ejecutor, pm.Opciones(iteraciones=12, procesos=2, semilla=9))
-    carpeta = raiz / "build" / "permutar" / FUNCION
+    carpeta = raiz / "salida" / "permutar" / FUNCION
     antes = est.cargar_estado(carpeta, FUNCION)
     segunda = correr(raiz, ejecutor, pm.Opciones(iteraciones=10, procesos=2, reanudar=True))
     despues = est.cargar_estado(carpeta, FUNCION)
@@ -425,14 +446,14 @@ def test_sin_reanudar_se_descarta_el_estado_anterior(raiz: Path) -> None:
     ejecutor = EjecutorPermutar(lambda texto: 40 - 5 * texto.count("tmp1 ="))
     correr(raiz, ejecutor, pm.Opciones(iteraciones=10, procesos=2, semilla=1))
     correr(raiz, ejecutor, pm.Opciones(iteraciones=4, procesos=2, semilla=2))
-    estado = est.cargar_estado(raiz / "build" / "permutar" / FUNCION, FUNCION)
+    estado = est.cargar_estado(raiz / "salida" / "permutar" / FUNCION, FUNCION)
     assert estado.iteraciones == 4 and estado.semilla == 2
 
 
 def test_sin_semilla_se_elige_una_y_queda_registrada(raiz: Path) -> None:
     resultado = correr(raiz, EjecutorPermutar(), pm.Opciones(iteraciones=2))
     assert resultado.semilla >= 0
-    assert est.cargar_estado(raiz / "build" / "permutar" / FUNCION, FUNCION).semilla == resultado.semilla
+    assert est.cargar_estado(raiz / "salida" / "permutar" / FUNCION, FUNCION).semilla == resultado.semilla
 
 
 def test_una_funcion_que_ya_coincide_no_se_busca(raiz: Path) -> None:
@@ -463,8 +484,8 @@ def test_si_el_c_vigente_no_se_puede_medir_se_explica_el_motivo(raiz: Path) -> N
 
 def test_las_funciones_que_no_se_pueden_permutar_se_rechazan_antes_de_medir(raiz: Path) -> None:
     ejecutor = EjecutorPermutar()
-    (raiz / "src" / "code_a.c").write_text(
-        'INCLUDE_ASM("asm/nonmatchings/code_a", func_80036204);\n', encoding="utf-8"
+    (raiz / ARCHIVO).write_text(
+        'INCLUDE_ASM("ensamblador/pendientes/modulo_a", rutina_a);\n', encoding="utf-8"
     )
     with pytest.raises(FuncionSinCError):
         correr(raiz, ejecutor, pm.Opciones(iteraciones=5))
@@ -474,19 +495,23 @@ def test_las_funciones_que_no_se_pueden_permutar_se_rechazan_antes_de_medir(raiz
         pm.permutar_funcion(
             raiz,
             "../x",
-            herramientas_compilacion(),
+            herramientas(),
             Path("diff.py"),
             ejecutor,
             opciones=pm.Opciones(iteraciones=1),
+            rutas=RUTAS,
+            convenciones=CONVENCIONES,
+            compilacion=COMPILACION,
+            nombre_ejecutable=EJECUTABLE,
         )
     assert ejecutor.comandos == []
 
 
 def test_un_c_fuera_del_subconjunto_soportado_se_rechaza_con_su_causa(raiz: Path) -> None:
-    (raiz / "src" / "code_a.c").write_text(
+    (raiz / ARCHIVO).write_text(
         CABECERA + "#ifdef NON_MATCHING\n"
-        "s32 func_80036204(s32 x)\n{\n    return x $ 2;\n}\n"
-        '#else\nINCLUDE_ASM("asm/nonmatchings/code_a", func_80036204);\n#endif\n',
+        "s32 rutina_a(s32 x)\n{\n    return x $ 2;\n}\n"
+        '#else\nINCLUDE_ASM("ensamblador/pendientes/modulo_a", rutina_a);\n#endif\n',
         encoding="utf-8",
     )
     with pytest.raises(c.AnalisisCError, match="caracter no reconocido"):
