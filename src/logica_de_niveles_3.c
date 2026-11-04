@@ -368,7 +368,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 #define GIRO_Y(p) (((ParametrosObjeto*)(p))->giro.u.y)
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 11663 con la configuracion versionada (g = 8 del archivo). Reparto de registros guardados: el original deja el scratchpad en s2, el objeto en s3 y asigna s1 a los punteros de area (&res, &p40) y a las banderas de colision, mientras el compilador toma s1 y s2 para el scratchpad y el objeto (rotacion de s1 a s3 en unas 1300 lineas); el resto son 15 tramos de 1 a 4 instrucciones (huecos de retardo, orden de cargas, mflo en t8 en lugar de t7). */
+/* Pendiente: puntuacion 11168 con la configuracion versionada (g = 8 del archivo). Reparto de registros guardados: el original deja el scratchpad en s2, el objeto en s3 y asigna s1 a los punteros de area (&res, &p40) y a las banderas de colision, mientras el compilador toma s1 y s2 para el scratchpad y el objeto (rotacion de s1 a s3 en unas 1300 lineas); el resto son 15 tramos de 1 a 4 instrucciones (huecos de retardo, orden de cargas, mflo en t8 en lugar de t7). */
 /*
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
@@ -763,8 +763,8 @@ L_80027D04:
             func_8001C134((s32*)&t->p30, &t->res, area);
             if (t->res.flags & 8) {
                 jy = D_80069698->param.trans.vy;
-                temp_a = jy - 0xC8;
                 temp_b = jy - 0x190;
+                temp_a = jy - 0xC8;
                 t->w114 = temp_a;
                 t->w118 = temp_b;
             } else if ((t->banderas & 0x810000) && ((s16)o->w26 == (s16)D_80069698->w26)) {
@@ -1105,7 +1105,8 @@ L_80028B94:
             t->r.h[1] += ((0x1000 - t->w114) * t->p30.vy) >> 16;
         }
     }
-    t->w114 = ratan2(t->p30.vx, t->p30.vz);
+    temp_a = ratan2(t->p30.vx, t->p30.vz);
+    t->w114 = temp_a;
     if (t->banderas & 0x1000) {
         /* giro directo hacia el objetivo, relativo al ayudante si lo hay */
         giro = t->w114;
@@ -1852,8 +1853,8 @@ L_8002AC3C:
             o->coord.param = PARAMETROS_SDK(o);
             o->param.trans.vx = pila_nodo.acc.vx;
             o->param.trans.vy = pila_nodo.acc.vy;
-            o->p70 = 0;
             o->param.trans.vz = pila_nodo.acc.vz;
+            o->p70 = 0;
             func_8001CFCC(coord_o);
         }
     }
