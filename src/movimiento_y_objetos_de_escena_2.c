@@ -380,10 +380,11 @@ void func_8001D414(s16 accion)
  * seguimiento.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 840 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y almacenes; el original ejecuta los dos almacenes de bytes de D_8006965A y D_80069659 antes de leer la lista del objeto, el planificador del C adelanta la lectura de p70. */
+/* Pendiente: puntuacion 660 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y almacenes; el original ejecuta los dos almacenes de bytes de D_8006965A y D_80069659 antes de leer la lista del objeto (el planificador del C los deja despues de los almacenes de la camara) y reparte el objeto controlado en a2 y su alias en v1/a1 de otra forma. Leer p->vz antes de los almacenes al objeto y compartir la variable del alias bajan de 840. */
 void func_8001D588(s32 modo, VECTOR* p)
 {
     Objeto* e;
+    long pos_z;
     Objeto* j;
     EstadoCamara* c;
     Objeto* t;
@@ -406,7 +407,9 @@ void func_8001D588(s32 modo, VECTOR* p)
         j->coord.super = NULL;
         j->coord.param = PARAMETROS_SDK(j);
         t->p6C = NULL;
-        j->p70 = NULL;
+        /* Alias del objeto controlado en la misma variable que luego recibe el hijo suelto: separarlas sube la cifra de 660 a 720. */
+        e = j;
+        e->p70 = NULL;
         j->flags14 &= ~0x14;
     }
     e = D_80069698->p6C;
@@ -424,8 +427,9 @@ void func_8001D588(s32 modo, VECTOR* p)
     if (p != NULL) {
         D_80069698->param.trans.vx = p->vx;
         D_80069698->param.trans.vy = p->vy;
+        pos_z = p->vz;
         D_80069698->param.giro.u.y = 0;
-        D_80069698->param.trans.vz = p->vz;
+        D_80069698->param.trans.vz = pos_z;
         D_80069402 = 0;
         D_8006D928.vpx = p->vx;
         D_8006D928.vpy = p->vy;
