@@ -1294,8 +1294,8 @@ L_800291A8:
         gte_stlvnl(&o->portado.trans);
         o->param.trans.vy = t->aux->max.vy + t->aux->param.trans.vy;
         t->d.vy = 0;
-        o->coord.param = (GsCOORD2PARAM*)&o->portado;
         o->portado.giro.u.y = o->param.giro.u.y - o->p70->param.giro.u.y;
+        o->coord.param = (GsCOORD2PARAM*)&o->portado;
         o->portado.escala.vz = choco;
         o->portado.escala.vy = choco;
         o->portado.escala.vx = choco;
