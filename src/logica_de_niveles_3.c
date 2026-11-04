@@ -368,7 +368,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 #define GIRO_Y(p) (((ParametrosObjeto*)(p))->giro.u.y)
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 10848 con la configuracion versionada (g = 8 del archivo). Reparto de registros guardados: el original deja el scratchpad en s2, el objeto en s3 y asigna s1 a los punteros de area (&res, &p40) y a las banderas de colision, mientras el compilador toma s1 y s2 para el scratchpad y el objeto (rotacion de s1 a s3 en unas 1300 lineas); el resto son 15 tramos de 1 a 4 instrucciones (huecos de retardo, orden de cargas, mflo en t8 en lugar de t7). */
+/* Pendiente: puntuacion 2890 con la configuracion versionada (g = 8 del archivo). Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0 en lugar de t7). */
 /*
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
