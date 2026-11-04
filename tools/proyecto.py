@@ -6,6 +6,7 @@ la raiz del repositorio y se lee ``psxdecomp.toml``; ningun otro modulo repite r
 memoria ni el prefijo de las variables que el manifiesto ya declara.
 """
 
+from collections.abc import Mapping
 from functools import partial
 from pathlib import Path
 from typing import Final
@@ -14,6 +15,7 @@ from psxdecomp.construccion import infraestructura as infra
 from psxdecomp.entorno import Variables
 from psxdecomp.lectura import cargar_proyecto
 from psxdecomp.proyecto import Proyecto
+from psxdecomp.toolchain.configuracion import leer_local_toml, resolver_rutas
 
 RAIZ_REPOSITORIO: Final[Path] = Path(__file__).resolve().parents[1]
 """Raiz del repositorio: la carpeta que contiene ``tools/`` y ``psxdecomp.toml``."""
@@ -48,6 +50,38 @@ PROYECTO: Final[Proyecto] = cargar()
 VARIABLES: Final[Variables] = PROYECTO.variables()
 """Nombres de variable de entorno: prefijo propio del kit con el alias historico del juego."""
 
+
+def resolver_disco(
+    entorno: Mapping[str, str], raiz: Path = RAIZ_REPOSITORIO, disc: str | None = None
+) -> Path | None:
+    """
+    Resuelve la ubicacion del disco original con la politica unica del kit.
+
+    Contexto:
+        Lo usan las herramientas que necesitan el disco (ghidra para extraer el ejecutable,
+        emulador para proteger su carpeta). Aplica la prioridad argumento, ``PSXDECOMP_DISC``,
+        ``BBLIT_DISC``, ``config/local.toml``; leer una sola variable a mano dejaria sin efecto las
+        otras formas de configurarlo, y la proteccion de solo lectura del disco dependeria de cual
+        se uso.
+
+    Args:
+        entorno (Mapping[str, str]): Variables de entorno de la invocacion.
+        raiz (Path, opcional): Raiz del repositorio (sustituible en pruebas).
+        disc (str, opcional): Valor explicito (por ejemplo ``--disc``), que manda sobre el resto.
+
+    Returns:
+        Path | None: Ubicacion declarada del disco, o ``None`` si no se configuro por ninguna via.
+
+    Raises:
+        ValueError: Si ``config/local.toml`` existe y no es valido.
+
+    Ejemplo:
+        disco = resolver_disco(os.environ)
+    """
+    local = leer_local_toml(raiz / PROYECTO.rutas.local, etiqueta=PROYECTO.rutas.local)
+    return resolver_rutas(raiz, entorno, local, disc, variables=VARIABLES).disc
+
+
 ejecutar_proceso: Final = partial(infra.ejecutar_proceso, variables=VARIABLES)
 """Ejecutor de procesos del kit que localiza Wine tambien con el alias historico del juego."""
 
@@ -69,4 +103,5 @@ __all__ = [
     "leer_referencia",
     "localizar_imagen",
     "obtener_original",
+    "resolver_disco",
 ]

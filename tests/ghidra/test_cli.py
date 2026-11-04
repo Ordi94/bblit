@@ -118,7 +118,10 @@ def test_analizar_sin_ghidra_configurado_falla_con_instruccion(
 ) -> None:
     doble = EjecutorDoble(ResultadoEjecucion(0, ""))
     assert main(["analizar", "--proyecto", str(tmp_path / "p")], {}, doble) == 2
-    assert capsys.readouterr().err == "error: indique --ghidra o defina la variable BBLIT_GHIDRA\n"
+    assert (
+        capsys.readouterr().err
+        == "error: indique --ghidra o defina la variable PSXDECOMP_GHIDRA (o BBLIT_GHIDRA)\n"
+    )
 
 
 def test_analizar_reporta_el_tiempo_agotado(

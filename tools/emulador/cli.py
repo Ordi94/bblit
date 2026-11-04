@@ -24,12 +24,12 @@ from psxdecomp.toolchain.configuracion import leer_local_toml, resolver_rutas
 from tools.emulador import comparacion, proceso, sesion
 from tools.emulador.cliente import PUERTO_POR_DEFECTO, ClienteRedux
 from tools.emulador.dominio import EmuladorError
-from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, VARIABLES
+from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, VARIABLES, resolver_disco
 
 RUTA_LOCAL = Path(PROYECTO.rutas.local)
-VARIABLE_EMULADOR = "BBLIT_REDUX"
-VARIABLE_BIOS = "BBLIT_BIOS"
-VARIABLE_DISCO = "BBLIT_DISC"
+# Sufijos de las variables propias del emulador; el prefijo (propio o alias) lo aporta `VARIABLES`.
+SUFIJO_EMULADOR = "REDUX"
+SUFIJO_BIOS = "BIOS"
 # Ubicacion de los componentes dentro del toolchain.
 EMULADOR_EN_TOOLCHAIN = "pcsx-redux/pcsx-redux.exe"
 BIOS_EN_TOOLCHAIN = "duckstation/bios/ps-22a.bin"
@@ -62,8 +62,8 @@ def resolver_rutas_emulador(entorno: Mapping[str, str], raiz: Path = RAIZ_REPOSI
     Contexto:
         Lo usa `construir_parser` para dar valor por defecto a las opciones de arranque. El
         emulador y la BIOS salen del toolchain con la misma politica que `tools/build.py` (variable
-        `BBLIT_TOOLCHAIN`, luego `config/local.toml`, luego `<raiz>/toolchain`); `BBLIT_REDUX` y
-        `BBLIT_BIOS` los anulan de forma explicita. Una variable vacia se trata como ausente. La
+        `TOOLCHAIN`, luego `config/local.toml`, luego `<raiz>/toolchain`); `REDUX` y `BIOS` (con
+        prefijo propio o alias) los anulan de forma explicita. Una variable vacia se trata como ausente. La
         imagen y la carpeta de trabajo cuelgan de la raiz, no del directorio actual.
 
     Args:
@@ -82,8 +82,8 @@ def resolver_rutas_emulador(entorno: Mapping[str, str], raiz: Path = RAIZ_REPOSI
     local = leer_local_toml(raiz / RUTA_LOCAL, etiqueta=PROYECTO.rutas.local)
     toolchain = resolver_rutas(raiz, entorno, local, variables=VARIABLES).toolchain
     return RutasEmulador(
-        emulador=Path(entorno.get(VARIABLE_EMULADOR) or toolchain / EMULADOR_EN_TOOLCHAIN),
-        bios=Path(entorno.get(VARIABLE_BIOS) or toolchain / BIOS_EN_TOOLCHAIN),
+        emulador=Path(VARIABLES.leer(SUFIJO_EMULADOR, entorno) or toolchain / EMULADOR_EN_TOOLCHAIN),
+        bios=Path(VARIABLES.leer(SUFIJO_BIOS, entorno) or toolchain / BIOS_EN_TOOLCHAIN),
         imagen=raiz / IMAGEN_POR_DEFECTO,
         trabajo=raiz / TRABAJO_POR_DEFECTO,
     )
@@ -258,26 +258,29 @@ def _ejecutar_arrancar(argumentos: argparse.Namespace) -> None:
     _imprimir({"pid": pid, "puerto": argumentos.puerto, "segundosHastaRunning": round(segundos, 2)})
 
 
-def _ejecutar_guardado(argumentos: argparse.Namespace, entorno: Mapping[str, str]) -> None:
+def _ejecutar_guardado(argumentos: argparse.Namespace, entorno: Mapping[str, str], raiz: Path) -> None:
     """
     Guarda la RAM o la pantalla de un emulador ya arrancado.
 
     Contexto:
-        Subcomandos `volcar` y `capturar`. La carpeta del disco original se toma de `BBLIT_DISC`
-        en el entorno inyectado, el mismo mapping que resuelve las rutas del resto del archivo.
+        Subcomandos `volcar` y `capturar`. La carpeta del disco original se resuelve con la politica
+        del kit (argumento, variable, `config/local.toml`) sobre el entorno inyectado, el mismo
+        mapping que resuelve las rutas del resto del archivo.
 
     Args:
         argumentos (argparse.Namespace): Argumentos del subcomando.
         entorno (Mapping[str, str]): Variables de entorno de la invocacion.
+        raiz (Path): Raiz del repositorio, donde vive `config/local.toml`.
 
     Raises:
         EmuladorError: Si el emulador no responde o la respuesta no es valida.
-        ValueError: Si el volcado no tiene el tamano de la RAM o la salida es invalida.
+        ValueError: Si el volcado no tiene el tamano de la RAM, la salida es invalida o
+            `config/local.toml` no es valido.
 
     Ejemplo:
-        _ejecutar_guardado(argumentos, entorno)
+        _ejecutar_guardado(argumentos, entorno, RAIZ_REPOSITORIO)
     """
-    sesion.validar_salida(argumentos.salida, entorno.get(VARIABLE_DISCO))
+    sesion.validar_salida(argumentos.salida, resolver_disco(entorno, raiz))
     cliente = ClienteRedux(argumentos.puerto)
     datos = cliente.volcar_ram() if argumentos.comando == "volcar" else cliente.capturar_pantalla()
     argumentos.salida.parent.mkdir(parents=True, exist_ok=True)
@@ -341,22 +344,25 @@ def _ejecutar_apagar(argumentos: argparse.Namespace) -> None:
     _imprimir({"procesosVivos": 0, "puerto": argumentos.puerto})
 
 
-def _ejecutar_sesion(argumentos: argparse.Namespace) -> None:
+def _ejecutar_sesion(argumentos: argparse.Namespace, entorno: Mapping[str, str], raiz: Path) -> None:
     """
     Ejecuta una sesion completa y muestra su resumen.
 
     Contexto:
-        Subcomando `sesion`.
+        Subcomando `sesion`. El disco a proteger se resuelve aqui con el entorno inyectado y viaja
+        en la configuracion, de modo que el servicio no consulta el entorno del proceso.
 
     Args:
         argumentos (argparse.Namespace): Argumentos del subcomando.
+        entorno (Mapping[str, str]): Variables de entorno de la invocacion.
+        raiz (Path): Raiz del repositorio, donde vive `config/local.toml`.
 
     Raises:
         EmuladorError: Si un hito no se alcanza o queda algo vivo al final.
-        ValueError: Si los parametros son invalidos.
+        ValueError: Si los parametros son invalidos o `config/local.toml` no es valido.
 
     Ejemplo:
-        _ejecutar_sesion(argumentos)
+        _ejecutar_sesion(argumentos, os.environ, RAIZ_REPOSITORIO)
     """
     config = sesion.ConfigSesion(
         imagen=argumentos.imagen,
@@ -369,6 +375,7 @@ def _ejecutar_sesion(argumentos: argparse.Namespace) -> None:
         tope_hito=argumentos.tope,
         retardo_extra=argumentos.retardo,
         exe_juego=argumentos.exe_juego,
+        disco=resolver_disco(entorno, raiz),
     )
     _imprimir(sesion.ejecutar_sesion(config))
 
@@ -400,7 +407,6 @@ def main(
         "arrancar": _ejecutar_arrancar,
         "comparar": _ejecutar_comparar,
         "apagar": _ejecutar_apagar,
-        "sesion": _ejecutar_sesion,
     }
     try:
         argumentos = construir_parser(variables, raiz).parse_args(argv)
@@ -411,7 +417,9 @@ def main(
             ClienteRedux(argumentos.puerto).reanudar()
             _imprimir({"estado": "en marcha"})
         elif argumentos.comando in ("volcar", "capturar"):
-            _ejecutar_guardado(argumentos, variables)
+            _ejecutar_guardado(argumentos, variables, raiz)
+        elif argumentos.comando == "sesion":
+            _ejecutar_sesion(argumentos, variables, raiz)
         else:
             ejecutores[argumentos.comando](argumentos)
     except (ValueError, EmuladorError) as error:

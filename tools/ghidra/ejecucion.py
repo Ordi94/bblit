@@ -13,14 +13,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+from psxdecomp.entorno import SUFIJO_DISCO
 from tools.ghidra.dominio import DIRECCION_BASE, DIRECCION_ENTRADA
-from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, leer_referencia, obtener_original
+from tools.proyecto import (
+    PROYECTO,
+    RAIZ_REPOSITORIO,
+    VARIABLES,
+    leer_referencia,
+    obtener_original,
+    resolver_disco,
+)
 
-VARIABLE_GHIDRA: Final[str] = "BBLIT_GHIDRA"
-"""Variable de entorno con la carpeta de instalacion de Ghidra."""
-
-VARIABLE_DISCO: Final[str] = "BBLIT_DISC"
-"""Variable de entorno con la carpeta del disco extraido."""
+SUFIJO_GHIDRA: Final[str] = "GHIDRA"
+"""Sufijo de la variable de entorno con la carpeta de Ghidra (el prefijo lo aporta ``VARIABLES``)."""
 
 NOMBRE_EJECUTABLE: Final[str] = PROYECTO.identidad.ejecutable
 NOMBRE_PROYECTO: Final[str] = PROYECTO.identidad.nombre
@@ -108,7 +113,7 @@ class Carga:
 
 def resolver_instalacion(argumento: Path | None, entorno: Mapping[str, str]) -> Path:
     """
-    Determina la carpeta de Ghidra a partir del argumento o de ``BBLIT_GHIDRA``.
+    Determina la carpeta de Ghidra a partir del argumento o de la variable ``GHIDRA`` del proyecto.
 
     Contexto:
         Evita rutas absolutas dentro del repositorio: la ubicacion es siempre del equipo.
@@ -127,9 +132,9 @@ def resolver_instalacion(argumento: Path | None, entorno: Mapping[str, str]) -> 
         instalacion = resolver_instalacion(None, os.environ)
     """
     if argumento is None:
-        valor = entorno.get(VARIABLE_GHIDRA)
+        valor = VARIABLES.leer(SUFIJO_GHIDRA, entorno)
         if not valor:
-            raise ValueError(f"indique --ghidra o defina la variable {VARIABLE_GHIDRA}")
+            raise ValueError(f"indique --ghidra o defina la variable {VARIABLES.describir(SUFIJO_GHIDRA)}")
         argumento = Path(valor)
     if not (argumento / "support").is_dir():
         raise ValueError("la carpeta de Ghidra no contiene el subdirectorio support")
@@ -140,10 +145,11 @@ def resolver_ejecutable(
     argumento: Path | None, entorno: Mapping[str, str], raiz: Path = RAIZ_REPOSITORIO
 ) -> Path:
     """
-    Determina el ejecutable del juego a partir del argumento o de ``BBLIT_DISC``.
+    Determina el ejecutable del juego a partir del argumento o de la configuracion del disco.
 
     Contexto:
-        Primer paso de ``analizar`` y ``simbolos``. La variable ``BBLIT_DISC`` tiene el mismo
+        Primer paso de ``analizar`` y ``simbolos``. El disco se resuelve con la politica unica del kit
+        (``resolver_disco``: variable propia o alias, luego ``config/local.toml``) y tiene el mismo
         contrato que en el resto de herramientas (se delega en ``psxdecomp.construccion``): carpeta
         con ``fs/SLUS_008.38``, imagen ``.bin``, ``.cue``, carpeta del ``.bin`` o carpeta
         superior. Con una imagen, el ejecutable se extrae a ``expected/`` bajo ``raiz``.
@@ -157,21 +163,22 @@ def resolver_ejecutable(
         Path: Ruta del ejecutable existente.
 
     Raises:
-        ValueError: Si no se indica ninguna ruta, la ruta del disco no existe, no contiene el
-            ejecutable ni una imagen, o la imagen es ambigua o invalida.
+        ValueError: Si no se indica ninguna ruta, ``config/local.toml`` es invalido, la ruta del
+            disco no existe, no contiene el ejecutable ni una imagen, o la imagen es ambigua o
+            invalida.
 
     Ejemplo:
         exe = resolver_ejecutable(None, os.environ)
     """
     if argumento is None:
-        carpeta = entorno.get(VARIABLE_DISCO)
-        if not carpeta:
-            raise ValueError(f"indique --exe o defina la variable {VARIABLE_DISCO}")
+        carpeta = resolver_disco(entorno, raiz)
+        if carpeta is None:
+            raise ValueError(f"indique --exe o defina la variable {VARIABLES.describir(SUFIJO_DISCO)}")
         try:
             referencia = leer_referencia(raiz / PROYECTO.identidad.referencia)
-            return obtener_original(raiz, Path(carpeta), referencia)
+            return obtener_original(raiz, carpeta, referencia)
         except FileNotFoundError as error:
-            raise ValueError(f"{VARIABLE_DISCO}: {error}") from None
+            raise ValueError(f"{VARIABLES.describir(SUFIJO_DISCO)}: {error}") from None
     if not argumento.is_file():
         raise ValueError(f"el ejecutable {argumento.name} no existe")
     return argumento

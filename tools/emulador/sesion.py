@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -36,7 +35,7 @@ class ConfigSesion:
     Parametros de una sesion de emulador.
 
     Contexto:
-        La construye el CLI a partir de argumentos y variables `BBLIT_*`; nunca contiene rutas
+        La construye el CLI a partir de argumentos y de la configuracion del proyecto; nunca contiene rutas
         fijas de una maquina concreta.
 
     Attributes:
@@ -51,6 +50,8 @@ class ConfigSesion:
         tope_hito (float): Segundos maximos de espera del hito `pantalla`.
         retardo_extra (float): Segundos adicionales tras alcanzar el hito, antes de volcar.
         exe_juego (Path, opcional): Ejecutable del juego cuya huella se busca en RAM.
+        disco (Path, opcional): Disco original ya resuelto por el kit; su carpeta es de solo lectura
+            y `salida` no puede caer dentro. None si el disco no esta configurado.
     """
 
     imagen: Path
@@ -63,14 +64,15 @@ class ConfigSesion:
     tope_hito: float = TOPE_PANTALLA_POR_DEFECTO
     retardo_extra: float = 0.0
     exe_juego: Path | None = None
+    disco: Path | None = None
 
 
-def carpetas_protegidas(valor_disco: str | None) -> list[Path]:
+def carpetas_protegidas(disco: Path | None) -> list[Path]:
     """
     Calcula las carpetas del disco original donde no se debe escribir.
 
     Contexto:
-        `BBLIT_DISC` admite cinco formas (`.bin`, `.cue`, carpeta del `.bin`, carpeta superior
+        El disco admite cinco formas (`.bin`, `.cue`, carpeta del `.bin`, carpeta superior
         y carpeta con `fs/`). La resolucion de la imagen es unica y vive en
         `psxdecomp.construccion.infraestructura.localizar_imagen`; aqui solo se reutiliza.
         Se protege la carpeta que CONTIENE la imagen resuelta y, si el valor es una carpeta con
@@ -78,17 +80,16 @@ def carpetas_protegidas(valor_disco: str | None) -> list[Path]:
         validacion no protege nada por esa via (el disco sigue siendo de solo lectura por contrato).
 
     Args:
-        valor_disco (str, opcional): Valor de `BBLIT_DISC`, o None.
+        disco (Path, opcional): Disco resuelto por `tools.proyecto.resolver_disco`, o None.
 
     Returns:
         list[Path]: Carpetas protegidas, ya resueltas; vacia si no hay nada que proteger.
 
     Ejemplo:
-        protegidas = carpetas_protegidas(os.environ.get("BBLIT_DISC"))
+        protegidas = carpetas_protegidas(resolver_disco(os.environ))
     """
-    if not valor_disco:
+    if disco is None:
         return []
-    disco = Path(valor_disco)
     protegidas: list[Path] = []
     try:
         imagen = localizar_imagen(disco)
@@ -101,7 +102,7 @@ def carpetas_protegidas(valor_disco: str | None) -> list[Path]:
     return protegidas
 
 
-def validar_salida(salida: Path, valor_disco: str | None) -> None:
+def validar_salida(salida: Path, disco: Path | None) -> None:
     """
     Rechaza una carpeta de salida situada dentro de la carpeta del disco original.
 
@@ -110,16 +111,16 @@ def validar_salida(salida: Path, valor_disco: str | None) -> None:
 
     Args:
         salida (Path): Carpeta de salida solicitada.
-        valor_disco (str, opcional): Valor de `BBLIT_DISC` en cualquiera de sus cinco formas.
+        disco (Path, opcional): Disco original en cualquiera de sus cinco formas, o None.
 
     Raises:
         ValueError: Si la salida cae dentro de una carpeta protegida del disco original.
 
     Ejemplo:
-        validar_salida(Path("analisis/emulador/sesion_titulo"), os.environ.get("BBLIT_DISC"))
+        validar_salida(Path("analisis/emulador/sesion_titulo"), resolver_disco(os.environ))
     """
     destino = salida.resolve()
-    if any(destino.is_relative_to(protegida) for protegida in carpetas_protegidas(valor_disco)):
+    if any(destino.is_relative_to(protegida) for protegida in carpetas_protegidas(disco)):
         raise ValueError("salida: no se puede escribir dentro de la carpeta del disco original")
 
 
@@ -307,7 +308,7 @@ def ejecutar_sesion(
     """
     if config.hito not in HITOS:
         raise ValueError(f"hito `{config.hito}`: se esperaba uno de {', '.join(HITOS)}")
-    validar_salida(config.salida, os.environ.get("BBLIT_DISC"))
+    validar_salida(config.salida, config.disco)
     if puerto_en_uso(config.puerto):
         raise EmuladorError(f"el puerto {config.puerto} ya esta ocupado; use otro con --puerto o `apagar`")
     cliente = cliente or ClienteRedux(config.puerto)

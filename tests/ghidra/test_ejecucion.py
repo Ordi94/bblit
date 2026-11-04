@@ -76,7 +76,7 @@ def test_resolver_instalacion_usa_la_variable_de_entorno(config: ConfiguracionGh
 
 
 def test_resolver_instalacion_sin_ruta_pide_argumento_o_variable() -> None:
-    with pytest.raises(ValueError, match=r"indique --ghidra o defina la variable BBLIT_GHIDRA"):
+    with pytest.raises(ValueError, match=r"variable PSXDECOMP_GHIDRA \(o BBLIT_GHIDRA\)"):
         resolver_instalacion(None, {})
 
 
@@ -143,7 +143,9 @@ def test_resolver_ejecutable_acepta_las_formas_de_imagen_de_bblit_disc(
 
 
 def test_resolver_ejecutable_con_ruta_inexistente_falla_con_mensaje_claro(tmp_path: Path, raiz: Path) -> None:
-    with pytest.raises(ValueError, match=r"^BBLIT_DISC: la ubicacion del disco no existe$"):
+    with pytest.raises(
+        ValueError, match=r"^PSXDECOMP_DISC \(o BBLIT_DISC\): la ubicacion del disco no existe$"
+    ):
         resolver_ejecutable(None, {"BBLIT_DISC": str(tmp_path / "nada")}, raiz)
 
 
@@ -160,9 +162,9 @@ def test_resolver_ejecutable_con_imagen_ambigua_se_rechaza(tmp_path: Path, raiz:
         resolver_ejecutable(None, {"BBLIT_DISC": str(tmp_path)}, raiz)
 
 
-def test_resolver_ejecutable_sin_ruta_pide_argumento_o_variable() -> None:
-    with pytest.raises(ValueError, match=r"indique --exe o defina la variable BBLIT_DISC"):
-        resolver_ejecutable(None, {})
+def test_resolver_ejecutable_sin_ruta_pide_argumento_o_variable(raiz: Path) -> None:
+    with pytest.raises(ValueError, match=r"variable PSXDECOMP_DISC \(o BBLIT_DISC\)$"):
+        resolver_ejecutable(None, {}, raiz)
 
 
 def test_resolver_ejecutable_con_argumento_inexistente_nombra_solo_el_archivo(tmp_path: Path) -> None:

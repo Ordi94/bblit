@@ -228,21 +228,21 @@ def _disco_sintetico(raiz):
 def test_cada_forma_de_bblit_disc_protege_la_carpeta_de_la_imagen(tmp_path, forma):
     carpeta, imagen, cue = _disco_sintetico(tmp_path)
     valor = {"bin": imagen, "cue": cue, "carpeta_bin": carpeta, "carpeta_superior": tmp_path / "disc"}[forma]
-    assert sesion.carpetas_protegidas(str(valor)) == [carpeta.resolve()]
+    assert sesion.carpetas_protegidas(valor) == [carpeta.resolve()]
     with pytest.raises(ValueError, match="disco original"):
-        sesion.validar_salida(carpeta / "volcados", str(valor))
+        sesion.validar_salida(carpeta / "volcados", valor)
     # La carpeta superior y los hermanos legitimos no se protegen de mas.
-    sesion.validar_salida(tmp_path / "disc" / "analisis", str(valor))
-    sesion.validar_salida(tmp_path / "build", str(valor))
+    sesion.validar_salida(tmp_path / "disc" / "analisis", valor)
+    sesion.validar_salida(tmp_path / "build", valor)
 
 
 def test_carpeta_con_fs_protege_esa_carpeta_y_la_de_la_imagen(tmp_path):
     raiz = tmp_path / "disc"
     (raiz / "fs").mkdir(parents=True)
     (raiz / "juego.bin").write_bytes(b"x")
-    assert sesion.carpetas_protegidas(str(raiz)) == [raiz.resolve()]
+    assert sesion.carpetas_protegidas(raiz) == [raiz.resolve()]
     with pytest.raises(ValueError, match="disco original"):
-        sesion.validar_salida(raiz / "fs" / "salida", str(raiz))
+        sesion.validar_salida(raiz / "fs" / "salida", raiz)
 
 
 def test_imagen_en_subcarpeta_y_fs_protegen_dos_carpetas_distintas(tmp_path):
@@ -250,18 +250,18 @@ def test_imagen_en_subcarpeta_y_fs_protegen_dos_carpetas_distintas(tmp_path):
     (raiz / "fs").mkdir(parents=True)
     (raiz / "ISO").mkdir()
     (raiz / "ISO" / "juego.bin").write_bytes(b"x")
-    assert sesion.carpetas_protegidas(str(raiz)) == [(raiz / "ISO").resolve(), raiz.resolve()]
+    assert sesion.carpetas_protegidas(raiz) == [(raiz / "ISO").resolve(), raiz.resolve()]
     with pytest.raises(ValueError, match="disco original"):
-        sesion.validar_salida(raiz / "ISO" / "salida", str(raiz))
+        sesion.validar_salida(raiz / "ISO" / "salida", raiz)
     with pytest.raises(ValueError, match="disco original"):
-        sesion.validar_salida(raiz / "fs" / "salida", str(raiz))
-    sesion.validar_salida(tmp_path / "build", str(raiz))
+        sesion.validar_salida(raiz / "fs" / "salida", raiz)
+    sesion.validar_salida(tmp_path / "build", raiz)
 
 
 def test_carpeta_con_fs_sin_imagen_protege_solo_esa_carpeta(tmp_path):
     raiz = tmp_path / "disc"
     (raiz / "fs").mkdir(parents=True)
-    assert sesion.carpetas_protegidas(str(raiz)) == [raiz.resolve()]
+    assert sesion.carpetas_protegidas(raiz) == [raiz.resolve()]
 
 
 @pytest.mark.parametrize("caso", ["inexistente", "carpeta_vacia", "extension", "varias", "cue_sin_bin"])
@@ -279,19 +279,17 @@ def test_disco_no_resoluble_no_inventa_carpetas_protegidas(tmp_path, caso):
     elif caso == "cue_sin_bin":
         disco = tmp_path / "juego.cue"
         disco.write_text("FILE", encoding="utf-8")
-    assert sesion.carpetas_protegidas(str(disco)) == []
-    sesion.validar_salida(tmp_path / "cualquiera", str(disco))
+    assert sesion.carpetas_protegidas(disco) == []
+    sesion.validar_salida(tmp_path / "cualquiera", disco)
 
 
 def test_sin_bblit_disc_no_se_protege_nada(tmp_path):
     assert sesion.carpetas_protegidas(None) == []
-    assert sesion.carpetas_protegidas("") == []
     sesion.validar_salida(tmp_path / "x", None)
 
 
-def test_sesion_respeta_bblit_disc_del_entorno(tmp_path, monkeypatch):
+def test_sesion_rechaza_la_salida_dentro_del_disco_de_la_configuracion(tmp_path):
     carpeta, imagen, _ = _disco_sintetico(tmp_path)
-    monkeypatch.setenv("BBLIT_DISC", str(imagen))
     entorno = Entorno(tmp_path)
     entorno.config = sesion.ConfigSesion(
         imagen=tmp_path / "a.cue",
@@ -299,6 +297,7 @@ def test_sesion_respeta_bblit_disc_del_entorno(tmp_path, monkeypatch):
         ejecutable=tmp_path / "c.exe",
         carpeta_trabajo=tmp_path / "t",
         salida=carpeta / "salida",
+        disco=imagen,
     )
     with pytest.raises(ValueError, match="disco original"):
         entorno.ejecutar(ClienteFalso())
