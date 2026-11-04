@@ -54,6 +54,9 @@ def test_permutar_imprime_el_resumen_y_el_codigo_depende_del_resultado(
     assert "iteraciones en" in salida and "(2 procesos, semilla 3)" in salida
     assert "puntuacion de partida 40, mejor" in salida
     assert "candidato: build/permutar/func_80036204/mejor.c" in salida
+    carpeta = raiz / "build" / "permutar" / FUNCION
+    assert (carpeta / "mejor.c").is_file() and (carpeta / "estado.json").is_file()
+    assert (raiz / "src" / "code_a.c").read_text(encoding="utf-8") == ARCHIVO_C
     sin_mejora = EjecutorPermutar(lambda texto: 40)
     assert ejecutar_cli(raiz, variables, "permutar", FUNCION, "--iteraciones", "5", ejecutor=sin_mejora) == 2
     assert "(sin mejora)" in capsys.readouterr().out
@@ -82,3 +85,22 @@ def test_permutar_informa_los_errores_de_uso_sin_traza(
     (raiz / "build" / "SLUS_008.elf").unlink()
     assert ejecutar_cli(raiz, variables, "permutar", FUNCION, "--iteraciones", "3", ejecutor=ejecutor) == 1
     assert "ejecute 'build' antes de permutar" in capsys.readouterr().err
+
+
+def test_permutar_reanuda_la_busqueda_guardada_en_build_con_el_manifiesto_real(
+    entorno_completo: Any,  # noqa: F811
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    raiz, variables = entorno_completo
+    preparar_repositorio(raiz)
+    capsys.readouterr()
+    ejecutor = EjecutorPermutar(lambda texto: 40)
+    base = ("permutar", FUNCION, "--iteraciones", "5", "--semilla", "3")
+    assert ejecutar_cli(raiz, variables, *base, ejecutor=ejecutor) == 2
+    carpeta = raiz / "build" / "permutar" / FUNCION
+    assert {archivo.name for archivo in carpeta.iterdir()} >= {"actual.c", "estado.json", "mejor.c"}
+    capsys.readouterr()
+    assert ejecutar_cli(raiz, variables, *base, "--reanudar", ejecutor=ejecutor) == 2
+    salida = capsys.readouterr()
+    assert "candidato: build/permutar/func_80036204/mejor.c" in salida.out
+    assert str(raiz) not in salida.err

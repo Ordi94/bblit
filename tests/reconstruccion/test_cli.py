@@ -309,6 +309,36 @@ def test_progreso_escribe_los_archivos_y_resume_en_una_linea(
     assert (raiz / "docs" / "PROGRESO.md").is_file() and (raiz / "build" / "progreso.json").is_file()
 
 
+def test_progreso_informa_las_rutinas_manuscritas_y_los_include_asm_sin_comentario(
+    entorno_repo: Any, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raiz, variables = entorno_repo
+    (raiz / "config" / "symbols.txt").write_text(
+        "func_80014AC4 = 0x80014AC4; // type:func size:0x10\n"
+        "func_80014AD4 = 0x80014AD4; // type:func size:0x20\n"
+        "func_80014AF4 = 0x80014AF4; // type:func size:0x30\n",
+        encoding="utf-8",
+    )
+    (raiz / "src").mkdir()
+    (raiz / "src" / "code_a.c").write_text(
+        "s32 func_80014AC4(void)\n{\n    return 0;\n}\n"
+        "\n"
+        "/* rutina escrita a mano en el original */\n"
+        'INCLUDE_ASM("asm/nonmatchings/code_a", func_80014AD4);\n'
+        "\n"
+        'INCLUDE_ASM("asm/nonmatchings/code_a", func_80014AF4);\n',
+        encoding="utf-8",
+    )
+    assert ejecutar_cli(raiz, variables, "progreso") == 0
+    salida = capsys.readouterr()
+    assert salida.out.splitlines()[1] == "manuscritas: 1 rutinas escritas a mano siguen en ensamblador"
+    assert (
+        "aviso: src/code_a.c: func_80014AF4 sigue en INCLUDE_ASM sin comentario que lo explique\n"
+        in salida.err
+    )
+    assert "func_80014AD4 sigue en INCLUDE_ASM" not in salida.err
+
+
 def test_progreso_con_ensamblador_desactualizado_devuelve_uno(
     entorno_repo: Any, capsys: pytest.CaptureFixture[str]
 ) -> None:
