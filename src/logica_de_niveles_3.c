@@ -962,7 +962,8 @@ L_80028410:
 L_80028740:
     /* seguimiento sin ayudante: el giro del propio objeto converge al rumbo del mando */
     t->w_a0 = ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
-    t->w_a0 = (t->w_a0 + t->w118) % 0x1000;
+    t->w_a0 = t->w_a0 + t->w118;
+    t->w_a0 = t->w_a0 % 0x1000;
     if (t->w_a0 > 0x800) {
         t->w_a0 -= 0x1000;
     }
@@ -1285,10 +1286,9 @@ L_800291A8:
          * choco guarda 0x1000 (unidad de punto fijo) mientras dura el calculo del giro relativo; al
          * ser distinto de cero marca tambien que hubo colision con el portador.
          */
-        choco = 0x1000;
-        t->r.sv.g.vx = choco - o->p70->param.giro.u.x;
-        t->r.sv.g.vy = choco - o->p70->param.giro.u.y;
-        t->r.sv.g.vz = choco - o->p70->param.giro.u.z;
+        t->r.sv.g.vx = 0x1000 - o->p70->param.giro.u.x;
+        t->r.sv.g.vy = 0x1000 - o->p70->param.giro.u.y;
+        t->r.sv.g.vz = 0x1000 - o->p70->param.giro.u.z;
         GEO_IDENTIDAD(&t->m68);
         RotMatrixX(t->r.sv.g.vx, &t->m68);
         RotMatrixY(t->r.sv.g.vy, &t->m68);
@@ -1301,9 +1301,9 @@ L_800291A8:
         t->d.vy = 0;
         o->portado.giro.u.y = o->param.giro.u.y - o->p70->param.giro.u.y;
         o->coord.param = (GsCOORD2PARAM*)&o->portado;
-        o->portado.escala.vz = choco;
-        o->portado.escala.vy = choco;
-        o->portado.escala.vx = choco;
+        o->portado.escala.vz = 0x1000;
+        o->portado.escala.vy = 0x1000;
+        o->portado.escala.vx = 0x1000;
         o->coord.super = &o->p70->coord;
         if ((s32)t->aux->flags08 < 0 || (t->aux->flags0C & 0x400000)) {
             if (t->aux->flags0C & 0x400000) {
