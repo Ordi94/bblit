@@ -24,4 +24,3 @@ def test_cada_nombre_reexportado_es_el_objeto_del_kit(reexportacion: str, origen
     assert modulo.__all__, "la reexportacion debe declarar su API"
     for nombre in modulo.__all__:
         assert getattr(modulo, nombre) is getattr(kit, nombre)
-
