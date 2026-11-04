@@ -30,7 +30,9 @@ instalan: Windows de 64 bits no los ejecuta.
 ## Configuración de rutas
 
 El repositorio no contiene rutas de ninguna máquina. Cada ruta se resuelve en este orden:
-argumento, variable de entorno, `config/local.toml` (ignorado por git) y valor por defecto.
+argumento, variable de entorno `PSXDECOMP_*`, variable `BBLIT_*` (alias del proyecto, aceptado hasta que el
+kit salga a su repositorio), `config/local.toml` (ignorado por git) y valor por defecto. Si `PSXDECOMP_X` y
+`BBLIT_X` estan definidas, manda la primera. Los mensajes de error nombran las dos.
 
 | Ruta | Argumento | Variable | Clave en `local.toml` | Por defecto |
 |---|---|---|---|---|
@@ -83,7 +85,7 @@ Notas de procedencia:
 - La única fuente localizada del GCC 2.7.2 de Psy-Q como ejecutable Win32 es la imagen de CD
   del Runtime Library 4.1 (el `CC1PSX.EXE` de 1995 que trae el paquete `PSYQ_SDK.zip` es de
   32 bits con extensor DOS y no corre en Windows de 64 bits). Por eso `psyq-4.1` se extrae de
-  la imagen con un lector ISO 9660 propio (`tools/toolchain/iso9660.py`).
+  la imagen con un lector ISO 9660 propio (`kit/psxdecomp/toolchain/iso9660.py`).
 - El `ASPSX.EXE` de `psyq-4.4` es la versión 2.79, no la 2.86: la cadena `SDevTC ASPSX version 2.79`
   está en el propio ejecutable. Se comprueba desde la raíz del repositorio con
   `.venv\Scripts\python.exe -c "import pathlib; d = pathlib.Path(r'toolchain\psyq-4.4\pssn\bin\ASPSX.EXE').read_bytes(); print(d[d.index(b'SDevTC ASPSX'):][:26])"`,
@@ -111,6 +113,12 @@ python tools/build.py probar <función> <carpeta>   # puntúa variantes .c de un
 python tools/build.py progreso            # escribe docs/PROGRESO.md y build/progreso.json
 python tools/build.py clean               # elimina asm/, expected/ y los artefactos de build/
 ```
+
+El toolchain vive en el paquete `psxdecomp.toolchain` del kit (`kit/`). `python -m tools.toolchain` sigue
+siendo la orden del repositorio y es equivalente a `python -m psxdecomp.toolchain`, que es la entrada
+preferente: carga el manifiesto `psxdecomp.toml` de la carpeta actual o de `--proyecto <raiz>`, de donde salen
+las rutas del archivo de bloqueo y de `local.toml` y el alias de las variables de entorno. Las dos entradas
+imprimen lo mismo.
 
 - `instalar` acepta `--solo COMPONENTE` (repetible). Cada componente queda en
   `toolchain/<componente>/` con un archivo `INSTALADO.json` que registra la huella instalada;

@@ -22,7 +22,7 @@ Desde la raiz del repositorio que lo contiene, dentro del entorno virtual del pr
 python -m pip install -e ./kit
 ```
 
-El kit no tiene dependencias de ejecucion: solo usa la biblioteca estandar.
+La unica dependencia de ejecucion es `requests` (descarga del toolchain); el resto usa la biblioteca estandar.
 
 ## Manifiesto
 
@@ -48,6 +48,29 @@ Ejecutado desde `kit/`, exige cobertura del 100 % (lineas y ramas) del paquete.
 | `lectura` | Lectura del archivo, analisis TOML y comprobacion de confinamiento. |
 | `cli` | Linea de ordenes (`comprobar`). |
 | `proyecto` | Fachada: reexporta `Proyecto`, `cargar_proyecto` y `ManifiestoError`. |
+
+## Toolchain
+
+`python -m psxdecomp.toolchain {instalar,verificar,listar,ruta}` instala y consulta las herramientas
+externas (SDK, binutils, maspsx, asm-differ) descargandolas con verificacion SHA-256. Toma del
+manifiesto la ruta del archivo de bloqueo (`rutas.toolchain_lock`), la del archivo local de rutas
+(`rutas.local`) y el alias de las variables de entorno (`proyecto.prefijo_entorno`). La raiz del
+proyecto es `--proyecto` o la carpeta actual.
+
+Las rutas se resuelven con la regla: argumento, `PSXDECOMP_X`, `<alias>_X`, archivo local, valor por
+defecto. Las variables son `DISC`, `TOOLCHAIN`, `7ZIP`, `WINE` y `BINUTILS_PREFIX`; `psxdecomp.entorno.Variables`
+concentra la regla y los mensajes de error nombran las dos variables.
+
+| Modulo | Responsabilidad |
+|---|---|
+| `entorno` | Nombres de variable de entorno: prefijo propio y alias del proyecto. |
+| `toolchain.dominio` | Modelo y validacion del archivo de bloqueo. |
+| `toolchain.configuracion` | Resolucion de rutas (argumento, entorno, archivo local, defecto). |
+| `toolchain.descarga` | Descarga con verificacion de huella antes de dejar el archivo. |
+| `toolchain.extraccion`, `toolchain.iso9660` | Extraccion de zip, 7z, rar e imagenes ISO 9660. |
+| `toolchain.instalacion` | Instalacion idempotente y localizacion de herramientas. |
+| `toolchain.plataforma` | Adaptacion a Windows o Linux (Wine, binutils nativos). |
+| `toolchain.cli` | Linea de ordenes. |
 
 ## Prueba de coherencia
 

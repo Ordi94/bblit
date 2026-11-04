@@ -25,6 +25,9 @@ set BBLIT_DISC=<ruta al .bin, al .cue, a la carpeta del .bin, a la carpeta super
 .venv\Scripts\python.exe -m tools.toolchain instalar
 ```
 
+La entrada preferente es `.venv\Scripts\python.exe -m psxdecomp.toolchain instalar` (mismo resultado; usa el
+manifiesto de la carpeta actual o `--proyecto <raiz>`). `python -m tools.toolchain` se conserva por compatibilidad.
+
 `instalar` es idempotente: con los componentes presentes solo verifica huellas y lista cada uno
 como `vigente`, sin descargar.
 
@@ -237,7 +240,7 @@ para anadir uno nuevo: `docs/DESCOMPILACION.md`, seccion «Opciones de compilaci
 ## 9. Linux (Wine)
 
 Las herramientas corren en Linux (probado en Debian 13). El SDK original (`CPPPSX.EXE`, `CC1PSX.EXE`) son
-ejecutables Win32: `tools/toolchain/plataforma.py` los lanza con Wine fuera de Windows. Los binutils de MIPS
+ejecutables Win32: `kit/psxdecomp/toolchain/plataforma.py` los lanza con Wine fuera de Windows. Los binutils de MIPS
 (`as`, `ld`, `objcopy`, `objdump`) no pasan por Wine: se usan binutils nativos del `PATH`, que arrancan en
 milisegundos (un `.exe` bajo Wine paga el arranque del emulador en cada llamada, y una busqueda del permutador
 hace miles). `maspsx` y `asm-differ` son Python y no cambian.
@@ -252,7 +255,7 @@ Paquetes Debian que instala el guion: `dpkg --add-architecture i386`, `apt-get u
 `apt-get install wine wine32:i386 python3 python3-venv python3-pip git ca-certificates curl unzip`; ademas crea
 `.venv` con `requirements.txt` e inicializa el prefijo de Wine.
 
-Variables:
+Variables (cada `BBLIT_X` tiene el equivalente `PSXDECOMP_X`, que manda si ambas estan definidas):
 
 | Variable | Por omision | Efecto |
 |---|---|---|
