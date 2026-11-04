@@ -368,7 +368,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 #define GIRO_Y(p) (((ParametrosObjeto*)(p))->giro.u.y)
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2870 con la configuracion versionada (g = 8 del archivo). Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0 en lugar de t7). */
+/* Pendiente: puntuacion 2815 con la configuracion versionada (g = 8 del archivo). Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0 en lugar de t7). */
 /*
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
@@ -1338,7 +1338,7 @@ L_800291A8:
         t->r.sv.b.vz = (u16)o->param.trans.vz - (u16)t->aux->param.trans.vz;
         t->w114 = ratan2(t->r.sv.b.vx, t->r.sv.b.vz);
         if (t->aux->p70 != 0) {
-            t->aux->portado.giro.u.y = (u16)t->w114 - (t->aux->p70->param.giro.u.y - 0x800);
+            t->aux->portado.giro.u.y = (u16)t->w114 + 0x800 - t->aux->p70->param.giro.u.y;
         }
         t->aux->param.giro.u.y = (u16)t->w114 + 0x800;
         t->aux->u18C.estado.w192 = 0x1000;
