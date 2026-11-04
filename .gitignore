@@ -38,3 +38,4 @@ pcsx.json
 memcard1.mcd
 memcard2.mcd
 .sentry-native/
+*.egg-info/

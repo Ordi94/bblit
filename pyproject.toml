@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 [tool.ruff]
 line-length = 110
 target-version = "py313"
-src = ["tools", "tests"]
+src = ["tools", "tests", "kit"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "D", "ANN", "S", "PL", "RUF"]
@@ -23,9 +23,10 @@ convention = "google"
 python_version = "3.13"
 strict = true
 warn_unreachable = true
-packages = ["tools"]
+packages = ["tools", "psxdecomp"]
+mypy_path = ["kit"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
+testpaths = ["tests", "kit/tests"]
+pythonpath = [".", "kit"]
 addopts = "-q"

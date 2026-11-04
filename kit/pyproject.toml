@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "psx-decomp-kit"
+version = "0.1.0.dev0"
+description = "Herramientas de descompilacion matching para juegos de PlayStation 1"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = []
+
+[project.optional-dependencies]
+desarrollo = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "mypy==2.4.0",
+    "ruff==0.17.2",
+]
+
+[tool.setuptools.packages.find]
+include = ["psxdecomp*"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+src = ["psxdecomp", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "D", "ANN", "S", "PL", "RUF"]
+ignore = ["D203", "D212", "D213", "PLR0913", "PLR2004", "S603", "S607"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "D", "ANN", "PLR"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
+packages = ["psxdecomp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q --cov=psxdecomp --cov-branch --cov-report=term-missing --cov-fail-under=100"
+
+[tool.coverage.run]
+branch = true
+source = ["psxdecomp"]
