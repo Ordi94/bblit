@@ -100,5 +100,40 @@ ejecutables, rutas ni convenciones de ningun juego.
 | `permutador.mutaciones` | Reformulaciones del arbol que conservan el significado y filtro `variante_permitida`. |
 | `permutador.estado` | Estado persistente de una busqueda en `<build>/permutar/<funcion>/` (`estado.json`, `registro.jsonl`, `mejor.c`, `actual.c`). `carpeta_de` recibe la carpeta de build del proyecto. |
 
-El orquestador de la busqueda (`permutar`), la medicion de variantes y la comparacion tras enlazar
-dependen todavia de las capas de construccion y comparacion y se trasladan cuando estas pasen al kit.
+La funcion que dirige la busqueda (`permutar`), la medicion de variantes y la comparacion tras enlazar
+dependen todavia de la capa de infraestructura y se trasladan cuando esta pase al kit.
+
+## Construccion
+
+`psxdecomp.construccion` reune las reglas del ejecutable y la compilacion de los archivos C con el
+compilador original del SDK. No importa nada fuera de `psxdecomp`: lo que depende del proyecto
+llega por parametro explicito, sin estado global.
+
+| Modulo | Responsabilidad |
+|---|---|
+| `construccion.dominio` | Reglas puras (sin E/S): cabecera PS-X EXE, comandos de `splat`, `as`, `ld` y `objcopy`, verificacion por huella, opciones de compilacion por archivo (`-G`), valor de `_gp`, datos pequenos y lectura del archivo de simbolos. |
+| `construccion.compilacion` | Cadena preprocesador, compilador, `maspsx` y ensamblador para un archivo C; validacion de las secciones del objeto. Recibe `Rutas` y `Convenciones` en cada llamada. |
+
+Las funciones de `construccion.dominio` que interpretan formatos reciben `Convenciones`
+(`patron_linea_simbolo`, `patron_simbolo_datos`, `max_valor_g`); las de `construccion.compilacion`
+reciben `Rutas` (`fuentes`, `incluir`, `macros`, `splat`) y `Convenciones` (`max_valor_g`). La funcion
+que construye el ejecutable completo (enlace incluido) se traslada junto con la infraestructura.
+
+## Comparacion
+
+`psxdecomp.diff.fuentes_c` analiza el texto de los archivos C y deduce el estado de cada funcion (en C,
+intento no coincidente o ensamblador), la linea de pendiente de cada intento y las rutinas escritas a
+mano. Las macros, la expresion de la linea de pendiente y la frase de rutina manuscrita se declaran en
+`[convenciones]` (`macro_no_coincidente`, `macro_ensamblador`, `pendiente`, `manuscrita`); la carpeta de
+fuentes, en `[rutas]`.
+
+Claves de `[convenciones]` y `[rutas]` que incorporan estos modulos (todas con defecto, validadas con
+listas de admitidos y cotas):
+
+| Clave | Contenido |
+|---|---|
+| `rutas.macros` | Carpeta de macros del ensamblador (defecto `asm/include`). |
+| `convenciones.manuscrita` | Expresion de la frase que marca una rutina escrita a mano. |
+| `convenciones.patron_simbolo_datos` | Nombre de un simbolo de datos pequenos; su unico grupo es la direccion en hexadecimal. |
+| `convenciones.patron_linea_simbolo` | Linea del archivo de simbolos; tres grupos: nombre, direccion y atributos. |
+| `convenciones.max_valor_g` | Mayor umbral `-G` admitido, entero de 0 a 4096 (defecto 64). |

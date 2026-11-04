@@ -161,7 +161,7 @@ cadena de construcción: el proyecto no ejecuta `ASPSX.EXE`, sino `maspsx`, y `-
 comportamiento que `maspsx` imita. Desde la 2.80 el ensamblador reescribe `addiu rX,$gp,desplazamiento` (`gp_allow_la`);
 la 2.79 deja `lui` + `addiu`. El original usa esa forma, así que la versión que lo reproduce es la 2.80.
 
-- **Fijada:** `VERSION_ASPSX = "2.80"` en `tools/reconstruccion/compilacion.py`. Cambiarla no exige tocar
+- **Fijada:** `VERSION_ASPSX = "2.80"` en `kit/psxdecomp/construccion/compilacion.py` (`psxdecomp.construccion.compilacion`). Cambiarla no exige tocar
   `config/toolchain.lock.json` (el hash de `maspsx` no cambia). Para volver a evaluarla se edita la constante y se
   ejecuta `clean`, `split`, `build`, `verify`, comparando la puntuación de `diff` de todas las funciones en C.
 - **Medida (2026-10-26, todas las funciones definidas en C; el total vigente está en `docs/PROGRESO.md`):** `verify` sigue dando el SHA-256 original con 2.79 y con 2.80;
