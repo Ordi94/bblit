@@ -368,7 +368,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 #define GIRO_Y(p) (((ParametrosObjeto*)(p))->giro.u.y)
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 11168 con la configuracion versionada (g = 8 del archivo). Reparto de registros guardados: el original deja el scratchpad en s2, el objeto en s3 y asigna s1 a los punteros de area (&res, &p40) y a las banderas de colision, mientras el compilador toma s1 y s2 para el scratchpad y el objeto (rotacion de s1 a s3 en unas 1300 lineas); el resto son 15 tramos de 1 a 4 instrucciones (huecos de retardo, orden de cargas, mflo en t8 en lugar de t7). */
+/* Pendiente: puntuacion 10848 con la configuracion versionada (g = 8 del archivo). Reparto de registros guardados: el original deja el scratchpad en s2, el objeto en s3 y asigna s1 a los punteros de area (&res, &p40) y a las banderas de colision, mientras el compilador toma s1 y s2 para el scratchpad y el objeto (rotacion de s1 a s3 en unas 1300 lineas); el resto son 15 tramos de 1 a 4 instrucciones (huecos de retardo, orden de cargas, mflo en t8 en lugar de t7). */
 /*
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
@@ -1345,10 +1345,10 @@ L_800291A8:
         t->aux->param.giro.u.y = (u16)t->w114 + 0x800;
         t->aux->u18C.estado.w192 = 0x1000;
         t->w118 = BugsRand();
-        if (t->w118 >= 0) {
-            t->w114 = t->w114 + (t->w118 & 0x1FF);
-        } else {
+        if (t->w118 < 0) {
             t->w114 = t->w114 - (t->w118 & 0x1FF);
+        } else {
+            t->w114 = t->w114 + (t->w118 & 0x1FF);
         }
         if (o->p70 != 0) {
             o->portado.giro.u.y = (u16)t->w114 - o->p70->param.giro.u.y;
