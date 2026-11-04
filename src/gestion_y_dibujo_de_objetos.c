@@ -14,20 +14,16 @@ typedef struct NodoClave {
 extern Objeto* D_800694B4;
 
 #ifdef NON_MATCHING
-/*
- * Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo). GCC deriva un
- * segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el
- * original usa un solo puntero con desplazamientos 0x0C y 0x04. Ni el recorrido por indice sobre
- * el arreglo ni la reordenacion de los incrementos eliminan el puntero derivado.
- */
+/* Pendiente: puntuacion 395 con la configuracion versionada (g = 8 del archivo). GCC deriva un segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el original usa un solo puntero con desplazamientos 0x0C y 0x04 y conserva una copia de la cuenta (move a2,v0) para la prueba del bucle. Compartir la variable del indice con la que recibe la cuenta baja de 415; el recorrido por indice sobre el arreglo, la reordenacion de los incrementos y el acceso por desplazamiento en bytes no eliminan el puntero derivado. */
 EntradaId* func_80036164(s32 id)
 {
-    s32 i;
+    s32 indice;
     s32 n;
     EntradaId* p;
 
-    n = D_800694E6;
-    i = 0;
+    indice = D_800694E6;
+    n = indice;
+    indice = 0;
     if (n > 0) {
         p = D_800695D4;
         do {
@@ -36,9 +32,9 @@ EntradaId* func_80036164(s32 id)
                     return p;
                 }
             }
-            i++;
+            indice++;
             p++;
-        } while (i < n);
+        } while (indice < n);
     }
     return 0;
 }
