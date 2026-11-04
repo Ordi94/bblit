@@ -349,6 +349,17 @@ typedef struct TrabajoRecorrido {
                       "sw $12, 0($8)\n\tsw $13, 4($8)\n\tsw $14, 8($8)" \
                       : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
 /*
+ * GEO_SUMAR_W_A(origen, destino): la palabra de cada eje de destino = la de origen + t1..t3 (tras
+ * GEO_CARGAR_W). Igual que GEO_SUMAR_W pero el resultado va a otro vector: el original
+ * (func_80026FEC, 0x80028048 y 0x800282EC) carga el origen en t4..t6, suma, copia la direccion de
+ * destino a t0 y almacena. El cuerpo escribe $8 y $12..$14.
+ */
+#define GEO_SUMAR_W_A(origen, destino) \
+    __asm__ volatile ("move $8, %0\n\tlw $12, 0($8)\n\tlw $13, 4($8)\n\tlw $14, 8($8)\n\t" \
+                      "add $12, $12, $9\n\tadd $13, $13, $10\n\tadd $14, $14, $11\n\t" \
+                      "move $8, %1\n\tsw $12, 0($8)\n\tsw $13, 4($8)\n\tsw $14, 8($8)" \
+                      : : "r"(origen), "r"(destino) : "$8", "$12", "$13", "$14", "memory")
+/*
  * GEO_SUMAR_H(p): las tres medias palabras de p += t1..t3, con los temporales que dejo la macro
  * anterior (GEO_CARGAR_H) y los mismos $8, $12..$14 y add con captura de desbordamiento que
  * GEO_SUMAR_W: el original la escribio en 0x8002F7C4 (LogicaZonaSonda, tras GEO_CARGAR_H en
@@ -395,6 +406,27 @@ typedef struct TrabajoRecorrido {
                       "ori $2, $2, 1\n\taddiu $5, %0, 0x44\n\taddu $4, $5, $0\n\tsw $2, 0($4)\n\t" \
                       ".set pop" \
                       : : "r"(p) : "$1", "$2", "$3", "$4", "$5", "$7", "$8", "$9", "$10", "memory")
+
+/*
+ * GEO_DISTANCIA_APROX_A(v, d): misma distancia aproximada que GEO_DISTANCIA_APROX sobre el vector
+ * de tres palabras de v, pero el resultado (con el bit 0 activo) va a la palabra apuntada por d en
+ * lugar de v + 0x44 (func_80026FEC, 0x80028CC8 a 0x80028D54: addiu $5, d, 0). Mismo cuerpo y misma
+ * lista de registros destruidos.
+ */
+#define GEO_DISTANCIA_APROX_A(v, d) \
+    __asm__ volatile (".set push\n\t.set noreorder\n\t.set noat\n\t" \
+                      "addu $4, %0, $0\n\tlw $8, 0($4)\n\tlw $9, 4($4)\n\tlw $10, 8($4)\n\t" \
+                      "bgez $8, 1f\n\tnop\n\tsub $8, $0, $8\n" \
+                      "1:\tbgez $9, 2f\n\tnop\n\tsub $9, $0, $9\n" \
+                      "2:\taddu $2, $8, $0\n\tbgez $10, 3f\n\tnop\n\tsub $10, $0, $10\n" \
+                      "3:\taddu $3, $9, $0\n\tslt $1, $8, $9\n\tbeqz $1, 4f\n\tnop\n\t" \
+                      "addu $2, $9, $0\n\taddu $3, $8, $0\n" \
+                      "4:\taddu $7, $10, $0\n\tslt $1, $2, $10\n\tbeqz $1, 5f\n\tnop\n\t" \
+                      "addu $7, $2, $0\n\taddu $2, $10, $0\n" \
+                      "5:\tsrl $3, $3, 2\n\tsrl $7, $7, 2\n\tadd $2, $2, $3\n\tadd $2, $2, $7\n\t" \
+                      "ori $2, $2, 1\n\taddiu $5, %1, 0\n\taddu $4, $5, $0\n\tsw $2, 0($4)\n\t" \
+                      ".set pop" \
+                      : : "r"(v), "r"(d) : "$1", "$2", "$3", "$4", "$5", "$7", "$8", "$9", "$10", "memory")
 
 /* Area de trabajo de func_80018C68: matriz de rotacion inversa del objeto y vectores locales. */
 typedef struct ConsultaMatriz {

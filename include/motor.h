@@ -81,9 +81,11 @@ typedef struct RegistroAnim {
     u16 w0A;                /* grupo de disparadores del fotograma: lhu en LogicaActorSecuencias (0x8002D24C) */
     u32 w0C;
     u32 w10;                /* banderas de movimiento: lw en LogicaProyectil (0x8002F40C), bit 3 = el golpe se reparte */
-    u8 pad14[0x16 - 0x14];
-    u16 w16;                /* dano del golpe: lhu en LogicaEfectoAnclado (0x8002ED84) */
-    u8 pad18[0x1E - 0x18];
+    s16 h14;                /* velocidad del fotograma: lh en func_80026FEC (0x80028148, 0x800283CC) y lhu (0x800289F8, 0x80028B3C) */
+    u16 w16;                /* dano del golpe: lhu en LogicaEfectoAnclado (0x8002ED84); identificador de objetivo: lhu 0x800276C0 y lh 0x80028BD4 en func_80026FEC */
+    u16 w18;                /* paso de fase de la oscilacion: lhu en func_80026FEC (0x80027A2C, 0x80027D44) */
+    u16 w1A;                /* amplitud de la oscilacion y paso lateral: lhu en func_80026FEC (0x800279E8, 0x80027D58) */
+    u16 w1C;                /* golpe que aplica el fotograma: lhu en func_80026FEC (0x80027554, 0x800275EC, 0x80027858) */
     u16 w1E;                /* desplazamiento del primer disparador del fotograma: lhu en LogicaActorSecuencias (0x8002D25C) */
 } RegistroAnim;
 

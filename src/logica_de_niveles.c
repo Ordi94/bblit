@@ -8,11 +8,8 @@
  * en lugar de lhu o andi) se declaran de 32 bits: con un prototipo estrecho el llamador los
  * recortaria.
  */
-extern void func_80020210(Objeto* o, s32 paso, s32 amplitud);
-extern void func_80020240(Objeto* o);
 extern s32 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo);
 extern ApoyoHallado* func_80020354(Objeto* o, VECTOR* pos, void* trabajo, u32 mascara);
-extern s32 func_80018664(Objeto* a, Objeto* b, void* w);
 extern void func_8001D414(s16 accion);
 extern void func_8001D994(Objeto* o);
 extern void func_8003AA7C(u8 modo, u16 duracion);

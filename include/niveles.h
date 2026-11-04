@@ -450,4 +450,68 @@ extern void func_8001CBB8(Objeto* o, Movimiento* d, ResultadoBaldosa* r, void* w
 extern void func_8001E1A4(Objeto* o, ConsultaPlano* c);
 extern void func_8001D0FC(Objeto* o, s32 id, void* area);
 
+/*
+ * Memoria de trabajo del personaje animado (func_80026FEC) en el scratchpad (0x1F800000). El original
+ * direcciona todas sus variables con el mismo lui y un desplazamiento, y reutiliza las primeras
+ * 0x88 bytes con varias disposiciones segun la fase: el resultado de RotMatrix (MATRIX), el vector
+ * de velocidad local (SVECTOR, lhu / sh), el vector de desplazamiento rotado y el giro. Los campos de
+ * 32 bits sin nombre propio llevan su desplazamiento en el nombre.
+ */
+typedef struct TrabajoPersonaje {
+    union {
+        MATRIX m;               /* +0x00: salida de RotMatrix y matriz identidad (GEO_IDENTIDAD) */
+        u16 h[3];               /* +0x00, +0x02, +0x04: velocidad lateral, vertical y de avance (lhu / sh) */
+        struct {
+            SVECTOR a;          /* +0x00: vector que entra al GTE */
+            SVECTOR b;          /* +0x08: vector de sondeo y desfase relativo al portador */
+            SVECTOR c;          /* +0x10 */
+            SVECTOR g;          /* +0x18: giro que recibe RotMatrix */
+        } sv;
+    } r;
+    VECTOR d;                   /* +0x20: desplazamiento rotado, entrada de las rutinas de movimiento */
+    s32 pad2C;
+    VECTOR p30;                 /* +0x30: vector hacia el objetivo y punto consultado */
+    s32 pad3C;
+    VECTOR p40;                 /* +0x40 */
+    s32 pad4C;
+    SVECTOR s50;                /* +0x50: vector de entrada del GTE en el sondeo */
+    VECTOR p58;                 /* +0x58 */
+    s32 pad64;
+    MATRIX m68;                 /* +0x68: salida de RotMatrix de las fases de sondeo y de movimiento */
+    ResultadoBaldosa res;       /* +0x88: salida de func_8001C134; el grupo de entrada es res.grupo (+0x92) */
+    s32 w_a0;                   /* +0xA0 */
+    s32 w_a4;                   /* +0xA4 */
+    Objeto* aux;                /* +0xA8: objeto auxiliar hallado por las consultas */
+    RegistroAnim* fot;          /* +0xAC: fotograma en curso (copia de registro184) */
+    s32 w_b0;                   /* +0xB0 */
+    NodoDisparador* nodo;       /* +0xB4 */
+    NodoSecuencia* sec;         /* +0xB8 */
+    u16 w_bc;                   /* +0xBC: sh / lhu */
+    u16 padBE;
+    VECTOR vC0;                 /* +0xC0 */
+    s32 padCC;
+    Objeto* hijo;               /* +0xD0 */
+    Objeto* w_d4;               /* +0xD4: objetivo en cache */
+    s32 w_d8;                   /* +0xD8 */
+    s32 w_dc;                   /* +0xDC */
+    u16 w_e0;                   /* +0xE0: sh / lhu */
+    u16 padE2;
+    GsCOORDINATE2* cursor;      /* +0xE4 */
+    SVECTOR sE8;                /* +0xE8 */
+    VECTOR pF0;                 /* +0xF0 */
+    s32 padFC;
+    ZonaColision* zona;         /* +0x100 */
+    u8 pad104[0x114 - 0x104];
+    s32 w114;                   /* +0x114 */
+    s32 w118;                   /* +0x118 */
+    s32 banderas;               /* +0x11C: banderas de ataque del fotograma (registro->w0C), se prueba su signo */
+    s32 previo;                 /* +0x120: secuencia anterior */
+} TrabajoPersonaje;
+
+/* Rutinas que el personaje animado invoca y que ningun otro encabezado declara. */
+extern void func_80020210(Objeto* o, s32 paso, s32 amplitud);
+extern void func_80020240(Objeto* o);
+extern s32 func_80018664(Objeto* a, Objeto* b, void* w);
+extern void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, void* w);
+
 #endif

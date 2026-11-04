@@ -271,10 +271,12 @@ typedef struct Objeto {
     union {
         ParametrosObjeto agarre;
         struct {
-            u8 pad00[0x192 - 0x18C];
-            u16 w192;           /* func_80031B78: solo sh $zero, 0x192($a0) en 0x80031B8C; sin lectura que fije el signo */
-            u8 pad06[2];
-            u16 w196;           /* func_80031B78: solo sh 0x196($a0) en 0x80031B94; sin lectura que fije el signo */
+            u8 pad00[0x18E - 0x18C];
+            u16 w18E;           /* func_80026FEC: lhu / sh 0x80028A74, cuenta atras del vaiven ocioso del giro */
+            s16 h190;           /* func_80026FEC: lh / sh 0x80028A84, sentido del vaiven ocioso del giro */
+            u16 w192;           /* func_80031B78: solo sh $zero, 0x192($a0) en 0x80031B8C; func_80026FEC: lhu 0x80027F24 y lh 0x80027F20 (cuenta del vuelo), sh */
+            s16 h194;           /* func_80026FEC: lh 0x80027F30 y sh 0x80027F1C (sentido del vuelo) */
+            u16 w196;           /* func_80031B78: solo sh 0x196($a0) en 0x80031B94; func_80026FEC lo lee con lh y lhu (0x80028ED8, 0x80028F0C, 0x80028F40: paso de giro) */
             u8 pad0C[0x28 - 0x0C];
         } estado;
     } u18C;
@@ -448,6 +450,16 @@ extern EstadoCamara D_8006D928;
  * El arranque las limpia con GsClearOt, que recibe un GsOT*, y func_80040B8C envia cada
  * lista con DrawOTag.
  */
+/* Punto de reaparicion del objeto controlado: posicion y orientacion (D_8006ACD0). */
+typedef struct InicioNivel {
+    s32 x;
+    s32 y;
+    s32 z;
+    s32 ang;
+} InicioNivel;
+
+extern InicioNivel D_8006ACD0;
+
 extern GsOT D_8006AE20[];
 extern GsOT D_8006AE60[];
 extern GsOT D_8006AEA0[];
@@ -456,6 +468,14 @@ extern GsOT D_8006AEA0[];
 
 /* Botones del cuadro en el estado principal (0x80010010): lhu en los eventos y la camara, sh en el mando. */
 extern u16 D_80010010;
+
+/*
+ * Ejes del mando en el estado principal (0x80010012 y 0x80010014): func_80026FEC los lee con lhu y
+ * los extiende a 16 bits con signo en cada uso (sll 16, sra 16), salvo la prueba de reposo del
+ * segundo (0x80028450), que lo compara sin extender.
+ */
+extern u16 D_80010012;
+extern u16 D_80010014;
 
 /* Banderas de `main`, de los eventos y de los menus: se escriben con sb y se leen con lbu. */
 extern u8 D_800694E0;

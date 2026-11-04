@@ -16,16 +16,6 @@ typedef struct DatosGolpe {
     s16 danio;
 } DatosGolpe;
 
-/* Punto de reaparicion del objeto controlado: posicion y orientacion. */
-typedef struct InicioNivel {
-    s32 x;
-    s32 y;
-    s32 z;
-    s32 ang;
-} InicioNivel;
-
-extern InicioNivel D_8006ACD0;
-
 /*
  * Dato pequeno direccionado con desplazamiento($gp): lo define este archivo (definicion
  * tentativa) para que el ensamblador lo reescriba a $gp, y el enlace lo coloca en 0x800693B8.
