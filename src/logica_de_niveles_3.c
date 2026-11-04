@@ -368,7 +368,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 #define GIRO_Y(p) (((ParametrosObjeto*)(p))->giro.u.y)
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 44933 con la configuracion versionada (g = 8 del archivo). Traduccion completa de la logica; la funcion mide 186 instrucciones mas que el original y el reparto de registros y la forma de las ramas anidadas todavia difieren. */
+/* Pendiente: puntuacion 42153 con la configuracion versionada (g = 8 del archivo). Traduccion completa de la logica; la funcion mide 186 instrucciones mas que el original y el reparto de registros y la forma de las ramas anidadas todavia difieren. */
 /*
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o

@@ -455,7 +455,7 @@ extern void func_8001D0FC(Objeto* o, s32 id, void* area);
  * direcciona todas sus variables con el mismo lui y un desplazamiento, y reutiliza las primeras
  * 0x88 bytes con varias disposiciones segun la fase: el resultado de RotMatrix (MATRIX), el vector
  * de velocidad local (SVECTOR, lhu / sh), el vector de desplazamiento rotado y el giro. Los campos de
- * 32 bits sin nombre propio llevan su desplazamiento en el nombre.
+ * 32 bits sin nombre propio llevan su desplazamiento en el nombre. VECTOR ocupa 16 bytes (con relleno).
  */
 typedef struct TrabajoPersonaje {
     union {
@@ -469,14 +469,10 @@ typedef struct TrabajoPersonaje {
         } sv;
     } r;
     VECTOR d;                   /* +0x20: desplazamiento rotado, entrada de las rutinas de movimiento */
-    s32 pad2C;
     VECTOR p30;                 /* +0x30: vector hacia el objetivo y punto consultado */
-    s32 pad3C;
     VECTOR p40;                 /* +0x40 */
-    s32 pad4C;
     SVECTOR s50;                /* +0x50: vector de entrada del GTE en el sondeo */
     VECTOR p58;                 /* +0x58 */
-    s32 pad64;
     MATRIX m68;                 /* +0x68: salida de RotMatrix de las fases de sondeo y de movimiento */
     ResultadoBaldosa res;       /* +0x88: salida de func_8001C134; el grupo de entrada es res.grupo (+0x92) */
     s32 w_a0;                   /* +0xA0 */
@@ -489,7 +485,6 @@ typedef struct TrabajoPersonaje {
     u16 w_bc;                   /* +0xBC: sh / lhu */
     u16 padBE;
     VECTOR vC0;                 /* +0xC0 */
-    s32 padCC;
     Objeto* hijo;               /* +0xD0 */
     Objeto* w_d4;               /* +0xD4: objetivo en cache */
     s32 w_d8;                   /* +0xD8 */
@@ -499,7 +494,6 @@ typedef struct TrabajoPersonaje {
     GsCOORDINATE2* cursor;      /* +0xE4 */
     SVECTOR sE8;                /* +0xE8 */
     VECTOR pF0;                 /* +0xF0 */
-    s32 padFC;
     ZonaColision* zona;         /* +0x100 */
     u8 pad104[0x114 - 0x104];
     s32 w114;                   /* +0x114 */
