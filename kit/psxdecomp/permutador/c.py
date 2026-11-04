@@ -1220,7 +1220,7 @@ def localizar_funcion(texto: str, nombre: str) -> tuple[int, int]:
         AnalisisCError: Si no hay una definicion o hay mas de una.
 
     Ejemplo:
-        inicio, fin = localizar_funcion(texto, "func_80016C0C")
+        inicio, fin = localizar_funcion(texto, "func_ejemplo")
     """
     limpio = enmascarar(texto)
     patron = re.compile(rf"^(?=[A-Za-z_])[\w \t*]*?\b{re.escape(nombre)}\s*\([^;{{}}]*\)\s*\{{", re.MULTILINE)
@@ -1713,6 +1713,6 @@ def es_identificador(texto: str) -> bool:
         bool: Verdadero si es un identificador.
 
     Ejemplo:
-        valido = es_identificador("func_80016C0C")
+        valido = es_identificador("func_ejemplo")
     """
     return _PATRON_IDENTIFICADOR.match(texto) is not None

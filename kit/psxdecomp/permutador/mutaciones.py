@@ -9,7 +9,7 @@ sin cambiar lo que la funcion hace.
 
 Ninguna mutacion escribe ensamblador, ``volatile``, ``register`` ni barreras: son recursos que el
 proyecto no admite como estado final, y ``variante_permitida`` descarta cualquier variante que
-aumente su cantidad respecto al C de partida. Las macros de funcion (``GEO_*``, ``gte_*``) y las
+aumente su cantidad respecto al C de partida. Las macros de funcion (en mayusculas o ``gte_*``) y las
 llamadas son sentencias opacas: nada se mueve a traves de ellas y sus argumentos no se parten.
 """
 
@@ -23,8 +23,8 @@ from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from tools.reconstruccion import permutar_analisis as an
-from tools.reconstruccion import permutar_c as c
+from psxdecomp.permutador import analisis as an
+from psxdecomp.permutador import c
 
 PREFIJO_TEMPORAL = "tmp"
 PATRONES_PROHIBIDOS = (
@@ -1780,8 +1780,8 @@ def propagar_copia_de_campo(ctx: Contexto) -> str | None:
         ``f = o->flags14 | 2; o->flags14 = f; ...; o->flags14 = f & mascara;`` crea una copia ``move``
         que el compilador mantiene en otro registro mientras vive ``f``. Con ``o->flags14 |= 2; ...;
         o->flags14 &= mascara;`` el valor cargado se reutiliza en el mismo registro y la copia
-        desaparece. Es la forma en que se cierra ``func_8001C424``. Solo se aplica si la local se asigna
-        una vez desde un campo o elemento puro y un operando puro, su primer uso es ``campo = local;``,
+        desaparece. Solo se aplica si la local se asigna una vez desde un campo o elemento puro y un
+        operando puro, su primer uso es ``campo = local;``,
         el resto de sus usos son comparaciones o un almacen final ``campo = local op2 c2;``, y entre la
         copia y el ultimo uso nada escribe el campo (ruta solapada, alias de union, ``*p``, ``p[i]``) ni
         llama a funciones: asi la local vale siempre lo mismo que el campo y sustituirla no cambia nada.

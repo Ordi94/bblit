@@ -1,6 +1,6 @@
 import pytest
-from tools.reconstruccion import permutar_analisis as an
-from tools.reconstruccion import permutar_c as c
+from psxdecomp.permutador import analisis as an
+from psxdecomp.permutador import c
 
 CABECERA = """
 typedef struct SVECTOR {
@@ -29,8 +29,8 @@ typedef struct Objeto {
     return_no_es_campo;
 } Objeto;
 
-extern Objeto* D_80069630;
-extern s32 D_80069380;
+extern Objeto* tabla_a;
+extern s32 tabla_b;
 u8 D_tabla[8];
 typedef unsigned char u_char;
     return retornado;
@@ -96,8 +96,8 @@ def test_la_tabla_recoge_campos_estructuras_globales_y_nombres_de_tipo() -> None
     # Un campo cuyo tipo es una union anonima no es un entero ni se puede copiar a un temporal.
     assert t.estructuras["Objeto"]["u78"] == an.Tipo("union")
     assert not t.estructuras["Objeto"]["u78"].es_escalar
-    assert t.globales["D_80069630"] == an.parsear_tipo("Objeto", 1)
-    assert t.globales["D_80069380"] == an.parsear_tipo("s32")
+    assert t.globales["tabla_a"] == an.parsear_tipo("Objeto", 1)
+    assert t.globales["tabla_b"] == an.parsear_tipo("s32")
     assert {"Objeto", "SVECTOR", "u_char", "Local"} <= t.nombres_de_tipo
 
 
@@ -157,7 +157,7 @@ def test_inferencia_de_tipos_de_expresiones() -> None:
     e, _ = entorno("void f(Objeto* o, s16 k, u32 m)\n{\n    s32 v;\n    u16 w;\n    s32 arreglo[3];\n}")
     infer = e.inferir
     assert infer(c.Id("k")) == an.parsear_tipo("s16")
-    assert infer(c.Id("D_80069630")) == an.parsear_tipo("Objeto", 1)
+    assert infer(c.Id("tabla_a")) == an.parsear_tipo("Objeto", 1)
     assert infer(c.Id("desconocida")) is None
     assert infer(c.Num("3")) == an.S32
     assert infer(c.Conversion("u8*", c.Id("o"))) == an.parsear_tipo("u8", 1)

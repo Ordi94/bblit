@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 import pytest
-from tools.reconstruccion import permutar_estado as est
+from psxdecomp.permutador import estado as est
 
 
 def estado() -> est.Estado:
@@ -115,3 +115,7 @@ def test_una_escritura_interrumpida_deja_el_estado_anterior_y_ningun_temporal(
         est.guardar_estado(tmp_path, est.Estado("func_X", "src/a.c", 1, 1, 1, 1))
     assert (tmp_path / "estado.json").read_text(encoding="utf-8") == anterior
     assert [p.name for p in tmp_path.iterdir()] == ["estado.json"]
+
+
+def test_la_carpeta_de_estado_respeta_la_carpeta_de_build_del_proyecto() -> None:
+    assert est.carpeta_de(Path("repo"), "func_X", "salida") == Path("repo/salida/permutar/func_X")

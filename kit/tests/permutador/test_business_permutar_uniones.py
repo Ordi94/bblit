@@ -10,9 +10,9 @@ import random
 from collections.abc import Callable
 
 import pytest
-from tools.reconstruccion import permutar_analisis as an
-from tools.reconstruccion import permutar_c as c
-from tools.reconstruccion import permutar_mutaciones as mut
+from psxdecomp.permutador import analisis as an
+from psxdecomp.permutador import c
+from psxdecomp.permutador import mutaciones as mut
 
 CABECERA = """
 typedef union Giro {

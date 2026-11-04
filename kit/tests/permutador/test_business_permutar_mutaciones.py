@@ -5,9 +5,9 @@ import re
 from collections.abc import Callable
 
 import pytest
-from tools.reconstruccion import permutar_analisis as an
-from tools.reconstruccion import permutar_c as c
-from tools.reconstruccion import permutar_mutaciones as mut
+from psxdecomp.permutador import analisis as an
+from psxdecomp.permutador import c
+from psxdecomp.permutador import mutaciones as mut
 
 CABECERA = """
 typedef struct Objeto {
@@ -173,7 +173,7 @@ def test_una_sentencia_con_otros_efectos_no_admite_temporales(linea: str) -> Non
 
 
 def test_una_llamada_con_argumentos_puros_admite_un_temporal_de_sus_argumentos() -> None:
-    descripcion, texto = aplicar(mut.introducir_temporal, cuerpo("GEO_F(o->radio);"))
+    descripcion, texto = aplicar(mut.introducir_temporal, cuerpo("MACRO_F(o->radio);"))
     assert descripcion is not None
     assert "tmp1 = o->radio;" in texto or "tmp1 = o;" in texto
 
@@ -772,8 +772,8 @@ def test_con_nombres_unicos_las_mutaciones_siguen_funcionando() -> None:
 FUENTE_CON_BARRERAS = """typedef struct Objeto {
     s32 valor;
 } Objeto;
-u8 D_80069458;
-Objeto* D_80069698;
+u8 tabla_c;
+Objeto* tabla_d;
 
 void func_Previa(s32 a)
 {
@@ -785,13 +785,13 @@ void func_Previa(s32 a)
 
 u32 func_Audio(Objeto* o)
 {
-    if (D_80069458 == 0) {
+    if (tabla_c == 0) {
         return 0;
     }
-    if (o == D_80069698 || o == 0) {
-        return D_80069458 | (D_80069458 << 8);
+    if (o == tabla_d || o == 0) {
+        return tabla_c | (tabla_c << 8);
     }
-    return (D_80069458 << 8) | (o->valor & 0xFF) | 1;
+    return (tabla_c << 8) | (o->valor & 0xFF) | 1;
 }
 """
 

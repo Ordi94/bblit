@@ -19,9 +19,11 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.reconstruccion.infraestructura import CARPETA_PERMUTAR
+from psxdecomp.dominio import RUTAS_SENCILLAS_POR_DEFECTO
 
 VERSION_ESTADO = 1
+BUILD_POR_DEFECTO = RUTAS_SENCILLAS_POR_DEFECTO["build"]
+SUBCARPETA_PERMUTADOR = "permutar"
 ARCHIVOS_DEL_ESTADO = ("mejor.c", "actual.c", "estado.json", "registro.jsonl")
 
 
@@ -54,7 +56,7 @@ class Estado:
     segundos: float = 0.0
 
 
-def carpeta_de(raiz: Path, funcion: str) -> Path:
+def carpeta_de(raiz: Path, funcion: str, build: str = BUILD_POR_DEFECTO) -> Path:
     """
     Da la carpeta de estado de una funcion.
 
@@ -64,14 +66,16 @@ def carpeta_de(raiz: Path, funcion: str) -> Path:
     Args:
         raiz (Path): Raiz del repositorio.
         funcion (str): Nombre de la funcion (ya validado).
+        build (str, opcional): Carpeta de salida del proyecto (``rutas.build`` del manifiesto);
+            por omision la del manifiesto sin personalizar.
 
     Returns:
-        Path: ``build/permutar/<funcion>``.
+        Path: ``<build>/permutar/<funcion>``; el formato de lo que se guarda dentro no depende de ``build``.
 
     Ejemplo:
-        carpeta = carpeta_de(Path("."), "func_80016C0C")
+        carpeta = carpeta_de(Path("."), "func_ejemplo")
     """
-    return raiz / CARPETA_PERMUTAR / funcion
+    return raiz / build / SUBCARPETA_PERMUTADOR / funcion
 
 
 def _escribir_atomico(destino: Path, contenido: str) -> None:
@@ -99,7 +103,7 @@ def reiniciar(carpeta: Path) -> None:
         carpeta (Path): Carpeta de estado.
 
     Ejemplo:
-        reiniciar(carpeta_de(Path("."), "func_80016C0C"))
+        reiniciar(carpeta_de(Path("."), "func_ejemplo"))
     """
     for nombre in ARCHIVOS_DEL_ESTADO:
         (carpeta / nombre).unlink(missing_ok=True)
@@ -171,7 +175,7 @@ def cargar_estado(carpeta: Path, funcion: str) -> Estado:
             invalidos o pertenece a otra funcion.
 
     Ejemplo:
-        estado = cargar_estado(carpeta, "func_80016C0C")
+        estado = cargar_estado(carpeta, "func_ejemplo")
     """
     ruta = carpeta / "estado.json"
     if not ruta.is_file():

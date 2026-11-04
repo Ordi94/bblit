@@ -22,7 +22,7 @@ from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 
-from tools.reconstruccion import permutar_c as c
+from psxdecomp.permutador import c
 
 ANCHOS_ENTEROS = {"s8": (8, True), "u8": (8, False), "s16": (16, True), "u16": (16, False)}
 ANCHOS_ENTEROS |= {"s32": (32, True), "u32": (32, False), "char": (8, True), "short": (16, True)}

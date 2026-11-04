@@ -1,7 +1,7 @@
 import re
 
 import pytest
-from tools.reconstruccion import permutar_c as c
+from psxdecomp.permutador import c
 
 TIPOS = frozenset({"Objeto", "ConsultaVolumen", "Nodo"})
 
@@ -48,7 +48,7 @@ FUNCION_RICA = """s32 func_X(Objeto* a, u32 mascara, ConsultaVolumen* o)
     ;
 fin:
     o->actual = n ? a : (Objeto*)0;
-    GEO_X(&o->m, tabla[i], "texto", 'c');
+    MACRO_X(&o->m, tabla[i], "texto", 'c');
     (*p).y = -(-i) + (~i) + !k;
     *p += o->v[i][k] % 3 / 2 | 1 ^ 2 & 3;
     func_Y(i, (i, k));
@@ -80,7 +80,7 @@ def test_la_escritura_de_una_funcion_rica_es_un_punto_fijo_y_normaliza_el_format
     assert "    default:\n        goto fin;\n" in una
     assert "    ;\nfin:\n" in una
     assert "    o->actual = n ? a : (Objeto*)0;\n" in una
-    assert "    GEO_X(&o->m, tabla[i], \"texto\", 'c');\n" in una
+    assert "    MACRO_X(&o->m, tabla[i], \"texto\", 'c');\n" in una
     assert "    (*p).y = -(-i) + ~i + !k;\n" in una
     assert "    func_Y(i, (i, k));\n    return;\n}" in una
 
@@ -281,7 +281,7 @@ def test_todos_los_bloques_recorre_los_anidados() -> None:
 
 
 def test_es_identificador() -> None:
-    assert c.es_identificador("func_80016C0C")
+    assert c.es_identificador("func_ejemplo")
     assert not c.es_identificador("1abc")
     assert not c.es_identificador("a b")
 
