@@ -347,14 +347,16 @@ void func_8003B26C(PedidoModelo* pedido, EscenaDibujo* escena, VistaDibujo* vist
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 485 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; solo difiere el reparto de v0/v1/a0 en la comparacion del numero de salas (la constante 0x10000 se carga antes del almacen de la profundidad) y en el puntero de la entrada visible. */
+/* Pendiente: puntuacion 325 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de v0/v1 en las constantes previas al bucle (el original deja el uno compartido en v1 y la prueba del numero de salas en v0) y los registros de la entrada visible del bucle y de la entrada nueva. */
 void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vista)
 {
     PedidoModelo pedido;
-    s16 actual;
-    u16 cuenta;
     u16 anterior;
+    s16 actual;
     EntradaVisible* entrada;
+    u16 cuenta;
+    u16 sala_actual;
+    s32 sala_o_marca; /* Una sola variable para la sala ensanchada y la marca de varias salas: con dos, el reparto de v0/v1 empeora. */
 
     D_800695C4 = D_8006D1C8;
     D_800695DA = 0;
@@ -369,8 +371,10 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     D_80069688 = escena->objeto->w26;
     actual = -1;
     if (!(D_8006D9A8[0] & 0x300)) {
+        sala_actual = escena->objeto->w26;
+        sala_o_marca = sala_actual;
         actual = D_80069698->w26;
-        if (actual != (s16)escena->objeto->w26 && actual != -1) {
+        if (actual != (s16)sala_o_marca && actual != -1) {
             pedido.profundidad = 0;
             pedido.grupo = 0;
             pedido.modelo = actual;
@@ -380,9 +384,10 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     }
     cuenta = D_80069588;
     pedido.grupo = 1;
+    sala_o_marca = (cuenta << 16) > 0x10000;
     escena->estado.s6 = -0x80;
     pedido.profundidad = 1;
-    if ((cuenta << 16) > 0x10000) {
+    if (sala_o_marca) {
         do {
             if (pedido.profundidad == (s16)cuenta) {
                 pedido.grupo++;
@@ -394,12 +399,12 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
                 func_8003B26C(&pedido, escena, vista);
             }
             pedido.profundidad++;
-        } while (pedido.profundidad < D_80069588);
+        } while (D_80069588 > pedido.profundidad);
     }
     anterior = D_80069688;
     if (actual != D_80069688) {
         entrada = &D_8006A940[D_80069588];
-        D_80069588 += 1;
+        D_80069588 = D_80069588 + 1;
         entrada->bandera = 0;
         entrada->modelo = anterior;
     }
