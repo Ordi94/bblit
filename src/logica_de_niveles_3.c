@@ -382,26 +382,28 @@ void func_80026FEC(Objeto* o)
 {
     TrabajoPersonaje* t;
     void* area;
-    s32 choco;
-    s32 id_sec;
-    s32 onda;
+    GsCOORDINATE2* coord_o;
     GsCOORD2PARAM* pr;
+    AcumuladorNodos pila_nodo;
+    NodoDisparador* nd_azar;
+    s32 choco;
+    /*
+     * Temporales de 32 bits que varios bloques reutilizan: el original conserva en el mismo
+     * registro el valor de los distintos calculos, y una variable por uso cambia el reparto.
+     */
+    s32 temp_a;
+    s32 temp_b;
     s32 jy;
     s32 portador;
     s32 rflags;
     s32 giro;
     s32 suelo;
-    s32 fase;
     s32 factor_a;
     s32 factor_b;
-    AcumuladorNodos pila_nodo;
-    u16 id_golpe;
     s32 arg_giro;
-    NodoDisparador* nd_azar;
     s32 azar;
-    s32* pos_hijo;
     u32 f14;
-    GsCOORDINATE2* coord_o;
+    u16 id_golpe;
 
     t = (TrabajoPersonaje*)0x1F800000;
     area = (void*)0x1F800128;
@@ -658,7 +660,7 @@ L_80027808:
             goto L_80028370;
         }
     } else {
-        /* Oscilacion vertical: la fase y la amplitud se fijan al entrar (flags14 bit 0). */
+        /* Oscilacion vertical: la temp_b y la amplitud se fijan al entrar (flags14 bit 0). */
         if (!(o->flags14 & 1)) {
             o->h106 = (u16)o->param.trans.vy;
             o->h108 = 0;
@@ -740,21 +742,21 @@ L_80027D04:
     if (t->banderas & 0x20000000) {
         o->flags14 |= 4;
         if (!(o->flags14 & 1)) {
-            /* Primera vez: la onda arranca en 0xC00 con la amplitud y la velocidad del fotograma. */
+            /* Primera vez: la temp_a arranca en 0xC00 con la amplitud y la velocidad del fotograma. */
             o->h10A = 0;
             o->h108 = 0xC00;
             o->h106 = t->fot->w18;
             o->h104 = t->fot->w1A;
             o->flags14 |= 1;
         }
-        onda = o->h104 * rsin(o->h108);
-        fase = (u16)o->h108 + (u16)o->h106;
-        o->h108 = fase;
-        o->param.trans.vy += onda >> 12;
-        if ((s16)fase >= 0x1000) {
-            o->h108 = fase - 0x1000;
+        temp_a = o->h104 * rsin(o->h108);
+        temp_b = (u16)o->h108 + (u16)o->h106;
+        o->h108 = temp_b;
+        o->param.trans.vy += temp_a >> 12;
+        if ((s16)temp_b >= 0x1000) {
+            o->h108 = temp_b - 0x1000;
         }
-        /* Sin zona de colision bajo el objeto no hay referencia de altura: se deja la onda tal cual. */
+        /* Sin zona de colision bajo el objeto no hay referencia de altura: se deja la temp_a tal cual. */
         if ((t->zona = func_8001BF9C((s32*)&o->param.trans, (s16)o->w26)) != 0) {
             GEO_CARGAR_W(&o->param.trans);
             GEO_GUARDAR_W_T1(&t->p30);
@@ -762,8 +764,10 @@ L_80027D04:
             func_8001C134((s32*)&t->p30, &t->res, area);
             if (t->res.flags & 8) {
                 jy = D_80069698->param.trans.vy;
-                t->w114 = jy - 0xC8;
-                t->w118 = jy - 0x190;
+                temp_a = jy - 0xC8;
+                temp_b = jy - 0x190;
+                t->w114 = temp_a;
+                t->w118 = temp_b;
             } else if ((t->banderas & 0x810000) && ((s16)o->w26 == (s16)D_80069698->w26)) {
                 /* Acompana al jugador: el techo del vuelo es la menor altura entre el suelo y el jugador. */
                 suelo = t->p30.vy + (s16)t->res.pendiente;
@@ -1572,7 +1576,7 @@ L_8002A11C:
     if (o->coord.super == 0) goto L_8002A448;
     if (o->p70 != 0) {
         if (o->p70->flags14 & 0x100) {
-            /* El portador esta inactivo: el objeto no puede seguir encima de el, salvo que ya este en la fase de suelta (0x400 de flags18), que resuelve otro bloque. */
+            /* El portador esta inactivo: el objeto no puede seguir encima de el, salvo que ya este en la temp_b de suelta (0x400 de flags18), que resuelve otro bloque. */
             if (o->flags18 & 0x400) goto L_8002B994;
             o->coord.param = PARAMETROS_SDK(o);
             o->coord.super = 0;
