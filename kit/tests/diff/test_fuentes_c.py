@@ -1,15 +1,24 @@
+from functools import partial
 from typing import Any
 
 import pytest
-from tools.reconstruccion import fuentes_c
-from tools.reconstruccion.fuentes_c import EstadoFuncion, analizar_fuente, analizar_fuentes, ubicar_funcion
+from psxdecomp.diff import fuentes_c
+from psxdecomp.diff.fuentes_c import EstadoFuncion
+from psxdecomp.diff.fuentes_c import analizar_fuente as _analizar_fuente
+from psxdecomp.diff.fuentes_c import analizar_fuentes as _analizar_fuentes
+from psxdecomp.diff.fuentes_c import ubicar_funcion as _ubicar_funcion
+from psxdecomp.dominio import construir_convenciones
 
+CONV = construir_convenciones({})
+analizar_fuente = partial(_analizar_fuente, convenciones=CONV)
+analizar_fuentes = partial(_analizar_fuentes, convenciones=CONV)
+ubicar_funcion = partial(_ubicar_funcion, carpeta_fuentes="src")
 CABECERA = '#include "common.h"\n\n'
 
 
 def test_solo_include_asm_es_ensamblador() -> None:
-    texto = CABECERA + 'INCLUDE_ASM("asm/nonmatchings/a", func_80014AC4);\n'
-    assert analizar_fuente(texto) == {"func_80014AC4": EstadoFuncion.ENSAMBLADOR}
+    texto = CABECERA + 'INCLUDE_ASM("asm/nonmatchings/a", func_A);\n'
+    assert analizar_fuente(texto) == {"func_A": EstadoFuncion.ENSAMBLADOR}
 
 
 def test_definicion_normal_es_c_y_el_include_asm_vecino_sigue_siendo_ensamblador() -> None:
@@ -85,21 +94,19 @@ def test_las_estructuras_de_control_no_se_toman_por_definiciones() -> None:
 @pytest.mark.parametrize(
     "definicion",
     [
-        "struct Ranura *func_80036204(u8 *base)\n{\n    return 0;\n}\n",
-        "Ranura *func_80036204(u8 *base)\n{\n    return 0;\n}\n",
+        "struct Pieza *func_Z(u8 *base)\n{\n    return 0;\n}\n",
+        "Pieza *func_Z(u8 *base)\n{\n    return 0;\n}\n",
     ],
 )
 def test_una_definicion_que_el_particionador_no_veria_se_rechaza_con_la_forma_correcta(
     definicion: Any,
 ) -> None:
-    with pytest.raises(ValueError, match=r"no la reconoceria el particionador.*Ranura\* func_80036204"):
+    with pytest.raises(ValueError, match=r"no la reconoceria el particionador.*Pieza\* rutina_a"):
         analizar_fuente(definicion)
 
 
 def test_la_forma_con_el_asterisco_pegado_al_tipo_si_se_reconoce() -> None:
-    assert analizar_fuente("Ranura* func_80036204(u8* base)\n{\n    return 0;\n}\n") == {
-        "func_80036204": EstadoFuncion.C
-    }
+    assert analizar_fuente("Pieza* func_Z(u8* base)\n{\n    return 0;\n}\n") == {"func_Z": EstadoFuncion.C}
 
 
 def test_una_funcion_que_solo_existe_bajo_non_matching_se_rechaza() -> None:

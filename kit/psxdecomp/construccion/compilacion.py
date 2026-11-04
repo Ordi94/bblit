@@ -1,4 +1,4 @@
-"""Compilacion de los archivos C del juego con el compilador original del SDK.
+"""Compilacion de los archivos C del proyecto con el compilador original del SDK.
 
 Cada archivo pasa por la misma cadena que uso el estudio: preprocesador del SDK
 (``CPPPSX.EXE``), compilador ``CC1PSX.EXE`` (GCC 2.8.1) con ``-O2 -G0``, ``maspsx`` que imita al
@@ -6,7 +6,9 @@ ensamblador ``ASPSX`` 2.80 y GNU ``as``. El compilador propio no preprocesa, por
 previo es obligatorio: sin el, ``#include`` y las macros llegan intactas al compilador y falla.
 
 La capa pura (comandos y lectura de la lista de secciones) no toca disco; ``compilar_fuente``
-es la unica funcion que lanza procesos y lo hace mediante el ejecutor recibido.
+es la unica funcion que lanza procesos y lo hace mediante el ejecutor recibido. Las carpetas del
+proyecto (fuentes, cabeceras, macros de ensamblador) llegan en ``Rutas`` y el tope del umbral
+``-G`` en ``Convenciones``: ambas son secciones del manifiesto y este modulo no guarda estado.
 """
 
 from __future__ import annotations
@@ -16,23 +18,15 @@ from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.reconstruccion.dominio import MAX_VALOR_G, EjecutableReferencia
-from tools.reconstruccion.infraestructura import (
-    Ejecutor,
-    Herramientas,
-    construir_con_compilador,
-    ejecutar_proceso,
-    leer_valores_g,
-)
-from tools.toolchain.dominio import Componente
-from tools.toolchain.instalacion import resolver_herramienta
+from psxdecomp.dominio import Convenciones, Rutas
+from psxdecomp.toolchain.dominio import Componente
+from psxdecomp.toolchain.instalacion import resolver_herramienta
+
+Ejecutor = Callable[[Sequence[str], Path, int], str]
+"""Funcion que ejecuta un comando en un directorio con tiempo limite y devuelve su salida."""
 
 VERSION_ASPSX = "2.80"
 OPCIONES_COMPILADOR = ("-quiet", "-O2")
-CARPETA_INCLUDE = "include"
-CARPETA_MACROS = "asm/include"
-CARPETA_FUENTES = "src"
-CARPETA_SALIDA = "build"
 TIMEOUT_PREPROCESAR_S = 120
 TIMEOUT_COMPILAR_S = 120
 TIMEOUT_ENSAMBLAR_S = 120
@@ -143,9 +137,9 @@ def comando_preprocesar(
     ]
 
 
-def _validar_valor_g(valor_g: int) -> None:
+def _validar_valor_g(valor_g: int, max_valor_g: int) -> None:
     """
-    Comprueba que el umbral ``-G`` sea un entero entre 0 y ``MAX_VALOR_G``.
+    Comprueba que el umbral ``-G`` sea un entero entre 0 y el tope del proyecto.
 
     Contexto:
         Los dos comandos que llevan ``-G`` (compilador y ``maspsx``) lo validan con la misma regla:
@@ -153,47 +147,57 @@ def _validar_valor_g(valor_g: int) -> None:
 
     Args:
         valor_g (int): Valor a comprobar; un booleano no se acepta aunque sea entero en Python.
+        max_valor_g (int): Mayor valor admitido (``Convenciones.max_valor_g``).
 
     Raises:
         ValueError: Si el valor no es un entero en rango.
 
     Ejemplo:
-        _validar_valor_g(8)
+        _validar_valor_g(8, 64)
     """
-    if isinstance(valor_g, bool) or not isinstance(valor_g, int) or not 0 <= valor_g <= MAX_VALOR_G:
-        raise ValueError(f"el valor de -G debe ser un entero entre 0 y {MAX_VALOR_G}")
+    if isinstance(valor_g, bool) or not isinstance(valor_g, int) or not 0 <= valor_g <= max_valor_g:
+        raise ValueError(f"el valor de -G debe ser un entero entre 0 y {max_valor_g}")
 
 
-def comando_compilar(compilador: Path, entrada: str, salida: str, valor_g: int = 0) -> list[str]:
+def comando_compilar(
+    compilador: Path, entrada: str, salida: str, valor_g: int = 0, *, max_valor_g: int
+) -> list[str]:
     """
     Devuelve los argumentos que compilan C preprocesado a ensamblador.
 
     Contexto:
         ``-O2`` es el valor identificado del compilador original. ``-G0`` es el umbral de datos
         pequenos por omision (la cabecera declara ``gp0 = 0``); los archivos cuyo original uso datos
-        pequenos declaran otro valor en ``config/opciones_compilacion.toml``.
+        pequenos declaran otro valor en el archivo de opciones de compilacion.
 
     Args:
         compilador (Path): Ruta de ``CC1PSX.EXE``.
         entrada (str): Archivo preprocesado.
         salida (str): Ensamblador de salida.
         valor_g (int, opcional): Umbral ``-G`` de datos pequenos.
+        max_valor_g (int): Mayor umbral admitido (``Convenciones.max_valor_g``).
 
     Returns:
         list[str]: Lista de argumentos.
 
     Raises:
-        ValueError: Si ``valor_g`` no es un entero entre 0 y ``MAX_VALOR_G``.
+        ValueError: Si ``valor_g`` no es un entero entre 0 y ``max_valor_g``.
 
     Ejemplo:
-        comando = comando_compilar(Path("CC1PSX.EXE"), "build/a.i", "build/a.s", 8)
+        comando = comando_compilar(Path("CC1PSX.EXE"), "build/a.i", "build/a.s", 8, max_valor_g=64)
     """
-    _validar_valor_g(valor_g)
+    _validar_valor_g(valor_g, max_valor_g)
     return [str(compilador), *OPCIONES_COMPILADOR, f"-G{valor_g}", entrada, "-o", salida]
 
 
 def comando_maspsx(
-    herramientas: HerramientasCompilacion, entrada: str, objeto: str, incluir: str, valor_g: int = 0
+    herramientas: HerramientasCompilacion,
+    entrada: str,
+    objeto: str,
+    incluir: str,
+    valor_g: int = 0,
+    *,
+    max_valor_g: int,
 ) -> list[str]:
     """
     Devuelve los argumentos que ensamblan la salida del compilador con ``maspsx``.
@@ -211,17 +215,18 @@ def comando_maspsx(
         valor_g (int, opcional): Umbral ``-G`` de datos pequenos. ``maspsx`` lo necesita para
             reescribir a ``$gp`` las variables pequenas que el propio archivo define; GNU ``as``
             sigue recibiendo ``-G0`` (``maspsx`` se lo fuerza), asi no reescribe externos.
+        max_valor_g (int): Mayor umbral admitido (``Convenciones.max_valor_g``).
 
     Returns:
         list[str]: Lista de argumentos.
 
     Raises:
-        ValueError: Si ``valor_g`` no es un entero entre 0 y ``MAX_VALOR_G``.
+        ValueError: Si ``valor_g`` no es un entero entre 0 y ``max_valor_g``.
 
     Ejemplo:
-        comando = comando_maspsx(herramientas, "a.s", "a.o", "asm/include", 8)
+        comando = comando_maspsx(herramientas, "a.s", "a.o", "asm/macros", 8, max_valor_g=64)
     """
-    _validar_valor_g(valor_g)
+    _validar_valor_g(valor_g, max_valor_g)
     return [
         herramientas.python,
         str(herramientas.maspsx),
@@ -265,7 +270,9 @@ def leer_secciones(salida_objdump: str) -> dict[str, int]:
     return {nombre: int(tamano, 16) for nombre, tamano in _PATRON_SECCION.findall(salida_objdump)}
 
 
-def verificar_solo_texto(objeto: str, secciones: Mapping[str, int], declaradas: Collection[str] = ()) -> None:
+def verificar_solo_texto(
+    objeto: str, secciones: Mapping[str, int], declaradas: Collection[str] = (), *, rutas: Rutas
+) -> None:
     """
     Rechaza un objeto que aporta secciones de datos que su subsegmento no declara.
 
@@ -282,19 +289,20 @@ def verificar_solo_texto(objeto: str, secciones: Mapping[str, int], declaradas: 
         secciones (Mapping[str, int]): Tamano por seccion, de ``leer_secciones``.
         declaradas (Collection[str], opcional): Secciones de datos que el subsegmento del archivo
             declara (por ejemplo ``{".rodata"}``).
+        rutas (Rutas): Seccion ``[rutas]``; el mensaje nombra su archivo de configuracion del
+            particionador.
 
     Raises:
         ValueError: Si una seccion de datos con contenido no esta declarada.
 
     Ejemplo:
-        verificar_solo_texto("build/src/a.c.o", {".text": 16, ".rodata": 8}, {".rodata"})
+        verificar_solo_texto("build/src/a.c.o", {".text": 16, ".rodata": 8}, {".rodata"}, rutas=rutas)
     """
     for nombre in sorted(secciones):
         if secciones[nombre] > 0 and nombre.startswith(PREFIJOS_DE_DATOS) and nombre not in declaradas:
             raise ValueError(
                 f"{objeto}: genera {secciones[nombre]} bytes en la seccion inesperada '{nombre}': "
-                f"declare en config/splat.yaml un subsegmento '{nombre}' con el nombre del archivo "
-                "(ver docs/DESCOMPILACION.md, seccion de rodata por archivo)"
+                f"declare en {rutas.splat} un subsegmento '{nombre}' con el nombre del archivo"
             )
 
 
@@ -323,9 +331,9 @@ def rutas_intermedias(objeto: str) -> tuple[str, str]:
     return f"{base}.i", f"{base}.s"
 
 
-def validar_fuente(fuente: str) -> None:
+def validar_fuente(fuente: str, rutas: Rutas) -> None:
     """
-    Comprueba que una ruta de fuente pertenece a ``src/`` y es un ``.c`` simple.
+    Comprueba que una ruta de fuente pertenece a la carpeta de fuentes del proyecto y es un ``.c``.
 
     Contexto:
         La ruta sale del script del enlazador o de la linea de ordenes; no se confia en ella
@@ -333,21 +341,22 @@ def validar_fuente(fuente: str) -> None:
 
     Args:
         fuente (str): Ruta relativa del archivo C.
+        rutas (Rutas): Seccion ``[rutas]``; ``fuentes`` es la carpeta que debe contener el archivo.
 
     Raises:
-        ValueError: Si no esta dentro de ``src/``, no termina en ``.c`` o contiene ``..``.
+        ValueError: Si no esta dentro de la carpeta de fuentes, no termina en ``.c`` o contiene ``..``.
 
     Ejemplo:
-        validar_fuente("src/code_80014AC4.c")
+        validar_fuente("src/modulo_a.c", rutas)
     """
     partes = fuente.split("/")
     if (
         not fuente.endswith(".c")
-        or partes[0] != CARPETA_FUENTES
+        or not fuente.startswith(f"{rutas.fuentes}/")
         or ".." in partes
         or not _PATRON_RUTA.match(fuente)
     ):
-        raise ValueError(f"fuente '{fuente}' no es un archivo .c dentro de {CARPETA_FUENTES}/")
+        raise ValueError(f"fuente '{fuente}' no es un archivo .c dentro de {rutas.fuentes}/")
 
 
 def compilar_fuente(
@@ -361,18 +370,20 @@ def compilar_fuente(
     exigir_solo_texto: bool = True,
     secciones_declaradas: Collection[str] = (),
     valor_g: int = 0,
+    rutas: Rutas,
+    convenciones: Convenciones,
 ) -> None:
     """
-    Compila un archivo C de ``src/`` a un objeto ELF reubicable.
+    Compila un archivo C de la carpeta de fuentes a un objeto ELF reubicable.
 
     Contexto:
-        La usan ``build`` (para cada ``src/*.c`` que enlaza el script) y ``diff`` (para el
+        La usan ``build`` (para cada fuente C que enlaza el script) y ``diff`` (para el
         archivo que contiene la funcion). Se ejecuta con el directorio de trabajo en la raiz del
         repositorio porque el ensamblador incluido por ``INCLUDE_ASM`` usa rutas relativas a ella.
 
     Args:
         raiz (Path): Raiz del repositorio.
-        fuente (str): Ruta relativa del ``.c`` dentro de ``src/``.
+        fuente (str): Ruta relativa del ``.c`` dentro de la carpeta de fuentes.
         objeto (str): Ruta relativa del objeto de salida (termina en ``.c.o``).
         herramientas (HerramientasCompilacion): Herramientas resueltas.
         ejecutar (Ejecutor): Ejecutor de procesos.
@@ -381,17 +392,19 @@ def compilar_fuente(
         secciones_declaradas (Collection[str], opcional): Secciones de datos que el subsegmento
             del archivo declara y que, por tanto, se aceptan.
         valor_g (int, opcional): Umbral ``-G`` de datos pequenos para este archivo.
+        rutas (Rutas): Seccion ``[rutas]`` del manifiesto (fuentes, cabeceras y macros).
+        convenciones (Convenciones): Seccion ``[convenciones]`` (tope del umbral ``-G``).
 
     Raises:
         ValueError: Si la fuente o el objeto no son rutas validas, o el objeto aporta datos
             cuando se exige solo codigo.
         FileNotFoundError: Si la fuente no existe.
-        ProcesoError: Si alguna herramienta falla o excede su tiempo limite.
+        Exception: La que lance el ejecutor si una herramienta falla o excede su tiempo limite.
 
     Ejemplo:
         compilar_fuente(Path("."), "src/a.c", "build/src/a.c.o", herramientas, ejecutar_proceso)
     """
-    validar_fuente(fuente)
+    validar_fuente(fuente, rutas)
     compilar_archivo(
         raiz,
         fuente,
@@ -402,6 +415,8 @@ def compilar_fuente(
         exigir_solo_texto=exigir_solo_texto,
         secciones_declaradas=secciones_declaradas,
         valor_g=valor_g,
+        rutas=rutas,
+        convenciones=convenciones,
     )
 
 
@@ -416,12 +431,14 @@ def compilar_archivo(
     exigir_solo_texto: bool = True,
     secciones_declaradas: Collection[str] = (),
     valor_g: int = 0,
+    rutas: Rutas,
+    convenciones: Convenciones,
 ) -> None:
     """
-    Compila un archivo C cualquiera (de ``src/`` o una variante de prueba) a un objeto ELF.
+    Compila un archivo C cualquiera (de la carpeta de fuentes o una variante de prueba) a un objeto ELF.
 
     Contexto:
-        Nucleo comun de ``compilar_fuente`` (que solo admite ``src/``) y del banco de variantes
+        Nucleo comun de ``compilar_fuente`` (que solo admite la carpeta de fuentes) y del banco de variantes
         de ``probar`` (archivos fuera del repositorio). Ejecuta preprocesador, compilador y
         ensamblador con el directorio de trabajo en la raiz del repositorio.
 
@@ -435,11 +452,13 @@ def compilar_archivo(
         exigir_solo_texto (bool, opcional): Si es verdadero, falla si el objeto aporta datos no declarados.
         secciones_declaradas (Collection[str], opcional): Secciones de datos aceptadas.
         valor_g (int, opcional): Umbral ``-G`` de datos pequenos.
+        rutas (Rutas): Seccion ``[rutas]`` del manifiesto (cabeceras y macros).
+        convenciones (Convenciones): Seccion ``[convenciones]`` (tope del umbral ``-G``).
 
     Raises:
         ValueError: Si el objeto no es una ruta valida o aporta datos no declarados.
         FileNotFoundError: Si la fuente no existe.
-        ProcesoError: Si alguna herramienta falla o excede su tiempo limite.
+        Exception: La que lance el ejecutor si una herramienta falla o excede su tiempo limite.
 
     Ejemplo:
         compilar_archivo(Path("."), "C:/variantes/a.c", "build/diff/a.c.o", herramientas, ejecutar)
@@ -449,80 +468,24 @@ def compilar_archivo(
         raise FileNotFoundError(f"falta el fuente '{fuente}'")
     (raiz / objeto).parent.mkdir(parents=True, exist_ok=True)
     ejecutar(
-        comando_preprocesar(herramientas.preprocesador, fuente, preprocesado, CARPETA_INCLUDE, definiciones),
+        comando_preprocesar(herramientas.preprocesador, fuente, preprocesado, rutas.incluir, definiciones),
         raiz,
         TIMEOUT_PREPROCESAR_S,
     )
     ejecutar(
-        comando_compilar(herramientas.compilador, preprocesado, ensamblador, valor_g),
+        comando_compilar(
+            herramientas.compilador, preprocesado, ensamblador, valor_g, max_valor_g=convenciones.max_valor_g
+        ),
         raiz,
         TIMEOUT_COMPILAR_S,
     )
     ejecutar(
-        comando_maspsx(herramientas, ensamblador, objeto, CARPETA_MACROS, valor_g),
+        comando_maspsx(
+            herramientas, ensamblador, objeto, rutas.macros, valor_g, max_valor_g=convenciones.max_valor_g
+        ),
         raiz,
         TIMEOUT_ENSAMBLAR_S,
     )
     if exigir_solo_texto:
         salida = ejecutar(comando_secciones(herramientas.objdump, objeto), raiz, TIMEOUT_ENSAMBLAR_S)
-        verificar_solo_texto(objeto, leer_secciones(salida), secciones_declaradas)
-
-
-def construir_mixto(
-    raiz: Path,
-    referencia: EjecutableReferencia,
-    herramientas: Herramientas,
-    obtener_compilacion: Callable[[], HerramientasCompilacion],
-    ejecutar: Ejecutor = ejecutar_proceso,
-    *,
-    declaradas: Mapping[str, Collection[str]] | None = None,
-) -> Path:
-    """
-    Construye el ejecutable con los archivos C compilados y el resto ensamblado.
-
-    Contexto:
-        Implementa ``build``. El script del enlazador que genera el particionador decide que
-        objetos entran y en que orden; los ``src/*.c`` se compilan con ``compilar_fuente`` en la
-        construccion normal (sin ``NON_MATCHING``) y exigiendo que solo aporten codigo. Las
-        herramientas de compilacion se piden solo cuando aparece el primer archivo C, de modo
-        que una construccion solo de ensamblador no necesita el SDK instalado.
-
-    Args:
-        raiz (Path): Raiz del repositorio.
-        referencia (EjecutableReferencia): Hechos del ejecutable.
-        herramientas (Herramientas): Ensamblador, enlazador y objcopy.
-        obtener_compilacion (Callable[[], HerramientasCompilacion]): Resuelve las herramientas
-            de compilacion; puede lanzar ``FileNotFoundError`` si no estan instaladas.
-        ejecutar (Ejecutor, opcional): Ejecutor de procesos, sustituible en pruebas.
-        declaradas (Mapping[str, Collection[str]], opcional): Secciones de datos que la particion
-            declara por archivo (clave: nombre sin ``src/`` ni ``.c``), de ``secciones_declaradas``.
-
-    Returns:
-        Path: Ruta del ejecutable generado (``build/<nombre>``).
-
-    Raises:
-        FileNotFoundError: Si falta el script del enlazador, un fuente o una herramienta.
-        ValueError: Si un objeto aporta datos o el cuerpo enlazado no mide ``t_size``.
-        ProcesoError: Si una herramienta falla.
-
-    Ejemplo:
-        destino = construir_mixto(Path("."), referencia, herramientas, lambda: compilacion)
-    """
-    resueltas: list[HerramientasCompilacion] = []
-    valores_g = leer_valores_g(raiz)
-
-    def compilar(fuente: str, objeto: str) -> None:
-        if not resueltas:
-            resueltas.append(obtener_compilacion())
-        permitidas = (declaradas or {}).get(Path(fuente).stem, ())
-        compilar_fuente(
-            raiz,
-            fuente,
-            objeto,
-            resueltas[0],
-            ejecutar,
-            secciones_declaradas=permitidas,
-            valor_g=valores_g.get(Path(fuente).stem, 0),
-        )
-
-    return construir_con_compilador(raiz, referencia, herramientas, compilar, ejecutar)
+        verificar_solo_texto(objeto, leer_secciones(salida), secciones_declaradas, rutas=rutas)

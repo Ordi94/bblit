@@ -3,13 +3,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import dominio
-from tools.reconstruccion.dominio import CabeceraPsx
+from psxdecomp.construccion import dominio
+from psxdecomp.construccion.dominio import CabeceraPsx
 
 CAMPOS = {
-    "pc0": "0x80014A08",
+    "pc0": "0x80010100",
     "gp0": 0,
-    "t_addr": "0x80014A00",
+    "t_addr": "0x80010000",
     "t_size": "0x55000",
     "d_addr": "0x0",
     "d_size": "0",
@@ -23,7 +23,7 @@ CAMPOS = {
 
 def referencia_datos(**cambios: Any) -> Any:
     datos = {
-        "nombre": "SLUS_008.38",
+        "nombre": "EJEC_000.01",
         "sha256": "a" * 64,
         "sha1": "b" * 40,
         "tamano": 0x800 + 0x55000,
@@ -35,7 +35,7 @@ def referencia_datos(**cambios: Any) -> Any:
 
 def test_cabecera_desde_datos_acepta_hexadecimal_y_decimal() -> None:
     cabecera = dominio.cabecera_desde_datos(CAMPOS)
-    assert cabecera.pc0 == 0x80014A08
+    assert cabecera.pc0 == 0x80010100
     assert cabecera.gp0 == 0
     assert cabecera.t_size == 0x55000
     assert cabecera.d_size == 0
@@ -73,9 +73,9 @@ def test_cabecera_que_no_es_objeto() -> None:
 
 def test_referencia_valida() -> None:
     referencia = dominio.referencia_desde_datos(referencia_datos())
-    assert referencia.nombre == "SLUS_008.38"
+    assert referencia.nombre == "EJEC_000.01"
     assert referencia.tamano == 350208
-    assert referencia.cabecera.t_addr == 0x80014A00
+    assert referencia.cabecera.t_addr == 0x80010000
 
 
 @pytest.mark.parametrize(
@@ -160,20 +160,21 @@ def test_resultado_de_verificacion() -> None:
 
 
 def test_simbolo_de_entrada_se_genera_si_nadie_lo_declaro() -> None:
-    assert dominio.texto_simbolos_entrada(0x80014A08, "") == "func_80014A08 = 0x80014A08; // type:func\n"
-    otros = "otra = 0x80014A0C; // type:func\n"
-    assert dominio.texto_simbolos_entrada(0x80014A08, otros) == "func_80014A08 = 0x80014A08; // type:func\n"
+    esperado = "func_A0010100 = 0xA0010100; // type:func\n"
+    assert dominio.texto_simbolos_entrada(0xA0010100, "") == esperado
+    otros = "otra = 0xA0010104; // type:func\n"
+    assert dominio.texto_simbolos_entrada(0xA0010100, otros) == esperado
 
 
 @pytest.mark.parametrize(
-    "existente", ["main = 0x80014A08; // type:func", "inicio=0x80014a08;", "x = 0x080014A08 ;"]
+    "existente", ["main = 0xA0010100; // type:func", "inicio=0xa0010100;", "x = 0x0A0010100 ;"]
 )
 def test_simbolo_de_entrada_no_se_duplica(existente: Any) -> None:
-    assert dominio.texto_simbolos_entrada(0x80014A08, existente) == ""
+    assert dominio.texto_simbolos_entrada(0xA0010100, existente) == ""
 
 
 SCRIPT = """
-    .main 0x80014A00 : AT(main_ROM_START) SUBALIGN(16)
+    .main 0x80010000 : AT(main_ROM_START) SUBALIGN(16)
     {
         build/asm/text.s.o(.text);
         build/asm/data/data.data.s.o(.data);
@@ -190,7 +191,7 @@ def test_objetos_del_enlazador_sin_repetidos_y_en_orden() -> None:
 
 def test_fuente_de_objeto() -> None:
     assert dominio.fuente_de_objeto("build/asm/data/data.data.s.o") == "asm/data/data.data.s"
-    assert dominio.fuente_de_objeto("build/src/code_80014AC4.c.o") == "src/code_80014AC4.c"
+    assert dominio.fuente_de_objeto("build/src/codigo_a.c.o") == "src/codigo_a.c"
 
 
 @pytest.mark.parametrize(
@@ -251,9 +252,9 @@ def test_comandos_son_listas_con_cada_ruta_como_un_unico_argumento() -> None:
 def test_estructura_binaria_de_la_cabecera_campo_a_campo() -> None:
     datos = dominio.serializar_cabecera(dominio.cabecera_desde_datos(CAMPOS))
     assert struct.unpack_from("<10I", datos, 0x10) == (
-        0x80014A08,
+        0x80010100,
         0,
-        0x80014A00,
+        0x80010000,
         0x55000,
         0,
         0,
@@ -265,29 +266,29 @@ def test_estructura_binaria_de_la_cabecera_campo_a_campo() -> None:
 
 
 ASM_CON_FUNCION_LOCAL = """
-nonmatching .L80044904, 0x3C
+nonmatching .LA0010040, 0x3C
 
-glabel .L80044904
-    /* 30704 80044904 21302002 */  addu       $a2, $s1, $zero
-  .L80044910:
-    /* 30710 80044910 0800E003 */  jr         $ra
-endlabel .L80044904
+glabel .LA0010040
+    /* 30704 A0010040 21302002 */  addu       $a2, $s1, $zero
+  .LA001004C:
+    /* 30710 A001004C 0800E003 */  jr         $ra
+endlabel .LA0010040
 """
 
 
 def test_funciones_con_nombre_local_solo_toma_las_declaradas_con_glabel() -> None:
-    assert dominio.funciones_con_nombre_local(ASM_CON_FUNCION_LOCAL) == {".L80044904"}
-    assert dominio.funciones_con_nombre_local("glabel func_80044904\n  .L80044910:\n") == frozenset()
-    assert dominio.funciones_con_nombre_local("glabel .L8004490\nglabel .L800449041\n") == frozenset()
+    assert dominio.funciones_con_nombre_local(ASM_CON_FUNCION_LOCAL) == {".LA0010040"}
+    assert dominio.funciones_con_nombre_local("glabel func_A0010040\n  .LA001004C:\n") == frozenset()
+    assert dominio.funciones_con_nombre_local("glabel .LA001004\nglabel .LA00100401\n") == frozenset()
 
 
 def test_renombrar_funciones_locales_cambia_definicion_y_saltos_y_respeta_las_etiquetas_internas() -> None:
-    nombres = frozenset({".L80044904"})
+    nombres = frozenset({".LA0010040"})
     nuevo = dominio.renombrar_funciones_locales(
-        ASM_CON_FUNCION_LOCAL + "    j  .L80044904\n    b  .L80044910\n    j  .L800449041\n", nombres
+        ASM_CON_FUNCION_LOCAL + "    j  .LA0010040\n    b  .LA001004C\n    j  .LA00100401\n", nombres
     )
-    assert "glabel func_80044904" in nuevo and "endlabel func_80044904" in nuevo
-    assert "    j  func_80044904\n" in nuevo
-    assert ".L80044910:" in nuevo and "b  .L80044910" in nuevo
-    assert ".L800449041" in nuevo, "un nombre mas largo no es el mismo simbolo"
+    assert "glabel func_A0010040" in nuevo and "endlabel func_A0010040" in nuevo
+    assert "    j  func_A0010040\n" in nuevo
+    assert ".LA001004C:" in nuevo and "b  .LA001004C" in nuevo
+    assert ".LA00100401" in nuevo, "un nombre mas largo no es el mismo simbolo"
     assert dominio.renombrar_funciones_locales(ASM_CON_FUNCION_LOCAL, frozenset()) == ASM_CON_FUNCION_LOCAL

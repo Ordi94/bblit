@@ -3,6 +3,10 @@
 Nada aqui toca disco ni lanza procesos. Las funciones reciben datos ya leidos y devuelven
 valores, listas de argumentos o ``ValueError`` con el campo ofensivo, de modo que se prueban
 sin entorno y la capa de infraestructura queda reducida a ejecutar lo que este modulo decide.
+
+Lo que depende del proyecto (formato de los simbolos de datos, forma de las lineas del archivo de
+simbolos, tope del umbral ``-G``) llega en ``Convenciones``, la seccion ``[convenciones]`` del
+manifiesto; este modulo no conoce ningun valor de un proyecto concreto.
 """
 
 from __future__ import annotations
@@ -11,7 +15,10 @@ import re
 import struct
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
+
+from psxdecomp.dominio import Convenciones
 
 TAMANO_CABECERA = 0x800
 MAGIA_PSX_EXE = b"PS-X EXE"
@@ -71,7 +78,7 @@ class EjecutableReferencia:
     """Descripcion del ejecutable original que se reconstruye.
 
     Attributes:
-        nombre: Nombre del archivo en el disco (``SLUS_008.38``).
+        nombre: Nombre del archivo en el disco (por ejemplo ``EJEC_000.01``).
         sha256: Huella esperada del ejecutable completo.
         sha1: Huella SHA-1 que splat comprueba antes de particionar.
         tamano: Tamano total esperado en bytes.
@@ -108,7 +115,7 @@ def cabecera_desde_datos(datos: object) -> CabeceraPsx:
     Construye una cabecera validando cada campo de un objeto JSON.
 
     Contexto:
-        Lee el bloque ``cabecera`` de ``config/ejecutable.json``.
+        Lee el bloque ``cabecera`` del archivo de referencia del ejecutable.
 
     Args:
         datos (object): Objeto con los diez campos numericos y ``region``.
@@ -121,7 +128,7 @@ def cabecera_desde_datos(datos: object) -> CabeceraPsx:
             o no cabe entre el desplazamiento 0x4C y el final de la cabecera.
 
     Ejemplo:
-        cabecera = cabecera_desde_datos({"pc0": "0x80014A08", ...})
+        cabecera = cabecera_desde_datos({"pc0": "0x80011000", ...})
     """
     if not isinstance(datos, dict):
         raise ValueError("la cabecera debe ser un objeto")
@@ -136,7 +143,7 @@ def cabecera_desde_datos(datos: object) -> CabeceraPsx:
 
 def referencia_desde_datos(datos: object) -> EjecutableReferencia:
     """
-    Valida el contenido de ``config/ejecutable.json``.
+    Valida el contenido del archivo de referencia del ejecutable.
 
     Contexto:
         Es la fuente unica de los hechos del ejecutable: huella, tamano y cabecera.
@@ -336,13 +343,13 @@ def texto_simbolos_entrada(pc0: int, simbolos_existentes: str) -> str:
 
     Args:
         pc0 (int): Direccion de entrada del ejecutable.
-        simbolos_existentes (str): Contenido de ``config/symbols.txt`` (vacio si no existe).
+        simbolos_existentes (str): Contenido del archivo de simbolos (vacio si no existe).
 
     Returns:
         str: Linea de simbolo en formato splat, o cadena vacia si la direccion ya figura.
 
     Ejemplo:
-        texto = texto_simbolos_entrada(0x80014A08, "")
+        texto = texto_simbolos_entrada(0x80011000, "")
     """
     patron = re.compile(rf"=\s*0x0*{pc0:X}\s*;", re.IGNORECASE)
     if patron.search(simbolos_existentes):
@@ -401,19 +408,28 @@ def fuente_de_objeto(objeto: str) -> str:
     return objeto[len("build/") : -len(".o")]
 
 
-MAX_VALOR_G = 64
-_CLAVES_OPCIONES = frozenset({"g"})
+CLAVES_OPCIONES_ARCHIVO = frozenset({"g"})
 _PATRON_ARCHIVO_C = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
-_PATRON_DATO_PEQUENO = re.compile(r"^D_[0-9A-F]{8}$")
-_PATRON_FUNCION_SIMBOLO = re.compile(r"^([A-Za-z_]\w*)\s*=\s*0x([0-9A-Fa-f]{1,8})\s*;\s*//(.*)$")
+
+
+@lru_cache(maxsize=8)
+def _patron_linea_simbolo(convenciones: Convenciones) -> re.Pattern[str]:
+    """Compila (una vez por convencion) la expresion de una linea del archivo de simbolos."""
+    return re.compile(convenciones.patron_linea_simbolo)
+
+
+@lru_cache(maxsize=8)
+def _patron_simbolo_datos(convenciones: Convenciones) -> re.Pattern[str]:
+    """Compila (una vez por convencion) la expresion del nombre de un simbolo de datos pequenos."""
+    return re.compile(convenciones.patron_simbolo_datos)
 
 
 def valor_gp(datos: object) -> int | None:
     """
-    Lee el valor del registro ``$gp`` que declara ``config/opciones_compilacion.toml``.
+    Lee el valor del registro ``$gp`` que declara el archivo de opciones de compilacion.
 
     Contexto:
-        El juego fija ``$gp`` en su arranque (``lui gp,0x8007 ; addiu gp,gp,-0x6CE0``) y accede a
+        El ejecutable fija ``$gp`` en su arranque (una pareja ``lui`` y ``addiu`` sobre ``gp``) y accede a
         los datos pequenos con ``desplazamiento($gp)``. El enlazador necesita el simbolo ``_gp``
         con ese valor para resolver las referencias relativas a ``$gp`` de los objetos C; es un
         simbolo absoluto y no cambia ningun byte si ningun objeto lo referencia.
@@ -428,7 +444,7 @@ def valor_gp(datos: object) -> int | None:
         ValueError: Si la forma no es la esperada o ``gp`` no es un entero de 32 bits alineado a 4.
 
     Ejemplo:
-        gp = valor_gp({"enlace": {"gp": 0x80069320}})
+        gp = valor_gp({"enlace": {"gp": 0x80050000}})
     """
     if not isinstance(datos, dict):
         raise ValueError("opciones de compilacion: se esperaba una tabla")
@@ -443,7 +459,7 @@ def valor_gp(datos: object) -> int | None:
     return gp
 
 
-def direcciones_de_funciones(texto: str) -> dict[str, int]:
+def direcciones_de_funciones(texto: str, convenciones: Convenciones) -> dict[str, int]:
     """
     Extrae la direccion de cada funcion de un archivo de simbolos de splat.
 
@@ -452,17 +468,19 @@ def direcciones_de_funciones(texto: str) -> dict[str, int]:
         en el mismo sitio y comparar los bytes.
 
     Args:
-        texto (str): Contenido de ``config/symbols.txt``.
+        texto (str): Contenido del archivo de simbolos.
+        convenciones (Convenciones): Aporta la expresion de las lineas del archivo de simbolos.
 
     Returns:
         dict[str, int]: Direccion por nombre; las lineas que no son funciones se ignoran.
 
     Ejemplo:
-        direcciones = direcciones_de_funciones("f = 0x80014AC4; // type:func size:0x10")
+        direcciones = direcciones_de_funciones("f = 0x80011000; // type:func size:0x10", convenciones)
     """
     direcciones: dict[str, int] = {}
+    patron = _patron_linea_simbolo(convenciones)
     for linea in texto.splitlines():
-        coincidencia = _PATRON_FUNCION_SIMBOLO.match(linea.strip())
+        coincidencia = patron.match(linea.strip())
         if coincidencia is not None and "type:func" in coincidencia.group(3):
             direcciones[coincidencia.group(1)] = int(coincidencia.group(2), 16)
     return direcciones
@@ -473,7 +491,7 @@ _PATRON_TIPO_SIMBOLO = re.compile(r"\btype:(\w+)")
 
 @dataclass(frozen=True)
 class SimboloDeclarado:
-    """Simbolo de ``config/symbols.txt`` visto desde su direccion.
+    """Simbolo del archivo de simbolos visto desde su direccion.
 
     Attributes:
         nombre: Nombre del simbolo.
@@ -484,27 +502,29 @@ class SimboloDeclarado:
     tipo: str
 
 
-def simbolos_declarados(texto: str) -> dict[int, list[SimboloDeclarado]]:
+def simbolos_declarados(texto: str, convenciones: Convenciones) -> dict[int, list[SimboloDeclarado]]:
     """
     Agrupa por direccion los simbolos de un archivo de simbolos de splat.
 
     Contexto:
         Base de la comprobacion de ``[datos_pequenos]``: permite saber que declara
-        ``config/symbols.txt`` en la direccion de cada clave del toml. Se leen funciones y datos;
-        las lineas de comentario o sin forma ``nombre = 0x...; // ...`` se ignoran.
+        el archivo de simbolos en la direccion de cada clave del toml. Se leen funciones y datos;
+        las lineas de comentario o que no cumplen la expresion de linea de simbolo se ignoran.
 
     Args:
-        texto (str): Contenido de ``config/symbols.txt``.
+        texto (str): Contenido del archivo de simbolos.
+        convenciones (Convenciones): Aporta la expresion de las lineas del archivo de simbolos.
 
     Returns:
         dict[int, list[SimboloDeclarado]]: Simbolos por direccion, en el orden del archivo.
 
     Ejemplo:
-        declarados = simbolos_declarados("D_80069330 = 0x80069330; // type:u8 size:0x8")
+        declarados = simbolos_declarados("D_80020010 = 0x80020010; // type:u8 size:0x8", convenciones)
     """
     declarados: dict[int, list[SimboloDeclarado]] = {}
+    patron = _patron_linea_simbolo(convenciones)
     for linea in texto.splitlines():
-        coincidencia = _PATRON_FUNCION_SIMBOLO.match(linea.strip())
+        coincidencia = patron.match(linea.strip())
         if coincidencia is None:
             continue
         tipo = _PATRON_TIPO_SIMBOLO.search(coincidencia.group(3))
@@ -514,10 +534,12 @@ def simbolos_declarados(texto: str) -> dict[int, list[SimboloDeclarado]]:
 
 
 def avisos_datos_pequenos(
-    datos: Mapping[str, int], declarados: Mapping[int, Sequence[SimboloDeclarado]]
+    datos: Mapping[str, int],
+    declarados: Mapping[int, Sequence[SimboloDeclarado]],
+    archivo_simbolos: str,
 ) -> list[str]:
     """
-    Avisa de las claves de ``[datos_pequenos]`` cuya direccion ya declara ``config/symbols.txt``.
+    Avisa de las claves de ``[datos_pequenos]`` cuya direccion ya declara el archivo de simbolos.
 
     Contexto:
         El toml da nombre y direccion a los datos que el codigo direcciona por ``$gp`` hasta que la
@@ -529,50 +551,56 @@ def avisos_datos_pequenos(
     Args:
         datos (Mapping[str, int]): Tabla ``datos_pequenos`` del toml (nombre a direccion).
         declarados (Mapping[int, Sequence[SimboloDeclarado]]): Resultado de ``simbolos_declarados``.
+        archivo_simbolos (str): Ruta del archivo de simbolos tal como la declara el manifiesto; es la
+            que nombran los avisos.
 
     Returns:
         list[str]: Un aviso por cada simbolo repetido, en el orden de las claves del toml.
 
     Ejemplo:
-        avisos = avisos_datos_pequenos({"D_800694A8": 0x800694A8}, simbolos_declarados(texto))
+        avisos = avisos_datos_pequenos(
+            {"D_80020010": 0x80020010}, simbolos_declarados(texto, convenciones), "datos/simbolos.txt"
+        )
     """
     avisos: list[str] = []
     for nombre, direccion in datos.items():
         for existente in declarados.get(direccion, ()):
             if existente.nombre != nombre:
-                motivo = f"otro nombre: config/symbols.txt declara {existente.nombre} en esa direccion"
+                motivo = f"otro nombre: {archivo_simbolos} declara {existente.nombre} en esa direccion"
             elif existente.tipo == "func":
-                motivo = "otro tipo: config/symbols.txt lo declara como funcion"
+                motivo = f"otro tipo: {archivo_simbolos} lo declara como funcion"
             else:
-                motivo = "mismo nombre: ya figura en config/symbols.txt, la clave puede retirarse"
+                motivo = f"mismo nombre: ya figura en {archivo_simbolos}, la clave puede retirarse"
             avisos.append(f"[datos_pequenos] {nombre} = 0x{direccion:08X}: {motivo}")
     return avisos
 
 
-def datos_pequenos(datos: object) -> dict[str, int]:
+def datos_pequenos(datos: object, convenciones: Convenciones) -> dict[str, int]:
     """
-    Lee la tabla ``datos_pequenos`` de ``config/opciones_compilacion.toml``.
+    Lee la tabla ``datos_pequenos`` del archivo de opciones de compilacion.
 
     Contexto:
         Un archivo C que accede a una variable pequena con ``desplazamiento($gp)`` la declara como
-        definicion tentativa (``s32 D_800694A8;``): ``maspsx`` la emite como simbolo comun y
+        definicion tentativa (``s32 D_80020010;``): ``maspsx`` la emite como simbolo comun y
         reescribe sus accesos a ``$gp``. El enlace debe fijar la direccion real de esos simbolos
         (el ejecutable original no los nombra porque su codigo los direcciona por desplazamiento);
-        esta tabla da nombre y direccion a cada uno hasta que ``config/symbols.txt`` los declare.
+        esta tabla da nombre y direccion a cada uno hasta que el archivo de simbolos los declare.
 
     Args:
         datos (object): Resultado de ``tomllib.loads``; tabla opcional ``datos_pequenos`` con
             ``NOMBRE = direccion``.
+        convenciones (Convenciones): Aporta la expresion del nombre de un simbolo de datos; su unico
+            grupo de captura es la direccion en hexadecimal que el nombre debe repetir.
 
     Returns:
         dict[str, int]: Direccion por nombre de simbolo.
 
     Raises:
-        ValueError: Si la forma no es la esperada, un nombre no es un identificador ``D_<direccion>``
-            o la direccion no es un entero de 32 bits.
+        ValueError: Si la forma no es la esperada, un nombre no cumple la expresion de la convencion
+            o la direccion no es un entero de 32 bits ni coincide con la del nombre.
 
     Ejemplo:
-        simbolos = datos_pequenos({"datos_pequenos": {"D_800694A8": 0x800694A8}})
+        simbolos = datos_pequenos({"datos_pequenos": {"D_80020010": 0x80020010}}, convenciones)
     """
     if not isinstance(datos, dict):
         raise ValueError("opciones de compilacion: se esperaba una tabla")
@@ -580,12 +608,16 @@ def datos_pequenos(datos: object) -> dict[str, int]:
     if not isinstance(tabla, dict):
         raise ValueError("opciones de compilacion: 'datos_pequenos' debe ser una tabla")
     simbolos: dict[str, int] = {}
+    patron = _patron_simbolo_datos(convenciones)
     for nombre, direccion in tabla.items():
-        if not _PATRON_DATO_PEQUENO.match(nombre):
-            raise ValueError(f"opciones de compilacion: simbolo '{nombre}' no valido (se espera D_XXXXXXXX)")
+        coincidencia = patron.match(nombre)
+        if coincidencia is None:
+            raise ValueError(
+                f"opciones de compilacion: simbolo '{nombre}' no valido (no cumple el patron de datos)"
+            )
         if isinstance(direccion, bool) or not isinstance(direccion, int) or not 0 < direccion <= MAX_U32:
             raise ValueError(f"opciones de compilacion: direccion de '{nombre}' no valida")
-        if int(nombre[2:], 16) != direccion:
+        if int(coincidencia.group(1), 16) != direccion:
             raise ValueError(f"opciones de compilacion: '{nombre}' no coincide con su direccion")
         simbolos[nombre] = direccion
     return simbolos
@@ -607,27 +639,28 @@ def texto_gp_ld(gp: int, simbolos: dict[str, int] | None = None) -> str:
         str: Lineas de asignacion para el enlazador.
 
     Ejemplo:
-        texto = texto_gp_ld(0x80069320)
+        texto = texto_gp_ld(0x80050000)
     """
     lineas = [f"_gp = 0x{gp:08X};\n"]
     lineas += [f"{nombre} = 0x{direccion:08X};\n" for nombre, direccion in sorted((simbolos or {}).items())]
     return "".join(lineas)
 
 
-def valores_g_por_archivo(datos: object) -> dict[str, int]:
+def valores_g_por_archivo(datos: object, convenciones: Convenciones) -> dict[str, int]:
     """
-    Valida el contenido de ``config/opciones_compilacion.toml`` y devuelve el ``-G`` de cada archivo.
+    Valida el archivo de opciones de compilacion y devuelve el ``-G`` de cada archivo.
 
     Contexto:
         El umbral de datos pequenos (``-G``) del compilador cambia como se emiten las variables
         externas pequenas (acceso simbolico en lugar de ``lui`` mas desplazamiento). Los archivos
         originales no usaron todos el mismo valor, asi que se declara por archivo; los que no
         figuran usan ``-G0``. Entrada no confiable: solo se admiten claves conocidas, nombres de
-        archivo simples y enteros entre 0 y ``MAX_VALOR_G``.
+        archivo simples y enteros entre 0 y ``Convenciones.max_valor_g``.
 
     Args:
         datos (object): Resultado de ``tomllib.loads``; tabla ``archivos`` con una subtabla por
-            archivo C (nombre sin ``src/`` ni ``.c``) y la clave ``g``.
+            archivo C (nombre sin carpeta ni ``.c``) y la clave ``g``.
+        convenciones (Convenciones): Aporta el mayor valor de ``-G`` admitido.
 
     Returns:
         dict[str, int]: Valor de ``-G`` por nombre de archivo (solo los declarados).
@@ -637,7 +670,7 @@ def valores_g_por_archivo(datos: object) -> dict[str, int]:
             desconocida o ``g`` no es un entero en rango; el mensaje nombra el campo.
 
     Ejemplo:
-        valores = valores_g_por_archivo({"archivos": {"camara_y_bucle_logico": {"g": 8}}})
+        valores = valores_g_por_archivo({"archivos": {"modulo_a": {"g": 8}}}, convenciones)
     """
     if not isinstance(datos, dict) or set(datos) - {"archivos", "enlace", "datos_pequenos"}:
         raise ValueError(
@@ -650,16 +683,15 @@ def valores_g_por_archivo(datos: object) -> dict[str, int]:
     for nombre, opciones in tabla.items():
         if not _PATRON_ARCHIVO_C.match(nombre) or not isinstance(opciones, dict):
             raise ValueError(f"opciones de compilacion: archivo '{nombre}' no valido")
-        desconocidas = set(opciones) - _CLAVES_OPCIONES
+        desconocidas = set(opciones) - CLAVES_OPCIONES_ARCHIVO
         if desconocidas:
             raise ValueError(
                 f"opciones de compilacion: '{nombre}' tiene la clave desconocida '{min(desconocidas)}'"
             )
         valor = opciones.get("g", 0)
-        if isinstance(valor, bool) or not isinstance(valor, int) or not 0 <= valor <= MAX_VALOR_G:
-            raise ValueError(
-                f"opciones de compilacion: '{nombre}.g' debe ser un entero entre 0 y {MAX_VALOR_G}"
-            )
+        tope = convenciones.max_valor_g
+        if isinstance(valor, bool) or not isinstance(valor, int) or not 0 <= valor <= tope:
+            raise ValueError(f"opciones de compilacion: '{nombre}.g' debe ser un entero entre 0 y {tope}")
         valores[nombre] = valor
     return valores
 
@@ -678,10 +710,10 @@ def secciones_declaradas(configuracion: object) -> dict[str, frozenset[str]]:
         contenido se perderia en silencio o iria a un lugar distinto del original.
 
     Args:
-        configuracion (object): Contenido cargado de ``config/splat.yaml``.
+        configuracion (object): Contenido cargado de la configuracion del particionador.
 
     Returns:
-        dict[str, frozenset[str]]: Nombre del archivo C (sin ``src/`` ni ``.c``) y las secciones
+        dict[str, frozenset[str]]: Nombre del archivo C (sin carpeta ni ``.c``) y las secciones
         ELF permitidas (``.text`` y, si procede, ``.rodata`` y ``.data``).
 
     Raises:
@@ -695,7 +727,7 @@ def secciones_declaradas(configuracion: object) -> dict[str, frozenset[str]]:
     principal = segmentos[0] if isinstance(segmentos, list) and segmentos else None
     subsegmentos = principal.get("subsegments") if isinstance(principal, dict) else None
     if not isinstance(subsegmentos, list):
-        raise ValueError("splat.yaml: falta segments[0].subsegments")
+        raise ValueError("configuracion del particionador: falta segments[0].subsegments")
     pares: list[tuple[str, str]] = []
     for entrada in subsegmentos:
         if isinstance(entrada, list) and len(entrada) >= 3:
