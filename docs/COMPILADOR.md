@@ -142,7 +142,7 @@ versión que el compilador identificado; las del SDK 4.7 solo sirven de consulta
 
 El proyecto compila con **GCC 2.8.1 de Psy-Q (`CC1PSX.EXE` build 4.0.0010, el de Psy-Q 4.4)**
 con las opciones **`-O2` y el `-G` original de cada archivo (8 donde el codigo usa datos
-pequenos; `-G0` solo donde se ha demostrado necesario)**. Para el ensamblador se usa `maspsx --aspsx-version=2.80` (ver «Versión de ASPSX»). Es la única
+pequenos; `-G0` solo donde se ha demostrado necesario)**. Para el ensamblador se usa `maspsx --aspsx-version=2.80` (valor de `[compilacion].version_aspsx`; ver «Versión de ASPSX»). Es la única
 combinación que reproduce exactamente una función no trivial del juego: GCC 2.7.2 no lo logra
 con ninguna de las formulaciones probadas, y `-O1` no coincide en ninguna de las funciones
 evaluadas (puntuaciones de 10 a 1095).
@@ -161,8 +161,9 @@ cadena de construcción: el proyecto no ejecuta `ASPSX.EXE`, sino `maspsx`, y `-
 comportamiento que `maspsx` imita. Desde la 2.80 el ensamblador reescribe `addiu rX,$gp,desplazamiento` (`gp_allow_la`);
 la 2.79 deja `lui` + `addiu`. El original usa esa forma, así que la versión que lo reproduce es la 2.80.
 
-- **Fijada:** `VERSION_ASPSX = "2.80"` en `kit/psxdecomp/construccion/compilacion.py` (`psxdecomp.construccion.compilacion`). Cambiarla no exige tocar
-  `config/toolchain.lock.json` (el hash de `maspsx` no cambia). Para volver a evaluarla se edita la constante y se
+- **Fijada:** `version_aspsx = "2.80"` en la seccion `[compilacion]` de `psxdecomp.toml` (junto a `opciones_compilador`, hoy `["-quiet", "-O2"]`); el kit
+  la lee del manifiesto y no guarda ninguna version propia. Cambiarla no exige tocar
+  `config/toolchain.lock.json` (el hash de `maspsx` no cambia). Para volver a evaluarla se cambia `[compilacion].version_aspsx` en `psxdecomp.toml` y se
   ejecuta `clean`, `split`, `build`, `verify`, comparando la puntuación de `diff` de todas las funciones en C.
 - **Medida (2026-10-26, todas las funciones definidas en C; el total vigente está en `docs/PROGRESO.md`):** `verify` sigue dando el SHA-256 original con 2.79 y con 2.80;
   solo cambia `func_80040240` (puntuación 130 a 25, coincide en bytes). Ninguna otra función cambia de puntuación,

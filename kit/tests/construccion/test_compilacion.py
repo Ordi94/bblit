@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from psxdecomp.construccion import compilacion as comp
 from psxdecomp.construccion.compilacion import HerramientasCompilacion
-from psxdecomp.dominio import construir_convenciones, construir_rutas
+from psxdecomp.dominio import construir_compilacion, construir_convenciones, construir_rutas
 from psxdecomp.toolchain.dominio import cargar_lock
 
 from toolchain.ayudantes import bloque_componente, lock_de
@@ -17,6 +17,10 @@ RUTAS_PROPIAS = construir_rutas(
 )
 CONVENCIONES = construir_convenciones({})
 CONVENCIONES_ESTRECHAS = construir_convenciones({"max_valor_g": 4})
+COMPILACION = construir_compilacion({})
+COMPILACION_PROPIA = construir_compilacion(
+    {"version_aspsx": "2.67", "opciones_compilador": ["-quiet", "-O1"]}
+)
 
 SALIDA_OBJDUMP = """
 salida/a.c.o:     file format elf32-littlemips
@@ -92,13 +96,41 @@ def test_comando_preprocesar_rechaza_definiciones_que_no_son_macros(definicion: 
 
 
 def test_comando_compilar_fija_las_opciones_del_compilador_original() -> None:
-    comando = comp.comando_compilar(Path("CC1PSX.EXE"), "a.i", "a.s", max_valor_g=64)
+    comando = comp.comando_compilar(Path("CC1PSX.EXE"), "a.i", "a.s", max_valor_g=64, compilacion=COMPILACION)
     assert comando == ["CC1PSX.EXE", "-quiet", "-O2", "-G0", "a.i", "-o", "a.s"]
-    assert comp.comando_compilar(Path("CC1PSX.EXE"), "a.i", "a.s", 8, max_valor_g=64)[3] == "-G8"
+    asignado = comp.comando_compilar(
+        Path("CC1PSX.EXE"), "a.i", "a.s", 8, max_valor_g=64, compilacion=COMPILACION
+    )
+    assert asignado[3] == "-G8"
+
+
+def test_comando_compilar_usa_las_opciones_del_manifiesto_y_no_las_del_kit() -> None:
+    comando = comp.comando_compilar(
+        Path("CC1PSX.EXE"), "a.i", "a.s", max_valor_g=64, compilacion=COMPILACION_PROPIA
+    )
+    assert comando == ["CC1PSX.EXE", "-quiet", "-O1", "-G0", "a.i", "-o", "a.s"]
+
+
+def test_comando_compilar_sin_opciones_declaradas_solo_lleva_el_umbral_g() -> None:
+    sin_opciones = construir_compilacion({"opciones_compilador": []})
+    comando = comp.comando_compilar(
+        Path("CC1PSX.EXE"), "a.i", "a.s", 4, max_valor_g=64, compilacion=sin_opciones
+    )
+    assert comando == ["CC1PSX.EXE", "-G4", "a.i", "-o", "a.s"]
+
+
+def test_comando_maspsx_usa_la_version_del_manifiesto_y_no_la_del_kit() -> None:
+    comando = comp.comando_maspsx(
+        herramientas(), "a.s", "a.o", "m", max_valor_g=64, compilacion=COMPILACION_PROPIA
+    )
+    assert comando[2] == "--aspsx-version=2.67"
 
 
 def test_comando_maspsx_usa_la_version_de_aspsx_y_el_ensamblador_por_ruta() -> None:
-    assert comp.comando_maspsx(herramientas(), "a.s", "a.o", "asm/macros", max_valor_g=64) == [
+    comando = comp.comando_maspsx(
+        herramientas(), "a.s", "a.o", "asm/macros", max_valor_g=64, compilacion=COMPILACION
+    )
+    assert comando == [
         "py",
         "maspsx.py",
         "--aspsx-version=2.80",
@@ -120,15 +152,16 @@ def test_comando_maspsx_usa_la_version_de_aspsx_y_el_ensamblador_por_ruta() -> N
 @pytest.mark.parametrize("valor", [-1, 5, True, "8", 1.5])
 def test_el_umbral_g_fuera_del_tope_del_proyecto_se_rechaza_en_los_dos_comandos(valor: Any) -> None:
     with pytest.raises(ValueError, match="entero entre 0 y 4"):
-        comp.comando_compilar(Path("c.exe"), "a.i", "a.s", valor, max_valor_g=4)
+        comp.comando_compilar(Path("c.exe"), "a.i", "a.s", valor, max_valor_g=4, compilacion=COMPILACION)
     with pytest.raises(ValueError, match="entero entre 0 y 4"):
-        comp.comando_maspsx(herramientas(), "a.s", "a.o", "m", valor, max_valor_g=4)
+        comp.comando_maspsx(herramientas(), "a.s", "a.o", "m", valor, max_valor_g=4, compilacion=COMPILACION)
 
 
 def test_el_tope_del_umbral_g_lo_decide_el_proyecto_y_no_el_kit() -> None:
-    assert comp.comando_compilar(Path("c.exe"), "a.i", "a.s", 64, max_valor_g=64)[3] == "-G64"
+    asignado = comp.comando_compilar(Path("c.exe"), "a.i", "a.s", 64, max_valor_g=64, compilacion=COMPILACION)
+    assert asignado[3] == "-G64"
     with pytest.raises(ValueError, match="entero entre 0 y 63"):
-        comp.comando_compilar(Path("c.exe"), "a.i", "a.s", 64, max_valor_g=63)
+        comp.comando_compilar(Path("c.exe"), "a.i", "a.s", 64, max_valor_g=63, compilacion=COMPILACION)
 
 
 def test_comando_secciones() -> None:
@@ -212,6 +245,7 @@ def raiz(tmp_path: Path) -> Path:
 def compilar(raiz: Path, ejecutor: Ejecutor, fuente: str = "src/a.c", **opciones: Any) -> None:
     rutas = opciones.pop("rutas", RUTAS)
     convenciones = opciones.pop("convenciones", CONVENCIONES)
+    compilacion = opciones.pop("compilacion", COMPILACION)
     comp.compilar_fuente(
         raiz,
         fuente,
@@ -220,6 +254,7 @@ def compilar(raiz: Path, ejecutor: Ejecutor, fuente: str = "src/a.c", **opciones
         ejecutor,
         rutas=rutas,
         convenciones=convenciones,
+        compilacion=compilacion,
         **opciones,
     )
 
@@ -250,6 +285,15 @@ def test_compilar_fuente_usa_las_cabeceras_y_macros_declaradas_en_el_manifiesto(
     assert "-Iinclude" in ejecutor.comandos[0]
     ensamblado = ejecutor.comandos[2]
     assert ensamblado[ensamblado.index("-I") + 1] == "asm/include"
+
+
+def test_compilar_fuente_pasa_la_version_y_las_opciones_del_manifiesto_a_cada_herramienta(raiz: Path) -> None:
+    ejecutor = Ejecutor()
+    compilar(raiz, ejecutor, exigir_solo_texto=False, compilacion=COMPILACION_PROPIA)
+    _, compilador, ensamblador = ejecutor.comandos
+    assert compilador[1:3] == ["-quiet", "-O1"]
+    assert "--aspsx-version=2.67" in ensamblador
+    assert "--aspsx-version=2.80" not in ensamblador
 
 
 def test_compilar_fuente_aplica_el_tope_del_umbral_g_del_proyecto(raiz: Path) -> None:
@@ -289,6 +333,7 @@ def test_compilar_archivo_admite_un_fuente_fuera_de_la_carpeta_de_fuentes(raiz: 
         exigir_solo_texto=False,
         rutas=RUTAS,
         convenciones=CONVENCIONES,
+        compilacion=COMPILACION,
     )
     assert ejecutor.comandos[0][-3:] == ["variantes/v1.c", "-o", "salida/v1.c.i"]
 
@@ -308,6 +353,7 @@ def test_compilar_fuente_sin_archivo_o_con_rutas_invalidas(raiz: Path) -> None:
             ejecutor,
             rutas=RUTAS,
             convenciones=CONVENCIONES,
+            compilacion=COMPILACION,
         )
     assert ejecutor.comandos == []
 

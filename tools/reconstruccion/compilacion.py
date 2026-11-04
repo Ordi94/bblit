@@ -15,12 +15,10 @@ from functools import partial
 from pathlib import Path
 
 from psxdecomp.construccion.compilacion import (
-    OPCIONES_COMPILADOR,
     PREFIJOS_DE_DATOS,
     TIMEOUT_COMPILAR_S,
     TIMEOUT_ENSAMBLAR_S,
     TIMEOUT_PREPROCESAR_S,
-    VERSION_ASPSX,
     HerramientasCompilacion,
     comando_preprocesar,
     comando_secciones,
@@ -46,15 +44,18 @@ from tools.toolchain.contexto import PROYECTO
 
 RUTAS = PROYECTO.rutas
 CONVENCIONES = PROYECTO.convenciones
+COMPILACION = PROYECTO.compilacion
+VERSION_ASPSX = COMPILACION.version_aspsx
+OPCIONES_COMPILADOR = COMPILACION.opciones_compilador
 CARPETA_INCLUDE = RUTAS.incluir
 CARPETA_MACROS = RUTAS.macros
 CARPETA_FUENTES = RUTAS.fuentes
 CARPETA_SALIDA = RUTAS.build
 
-comando_compilar = partial(_comando_compilar, max_valor_g=CONVENCIONES.max_valor_g)
-comando_maspsx = partial(_comando_maspsx, max_valor_g=CONVENCIONES.max_valor_g)
-compilar_archivo = partial(_compilar_archivo, rutas=RUTAS, convenciones=CONVENCIONES)
-compilar_fuente = partial(_compilar_fuente, rutas=RUTAS, convenciones=CONVENCIONES)
+comando_compilar = partial(_comando_compilar, max_valor_g=CONVENCIONES.max_valor_g, compilacion=COMPILACION)
+comando_maspsx = partial(_comando_maspsx, max_valor_g=CONVENCIONES.max_valor_g, compilacion=COMPILACION)
+compilar_archivo = partial(_compilar_archivo, rutas=RUTAS, convenciones=CONVENCIONES, compilacion=COMPILACION)
+compilar_fuente = partial(_compilar_fuente, rutas=RUTAS, convenciones=CONVENCIONES, compilacion=COMPILACION)
 validar_fuente = partial(_validar_fuente, rutas=RUTAS)
 verificar_solo_texto = partial(_verificar_solo_texto, rutas=RUTAS)
 
@@ -124,6 +125,7 @@ __all__ = [
     "CARPETA_INCLUDE",
     "CARPETA_MACROS",
     "CARPETA_SALIDA",
+    "COMPILACION",
     "CONVENCIONES",
     "OPCIONES_COMPILADOR",
     "PREFIJOS_DE_DATOS",

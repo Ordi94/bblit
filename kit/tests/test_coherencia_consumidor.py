@@ -78,6 +78,26 @@ def test_las_rutas_de_compilacion_coinciden_con_el_manifiesto(proyecto: Proyecto
     assert compilacion.CARPETA_SALIDA == rutas.build
 
 
+def test_la_cadena_de_compilacion_sale_del_manifiesto_y_los_comandos_la_usan(proyecto: Proyecto) -> None:
+    compilacion = modulo("reconstruccion.compilacion")
+    declarada = proyecto.compilacion
+    assert compilacion.COMPILACION == declarada
+    assert compilacion.VERSION_ASPSX == declarada.version_aspsx
+    assert compilacion.OPCIONES_COMPILADOR == declarada.opciones_compilador
+    comando_c = compilacion.comando_compilar(Path("cc1.exe"), "a.i", "a.s")
+    assert comando_c[1 : 1 + len(declarada.opciones_compilador)] == list(declarada.opciones_compilador)
+    herramientas = compilacion.HerramientasCompilacion(
+        python="py",
+        preprocesador=Path("p"),
+        compilador=Path("c"),
+        maspsx=Path("m"),
+        ensamblador=Path("as"),
+        objdump=Path("od"),
+    )
+    comando_as = compilacion.comando_maspsx(herramientas, "a.s", "a.o", "inc")
+    assert f"--aspsx-version={declarada.version_aspsx}" in comando_as
+
+
 def test_las_rutas_de_la_linea_de_ordenes_coinciden_con_el_manifiesto(proyecto: Proyecto) -> None:
     cli = modulo("reconstruccion.cli")
     assert cli.RUTA_REFERENCIA.as_posix() == proyecto.identidad.referencia

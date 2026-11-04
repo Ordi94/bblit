@@ -1,14 +1,15 @@
 """Compilacion de los archivos C del proyecto con el compilador original del SDK.
 
 Cada archivo pasa por la misma cadena que uso el estudio: preprocesador del SDK
-(``CPPPSX.EXE``), compilador ``CC1PSX.EXE`` (GCC 2.8.1) con ``-O2 -G0``, ``maspsx`` que imita al
-ensamblador ``ASPSX`` 2.80 y GNU ``as``. El compilador propio no preprocesa, por eso el paso
+(``CPPPSX.EXE``), compilador ``CC1PSX.EXE`` (GCC 2.8.1) con las opciones del proyecto, ``maspsx`` que imita al
+ensamblador ``ASPSX`` y GNU ``as``. El compilador propio no preprocesa, por eso el paso
 previo es obligatorio: sin el, ``#include`` y las macros llegan intactas al compilador y falla.
 
 La capa pura (comandos y lectura de la lista de secciones) no toca disco; ``compilar_fuente``
 es la unica funcion que lanza procesos y lo hace mediante el ejecutor recibido. Las carpetas del
-proyecto (fuentes, cabeceras, macros de ensamblador) llegan en ``Rutas`` y el tope del umbral
-``-G`` en ``Convenciones``: ambas son secciones del manifiesto y este modulo no guarda estado.
+proyecto (fuentes, cabeceras, macros de ensamblador) llegan en ``Rutas``, el tope del umbral
+``-G`` en ``Convenciones`` y la version de ``ASPSX`` y las opciones del compilador en
+``Compilacion``: son secciones del manifiesto y este modulo no guarda estado.
 """
 
 from __future__ import annotations
@@ -18,15 +19,13 @@ from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from psxdecomp.dominio import Convenciones, Rutas
+from psxdecomp.dominio import Compilacion, Convenciones, Rutas
 from psxdecomp.toolchain.dominio import Componente
 from psxdecomp.toolchain.instalacion import resolver_herramienta
 
 Ejecutor = Callable[[Sequence[str], Path, int], str]
 """Funcion que ejecuta un comando en un directorio con tiempo limite y devuelve su salida."""
 
-VERSION_ASPSX = "2.80"
-OPCIONES_COMPILADOR = ("-quiet", "-O2")
 TIMEOUT_PREPROCESAR_S = 120
 TIMEOUT_COMPILAR_S = 120
 TIMEOUT_ENSAMBLAR_S = 120
@@ -160,13 +159,20 @@ def _validar_valor_g(valor_g: int, max_valor_g: int) -> None:
 
 
 def comando_compilar(
-    compilador: Path, entrada: str, salida: str, valor_g: int = 0, *, max_valor_g: int
+    compilador: Path,
+    entrada: str,
+    salida: str,
+    valor_g: int = 0,
+    *,
+    max_valor_g: int,
+    compilacion: Compilacion,
 ) -> list[str]:
     """
     Devuelve los argumentos que compilan C preprocesado a ensamblador.
 
     Contexto:
-        ``-O2`` es el valor identificado del compilador original. ``-G0`` es el umbral de datos
+        Las opciones del compilador (``-O2`` en el proyecto actual) son las que se identificaron
+        para el compilador original y vienen del manifiesto. ``-G0`` es el umbral de datos
         pequenos por omision (la cabecera declara ``gp0 = 0``); los archivos cuyo original uso datos
         pequenos declaran otro valor en el archivo de opciones de compilacion.
 
@@ -176,6 +182,7 @@ def comando_compilar(
         salida (str): Ensamblador de salida.
         valor_g (int, opcional): Umbral ``-G`` de datos pequenos.
         max_valor_g (int): Mayor umbral admitido (``Convenciones.max_valor_g``).
+        compilacion (Compilacion): Seccion ``[compilacion]``; aporta las opciones del compilador.
 
     Returns:
         list[str]: Lista de argumentos.
@@ -184,10 +191,12 @@ def comando_compilar(
         ValueError: Si ``valor_g`` no es un entero entre 0 y ``max_valor_g``.
 
     Ejemplo:
-        comando = comando_compilar(Path("CC1PSX.EXE"), "build/a.i", "build/a.s", 8, max_valor_g=64)
+        comando = comando_compilar(
+            Path("CC1PSX.EXE"), "build/a.i", "build/a.s", 8, max_valor_g=64, compilacion=compilacion
+        )
     """
     _validar_valor_g(valor_g, max_valor_g)
-    return [str(compilador), *OPCIONES_COMPILADOR, f"-G{valor_g}", entrada, "-o", salida]
+    return [str(compilador), *compilacion.opciones_compilador, f"-G{valor_g}", entrada, "-o", salida]
 
 
 def comando_maspsx(
@@ -198,6 +207,7 @@ def comando_maspsx(
     valor_g: int = 0,
     *,
     max_valor_g: int,
+    compilacion: Compilacion,
 ) -> list[str]:
     """
     Devuelve los argumentos que ensamblan la salida del compilador con ``maspsx``.
@@ -216,6 +226,8 @@ def comando_maspsx(
             reescribir a ``$gp`` las variables pequenas que el propio archivo define; GNU ``as``
             sigue recibiendo ``-G0`` (``maspsx`` se lo fuerza), asi no reescribe externos.
         max_valor_g (int): Mayor umbral admitido (``Convenciones.max_valor_g``).
+        compilacion (Compilacion): Seccion ``[compilacion]``; aporta la version de ``ASPSX`` que
+            imita ``maspsx``. Elegirla mal no produce error: solo diferencias en los bytes.
 
     Returns:
         list[str]: Lista de argumentos.
@@ -224,13 +236,15 @@ def comando_maspsx(
         ValueError: Si ``valor_g`` no es un entero entre 0 y ``max_valor_g``.
 
     Ejemplo:
-        comando = comando_maspsx(herramientas, "a.s", "a.o", "asm/macros", 8, max_valor_g=64)
+        comando = comando_maspsx(
+            herramientas, "a.s", "a.o", "asm/macros", 8, max_valor_g=64, compilacion=compilacion
+        )
     """
     _validar_valor_g(valor_g, max_valor_g)
     return [
         herramientas.python,
         str(herramientas.maspsx),
-        f"--aspsx-version={VERSION_ASPSX}",
+        f"--aspsx-version={compilacion.version_aspsx}",
         "--use-comm-section",
         "--run-assembler",
         f"--gnu-as-path={herramientas.ensamblador}",
@@ -372,6 +386,7 @@ def compilar_fuente(
     valor_g: int = 0,
     rutas: Rutas,
     convenciones: Convenciones,
+    compilacion: Compilacion,
 ) -> None:
     """
     Compila un archivo C de la carpeta de fuentes a un objeto ELF reubicable.
@@ -394,6 +409,7 @@ def compilar_fuente(
         valor_g (int, opcional): Umbral ``-G`` de datos pequenos para este archivo.
         rutas (Rutas): Seccion ``[rutas]`` del manifiesto (fuentes, cabeceras y macros).
         convenciones (Convenciones): Seccion ``[convenciones]`` (tope del umbral ``-G``).
+        compilacion (Compilacion): Seccion ``[compilacion]`` (version de ``ASPSX`` y opciones).
 
     Raises:
         ValueError: Si la fuente o el objeto no son rutas validas, o el objeto aporta datos
@@ -417,6 +433,7 @@ def compilar_fuente(
         valor_g=valor_g,
         rutas=rutas,
         convenciones=convenciones,
+        compilacion=compilacion,
     )
 
 
@@ -433,6 +450,7 @@ def compilar_archivo(
     valor_g: int = 0,
     rutas: Rutas,
     convenciones: Convenciones,
+    compilacion: Compilacion,
 ) -> None:
     """
     Compila un archivo C cualquiera (de la carpeta de fuentes o una variante de prueba) a un objeto ELF.
@@ -454,6 +472,7 @@ def compilar_archivo(
         valor_g (int, opcional): Umbral ``-G`` de datos pequenos.
         rutas (Rutas): Seccion ``[rutas]`` del manifiesto (cabeceras y macros).
         convenciones (Convenciones): Seccion ``[convenciones]`` (tope del umbral ``-G``).
+        compilacion (Compilacion): Seccion ``[compilacion]`` (version de ``ASPSX`` y opciones).
 
     Raises:
         ValueError: Si el objeto no es una ruta valida o aporta datos no declarados.
@@ -474,14 +493,25 @@ def compilar_archivo(
     )
     ejecutar(
         comando_compilar(
-            herramientas.compilador, preprocesado, ensamblador, valor_g, max_valor_g=convenciones.max_valor_g
+            herramientas.compilador,
+            preprocesado,
+            ensamblador,
+            valor_g,
+            max_valor_g=convenciones.max_valor_g,
+            compilacion=compilacion,
         ),
         raiz,
         TIMEOUT_COMPILAR_S,
     )
     ejecutar(
         comando_maspsx(
-            herramientas, ensamblador, objeto, rutas.macros, valor_g, max_valor_g=convenciones.max_valor_g
+            herramientas,
+            ensamblador,
+            objeto,
+            rutas.macros,
+            valor_g,
+            max_valor_g=convenciones.max_valor_g,
+            compilacion=compilacion,
         ),
         raiz,
         TIMEOUT_ENSAMBLAR_S,

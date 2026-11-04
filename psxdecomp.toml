@@ -42,6 +42,12 @@ patron_simbolo_datos = '^D_([0-9A-F]{8})$'
 patron_linea_simbolo = '^([A-Za-z_]\w*)\s*=\s*0x([0-9A-Fa-f]{1,8})\s*;\s*//(.*)$'
 max_valor_g = 64
 
+# Cadena de compilacion: version del ensamblador original que imita maspsx (determinada
+# comparando la salida con funciones reales; ver docs/COMPILADOR.md) y opciones del compilador.
+[compilacion]
+version_aspsx = "2.80"
+opciones_compilador = ["-quiet", "-O2"]
+
 # Los modulos de extension del juego (subcomandos de overlay y bzz) aun no existen: se
 # registraran aqui cuando tools/ pase a consumir el manifiesto.
 [plugins]

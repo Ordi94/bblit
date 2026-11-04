@@ -59,6 +59,10 @@ patron_simbolo_datos = '^X_([0-9A-F]{8})$'
 patron_linea_simbolo = '^(\\w+) @ 0x([0-9A-F]+) (.*)$'
 max_valor_g = 16
 
+[compilacion]
+version_aspsx = "2.67"
+opciones_compilador = ["-quiet", "-O1", "-fno-builtin"]
+
 [plugins]
 subcomandos = ["paquete.modulo:registrar"]
 antes_de_construir = ["paquete.hook:antes"]

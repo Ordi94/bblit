@@ -21,7 +21,7 @@ from psxdecomp.constantes import NOMBRE_MANIFIESTO
 from psxdecomp.entorno import PREFIJO_PROPIO, Variables
 from psxdecomp.validacion import ManifiestoError
 
-SECCIONES = frozenset({"proyecto", "rutas", "zonas", "convenciones", "plugins"})
+SECCIONES = frozenset({"proyecto", "rutas", "zonas", "convenciones", "compilacion", "plugins"})
 CLAVES_PROYECTO = frozenset({"nombre", "ejecutable", "referencia", "prefijo_entorno"})
 CLAVES_RUTAS = frozenset(
     {
@@ -55,9 +55,12 @@ CLAVES_CONVENCIONES = frozenset(
         "max_valor_g",
     }
 )
+CLAVES_COMPILACION = frozenset({"version_aspsx", "opciones_compilador"})
 CLAVES_PLUGINS = frozenset({"subcomandos", "antes_de_construir", "despues_de_verificar"})
 
 MAX_VALOR_G_ADMITIDO = 4096
+VERSION_ASPSX_POR_DEFECTO = "2.80"
+OPCIONES_COMPILADOR_POR_DEFECTO = ("-quiet", "-O2")
 MANUSCRITA_POR_DEFECTO = r"\brutina(?:\s+de\s+\w+)?\s+escrita\s+a\s+mano\s+en\s+el\s+original\b"
 SIMBOLO_DATOS_POR_DEFECTO = r"^D_([0-9A-F]{8})$"
 LINEA_SIMBOLO_POR_DEFECTO = r"^([A-Za-z_]\w*)\s*=\s*0x([0-9A-Fa-f]{1,8})\s*;\s*//(.*)$"
@@ -167,6 +170,24 @@ class Convenciones:
 
 
 @dataclass(frozen=True, slots=True)
+class Compilacion:
+    """
+    Seccion ``[compilacion]``: como invoca el kit a la cadena de compilacion del proyecto.
+
+    Attributes:
+        version_aspsx: Version del ensamblador original que imita ``maspsx`` (``major.minor``).
+            Es un dato del binario: se determina comparando la salida con funciones reales del
+            ejecutable, y otro proyecto puede necesitar otra.
+        opciones_compilador: Opciones que recibe el compilador, en orden, antes del umbral ``-G``
+            y los archivos. Cada una empieza por ``-``; no admite ``-G`` (lo fija cada archivo) ni
+            ``-o`` (la salida la fija el kit). Una lista vacia es valida: compila sin opciones.
+    """
+
+    version_aspsx: str
+    opciones_compilador: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class Plugins:
     """Seccion ``[plugins]``: extensiones del proyecto como referencias ``modulo:funcion``."""
 
@@ -184,6 +205,7 @@ class Proyecto:
     rutas: Rutas
     zonas: Zonas
     convenciones: Convenciones
+    compilacion: Compilacion
     plugins: Plugins
 
     def variables(self) -> Variables:
@@ -268,11 +290,12 @@ class Proyecto:
         Ejemplo:
             print(proyecto.resumen())
         """
-        ident, rutas, zonas, conv, plug = (
+        ident, rutas, zonas, conv, comp, plug = (
             self.identidad,
             self.rutas,
             self.zonas,
             self.convenciones,
+            self.compilacion,
             self.plugins,
         )
         lineas = [
@@ -287,6 +310,7 @@ class Proyecto:
             f"zonas: juego 0x{zonas.juego_desde:08X}, "
             f"librerias 0x{zonas.librerias_desde:08X}-0x{zonas.librerias_hasta:08X}",
             f"macros: {conv.macro_no_coincidente}, {conv.macro_ensamblador}",
+            f"compilacion: aspsx {comp.version_aspsx}, opciones {' '.join(comp.opciones_compilador) or '-'}",
             f"plugins: {len(plug.subcomandos)} subcomando(s), "
             f"{len(plug.antes_de_construir)} antes de construir, "
             f"{len(plug.despues_de_verificar)} despues de verificar",
@@ -467,6 +491,46 @@ def construir_convenciones(tabla: Mapping[str, Any]) -> Convenciones:
     )
 
 
+def construir_compilacion(tabla: Mapping[str, Any]) -> Compilacion:
+    """
+    Construye la seccion ``[compilacion]`` con los valores por defecto del kit.
+
+    Contexto:
+        Ambos valores acaban como argumentos de procesos externos, por eso se admiten solo por
+        patron: la version es ``major.minor`` en digitos ASCII y cada opcion un guion seguido de
+        una letra e identificador (sin espacios ni separadores de ruta).
+
+    Args:
+        tabla (Mapping[str, Any]): Tabla ``[compilacion]`` ya revisada (puede estar vacia).
+
+    Returns:
+        Compilacion: Seccion validada.
+
+    Raises:
+        ManifiestoError: Si la version o alguna opcion no cumple su patron, hay opciones repetidas
+            o la lista excede la cota.
+
+    Ejemplo:
+        compilacion = construir_compilacion({"version_aspsx": "2.79"})
+    """
+    return Compilacion(
+        version_aspsx=val.leer_cadena(
+            tabla,
+            "version_aspsx",
+            "compilacion",
+            patron=val.PATRON_VERSION_ASPSX,
+            defecto=VERSION_ASPSX_POR_DEFECTO,
+        ),
+        opciones_compilador=val.leer_lista_texto(
+            tabla,
+            "opciones_compilador",
+            "compilacion",
+            patron=val.PATRON_OPCION_COMPILADOR,
+            defecto=OPCIONES_COMPILADOR_POR_DEFECTO,
+        ),
+    )
+
+
 def construir_plugins(tabla: Mapping[str, Any]) -> Plugins:
     """
     Construye la seccion ``[plugins]``: referencias ``modulo:funcion`` que el kit importara.
@@ -525,6 +589,9 @@ def construir_proyecto(datos: Mapping[str, Any], raiz: Path) -> Proyecto:
         zonas=construir_zonas(extraer_seccion(datos, "zonas", CLAVES_ZONAS, obligatoria=True)),
         convenciones=construir_convenciones(
             extraer_seccion(datos, "convenciones", CLAVES_CONVENCIONES, obligatoria=False)
+        ),
+        compilacion=construir_compilacion(
+            extraer_seccion(datos, "compilacion", CLAVES_COMPILACION, obligatoria=False)
         ),
         plugins=construir_plugins(extraer_seccion(datos, "plugins", CLAVES_PLUGINS, obligatoria=False)),
     )

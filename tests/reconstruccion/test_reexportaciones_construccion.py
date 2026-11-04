@@ -34,10 +34,24 @@ ENLAZADAS = {
         "verificar_pendientes": {"convenciones": PROYECTO.convenciones},
     },
     "tools.reconstruccion.compilacion": {
-        "comando_compilar": {"max_valor_g": PROYECTO.convenciones.max_valor_g},
-        "comando_maspsx": {"max_valor_g": PROYECTO.convenciones.max_valor_g},
-        "compilar_archivo": {"rutas": PROYECTO.rutas, "convenciones": PROYECTO.convenciones},
-        "compilar_fuente": {"rutas": PROYECTO.rutas, "convenciones": PROYECTO.convenciones},
+        "comando_compilar": {
+            "max_valor_g": PROYECTO.convenciones.max_valor_g,
+            "compilacion": PROYECTO.compilacion,
+        },
+        "comando_maspsx": {
+            "max_valor_g": PROYECTO.convenciones.max_valor_g,
+            "compilacion": PROYECTO.compilacion,
+        },
+        "compilar_archivo": {
+            "rutas": PROYECTO.rutas,
+            "convenciones": PROYECTO.convenciones,
+            "compilacion": PROYECTO.compilacion,
+        },
+        "compilar_fuente": {
+            "rutas": PROYECTO.rutas,
+            "convenciones": PROYECTO.convenciones,
+            "compilacion": PROYECTO.compilacion,
+        },
         "validar_fuente": {"rutas": PROYECTO.rutas},
         "verificar_solo_texto": {"rutas": PROYECTO.rutas},
     },
@@ -52,8 +66,11 @@ PROPIOS = {
         "CARPETA_INCLUDE",
         "CARPETA_MACROS",
         "CARPETA_SALIDA",
+        "COMPILACION",
         "CONVENCIONES",
+        "OPCIONES_COMPILADOR",
         "RUTAS",
+        "VERSION_ASPSX",
         "construir_mixto",
     },
 }

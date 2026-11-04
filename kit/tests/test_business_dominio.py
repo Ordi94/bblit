@@ -48,6 +48,8 @@ def test_el_manifiesto_minimo_carga_con_rutas_y_convenciones_por_defecto() -> No
     assert proyecto.convenciones.patron_simbolo_datos == r"^D_([0-9A-F]{8})$"
     assert r"escrita\s+a\s+mano" in proyecto.convenciones.manuscrita
     assert proyecto.plugins.subcomandos == ()
+    assert proyecto.compilacion.version_aspsx == "2.80"
+    assert proyecto.compilacion.opciones_compilador == ("-quiet", "-O2")
 
 
 def test_el_manifiesto_completo_conserva_cada_valor_declarado() -> None:
@@ -63,6 +65,8 @@ def test_el_manifiesto_completo_conserva_cada_valor_declarado() -> None:
     assert proyecto.convenciones.patron_simbolo_datos == "^X_([0-9A-F]{8})$"
     assert proyecto.convenciones.patron_linea_simbolo == r"^(\w+) @ 0x([0-9A-F]+) (.*)$"
     assert proyecto.convenciones.max_valor_g == 16
+    assert proyecto.compilacion.version_aspsx == "2.67"
+    assert proyecto.compilacion.opciones_compilador == ("-quiet", "-O1", "-fno-builtin")
     assert proyecto.plugins.despues_de_verificar == ("paquete.hook:despues", "otro:despues")
 
 
@@ -221,6 +225,74 @@ def test_las_convenciones_con_expresion_invalida_o_macro_fuera_de_lista_se_recha
 ) -> None:
     with pytest.raises(ManifiestoError, match=rf"\[convenciones\]\.{clave}"):
         cargar(MANIFIESTO_MINIMO + f"\n[convenciones]\n{clave} = {valor}\n")
+
+
+@pytest.mark.parametrize(
+    "valor",
+    [
+        "''",
+        "'2'",
+        "'2.'",
+        "'.80'",
+        "'2.8.0'",
+        "'v2.80'",
+        "'2,80'",
+        "'2.80 '",
+        "'2.8x'",
+        "'1234.5'",
+        "2.8",
+        "280",
+        "true",
+    ],
+)
+def test_la_version_de_aspsx_solo_admite_major_punto_minor_en_digitos(valor: str) -> None:
+    with pytest.raises(ManifiestoError, match=r"\[compilacion\]\.version_aspsx"):
+        cargar(MANIFIESTO_MINIMO + f"\n[compilacion]\nversion_aspsx = {valor}\n")
+
+
+@pytest.mark.parametrize(
+    "lista",
+    [
+        "['O2']",
+        "['-']",
+        "['-2']",
+        "['- O2']",
+        "['-O2 -quiet']",
+        "['-O2;calc']",
+        "['-I../x']",
+        "['-G8']",
+        "['-G']",
+        "['-o']",
+        "['-out']",
+        "['-" + "a" * 33 + "']",
+        "[3]",
+        "'-O2'",
+        "['-O2', '-O2']",
+        "['" + "', '".join("-" + c for c in "abcdefghijklmnpqr") + "']",
+    ],
+)
+def test_una_opcion_del_compilador_fuera_de_la_lista_de_admitidos_se_rechaza(lista: str) -> None:
+    with pytest.raises(ManifiestoError, match=r"\[compilacion\]\.opciones_compilador"):
+        cargar(MANIFIESTO_MINIMO + f"\n[compilacion]\nopciones_compilador = {lista}\n")
+
+
+def test_una_lista_vacia_de_opciones_del_compilador_es_valida_y_no_recupera_el_defecto() -> None:
+    proyecto = cargar(MANIFIESTO_MINIMO + "\n[compilacion]\nopciones_compilador = []\n")
+    assert proyecto.compilacion.opciones_compilador == ()
+    assert proyecto.compilacion.version_aspsx == "2.80"
+
+
+def test_una_clave_desconocida_en_compilacion_se_rechaza() -> None:
+    with pytest.raises(ManifiestoError, match=r"\[compilacion\]"):
+        cargar(MANIFIESTO_MINIMO + "\n[compilacion]\nversion = '2.80'\n")
+
+
+def test_el_resumen_muestra_la_cadena_de_compilacion() -> None:
+    assert (
+        "compilacion: aspsx 2.67, opciones -quiet -O1 -fno-builtin" in cargar(MANIFIESTO_COMPLETO).resumen()
+    )
+    vacio = cargar(MANIFIESTO_MINIMO + "\n[compilacion]\nopciones_compilador = []\n").resumen()
+    assert "compilacion: aspsx 2.80, opciones -" in vacio
 
 
 @pytest.mark.parametrize(

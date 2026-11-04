@@ -28,7 +28,7 @@ La unica dependencia de ejecucion es `requests` (descarga del toolchain); el res
 
 `python -m psxdecomp.cli comprobar [ruta]` carga y valida el `psxdecomp.toml` de la
 carpeta indicada (por omision la actual) e imprime el resumen. Las secciones son `[proyecto]`,
-`[rutas]`, `[zonas]`, `[convenciones]` y `[plugins]`; toda clave desconocida es un error.
+`[rutas]`, `[zonas]`, `[convenciones]`, `[compilacion]` y `[plugins]`; toda clave desconocida es un error.
 
 ## Pruebas
 
@@ -112,11 +112,12 @@ llega por parametro explicito, sin estado global.
 | Modulo | Responsabilidad |
 |---|---|
 | `construccion.dominio` | Reglas puras (sin E/S): cabecera PS-X EXE, comandos de `splat`, `as`, `ld` y `objcopy`, verificacion por huella, opciones de compilacion por archivo (`-G`), valor de `_gp`, datos pequenos y lectura del archivo de simbolos. |
-| `construccion.compilacion` | Cadena preprocesador, compilador, `maspsx` y ensamblador para un archivo C; validacion de las secciones del objeto. Recibe `Rutas` y `Convenciones` en cada llamada. |
+| `construccion.compilacion` | Cadena preprocesador, compilador, `maspsx` y ensamblador para un archivo C; validacion de las secciones del objeto. Recibe `Rutas`, `Convenciones` y `Compilacion` en cada llamada. |
 
 Las funciones de `construccion.dominio` que interpretan formatos reciben `Convenciones`
 (`patron_linea_simbolo`, `patron_simbolo_datos`, `max_valor_g`); las de `construccion.compilacion`
-reciben `Rutas` (`fuentes`, `incluir`, `macros`, `splat`) y `Convenciones` (`max_valor_g`). La funcion
+reciben `Rutas` (`fuentes`, `incluir`, `macros`, `splat`), `Convenciones` (`max_valor_g`) y `Compilacion`
+(`version_aspsx`, `opciones_compilador`). La funcion
 que construye el ejecutable completo (enlace incluido) se traslada junto con la infraestructura.
 
 ## Comparacion
@@ -137,3 +138,5 @@ listas de admitidos y cotas):
 | `convenciones.patron_simbolo_datos` | Nombre de un simbolo de datos pequenos; su unico grupo es la direccion en hexadecimal. |
 | `convenciones.patron_linea_simbolo` | Linea del archivo de simbolos; tres grupos: nombre, direccion y atributos. |
 | `convenciones.max_valor_g` | Mayor umbral `-G` admitido, entero de 0 a 4096 (defecto 64). |
+| `compilacion.version_aspsx` | Version del ensamblador original que imita `maspsx`, `major.minor` en digitos (defecto `"2.80"`). Es un dato del binario: se determina comparando la salida con funciones reales, y un proyecto con otro SDK declara la suya. |
+| `compilacion.opciones_compilador` | Opciones del compilador, en orden: hasta 16 cadenas sin repetidos que empiezan por `-` y una letra, sin espacios ni separadores. No admite `-G` (lo fija cada archivo) ni `-o` (la salida la fija el kit). Una lista vacia es valida y compila sin opciones (defecto `["-quiet", "-O2"]`). |
