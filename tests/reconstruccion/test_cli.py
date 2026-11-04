@@ -9,7 +9,7 @@ import pytest
 from tools.reconstruccion import cli
 from tools.reconstruccion import infraestructura as infra
 
-from tests.toolchain.ayudantes import bloque_componente, lock_de
+from toolchain.ayudantes import bloque_componente, lock_de
 
 from .test_compilacion import SALIDA_OBJDUMP, EjecutorC
 from .test_diff import ASM_FUNCION, EjecutorDiff

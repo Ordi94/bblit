@@ -8,7 +8,7 @@ from tools.reconstruccion.compilacion import HerramientasCompilacion
 from tools.reconstruccion.infraestructura import Herramientas, ProcesoError
 from tools.toolchain.dominio import cargar_lock
 
-from tests.toolchain.ayudantes import bloque_componente, lock_de
+from toolchain.ayudantes import bloque_componente, lock_de
 
 from .test_infraestructura import CUERPO, EJECUTABLE, REFERENCIA, Registro
 

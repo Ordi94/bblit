@@ -14,7 +14,7 @@ from tools.reconstruccion.dominio import CabeceraPsx, EjecutableReferencia
 from tools.reconstruccion.infraestructura import Herramientas, ProcesoError
 from tools.toolchain.dominio import cargar_lock
 
-from tests.toolchain.ayudantes import bloque_componente, construir_iso, lock_de
+from toolchain.ayudantes import bloque_componente, construir_iso, lock_de
 
 CUERPO = bytes(range(16))
 CABECERA = CabeceraPsx(0x80010008, 0, 0x80010000, 16, 0, 0, 0, 0, 0x801FFFF0, 0, "Region de prueba")

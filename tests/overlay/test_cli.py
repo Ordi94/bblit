@@ -14,7 +14,7 @@ from tests.overlay.ayudantes import (
     escribir_sistema_de_archivos,
     variantes_conocidas,
 )
-from tests.toolchain.ayudantes import bloque_componente, lock_de
+from toolchain.ayudantes import bloque_componente, lock_de
 
 A = construir_overlay(1)
 B = construir_overlay(2)
