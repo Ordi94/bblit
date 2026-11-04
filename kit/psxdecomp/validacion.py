@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import re
 from collections.abc import Collection, Mapping
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
+
+from psxdecomp.constantes import NOMBRE_MANIFIESTO
 
 DIRECCION_MINIMA = 0x80000000
 DIRECCION_MAXIMA = 0x80800000
-MAX_LARGO_TEXTO = 64
 MAX_LARGO_RUTA = 200
 MAX_LARGO_REGEX = 200
 MAX_ELEMENTOS_LISTA = 16
@@ -52,7 +53,7 @@ def _fallo(seccion: str, clave: str | None, esperado: str) -> ManifiestoError:
         raise _fallo("rutas", "fuentes", "una cadena")
     """
     campo = f"[{seccion}]" if clave is None else f"[{seccion}].{clave}"
-    return ManifiestoError(f"psxdecomp.toml: {campo}: se esperaba {esperado}")
+    return ManifiestoError(f"{NOMBRE_MANIFIESTO}: {campo}: se esperaba {esperado}")
 
 
 def exigir_tabla(valor: object, seccion: str) -> Mapping[str, Any]:
@@ -425,9 +426,44 @@ def leer_regex(
     return valor
 
 
+def esta_confinada(raiz: Path, relativa: str) -> bool:
+    """
+    Indica si una ruta relativa permanece dentro de la raiz del proyecto.
+
+    Contexto:
+        Unica regla de confinamiento del kit: la usan tanto la validacion del manifiesto al cargarlo
+        (``comprobar_dentro_de_raiz``) como ``Proyecto.ruta_absoluta``. Se aplican dos barreras
+        independientes, cada una suficiente por si sola, y no deben simplificarse en una: la
+        lexica rechaza lo que ``pathlib`` interpretaria como salto de raiz (en Windows ``/x``
+        no es absoluta pero ``raiz / "/x"`` descarta la raiz; ``C:/x`` y las rutas de red tambien),
+        y la de resolucion detecta enlaces simbolicos que apuntan fuera. La parte lexica se evalua
+        con semantica Windows en cualquier plataforma para que el resultado no dependa del sistema.
+
+    Args:
+        raiz (Path): Raiz del proyecto.
+        relativa (str): Ruta relativa a comprobar.
+
+    Returns:
+        bool: ``True`` solo si la ruta no tiene byte nulo, unidad, raiz ni ``..`` y su resolucion
+        queda bajo la raiz resuelta; ``False`` en cualquier otro caso, incluida una ruta que el
+        sistema operativo no pueda resolver.
+
+    Ejemplo:
+        if not esta_confinada(Path("."), "src"):
+            raise ValueError("fuera de la raiz")
+    """
+    lexica = PureWindowsPath(relativa)
+    if "\x00" in relativa or lexica.anchor or lexica.drive or ".." in lexica.parts:
+        return False
+    try:
+        return (raiz / relativa).resolve().is_relative_to(raiz.resolve())
+    except (OSError, ValueError):
+        return False
+
+
 def comprobar_dentro_de_raiz(raiz: Path, relativa: str, clave: str, seccion: str) -> None:
     """
-    Comprueba que una ruta relativa, ya resuelta en disco, sigue dentro de la raiz del proyecto.
+    Comprueba que una ruta relativa del manifiesto sigue dentro de la raiz del proyecto.
 
     Contexto:
         Segunda barrera tras el patron de ``leer_ruta``: si un tramo existente es un enlace
@@ -440,10 +476,10 @@ def comprobar_dentro_de_raiz(raiz: Path, relativa: str, clave: str, seccion: str
         seccion (str): Seccion de origen, para el mensaje.
 
     Raises:
-        ManifiestoError: Si la ruta resuelta no esta bajo la raiz resuelta.
+        ManifiestoError: Si ``esta_confinada`` rechaza la ruta.
 
     Ejemplo:
         comprobar_dentro_de_raiz(Path("."), "src", "fuentes", "rutas")
     """
-    if not (raiz / relativa).resolve().is_relative_to(raiz.resolve()):
+    if not esta_confinada(raiz, relativa):
         raise _fallo(seccion, clave, "una ruta que permanezca dentro de la raiz del proyecto")

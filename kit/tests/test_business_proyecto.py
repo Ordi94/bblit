@@ -378,7 +378,30 @@ def test_la_ruta_absoluta_se_resuelve_bajo_la_raiz(escribir_manifiesto: Escribir
     assert proyecto.ruta_absoluta(proyecto.rutas.fuentes) == proyecto.raiz / "src"
 
 
-@pytest.mark.parametrize("relativa", ["../fuera", "a/../../b", str(Path.cwd())])
+@pytest.mark.parametrize("relativa", ["src", "a/b/c.txt", "config/splat.yaml", "a.b/c-d"])
+def test_la_ruta_absoluta_acepta_rutas_relativas_que_quedan_dentro_de_la_raiz(
+    escribir_manifiesto: EscribirManifiesto, relativa: str
+) -> None:
+    proyecto = cargar(escribir_manifiesto, MANIFIESTO_MINIMO)
+    assert proyecto.ruta_absoluta(relativa) == proyecto.raiz / relativa
+
+
+@pytest.mark.parametrize(
+    "relativa",
+    [
+        "../fuera",
+        "a/../..",
+        "a/../../b",
+        "/x",
+        "\\x",
+        "C:/x",
+        "C:x",
+        "\\\\servidor\\x",
+        "//servidor/x",
+        "a\x00b",
+        str(Path.cwd()),
+    ],
+)
 def test_la_ruta_absoluta_rechaza_rutas_que_no_son_relativas_a_la_raiz(
     escribir_manifiesto: EscribirManifiesto, relativa: str
 ) -> None:

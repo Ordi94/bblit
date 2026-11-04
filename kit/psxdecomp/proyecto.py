@@ -21,9 +21,9 @@ from pathlib import Path
 from typing import Any
 
 from psxdecomp import validacion as val
+from psxdecomp.constantes import NOMBRE_MANIFIESTO
 from psxdecomp.validacion import ManifiestoError
 
-NOMBRE_MANIFIESTO = "psxdecomp.toml"
 MAX_BYTES_MANIFIESTO = 64 * 1024
 PREFIJO_PROPIO = "PSXDECOMP"
 PATRON_SUFIJO_ENTORNO = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
@@ -173,15 +173,15 @@ class Proyecto:
             Path: ``raiz / relativa``.
 
         Raises:
-            ValueError: Si la ruta es absoluta o contiene ``..``.
+            ValueError: Si la ruta tiene unidad o raiz (``/x``, ``C:/x``, ruta de red), contiene
+                ``..`` o, resuelta, queda fuera de la raiz del proyecto.
 
         Ejemplo:
             fuentes = proyecto.ruta_absoluta(proyecto.rutas.fuentes)
         """
-        candidata = Path(relativa)
-        if candidata.is_absolute() or ".." in candidata.parts:
+        if not val.esta_confinada(self.raiz, relativa):
             raise ValueError("la ruta debe ser relativa y no salir de la raiz del proyecto")
-        return self.raiz / candidata
+        return self.raiz / relativa
 
     def resumen(self) -> str:
         """
