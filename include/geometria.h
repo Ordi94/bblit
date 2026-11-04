@@ -385,6 +385,15 @@ typedef struct TrabajoRecorrido {
                       "move $11, $12\n\tsw $9, 0($8)\n\tsw $10, 4($8)\n\tsw $11, 8($8)" \
                       : : "r"(p) : "$8", "$9", "$10", "$11", "$12", "memory")
 /*
+ * GEO_RELLENAR_1000_T7(p): igual que GEO_RELLENAR_1000 pero el valor se carga en $15 (addiu $t7, zero,
+ * 0x1000), como lo hace el original en el personaje animado (func_80026FEC, 0x8002ADFC, 0x8002B068 y
+ * 0x8002B248): el cuerpo escribe $8..$11 y $15.
+ */
+#define GEO_RELLENAR_1000_T7(p) \
+    __asm__ volatile ("move $8, %0\n\taddiu $15, $0, 0x1000\n\tmove $9, $15\n\tmove $10, $15\n\t" \
+                      "move $11, $15\n\tsw $9, 0($8)\n\tsw $10, 4($8)\n\tsw $11, 8($8)" \
+                      : : "r"(p) : "$8", "$9", "$10", "$11", "$15", "memory")
+/*
  * GEO_DISTANCIA_APROX(p): distancia aproximada al vector de tres palabras de p (d0, d4, d8): el
  * maximo de |x|, |y|, |z| mas un cuarto de cada uno de los otros dos; el resultado, con el bit 0
  * activo, se guarda en p + 0x44. Queda en ensamblador en linea (no es GTE) porque el original lo
