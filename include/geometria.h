@@ -410,12 +410,12 @@ typedef struct TrabajoRecorrido {
                       : : "r"(p) : "$1", "$2", "$3", "$4", "$5", "$7", "$8", "$9", "$10", "memory")
 
 /*
- * GEO_DISTANCIA_APROX_A(v, d): misma distancia aproximada que GEO_DISTANCIA_APROX sobre el vector
- * de tres palabras de v, pero el resultado (con el bit 0 activo) va a la palabra apuntada por d en
- * lugar de v + 0x44 (func_80026FEC, 0x80028CC8 a 0x80028D54: addiu $5, d, 0). Mismo cuerpo y misma
- * lista de registros destruidos.
+ * GEO_DISTANCIA_APROX_A(v, base, off): misma distancia aproximada que GEO_DISTANCIA_APROX sobre el
+ * vector de tres palabras de v, pero el resultado (con el bit 0 activo) va a la palabra base + off en
+ * lugar de v + 0x44 (func_80026FEC, 0x80028CC8 a 0x80028D54: addiu $5, base, off con la base del
+ * scratchpad en un registro guardado). Mismo cuerpo y misma lista de registros destruidos.
  */
-#define GEO_DISTANCIA_APROX_A(v, d) \
+#define GEO_DISTANCIA_APROX_A(v, base, off) \
     __asm__ volatile (".set push\n\t.set noreorder\n\t.set noat\n\t" \
                       "addu $4, %0, $0\n\tlw $8, 0($4)\n\tlw $9, 4($4)\n\tlw $10, 8($4)\n\t" \
                       "bgez $8, 1f\n\tsub $8, $0, $8\n" \
@@ -426,9 +426,9 @@ typedef struct TrabajoRecorrido {
                       "4:\taddu $7, $10, $0\n\tslt $1, $2, $10\n\tbeqz $1, 5f\n\tnop\n\t" \
                       "addu $7, $2, $0\n\taddu $2, $10, $0\n" \
                       "5:\tsrl $3, $3, 2\n\tsrl $7, $7, 2\n\tadd $2, $2, $3\n\tadd $2, $2, $7\n\t" \
-                      "ori $2, $2, 1\n\taddiu $5, %1, 0\n\taddu $4, $5, $0\n\tsw $2, 0($4)\n\t" \
+                      "ori $2, $2, 1\n\taddiu $5, %1, " #off "\n\taddu $4, $5, $0\n\tsw $2, 0($4)\n\t" \
                       ".set pop" \
-                      : : "r"(v), "r"(d) : "$1", "$2", "$3", "$4", "$5", "$7", "$8", "$9", "$10", "memory")
+                      : : "r"(v), "r"(base) : "$1", "$2", "$3", "$4", "$5", "$7", "$8", "$9", "$10", "memory")
 
 /* Area de trabajo de func_80018C68: matriz de rotacion inversa del objeto y vectores locales. */
 typedef struct ConsultaMatriz {

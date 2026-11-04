@@ -535,8 +535,7 @@ L_800274A8:
             if (o->raiz_ayudantes != 0) {
                 if (!(D_80069698->flags14 & 0x3000000)) {
                     if ((s16)func_80018D98(D_80069698, &o->objetivo, area) != 0) {
-                        /* func_8001D75C recibe aqui el puntero al fotograma (lw 0x1F8000AC). */
-                        if (func_8001D75C(o, (s32)t->fot, area) != 0) {
+                        if (func_8001D75C(o, t->fot, area) != 0) {
                             if (t->fot->w1C != 0) {
                                 func_8001D0FC(o, t->fot->w1C, area);
                             }
@@ -549,7 +548,7 @@ L_800274A8:
             o->flags14 |= 0x20000000;
             if (!(D_80069698->flags14 & 0x3000000) || (o->flags08 & 0x40000000)) {
                 if (o->flags14 & 0x8000) {
-                    if (func_8001D75C(o, (s32)t->fot, area) != 0) {
+                    if (func_8001D75C(o, t->fot, area) != 0) {
                         if (t->fot->w1C != 0) {
                             func_8001D0FC(o, t->fot->w1C, area);
                         }
@@ -1101,7 +1100,7 @@ L_80028B94:
     }
     if ((t->banderas & 0x30000000) == 0x20000000) {
         /* distancia aproximada al objetivo; si es menor que 0x1000 la altura se corrige en proporcion */
-        GEO_DISTANCIA_APROX_A(&t->p30, &t->w114);
+        GEO_DISTANCIA_APROX_A(&t->p30, t, 0x114);
         if (t->w114 < 0x1000) {
             t->r.h[1] += ((0x1000 - t->w114) * t->p30.vy) >> 16;
         }
@@ -1252,8 +1251,7 @@ L_800291A8:
     if ((t->banderas & 0x800000) &&
         t->aux == D_80069698 &&
         !(t->aux->flags14 & 0x2000000)) {
-        if (func_8001D75C(o, (s32)t->fot, area) != 0) {
-            /* +0x1C del fotograma: lhu sin campo con nombre en RegistroAnim */
+        if (func_8001D75C(o, t->fot, area) != 0) {
             id_golpe = t->fot->w1C;
             if (id_golpe != 0) {
                 func_8001D0FC(o, id_golpe, area);

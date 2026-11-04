@@ -441,7 +441,8 @@ extern Objeto* func_80036734(s16 id, s32* pos, u16* ang);
 extern void func_8001CD84(Objeto* o, u32 id, void* area);
 extern void func_8001D31C(s32 x, s32 y, s32 z);
 extern s16 func_80018F80(Objeto* a, Objeto* b, void* area);
-extern s32 func_8001D75C(Objeto* o, s32 modo, void* area);
+/* Aplica al jugador el dano del fotograma en curso (DatosGolpe de movimiento_y_objetos_de_escena_2.c es la misma memoria que RegistroAnim). */
+extern s32 func_8001D75C(Objeto* o, RegistroAnim* golpe, void* area);
 extern Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o);
 extern Objeto* func_80016ED0(Objeto* a, u32 mascara, void* area);
 extern Objeto* func_80016C0C(Objeto* a, u32 mascara, ConsultaVolumen* o);
