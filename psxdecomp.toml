@@ -1,0 +1,45 @@
+# Manifiesto del proyecto para psx-decomp-kit (contrato: kit/README.md).
+# Los valores reflejan las constantes vigentes de tools/; la prueba de coherencia del kit
+# (kit/tests/test_coherencia_consumidor.py) falla si alguno se desvia.
+
+[proyecto]
+nombre = "bblit"
+ejecutable = "SLUS_008.38"
+referencia = "config/ejecutable.json"
+prefijo_entorno = "BBLIT"
+
+[rutas]
+fuentes = "src"
+incluir = "include"
+asm = "asm"
+build = "build"
+expected = "expected"
+splat = "config/splat.yaml"
+simbolos = ["config/symbols.txt"]
+simbolos_adicionales = "config/simbolos_adicionales.txt"
+opciones_compilacion = "config/opciones_compilacion.toml"
+toolchain_lock = "config/toolchain.lock.json"
+local = "config/local.toml"
+documento_progreso = "docs/PROGRESO.md"
+# Carpetas de asm/ y expected/ que pertenecen a otras herramientas: split y clean no las tocan.
+subcarpetas_ajenas = ["overlay"]
+# Carpetas de asm/ que el medidor de progreso no cuenta como codigo propio (ademas de las ajenas).
+asm_auxiliares = ["include", "matchings"]
+
+[zonas]
+juego_desde = 0x80014AC4
+librerias_desde = 0x80045DA0
+librerias_hasta = 0x8005DEA0
+
+[convenciones]
+macro_no_coincidente = "NON_MATCHING"
+macro_ensamblador = "INCLUDE_ASM"
+pendiente = '\APendiente:\s*puntuacion\s+(\d+)\b'
+sufijo_subsistema = '_\d+$'
+
+# Los modulos de extension del juego (subcomandos de overlay y bzz) aun no existen: se
+# registraran aqui cuando tools/ pase a consumir el manifiesto.
+[plugins]
+subcomandos = []
+antes_de_construir = []
+despues_de_verificar = []
