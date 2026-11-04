@@ -385,6 +385,7 @@ void func_80026FEC(Objeto* o)
     s32 choco;
     s32 id_sec;
     s32 onda;
+    s32 giro;
     s32 suelo;
     s32 fase;
     s32 factor_a;
@@ -999,9 +1000,10 @@ L_80028928:
     if (!(t->banderas & 0x100000)) {
         goto L_80028A08;
     }
-    t->w114 = (s16)GIRO_Y(o->u78.ayudas->pcoord->param);
-    if (((s16)GIRO_Y(o->u78.ayudas->pcoord->param) >> 3) != 0) {
-        t->w114 = (s16)GIRO_Y(o->u78.ayudas->pcoord->param) >> 3;
+    giro = (s16)GIRO_Y(o->u78.ayudas->pcoord->param);
+    t->w114 = giro;
+    if ((giro >> 3) != 0) {
+        t->w114 = giro >> 3;
     }
     GIRO_Y(o->u78.ayudas->pcoord->param) -= (u16)t->w114;
     func_8001CFCC(o->u78.ayudas->pcoord);
@@ -1067,11 +1069,13 @@ L_80028B94:
         if (t->aux == 0) {
             goto L_80028FD0;
         }
-        while (t->aux->w1C != (s16)t->fot->w16 || (t->aux->flags14 & 0x100)) {
+busca_objetivo:
+        if (t->aux->w1C != (s16)t->fot->w16 || (t->aux->flags14 & 0x100)) {
             t->aux = t->aux->siguiente;
-            if (t->aux == 0) {
-                goto L_80028FD0;
+            if (t->aux != 0) {
+                goto busca_objetivo;
             }
+            goto L_80028FD0;
         }
     } else {
         t->aux = D_80069698;
@@ -1910,12 +1914,11 @@ L_8002AC3C:
             if (t->hijo == 0) {
                 goto L_8002B3B4;
             }
-            do {
+            for (; t->hijo != 0; t->hijo = t->hijo->siguiente) {
                 if (t->hijo->w1C == t->nodo->p20 && !(t->hijo->flags14 & 0x100)) {
                     break;
                 }
-                t->hijo = t->hijo->siguiente;
-            } while (t->hijo != 0);
+            }
             if (t->hijo == 0) {
                 goto L_8002B3B4;
             }
@@ -2001,12 +2004,11 @@ L_8002B1B8:
         if (t->aux == 0) {
             goto L_8002B3B4;
         }
-        do {
+        for (; t->aux != 0; t->aux = t->aux->siguiente) {
             if (t->aux->w1C == t->nodo->p20 && !(t->aux->flags14 & 0x100)) {
                 break;
             }
-            t->aux = t->aux->siguiente;
-        } while (t->aux != 0);
+        }
         if (t->aux == 0) {
             goto L_8002B3B4;
         }
