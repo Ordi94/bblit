@@ -163,12 +163,7 @@ Objeto* func_80016ED0(Objeto* a, u32 mascara, ConsultaCaja* o)
 /*
  * Variante con el punto a probar y una segunda mascara de exclusion como argumentos y el area
  * de trabajo como quinto argumento (en pila); el radio se ensancha 4 unidades.
- *
- * NON_MATCHING: solo difiere el reparto de registros: el original guarda el area de trabajo y el
- * radio ampliado en s2 y s3 y el C los intercambia, ademas de la posicion del calculo de &o->m.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 103 con la configuracion versionada (g = 8 del archivo). El objeto de trabajo y el radio ampliado intercambian s2 y s3 respecto del original. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
 Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVolumen* o)
 {
     Objeto* n;
@@ -176,35 +171,41 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
     SVECTOR* dif;
     SVECTOR* rot;
     MATRIX* m;
+    ConsultaVolumen* consulta;
 
+    /*
+     * Copia local del area de trabajo: con ella el area y el radio ampliado reciben s2 y s3 en el
+     * orden del original (global-alloc ordena por usos y vida del pseudo; el parametro puro invierte el par).
+     */
+    consulta = o;
     m = 0;
     n = D_80069630;
     if (n != 0) {
-        dif = &o->dif;
-        rot = &o->rot;
+        dif = &consulta->dif;
+        rot = &consulta->rot;
         do {
             if ((n->flags08 & mascara) && n->tipo_volumen == 2 && n != a && !(n->flags08 & excluir)) {
                 GEO_CARGAR_WH(&n->min);
                 GEO_OR_WH(&n->max);
-                GEO_GUARDAR_1W_T1(&o->caja);
-                if (o->caja != 0) {
+                GEO_GUARDAR_1W_T1(&consulta->caja);
+                if (consulta->caja != 0) {
                     GEO_CARGAR_W(p);
                     GEO_RESTAR_W(&n->param.trans);
                     GEO_GUARDAR_H_T4(dif);
-                    GEO_NORMA2_XZ(dif, &o->dist2);
-                    if (o->dist2 <= n->alcance2) {
+                    GEO_NORMA2_XZ(dif, &consulta->dist2);
+                    if (consulta->dist2 <= n->alcance2) {
                         r = n->radio + 4;
                         GEO_COMPLEMENTO(&n->param.giro.rotate);
                         GEO_GUARDAR_H_T1(rot);
-                        m = &o->m;
+                        m = &consulta->m;
                         RotMatrixZYX(rot, m);
-                        ApplyMatrixSV(m, dif, &o->res);
-                        if (o->res.vx >= n->min.vx - r
-                            && o->res.vx <= n->max.vx + r
-                            && o->res.vz >= n->min.vz - r
-                            && o->res.vz <= n->max.vz + r
-                            && o->res.vy >= n->max.vy
-                            && n->min.vy >= o->res.vy) {
+                        ApplyMatrixSV(m, dif, &consulta->res);
+                        if (consulta->res.vx >= n->min.vx - r
+                            && consulta->res.vx <= n->max.vx + r
+                            && consulta->res.vz >= n->min.vz - r
+                            && consulta->res.vz <= n->max.vz + r
+                            && consulta->res.vy >= n->max.vy
+                            && n->min.vy >= consulta->res.vy) {
                             return n;
                         }
                     }
@@ -215,9 +216,6 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_800171E4);
-#endif
 
 #ifdef NON_MATCHING
 /*
