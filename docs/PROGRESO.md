@@ -13,7 +13,7 @@ construcción normal) y de la tabla de símbolos.
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
 Bytes de código del juego descompilados: 71088 de 201416 (35.29 %).
-Funciones marcadas `NON_MATCHING`: 56.
+Funciones marcadas `NON_MATCHING`: 57.
 Coherencia con el ensamblador: correcta (726 `glabel` en `asm/` + 376 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
@@ -30,7 +30,7 @@ Coherencia con el ensamblador: correcta (726 `glabel` en `asm/` + 376 en C = 110
 | graficos_y_gte | 3 | 14 | 5 | 0 | 4024 | 11812 |
 | inicializacion_de_motor | 1 | 8 | 4 | 4 | 2060 | 5276 |
 | interprete_de_eventos | 1 | 194 | 1 | 2 | 11656 | 11900 |
-| logica_de_niveles | 3 | 15 | 5 | 1 | 10544 | 60648 |
+| logica_de_niveles | 3 | 15 | 6 | 0 | 10544 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 22 | 4 | 1 | 9256 | 13644 |
 | movimiento_y_objetos_de_escena | 3 | 14 | 13 | 0 | 9736 | 18284 |
@@ -58,7 +58,7 @@ Coherencia con el ensamblador: correcta (726 `glabel` en `asm/` + 376 en C = 110
 | `src/interprete_de_eventos.c` | 194 | 1 | 2 | 11656 | 11900 |
 | `src/logica_de_niveles.c` | 0 | 1 | 0 | 0 | 19880 |
 | `src/logica_de_niveles_2.c` | 3 | 0 | 0 | 2016 | 2016 |
-| `src/logica_de_niveles_3.c` | 12 | 4 | 1 | 8528 | 38752 |
+| `src/logica_de_niveles_3.c` | 12 | 5 | 0 | 8528 | 38752 |
 | `src/manejadores_por_tabla.c` | 12 | 0 | 0 | 384 | 384 |
 | `src/menus_e_interfaz.c` | 22 | 4 | 1 | 9256 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 2 | 2 | 0 | 856 | 2116 |
@@ -99,6 +99,7 @@ Coherencia con el ensamblador: correcta (726 `glabel` en `asm/` + 376 en C = 110
 - `func_80020240`: Pendiente: puntuacion 605 con la configuracion versionada (g = 8 del archivo). La condicion de continuar (bit 4 apagado o bit 0x10 activo) y la reunion de las dos ramas de la altura no se reproducen: el compilador adelanta la carga de las banderas y repite el almacen de h10A en cada rama.
 - `func_80020A90`: Pendiente: puntuacion 2360 con la configuracion versionada (g = 8 del archivo). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica.
 - `func_80020B90`: Pendiente: puntuacion 14290 con la configuracion versionada (g = 8 del archivo). Las diferencias son de reparto de registros (v0/v1/a0 y punteros s0-s2) y del orden en que el compilador planifica los almacenamientos de las transiciones de cada contacto; la logica coincide.
+- `func_80026FEC`: Pendiente: puntuacion 11168 con la configuracion versionada (g = 8 del archivo). Reparto de registros guardados: el original deja el scratchpad en s2, el objeto en s3 y asigna s1 a los punteros de area (&res, &p40) y a las banderas de colision, mientras el compilador toma s1 y s2 para el scratchpad y el objeto (rotacion de s1 a s3 en unas 1300 lineas); el resto son 15 tramos de 1 a 4 instrucciones (huecos de retardo, orden de cargas, mflo en t8 en lugar de t7).
 - `func_8002F990`: Pendiente: puntuacion 60 con la configuracion versionada (g = 8 del archivo). Los dos bytes se leen y escriben con un unico lui y la copia del valor leido queda en el hueco del primer salto, como el original; difiere solo el reparto de registros: el original deja el resultado de la suma en a2 y GCC lo deja en v1 (los papeles de v1 y a2 estan invertidos). Operacion aritmetica sobre un registro de 16 bits repartido en dos bytes (D_80010047 es el bajo y D_8001013C el alto: r[7] y r[0xFC] del banco del estado principal de 0x80010000). El operando se trunca a un byte dentro de la rutina (andi 0xFF 
 - `func_8003147C`: Pendiente: puntuacion 85 con la configuracion versionada (g = 8 del archivo). Las instrucciones coinciden; solo difiere el reparto de registros: el original deja el objeto controlado en a2 y el enlace p70 en a0 (copia en v1) y GCC los reparte en a0 y a1 porque la carga del puntero se planifica despues de la ultima lectura del parametro.
 - `func_80032B2C`: Pendiente: puntuacion 123 con la configuracion versionada (g = 8 del archivo). El flujo y las macros vectoriales coinciden; difiere el reparto de dos registros salvados (el original deja el argumento a0 en s5 y la direccion de i58 en s6, GCC los intercambia porque la prioridad de a0 queda por debajo de la de esa direccion) y la posicion de un almacen de cero (sh zero,0x4a) que sigue a ese reparto. Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la mascara y cuya caja esta a menos de su alcance, lleva la posicion al sistema local del ob
