@@ -460,7 +460,6 @@ extern void func_8001D0FC(Objeto* o, s32 id, void* area);
  */
 typedef struct TrabajoPersonaje {
     union {
-        MATRIX m;               /* +0x00: salida de RotMatrix y matriz identidad (GEO_IDENTIDAD) */
         u16 h[3];               /* +0x00, +0x02, +0x04: velocidad lateral, vertical y de avance (lhu / sh) */
         struct {
             SVECTOR a;          /* +0x00: vector que entra al GTE */
