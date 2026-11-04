@@ -452,7 +452,7 @@ tabla de símbolos no se hace la comparación por bytes y vale la puntuación de
 
 ## Banco de variantes (`probar`)
 
-`python tools/build.py probar <función> <carpeta>` compila cada `.c` de la carpeta como una
+`python tools/build.py probar <función> <carpeta>` (módulo `psxdecomp.diff.variantes`) compila cada `.c` de la carpeta como una
 variante completa de la función (con su `#include "common.h"`, tipos y `extern`), con las
 mismas opciones que el archivo donde vive la función, la compara con `asm-differ` contra el
 ensamblador original y muestra una tabla ordenada de menor a mayor puntuación:
@@ -490,7 +490,7 @@ una a tres mutaciones a una variante elegida al azar, mide cada resultado con el
 que no empeora. Antes de sortear recorre el vecindario completo del C original (todas las variantes de una sola
 mutacion, unas 700 distintas en una funcion de 6 KB): una mejora que esta a una mutacion se halla siempre, no
 por azar. Las mutaciones son transformaciones del arbol del C (`psxdecomp.permutador.c` lo lee y lo vuelve a
-escribir; `psxdecomp.permutador.analisis` calcula tipos y efectos; `psxdecomp.permutador.mutaciones` las aplica) y todas conservan
+escribir; `psxdecomp.permutador.analisis` calcula tipos y efectos; `psxdecomp.permutador.mutaciones` las aplica; `psxdecomp.permutador.busqueda` dirige la escalada y `psxdecomp.permutador.evaluacion` mide cada variante) y todas conservan
 el significado de la funcion bajo la hipotesis de aliasing del RUNBOOK:
 
 | Mutacion | Que cambia | Por que puede mover el reparto de registros |

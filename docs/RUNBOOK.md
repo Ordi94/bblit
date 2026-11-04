@@ -44,6 +44,13 @@ Resultado esperado: `OK` con SHA-256
 `0fad70d9b4cb324d78f113f7fd70c0aa954388fefad01af373509e0473c87df0`. Todos los subcomandos
 excepto `clean` necesitan la ubicacion del disco (incluido `verify`).
 
+La entrada preferente es la del kit: `.venv\Scripts\python.exe -m psxdecomp.cli <subcomando>` desde la raiz del
+repositorio (o con `--proyecto <raiz>`), con los mismos subcomandos, la misma salida y los mismos codigos de
+retorno; la ayuda de cada uno nombra las rutas del manifiesto (`psxdecomp.toml`). `tools/build.py` sigue
+funcionando igual y es la entrada que usan los scripts y las definiciones existentes; ademas del conjunto
+comun ofrece `progreso`, que el manifiesto registra como subcomando propio del juego. Los ganchos
+`antes_de_construir` y `despues_de_verificar` del manifiesto (hoy vacios) se invocan desde ambas entradas.
+
 ### Progreso del README
 
 ```

@@ -26,7 +26,7 @@ La unica dependencia de ejecucion es `requests` (descarga del toolchain); el res
 
 ## Manifiesto
 
-`python -m psxdecomp.cli comprobar [ruta]` carga y valida el `psxdecomp.toml` de la
+`python -m psxdecomp.cli comprobar [ruta]` (ver "Linea de ordenes") carga y valida el `psxdecomp.toml` de la
 carpeta indicada (por omision la actual) e imprime el resumen. Las secciones son `[proyecto]`,
 `[rutas]`, `[zonas]`, `[convenciones]`, `[compilacion]` y `[plugins]`; toda clave desconocida es un error.
 
@@ -46,7 +46,7 @@ Ejecutado desde `kit/`, exige cobertura del 100 % (lineas y ramas) del paquete.
 | `validacion` | Validadores primitivos de datos externos (listas de admitidos, cotas); no toca disco. |
 | `confinamiento` | Unica regla que consulta el disco: ninguna ruta del proyecto sale de su raiz. |
 | `lectura` | Lectura del archivo, analisis TOML y comprobacion de confinamiento. |
-| `cli` | Linea de ordenes (`comprobar`). |
+| `cli` | Subpaquete de la linea de ordenes (ver "Linea de ordenes"). |
 | `proyecto` | Fachada: reexporta `Proyecto`, `cargar_proyecto` y `ManifiestoError`. |
 
 ## Toolchain
@@ -79,6 +79,41 @@ concentra la regla y los mensajes de error nombran las dos variables.
 | `toolchain.plataforma` | Adaptacion a Windows o Linux (Wine, binutils nativos). |
 | `toolchain.cli` | Linea de ordenes. |
 
+## Linea de ordenes
+
+`python -m psxdecomp.cli <orden>` es la entrada preferente del kit. La raiz del proyecto es `--proyecto <raiz>`
+o la carpeta actual. Ordenes comunes: `split`, `build`, `verify`, `clean`, `diff <funcion>`,
+`probar <funcion> <carpeta>`, `permutar <funcion>`, `verificar-config` y `comprobar [ruta]`. Los codigos de retorno
+son `0` (bien), `1` (error esperado o verificacion fallida; `permutar` tambien `1` si mejora sin cerrar) y `2`
+(uso incorrecto, o `permutar` sin mejora). Los errores esperados se imprimen en una linea, sin traza ni rutas de la
+maquina. La ayuda de cada orden nombra las rutas y los nombres de variable del manifiesto, nunca los de un juego.
+Un manifiesto invalido solo impide las ordenes que necesitan el proyecto: `--help` y `comprobar` siguen
+funcionando.
+
+| Modulo | Responsabilidad |
+|---|---|
+| `cli.errores` | `describir_error_de_sistema`, `motivo_sin_rutas` y los errores de la CLI (`PluginInvalidoError`). |
+| `cli.contexto` | `Contexto` (proyecto, argumentos, entorno, ejecutor, interprete) con lectura perezosa de la referencia del ejecutable, el disco y el toolchain y el archivo de bloqueo; `ResultadoVerificacion`. |
+| `cli.plugins` | Resolucion de referencias `modulo:funcion`, registro de subcomandos y ganchos. |
+| `cli.comandos` | Una funcion por orden (`ejecutar_split`, `ejecutar_build`, ...). |
+| `cli.parser` | `construir_parser(proyecto, ...)`: argumentos, textos de ayuda y `manejador` de cada orden. |
+| `cli.principal` | `main(argv, entorno, ejecutar, *, proyecto, raiz, prog, descripcion)`. |
+
+Un proyecto consumidor conserva su propia entrada llamando a `main` con su `Proyecto` ya cargado (y su `prog`):
+sin `proyecto`, la entrada es la propia del kit y acepta `--proyecto` y `comprobar`.
+
+### Plugins y ganchos (`[plugins]`)
+
+Cada referencia es `paquete.modulo:funcion` y se resuelve con `importlib` al usarla; la raiz del proyecto se agrega
+a `sys.path` solo durante la importacion. Un modulo que no se importa, un nombre que no existe o no es invocable,
+un subcomando repetido o sin `manejador` dan un `PluginInvalidoError` que nombra la referencia.
+
+| Clave | Contrato |
+|---|---|
+| `subcomandos` | `registrar(subparsers, proyecto)` anade subcomandos; cada uno fija `set_defaults(manejador=funcion)` y la funcion recibe un `Contexto` y devuelve el codigo de retorno. Se registran despues de las ordenes comunes. |
+| `antes_de_construir` | `gancho(proyecto)`: se invoca al empezar `build`, antes de compilar (`split` ya dejo el ensamblador). Si lanza `ValueError`, `ProcesoError` u `OSError`, `build` termina con ese error. |
+| `despues_de_verificar` | `gancho(proyecto, resultado)`: se invoca al terminar `verify` con `ResultadoVerificacion(coincide, mensaje)`, tambien si las huellas difieren o falta el ejecutable reconstruido. El codigo de `verify` depende solo del resultado, salvo que un gancho falle con un error esperado. |
+
 ## Prueba de coherencia
 
 `tests/test_coherencia_consumidor.py` compara el manifiesto del proyecto consumidor con las constantes de
@@ -99,9 +134,8 @@ ejecutables, rutas ni convenciones de ningun juego.
 | `permutador.analisis` | Tipos de campos y globales, efectos de lectura y escritura, hipotesis de aliasing. |
 | `permutador.mutaciones` | Reformulaciones del arbol que conservan el significado y filtro `variante_permitida`. |
 | `permutador.estado` | Estado persistente de una busqueda en `<build>/permutar/<funcion>/` (`estado.json`, `registro.jsonl`, `mejor.c`, `actual.c`). `carpeta_de` recibe la carpeta de build del proyecto. |
-
-La funcion que dirige la busqueda (`permutar`) y la medicion de variantes dependen de la
-capa de construccion y de comparacion, que ya viven en el kit, y se trasladan en el paso siguiente.
+| `permutador.evaluacion` | Medicion de una variante con la misma cadena y puntuacion que `diff`: sustituye la definicion en el texto del archivo, compila, comprueba que el objeto define la funcion y puntua. `preparar_medicion` recibe `Rutas`, `Convenciones`, `Compilacion` y el nombre del ejecutable. |
+| `permutador.busqueda` | Escalada con reinicios aleatorios sobre las variantes, en varios hilos, con estado reanudable (`permutar_funcion`, `Busqueda`, `Opciones`, `Resumen`). Recibe las mismas secciones del manifiesto; `leer_cabeceras` usa `rutas.incluir`. Nunca escribe en la carpeta de fuentes. |
 
 ## Construccion
 
@@ -150,6 +184,12 @@ intento no coincidente o ensamblador), la linea de pendiente de cada intento y l
 mano. Las macros, la expresion de la linea de pendiente y la frase de rutina manuscrita se declaran en
 `[convenciones]` (`macro_no_coincidente`, `macro_ensamblador`, `pendiente`, `manuscrita`); la carpeta de
 fuentes, en `[rutas]`.
+
+`psxdecomp.diff.variantes` es el banco de variantes de la orden `probar`: compila cada `.c` de una carpeta con
+las opciones del archivo donde vive la funcion y devuelve una tabla ordenada de variante a puntuacion; no
+escribe en los fuentes. `psxdecomp.diff.coherencia_pendientes` contrasta la cifra de la linea de pendiente de
+cada intento no coincidente con la ultima medicion que dejo `diff` y devuelve avisos; nunca ejecuta `diff`.
+Ambos reciben `Rutas`, `Convenciones` (y, el banco, `Compilacion` y el nombre del ejecutable) por parametro.
 
 Claves de `[convenciones]` y `[rutas]` que incorporan estos modulos (todas con defecto, validadas con
 listas de admitidos y cotas):
