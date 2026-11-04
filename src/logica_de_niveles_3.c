@@ -385,6 +385,7 @@ void func_80026FEC(Objeto* o)
     s32 choco;
     s32 id_sec;
     s32 onda;
+    s32 jy;
     s32 portador;
     s32 rflags;
     s32 giro;
@@ -759,17 +760,19 @@ L_80027D04:
             t->res.grupo = o->w26;
             func_8001C134((s32*)&t->p30, &t->res, area);
             if (t->res.flags & 8) {
-                t->w114 = D_80069698->param.trans.vy - 0xC8;
-                t->w118 = D_80069698->param.trans.vy - 0x190;
+                jy = D_80069698->param.trans.vy;
+                t->w114 = jy - 0xC8;
+                t->w118 = jy - 0x190;
             } else if ((t->banderas & 0x810000) && ((s16)o->w26 == (s16)D_80069698->w26)) {
                 /* Acompana al jugador: el techo del vuelo es la menor altura entre el suelo y el jugador. */
                 suelo = t->p30.vy + (s16)t->res.pendiente;
-                if (suelo < D_80069698->param.trans.vy) {
+                jy = D_80069698->param.trans.vy;
+                if (suelo < jy) {
                     t->w114 = suelo - 0xC8;
                     t->w118 = suelo - 0x190;
                 } else {
-                    t->w114 = D_80069698->param.trans.vy - 0x64;
-                    t->w118 = D_80069698->param.trans.vy - 0x12C;
+                    t->w114 = jy - 0x64;
+                    t->w118 = jy - 0x12C;
                 }
             } else {
                 suelo = t->p30.vy + (s16)t->res.pendiente;
@@ -824,7 +827,7 @@ L_80027D04:
                 /* Diferencia de pendiente entre el punto sondeado y el del objeto: inclina el rumbo. */
                 o->u18C.estado.w192 += ratan2(t->w_a0 - (s16)t->res.pendiente_abs, 0x64);
                 if ((s16)o->u18C.estado.w192 < -0x1000) {
-                    o->u18C.estado.w192 = -0x1000;
+                    *(s16*)&o->u18C.estado.w192 = -0x1000;
                 }
                 if ((s16)o->u18C.estado.w192 > 0x1000) {
                     o->u18C.estado.w192 = 0x1000;
