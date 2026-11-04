@@ -1880,7 +1880,7 @@ L_8002AC3C:
             if (t->banderas & 0x80) {
                 GEO_CERO_W(&t->hijo->portado.trans);
                 GEO_CERO_WH(&t->hijo->portado.giro);
-                GEO_RELLENAR_1000_T7(&t->hijo->portado.escala);
+                GEO_RELLENAR_1000(&t->hijo->portado.escala);
                 if (t->hijo->w1C == 1) {
                     D_800693B8 = -1;
                     D_80069608 |= 1;
@@ -1934,7 +1934,7 @@ L_8002AC3C:
             }
             GEO_CERO_W(&t->hijo->portado.trans);
             GEO_CERO_WH(&t->hijo->portado.giro);
-            GEO_RELLENAR_1000_T7(&t->hijo->portado.escala);
+            GEO_RELLENAR_1000(&t->hijo->portado.escala);
             if (t->hijo->w1C == 1) {
                 D_800693B8 = -1;
                 D_80069608 |= 1;
@@ -1977,7 +1977,7 @@ L_8002B1B8:
             /* El propio objeto pasa a colgar del jugador: se reinicia su transformacion portada. */
             GEO_CERO_W(&o->portado.trans);
             GEO_CERO_WH(&o->portado.giro);
-            GEO_RELLENAR_1000_T7(&o->portado.escala);
+            GEO_RELLENAR_1000(&o->portado.escala);
             o->param.trans.vx = o->param.trans.vy = o->param.trans.vz = 0;
             o->param.escala.vx = o->param.escala.vy = o->param.escala.vz = 0x1000;
             o->coord.super = &D_80069698->coord;
