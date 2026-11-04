@@ -469,14 +469,6 @@ extern GsOT D_8006AEA0[];
 /* Botones del cuadro en el estado principal (0x80010010): lhu en los eventos y la camara, sh en el mando. */
 extern u16 D_80010010;
 
-/*
- * Ejes del mando en el estado principal (0x80010012 y 0x80010014): func_80026FEC los lee con lhu y
- * los extiende a 16 bits con signo en cada uso (sll 16, sra 16), salvo la prueba de reposo del
- * segundo (0x80028450), que lo compara sin extender.
- */
-extern u16 D_80010012;
-extern u16 D_80010014;
-
 /* Banderas de `main`, de los eventos y de los menus: se escriben con sb y se leen con lbu. */
 extern u8 D_800694E0;
 extern u8 D_800694E1;

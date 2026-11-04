@@ -893,10 +893,10 @@ L_80028370:
 
 L_80028410:
     t->w118 = ratan2(D_8006D928.x - D_8006D928.vpx, D_8006D928.z - D_8006D928.vpz);
-    if ((s16)D_80010012 == 0 && D_80010014 == 0) {
+    if ((s16)ESTADO_PRINCIPAL->mando.eje_x == 0 && ESTADO_PRINCIPAL->mando.eje_y == 0) {
         goto L_80028928;
     }
-    t->w114 = SquareRoot0((s16)D_80010012 * (s16)D_80010012 + (s16)D_80010014 * (s16)D_80010014);
+    t->w114 = SquareRoot0((s16)ESTADO_PRINCIPAL->mando.eje_x * (s16)ESTADO_PRINCIPAL->mando.eje_x + (s16)ESTADO_PRINCIPAL->mando.eje_y * (s16)ESTADO_PRINCIPAL->mando.eje_y);
     t->w114 = (t->w114 - D_8006952C) * (0x80 / D_8006952C);
     if (t->w114 > 0x80) {
         t->w114 = 0x80;
@@ -924,7 +924,7 @@ L_80028410:
     }
     t->w_a0 = ratan2(t->sE8.vx, t->sE8.vz);
     o->param.giro.u.y = t->w_a0;
-    t->w_a0 -= (t->w118 + ratan2((s16)D_80010012, (s16)D_80010014)) % 0x1000;
+    t->w_a0 -= (t->w118 + ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y)) % 0x1000;
     if (t->w_a0 > 0x800) {
         t->w_a0 -= 0x1000;
     }
@@ -954,7 +954,7 @@ L_80028410:
 
 L_80028740:
     /* seguimiento sin ayudante: el giro del propio objeto converge al rumbo del mando */
-    t->w_a0 = ratan2((s16)D_80010012, (s16)D_80010014);
+    t->w_a0 = ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
     t->w_a0 = (t->w_a0 + t->w118) % 0x1000;
     if (t->w_a0 > 0x800) {
         t->w_a0 -= 0x1000;
@@ -1662,8 +1662,8 @@ L_8002A448:
             goto L_8002A6A0;
         } else {
             if (func_80018664(o, o->p70, area) != 0) goto L_8002A6A8;
-            t->p30.vy = 0;
             t->p30.vx = o->param.trans.vx - o->p70->param.trans.vx;
+            t->p30.vy = 0;
             t->p30.vz = o->param.trans.vz - o->p70->param.trans.vz;
             GEO_CARGAR_W(&o->p70->param.trans);
             GEO_GUARDAR_W_T1(&t->pF0);
@@ -2164,8 +2164,8 @@ L_8002B994:
             o->flags14 |= 0x100;
             goto L_8002BA58;
         } else {
-            t->p30.vy = 0;
             t->p30.vx = D_80069698->param.trans.vx - o->param.trans.vx;
+            t->p30.vy = 0;
             t->p30.vz = D_80069698->param.trans.vz - o->param.trans.vz;
             if ((s32)func_80044940((s32*)&t->p30) < 0x7D0) {
                 D_8006D9B8[0] = o;
