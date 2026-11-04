@@ -7,6 +7,8 @@ nombre = "bblit"
 ejecutable = "SLUS_008.38"
 referencia = "config/ejecutable.json"
 prefijo_entorno = "BBLIT"
+comando = "python tools/build.py"
+funcion_ejemplo = "func_80036204"
 
 [rutas]
 fuentes = "src"
@@ -25,6 +27,7 @@ opciones_compilacion = "config/opciones_compilacion.toml"
 toolchain_lock = "config/toolchain.lock.json"
 local = "config/local.toml"
 documento_progreso = "docs/PROGRESO.md"
+readme = "README.md"
 # Carpetas de asm/ y expected/ que pertenecen a otras herramientas: split y clean no las tocan.
 subcarpetas_ajenas = ["overlay"]
 # Carpetas de asm/ que el medidor de progreso no cuenta como codigo propio (ademas de las ajenas).
@@ -51,9 +54,9 @@ max_valor_g = 64
 version_aspsx = "2.80"
 opciones_compilador = ["-quiet", "-O2"]
 
-# Extensiones del juego. `progreso` entra por este mecanismo mientras el medidor y la seccion del README
-# viven en tools/; los subcomandos de overlay y bzz se anadiran cuando consuman el manifiesto.
+# Extensiones del juego: los subcomandos de overlay y bzz se anadiran cuando consuman el manifiesto.
+# `progreso` es una orden del kit; su agrupado por subsistema usa convenciones.sufijo_subsistema.
 [plugins]
-subcomandos = ["tools.reconstruccion.cli:registrar_progreso"]
+subcomandos = []
 antes_de_construir = []
 despues_de_verificar = []

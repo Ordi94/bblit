@@ -63,7 +63,7 @@ seccion «Progreso» del `README.md`, delimitada por `<!-- progreso:inicio -->` 
 del commit (`git rev-parse --short HEAD`), la tabla de cifras y los comandos para reproducirla.
 La orden respeta los finales de linea del archivo y es idempotente. Con `--sin-readme` no toca el
 README. Regenerarla antes de cada commit que cambie `src/`; el hash que muestra es el del commit
-anterior, asi que el siguiente commit lo refresca.
+anterior, asi que el siguiente commit lo refresca. La orden es del kit (`psxdecomp.progreso`).
 
 ### Comparar una funcion
 

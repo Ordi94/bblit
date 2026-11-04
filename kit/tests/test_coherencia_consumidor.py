@@ -36,11 +36,18 @@ def modulo(nombre: str) -> ModuleType:
 
 
 def test_el_manifiesto_del_consumidor_declara_plugins_que_se_pueden_resolver(proyecto: Proyecto) -> None:
-    assert proyecto.plugins.subcomandos == ("tools.reconstruccion.cli:registrar_progreso",)
-    assert proyecto.plugins.antes_de_construir == ()
-    assert proyecto.plugins.despues_de_verificar == ()
+    plugins = proyecto.plugins
+    assert plugins.subcomandos == ()
+    assert plugins.antes_de_construir == ()
+    assert plugins.despues_de_verificar == ()
+    assert plugins.entrada_progreso is None
     modulo("reconstruccion.cli")
-    for referencia in proyecto.plugins.subcomandos:
+    referencias: tuple[str, ...] = (
+        *plugins.subcomandos,
+        *plugins.antes_de_construir,
+        *plugins.despues_de_verificar,
+    )
+    for referencia in referencias:
         assert callable(resolver_referencia(referencia, proyecto.raiz))
 
 
@@ -112,6 +119,9 @@ def test_la_linea_de_ordenes_del_juego_nombra_las_rutas_del_manifiesto(proyecto:
 
 def test_las_rutas_y_zonas_del_medidor_de_progreso_coinciden_con_el_manifiesto(proyecto: Proyecto) -> None:
     progreso = modulo("reconstruccion.progreso")
+    readme = modulo("reconstruccion.readme_progreso")
+    assert progreso.COMANDO == proyecto.identidad.comando
+    assert readme.RUTA_README == proyecto.rutas.readme
     assert progreso.SIMBOLOS_ADICIONALES == proyecto.rutas.simbolos_adicionales
     assert progreso.DOCUMENTO_PROGRESO == proyecto.rutas.documento_progreso
     ignoradas = set(proyecto.rutas.subcarpetas_ajenas) | set(proyecto.rutas.asm_auxiliares)
@@ -138,7 +148,8 @@ def test_las_convenciones_de_comentario_coinciden_con_el_manifiesto(proyecto: Pr
     assert dominio.CONVENCIONES == convenciones
     assert fuentes.MACRO_NO_COINCIDENTE == convenciones.macro_no_coincidente
     assert dominio.MAX_VALOR_G == convenciones.max_valor_g
-    assert progreso._PATRON_SUFIJO_NUMERICO.pattern == convenciones.sufijo_subsistema
+    assert progreso.CONVENCIONES == convenciones
+    assert progreso.subsistema_de("codigo/modulo_a_10.c") == "modulo_a"
 
 
 def test_las_variables_de_entorno_del_toolchain_usan_el_prefijo_del_manifiesto(proyecto: Proyecto) -> None:

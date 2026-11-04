@@ -591,7 +591,8 @@ destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE
 ## Medir el progreso
 
 `python tools/build.py progreso` escribe `docs/PROGRESO.md` (legible) y `build/progreso.json`
-(para otras herramientas, claves en camelCase). Los conteos se derivan del código real:
+(para otras herramientas, claves en camelCase); la orden y la sección del README las genera el kit
+(`psxdecomp.progreso`). Los conteos se derivan del código real:
 
 - Una función está **en C** si el archivo la define en la construcción normal y no tiene
   `INCLUDE_ASM`.
