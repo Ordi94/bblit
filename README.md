@@ -42,7 +42,9 @@ volcados) se genera localmente y esta excluido del control de versiones.
 
 | Carpeta | Contenido |
 |---|---|
-| `tools/` | Herramientas Python: toolchain, construccion, formatos de archivo, analisis |
+| `kit/` | Kit generico de descompilacion (`psx-decomp-kit`, paquete `psxdecomp`): construccion, diff, permutador, progreso y toolchain |
+| `tools/` | Lo propio del juego: formato BZZ, imagen del disco, emulador, analisis con Ghidra y overlay |
+| `psxdecomp.toml` | Manifiesto: rutas, zonas de memoria y convenciones que lee el kit |
 | `config/` | Configuracion del desensamblador (splat), simbolos, hashes del toolchain |
 | `src/` | Codigo C descompilado, organizado por subsistema |
 | `include/` | Cabeceras propias y del SDK |
@@ -56,6 +58,14 @@ volcados) se genera localmente y esta excluido del control de versiones.
 - Copia propia del disco en formato `.bin/.cue`
 
 ## Herramientas
+
+La reconstruccion, el diff, el permutador y el medidor de progreso vienen del kit `psx-decomp-kit` (`kit/`, que se publicara en <https://github.com/Ordi94/psx-decomp-kit>; ver `kit/README.md`). `tools/` contiene solo lo propio del juego. Los tres comandos de siempre:
+
+```
+python tools/build.py build      # compila y enlaza el ejecutable
+python tools/build.py verify     # compara el SHA-256 con el original
+python tools/build.py diff <funcion>
+```
 
 | Comando | Para que sirve |
 |---|---|
@@ -82,7 +92,7 @@ Cada comando acepta `--help` con sus opciones. El flujo de descompilacion esta e
 
 ```
 python -m venv .venv
-.venv\Scripts\pip install -e .[dev]
+.venv\Scripts\pip install -r requirements.txt   # instala tambien el kit (editable)
 python tools/build.py --help
 ```
 

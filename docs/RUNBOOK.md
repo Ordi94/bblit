@@ -15,6 +15,8 @@ comprueba el manifiesto:
 .venv\Scripts\python.exe -m psxdecomp.cli comprobar
 ```
 
+Cuando el kit se publique en su propio repositorio (`psx-decomp-kit`, <https://github.com/Ordi94/psx-decomp-kit>), la primera línea de `requirements.txt` (hoy `-e ./kit`) pasará a fijar el kit por etiqueta (`psx-decomp-kit[particion,comparacion] @ git+https://github.com/Ordi94/psx-decomp-kit@v0.1.0`) y el procedimiento de instalación no cambia.
+
 La segunda orden valida `psxdecomp.toml`, el manifiesto del proyecto (rutas, zonas de memoria y
 convenciones que el kit lee en vez de suponerlas). Las pruebas del proyecto y las del kit se lanzan juntas
 con `python -m pytest`; las del kit solas, con cobertura del 100 %, con `python -m pytest` desde `kit/`.
@@ -54,6 +56,8 @@ funcionando igual y es la entrada que usan los scripts y las definiciones existe
 lineas que llama a la linea de ordenes del kit con el manifiesto del juego (misma ayuda, misma salida y
 mismos codigos de retorno). `progreso` es una orden comun del kit y esta en las dos entradas. Los ganchos
 `antes_de_construir` y `despues_de_verificar` del manifiesto (hoy vacios) se invocan desde ambas entradas.
+
+Rutas, zonas de memoria, nombre del ejecutable, versión del ensamblador original y convenciones de los comentarios no son constantes del código: para cambiar cualquiera de ellas se edita `psxdecomp.toml` (contrato en `kit/README.md`) y `python -m psxdecomp.cli comprobar` valida el resultado.
 
 ### Progreso del README
 
@@ -266,7 +270,7 @@ Paquetes Debian que instala el guion: `dpkg --add-architecture i386`, `apt-get u
 `apt-get install wine wine32:i386 python3 python3-venv python3-pip git ca-certificates curl unzip`; ademas crea
 `.venv` con `requirements.txt` e inicializa el prefijo de Wine.
 
-Variables (cada `BBLIT_X` tiene el equivalente `PSXDECOMP_X`, que manda si ambas estan definidas):
+`scripts/instalar_linux.sh` acepta `BBLIT_OMITIR_APT` y `BBLIT_BINUTILS_DIR` (propias del guion). Las variables de las herramientas (cada `BBLIT_X` tiene el equivalente `PSXDECOMP_X`, que manda si ambas estan definidas):
 
 | Variable | Por omision | Efecto |
 |---|---|---|

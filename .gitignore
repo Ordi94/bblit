@@ -3,6 +3,8 @@
 /assets/
 /asm/
 /build/
+/kit/build/
+/kit/dist/
 /toolchain/
 /expected/
 *.bin

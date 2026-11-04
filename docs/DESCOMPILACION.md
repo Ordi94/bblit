@@ -113,6 +113,33 @@ cambia mucho (renombrar o repartir archivos), lo seguro es regenerar: mover `src
 reinsertar los bloques de C escritos en el lugar de su `INCLUDE_ASM` y repetir `split` para que
 las funciones ya en C pasen a `asm/matchings/`. No se editan a mano las rutas de `INCLUDE_ASM`.
 
+## Qué es del kit y qué es del juego
+
+La reconstrucción, la comparación, el permutador y el medidor de progreso no son del juego: viven en el kit
+`psx-decomp-kit` (paquete `psxdecomp`, carpeta `kit/`; se publicará en
+<https://github.com/Ordi94/psx-decomp-kit> con licencia MIT). Todo lo que depende de este proyecto (nombre del
+ejecutable, rutas, zonas de memoria, convenciones de los comentarios, versión del ensamblador original) lo
+declara el manifiesto `psxdecomp.toml` de la raíz y el kit lo lee; el kit nunca importa código del juego. El
+contrato completo del manifiesto (secciones, claves, valores por defecto y validación) está en `kit/README.md`.
+
+| Paquete | Dónde | Contenido |
+|---|---|---|
+| `psxdecomp.toolchain` | kit | Instalación verificada del toolchain, extracción de archivos e ISO 9660, adaptación a Windows y Linux |
+| `psxdecomp.construccion` | kit | Partición con `splat`, compilación de los `.c`, ensamblado, enlace y verificación por SHA-256 |
+| `psxdecomp.diff` | kit | Comparación con `asm-differ` (`diff`), banco de variantes (`probar`) y coherencia de pendientes |
+| `psxdecomp.permutador` | kit | Búsqueda automática de la forma de C que hace coincidir una función (`permutar`) |
+| `psxdecomp.progreso` | kit | Medición por zona y subsistema, `docs/PROGRESO.md`, `build/progreso.json` y la sección del README |
+| `psxdecomp.cli` | kit | Línea de órdenes: `python -m psxdecomp.cli <orden>` |
+| `psxdecomp.entorno` | kit | Variables de entorno con prefijo `PSXDECOMP_` y alias del proyecto (`BBLIT_`) |
+| `psxdecomp.dominio`, `lectura`, `validacion`, `confinamiento`, `proyecto` | kit | Cargador y validador del manifiesto `psxdecomp.toml` |
+| `tools/build.py`, `tools/proyecto.py` | juego | Entrada `python tools/build.py <orden>` y manifiesto cargado una sola vez |
+| `tools/bzz`, `tools/disco`, `tools/emulador`, `tools/ghidra`, `tools/overlay` | juego | Formato BZZ, imagen del disco, emulador, análisis con Ghidra y overlay de código |
+| `tools/toolchain` | juego | Solo la orden `python -m tools.toolchain`, que delega en `psxdecomp.toolchain` |
+| `psxdecomp.toml`, `config/`, `src/`, `include/`, `asm/` | juego | Manifiesto, datos del juego, código C recuperado y ensamblador generado |
+
+Para cambiar una ruta, una zona de memoria, la versión del ensamblador original o una convención de los
+comentarios se edita `psxdecomp.toml`; ya no hay una constante en `tools/` que tocar.
+
 ## Datos y rodata por archivo
 
 El script del enlazador que genera el particionador tiene el orden fijo texto, datos,

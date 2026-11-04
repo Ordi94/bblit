@@ -14,6 +14,9 @@
 # Variables opcionales:
 #   BBLIT_OMITIR_APT=1     no instala paquetes del sistema
 #   BBLIT_BINUTILS_DIR     destino de los binutils (por omision $HOME/.local/mipsel-none-elf)
+#
+# Las herramientas que instala `pip install -r requirements.txt` (el kit psxdecomp incluido) leen las
+# variables BBLIT_* o sus equivalentes PSXDECOMP_* (esta ultima manda si ambas estan definidas).
 set -eo pipefail
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -61,7 +64,7 @@ Instalacion terminada en ${RAIZ}.
 Defina antes de usar las herramientas:
   export PATH="${BINUTILS_DIR}/bin:\$PATH"
   export BBLIT_TOOLCHAIN=<carpeta con psyq-4.4, maspsx y asm-differ>
-  export BBLIT_DISC=<ruta al .bin del disco>
+  export BBLIT_DISC=<ruta al .bin del disco>      # tambien vale PSXDECOMP_TOOLCHAIN / PSXDECOMP_DISC
   export PYTHONUTF8=1
 Despues:  .venv/bin/python tools/build.py split && .venv/bin/python tools/build.py build
 EOF
