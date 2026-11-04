@@ -20,13 +20,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from psxdecomp.toolchain.configuracion import leer_local_toml, resolver_rutas
 from tools.emulador import comparacion, proceso, sesion
 from tools.emulador.cliente import PUERTO_POR_DEFECTO, ClienteRedux
 from tools.emulador.dominio import EmuladorError
-from tools.toolchain.configuracion import leer_local_toml, resolver_rutas
+from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, VARIABLES
 
-RAIZ_REPOSITORIO = Path(__file__).resolve().parents[2]
-RUTA_LOCAL = Path("config") / "local.toml"
+RUTA_LOCAL = Path(PROYECTO.rutas.local)
 VARIABLE_EMULADOR = "BBLIT_REDUX"
 VARIABLE_BIOS = "BBLIT_BIOS"
 VARIABLE_DISCO = "BBLIT_DISC"
@@ -79,7 +79,8 @@ def resolver_rutas_emulador(entorno: Mapping[str, str], raiz: Path = RAIZ_REPOSI
     Ejemplo:
         rutas = resolver_rutas_emulador(os.environ)
     """
-    toolchain = resolver_rutas(raiz, entorno, leer_local_toml(raiz / RUTA_LOCAL)).toolchain
+    local = leer_local_toml(raiz / RUTA_LOCAL, etiqueta=PROYECTO.rutas.local)
+    toolchain = resolver_rutas(raiz, entorno, local, variables=VARIABLES).toolchain
     return RutasEmulador(
         emulador=Path(entorno.get(VARIABLE_EMULADOR) or toolchain / EMULADOR_EN_TOOLCHAIN),
         bios=Path(entorno.get(VARIABLE_BIOS) or toolchain / BIOS_EN_TOOLCHAIN),

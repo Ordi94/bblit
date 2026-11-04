@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 from tools.overlay import cli, dominio, extraccion
-from tools.reconstruccion.infraestructura import ejecutar_proceso
+from tools.proyecto import ejecutar_proceso
 
 RAIZ = Path(__file__).resolve().parents[2]
 DISCO = os.environ.get("BBLIT_DISC")

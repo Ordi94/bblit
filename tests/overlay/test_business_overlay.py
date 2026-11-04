@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 from tools.overlay import cli, dominio, extraccion
-from tools.reconstruccion.infraestructura import ProcesoError
 
+from psxdecomp.construccion.infraestructura import ProcesoError
 from tests.overlay.ayudantes import (
     FUNCIONES_SINTETICAS,
     Registro,

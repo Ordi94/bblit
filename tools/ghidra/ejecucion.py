@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Final
 
 from tools.ghidra.dominio import DIRECCION_BASE, DIRECCION_ENTRADA
-from tools.reconstruccion.infraestructura import leer_referencia, obtener_original
+from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, leer_referencia, obtener_original
 
 VARIABLE_GHIDRA: Final[str] = "BBLIT_GHIDRA"
 """Variable de entorno con la carpeta de instalacion de Ghidra."""
@@ -22,11 +22,8 @@ VARIABLE_GHIDRA: Final[str] = "BBLIT_GHIDRA"
 VARIABLE_DISCO: Final[str] = "BBLIT_DISC"
 """Variable de entorno con la carpeta del disco extraido."""
 
-RAIZ_REPOSITORIO: Final[Path] = Path(__file__).resolve().parents[2]
-"""Raiz del repositorio: ahi viven ``config/ejecutable.json`` y ``expected/``."""
-
-NOMBRE_EJECUTABLE: Final[str] = "SLUS_008.38"
-NOMBRE_PROYECTO: Final[str] = "bblit"
+NOMBRE_EJECUTABLE: Final[str] = PROYECTO.identidad.ejecutable
+NOMBRE_PROYECTO: Final[str] = PROYECTO.identidad.nombre
 CARGADOR_PSX: Final[str] = "PsxLoader"
 """Clase del cargador PS-X EXE de la extension; ``-loader`` la identifica por su nombre de clase."""
 
@@ -147,7 +144,7 @@ def resolver_ejecutable(
 
     Contexto:
         Primer paso de ``analizar`` y ``simbolos``. La variable ``BBLIT_DISC`` tiene el mismo
-        contrato que en el resto de herramientas (se delega en ``tools.reconstruccion``): carpeta
+        contrato que en el resto de herramientas (se delega en ``psxdecomp.construccion``): carpeta
         con ``fs/SLUS_008.38``, imagen ``.bin``, ``.cue``, carpeta del ``.bin`` o carpeta
         superior. Con una imagen, el ejecutable se extrae a ``expected/`` bajo ``raiz``.
 
@@ -171,7 +168,7 @@ def resolver_ejecutable(
         if not carpeta:
             raise ValueError(f"indique --exe o defina la variable {VARIABLE_DISCO}")
         try:
-            referencia = leer_referencia(raiz / "config" / "ejecutable.json")
+            referencia = leer_referencia(raiz / PROYECTO.identidad.referencia)
             return obtener_original(raiz, Path(carpeta), referencia)
         except FileNotFoundError as error:
             raise ValueError(f"{VARIABLE_DISCO}: {error}") from None

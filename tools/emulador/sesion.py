@@ -21,7 +21,7 @@ from tools.emulador import proceso
 from tools.emulador.cliente import PUERTO_POR_DEFECTO, ClienteRedux
 from tools.emulador.dominio import EmuladorError, offset_de_ram, prefijo_de_ejecutable
 from tools.emulador.pantalla import decodificar_png, es_pantalla_negra, fraccion_con_contenido
-from tools.reconstruccion.infraestructura import localizar_imagen
+from tools.proyecto import localizar_imagen
 
 HITOS = ("running", "pantalla", "ejecutable")
 TOPE_PANTALLA_POR_DEFECTO = 90.0
@@ -72,7 +72,7 @@ def carpetas_protegidas(valor_disco: str | None) -> list[Path]:
     Contexto:
         `BBLIT_DISC` admite cinco formas (`.bin`, `.cue`, carpeta del `.bin`, carpeta superior
         y carpeta con `fs/`). La resolucion de la imagen es unica y vive en
-        `tools.reconstruccion.infraestructura.localizar_imagen`; aqui solo se reutiliza.
+        `psxdecomp.construccion.infraestructura.localizar_imagen`; aqui solo se reutiliza.
         Se protege la carpeta que CONTIENE la imagen resuelta y, si el valor es una carpeta con
         `fs/`, esa carpeta. Si la imagen no se puede resolver no se inventa ninguna carpeta: la
         validacion no protege nada por esa via (el disco sigue siendo de solo lectura por contrato).

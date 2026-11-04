@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 from tools.overlay import dominio, extraccion, particion
 from tools.overlay.dominio import VarianteExtraida
-from tools.reconstruccion.infraestructura import Herramientas, ProcesoError
 
+from psxdecomp.construccion.infraestructura import Herramientas, ProcesoError
 from tests.overlay.ayudantes import FUNCIONES_SINTETICAS, Registro, construir_overlay
 
 A = construir_overlay(1)

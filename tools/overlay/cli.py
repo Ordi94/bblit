@@ -12,16 +12,15 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
+from psxdecomp.construccion.infraestructura import Ejecutor, ProcesoError, resolver_herramientas
+from psxdecomp.toolchain.configuracion import leer_local_toml, resolver_rutas
+from psxdecomp.toolchain.instalacion import leer_lock
 from tools.overlay import dominio, extraccion, particion
 from tools.overlay.dominio import VARIANTES_CONOCIDAS, VarianteConocida, VarianteExtraida
-from tools.reconstruccion import infraestructura as infra
-from tools.reconstruccion.infraestructura import Ejecutor, ProcesoError
-from tools.toolchain.configuracion import leer_local_toml, resolver_rutas
-from tools.toolchain.instalacion import leer_lock
+from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, VARIABLES, ejecutar_proceso
 
-RAIZ_REPOSITORIO = Path(__file__).resolve().parents[2]
-RUTA_LOCK = Path("config") / "toolchain.lock.json"
-RUTA_LOCAL = Path("config") / "local.toml"
+RUTA_LOCK = Path(PROYECTO.rutas.toolchain_lock)
+RUTA_LOCAL = Path(PROYECTO.rutas.local)
 ERRORES_CONTROLADOS = (ValueError, FileNotFoundError, ProcesoError, OSError)
 TODAS = "todas"
 
@@ -131,7 +130,7 @@ def _orden_build(
     """
     for variante in variantes:
         particion.invalidar_salida(raiz, variante.identificador)
-    herramientas = infra.resolver_herramientas(leer_lock(raiz / RUTA_LOCK), toolchain, sys.executable)
+    herramientas = resolver_herramientas(leer_lock(raiz / RUTA_LOCK), toolchain, sys.executable)
     for variante in variantes:
         destino = particion.construir(raiz, variante, herramientas, ejecutar)
         print(f"build {variante.identificador}: {destino.relative_to(raiz).as_posix()}")
@@ -150,7 +149,7 @@ def main(
     argv: Sequence[str] | None = None,
     entorno: Mapping[str, str] | None = None,
     raiz: Path = RAIZ_REPOSITORIO,
-    ejecutar: Ejecutor = infra.ejecutar_proceso,
+    ejecutar: Ejecutor = ejecutar_proceso,
     conocidas: Sequence[VarianteConocida] = VARIANTES_CONOCIDAS,
 ) -> int:
     """
@@ -178,7 +177,8 @@ def main(
     args = construir_parser().parse_args(argv)
     variables = entorno if entorno is not None else os.environ
     try:
-        rutas = resolver_rutas(raiz, variables, leer_local_toml(raiz / RUTA_LOCAL), args.disc, args.toolchain)
+        local = leer_local_toml(raiz / RUTA_LOCAL, etiqueta=PROYECTO.rutas.local)
+        rutas = resolver_rutas(raiz, variables, local, args.disc, args.toolchain, variables=VARIABLES)
         if args.orden == "extraer":
             return _orden_extraer(raiz, rutas.disc, conocidas)
         variantes = extraccion.leer_variantes(raiz, conocidas)

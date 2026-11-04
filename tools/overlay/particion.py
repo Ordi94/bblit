@@ -1,6 +1,6 @@
 """Particion, ensamblado, enlace y verificacion del overlay de codigo.
 
-Capa de procesos del paquete. Reutiliza de ``tools.reconstruccion`` el ejecutor de procesos y
+Capa de procesos del paquete. Reutiliza de ``psxdecomp.construccion`` el ejecutor de procesos y
 la construccion de las ordenes de splat, ensamblador, enlazador y objcopy; todo lo que escribe
 queda dentro de ``asm/overlay/``, ``build/overlay/`` y ``config/symbols_overlay.txt``.
 """
@@ -11,16 +11,12 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
+from psxdecomp.construccion import dominio as dominio_exe
+from psxdecomp.construccion.infraestructura import Ejecutor, Herramientas, ProcesoError
 from tools.overlay import dominio
 from tools.overlay.dominio import VarianteExtraida
 from tools.overlay.extraccion import leer_binario
-from tools.reconstruccion import dominio as dominio_exe
-from tools.reconstruccion.infraestructura import (
-    Ejecutor,
-    Herramientas,
-    ProcesoError,
-    ejecutar_proceso,
-)
+from tools.proyecto import ejecutar_proceso
 
 RUTA_SIMBOLOS = "config/symbols_overlay.txt"
 TIMEOUT_SPLAT_S = 300

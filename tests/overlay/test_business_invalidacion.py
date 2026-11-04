@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 from tools.overlay import cli
-from tools.reconstruccion.infraestructura import ProcesoError
 
+from psxdecomp.construccion.infraestructura import ProcesoError
 from tests.overlay.ayudantes import (
     Registro,
     construir_overlay,

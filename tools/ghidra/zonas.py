@@ -1,20 +1,23 @@
 """Zonas del segmento de codigo del ejecutable y su clasificacion.
 
 El segmento cargado en ``0x80014A00`` se reparte en codigo de arranque del SDK, codigo propio del
-juego, codigo de las librerias de Sony y, a continuacion, datos. Los limites salen de
-``docs/MAPA_MEMORIA.md``: son exactos porque coinciden con inicios de funcion de la tabla de
-simbolos, y los demas modulos de analisis los comparten desde aqui para no duplicar constantes.
+juego, codigo de las librerias de Sony y, a continuacion, datos. Los limites del
+codigo salen del manifiesto del proyecto (``[zonas]``): son exactos porque coinciden con inicios de
+funcion de la tabla de simbolos, y los demas modulos de analisis los comparten desde aqui para no
+duplicar constantes. Las regiones de datos de mas abajo (``docs/MAPA_MEMORIA.md``) no estan en el
+manifiesto y siguen siendo datos de este modulo.
 """
 
 from typing import Final, Literal
 
 from tools.ghidra.dominio import DIRECCION_BASE, FIN_CODIGO
+from tools.proyecto import PROYECTO
 
-INICIO_JUEGO: Final[int] = 0x80014AC4
-"""Primera direccion del codigo propio del juego (tras las rutinas de arranque del SDK)."""
+INICIO_JUEGO: Final[int] = PROYECTO.zonas.juego_desde
+"""Primera direccion del codigo propio del juego (``juego_desde`` del manifiesto)."""
 
-FIN_JUEGO: Final[int] = 0x80045DA0
-"""Primera direccion del codigo de las librerias de Sony (fin exclusivo del codigo del juego)."""
+FIN_JUEGO: Final[int] = PROYECTO.zonas.librerias_desde
+"""Primera direccion del codigo de las librerias de Sony (``librerias_desde``; fin exclusivo del juego)."""
 
 ClaseZona = Literal["arranque", "juego", "libreria", "externo"]
 """Clase de una direccion: rutinas de arranque, juego, libreria de Sony o fuera del segmento."""

@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 from tools.ghidra.ejecucion import (
     CARGADOR_PSX,
-    RAIZ_REPOSITORIO,
     SIN_VALOR,
     VERSIONES_FIRMAS,
     Carga,
@@ -21,6 +20,7 @@ from tools.ghidra.ejecucion import (
     resolver_instalacion,
     verificar_carga,
 )
+from tools.proyecto import RAIZ_REPOSITORIO
 
 from psxdecomp.construccion import infraestructura as infra_kit
 

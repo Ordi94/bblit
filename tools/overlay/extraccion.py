@@ -11,13 +11,13 @@ import json
 from collections.abc import Iterator, Sequence
 from pathlib import Path
 
+from psxdecomp.toolchain import iso9660
 from tools.bzz.descompresion import descomprimir_detallado
 from tools.bzz.dominio import leer_cabecera, validar_consumo
 from tools.bzz.lectura import TAMANO_MAXIMO_ARCHIVO, leer_archivo_bzz
 from tools.overlay import dominio
 from tools.overlay.dominio import VARIANTES_CONOCIDAS, VarianteConocida, VarianteExtraida
-from tools.reconstruccion.infraestructura import localizar_imagen
-from tools.toolchain import iso9660
+from tools.proyecto import localizar_imagen
 
 RUTA_CONFIG = Path("config") / "overlay.json"
 LF = "\n"

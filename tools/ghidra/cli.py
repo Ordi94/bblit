@@ -36,7 +36,6 @@ from tools.ghidra.dominio import (
 )
 from tools.ghidra.ejecucion import (
     NOMBRE_EJECUTABLE,
-    RAIZ_REPOSITORIO,
     SEGUNDOS_MAXIMOS,
     VERSIONES_FIRMAS,
     ConfiguracionGhidra,
@@ -73,9 +72,10 @@ from tools.ghidra.subsistemas import (
 )
 from tools.ghidra.tablas import clasificar_tablas, detectar_corridas, formatear_tablas_csv
 from tools.ghidra.zonas import FIN_JUEGO, INICIO_JUEGO, clasificar_zona
+from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO
 
 CARPETA_SCRIPTS = Path(__file__).resolve().parent / "scripts"
-SIMBOLOS_POR_DEFECTO = RAIZ_REPOSITORIO / "config" / "symbols.txt"
+SIMBOLOS_POR_DEFECTO = RAIZ_REPOSITORIO / PROYECTO.rutas.simbolos[0]
 M2C_POR_DEFECTO = RAIZ_REPOSITORIO / "toolchain" / "m2c" / "m2c.py"
 CARPETA_DESENSAMBLADO = "desensamblado"
 

@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 from tools.emulador import cli, proceso, sesion
 from tools.emulador.dominio import RAM_TAMANO, EmuladorError
+from tools.proyecto import RAIZ_REPOSITORIO
 
 from tests.emulador import sintetica
 from tests.emulador.dobles import ClienteFalso, ram_con
@@ -288,8 +289,8 @@ def test_sesion_usa_los_valores_por_defecto_y_las_variables_del_entorno(monkeypa
     config = recibido["c"]
     assert config.ejecutable.as_posix() == "otro/redux.exe"
     assert config.bios.as_posix() == "otra/bios.bin"
-    assert config.imagen == cli.RAIZ_REPOSITORIO / cli.IMAGEN_POR_DEFECTO
-    assert config.carpeta_trabajo == cli.RAIZ_REPOSITORIO / cli.TRABAJO_POR_DEFECTO
+    assert config.imagen == RAIZ_REPOSITORIO / cli.IMAGEN_POR_DEFECTO
+    assert config.carpeta_trabajo == RAIZ_REPOSITORIO / cli.TRABAJO_POR_DEFECTO
     assert (config.hito, config.puerto, config.tope_hito) == ("pantalla", 8080, 90.0)
 
 

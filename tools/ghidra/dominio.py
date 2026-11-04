@@ -1,8 +1,12 @@
 """Modelo y reglas puras de la tabla de simbolos del ejecutable.
 
-Este modulo no toca disco ni procesos: recibe funciones ya leidas de la exportacion de Ghidra y
-produce simbolos validados en el formato que consume el desensamblador. Todas las decisiones
-sobre nombres, tamanos y rangos viven aqui para poder probarlas sin Ghidra.
+Este modulo no toca procesos: recibe funciones ya leidas de la exportacion de Ghidra y produce
+simbolos validados en el formato que consume el desensamblador. Todas las decisiones sobre nombres,
+tamanos y rangos viven aqui para poder probarlas sin Ghidra.
+
+La geometria de la memoria (base, tamano del segmento, entrada y fin del codigo) no se declara aqui:
+se lee una sola vez, al importar el modulo, de la referencia del ejecutable (``t_addr``, ``t_size`` y
+``pc0`` de la cabecera) y de las zonas del manifiesto, que son la unica fuente de esos valores.
 """
 
 import re
@@ -10,17 +14,21 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Final, Literal
 
-DIRECCION_BASE: Final[int] = 0x80014A00
-"""Direccion de carga del unico segmento del ejecutable."""
+from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, leer_referencia
 
-TAMANO_SEGMENTO: Final[int] = 0x55000
-"""Tamano en bytes del segmento cargado (codigo, rodata y data del ejecutable)."""
+_CABECERA: Final = leer_referencia(RAIZ_REPOSITORIO / PROYECTO.identidad.referencia).cabecera
+
+DIRECCION_BASE: Final[int] = _CABECERA.t_addr
+"""Direccion de carga del unico segmento del ejecutable (``t_addr`` de la referencia)."""
+
+TAMANO_SEGMENTO: Final[int] = _CABECERA.t_size
+"""Tamano en bytes del segmento cargado (``t_size`` de la referencia: codigo, rodata y data)."""
 
 DIRECCION_FIN: Final[int] = DIRECCION_BASE + TAMANO_SEGMENTO
 """Primera direccion posterior al segmento (limite exclusivo)."""
 
-DIRECCION_ENTRADA: Final[int] = 0x80014A08
-"""Punto de entrada declarado en la cabecera del ejecutable."""
+DIRECCION_ENTRADA: Final[int] = _CABECERA.pc0
+"""Punto de entrada declarado en la cabecera del ejecutable (``pc0`` de la referencia)."""
 
 ALINEACION_FUNCION: Final[int] = 4
 """Las instrucciones MIPS ocupan 4 bytes: toda funcion empieza en multiplo de 4."""
@@ -31,8 +39,8 @@ NOMBRE_ENTRADA_C: Final[str] = "main"
 LONGITUD_MAXIMA_NOMBRE: Final[int] = 128
 """Cota de longitud para un simbolo: evita que una exportacion hostil crezca sin limite."""
 
-FIN_CODIGO: Final[int] = 0x8005DEA0
-"""Fin de la zona de codigo: la ultima funcion cierra con ``jr ra`` y despues solo hay datos."""
+FIN_CODIGO: Final[int] = PROYECTO.zonas.librerias_hasta
+"""Fin de la zona de codigo (``librerias_hasta`` del manifiesto): la ultima funcion cierra con ``jr ra``."""
 
 TAMANO_MINIMO_FUNCION: Final[int] = 8
 """Una funcion ocupa al menos un retorno y su ranura de retardo."""
