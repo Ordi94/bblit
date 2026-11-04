@@ -72,7 +72,8 @@ def test_las_rutas_de_compilacion_coinciden_con_el_manifiesto(proyecto: Proyecto
     compilacion = modulo("reconstruccion.compilacion")
     rutas = proyecto.rutas
     assert compilacion.CARPETA_INCLUDE == rutas.incluir
-    assert compilacion.CARPETA_MACROS == f"{rutas.asm}/include"
+    assert compilacion.CARPETA_MACROS == rutas.macros == f"{rutas.asm}/include"
+    assert compilacion.RUTAS == rutas
     assert compilacion.CARPETA_FUENTES == rutas.fuentes
     assert compilacion.CARPETA_SALIDA == rutas.build
 
@@ -107,9 +108,11 @@ def test_las_convenciones_de_comentario_coinciden_con_el_manifiesto(proyecto: Pr
     fuentes = modulo("reconstruccion.fuentes_c")
     progreso = modulo("reconstruccion.progreso")
     convenciones = proyecto.convenciones
+    dominio = modulo("reconstruccion.dominio")
+    assert fuentes.CONVENCIONES == convenciones
+    assert dominio.CONVENCIONES == convenciones
     assert fuentes.MACRO_NO_COINCIDENTE == convenciones.macro_no_coincidente
-    assert fuentes._INCLUDE_ASM.pattern.startswith(rf"\b{convenciones.macro_ensamblador}\(")
-    assert fuentes._PENDIENTE.pattern == convenciones.pendiente
+    assert dominio.MAX_VALOR_G == convenciones.max_valor_g
     assert progreso._PATRON_SUFIJO_NUMERICO.pattern == convenciones.sufijo_subsistema
 
 
