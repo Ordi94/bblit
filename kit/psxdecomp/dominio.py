@@ -22,7 +22,9 @@ from psxdecomp.entorno import PREFIJO_PROPIO, Variables
 from psxdecomp.validacion import ManifiestoError
 
 SECCIONES = frozenset({"proyecto", "rutas", "zonas", "convenciones", "compilacion", "plugins"})
-CLAVES_PROYECTO = frozenset({"nombre", "ejecutable", "referencia", "prefijo_entorno"})
+CLAVES_PROYECTO = frozenset(
+    {"nombre", "ejecutable", "referencia", "prefijo_entorno", "comando", "funcion_ejemplo"}
+)
 CLAVES_RUTAS = frozenset(
     {
         "fuentes",
@@ -40,6 +42,7 @@ CLAVES_RUTAS = frozenset(
         "toolchain_lock",
         "local",
         "documento_progreso",
+        "readme",
         "subcarpetas_ajenas",
         "asm_auxiliares",
     }
@@ -58,13 +61,14 @@ CLAVES_CONVENCIONES = frozenset(
     }
 )
 CLAVES_COMPILACION = frozenset({"version_aspsx", "opciones_compilador"})
-CLAVES_PLUGINS = frozenset({"subcomandos", "antes_de_construir", "despues_de_verificar"})
+CLAVES_PLUGINS = frozenset({"subcomandos", "antes_de_construir", "despues_de_verificar", "entrada_progreso"})
 
 MAX_VALOR_G_ADMITIDO = 4096
 VERSION_ASPSX_POR_DEFECTO = "2.80"
 OPCIONES_COMPILADOR_POR_DEFECTO = ("-quiet", "-O2")
 MANUSCRITA_POR_DEFECTO = r"\brutina(?:\s+de\s+\w+)?\s+escrita\s+a\s+mano\s+en\s+el\s+original\b"
 SIMBOLO_DATOS_POR_DEFECTO = r"^D_([0-9A-F]{8})$"
+COMANDO_POR_DEFECTO = "python -m psxdecomp.cli"
 LINEA_SIMBOLO_POR_DEFECTO = r"^([A-Za-z_]\w*)\s*=\s*0x([0-9A-Fa-f]{1,8})\s*;\s*//(.*)$"
 
 RUTAS_SENCILLAS_POR_DEFECTO = {
@@ -82,17 +86,31 @@ RUTAS_SENCILLAS_POR_DEFECTO = {
     "toolchain_lock": "config/toolchain.lock.json",
     "local": "config/local.toml",
     "documento_progreso": "docs/PROGRESO.md",
+    "readme": "README.md",
 }
 
 
 @dataclass(frozen=True, slots=True)
 class Identidad:
-    """Seccion ``[proyecto]``: quien es el proyecto y como se llama su ejecutable."""
+    """
+    Seccion ``[proyecto]``: quien es el proyecto y como se llama su ejecutable.
+
+    Attributes:
+        nombre: Nombre del proyecto.
+        ejecutable: Nombre del ejecutable original.
+        referencia: Archivo con las huellas y la cabecera del ejecutable original.
+        prefijo_entorno: Alias de las variables de entorno del proyecto.
+        comando: Comando con el que el proyecto invoca al kit; solo aparece en los textos que el kit
+            genera (documento y seccion de progreso), nunca se ejecuta.
+        funcion_ejemplo: Funcion que esos textos citan como ejemplo de ``diff``; sin ella no se cita ninguna.
+    """
 
     nombre: str
     ejecutable: str
     referencia: str
     prefijo_entorno: str
+    comando: str
+    funcion_ejemplo: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +132,7 @@ class Rutas:
     toolchain_lock: str
     local: str
     documento_progreso: str
+    readme: str
     subcarpetas_ajenas: tuple[str, ...]
     asm_auxiliares: tuple[str, ...]
 
@@ -195,11 +214,21 @@ class Compilacion:
 
 @dataclass(frozen=True, slots=True)
 class Plugins:
-    """Seccion ``[plugins]``: extensiones del proyecto como referencias ``modulo:funcion``."""
+    """
+    Seccion ``[plugins]``: extensiones del proyecto como referencias ``modulo:funcion``.
+
+    Attributes:
+        subcomandos: Funciones que anaden subcomandos a la linea de ordenes.
+        antes_de_construir: Ganchos que se invocan al empezar ``build``.
+        despues_de_verificar: Ganchos que se invocan al terminar ``verify``.
+        entrada_progreso: Funcion opcional que agrupa los archivos C en subsistemas con un criterio
+            propio en lugar del sufijo de ``convenciones.sufijo_subsistema``.
+    """
 
     subcomandos: tuple[str, ...]
     antes_de_construir: tuple[str, ...]
     despues_de_verificar: tuple[str, ...]
+    entrada_progreso: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -309,6 +338,7 @@ class Proyecto:
             f"ejecutable: {ident.ejecutable}",
             f"referencia: {ident.referencia}",
             f"prefijo_entorno: {ident.prefijo_entorno}",
+            f"comando: {ident.comando}",
             f"fuentes: {rutas.fuentes}  incluir: {rutas.incluir}  asm: {rutas.asm}",
             f"macros_asm: {rutas.macros}  build: {rutas.build}  expected: {rutas.expected}",
             f"simbolos: {', '.join(rutas.simbolos)}",
@@ -384,6 +414,14 @@ def construir_identidad(tabla: Mapping[str, Any]) -> Identidad:
         referencia=val.leer_ruta(tabla, "referencia", "proyecto", defecto="config/ejecutable.json"),
         prefijo_entorno=val.leer_cadena(
             tabla, "prefijo_entorno", "proyecto", patron=val.PATRON_PREFIJO_ENTORNO, defecto=PREFIJO_PROPIO
+        ),
+        comando=val.leer_cadena(
+            tabla, "comando", "proyecto", patron=val.PATRON_COMANDO, defecto=COMANDO_POR_DEFECTO
+        ),
+        funcion_ejemplo=(
+            val.leer_cadena(tabla, "funcion_ejemplo", "proyecto", patron=val.PATRON_IDENTIFICADOR_C)
+            if "funcion_ejemplo" in tabla
+            else None
         ),
     )
 
@@ -560,7 +598,12 @@ def construir_plugins(tabla: Mapping[str, Any]) -> Plugins:
         **{
             clave: val.leer_lista_texto(tabla, clave, "plugins", patron=val.PATRON_PLUGIN, defecto=())
             for clave in ("subcomandos", "antes_de_construir", "despues_de_verificar")
-        }
+        },
+        entrada_progreso=(
+            val.leer_cadena(tabla, "entrada_progreso", "plugins", patron=val.PATRON_PLUGIN)
+            if "entrada_progreso" in tabla
+            else None
+        ),
     )
 
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import re
 import sys
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -168,3 +169,47 @@ def ejecutar_despues_de_verificar(proyecto: Proyecto, resultado: ResultadoVerifi
     """
     for referencia in proyecto.plugins.despues_de_verificar:
         resolver_referencia(referencia, proyecto.raiz)(proyecto, resultado)
+
+
+_PATRON_NOMBRE_SUBSISTEMA = re.compile(r"^[^\x00-\x1f|`]{1,64}$")
+
+
+def resolver_agrupador_de_subsistemas(proyecto: Proyecto) -> Callable[[str], str] | None:
+    """
+    Resuelve el gancho ``entrada_progreso`` a la regla que agrupa los archivos C en subsistemas.
+
+    Contexto:
+        La orden ``progreso`` lo usa en lugar del sufijo de ``convenciones.sufijo_subsistema`` cuando el
+        manifiesto lo declara. El contrato es ``entrada_progreso(proyecto, archivo)``: recibe la ruta
+        relativa de un archivo C y devuelve el nombre de su subsistema. El nombre acaba en una tabla
+        Markdown, por eso se admite solo texto de 1 a 64 caracteres sin controles, barras verticales
+        ni comillas invertidas.
+
+    Args:
+        proyecto (Proyecto): Manifiesto del proyecto.
+
+    Returns:
+        Callable[[str], str] | None: La regla, o ``None`` si el manifiesto no declara el gancho.
+
+    Raises:
+        PluginInvalidoError: Si el gancho no se puede cargar (al resolverlo) o, al aplicarlo, devuelve algo
+            que no es un nombre admitido.
+
+    Ejemplo:
+        agrupador = resolver_agrupador_de_subsistemas(proyecto)
+    """
+    referencia = proyecto.plugins.entrada_progreso
+    if referencia is None:
+        return None
+    gancho = resolver_referencia(referencia, proyecto.raiz)
+
+    def agrupar(archivo: str) -> str:
+        nombre = gancho(proyecto, archivo)
+        if not isinstance(nombre, str) or _PATRON_NOMBRE_SUBSISTEMA.fullmatch(nombre) is None:
+            raise PluginInvalidoError(
+                f"plugin '{referencia}': debe devolver el nombre del subsistema como texto de 1 a 64 "
+                "caracteres sin barras verticales ni comillas invertidas"
+            )
+        return nombre
+
+    return agrupar

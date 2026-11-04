@@ -26,6 +26,8 @@ nombre = "otro"
 ejecutable = "EJEC_002.11"
 referencia = "datos/ejecutable.json"
 prefijo_entorno = "OTRO"
+comando = "otro-decomp --raiz ."
+funcion_ejemplo = "rutina_demo"
 
 [rutas]
 fuentes = "codigo"
@@ -43,6 +45,7 @@ opciones_compilacion = "datos/opciones.toml"
 toolchain_lock = "datos/lock.json"
 local = "datos/local.toml"
 documento_progreso = "notas/avance.md"
+readme = "LEEME.md"
 subcarpetas_ajenas = ["extra"]
 asm_auxiliares = ["macros", "comunes"]
 
@@ -69,4 +72,5 @@ opciones_compilador = ["-quiet", "-O1", "-fno-builtin"]
 subcomandos = ["paquete.modulo:registrar"]
 antes_de_construir = ["paquete.hook:antes"]
 despues_de_verificar = ["paquete.hook:despues", "otro:despues"]
+entrada_progreso = "paquete.progreso:agrupar"
 """

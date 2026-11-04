@@ -30,6 +30,10 @@ PATRON_VERSION_ASPSX = re.compile(r"^[0-9]{1,3}\.[0-9]{1,3}$")
 # Opcion del compilador: guion, una letra y caracteres de identificador. Se excluyen por diseno
 # -G (el umbral de datos pequenos lo fija cada archivo) y -o (la salida la fija el kit).
 PATRON_OPCION_COMPILADOR = re.compile(r"^-(?![Go])[A-Za-z][A-Za-z0-9_.=+-]{0,31}$")
+# Comando con el que el proyecto invoca al kit (solo se escribe en textos generados, nunca se ejecuta):
+# hasta cinco palabras de caracteres de linea de ordenes y 100 caracteres en total.
+PATRON_COMANDO = re.compile(r"^(?=.{1,100}$)[A-Za-z0-9_][A-Za-z0-9_.-]*(?: [A-Za-z0-9_./=-]+){0,4}$")
+PATRON_IDENTIFICADOR_C = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 PATRON_PLUGIN = re.compile(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*$")
 
 

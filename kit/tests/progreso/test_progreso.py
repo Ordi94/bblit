@@ -3,20 +3,21 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import progreso
-from tools.reconstruccion.fuentes_c import EstadoFuncion
-from tools.reconstruccion.progreso import FuncionSimbolo, ResumenZona
+from psxdecomp.progreso import medicion
+
+from progreso import ayudantes as progreso
+from progreso.ayudantes import EstadoFuncion, FuncionSimbolo, ResumenZona
 
 SIMBOLOS = """\
 // comentario
-__main = 0x80014A00; // type:func size:0x8
-func_80014A08 = 0x80014A08; // type:func size:0xAC
-func_80014AC4 = 0x80014AC4; // type:func size:0x10
-func_80014AD4 = 0x80014AD4; // type:func size:0x20
-func_80014AF4 = 0x80014AF4; // type:func size:0x30
-func_80045DA0 = 0x80045DA0; // type:func size:0x34
-D_80069698 = 0x80069698; // size:0x4
-D_80069700 = 0x80069700; // type:u32
+__main = 0x80010000; // type:func size:0x8
+rutina_80010008 = 0x80010008; // type:func size:0xAC
+rutina_80010100 = 0x80010100; // type:func size:0x10
+rutina_80010108 = 0x80010108; // type:func size:0x20
+rutina_80010118 = 0x80010118; // type:func size:0x30
+rutina_80020000 = 0x80020000; // type:func size:0x34
+D_8003B7F8 = 0x8003B7F8; // size:0x4
+D_8003B860 = 0x8003B860; // type:u32
 """
 
 
@@ -26,16 +27,16 @@ def tabla() -> list[FuncionSimbolo]:
 
 def test_leer_simbolos_toma_solo_funciones_con_su_tamano() -> None:
     assert [(f.nombre, f.direccion, f.tamano) for f in tabla()] == [
-        ("__main", 0x80014A00, 8),
-        ("func_80014A08", 0x80014A08, 0xAC),
-        ("func_80014AC4", 0x80014AC4, 0x10),
-        ("func_80014AD4", 0x80014AD4, 0x20),
-        ("func_80014AF4", 0x80014AF4, 0x30),
-        ("func_80045DA0", 0x80045DA0, 0x34),
+        ("__main", 0x80010000, 8),
+        ("rutina_80010008", 0x80010008, 0xAC),
+        ("rutina_80010100", 0x80010100, 0x10),
+        ("rutina_80010108", 0x80010108, 0x20),
+        ("rutina_80010118", 0x80010118, 0x30),
+        ("rutina_80020000", 0x80020000, 0x34),
     ]
 
 
-@pytest.mark.parametrize("linea", ["f = 0x80014AC4; // type:func", "f = 0x80014AC4; // type:func size:0x0"])
+@pytest.mark.parametrize("linea", ["f = 0x80010100; // type:func", "f = 0x80010100; // type:func size:0x0"])
 def test_leer_simbolos_exige_un_tamano_valido_y_nombra_la_linea(linea: Any) -> None:
     with pytest.raises(ValueError, match="linea 2: 'f' no declara un size valido"):
         progreso.leer_simbolos("// x\n" + linea + "\n")
@@ -55,13 +56,13 @@ def test_combinar_simbolos_el_ultimo_manda_por_direccion_y_ordena() -> None:
 @pytest.mark.parametrize(
     ("direccion", "zona"),
     [
-        (0x80014A00, "arranque"),
-        (0x80014AC3, "arranque"),
-        (0x80014AC4, "juego"),
-        (0x80045D9F, "juego"),
-        (0x80045DA0, "libreria"),
-        (0x8005DE9F, "libreria"),
-        (0x8005DEA0, "otra"),
+        (0x80010000, "arranque"),
+        (0x800100FF, "arranque"),
+        (0x80010100, "juego"),
+        (0x8001FFFF, "juego"),
+        (0x80020000, "libreria"),
+        (0x8002FFFF, "libreria"),
+        (0x80030000, "otra"),
     ],
 )
 def test_zona_de_respeta_los_limites_exactos(direccion: Any, zona: Any) -> None:
@@ -70,13 +71,13 @@ def test_zona_de_respeta_los_limites_exactos(direccion: Any, zona: Any) -> None:
 
 ESTADOS = {
     "src/a.c": {
-        "func_80014AC4": EstadoFuncion.C,
-        "func_80014AD4": EstadoFuncion.NO_COINCIDENTE,
-        "func_80014AF4": EstadoFuncion.ENSAMBLADOR,
+        "rutina_80010100": EstadoFuncion.C,
+        "rutina_80010108": EstadoFuncion.NO_COINCIDENTE,
+        "rutina_80010118": EstadoFuncion.ENSAMBLADOR,
         "ayudante": EstadoFuncion.C,
-        "func_sin_tabla": EstadoFuncion.ENSAMBLADOR,
+        "rutina_sin_tabla": EstadoFuncion.ENSAMBLADOR,
     },
-    "src/b.c": {"func_80045DA0": EstadoFuncion.C},
+    "src/b.c": {"rutina_80020000": EstadoFuncion.C},
 }
 
 
@@ -87,9 +88,9 @@ def test_calcular_progreso_cuenta_por_zona_archivo_y_estado() -> None:
     assert p.librerias == ResumenZona(1, 0x34)
     assert p.c_juego == ResumenZona(1, 0x10)
     assert p.c_librerias == ResumenZona(1, 0x34)
-    assert p.no_coincidentes == ("func_80014AD4",)
+    assert p.no_coincidentes == ("rutina_80010108",)
     assert p.auxiliares == ("ayudante",)
-    assert p.sin_simbolo == ("func_sin_tabla",)
+    assert p.sin_simbolo == ("rutina_sin_tabla",)
     assert [
         (a.archivo, a.c, a.no_coincidentes, a.ensamblador, a.bytes_c, a.bytes_total) for a in p.archivos
     ] == [
@@ -127,7 +128,7 @@ def test_a_json_usa_camel_case_y_refleja_los_conteos() -> None:
     }
     assert datos["descompiladas"]["juego"] == {"funciones": 1, "bytes": 0x10}
     assert datos["descompiladas"]["funciones"] == 2
-    assert datos["noCoincidentes"] == ["func_80014AD4"]
+    assert datos["noCoincidentes"] == ["rutina_80010108"]
     assert datos["archivos"][0] == {
         "archivo": "src/a.c",
         "funcionesC": 1,
@@ -156,9 +157,9 @@ def test_a_markdown_incluye_resumen_tabla_por_archivo_y_listas() -> None:
         in texto
     )
     assert "| `src/a.c` | 1 | 1 | 1 | 16 | 96 |" in texto
-    assert "- `func_80014AD4`" in texto
+    assert "- `rutina_80010108`" in texto
     assert "## Ayudantes definidos en C" in texto and "- `ayudante`" in texto
-    assert "## Menciones sin símbolo de función" in texto and "- `func_sin_tabla`" in texto
+    assert "## Menciones sin símbolo de función" in texto and "- `rutina_sin_tabla`" in texto
 
 
 def test_a_markdown_en_los_casos_vacios_y_de_coherencia_rota_o_sin_medir() -> None:
@@ -192,13 +193,13 @@ def repo_progreso(raiz: Path) -> None:
     escribir(raiz / "config" / "symbols.txt", SIMBOLOS)
     escribir(
         raiz / "src" / "a.c",
-        'INCLUDE_ASM("asm/nonmatchings/a", func_80014AD4);\n'
-        "s32 func_80014AC4(void)\n{\n    return 0;\n}\n"
-        'INCLUDE_ASM("asm/nonmatchings/a", func_80014AF4);\n',
+        'INCLUDE_ASM("asm/nonmatchings/a", rutina_80010108);\n'
+        "s32 rutina_80010100(void)\n{\n    return 0;\n}\n"
+        'INCLUDE_ASM("asm/nonmatchings/a", rutina_80010118);\n',
     )
-    escribir(raiz / "asm" / "boot.s", "glabel __main\nglabel func_80014A08\n")
-    escribir(raiz / "asm" / "nonmatchings" / "a" / "f.s", "glabel func_80014AD4\nglabel func_80014AF4\n")
-    escribir(raiz / "asm" / "libs.s", "glabel func_80045DA0\n")
+    escribir(raiz / "asm" / "boot.s", "glabel __main\nglabel rutina_80010008\n")
+    escribir(raiz / "asm" / "nonmatchings" / "a" / "f.s", "glabel rutina_80010108\nglabel rutina_80010118\n")
+    escribir(raiz / "asm" / "libs.s", "glabel rutina_80020000\n")
 
 
 def test_generar_progreso_escribe_documento_y_json_deterministas(tmp_path: Path) -> None:
@@ -217,7 +218,7 @@ def test_generar_progreso_aplica_los_simbolos_adicionales_sobre_la_tabla(tmp_pat
     repo_progreso(tmp_path)
     escribir(
         tmp_path / "config" / "simbolos_adicionales.txt",
-        "func_80014AC4 = 0x80014AC4; // type:func size:0x8\n",
+        "rutina_80010100 = 0x80010100; // type:func size:0x8\n",
     )
     assert progreso.generar_progreso(tmp_path).c_juego == ResumenZona(1, 8)
 
@@ -228,7 +229,7 @@ def test_generar_progreso_sin_tabla_o_con_tabla_excesiva(
     with pytest.raises(FileNotFoundError, match=r"falta config/symbols.txt"):
         progreso.generar_progreso(tmp_path)
     repo_progreso(tmp_path)
-    monkeypatch.setattr(progreso, "MAX_BYTES_SIMBOLOS", 10)
+    monkeypatch.setattr(medicion, "MAX_BYTES_SIMBOLOS", 10)
     with pytest.raises(ValueError, match=r"symbols.txt excede el tamano permitido"):
         progreso.generar_progreso(tmp_path)
 

@@ -29,6 +29,8 @@ La unica dependencia de ejecucion es `requests` (descarga del toolchain); el res
 `python -m psxdecomp.cli comprobar [ruta]` (ver "Linea de ordenes") carga y valida el `psxdecomp.toml` de la
 carpeta indicada (por omision la actual) e imprime el resumen. Las secciones son `[proyecto]`,
 `[rutas]`, `[zonas]`, `[convenciones]`, `[compilacion]` y `[plugins]`; toda clave desconocida es un error.
+`[proyecto]` admite ademas `comando` (como invoca el proyecto al kit; defecto `python -m psxdecomp.cli`) y
+`funcion_ejemplo` (opcional, la funcion que cita el texto de `diff`); `[rutas]`, `readme` (defecto `README.md`).
 
 ## Pruebas
 
@@ -83,7 +85,7 @@ concentra la regla y los mensajes de error nombran las dos variables.
 
 `python -m psxdecomp.cli <orden>` es la entrada preferente del kit. La raiz del proyecto es `--proyecto <raiz>`
 o la carpeta actual. Ordenes comunes: `split`, `build`, `verify`, `clean`, `diff <funcion>`,
-`probar <funcion> <carpeta>`, `permutar <funcion>`, `verificar-config` y `comprobar [ruta]`. Los codigos de retorno
+`probar <funcion> <carpeta>`, `permutar <funcion>`, `verificar-config`, `progreso [--sin-readme]` y `comprobar [ruta]`. Los codigos de retorno
 son `0` (bien), `1` (error esperado o verificacion fallida; `permutar` tambien `1` si mejora sin cerrar) y `2`
 (uso incorrecto, o `permutar` sin mejora). Los errores esperados se imprimen en una linea, sin traza ni rutas de la
 maquina. La ayuda de cada orden nombra las rutas y los nombres de variable del manifiesto, nunca los de un juego.
@@ -96,6 +98,7 @@ funcionando.
 | `cli.contexto` | `Contexto` (proyecto, argumentos, entorno, ejecutor, interprete) con lectura perezosa de la referencia del ejecutable, el disco y el toolchain y el archivo de bloqueo; `ResultadoVerificacion`. |
 | `cli.plugins` | Resolucion de referencias `modulo:funcion`, registro de subcomandos y ganchos. |
 | `cli.comandos` | Una funcion por orden (`ejecutar_split`, `ejecutar_build`, ...). |
+| `cli.orden_progreso` | La orden `progreso`: mide, escribe el documento y el resumen y actualiza el README sin abortar si este falla. |
 | `cli.parser` | `construir_parser(proyecto, ...)`: argumentos, textos de ayuda y `manejador` de cada orden. |
 | `cli.principal` | `main(argv, entorno, ejecutar, *, proyecto, raiz, prog, descripcion)`. |
 
@@ -112,6 +115,7 @@ un subcomando repetido o sin `manejador` dan un `PluginInvalidoError` que nombra
 |---|---|
 | `subcomandos` | `registrar(subparsers, proyecto)` anade subcomandos; cada uno fija `set_defaults(manejador=funcion)` y la funcion recibe un `Contexto` y devuelve el codigo de retorno. Se registran despues de las ordenes comunes. |
 | `antes_de_construir` | `gancho(proyecto)`: se invoca al empezar `build`, antes de compilar (`split` ya dejo el ensamblador). Si lanza `ValueError`, `ProcesoError` u `OSError`, `build` termina con ese error. |
+| `entrada_progreso` | Opcional, una sola referencia: `agrupar(proyecto, archivo)` recibe la ruta relativa de un archivo C y devuelve el nombre de su subsistema (1 a 64 caracteres sin barras verticales ni comillas invertidas); sustituye a `convenciones.sufijo_subsistema` en la orden `progreso`. Un nombre invalido da un `PluginInvalidoError`. |
 | `despues_de_verificar` | `gancho(proyecto, resultado)`: se invoca al terminar `verify` con `ResultadoVerificacion(coincide, mensaje)`, tambien si las huellas difieren o falta el ejecutable reconstruido. El codigo de `verify` depende solo del resultado, salvo que un gancho falle con un error esperado. |
 
 ## Prueba de coherencia
@@ -121,6 +125,22 @@ su paquete `tools`. Se ejecuta contra el proyecto que contiene al kit: si la car
 tiene un `psxdecomp.toml`, `tests/conftest.py` pone esa raiz en `sys.path` y la comprobacion corre igual
 desde `kit/` que desde la raiz. Si el kit se usa fuera de un proyecto consumidor, esas pruebas se omiten
 y el resumen de `pytest` (`-rs`) lista el motivo de cada salto.
+
+## Progreso
+
+`psxdecomp.progreso` mide cuanto del ejecutable ya esta en C y lo presenta. Ninguna pieza conoce un proyecto:
+las zonas de memoria salen de `[zonas]`, las carpetas y el documento de `[rutas]`, las macros y el sufijo de
+subsistema de `[convenciones]` y el comando de `proyecto.comando`.
+
+| Modulo | Responsabilidad |
+|---|---|
+| `progreso.calculo` | Reglas puras (sin E/S): lectura de simbolos, clasificacion por zona (`arranque`, `juego`, `libreria`, `otra`), agrupado por subsistema y `calcular_progreso`. Recibe `Zonas` y la regla de agrupado. |
+| `progreso.documento` | `a_json` (claves en camelCase) y `a_markdown`; los nombres de macro, carpetas y comando del texto salen del manifiesto. |
+| `progreso.medicion` | Lee la tabla de simbolos (`rutas.simbolos` y `rutas.simbolos_adicionales`, el ultimo que declara una direccion manda), los fuentes y los `glabel` del ensamblador (sin `rutas.asm_auxiliares` ni `rutas.subcarpetas_ajenas`), y escribe `rutas.documento_progreso` y `<build>/progreso.json`. |
+| `progreso.readme` | Seccion entre los marcadores `<!-- progreso:inicio -->` y `<!-- progreso:fin -->` de `rutas.readme`: cifras, fecha, hash corto del commit y los comandos de reproduccion (`proyecto.comando`, la variable del disco de `proyecto.prefijo_entorno`, el SHA-256 de la referencia del ejecutable). Respeta los finales de linea y es idempotente. |
+
+La orden `progreso` devuelve `1` si los `glabel` mas las funciones en C no suman las de la tabla; un fallo al
+actualizar el README es un aviso y no cambia el resultado.
 
 ## Permutador
 

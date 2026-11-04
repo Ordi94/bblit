@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from psxdecomp.cli import comandos, plugins
+from psxdecomp.cli import comandos, orden_progreso, plugins
 from psxdecomp.dominio import Proyecto, construir_convenciones, construir_rutas
 from psxdecomp.entorno import SUFIJO_DISCO, SUFIJO_TOOLCHAIN, Variables
 
@@ -46,7 +46,7 @@ def construir_parser(
 
     Returns:
         argparse.ArgumentParser: Analizador con ``split``, ``build``, ``verify``, ``clean``, ``diff``,
-        ``probar``, ``permutar``, ``verificar-config``, ``comprobar`` y los de los plugins.
+        ``probar``, ``permutar``, ``verificar-config``, ``progreso``, ``comprobar`` y los de los plugins.
 
     Raises:
         PluginInvalidoError: Si un plugin de subcomandos no se puede cargar o rompe el contrato.
@@ -118,6 +118,17 @@ def construir_parser(
         "verificar-config",
         help=f"falla si una clave de [datos_pequenos] ya esta declarada en {', '.join(rutas.simbolos)}",
     ).set_defaults(manejador=comandos.ejecutar_verificar_config)
+    medir = sub.add_parser(
+        "progreso",
+        help=(
+            f"mide la descompilacion y escribe {rutas.documento_progreso}, {rutas.build}/progreso.json "
+            f"y la seccion de {rutas.readme}"
+        ),
+    )
+    medir.add_argument(
+        "--sin-readme", action="store_true", help=f"no actualiza la seccion de progreso de {rutas.readme}"
+    )
+    medir.set_defaults(manejador=orden_progreso.ejecutar_progreso)
     if entrada_del_kit:
         comprobar = sub.add_parser("comprobar", help="valida el manifiesto e imprime el resumen")
         comprobar.add_argument(

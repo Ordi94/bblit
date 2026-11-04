@@ -52,6 +52,10 @@ def test_el_manifiesto_minimo_carga_con_rutas_y_convenciones_por_defecto() -> No
     assert proyecto.convenciones.patron_simbolo_datos == r"^D_([0-9A-F]{8})$"
     assert r"escrita\s+a\s+mano" in proyecto.convenciones.manuscrita
     assert proyecto.plugins.subcomandos == ()
+    assert proyecto.plugins.entrada_progreso is None
+    assert proyecto.identidad.comando == "python -m psxdecomp.cli"
+    assert proyecto.identidad.funcion_ejemplo is None
+    assert proyecto.rutas.readme == "README.md"
     assert proyecto.compilacion.version_aspsx == "2.80"
     assert proyecto.compilacion.opciones_compilador == ("-quiet", "-O2")
 
@@ -74,6 +78,10 @@ def test_el_manifiesto_completo_conserva_cada_valor_declarado() -> None:
     assert proyecto.compilacion.version_aspsx == "2.67"
     assert proyecto.compilacion.opciones_compilador == ("-quiet", "-O1", "-fno-builtin")
     assert proyecto.plugins.despues_de_verificar == ("paquete.hook:despues", "otro:despues")
+    assert proyecto.plugins.entrada_progreso == "paquete.progreso:agrupar"
+    assert proyecto.identidad.comando == "otro-decomp --raiz ."
+    assert proyecto.identidad.funcion_ejemplo == "rutina_demo"
+    assert proyecto.rutas.readme == "LEEME.md"
 
 
 def test_el_proyecto_cargado_es_inmutable() -> None:
@@ -317,6 +325,37 @@ def test_el_resumen_muestra_la_cadena_de_compilacion() -> None:
 def test_una_referencia_de_plugin_con_forma_invalida_se_rechaza(lista: str) -> None:
     with pytest.raises(ManifiestoError, match=r"\[plugins\]\.subcomandos"):
         cargar(MANIFIESTO_MINIMO + f"\n[plugins]\nsubcomandos = {lista}\n")
+
+
+@pytest.mark.parametrize(
+    "valor",
+    ["'a;b'", "'$(x)'", "'" + "a" * 101 + "'", "''", "' inicio'", "'uno dos tres cuatro cinco seis'", "3"],
+)
+def test_un_comando_fuera_de_la_lista_de_admitidos_se_rechaza(valor: str) -> None:
+    with pytest.raises(ManifiestoError, match=r"\[proyecto\]\.comando"):
+        cargar(PROYECTO_MINIMO + f"comando = {valor}\n\n" + ZONAS_MINIMAS)
+
+
+@pytest.mark.parametrize("valor", ["'1funcion'", "'con espacio'", "'a-b'", "''", "3"])
+def test_una_funcion_de_ejemplo_que_no_es_un_identificador_se_rechaza(valor: str) -> None:
+    with pytest.raises(ManifiestoError, match=r"\[proyecto\]\.funcion_ejemplo"):
+        cargar(PROYECTO_MINIMO + f"funcion_ejemplo = {valor}\n\n" + ZONAS_MINIMAS)
+
+
+@pytest.mark.parametrize("valor", ["'sin-dos-puntos'", "'a b:c'", "3", "['m:f']"])
+def test_el_gancho_de_entrada_de_progreso_exige_una_referencia_valida(valor: str) -> None:
+    with pytest.raises(ManifiestoError, match=r"\[plugins\]\.entrada_progreso"):
+        cargar(MANIFIESTO_MINIMO + f"\n[plugins]\nentrada_progreso = {valor}\n")
+
+
+@pytest.mark.parametrize("ruta", ["'../LEEME.md'", "'/abs/LEEME.md'", "''"])
+def test_la_ruta_del_readme_se_valida_como_cualquier_otra_ruta_del_proyecto(ruta: str) -> None:
+    with pytest.raises(ManifiestoError, match=r"\[rutas\]\.readme"):
+        cargar(MANIFIESTO_MINIMO + f"\n[rutas]\nreadme = {ruta}\n")
+
+
+def test_el_resumen_muestra_el_comando_del_proyecto() -> None:
+    assert "comando: otro-decomp --raiz ." in cargar(MANIFIESTO_COMPLETO).resumen()
 
 
 # --- Variables de entorno ---------------------------------------------------------------------
