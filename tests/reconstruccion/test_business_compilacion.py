@@ -7,10 +7,10 @@ from typing import Any
 
 import pytest
 import yaml
-from tools.reconstruccion import cli, dominio, progreso
-from tools.reconstruccion.fuentes_c import EstadoFuncion, analizar_fuentes
-from tools.reconstruccion.infraestructura import leer_valores_g, listar_fuentes_c
 
+from psxdecomp.diff.fuentes_c import EstadoFuncion
+
+from .proyecto_real import cli, dominio, fuentes_c, infra, progreso
 from .test_business_reconstruccion import RAIZ_REPO, SHA256_ORIGINAL, entorno_real, sha256
 
 VARIANTE_BUENA = """#include "common.h"
@@ -47,7 +47,7 @@ FIN_JUEGO = 0x80045DA0
 
 @pytest.fixture(scope="module")
 def estados() -> Any:
-    return analizar_fuentes(listar_fuentes_c(RAIZ_REPO))
+    return fuentes_c.analizar_fuentes(infra.listar_fuentes_c(RAIZ_REPO))
 
 
 @pytest.fixture(scope="module")
@@ -222,7 +222,7 @@ def test_la_cadena_de_la_tarjeta_de_memoria_vive_en_c_y_cubre_exactamente_su_tra
 
 
 def test_el_g_por_archivo_esta_declarado_con_su_evidencia() -> None:
-    valores = leer_valores_g(RAIZ_REPO)
+    valores = infra.leer_valores_g(RAIZ_REPO)
     assert valores["camara_y_bucle_logico"] == 8 and valores["graficos_y_gte_10"] == 8
     assert set(valores.values()) == {8}
     texto = (RAIZ_REPO / "config" / "opciones_compilacion.toml").read_text(encoding="utf-8")
@@ -284,7 +284,7 @@ def test_ciclo_real_con_funciones_en_c_reproduce_el_ejecutable_y_discrimina(
     # Una funcion que siga en ensamblador, la que sea: activar funciones no debe romper esta prueba.
     pendiente = next(
         n
-        for n, e in plano(analizar_fuentes(listar_fuentes_c(raiz))).items()
+        for n, e in plano(fuentes_c.analizar_fuentes(infra.listar_fuentes_c(raiz))).items()
         if e is EstadoFuncion.ENSAMBLADOR
     )
     assert cli.main(["diff", pendiente], variables, raiz) == 1
@@ -310,7 +310,7 @@ def test_ciclo_real_con_funciones_en_c_reproduce_el_ejecutable_y_discrimina(
     resumen = capsys.readouterr().out
     # Los totales se derivan de las fuentes del repositorio, no de un numero fijo: activar una
     # funcion nueva no debe romper esta prueba.
-    estados_repo = plano(analizar_fuentes(listar_fuentes_c(raiz)))
+    estados_repo = plano(fuentes_c.analizar_fuentes(infra.listar_fuentes_c(raiz)))
     en_c = sum(1 for e in estados_repo.values() if e is EstadoFuncion.C)
     sin_cerrar = sum(1 for e in estados_repo.values() if e is EstadoFuncion.NO_COINCIDENTE)
     assert resumen.startswith(f"progreso: {en_c} funciones del juego en C de ")

@@ -185,7 +185,7 @@ antes de lanzar, porque el emulador arranca en esa carpeta y no en la del llamad
 | `comparar --volcado <ram.bin> --direccion 0x80014A00 (--archivo <f> [--offset-archivo 0x800] \| --volcado-b <ram2.bin>) [--longitud N]` | Compara una region de la RAM con un archivo u otro volcado |
 
 Un puerto ocupado produce un error y salida 1 en `arrancar` y `sesion`, sin lanzar nada. `volcar` y
-`capturar` se niegan a escribir dentro de la carpeta que contiene la imagen resuelta desde `BBLIT_DISC` (cualquiera de sus cinco formas, resueltas con `localizar_imagen` de `tools.reconstruccion`) ni en una carpeta con `fs/`; si el disco no se puede resolver, no se protege ninguna carpeta.
+`capturar` se niegan a escribir dentro de la carpeta que contiene la imagen resuelta desde `BBLIT_DISC` (cualquiera de sus cinco formas, resueltas con `localizar_imagen` de `psxdecomp.construccion.infraestructura`) ni en una carpeta con `fs/`; si el disco no se puede resolver, no se protege ninguna carpeta.
 
 ### Hitos de la sesion
 

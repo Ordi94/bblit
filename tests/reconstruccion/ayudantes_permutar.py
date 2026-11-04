@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from tools.reconstruccion.infraestructura import ProcesoError
+from psxdecomp.construccion.infraestructura import ProcesoError
 
 FUNCION = "func_80036204"
 ASM_FUNCION = """

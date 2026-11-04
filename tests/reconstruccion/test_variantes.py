@@ -8,15 +8,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import compilacion as comp
-from tools.reconstruccion import diff, dominio, variantes
-from tools.reconstruccion import infraestructura as infra
 
 from psxdecomp.construccion import infraestructura as infra_kit
 
 from .ayudantes_diff import ASM_FUNCION, EjecutorDiff
 from .ayudantes_infra import REFERENCIA
 from .ayudantes_variantes import EjecutorVariantes, crear_repo, crear_variantes, escribir_opciones
+from .proyecto_real import comp, diff, dominio, infra, variantes
 from .test_compilacion import (
     SALIDA_OBJDUMP,
     SCRIPT_MIXTO,
@@ -76,7 +74,7 @@ def test_comando_compilar_lleva_el_valor_de_g() -> None:
     assert comp.comando_compilar(Path("CC1PSX.EXE"), "a.i", "a.s")[3] == "-G0"
     for malo in (-1, 65, True, "8"):
         with pytest.raises(ValueError, match="entero entre 0 y 64"):
-            comp.comando_compilar(Path("CC1PSX.EXE"), "a.i", "a.s", malo)  # type: ignore[arg-type]
+            comp.comando_compilar(Path("CC1PSX.EXE"), "a.i", "a.s", malo)
 
 
 def comando_de_compilador(ejecutor: EjecutorC) -> list[str]:

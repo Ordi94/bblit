@@ -9,10 +9,12 @@ from typing import Any
 
 import pytest
 import yaml
-from tools.reconstruccion import cli, dominio
-from tools.reconstruccion import infraestructura as infra
-from tools.toolchain.configuracion import leer_local_toml, resolver_rutas
-from tools.toolchain.instalacion import leer_lock, resolver_herramienta
+from tools.proyecto import VARIABLES
+
+from psxdecomp.toolchain.configuracion import leer_local_toml, resolver_rutas
+from psxdecomp.toolchain.instalacion import leer_lock, resolver_herramienta
+
+from .proyecto_real import cli, dominio, infra
 
 RAIZ_REPO = Path(__file__).resolve().parents[2]
 SHA256_ORIGINAL = "0fad70d9b4cb324d78f113f7fd70c0aa954388fefad01af373509e0473c87df0"
@@ -80,8 +82,8 @@ def test_la_configuracion_no_contiene_rutas_de_ninguna_maquina() -> None:
 
 
 def entorno_real(tmp_path: Path) -> Any:
-    local = leer_local_toml(RAIZ_REPO / "config" / "local.toml")
-    rutas = resolver_rutas(RAIZ_REPO, os.environ, local)
+    local = leer_local_toml(RAIZ_REPO / "config" / "local.toml", etiqueta="config/local.toml")
+    rutas = resolver_rutas(RAIZ_REPO, os.environ, local, variables=VARIABLES)
     referencia = infra.leer_referencia(RAIZ_REPO / "config" / "ejecutable.json")
     try:
         original = infra.obtener_original(tmp_path / "comprobacion", rutas.disc, referencia)
@@ -96,7 +98,7 @@ def entorno_real(tmp_path: Path) -> Any:
         resolver_herramienta(lock, rutas.toolchain, "maspsx", "maspsx")
         resolver_herramienta(lock, rutas.toolchain, "asm-differ", "diff")
     except FileNotFoundError:
-        pytest.skip("requiere el toolchain instalado (python -m tools.toolchain instalar)")
+        pytest.skip("requiere el toolchain instalado (python -m psxdecomp.toolchain instalar)")
     return rutas, original
 
 

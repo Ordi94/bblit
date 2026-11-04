@@ -1,11 +1,12 @@
 """La linea de ordenes del juego es la del kit con su manifiesto: ordenes y ayuda, progreso incluido."""
 
 import pytest
-from tools.reconstruccion import cli
-from tools.toolchain.contexto import PROYECTO, RAIZ_REPOSITORIO
+from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO
 
 from psxdecomp.cli import main as main_del_kit
 from psxdecomp.cli import orden_progreso
+
+from .proyecto_real import cli
 
 ORDENES = ["split", "build", "verify", "clean", "diff", "probar", "permutar", "verificar-config", "progreso"]
 

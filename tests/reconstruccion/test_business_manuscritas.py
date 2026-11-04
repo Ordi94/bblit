@@ -2,11 +2,14 @@
 
 import json
 from pathlib import Path
+from typing import cast
 
 import pytest
-from tools.reconstruccion import cli, fuentes_c, progreso
-from tools.reconstruccion.fuentes_c import EstadoFuncion, MarcaAsm
-from tools.reconstruccion.progreso import FuncionSimbolo
+
+from psxdecomp.diff.fuentes_c import EstadoFuncion, MarcaAsm
+from psxdecomp.progreso.calculo import FuncionSimbolo
+
+from .proyecto_real import cli, fuentes_c, progreso
 
 SIMBOLOS = (
     "func_80014AC4 = 0x80014AC4; // type:func size:0x10\n"
@@ -83,7 +86,7 @@ def test_un_archivo_sin_include_asm_no_tiene_marcas() -> None:
 
 
 def tabla() -> list[FuncionSimbolo]:
-    return progreso.leer_simbolos(SIMBOLOS)
+    return cast(list[FuncionSimbolo], progreso.leer_simbolos(SIMBOLOS))
 
 
 def test_progreso_lista_aparte_las_manuscritas_con_su_tamano_y_no_las_cuenta_como_c() -> None:

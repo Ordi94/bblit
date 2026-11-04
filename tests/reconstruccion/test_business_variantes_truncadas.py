@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import pytest
-from tools.reconstruccion import diff, variantes
 
 from .ayudantes_variantes import EjecutorVariantes, crear_repo, crear_variantes
+from .proyecto_real import diff, variantes
 from .test_cli import ejecutar_cli, entorno_completo, entorno_repo  # noqa: F401 - fixtures reutilizadas
 from .test_compilacion import SALIDA_OBJDUMP, herramientas_compilacion
 

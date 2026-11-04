@@ -3,14 +3,19 @@
 from pathlib import Path
 
 import pytest
-from tools.reconstruccion import cli, diff, progreso
-from tools.reconstruccion.diff import ResultadoDiff
 
+from psxdecomp.diff.comparacion import ResultadoDiff
+
+from .proyecto_real import cli, diff, progreso
 from .test_gp import EjecutorEnlace, crear_repo_diff, herramientas_con_enlace
 
 
 def comparar(raiz: Path, ejecutor: EjecutorEnlace) -> ResultadoDiff:
-    return diff.comparar_funcion(raiz, "func_80036204", herramientas_con_enlace(), Path("diff.py"), ejecutor)
+    resultado = diff.comparar_funcion(
+        raiz, "func_80036204", herramientas_con_enlace(), Path("diff.py"), ejecutor
+    )
+    assert isinstance(resultado, ResultadoDiff)
+    return resultado
 
 
 def test_si_los_bytes_enlazados_coinciden_la_puntuacion_informada_es_cero(tmp_path: Path) -> None:

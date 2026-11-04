@@ -59,6 +59,7 @@ volcados) se genera localmente y esta excluido del control de versiones.
 
 | Comando | Para que sirve |
 |---|---|
+| `python -m psxdecomp.cli <orden>` | Entrada preferente: la linea de ordenes del kit (`kit/`) con el manifiesto `psxdecomp.toml`; mismas ordenes que `tools/build.py`, que se conserva como envoltorio |
 | `python tools/build.py split` | Particiona el ejecutable con splat (genera `asm/` y los `src/*.c` que falten) |
 | `python tools/build.py build` | Compila los `src/*.c`, ensambla el resto y enlaza `build/SLUS_008.38` |
 | `python tools/build.py verify` | Compara el SHA-256 del ejecutable reconstruido con el original |

@@ -3,8 +3,8 @@
 from pathlib import Path
 
 import pytest
-from tools.reconstruccion import cli, fuentes_c, progreso
-from tools.reconstruccion.infraestructura import listar_fuentes_c
+
+from .proyecto_real import cli, fuentes_c, infra, progreso
 
 RAIZ_REPO = Path(__file__).resolve().parents[2]
 SIMBOLOS = "func_80014AC4 = 0x80014AC4; // type:func size:0x10\n"
@@ -156,7 +156,7 @@ def test_progreso_con_la_linea_pendiente_lista_el_motivo(tmp_path: Path) -> None
 
 
 def test_el_repositorio_tiene_una_linea_pendiente_por_cada_bloque_non_matching() -> None:
-    textos = listar_fuentes_c(RAIZ_REPO)
+    textos = infra.listar_fuentes_c(RAIZ_REPO)
     bloques = sum(len(fuentes_c.bloques_no_coincidentes(texto)) for texto in textos.values())
     pendientes = sum(
         1

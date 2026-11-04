@@ -53,6 +53,14 @@ python -m tools.ghidra informe  --funciones <funciones.csv> [--verificar config/
 - `informe` imprime los conteos y la cobertura; con `--verificar` lee `symbols.txt` con el lector
   propio y comprueba el contrato.
 
+### Fuente de los limites de memoria
+
+`tools/ghidra` no declara la base, el tamano del segmento ni la entrada: `DIRECCION_BASE`, `TAMANO_SEGMENTO` y
+`DIRECCION_ENTRADA` se leen de `config/ejecutable.json` (`t_addr`, `t_size` y `pc0`, por `leer_referencia` del kit)
+y las zonas de codigo (`INICIO_JUEGO`, `FIN_JUEGO` y `FIN_CODIGO`) de `[zonas]` en `psxdecomp.toml`. Una prueba
+compara las constantes con ambos archivos, de modo que no hay dos copias que puedan separarse. Las regiones de
+datos y los cortes de subsistemas son datos del juego y se quedan en sus modulos.
+
 ### Pasos del analisis
 
 1. Importacion con el cargador PSX (`gp0 = 0`, un segmento de `0x55000` bytes en `0x80014A00`).

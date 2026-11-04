@@ -2,16 +2,15 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import compilacion as comp
-from tools.reconstruccion import infraestructura as infra
-from tools.reconstruccion.compilacion import HerramientasCompilacion
-from tools.reconstruccion.infraestructura import Herramientas, ProcesoError
-from tools.toolchain.dominio import cargar_lock
 
 from psxdecomp.construccion import infraestructura as infra_kit
+from psxdecomp.construccion.compilacion import HerramientasCompilacion
+from psxdecomp.construccion.infraestructura import Herramientas, ProcesoError
+from psxdecomp.toolchain.dominio import cargar_lock
 from toolchain.ayudantes import bloque_componente, lock_de
 
 from .ayudantes_infra import CUERPO, EJECUTABLE, REFERENCIA, Registro
+from .proyecto_real import comp, infra
 
 SALIDA_OBJDUMP = """
 build/src/a.c.o:     file format elf32-littlemips

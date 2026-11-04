@@ -10,14 +10,16 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
-from tools.reconstruccion import diff, variantes
-from tools.reconstruccion.infraestructura import ProcesoError
+
+from psxdecomp.construccion.infraestructura import ProcesoError
+from psxdecomp.diff.comparacion import ResultadoDiff
 
 from .ayudantes_diff import ASM_FUNCION
 from .ayudantes_variantes import EjecutorVariantes, crear_repo, crear_variantes
+from .proyecto_real import diff, variantes
 from .test_compilacion import SALIDA_OBJDUMP, herramientas_compilacion
 
 PUNTUACIONES = {"func_A": 111, "func_B": 222}
@@ -69,9 +71,12 @@ def repo_dos_funciones(tmp_path: Path) -> Path:
     return raiz
 
 
-def comparar(raiz: Path, ejecutor: EjecutorConcurrente, funcion: str) -> diff.ResultadoDiff:
+def comparar(raiz: Path, ejecutor: EjecutorConcurrente, funcion: str) -> ResultadoDiff:
     ejecutor.local.funcion = funcion
-    return diff.comparar_funcion(raiz, funcion, herramientas_compilacion(), Path("diff.py"), ejecutor)
+    return cast(
+        ResultadoDiff,
+        diff.comparar_funcion(raiz, funcion, herramientas_compilacion(), Path("diff.py"), ejecutor),
+    )
 
 
 def test_dos_diff_concurrentes_sobre_funciones_del_mismo_archivo_dan_cada_uno_su_puntuacion(

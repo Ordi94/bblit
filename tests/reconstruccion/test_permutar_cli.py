@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import cli
 
 from .ayudantes_permutar import ARCHIVO_C, ASM_FUNCION, FUNCION, EjecutorPermutar
+from .proyecto_real import cli
 from .test_cli import ejecutar_cli, entorno_completo, entorno_repo  # noqa: F401 - fixtures y ayudante
 
 

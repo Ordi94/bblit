@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import dominio as reconstruccion
 
+from psxdecomp.construccion import dominio as reconstruccion
 from psxdecomp.toolchain import instalacion
 from psxdecomp.toolchain.dominio import host_admitido
 

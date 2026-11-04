@@ -4,11 +4,12 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
-from tools.reconstruccion import dominio
-from tools.reconstruccion import infraestructura as infra
-from tools.reconstruccion.dominio import CabeceraPsx, EjecutableReferencia
-from tools.reconstruccion.infraestructura import Herramientas
-from tools.toolchain.contexto import PROYECTO
+from tools.proyecto import PROYECTO
+
+from psxdecomp.construccion.dominio import CabeceraPsx, EjecutableReferencia
+from psxdecomp.construccion.infraestructura import Herramientas
+
+from .proyecto_real import dominio, infra
 
 CUERPO = bytes(range(16))
 CABECERA = CabeceraPsx(0x80010008, 0, 0x80010000, 16, 0, 0, 0, 0, 0x801FFFF0, 0, "Region de prueba")

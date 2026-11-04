@@ -2,12 +2,14 @@
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
-from tools.reconstruccion import cli, diff
+
+from psxdecomp.diff.comparacion import ResultadoDiff
 
 from .ayudantes_diff import ASM_FUNCION, EjecutorDiff, repo_diff  # noqa: F401 - fixture reutilizada
+from .proyecto_real import cli, diff
 from .test_compilacion import herramientas_compilacion
 from .test_gp import EjecutorEnlace, crear_repo_diff, herramientas_con_enlace
 
@@ -97,9 +99,12 @@ def fila(mnemonico: str | None) -> dict[str, Any]:
     return {"base": {"text": []}, "current": columna}
 
 
-def comparar_con_filas(raiz: Path, filas: list[Any]) -> diff.ResultadoDiff:
-    return diff.comparar_funcion(
-        raiz, "func_80036204", herramientas_compilacion(), Path("diff.py"), EjecutorDiff(0, filas=filas)
+def comparar_con_filas(raiz: Path, filas: list[Any]) -> ResultadoDiff:
+    return cast(
+        ResultadoDiff,
+        diff.comparar_funcion(
+            raiz, "func_80036204", herramientas_compilacion(), Path("diff.py"), EjecutorDiff(0, filas=filas)
+        ),
     )
 
 
@@ -159,11 +164,14 @@ def test_el_truncado_se_distingue_con_el_limite_real_de_una_funcion_de_mas_de_10
     assert con_el_minimo.truncado is False, "un candidato de 1024 filas cabe en el limite de 1564"
 
 
-def comparar_truncado_con_enlace(raiz: Path, *, difiere: bool) -> diff.ResultadoDiff:
+def comparar_truncado_con_enlace(raiz: Path, *, difiere: bool) -> ResultadoDiff:
     """Compara con puntuacion parcial 0, candidato truncado y enlace byte a byte configurable."""
     ejecutor = EjecutorEnlace(0, difiere=difiere)
     ejecutor.filas = [fila("addiu")] * 1024
-    return diff.comparar_funcion(raiz, "func_80036204", herramientas_con_enlace(), Path("diff.py"), ejecutor)
+    return cast(
+        ResultadoDiff,
+        diff.comparar_funcion(raiz, "func_80036204", herramientas_con_enlace(), Path("diff.py"), ejecutor),
+    )
 
 
 def test_puntuacion_cero_truncada_con_bytes_distintos_no_coincide(tmp_path: Path) -> None:

@@ -7,13 +7,13 @@ import json
 from pathlib import Path
 
 import pytest
-from tools.reconstruccion import cli, dominio
-from tools.reconstruccion import infraestructura as infra
-from tools.reconstruccion.dominio import SimboloDeclarado
-from tools.toolchain.contexto import PROYECTO
+from tools.proyecto import PROYECTO
 
 from psxdecomp.cli import Contexto, comandos
 from psxdecomp.construccion import infraestructura as infra_kit
+from psxdecomp.construccion.dominio import SimboloDeclarado
+
+from .proyecto_real import cli, dominio, infra
 
 RAIZ_REPO = Path(__file__).resolve().parents[2]
 SIMBOLOS = (

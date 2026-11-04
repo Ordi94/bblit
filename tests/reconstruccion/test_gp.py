@@ -1,21 +1,19 @@
 """Soporte de ``$gp`` y datos pequenos, y comparacion por bytes tras enlazar."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
-from tools.reconstruccion import compilacion as comp
-from tools.reconstruccion import diff, dominio, enlace_diff, variantes
-from tools.reconstruccion import infraestructura as infra
-from tools.reconstruccion.compilacion import HerramientasCompilacion
-from tools.reconstruccion.infraestructura import ProcesoError
-from tools.reconstruccion.variantes import ResultadoVariante
 
 from psxdecomp.construccion import infraestructura as infra_kit
+from psxdecomp.construccion.compilacion import HerramientasCompilacion
+from psxdecomp.construccion.infraestructura import ProcesoError
+from psxdecomp.diff.variantes import ResultadoVariante
 
 from .ayudantes_diff import ASM_FUNCION, EjecutorDiff
 from .ayudantes_infra import REFERENCIA
 from .ayudantes_variantes import EjecutorVariantes, crear_variantes, escribir_opciones
+from .proyecto_real import comp, diff, dominio, enlace_diff, infra, variantes
 from .test_compilacion import (
     SALIDA_OBJDUMP,
     SCRIPT_MIXTO,
@@ -213,14 +211,17 @@ def preparar_elf(raiz: Path) -> None:
 
 
 def comparar_bytes(raiz: Path, ejecutor: EjecutorEnlace, direccion: int = 0x80036204) -> bool | None:
-    return enlace_diff.bytes_coinciden(
-        raiz,
-        herramientas_con_enlace(),
-        ejecutor,
-        funcion="func_80036204",
-        direccion=direccion,
-        candidato="build/diff/cand.o",
-        objetivo="build/diff/objetivo.o",
+    return cast(
+        bool | None,
+        enlace_diff.bytes_coinciden(
+            raiz,
+            herramientas_con_enlace(),
+            ejecutor,
+            funcion="func_80036204",
+            direccion=direccion,
+            candidato="build/diff/cand.o",
+            objetivo="build/diff/objetivo.o",
+        ),
     )
 
 

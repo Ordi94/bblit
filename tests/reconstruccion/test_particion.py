@@ -4,13 +4,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import compilacion as comp
-from tools.reconstruccion import dominio, fuentes_c, progreso
-from tools.reconstruccion import infraestructura as infra
-from tools.reconstruccion.fuentes_c import EstadoFuncion
-from tools.reconstruccion.progreso import FuncionSimbolo
+
+from psxdecomp.diff.fuentes_c import EstadoFuncion
+from psxdecomp.progreso.calculo import FuncionSimbolo
 
 from .ayudantes_infra import EJECUTABLE, REFERENCIA, Registro
+from .proyecto_real import comp, dominio, fuentes_c, infra, progreso
 from .test_compilacion import (
     SALIDA_OBJDUMP,
     SCRIPT_MIXTO,

@@ -4,10 +4,10 @@ import json
 from pathlib import Path
 from typing import Any, ClassVar
 
-from tools.reconstruccion import infraestructura as infra
-from tools.reconstruccion.infraestructura import ProcesoError
+from psxdecomp.construccion.infraestructura import ProcesoError
 
 from .ayudantes_diff import ASM_FUNCION
+from .proyecto_real import infra
 from .test_compilacion import EjecutorC
 
 

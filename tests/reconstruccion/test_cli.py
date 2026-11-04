@@ -6,15 +6,15 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import cli
-from tools.reconstruccion import infraestructura as infra
 
+from psxdecomp.cli import main as main_del_kit
 from psxdecomp.construccion import infraestructura as infra_kit
 from toolchain.ayudantes import bloque_componente, lock_de
 
 from .ayudantes_diff import ASM_FUNCION, EjecutorDiff
 from .ayudantes_infra import EJECUTABLE, REFERENCIA, Registro, referencia_json
 from .ayudantes_variantes import EjecutorVariantes, crear_repo, crear_variantes
+from .proyecto_real import cli, infra
 from .test_compilacion import SALIDA_OBJDUMP, EjecutorC
 from .test_gp import EjecutorEnlace
 
@@ -181,7 +181,7 @@ def test_el_entorno_por_defecto_es_os_environ(
 
 
 def test_script_tools_build_expone_main_y_agrega_la_raiz_al_camino(monkeypatch: pytest.MonkeyPatch) -> None:
-    ruta = Path(cli.__file__).resolve().parents[1] / "build.py"
+    ruta = cli.RAIZ_REPOSITORIO / "tools" / "build.py"
     monkeypatch.setattr(sys, "argv", ["build.py", "clean-no-existe"])
     monkeypatch.setattr(sys, "path", [p for p in sys.path if p != str(ruta.parents[1])])
     with pytest.raises(SystemExit) as salida:
@@ -190,8 +190,21 @@ def test_script_tools_build_expone_main_y_agrega_la_raiz_al_camino(monkeypatch: 
     assert str(ruta.parents[1]) in sys.path
 
 
-def test_modulo_build_reexporta_main() -> None:
-    assert importlib.import_module("tools.build").main is cli.main
+def test_modulo_build_usa_la_linea_de_ordenes_del_kit() -> None:
+    assert importlib.import_module("tools.build").main is main_del_kit
+
+
+def test_el_script_build_imprime_la_misma_ayuda_que_el_analizador_del_juego(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ruta = cli.RAIZ_REPOSITORIO / "tools" / "build.py"
+    monkeypatch.setattr(sys, "argv", ["build.py", "--help"])
+    with pytest.raises(SystemExit) as salida:
+        runpy.run_path(str(ruta), run_name="__main__")
+    assert salida.value.code == 0
+    ayuda = capsys.readouterr().out
+    assert ayuda.startswith("usage: python tools/build.py ")
+    assert " ".join(ayuda.split()) == " ".join(cli.construir_parser().format_help().split())
 
 
 @pytest.fixture
