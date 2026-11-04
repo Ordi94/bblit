@@ -1089,7 +1089,7 @@ busca_objetivo:
         t->p30.vz = o->param.trans.vz - t->aux->param.trans.vz;
     } else {
         t->p30.vx = t->aux->param.trans.vx - o->param.trans.vx;
-        t->p30.vy = t->aux->param.trans.vy + 0x32 + t->aux->max.vy - o->param.trans.vy;
+        t->p30.vy = t->aux->max.vy + 0x32 + t->aux->param.trans.vy - o->param.trans.vy;
         t->p30.vz = t->aux->param.trans.vz - o->param.trans.vz;
     }
     if ((t->banderas & 0x30000000) == 0x20000000) {
@@ -1102,11 +1102,11 @@ busca_objetivo:
     t->w114 = ratan2(t->p30.vx, t->p30.vz);
     if (t->banderas & 0x1000) {
         /* giro directo hacia el objetivo, relativo al ayudante si lo hay */
+        giro = t->w114;
         if (o->coord.super != 0) {
-            o->coord.param->rotate.vy = t->w114 - o->coord.super->param->rotate.vy;
-        } else {
-            o->coord.param->rotate.vy = t->w114;
+            giro = giro - o->coord.super->param->rotate.vy;
         }
+        o->coord.param->rotate.vy = giro;
         goto L_80028FD0;
     }
     if (t->w114 < 0) {
