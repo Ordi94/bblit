@@ -1529,8 +1529,9 @@ L_80029EF8:
 
 L_80029F28:
     /* Sin desplazamiento pedido no hay barrido de colision. */
+    giro = t->d.vx | t->d.vy;
     if (t->d.vz == 0) {
-        if ((t->d.vx | t->d.vy) == 0) goto L_8002A034;
+        if (giro == 0) goto L_8002A034;
     }
     if (t->banderas >= 0) {
         if (!(t->fot->w10 & 0x20002) && o->p70 == 0) {
@@ -1647,8 +1648,8 @@ L_8002A448:
             t->vC0.vy = o->param.trans.vy;
             t->vC0.vz = o->p70->param.trans.vz;
             t->pF0.vx = o->param.trans.vx - o->p70->param.trans.vx;
-            t->pF0.vy = 0;
             t->pF0.vz = o->param.trans.vz - o->p70->param.trans.vz;
+            t->pF0.vy = 0;
             t->res.grupo = o->w26;
             BarrerTerreno(&t->vC0, &t->pF0, &t->res, area);
             o->param.trans.vx = o->p70->param.trans.vx + t->pF0.vx;
@@ -1674,12 +1675,13 @@ L_8002A448:
             BarrerTerreno(&t->pF0, &t->p30, &t->res, area);
             o->param.trans.vx = o->p70->param.trans.vx + t->p30.vx;
             arg_giro = o->p70->param.trans.vz;
+            giro = t->p30.vz;
             o->coord.param = PARAMETROS_SDK(o);
             o->param.giro.u.z = 0;
             o->coord.super = 0;
             o->p70 = 0;
             o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x200;
-            o->param.trans.vz = arg_giro + t->p30.vz;
+            o->param.trans.vz = arg_giro + giro;
 L_8002A6A0:
             func_8001CFCC(&o->coord);
         }
@@ -1713,9 +1715,9 @@ L_8002A804:
         D_8006AA70[1] = (o->s1E << 7) / (s16)D_800693D0;
     }
     if (t->fot->w0A == 0) goto L_8002B6D4;
+    t->w_b0 = (s32)((u8*)o->apoyos + t->fot->w1E);
     t->w_d4 = 0;
     t->w_d8 = 0;
-    t->w_b0 = (s32)((u8*)o->apoyos + t->fot->w1E);
     t->w_dc = -1;
     t->nodo = (NodoDisparador*)t->w_b0;
     if (t->nodo == 0) goto L_8002B6D4;
@@ -1867,12 +1869,7 @@ L_8002AC3C:
     }
     if (t->banderas & 0x24041120) {
         if (t->banderas & 0x40100) {
-            if (o->raiz_ayudantes != 0) {
-                pos_hijo = (s32*)&o->objetivo;
-            } else {
-                pos_hijo = (s32*)&o->param.trans;
-            }
-            t->hijo = func_80036734((s16)t->nodo->p20, pos_hijo, &o->param.giro.u.x);
+            t->hijo = func_80036734((s16)t->nodo->p20, (s32*)(o->raiz_ayudantes != 0 ? (void*)&o->objetivo : (void*)&o->param.trans), &o->param.giro.u.x);
             if (t->hijo == 0) {
                 goto L_8002B3B4;
             }
