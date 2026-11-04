@@ -777,8 +777,8 @@ L_80027D04:
                 }
             } else {
                 suelo = t->p30.vy + (s16)t->res.pendiente;
-                t->w114 = suelo - 0x190;
                 t->w118 = suelo - 0x258;
+                t->w114 = suelo - 0x190;
             }
             /* Histeresis: el sentido solo cambia al salir de la banda [w118, w114]. */
             if (t->w114 < o->param.trans.vy) {
