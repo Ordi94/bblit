@@ -1,10 +1,11 @@
-"""Aviso de coherencia entre el comentario ``Pendiente`` y la ultima medicion de ``diff``.
+"""Aviso de coherencia entre la linea de pendiente de un intento y la ultima medicion de ``diff``.
 
-El comentario ``Pendiente: puntuacion N`` de una funcion ``NON_MATCHING`` se escribe a mano y se
-queda viejo cuando cambia la herramienta de medida (por ejemplo, el limite de lineas de
-``asm-differ``). Este modulo lo contrasta con ``build/diff/<funcion>.resultado.json``, que deja
-``diff`` al terminar, y solo cuando esa medicion es posterior a la ultima edicion del archivo C.
-Nunca ejecuta ``diff``: sin medicion reciente no dice nada.
+La linea de pendiente (``Pendiente: puntuacion N``, o la que declare ``[convenciones].pendiente``) de
+una funcion no coincidente se escribe a mano y se queda vieja cuando cambia la herramienta de medida
+(por ejemplo, el limite de lineas de ``asm-differ``). Este modulo la contrasta con
+``<build>/diff/<funcion>.resultado.json``, que deja ``diff`` al terminar, y solo cuando esa medicion
+es posterior a la ultima edicion del archivo C. Nunca ejecuta ``diff``: sin medicion reciente no dice
+nada. Las rutas y la convencion de la linea de pendiente llegan por parametro desde el manifiesto.
 """
 
 from __future__ import annotations
@@ -13,13 +14,14 @@ import json
 from collections.abc import Mapping
 from pathlib import Path
 
-from tools.reconstruccion.diff import ruta_resultado, validar_funcion
-from tools.reconstruccion.fuentes_c import bloques_no_coincidentes, puntuacion_pendiente
+from psxdecomp.diff.comparacion import ruta_resultado, validar_funcion
+from psxdecomp.diff.fuentes_c import bloques_no_coincidentes, puntuacion_pendiente
+from psxdecomp.dominio import Convenciones, Rutas
 
 MAX_BYTES_RESULTADO = 4096
 
 
-def leer_puntuacion_medida(raiz: Path, funcion: str, referencia_mtime: float) -> int | None:
+def leer_puntuacion_medida(raiz: Path, funcion: str, referencia_mtime: float, *, rutas: Rutas) -> int | None:
     """
     Lee la ultima puntuacion medida de una funcion si es reciente y tiene la forma esperada.
 
@@ -27,10 +29,11 @@ def leer_puntuacion_medida(raiz: Path, funcion: str, referencia_mtime: float) ->
         El archivo lo escribe otro proceso en cualquier momento: se trata como entrada no confiable.
 
     Args:
-        raiz (Path): Raiz del repositorio.
+        raiz (Path): Raiz del proyecto.
         funcion (str): Funcion a consultar.
         referencia_mtime (float): Fecha de modificacion del archivo C; una medicion anterior no es
             reciente.
+        rutas (Rutas): Seccion ``[rutas]``; fija la carpeta donde ``diff`` deja sus resultados.
 
     Returns:
         int | None: La puntuacion, o ``None`` si falta, es anterior a la edicion, es demasiado
@@ -38,9 +41,9 @@ def leer_puntuacion_medida(raiz: Path, funcion: str, referencia_mtime: float) ->
         medicion fue parcial (``truncado``): una cifra parcial no se contrasta con el comentario.
 
     Ejemplo:
-        medida = leer_puntuacion_medida(Path("."), "func_80036204", 0.0)
+        medida = leer_puntuacion_medida(Path("."), "rutina_a", 0.0, rutas=proyecto.rutas)
     """
-    ruta = raiz / ruta_resultado(funcion)
+    ruta = raiz / ruta_resultado(funcion, rutas=rutas)
     try:
         estado = ruta.stat()
         if estado.st_mtime < referencia_mtime or estado.st_size > MAX_BYTES_RESULTADO:
@@ -58,24 +61,31 @@ def leer_puntuacion_medida(raiz: Path, funcion: str, referencia_mtime: float) ->
     return puntos
 
 
-def avisos_puntuacion_pendiente(raiz: Path, textos: Mapping[str, str]) -> list[str]:
+def avisos_puntuacion_pendiente(
+    raiz: Path, textos: Mapping[str, str], *, rutas: Rutas, convenciones: Convenciones
+) -> list[str]:
     """
-    Avisa de cada ``NON_MATCHING`` cuya cifra ``Pendiente`` difiere de la ultima medicion de ``diff``.
+    Avisa de cada intento no coincidente cuya cifra de pendiente difiere de la ultima medicion de ``diff``.
 
     Contexto:
-        Lo imprime ``progreso`` por la salida de errores. Solo informa: la cifra se corrige a mano
-        en el comentario, porque ``diff`` no escribe en ``src/``.
+        Lo imprime la medicion de progreso del proyecto por la salida de errores. Solo informa: la cifra
+        se corrige a mano en el comentario, porque ``diff`` no escribe en los fuentes.
 
     Args:
-        raiz (Path): Raiz del repositorio.
+        raiz (Path): Raiz del proyecto.
         textos (Mapping[str, str]): Texto por archivo C (clave: ruta relativa a la raiz).
+        rutas (Rutas): Seccion ``[rutas]`` del manifiesto.
+        convenciones (Convenciones): Macro del intento no coincidente y expresion de la linea de
+            pendiente.
 
     Returns:
         list[str]: Un aviso por funcion que difiere, ordenados por archivo y linea; vacia si no hay
         mediciones recientes o todas coinciden.
 
     Ejemplo:
-        avisos = avisos_puntuacion_pendiente(Path("."), {"src/a.c": texto})
+        avisos = avisos_puntuacion_pendiente(
+            Path("."), {"codigo/a.c": texto}, rutas=proyecto.rutas, convenciones=proyecto.convenciones
+        )
     """
     avisos: list[str] = []
     for archivo in sorted(textos):
@@ -83,16 +93,16 @@ def avisos_puntuacion_pendiente(raiz: Path, textos: Mapping[str, str]) -> list[s
             referencia = (raiz / archivo).stat().st_mtime
         except OSError:
             continue
-        for bloque in bloques_no_coincidentes(textos[archivo]):
-            declarada = puntuacion_pendiente(bloque)
+        for bloque in bloques_no_coincidentes(textos[archivo], convenciones):
+            declarada = puntuacion_pendiente(bloque, convenciones)
             try:
                 validar_funcion(bloque.funcion)
             except ValueError:
                 continue
-            medida = leer_puntuacion_medida(raiz, bloque.funcion, referencia)
+            medida = leer_puntuacion_medida(raiz, bloque.funcion, referencia, rutas=rutas)
             if declarada is not None and medida is not None and medida != declarada:
                 avisos.append(
-                    f"{archivo}:{bloque.linea} {bloque.funcion}: el comentario Pendiente dice {declarada} "
-                    f"y la ultima medicion de diff da {medida}"
+                    f"{archivo}:{bloque.linea} {bloque.funcion}: el comentario Pendiente dice "
+                    f"{declarada} y la ultima medicion de diff da {medida}"
                 )
     return avisos

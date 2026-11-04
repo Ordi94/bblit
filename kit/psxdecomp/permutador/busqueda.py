@@ -1,12 +1,13 @@
-"""Permutador: busca la forma de C que hace coincidir una funcion ``NON_MATCHING``.
+"""Busqueda: encuentra la forma de C que hace coincidir una funcion no coincidente.
 
-``python tools/build.py permutar <funcion>`` parte del C vigente de la funcion, genera variantes con
-mutaciones que conservan su significado (``permutar_mutaciones``), mide cada una con la misma
-cadena y la misma puntuacion que ``diff`` (``permutar_evaluacion``) en varios hilos y avanza por
-escalada con reinicios aleatorios. Solo el compilador real decide en cada paso.
+La orden ``permutar <funcion>`` parte del C vigente de la funcion, genera variantes con mutaciones que
+conservan su significado (``permutador.mutaciones``), mide cada una con la misma cadena y la misma
+puntuacion que ``diff`` (``permutador.evaluacion``) en varios hilos y avanza por escalada con
+reinicios aleatorios. Solo el compilador real decide en cada paso.
 
-Nunca modifica ``src/``. El resultado es ``build/permutar/<funcion>/mejor.c``, un candidato que una
-persona aplica despues de leerlo.
+Nunca modifica la carpeta de fuentes. El resultado es ``<build>/permutar/<funcion>/mejor.c``, un
+candidato que una persona aplica despues de leerlo. Las rutas, las convenciones y la cadena de
+compilacion llegan por parametro desde el manifiesto del proyecto.
 """
 
 from __future__ import annotations
@@ -20,15 +21,16 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tools.reconstruccion import permutar_analisis as an
-from tools.reconstruccion import permutar_c as c
-from tools.reconstruccion import permutar_estado as est
-from tools.reconstruccion import permutar_mutaciones as mut
-from tools.reconstruccion.compilacion import HerramientasCompilacion
-from tools.reconstruccion.diff import carpeta_de_trabajo, validar_funcion
-from tools.reconstruccion.fuentes_c import MAX_BYTES_FUENTE
-from tools.reconstruccion.infraestructura import Ejecutor
-from tools.reconstruccion.permutar_evaluacion import (
+from psxdecomp.construccion.compilacion import HerramientasCompilacion
+from psxdecomp.construccion.infraestructura import Ejecutor
+from psxdecomp.diff.comparacion import carpeta_de_trabajo, validar_funcion
+from psxdecomp.diff.fuentes_c import MAX_BYTES_FUENTE
+from psxdecomp.dominio import Compilacion, Convenciones, Rutas
+from psxdecomp.permutador import analisis as an
+from psxdecomp.permutador import c
+from psxdecomp.permutador import estado as est
+from psxdecomp.permutador import mutaciones as mut
+from psxdecomp.permutador.evaluacion import (
     ObjetivoMedicion,
     ResultadoEvaluacion,
     evaluar,
@@ -59,7 +61,7 @@ class Opciones:
         minutos: Duracion maxima de esta sesion en minutos, o ``None`` si solo mandan las iteraciones.
         procesos: Mediciones simultaneas.
         semilla: Semilla aleatoria, o ``None`` para elegir una.
-        reanudar: Continuar la busqueda guardada en ``build/permutar/<funcion>/``.
+        reanudar: Continuar la busqueda guardada en ``<build>/permutar/<funcion>/``.
     """
 
     iteraciones: int | None = None
@@ -138,30 +140,31 @@ def validar_opciones(opciones: Opciones) -> Opciones:
     return opciones
 
 
-def leer_cabeceras(raiz: Path) -> list[str]:
+def leer_cabeceras(raiz: Path, *, rutas: Rutas) -> list[str]:
     """
-    Lee el texto de las cabeceras de ``include/`` para reunir los tipos de los campos.
+    Lee el texto de las cabeceras de la carpeta de inclusion para reunir los tipos de los campos.
 
     Contexto:
         La inferencia de tipos del permutador se apoya en las estructuras que declaran.
 
     Args:
-        raiz (Path): Raiz del repositorio.
+        raiz (Path): Raiz del proyecto.
+        rutas (Rutas): Seccion ``[rutas]``; ``incluir`` es la carpeta de cabeceras.
 
     Returns:
         list[str]: Texto de cada cabecera ``.h`` (las que pasan del tamano permitido se omiten).
 
     Ejemplo:
-        textos = leer_cabeceras(Path("."))
+        textos = leer_cabeceras(Path("."), rutas=proyecto.rutas)
     """
-    carpeta = raiz / "include"
+    carpeta = raiz / rutas.incluir
     if not carpeta.is_dir():
         return []
-    rutas = sorted(p for p in carpeta.rglob("*") if p.is_file() and p.suffix.lower() == ".h")
+    cabeceras = sorted(p for p in carpeta.rglob("*") if p.is_file() and p.suffix.lower() == ".h")
     return [
-        ruta.read_text(encoding="utf-8", errors="replace")
-        for ruta in rutas
-        if ruta.stat().st_size <= MAX_BYTES_FUENTE
+        cabecera.read_text(encoding="utf-8", errors="replace")
+        for cabecera in cabeceras
+        if cabecera.stat().st_size <= MAX_BYTES_FUENTE
     ]
 
 
@@ -409,7 +412,7 @@ def formatear_resumen(resumen: Resumen, raiz: Path) -> str:
 
     Args:
         resumen (Resumen): Resultado de la busqueda.
-        raiz (Path): Raiz del repositorio (la ruta del candidato se muestra relativa a ella).
+        raiz (Path): Raiz del proyecto (la ruta del candidato se muestra relativa a ella).
 
     Returns:
         str: Lineas de resumen.
@@ -460,6 +463,10 @@ def permutar_funcion(
     ejecutar: Ejecutor,
     *,
     opciones: Opciones,
+    rutas: Rutas,
+    convenciones: Convenciones,
+    compilacion: Compilacion,
+    nombre_ejecutable: str,
     salida: Callable[[str], None] = print,
     reloj: Callable[[], float] = time.monotonic,
 ) -> Resumen:
@@ -468,15 +475,19 @@ def permutar_funcion(
 
     Contexto:
         Implementa ``permutar``. Mide el C vigente, lo reescribe a un arbol, ejecuta la escalada y deja
-        el candidato en ``build/permutar/<funcion>/mejor.c``. No escribe en ``src/``.
+        el candidato en ``<build>/permutar/<funcion>/mejor.c``. No escribe en la carpeta de fuentes.
 
     Args:
-        raiz (Path): Raiz del repositorio.
+        raiz (Path): Raiz del proyecto.
         funcion (str): Nombre de la funcion.
         herramientas (HerramientasCompilacion): Herramientas de compilacion.
         script_diff (Path): Ruta de ``diff.py`` de ``asm-differ``.
         ejecutar (Ejecutor): Ejecutor de procesos.
         opciones (Opciones): Limites, paralelismo, semilla y reanudacion.
+        rutas (Rutas): Seccion ``[rutas]`` del manifiesto.
+        convenciones (Convenciones): Seccion ``[convenciones]`` (macros, simbolos y tope de ``-G``).
+        compilacion (Compilacion): Seccion ``[compilacion]`` (version de ``ASPSX`` y opciones).
+        nombre_ejecutable (str): Nombre del ejecutable reconstruido (fija el ELF de la ultima construccion).
         salida (Callable[[str], None], opcional): Destino de los avisos de progreso.
         reloj (Callable[[], float], opcional): Reloj monotono en segundos.
 
@@ -487,20 +498,34 @@ def permutar_funcion(
         ValueError: Si las opciones o el nombre no son validos, la funcion no tiene C que permutar, su C
             usa algo que el analizador no soporta, la reescritura no reproduce su puntuacion o no hay
             estado que reanudar.
-        FuncionSinCError: Si la funcion sigue solo en ``INCLUDE_ASM``.
+        FuncionSinCError: Si la funcion sigue solo en ensamblador.
         FileNotFoundError: Si falta el asm original (hay que ejecutar ``split``).
         ProcesoError: Si falla el ensamblado del objetivo.
 
     Ejemplo:
-        resumen = permutar_funcion(Path("."), "f", h, script, ejecutar, opciones=Opciones(minutos=10))
+        resumen = permutar_funcion(
+            Path("."), "rutina_a", h, script, ejecutar, opciones=Opciones(minutos=10), rutas=rutas,
+            convenciones=convenciones, compilacion=compilacion, nombre_ejecutable="EJEC_001.00",
+        )
     """
     validar_funcion(funcion)
     opciones = validar_opciones(opciones)
-    carpeta = est.carpeta_de(raiz, funcion)
-    with carpeta_de_trabajo(raiz, f"permutar-{funcion}-objetivo") as trabajo:
-        objetivo = preparar_medicion(raiz, funcion, herramientas, script_diff, ejecutar, carpeta=trabajo)
+    carpeta = est.carpeta_de(raiz, funcion, rutas.build)
+    with carpeta_de_trabajo(raiz, f"permutar-{funcion}-objetivo", rutas=rutas) as trabajo:
+        objetivo = preparar_medicion(
+            raiz,
+            funcion,
+            herramientas,
+            script_diff,
+            ejecutar,
+            carpeta=trabajo,
+            rutas=rutas,
+            convenciones=convenciones,
+            compilacion=compilacion,
+            nombre_ejecutable=nombre_ejecutable,
+        )
         texto_original = objetivo.texto_archivo[objetivo.inicio : objetivo.fin]
-        tabla = an.construir_tabla([*leer_cabeceras(raiz), objetivo.texto_archivo])
+        tabla = an.construir_tabla([*leer_cabeceras(raiz, rutas=rutas), objetivo.texto_archivo])
         base = c.analizar_funcion(texto_original, funcion, tabla.nombres_de_tipo)
         texto_base = c.imprimir_funcion(base)
 

@@ -1,10 +1,11 @@
 """Medicion de una variante de una funcion con la misma cadena y la misma puntuacion que ``diff``.
 
 Una variante es el texto de la definicion de la funcion. Para medirla se reemplaza esa definicion en
-el texto del archivo de ``src/`` (sin tocar el archivo), se compila el resultado con las opciones del
-archivo (incluido su ``-G``), se comprueba que el objeto define la funcion y se puntua con
+el texto del archivo de la carpeta de fuentes (sin tocarlo), se compila el resultado con las opciones
+del archivo (incluido su ``-G``), se comprueba que el objeto define la funcion y se puntua con
 ``asm-differ`` contra el ensamblador original, exactamente como lo hace ``diff``. Cada medicion
-trabaja en su propia carpeta de ``build/diff/``, de modo que varias se pueden lanzar a la vez.
+trabaja en su propia carpeta de ``<build>/diff/``, de modo que varias se pueden lanzar a la vez. Las
+rutas, las convenciones y la cadena de compilacion llegan por parametro desde el manifiesto.
 """
 
 from __future__ import annotations
@@ -13,9 +14,17 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.reconstruccion import fuentes_c
-from tools.reconstruccion.compilacion import HerramientasCompilacion, compilar_archivo
-from tools.reconstruccion.diff import (
+from psxdecomp.construccion.compilacion import HerramientasCompilacion, compilar_archivo
+from psxdecomp.construccion.infraestructura import (
+    Ejecutor,
+    ProcesoError,
+    leer_direcciones_de_funciones,
+    leer_valores_g,
+    listar_fuentes_c,
+)
+from psxdecomp.construccion.salidas import calcular_salidas
+from psxdecomp.diff import fuentes_c
+from psxdecomp.diff.comparacion import (
     FuncionSinCError,
     carpeta_de_trabajo,
     preparar_objetivo,
@@ -24,17 +33,10 @@ from tools.reconstruccion.diff import (
     salida_truncada,
     validar_funcion,
 )
-from tools.reconstruccion.enlace_diff import TIMEOUT_ENLACE_S, bytes_coinciden, funcion_en_objeto
-from tools.reconstruccion.fuentes_c import EstadoFuncion
-from tools.reconstruccion.infraestructura import (
-    ELF_SALIDA,
-    Ejecutor,
-    ProcesoError,
-    leer_direcciones_de_funciones,
-    leer_valores_g,
-    listar_fuentes_c,
-)
-from tools.reconstruccion.permutar_c import localizar_funcion
+from psxdecomp.diff.enlace_diff import TIMEOUT_ENLACE_S, bytes_coinciden, funcion_en_objeto
+from psxdecomp.diff.fuentes_c import EstadoFuncion
+from psxdecomp.dominio import Compilacion, Convenciones, Rutas
+from psxdecomp.permutador.c import localizar_funcion
 
 MAX_CARACTERES_MOTIVO = 120
 
@@ -59,10 +61,10 @@ class ObjetivoMedicion:
     """Todo lo que hace falta para medir variantes de una funcion.
 
     Attributes:
-        raiz: Raiz del repositorio.
+        raiz: Raiz del proyecto.
         funcion: Nombre de la funcion.
-        archivo: Archivo de ``src/`` que la contiene (``src/<nombre>.c``).
-        texto_archivo: Texto del archivo ``src/`` que la contiene.
+        archivo: Archivo de la carpeta de fuentes que la contiene (``<fuentes>/<nombre>.c``).
+        texto_archivo: Texto del archivo de fuentes que la contiene.
         inicio: Posicion donde empieza su definicion en ese texto.
         fin: Posicion donde termina.
         valor_g: Umbral ``-G`` del archivo.
@@ -73,6 +75,11 @@ class ObjetivoMedicion:
         herramientas: Herramientas de compilacion.
         script_diff: Ruta de ``diff.py`` de ``asm-differ``.
         ejecutar: Ejecutor de procesos.
+        rutas: Seccion ``[rutas]`` del manifiesto.
+        convenciones: Seccion ``[convenciones]`` del manifiesto.
+        compilacion: Seccion ``[compilacion]`` del manifiesto.
+        elf: ELF de la ultima construccion, relativo a la raiz, contra el que se resuelven los simbolos
+            al comparar por bytes.
     """
 
     raiz: Path
@@ -89,6 +96,10 @@ class ObjetivoMedicion:
     herramientas: HerramientasCompilacion
     script_diff: Path
     ejecutar: Ejecutor
+    rutas: Rutas
+    convenciones: Convenciones
+    compilacion: Compilacion
+    elf: str
 
 
 def preparar_medicion(
@@ -99,46 +110,62 @@ def preparar_medicion(
     ejecutar: Ejecutor,
     *,
     carpeta: str,
+    rutas: Rutas,
+    convenciones: Convenciones,
+    compilacion: Compilacion,
+    nombre_ejecutable: str,
 ) -> ObjetivoMedicion:
     """
     Reune lo necesario para medir variantes de una funcion: su archivo, su original y las opciones.
 
     Contexto:
         Primer paso de ``permutar``. Ensambla el asm original una sola vez (en ``carpeta``) y localiza la
-        definicion de la funcion en el texto de su archivo de ``src/``.
+        definicion de la funcion en el texto de su archivo de la carpeta de fuentes.
 
     Args:
-        raiz (Path): Raiz del repositorio.
+        raiz (Path): Raiz del proyecto.
         funcion (str): Nombre de la funcion.
         herramientas (HerramientasCompilacion): Herramientas de compilacion.
         script_diff (Path): Ruta de ``diff.py`` de ``asm-differ``.
         ejecutar (Ejecutor): Ejecutor de procesos.
         carpeta (str): Carpeta de trabajo de la ejecucion, relativa a la raiz, que recibe el objetivo.
+        rutas (Rutas): Seccion ``[rutas]`` del manifiesto.
+        convenciones (Convenciones): Seccion ``[convenciones]`` (macros, simbolos y tope de ``-G``).
+        compilacion (Compilacion): Seccion ``[compilacion]`` (version de ``ASPSX`` y opciones).
+        nombre_ejecutable (str): Nombre del ejecutable reconstruido; fija el ELF de la ultima
+            construccion, cuya existencia se exige.
 
     Returns:
         ObjetivoMedicion: Objetivo listo para ``evaluar``.
 
     Raises:
-        ValueError: Si el nombre no es valido, la funcion no figura en ``src/``, no tiene una unica
-            definicion en C o falta el ejecutable de la ultima construccion (``build``).
-        FuncionSinCError: Si la funcion sigue solo en ``INCLUDE_ASM``.
+        ValueError: Si el nombre no es valido, la funcion no figura en la carpeta de fuentes, no tiene
+            una unica definicion en C o falta el ejecutable de la ultima construccion (``build``).
+        FuncionSinCError: Si la funcion sigue solo en ensamblador.
         FileNotFoundError: Si falta el asm original (hay que ejecutar ``split``).
         ProcesoError: Si falla el ensamblado del objetivo.
 
     Ejemplo:
-        objetivo = preparar_medicion(Path("."), "func_80016C0C", herramientas, script, ejecutar, carpeta=c)
+        objetivo = preparar_medicion(
+            Path("."), "rutina_a", herramientas, script, ejecutar, carpeta=c, rutas=rutas,
+            convenciones=convenciones, compilacion=compilacion, nombre_ejecutable="EJEC_001.00",
+        )
     """
     validar_funcion(funcion)
-    textos = listar_fuentes_c(raiz)
-    archivo, estado = fuentes_c.ubicar_funcion(fuentes_c.analizar_fuentes(textos), funcion)
+    textos = listar_fuentes_c(raiz, rutas=rutas)
+    estados = fuentes_c.analizar_fuentes(textos, convenciones)
+    archivo, estado = fuentes_c.ubicar_funcion(estados, funcion, rutas.fuentes)
     if estado is EstadoFuncion.ENSAMBLADOR:
-        raise FuncionSinCError(f"'{funcion}' sigue en INCLUDE_ASM: no hay C que permutar")
-    if not (raiz / ELF_SALIDA).is_file():
+        raise FuncionSinCError(
+            f"'{funcion}' sigue en {convenciones.macro_ensamblador}: no hay C que permutar"
+        )
+    elf = calcular_salidas(nombre_ejecutable, rutas).elf
+    if not (raiz / elf).is_file():
         raise ValueError("falta el ejecutable de la ultima construccion: ejecute 'build' antes de permutar")
     texto = textos[archivo]
     inicio, fin = localizar_funcion(texto, funcion)
     objetivo, retornos, max_lineas = preparar_objetivo(
-        raiz, funcion, archivo, herramientas, ejecutar, carpeta=carpeta
+        raiz, funcion, archivo, herramientas, ejecutar, carpeta=carpeta, rutas=rutas
     )
     return ObjetivoMedicion(
         raiz=raiz,
@@ -147,14 +174,18 @@ def preparar_medicion(
         texto_archivo=texto,
         inicio=inicio,
         fin=fin,
-        valor_g=leer_valores_g(raiz).get(Path(archivo).stem, 0),
-        direccion=leer_direcciones_de_funciones(raiz).get(funcion),
+        valor_g=leer_valores_g(raiz, rutas=rutas, convenciones=convenciones).get(Path(archivo).stem, 0),
+        direccion=leer_direcciones_de_funciones(raiz, rutas=rutas, convenciones=convenciones).get(funcion),
         retornos=retornos,
         max_lineas=max_lineas,
         objetivo=objetivo,
         herramientas=herramientas,
         script_diff=script_diff,
         ejecutar=ejecutar,
+        rutas=rutas,
+        convenciones=convenciones,
+        compilacion=compilacion,
+        elf=elf,
     )
 
 
@@ -210,7 +241,9 @@ def evaluar(
         resultado = evaluar(objetivo, texto, comprobar_bytes_bajo=10)
     """
     try:
-        with carpeta_de_trabajo(objetivo.raiz, f"permutar-{objetivo.funcion}") as carpeta:
+        with carpeta_de_trabajo(
+            objetivo.raiz, f"permutar-{objetivo.funcion}", rutas=objetivo.rutas
+        ) as carpeta:
             return _evaluar_en(objetivo, texto_funcion, carpeta, comprobar_bytes_bajo)
     except (ProcesoError, ValueError, OSError) as error:
         return ResultadoEvaluacion(None, _primera_linea(str(error)))
@@ -232,9 +265,12 @@ def _evaluar_en(
         candidato,
         objetivo.herramientas,
         objetivo.ejecutar,
-        definiciones=(fuentes_c.MACRO_NO_COINCIDENTE,),
+        definiciones=(objetivo.convenciones.macro_no_coincidente,),
         exigir_solo_texto=False,
         valor_g=objetivo.valor_g,
+        rutas=objetivo.rutas,
+        convenciones=objetivo.convenciones,
+        compilacion=objetivo.compilacion,
     )
     tabla = objetivo.ejecutar([str(objetivo.herramientas.objdump), "-t", candidato], raiz, TIMEOUT_ENLACE_S)
     if funcion_en_objeto(tabla, objetivo.funcion) is None:
@@ -266,6 +302,7 @@ def _evaluar_en(
         direccion=objetivo.direccion,
         candidato=candidato,
         objetivo=copia,
+        elf=objetivo.elf,
     )
     if iguales is None:
         return ResultadoEvaluacion(None, "la variante no enlaza en la direccion de la funcion")

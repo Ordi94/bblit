@@ -1,10 +1,11 @@
 """Banco de variantes: compara muchas formulaciones en C de una funcion contra su original.
 
-``python tools/build.py probar <funcion> <carpeta>`` toma cada ``.c`` de la carpeta como una
-variante completa de la funcion (con sus ``#include``, tipos y declaraciones externas), la compila
-con la cadena real del proyecto, la compara con ``asm-differ`` contra el ensamblador original y
-muestra una tabla ordenada de variante a puntuacion. No escribe en ``src/``: todo el trabajo queda
-en ``build/diff/``. Sirve para decidir que formulacion escribir en ``src/`` antes de usar ``diff``.
+La orden ``probar <funcion> <carpeta>`` toma cada ``.c`` de la carpeta como una variante completa de
+la funcion (con sus ``#include``, tipos y declaraciones externas), la compila con la cadena real del
+proyecto, la compara con ``asm-differ`` contra el ensamblador original y muestra una tabla ordenada de
+variante a puntuacion. No escribe en la carpeta de fuentes: todo el trabajo queda en ``<build>/diff/``.
+Sirve para decidir que formulacion escribir en los fuentes antes de usar ``diff``. Las rutas, las
+convenciones y la cadena de compilacion llegan por parametro desde el manifiesto del proyecto.
 """
 
 from __future__ import annotations
@@ -13,9 +14,17 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.reconstruccion import fuentes_c
-from tools.reconstruccion.compilacion import HerramientasCompilacion, compilar_archivo
-from tools.reconstruccion.diff import (
+from psxdecomp.construccion.compilacion import HerramientasCompilacion, compilar_archivo
+from psxdecomp.construccion.infraestructura import (
+    Ejecutor,
+    ProcesoError,
+    leer_direcciones_de_funciones,
+    leer_valores_g,
+    listar_fuentes_c,
+)
+from psxdecomp.construccion.salidas import calcular_salidas
+from psxdecomp.diff import fuentes_c
+from psxdecomp.diff.comparacion import (
     carpeta_de_trabajo,
     preparar_objetivo,
     puntuacion_desde_json,
@@ -23,14 +32,8 @@ from tools.reconstruccion.diff import (
     salida_truncada,
     validar_funcion,
 )
-from tools.reconstruccion.enlace_diff import TIMEOUT_ENLACE_S, bytes_coinciden, funcion_en_objeto
-from tools.reconstruccion.infraestructura import (
-    Ejecutor,
-    ProcesoError,
-    leer_direcciones_de_funciones,
-    leer_valores_g,
-    listar_fuentes_c,
-)
+from psxdecomp.diff.enlace_diff import TIMEOUT_ENLACE_S, bytes_coinciden, funcion_en_objeto
+from psxdecomp.dominio import Compilacion, Convenciones, Rutas
 
 MAX_VARIANTES = 200
 MAX_BYTES_VARIANTE = 256 * 1024
@@ -173,7 +176,7 @@ def _define_funcion(
         comparacion por bytes.
 
     Args:
-        raiz (Path): Raiz del repositorio.
+        raiz (Path): Raiz del proyecto.
         herramientas (HerramientasCompilacion): Herramientas de compilacion (``objdump``).
         ejecutar (Ejecutor): Ejecutor de procesos.
         objeto (str): Objeto compilado de la variante (ruta relativa a la raiz).
@@ -186,7 +189,7 @@ def _define_funcion(
         ProcesoError: Si ``objdump`` falla.
 
     Ejemplo:
-        if not _define_funcion(raiz, herramientas, ejecutar, "build/diff/probar.a.c.o", "func_X"):
+        if not _define_funcion(raiz, herramientas, ejecutar, "<build>/diff/probar.a.c.o", "rutina_a"):
             ...
     """
     tabla = ejecutar([str(herramientas.objdump), "-t", objeto], raiz, TIMEOUT_ENLACE_S)
@@ -201,49 +204,60 @@ def probar_variantes(
     *,
     script_diff: Path,
     ejecutar: Ejecutor,
+    rutas: Rutas,
+    convenciones: Convenciones,
+    compilacion: Compilacion,
+    nombre_ejecutable: str,
 ) -> list[ResultadoVariante]:
     """
     Compila cada variante y la compara con el ensamblador original de la funcion.
 
     Contexto:
         Implementa ``probar``. El objetivo se ensambla una vez; cada variante se compila con las
-        mismas opciones que el archivo ``src/`` donde vive la funcion (incluido su ``-G``). Un
-        fallo de una variante (no compila, no define la funcion) se registra en su fila, sin
-        puntuacion, y no detiene a las demas. Si ``asm-differ`` corta el desensamblado de una
+        mismas opciones que el archivo de la carpeta de fuentes donde vive la funcion (incluido su
+        ``-G``). Un fallo de una variante (no compila, no define la funcion) se registra en su fila,
+        sin puntuacion, y no detiene a las demas. Si ``asm-differ`` corta el desensamblado de una
         variante en el limite de lineas, su puntuacion es parcial: se marca ``truncado`` y no se
         da por coincidente, porque un prefijo igual al objetivo puntuaria cero sin serlo.
 
     Args:
-        raiz (Path): Raiz del repositorio.
+        raiz (Path): Raiz del proyecto.
         funcion (str): Nombre de la funcion a comparar.
         carpeta (Path): Carpeta con las variantes ``.c``.
         herramientas (HerramientasCompilacion): Herramientas de compilacion.
         script_diff (Path): Ruta de ``diff.py`` de ``asm-differ``.
         ejecutar (Ejecutor): Ejecutor de procesos.
+        rutas (Rutas): Seccion ``[rutas]`` del manifiesto.
+        convenciones (Convenciones): Seccion ``[convenciones]`` (macros, simbolos y tope de ``-G``).
+        compilacion (Compilacion): Seccion ``[compilacion]`` (version de ``ASPSX`` y opciones).
+        nombre_ejecutable (str): Nombre del ejecutable reconstruido; fija el ELF contra el que se
+            resuelven los simbolos al comparar por bytes.
 
     Returns:
         list[ResultadoVariante]: Un resultado por variante, ordenado de mejor a peor.
 
     Raises:
-        ValueError: Si el nombre no es valido, la funcion no figura en ``src/`` o la carpeta no
-            es utilizable.
+        ValueError: Si el nombre no es valido, la funcion no figura en la carpeta de fuentes o la
+            carpeta no es utilizable.
         FileNotFoundError: Si falta la carpeta o el asm original (hay que ejecutar ``split``).
         ProcesoError: Si falla el ensamblado del objetivo.
 
     Ejemplo:
         resultados = probar_variantes(
-            Path("."), "func_80035244", Path("v"), herramientas, script_diff=script, ejecutar=ejecutar
+            Path("."), "rutina_a", Path("v"), herramientas, script_diff=script, ejecutar=ejecutar,
+            rutas=rutas, convenciones=convenciones, compilacion=compilacion,
+            nombre_ejecutable="EJEC_001.00",
         )
     """
     validar_funcion(funcion)
     variantes = listar_variantes(carpeta)
-    estados = fuentes_c.analizar_fuentes(listar_fuentes_c(raiz))
-    archivo, _ = fuentes_c.ubicar_funcion(estados, funcion)
-    valor_g = leer_valores_g(raiz).get(Path(archivo).stem, 0)
-    direccion = leer_direcciones_de_funciones(raiz).get(funcion)
-    with carpeta_de_trabajo(raiz, f"probar-{funcion}") as trabajo:
+    estados = fuentes_c.analizar_fuentes(listar_fuentes_c(raiz, rutas=rutas), convenciones)
+    archivo, _ = fuentes_c.ubicar_funcion(estados, funcion, rutas.fuentes)
+    valor_g = leer_valores_g(raiz, rutas=rutas, convenciones=convenciones).get(Path(archivo).stem, 0)
+    direccion = leer_direcciones_de_funciones(raiz, rutas=rutas, convenciones=convenciones).get(funcion)
+    with carpeta_de_trabajo(raiz, f"probar-{funcion}", rutas=rutas) as trabajo:
         objetivo, retornos, max_lineas = preparar_objetivo(
-            raiz, funcion, archivo, herramientas, ejecutar, carpeta=trabajo
+            raiz, funcion, archivo, herramientas, ejecutar, carpeta=trabajo, rutas=rutas
         )
         resultados: list[ResultadoVariante] = []
         for variante in variantes:
@@ -257,6 +271,9 @@ def probar_variantes(
                     ejecutar,
                     exigir_solo_texto=False,
                     valor_g=valor_g,
+                    rutas=rutas,
+                    convenciones=convenciones,
+                    compilacion=compilacion,
                 )
                 if not _define_funcion(raiz, herramientas, ejecutar, objeto, funcion):
                     resultados.append(
@@ -287,6 +304,7 @@ def probar_variantes(
                         direccion=direccion,
                         candidato=objeto,
                         objetivo=objetivo,
+                        elf=calcular_salidas(nombre_ejecutable, rutas).elf,
                     )
                 resultados.append(ResultadoVariante(variante.name, puntuacion, None, iguales, truncado))
             except (ProcesoError, ValueError, OSError) as error:
