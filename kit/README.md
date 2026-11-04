@@ -120,11 +120,13 @@ un subcomando repetido o sin `manejador` dan un `PluginInvalidoError` que nombra
 
 ## Prueba de coherencia
 
-`tests/test_coherencia_consumidor.py` compara el manifiesto del proyecto consumidor con las constantes de
-su paquete `tools`. Se ejecuta contra el proyecto que contiene al kit: si la carpeta superior a `kit/`
-tiene un `psxdecomp.toml`, `tests/conftest.py` pone esa raiz en `sys.path` y la comprobacion corre igual
-desde `kit/` que desde la raiz. Si el kit se usa fuera de un proyecto consumidor, esas pruebas se omiten
-y el resumen de `pytest` (`-rs`) lista el motivo de cada salto.
+`tests/test_coherencia_consumidor.py` comprueba lo que el manifiesto del proyecto consumidor declara sobre
+otros archivos suyos: que las referencias de los plugins se resuelvan, que el nombre del ejecutable coincida
+con el de su archivo de referencia y que las zonas de memoria caigan dentro del segmento que esa referencia
+describe. Se ejecuta contra el proyecto que contiene al kit (la carpeta superior a `kit/` con un
+`psxdecomp.toml`); si el kit se usa fuera de un proyecto consumidor, esas pruebas se omiten y el resumen de
+`pytest` (`-rs`) lista el motivo. Un proyecto no debe repetir en su codigo lo que el manifiesto ya declara: lo
+lee de el.
 
 ## Progreso
 
