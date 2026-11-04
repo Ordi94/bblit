@@ -400,7 +400,7 @@ void func_800368E8(void)
  * conservan entre pistas: una pista cuyo nodo no existe reutiliza los de la anterior.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 510 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difiere el reparto de registros callee-saved: el original deja el area de trabajo en $s1 y el puntero del flujo en $s2, GCC (prioridad de global-alloc por referencias y longitud de vida) los intercambia o adelanta el area a $s0 al copiar el parametro; ademas el sumando s20 de la caja cae en $a0 en lugar de $v1. */
+/* Pendiente: puntuacion 465 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difiere el reparto de registros callee-saved: el original deja el area de trabajo en $s1 y la ayuda en $s0 y GCC los intercambia (prioridad de global-alloc por referencias y longitud de vida); el radio de la caja y las banderas de la pista de ayudante en variables propias (distintas de las banderas de pose) bajan de 510. */
 void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
 {
     AreaCuadro* w;
@@ -409,11 +409,11 @@ void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
     u32 f;
     u32 n;
     Ayuda* a;
-
     NucleoAyuda* e;
     GsCOORD2PARAM* param;
     u16* h;
-
+    u32 radio_base;
+    u32 banderas_ayudante;
     w = a2;
     w->cab.w = *FLUJO_PISTAS(c)++;
     w->npistas = w->cab.h.alto;
@@ -492,12 +492,12 @@ void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
                 GEO_CARGAR_WH(p);
                 GEO_GUARDAR_WH(&o->min);
                 h = (u16*)p;
-                f = o->radio;
+                radio_base = o->radio;
                 o->max.vx = h[3];
                 o->max.vy = h[4];
                 o->max.vz = h[5];
                 o->w2E = h[6];
-                n = o->w2E + f;
+                n = o->w2E + radio_base;
                 o->alcance2 = n * n;
                 break;
             case PISTA_POSICION:
@@ -550,10 +550,10 @@ void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
                 }
                 break;
             case PISTA_AYUDANTE:
-                f = w->banderas;
-                switch ((f >> 20) & 1) {
+                banderas_ayudante = w->banderas;
+                switch ((banderas_ayudante >> 20) & 1) {
                 case 0:
-                    switch ((f >> 21) & 7) {
+                    switch ((banderas_ayudante >> 21) & 7) {
                     case 0:
                         func_80036474(o, nodo);
                         break;
@@ -576,7 +576,7 @@ void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
                     }
                     break;
                 case 1:
-                    if (((f >> 21) & 7) == 5) {
+                    if (((banderas_ayudante >> 21) & 7) == 5) {
                         param->scale.vz = 0;
                         param->scale.vy = 0;
                         param->scale.vx = 0;
