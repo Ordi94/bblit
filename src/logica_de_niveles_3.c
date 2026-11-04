@@ -1294,11 +1294,11 @@ L_800291A8:
         o->param.trans.vy = t->aux->max.vy + t->aux->param.trans.vy;
         t->d.vy = 0;
         o->coord.param = (GsCOORD2PARAM*)&o->portado;
+        o->portado.giro.u.y = o->param.giro.u.y - o->p70->param.giro.u.y;
         o->portado.escala.vz = choco;
         o->portado.escala.vy = choco;
         o->portado.escala.vx = choco;
         o->coord.super = &o->p70->coord;
-        o->portado.giro.u.y = o->param.giro.u.y - o->p70->param.giro.u.y;
         if ((s32)t->aux->flags08 < 0 || (t->aux->flags0C & 0x400000)) {
             if (t->aux->flags0C & 0x400000) {
                 o->coord.super = t->aux->raiz_ayudantes;
@@ -1317,8 +1317,8 @@ L_800291A8:
         t->aux->flags14 |= 0x40000000;
         choco = 1;
         t->aux->id_atacante = o->w1C;
-        o->flags14 = (o->flags14 | 0x14) & 0xFFFFFDF6;
         o->id_atacante = t->aux->w1C;
+        o->flags14 = (o->flags14 | 0x14) & 0xFFFFFDF6;
     }
 
     /*
