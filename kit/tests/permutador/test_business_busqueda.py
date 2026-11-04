@@ -414,12 +414,15 @@ def test_permutar_no_toca_la_carpeta_de_fuentes_y_deja_el_candidato_y_el_estado_
     assert [p.name for p in (raiz / "salida" / "diff").iterdir()] == []
 
 
-def test_el_candidato_se_puede_aplicar_en_el_archivo_y_compila_de_nuevo(raiz: Path) -> None:
+def test_el_candidato_guardado_sustituye_el_cuerpo_original_en_el_archivo_y_es_analizable(
+    raiz: Path,
+) -> None:
     ejecutor = EjecutorPermutar(lambda texto: 40 - 5 * texto.count("tmp1 ="))
     resultado = correr(raiz, ejecutor, pm.Opciones(iteraciones=30, procesos=2, semilla=4))
     candidato = resultado.candidato.read_text(encoding="utf-8").split("\n", 1)[1].rstrip("\n")
+    assert CUERPO_FUNCION in ARCHIVO_C
     archivo = ARCHIVO_C.replace(CUERPO_FUNCION, candidato)
-    assert candidato in archivo
+    assert candidato in archivo and CUERPO_FUNCION not in archivo
     assert c.analizar_funcion(candidato, FUNCION, frozenset({"Objeto"}))
 
 

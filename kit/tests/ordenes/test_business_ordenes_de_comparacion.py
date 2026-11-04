@@ -125,6 +125,18 @@ def test_resumir_comparacion_anade_la_nota_de_referencias_numericas_si_los_bytes
     ]
 
 
+def test_resumir_comparacion_con_medicion_parcial_y_bytes_iguales_ordena_aviso_nota_y_veredicto() -> None:
+    lineas = resumir_comparacion(
+        resultado_diff(
+            puntuacion=0, truncado=True, bytes_iguales=True, referencias_numericas=3, puntuacion_asm=21
+        )
+    )
+    assert len(lineas) == 3
+    assert lineas[0].startswith("aviso: asm-differ corto el desensamblado")
+    assert lineas[1] == "nota: 3 referencias en forma numerica (asm-differ puntua 21)"
+    assert lineas[2] == "rutina_a (codigo/modulo_a.c): puntuacion 0 (coincide en bytes)"
+
+
 def test_probar_imprime_la_tabla_y_sale_con_cero_solo_si_la_mejor_variante_coincide(
     escenario: Escenario,
     llamadas: dict[str, Any],
