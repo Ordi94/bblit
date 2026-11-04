@@ -39,7 +39,17 @@ def test_la_ayuda_general_nombra_las_rutas_y_las_variables_del_manifiesto(
 def test_la_ayuda_de_los_subcomandos_no_contiene_literales_de_un_juego(
     proyecto_completo: Proyecto, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    ordenes = ("split", "build", "verify", "clean", "diff", "probar", "permutar", "verificar-config", "progreso")
+    ordenes = (
+        "split",
+        "build",
+        "verify",
+        "clean",
+        "diff",
+        "probar",
+        "permutar",
+        "verificar-config",
+        "progreso",
+    )
     for orden in ((), *((nombre,) for nombre in ordenes)):
         texto = texto_de_ayuda(proyecto_completo, capsys, *orden)
         for prohibido in (*TERMINOS_PROHIBIDOS, "func_80"):
