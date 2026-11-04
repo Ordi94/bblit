@@ -385,6 +385,7 @@ void func_80026FEC(Objeto* o)
     s32 choco;
     s32 id_sec;
     s32 onda;
+    s32 portador;
     s32 rflags;
     s32 giro;
     s32 suelo;
@@ -1398,15 +1399,16 @@ L_80029A74:
     if (!(t->banderas & 0x10) || choco != 0) {
         goto L_80029F28;
     }
-    if ((t->fot->w10 & 0x800) ? (o->flags14 & 0x9) : (o->flags14 & 0x209)) {
+    f14 = o->flags14;
+    if ((t->fot->w10 & 0x800) ? (f14 & 0x9) : (f14 & 0x209)) {
         goto L_80029EF8;
     }
     if (!(o->flags14 & 0x10)) {
         goto L_80029B6C;
     }
     /* enganchado a un portador: el punto de barrido es la posicion del portador y el desplazamiento es el desfase relativo */
-    t->p30.vy = 0;
     t->p30.vx = o->param.trans.vx - o->p70->param.trans.vx;
+    t->p30.vy = 0;
     t->p30.vz = o->param.trans.vz - o->p70->param.trans.vz;
     t->pF0.vx = o->p70->param.trans.vx;
 
@@ -1448,11 +1450,12 @@ L_80029B6C:
 L_80029C44:
     /* Quien es el portador candidato: el jugador cuando el objeto ya esta marcado o el fotograma lo pide;
        si no, el primer solido de la lista con la plantilla del fotograma. */
-    t->w114 = 0;
+    portador = 0;
     if ((o->flags08 & 0x08000000) || (t->fot->w10 & 0x100)) {
-        t->w114 = 1;
+        portador = 1;
     }
-    if (t->w114 != 0) goto L_80029CB0;
+    t->w114 = portador;
+    if (portador != 0) goto L_80029CB0;
     if (o->flags08 & 0x10000000) goto L_80029CB0;
     if ((t->fot->w10 & 0x100000) == 0) goto L_80029E9C;
 
