@@ -30,3 +30,13 @@ mypy_path = ["kit", "kit/tests"]
 testpaths = ["tests", "kit/tests"]
 pythonpath = [".", "kit", "kit/tests"]
 addopts = "-q"
+
+# Cobertura del codigo propio del proyecto: lineas y ramas, sin tolerancia. El kit fija la suya
+# en kit/pyproject.toml. Uso: python -m pytest tests --cov
+[tool.coverage.run]
+branch = true
+source = ["tools"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
