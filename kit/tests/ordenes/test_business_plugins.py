@@ -246,3 +246,35 @@ def test_un_plugin_roto_no_impide_mostrar_la_ayuda_ni_comprobar_el_manifiesto(
     capsys.readouterr()
     assert ejecutar(escenario, "clean") == 1
     assert "no se pudo importar el modulo 'modulo_inexistente_xyz'" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("cuerpo", "tipo"),
+    [
+        ("def saludar(:\n    pass\n", "SyntaxError"),
+        ('raise RuntimeError("boom en C:/datos/privado/secreto.txt")\n', "RuntimeError"),
+    ],
+)
+def test_un_modulo_que_falla_al_cargarse_da_un_error_del_plugin_con_el_tipo_y_sin_rutas(
+    escenario: Escenario, cuerpo: str, tipo: str
+) -> None:
+    escribir_extension(escenario.raiz, MODULO, cuerpo)
+    with pytest.raises(PluginInvalidoError) as error:
+        resolver_referencia(f"{MODULO}:saludar", escenario.raiz)
+    assert str(error.value) == f"plugin '{MODULO}:saludar': el modulo '{MODULO}' fallo al cargarse ({tipo})"
+    assert error.value.__cause__ is None
+    assert str(escenario.raiz) not in str(error.value)
+    assert "secreto" not in str(error.value)
+
+
+def test_un_gancho_cuyo_modulo_lanza_al_cargarse_termina_la_orden_con_una_linea(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    escenario = crear_escenario(tmp_path, plugins=f'[plugins]\nantes_de_construir = ["{MODULO}:antes"]\n')
+    escribir_extension(escenario.raiz, MODULO, 'raise RuntimeError("boom")\n')
+    preparar_construccion(escenario)
+    assert ejecutar(escenario, "build") == 1
+    linea_final = capsys.readouterr().err.splitlines()[-1]
+    assert linea_final == (
+        f"error: plugin '{MODULO}:antes': el modulo '{MODULO}' fallo al cargarse (RuntimeError)"
+    )

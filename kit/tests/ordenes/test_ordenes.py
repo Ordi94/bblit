@@ -250,3 +250,19 @@ def test_comprobar_con_un_manifiesto_de_otra_carpeta_imprime_su_resumen(
 ) -> None:
     assert main(["comprobar", str(escenario.raiz)]) == 0
     assert "ejecutable: PRUEBA.EXE" in capsys.readouterr().out
+
+
+def test_split_no_expone_rutas_si_el_sistema_niega_el_acceso_a_la_configuracion(
+    escenario: Escenario, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ruta = str(escenario.raiz / "datos" / "opciones.toml")
+
+    def negar(*args: Any, **kwargs: Any) -> list[str]:
+        raise PermissionError(13, "Acceso denegado", ruta)
+
+    monkeypatch.setattr(infra_kit, "verificar_configuracion", negar)
+    assert ejecutar(escenario, "split") == 0
+    salida = capsys.readouterr()
+    assert ruta not in salida.err
+    assert str(escenario.raiz) not in salida.err
+    assert salida.err == "aviso: no se pudo verificar la configuracion: Acceso denegado\n"

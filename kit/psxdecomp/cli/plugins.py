@@ -64,8 +64,10 @@ def resolver_referencia(referencia: str, raiz: Path) -> Callable[..., Any]:
         Callable[..., Any]: La funcion referenciada.
 
     Raises:
-        PluginInvalidoError: Si el modulo no se puede importar o el nombre no existe o no es invocable. El
-            mensaje nombra la referencia y nunca rutas de la maquina.
+        PluginInvalidoError: Si el modulo no se puede importar, falla al cargarse con cualquier
+            excepcion (error de sintaxis o de ejecucion de nivel de modulo), o el nombre no existe o no
+            es invocable. El mensaje nombra la referencia y, si hubo fallo, solo el tipo de excepcion;
+            nunca rutas de la maquina ni la traza.
 
     Ejemplo:
         registrar = resolver_referencia("paquete.modulo:registrar", Path("."))
@@ -78,6 +80,14 @@ def resolver_referencia(referencia: str, raiz: Path) -> Callable[..., Any]:
         except ImportError:
             raise PluginInvalidoError(
                 f"plugin '{referencia}': no se pudo importar el modulo '{modulo}'"
+            ) from None
+        except Exception as error:
+            # Un plugin ajeno puede fallar al cargarse de cualquier manera (sintaxis, codigo de nivel de
+            # modulo). Se informa solo el tipo del fallo: su texto suele llevar rutas de la maquina o
+            # lineas de codigo del proyecto. Se deja fuera la traza para que la orden termine con el mismo
+            # mensaje de una linea que cualquier otro error esperado.
+            raise PluginInvalidoError(
+                f"plugin '{referencia}': el modulo '{modulo}' fallo al cargarse ({type(error).__name__})"
             ) from None
     funcion = getattr(cargado, nombre, None)
     if not callable(funcion):

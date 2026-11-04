@@ -14,6 +14,7 @@ from pathlib import Path
 
 from psxdecomp.cli import plugins
 from psxdecomp.cli.contexto import Contexto, ResultadoVerificacion
+from psxdecomp.cli.errores import motivo_sin_rutas
 from psxdecomp.construccion import compilacion, infraestructura
 from psxdecomp.construccion.dominio import EjecutableReferencia
 from psxdecomp.construccion.salidas import calcular_salidas
@@ -119,7 +120,10 @@ def _avisar_configuracion(contexto: Contexto) -> None:
             contexto.raiz, rutas=contexto.proyecto.rutas, convenciones=contexto.proyecto.convenciones
         )
     except (ValueError, FileNotFoundError, OSError) as error:
-        print(f"aviso: no se pudo verificar la configuracion: {error}", file=sys.stderr)
+        print(
+            f"aviso: no se pudo verificar la configuracion: {motivo_sin_rutas(error)}",
+            file=sys.stderr,
+        )
         return
     imprimir_avisos(avisos)
 
