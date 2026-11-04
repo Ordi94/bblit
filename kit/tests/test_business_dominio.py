@@ -43,6 +43,10 @@ def test_el_manifiesto_minimo_carga_con_rutas_y_convenciones_por_defecto() -> No
     assert proyecto.rutas.subcarpetas_ajenas == ()
     assert proyecto.convenciones.macro_no_coincidente == "NON_MATCHING"
     assert proyecto.convenciones.macro_ensamblador == "INCLUDE_ASM"
+    assert proyecto.rutas.macros == "asm/include"
+    assert proyecto.convenciones.max_valor_g == 64
+    assert proyecto.convenciones.patron_simbolo_datos == r"^D_([0-9A-F]{8})$"
+    assert r"escrita\s+a\s+mano" in proyecto.convenciones.manuscrita
     assert proyecto.plugins.subcomandos == ()
 
 
@@ -54,6 +58,11 @@ def test_el_manifiesto_completo_conserva_cada_valor_declarado() -> None:
     assert proyecto.rutas.documento_progreso == "notas/avance.md"
     assert proyecto.zonas.librerias_hasta == 0x80030000
     assert proyecto.convenciones.pendiente == r"\APendiente (\d+)"
+    assert proyecto.rutas.macros == "ensamblador/macros"
+    assert proyecto.convenciones.manuscrita == "a mano"
+    assert proyecto.convenciones.patron_simbolo_datos == "^X_([0-9A-F]{8})$"
+    assert proyecto.convenciones.patron_linea_simbolo == r"^(\w+) @ 0x([0-9A-F]+) (.*)$"
+    assert proyecto.convenciones.max_valor_g == 16
     assert proyecto.plugins.despues_de_verificar == ("paquete.hook:despues", "otro:despues")
 
 
@@ -196,6 +205,14 @@ def test_las_zonas_con_los_extremos_del_rango_ram_se_aceptan() -> None:
         ("sufijo_subsistema", "7"),
         ("macro_no_coincidente", "'minuscula'"),
         ("macro_ensamblador", "'CON ESPACIO'"),
+        ("manuscrita", "'(sin cerrar'"),
+        ("patron_simbolo_datos", "'sin grupo'"),
+        ("patron_simbolo_datos", "'(a)(b)'"),
+        ("patron_linea_simbolo", "'(a)'"),
+        ("max_valor_g", "-1"),
+        ("max_valor_g", "4097"),
+        ("max_valor_g", "true"),
+        ("max_valor_g", "'8'"),
         ("macro_ensamblador", "'" + "A" * 33 + "'"),
     ],
 )

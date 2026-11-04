@@ -28,6 +28,7 @@ CLAVES_RUTAS = frozenset(
         "fuentes",
         "incluir",
         "asm",
+        "macros",
         "build",
         "expected",
         "splat",
@@ -43,14 +44,29 @@ CLAVES_RUTAS = frozenset(
 )
 CLAVES_ZONAS = frozenset({"juego_desde", "librerias_desde", "librerias_hasta"})
 CLAVES_CONVENCIONES = frozenset(
-    {"macro_no_coincidente", "macro_ensamblador", "pendiente", "sufijo_subsistema"}
+    {
+        "macro_no_coincidente",
+        "macro_ensamblador",
+        "pendiente",
+        "sufijo_subsistema",
+        "manuscrita",
+        "patron_simbolo_datos",
+        "patron_linea_simbolo",
+        "max_valor_g",
+    }
 )
 CLAVES_PLUGINS = frozenset({"subcomandos", "antes_de_construir", "despues_de_verificar"})
+
+MAX_VALOR_G_ADMITIDO = 4096
+MANUSCRITA_POR_DEFECTO = r"\brutina(?:\s+de\s+\w+)?\s+escrita\s+a\s+mano\s+en\s+el\s+original\b"
+SIMBOLO_DATOS_POR_DEFECTO = r"^D_([0-9A-F]{8})$"
+LINEA_SIMBOLO_POR_DEFECTO = r"^([A-Za-z_]\w*)\s*=\s*0x([0-9A-Fa-f]{1,8})\s*;\s*//(.*)$"
 
 RUTAS_SENCILLAS_POR_DEFECTO = {
     "fuentes": "src",
     "incluir": "include",
     "asm": "asm",
+    "macros": "asm/include",
     "build": "build",
     "expected": "expected",
     "splat": "config/splat.yaml",
@@ -79,6 +95,7 @@ class Rutas:
     fuentes: str
     incluir: str
     asm: str
+    macros: str
     build: str
     expected: str
     splat: str
@@ -123,12 +140,30 @@ class Zonas:
 
 @dataclass(frozen=True, slots=True)
 class Convenciones:
-    """Seccion ``[convenciones]``: macros y formatos de comentario que reconoce el analisis de C."""
+    """
+    Seccion ``[convenciones]``: macros, comentarios y formatos que reconoce el analisis del proyecto.
+
+    Attributes:
+        macro_no_coincidente: Macro bajo la que vive el intento en C de una funcion pendiente.
+        macro_ensamblador: Macro que incluye el ensamblador original de una funcion.
+        pendiente: Expresion (un grupo de captura: la puntuacion) de la linea de pendiente.
+        sufijo_subsistema: Expresion del sufijo numerico que se quita al agrupar por subsistema.
+        manuscrita: Expresion de la frase que marca una rutina escrita a mano en el original.
+        patron_simbolo_datos: Expresion (un grupo: la direccion en hexadecimal) del nombre de un
+            simbolo de datos pequenos.
+        patron_linea_simbolo: Expresion (tres grupos: nombre, direccion hexadecimal y atributos)
+            de una linea del archivo de simbolos.
+        max_valor_g: Mayor umbral ``-G`` de datos pequenos que admite una opcion de compilacion.
+    """
 
     macro_no_coincidente: str
     macro_ensamblador: str
     pendiente: str
     sufijo_subsistema: str
+    manuscrita: str
+    patron_simbolo_datos: str
+    patron_linea_simbolo: str
+    max_valor_g: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,7 +281,7 @@ class Proyecto:
             f"referencia: {ident.referencia}",
             f"prefijo_entorno: {ident.prefijo_entorno}",
             f"fuentes: {rutas.fuentes}  incluir: {rutas.incluir}  asm: {rutas.asm}",
-            f"build: {rutas.build}  expected: {rutas.expected}",
+            f"macros_asm: {rutas.macros}  build: {rutas.build}  expected: {rutas.expected}",
             f"simbolos: {', '.join(rutas.simbolos)}",
             f"subcarpetas_ajenas: {', '.join(rutas.subcarpetas_ajenas) or '-'}",
             f"zonas: juego 0x{zonas.juego_desde:08X}, "
@@ -419,6 +454,16 @@ def construir_convenciones(tabla: Mapping[str, Any]) -> Convenciones:
             tabla, "pendiente", "convenciones", defecto=r"\APendiente:\s*puntuacion\s+(\d+)\b", grupos=1
         ),
         sufijo_subsistema=val.leer_regex(tabla, "sufijo_subsistema", "convenciones", defecto=r"_\d+$"),
+        manuscrita=val.leer_regex(tabla, "manuscrita", "convenciones", defecto=MANUSCRITA_POR_DEFECTO),
+        patron_simbolo_datos=val.leer_regex(
+            tabla, "patron_simbolo_datos", "convenciones", defecto=SIMBOLO_DATOS_POR_DEFECTO, grupos=1
+        ),
+        patron_linea_simbolo=val.leer_regex(
+            tabla, "patron_linea_simbolo", "convenciones", defecto=LINEA_SIMBOLO_POR_DEFECTO, grupos=3
+        ),
+        max_valor_g=val.leer_entero(
+            tabla, "max_valor_g", "convenciones", defecto=64, minimo=0, maximo=MAX_VALOR_G_ADMITIDO
+        ),
     )
 
 

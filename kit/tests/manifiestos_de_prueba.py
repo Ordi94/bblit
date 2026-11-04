@@ -31,6 +31,7 @@ prefijo_entorno = "OTRO"
 fuentes = "codigo"
 incluir = "cabeceras"
 asm = "ensamblador"
+macros = "ensamblador/macros"
 build = "salida"
 expected = "esperado"
 splat = "datos/splat.yaml"
@@ -53,6 +54,10 @@ macro_no_coincidente = "NO_COINCIDE"
 macro_ensamblador = "ENSAMBLAR"
 pendiente = '\\APendiente (\\d+)'
 sufijo_subsistema = '-\\d+$'
+manuscrita = 'a mano'
+patron_simbolo_datos = '^X_([0-9A-F]{8})$'
+patron_linea_simbolo = '^(\\w+) @ 0x([0-9A-F]+) (.*)$'
+max_valor_g = 16
 
 [plugins]
 subcomandos = ["paquete.modulo:registrar"]

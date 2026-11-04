@@ -383,6 +383,39 @@ def leer_direccion(tabla: Mapping[str, Any], clave: str, seccion: str) -> int:
     return valor
 
 
+def leer_entero(
+    tabla: Mapping[str, Any], clave: str, seccion: str, *, defecto: int, minimo: int, maximo: int
+) -> int:
+    """
+    Lee un entero acotado a un rango cerrado.
+
+    Contexto:
+        Cotas numericas del manifiesto (por ejemplo el mayor umbral de datos pequenos admitido).
+        Un valor fuera de rango acaba como argumento de un proceso externo, por eso se rechaza aqui.
+
+    Args:
+        tabla (Mapping[str, Any]): Tabla de la seccion.
+        clave (str): Clave a leer.
+        seccion (str): Nombre de la seccion.
+        defecto (int): Valor si la clave falta.
+        minimo (int): Menor valor admitido.
+        maximo (int): Mayor valor admitido.
+
+    Returns:
+        int: El entero validado.
+
+    Raises:
+        ManifiestoError: Si no es entero (un booleano tampoco lo es) o esta fuera de ``[minimo, maximo]``.
+
+    Ejemplo:
+        tope = leer_entero({}, "max_valor_g", "convenciones", defecto=64, minimo=0, maximo=4096)
+    """
+    valor = _obtener(tabla, clave, seccion, defecto)
+    if isinstance(valor, bool) or not isinstance(valor, int) or not minimo <= valor <= maximo:
+        raise fallo(seccion, clave, f"un entero entre {minimo} y {maximo}")
+    return valor
+
+
 def leer_regex(
     tabla: Mapping[str, Any], clave: str, seccion: str, *, defecto: str, grupos: int | None = None
 ) -> str:

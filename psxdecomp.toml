@@ -12,6 +12,7 @@ prefijo_entorno = "BBLIT"
 fuentes = "src"
 incluir = "include"
 asm = "asm"
+macros = "asm/include"
 build = "build"
 expected = "expected"
 splat = "config/splat.yaml"
@@ -36,6 +37,10 @@ macro_no_coincidente = "NON_MATCHING"
 macro_ensamblador = "INCLUDE_ASM"
 pendiente = '\APendiente:\s*puntuacion\s+(\d+)\b'
 sufijo_subsistema = '_\d+$'
+manuscrita = '\brutina(?:\s+de\s+\w+)?\s+escrita\s+a\s+mano\s+en\s+el\s+original\b'
+patron_simbolo_datos = '^D_([0-9A-F]{8})$'
+patron_linea_simbolo = '^([A-Za-z_]\w*)\s*=\s*0x([0-9A-Fa-f]{1,8})\s*;\s*//(.*)$'
+max_valor_g = 64
 
 # Los modulos de extension del juego (subcomandos de overlay y bzz) aun no existen: se
 # registraran aqui cuando tools/ pase a consumir el manifiesto.

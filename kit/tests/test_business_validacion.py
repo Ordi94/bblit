@@ -118,7 +118,7 @@ def test_una_lista_de_texto_exige_que_cada_elemento_cumpla_el_patron(invalido: o
         val.leer_lista_texto({"p": invalido}, "p", "rutas", patron=val.PATRON_SEGMENTO, defecto=())
 
 
-@pytest.mark.parametrize("valor", [0x80000000, 0x80014AC4, 0x80800000])
+@pytest.mark.parametrize("valor", [0x80000000, 0x80010100, 0x80800000])
 def test_las_direcciones_dentro_del_rango_ram_se_aceptan_incluidos_los_extremos(valor: int) -> None:
     assert val.leer_direccion({"d": valor}, "d", "zonas") == valor
 
@@ -143,6 +143,18 @@ def test_una_expresion_valida_se_conserva_tal_cual() -> None:
 def test_las_expresiones_invalidas_o_fuera_de_cota_se_rechazan(valor: object) -> None:
     with pytest.raises(ManifiestoError, match=r"\[convenciones\]\.e: se esperaba una expresion regular"):
         val.leer_regex({"e": valor}, "e", "convenciones", defecto="x")
+
+
+def test_un_entero_dentro_del_rango_se_conserva_y_el_defecto_aplica_si_falta() -> None:
+    assert val.leer_entero({"n": 8}, "n", "c", defecto=64, minimo=0, maximo=100) == 8
+    assert val.leer_entero({}, "n", "c", defecto=64, minimo=0, maximo=100) == 64
+    assert val.leer_entero({"n": 0}, "n", "c", defecto=64, minimo=0, maximo=100) == 0
+
+
+@pytest.mark.parametrize("valor", [-1, 101, True, "8", 1.5, None])
+def test_un_entero_fuera_de_rango_o_de_otro_tipo_se_rechaza(valor: object) -> None:
+    with pytest.raises(ManifiestoError, match=r"\[c\]\.n: se esperaba un entero entre 0 y 100"):
+        val.leer_entero({"n": valor}, "n", "c", defecto=64, minimo=0, maximo=100)
 
 
 def test_la_expresion_con_el_numero_de_grupos_pedido_se_acepta() -> None:
