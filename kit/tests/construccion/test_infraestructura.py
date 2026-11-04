@@ -8,16 +8,22 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import dominio
-from tools.reconstruccion import infraestructura as infra
-from tools.reconstruccion.dominio import CabeceraPsx, EjecutableReferencia
-from tools.reconstruccion.infraestructura import Herramientas, ProcesoError
-from tools.toolchain.dominio import cargar_lock
+from psxdecomp.construccion import dominio
+from psxdecomp.construccion import infraestructura as infra
+from psxdecomp.construccion.dominio import CabeceraPsx, EjecutableReferencia
+from psxdecomp.construccion.infraestructura import Herramientas, ProcesoError
+from psxdecomp.construccion.salidas import calcular_salidas
+from psxdecomp.dominio import construir_convenciones, construir_rutas
+from psxdecomp.entorno import Variables
+from psxdecomp.toolchain.dominio import cargar_lock
 
 from toolchain.ayudantes import bloque_componente, construir_iso, lock_de
 
+RUTAS = construir_rutas({"subcarpetas_ajenas": ["externo"]})
+CONVENCIONES = construir_convenciones({})
+VARIABLES = Variables(alias="JUEGO")
 CUERPO = bytes(range(16))
-CABECERA = CabeceraPsx(0x80010008, 0, 0x80010000, 16, 0, 0, 0, 0, 0x801FFFF0, 0, "Region de prueba")
+CABECERA = CabeceraPsx(0x80100008, 0, 0x80100000, 16, 0, 0, 0, 0, 0x801FFFF0, 0, "Region de prueba")
 EJECUTABLE = dominio.ensamblar_ejecutable(CABECERA, CUERPO)
 REFERENCIA = EjecutableReferencia(
     "PRUEBA.EXE",
@@ -26,6 +32,7 @@ REFERENCIA = EjecutableReferencia(
     len(EJECUTABLE),
     CABECERA,
 )
+SALIDAS = calcular_salidas("PRUEBA.EXE", RUTAS)
 SCRIPT_LD = "main\n{\n    build/asm/text.s.o(.text);\n    build/asm/data/datos.s.o(.data);\n}\n"
 
 
@@ -52,12 +59,12 @@ class Registro:
         if "splat" in comando and self.genera_script:
             (directorio / "asm").mkdir(exist_ok=True)
             (directorio / "build").mkdir(exist_ok=True)
-            (directorio / infra.SCRIPT_ENLAZADOR).write_text(SCRIPT_LD, encoding="utf-8")
+            (directorio / SALIDAS.script_enlazador).write_text(SCRIPT_LD, encoding="utf-8")
             (directorio / "asm" / "text.s").write_text("t", encoding="utf-8")
             if self.simbolos:
-                (directorio / infra.SIMBOLOS_AUTOMATICOS[0]).write_text("f = 0;", encoding="utf-8")
+                (directorio / SALIDAS.simbolos_automaticos[0]).write_text("f = 0;", encoding="utf-8")
         if nombre == "objcopy.exe":
-            (directorio / infra.BINARIO_SALIDA).write_bytes(self.cuerpo)
+            (directorio / SALIDAS.binario).write_bytes(self.cuerpo)
         return ""
 
 
@@ -149,10 +156,12 @@ def test_leer_referencia(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     ruta.write_text(json.dumps(referencia_json()), encoding="utf-8")
     assert infra.leer_referencia(ruta) == REFERENCIA
     ruta.write_text("{no json", encoding="utf-8")
-    with pytest.raises(ValueError, match=re.escape("config/ejecutable.json no es JSON valido")):
+    with pytest.raises(ValueError, match=re.escape("ejecutable.json no es JSON valido")):
         infra.leer_referencia(ruta)
-    with pytest.raises(FileNotFoundError, match=re.escape("no se encontro config/ejecutable.json")):
+    with pytest.raises(FileNotFoundError, match=re.escape("no se encontro no.json")):
         infra.leer_referencia(tmp_path / "no.json")
+    with pytest.raises(FileNotFoundError, match=re.escape("no se encontro datos/referencia.json")):
+        infra.leer_referencia(tmp_path / "no.json", etiqueta="datos/referencia.json")
     monkeypatch.setattr(infra, "MAX_BYTES_REFERENCIA", 2)
     with pytest.raises(ValueError, match="excede el tamano permitido"):
         infra.leer_referencia(ruta)
@@ -160,22 +169,24 @@ def test_leer_referencia(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_obtener_original_usa_el_sistema_de_archivos_extraido(raiz: Path, original: Any) -> None:
     disco = original.parent.parent
-    assert infra.obtener_original(raiz, disco, REFERENCIA) == original
+    assert infra.obtener_original(raiz, disco, REFERENCIA, rutas=RUTAS, variables=VARIABLES) == original
     assert not (raiz / "expected").exists()
 
 
 def test_obtener_original_sin_disco_o_con_ubicacion_inexistente(raiz: Path, tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="falta la ubicacion del disco: defina BBLIT_DISC"):
-        infra.obtener_original(raiz, None, REFERENCIA)
+    with pytest.raises(
+        ValueError, match=r"falta la ubicacion del disco: defina PSXDECOMP_DISC \(o JUEGO_DISC\)"
+    ):
+        infra.obtener_original(raiz, None, REFERENCIA, rutas=RUTAS, variables=VARIABLES)
     with pytest.raises(FileNotFoundError, match="la ubicacion del disco no existe"):
-        infra.obtener_original(raiz, tmp_path / "no_existe", REFERENCIA)
+        infra.obtener_original(raiz, tmp_path / "no_existe", REFERENCIA, rutas=RUTAS, variables=VARIABLES)
 
 
 def test_obtener_original_en_carpeta_sin_fs_ni_imagen(raiz: Path, tmp_path: Path) -> None:
     vacia = tmp_path / "vacia"
     vacia.mkdir()
     with pytest.raises(FileNotFoundError, match=re.escape("no se encontro fs/PRUEBA.EXE ni una imagen .bin")):
-        infra.obtener_original(raiz, vacia, REFERENCIA)
+        infra.obtener_original(raiz, vacia, REFERENCIA, rutas=RUTAS, variables=VARIABLES)
 
 
 def crear_imagen(carpeta: Path, nombre: str = "juego (USA).bin", contenido: bytes = EJECUTABLE) -> Path:
@@ -198,7 +209,7 @@ def test_obtener_original_extrae_de_la_imagen_en_cualquiera_de_sus_formas(
         "carpeta": carpeta,
         "padre": carpeta.parent,
     }[forma]
-    original = infra.obtener_original(raiz, disc, REFERENCIA)
+    original = infra.obtener_original(raiz, disc, REFERENCIA, rutas=RUTAS, variables=VARIABLES)
     assert original == raiz / "expected" / "PRUEBA.EXE"
     assert original.read_bytes() == EJECUTABLE
 
@@ -208,33 +219,35 @@ def test_obtener_original_rechaza_ubicaciones_ambiguas_o_invalidas(raiz: Path, t
     crear_imagen(doble, "a.bin")
     crear_imagen(doble, "b.bin")
     with pytest.raises(ValueError, match=re.escape("hay varias imagenes .bin")):
-        infra.obtener_original(raiz, doble, REFERENCIA)
+        infra.obtener_original(raiz, doble, REFERENCIA, rutas=RUTAS, variables=VARIABLES)
     texto = tmp_path / "notas.txt"
     texto.write_text("x", encoding="utf-8")
     with pytest.raises(ValueError, match=re.escape("debe ser una carpeta, un .bin o un .cue")):
-        infra.obtener_original(raiz, texto, REFERENCIA)
+        infra.obtener_original(raiz, texto, REFERENCIA, rutas=RUTAS, variables=VARIABLES)
     huerfano = tmp_path / "solo.cue"
     huerfano.write_text("x", encoding="utf-8")
     with pytest.raises(FileNotFoundError, match=re.escape("el .cue no tiene un .bin hermano")):
-        infra.obtener_original(raiz, huerfano, REFERENCIA)
+        infra.obtener_original(raiz, huerfano, REFERENCIA, rutas=RUTAS, variables=VARIABLES)
 
 
 def test_obtener_original_con_imagen_sin_el_ejecutable_o_de_otro_tamano(raiz: Path, tmp_path: Path) -> None:
     sin = crear_imagen(tmp_path / "sin")
     sin.write_bytes(construir_iso({"OTRO.EXE;1": EJECUTABLE}, modo2352=True))
     with pytest.raises(ValueError, match=re.escape("no contiene PRUEBA.EXE en el directorio raiz")):
-        infra.obtener_original(raiz, sin, REFERENCIA)
+        infra.obtener_original(raiz, sin, REFERENCIA, rutas=RUTAS, variables=VARIABLES)
     corto = crear_imagen(tmp_path / "corto", contenido=EJECUTABLE[:-1])
     with pytest.raises(ValueError, match="no tiene el tamano esperado"):
-        infra.obtener_original(raiz, corto, REFERENCIA)
+        infra.obtener_original(raiz, corto, REFERENCIA, rutas=RUTAS, variables=VARIABLES)
 
 
 def test_dividir_con_el_original_ya_en_expected_no_se_copia_sobre_si_mismo(
     raiz: Path, tmp_path: Path
 ) -> None:
     imagen = crear_imagen(tmp_path / "disco")
-    original = infra.obtener_original(raiz, imagen, REFERENCIA)
-    infra.dividir(raiz, original, REFERENCIA, herramientas(), Registro())
+    original = infra.obtener_original(raiz, imagen, REFERENCIA, rutas=RUTAS, variables=VARIABLES)
+    infra.dividir(
+        raiz, original, REFERENCIA, herramientas(), Registro(), rutas=RUTAS, convenciones=CONVENCIONES
+    )
     assert (raiz / "expected" / "PRUEBA.EXE").read_bytes() == EJECUTABLE
 
 
@@ -259,11 +272,13 @@ def test_resolver_herramientas(tmp_path: Path) -> None:
 
 def test_dividir_prepara_expected_simbolos_y_ejecuta_splat(raiz: Any, original: Any) -> None:
     ejecutor = Registro()
-    infra.dividir(raiz, original, REFERENCIA, herramientas(), ejecutor)
+    infra.dividir(
+        raiz, original, REFERENCIA, herramientas(), ejecutor, rutas=RUTAS, convenciones=CONVENCIONES
+    )
     assert (raiz / "expected" / "PRUEBA.EXE").read_bytes() == EJECUTABLE
-    assert (raiz / infra.SIMBOLOS_ENTRADA).read_text(
+    assert (raiz / SALIDAS.simbolos_entrada).read_text(
         encoding="utf-8"
-    ) == "func_80010008 = 0x80010008; // type:func\n"
+    ) == "func_80100008 = 0x80100008; // type:func\n"
     assert ejecutor.comandos == [["py", "-X", "utf8", "-m", "splat", "split", "config/splat.yaml"]]
     assert ejecutor.directorios == [raiz]
     assert ejecutor.tiempos == [infra.TIMEOUT_SPLAT_S]
@@ -271,9 +286,11 @@ def test_dividir_prepara_expected_simbolos_y_ejecuta_splat(raiz: Any, original: 
 
 def test_dividir_respeta_un_simbolo_de_entrada_ya_declarado(raiz: Any, original: Any) -> None:
     (raiz / "config").mkdir()
-    (raiz / "config" / "symbols.txt").write_text("inicio = 0x80010008; // type:func\n", encoding="utf-8")
-    infra.dividir(raiz, original, REFERENCIA, herramientas(), Registro())
-    assert (raiz / infra.SIMBOLOS_ENTRADA).read_text(encoding="utf-8") == ""
+    (raiz / "config" / "symbols.txt").write_text("inicio = 0x80100008; // type:func\n", encoding="utf-8")
+    infra.dividir(
+        raiz, original, REFERENCIA, herramientas(), Registro(), rutas=RUTAS, convenciones=CONVENCIONES
+    )
+    assert (raiz / SALIDAS.simbolos_entrada).read_text(encoding="utf-8") == ""
 
 
 def test_dividir_es_idempotente_y_no_toca_archivos_ajenos_de_build(raiz: Any, original: Any) -> None:
@@ -283,9 +300,13 @@ def test_dividir_es_idempotente_y_no_toca_archivos_ajenos_de_build(raiz: Any, or
     (raiz / "asm" / "obsoleto.s").write_text("viejo", encoding="utf-8")
     (raiz / "build" / "asm").mkdir()
     (raiz / "build" / "asm" / "viejo.o").write_bytes(b"o")
-    infra.dividir(raiz, original, REFERENCIA, herramientas(), Registro())
+    infra.dividir(
+        raiz, original, REFERENCIA, herramientas(), Registro(), rutas=RUTAS, convenciones=CONVENCIONES
+    )
     primero = sorted(p.relative_to(raiz).as_posix() for p in raiz.rglob("*") if p.is_file())
-    infra.dividir(raiz, original, REFERENCIA, herramientas(), Registro())
+    infra.dividir(
+        raiz, original, REFERENCIA, herramientas(), Registro(), rutas=RUTAS, convenciones=CONVENCIONES
+    )
     segundo = sorted(p.relative_to(raiz).as_posix() for p in raiz.rglob("*") if p.is_file())
     assert primero == segundo
     assert "asm/obsoleto.s" not in primero
@@ -297,18 +318,36 @@ def test_dividir_rechaza_un_ejecutable_distinto_sin_ejecutar_nada(raiz: Any, ori
     original.write_bytes(EJECUTABLE + b"x")
     ejecutor = Registro()
     with pytest.raises(ValueError, match="no coincide con la edicion soportada"):
-        infra.dividir(raiz, original, REFERENCIA, herramientas(), ejecutor)
+        infra.dividir(
+            raiz, original, REFERENCIA, herramientas(), ejecutor, rutas=RUTAS, convenciones=CONVENCIONES
+        )
     assert ejecutor.comandos == []
     assert not (raiz / "expected").exists()
 
 
 def test_dividir_falla_si_splat_no_genera_el_script(raiz: Any, original: Any) -> None:
     with pytest.raises(ProcesoError, match="splat no genero el script del enlazador"):
-        infra.dividir(raiz, original, REFERENCIA, herramientas(), Registro(genera_script=False))
+        infra.dividir(
+            raiz,
+            original,
+            REFERENCIA,
+            herramientas(),
+            Registro(genera_script=False),
+            rutas=RUTAS,
+            convenciones=CONVENCIONES,
+        )
 
 
 def preparar_split(raiz: Any, original: Any, **opciones: Any) -> None:
-    infra.dividir(raiz, original, REFERENCIA, herramientas(), Registro(**opciones))
+    infra.dividir(
+        raiz,
+        original,
+        REFERENCIA,
+        herramientas(),
+        Registro(**opciones),
+        rutas=RUTAS,
+        convenciones=CONVENCIONES,
+    )
 
 
 def test_construir_ensambla_cada_objeto_enlaza_y_regenera_la_cabecera(raiz: Any, original: Any) -> None:
@@ -316,7 +355,9 @@ def test_construir_ensambla_cada_objeto_enlaza_y_regenera_la_cabecera(raiz: Any,
     (raiz / "asm" / "data").mkdir()
     (raiz / "asm" / "data" / "datos.s").write_text("d", encoding="utf-8")
     ejecutor = Registro()
-    destino = infra.construir(raiz, REFERENCIA, herramientas(), ejecutor)
+    destino = infra.construir(
+        raiz, REFERENCIA, herramientas(), ejecutor, rutas=RUTAS, convenciones=CONVENCIONES
+    )
     assert destino == raiz / "build" / "PRUEBA.EXE"
     assert destino.read_bytes() == EJECUTABLE
     assert ejecutor.comandos == [
@@ -349,25 +390,25 @@ def test_construir_ensambla_cada_objeto_enlaza_y_regenera_la_cabecera(raiz: Any,
             "-EL",
             "--no-warn-rwx-segments",
             "-T",
-            "build/SLUS_008.ld",
+            "build/PRUEBA.ld",
             "-T",
             "build/undefined_funcs_auto.txt",
             "-o",
-            "build/SLUS_008.elf",
+            "build/PRUEBA.elf",
             "-Map",
-            "build/SLUS_008.map",
+            "build/PRUEBA.map",
         ],
-        ["objcopy.exe", "-O", "binary", "build/SLUS_008.elf", "build/SLUS_008.bin"],
+        ["objcopy.exe", "-O", "binary", "build/PRUEBA.elf", "build/PRUEBA.bin"],
     ]
     assert (raiz / "build" / "asm" / "data").is_dir()
 
 
 def test_construir_sin_script_o_sin_fuente_pide_ejecutar_split(raiz: Any, original: Any) -> None:
     with pytest.raises(FileNotFoundError, match="ejecute primero 'split'"):
-        infra.construir(raiz, REFERENCIA, herramientas(), Registro())
+        infra.construir(raiz, REFERENCIA, herramientas(), Registro(), rutas=RUTAS, convenciones=CONVENCIONES)
     preparar_split(raiz, original)
     with pytest.raises(FileNotFoundError, match=re.escape("falta el fuente 'asm/data/datos.s'")):
-        infra.construir(raiz, REFERENCIA, herramientas(), Registro())
+        infra.construir(raiz, REFERENCIA, herramientas(), Registro(), rutas=RUTAS, convenciones=CONVENCIONES)
 
 
 def test_construir_rechaza_un_cuerpo_de_longitud_distinta_a_t_size(raiz: Any, original: Any) -> None:
@@ -375,23 +416,30 @@ def test_construir_rechaza_un_cuerpo_de_longitud_distinta_a_t_size(raiz: Any, or
     (raiz / "asm" / "data").mkdir()
     (raiz / "asm" / "data" / "datos.s").write_text("d", encoding="utf-8")
     with pytest.raises(ValueError, match="el cuerpo enlazado mide 15 bytes"):
-        infra.construir(raiz, REFERENCIA, herramientas(), Registro(cuerpo=CUERPO[:-1]))
+        infra.construir(
+            raiz,
+            REFERENCIA,
+            herramientas(),
+            Registro(cuerpo=CUERPO[:-1]),
+            rutas=RUTAS,
+            convenciones=CONVENCIONES,
+        )
     assert not (raiz / "build" / "PRUEBA.EXE").exists()
 
 
 def test_verificar_ok_fail_y_sin_build(raiz: Any, original: Any) -> None:
     with pytest.raises(FileNotFoundError, match="ejecute primero 'build'"):
-        infra.verificar(raiz, original, REFERENCIA)
+        infra.verificar(raiz, original, REFERENCIA, rutas=RUTAS)
     (raiz / "build").mkdir()
     (raiz / "build" / "PRUEBA.EXE").write_bytes(EJECUTABLE)
-    assert infra.verificar(raiz, original, REFERENCIA) == (
+    assert infra.verificar(raiz, original, REFERENCIA, rutas=RUTAS) == (
         True,
         f"OK esperado={REFERENCIA.sha256} obtenido={REFERENCIA.sha256}",
     )
     alterado = bytearray(EJECUTABLE)
     alterado[0x805] ^= 1
     (raiz / "build" / "PRUEBA.EXE").write_bytes(bytes(alterado))
-    coincide, mensaje = infra.verificar(raiz, original, REFERENCIA)
+    coincide, mensaje = infra.verificar(raiz, original, REFERENCIA, rutas=RUTAS)
     assert coincide is False
     lineas = mensaje.splitlines()
     assert lineas[0].startswith("FAIL esperado=") and "obtenido=" in lineas[0]
@@ -402,20 +450,20 @@ def test_limpiar_elimina_lo_generado_y_conserva_lo_ajeno(raiz: Any, original: An
     preparar_split(raiz, original)
     (raiz / "build" / "PRUEBA.EXE").write_bytes(b"x")
     (raiz / "build" / "ajeno.bin").write_bytes(b"a")
-    eliminadas = infra.limpiar(raiz, "PRUEBA.EXE")
+    eliminadas = infra.limpiar(raiz, "PRUEBA.EXE", rutas=RUTAS)
     assert eliminadas[:2] == ["asm", "expected"]
     assert "build/PRUEBA.EXE" in eliminadas
     assert "build" not in eliminadas
     assert [p.name for p in (raiz / "build").iterdir()] == ["ajeno.bin"]
-    assert infra.limpiar(raiz, "PRUEBA.EXE") == []
+    assert infra.limpiar(raiz, "PRUEBA.EXE", rutas=RUTAS) == []
 
 
 def test_limpiar_borra_build_si_queda_vacia_y_es_idempotente(raiz: Any, original: Any) -> None:
     preparar_split(raiz, original)
-    eliminadas = infra.limpiar(raiz, "PRUEBA.EXE")
+    eliminadas = infra.limpiar(raiz, "PRUEBA.EXE", rutas=RUTAS)
     assert eliminadas[-1] == "build"
     assert [p.name for p in raiz.iterdir()] == []
-    assert infra.limpiar(raiz, "PRUEBA.EXE") == []
+    assert infra.limpiar(raiz, "PRUEBA.EXE", rutas=RUTAS) == []
 
 
 def test_limpiar_elimina_archivos_de_solo_lectura_y_rutas_que_son_archivos(raiz: Any) -> None:
@@ -424,7 +472,7 @@ def test_limpiar_elimina_archivos_de_solo_lectura_y_rutas_que_son_archivos(raiz:
     protegido.write_text("x", encoding="utf-8")
     os.chmod(protegido, stat.S_IREAD)
     (raiz / "expected").write_bytes(b"es un archivo, no una carpeta")
-    assert infra.limpiar(raiz, "PRUEBA.EXE") == ["asm", "expected"]
+    assert infra.limpiar(raiz, "PRUEBA.EXE", rutas=RUTAS) == ["asm", "expected"]
     assert not (raiz / "asm").exists()
 
 
@@ -438,20 +486,20 @@ def test_verificar_rechaza_un_original_de_otra_edicion(raiz: Path, original: Any
     (raiz / "build" / "PRUEBA.EXE").write_bytes(EJECUTABLE)
     original.write_bytes(EJECUTABLE + b"x")
     with pytest.raises(ValueError, match="el ejecutable original no coincide con la edicion soportada"):
-        infra.verificar(raiz, original, REFERENCIA)
+        infra.verificar(raiz, original, REFERENCIA, rutas=RUTAS)
 
 
 def test_construir_incluye_ambos_archivos_de_simbolos_automaticos(raiz: Path, original: Any) -> None:
     preparar_split(raiz, original)
     (raiz / "asm" / "data").mkdir()
     (raiz / "asm" / "data" / "datos.s").write_text("d", encoding="utf-8")
-    (raiz / infra.SIMBOLOS_AUTOMATICOS[1]).write_text("g = 0;", encoding="utf-8")
+    (raiz / SALIDAS.simbolos_automaticos[1]).write_text("g = 0;", encoding="utf-8")
     ejecutor = Registro()
-    infra.construir(raiz, REFERENCIA, herramientas(), ejecutor)
+    infra.construir(raiz, REFERENCIA, herramientas(), ejecutor, rutas=RUTAS, convenciones=CONVENCIONES)
     enlazado = next(c for c in ejecutor.comandos if Path(c[0]).name == "ld.exe")
     assert enlazado[3:9] == [
         "-T",
-        "build/SLUS_008.ld",
+        "build/PRUEBA.ld",
         "-T",
         "build/undefined_funcs_auto.txt",
         "-T",
@@ -460,12 +508,12 @@ def test_construir_incluye_ambos_archivos_de_simbolos_automaticos(raiz: Path, or
 
 
 AJENOS = (
-    "asm/overlay/a/codigo.s",
-    "expected/overlay/a.bin",
-    "build/overlay/a/salida.o",
-    "build/emulador/captura.png",
-    "build/bblit_prueba.bin",
-    "build/bblit_prueba.cue",
+    "asm/externo/a/codigo.s",
+    "expected/externo/a.bin",
+    "build/externo/a/salida.o",
+    "build/herramienta/captura.png",
+    "build/imagen_prueba.bin",
+    "build/imagen_prueba.cue",
 )
 
 
@@ -485,27 +533,27 @@ def test_split_y_clean_respetan_lo_que_pertenece_a_otras_herramientas(raiz: Any,
     (raiz / "build" / "PRUEBA.EXE").write_bytes(b"x")
     (raiz / "build" / "src").mkdir()
     (raiz / "build" / "diff").mkdir()
-    (raiz / "build" / "permutar" / "func_X").mkdir(parents=True)
-    eliminadas = infra.limpiar(raiz, "PRUEBA.EXE")
+    (raiz / "build" / "permutar" / "rutina_a").mkdir(parents=True)
+    eliminadas = infra.limpiar(raiz, "PRUEBA.EXE", rutas=RUTAS)
     assert "asm/text.s" in eliminadas and "expected/PRUEBA.EXE" in eliminadas
     assert "build/PRUEBA.EXE" in eliminadas and "build/src" in eliminadas and "build/diff" in eliminadas
     assert "build/permutar" in eliminadas and "build" not in eliminadas
     for relativa in AJENOS:
         assert (raiz / relativa).read_text(encoding="utf-8") == "ajeno", relativa
     assert not (raiz / "asm" / "text.s").exists() and not (raiz / "expected" / "PRUEBA.EXE").exists()
-    assert infra.limpiar(raiz, "PRUEBA.EXE") == []
+    assert infra.limpiar(raiz, "PRUEBA.EXE", rutas=RUTAS) == []
 
 
 def test_listar_fuentes_c(raiz: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    assert infra.listar_fuentes_c(raiz) == {}
+    assert infra.listar_fuentes_c(raiz, rutas=RUTAS) == {}
     (raiz / "src").mkdir()
     (raiz / "src" / "b.c").write_text("b", encoding="utf-8")
     (raiz / "src" / "a.c").write_text("a", encoding="utf-8")
     (raiz / "src" / "nota.txt").write_text("x", encoding="utf-8")
-    assert infra.listar_fuentes_c(raiz) == {"src/a.c": "a", "src/b.c": "b"}
+    assert infra.listar_fuentes_c(raiz, rutas=RUTAS) == {"src/a.c": "a", "src/b.c": "b"}
     monkeypatch.setattr(infra, "MAX_BYTES_FUENTE", 0)
     with pytest.raises(ValueError, match=r"src/a.c excede el tamano permitido"):
-        infra.listar_fuentes_c(raiz)
+        infra.listar_fuentes_c(raiz, rutas=RUTAS)
 
 
 def test_localizar_imagen_con_bin_en_subcarpetas_distintas_es_ambigua(tmp_path: Path) -> None:
@@ -519,46 +567,46 @@ def test_localizar_imagen_con_bin_en_subcarpetas_distintas_es_ambigua(tmp_path: 
 def preparar_funcion_local(raiz: Path) -> None:
     carpeta = raiz / "asm" / "nonmatchings" / "inicio"
     carpeta.mkdir(parents=True)
-    (carpeta / ".L80044904.s").write_text(
-        "nonmatching .L80044904, 0x8\n\nglabel .L80044904\n  .L8004490C:\n    nop\nendlabel .L80044904\n",
+    (carpeta / ".L00100104.s").write_text(
+        "nonmatching .L00100104, 0x8\n\nglabel .L00100104\n  .L0010010C:\n    nop\nendlabel .L00100104\n",
         encoding="utf-8",
     )
     otra = raiz / "asm" / "nonmatchings" / "otro"
     otra.mkdir(parents=True)
-    (otra / "func_80044664.s").write_text("glabel func_80044664\n    j .L80044904\n", encoding="utf-8")
+    (otra / "func_00100064.s").write_text("glabel func_00100064\n    j .L00100104\n", encoding="utf-8")
     (raiz / "src").mkdir()
     (raiz / "src" / "inicio.c").write_text(
-        '#include "common.h"\n\nINCLUDE_ASM("asm/nonmatchings/inicio", .L80044904);\n', encoding="utf-8"
+        '#include "common.h"\n\nINCLUDE_ASM("asm/nonmatchings/inicio", .L00100104);\n', encoding="utf-8"
     )
 
 
 def test_sanear_funciones_locales_renombra_archivo_directivas_saltos_y_esqueleto(raiz: Any) -> None:
     preparar_funcion_local(raiz)
-    assert infra.sanear_funciones_locales(raiz) == [".L80044904"]
+    assert infra.sanear_funciones_locales(raiz, rutas=RUTAS) == [".L00100104"]
     carpeta = raiz / "asm" / "nonmatchings" / "inicio"
-    assert [p.name for p in carpeta.iterdir()] == ["func_80044904.s"]
-    texto = (carpeta / "func_80044904.s").read_text(encoding="utf-8")
-    assert "glabel func_80044904" in texto and ".L8004490C:" in texto
-    assert "j func_80044904" in (raiz / "asm" / "nonmatchings" / "otro" / "func_80044664.s").read_text(
+    assert [p.name for p in carpeta.iterdir()] == ["func_00100104.s"]
+    texto = (carpeta / "func_00100104.s").read_text(encoding="utf-8")
+    assert "glabel func_00100104" in texto and ".L0010010C:" in texto
+    assert "j func_00100104" in (raiz / "asm" / "nonmatchings" / "otro" / "func_00100064.s").read_text(
         encoding="utf-8"
     )
-    assert 'inicio", func_80044904);' in (raiz / "src" / "inicio.c").read_text(encoding="utf-8")
-    assert infra.sanear_funciones_locales(raiz) == [], "es idempotente"
+    assert 'inicio", func_00100104);' in (raiz / "src" / "inicio.c").read_text(encoding="utf-8")
+    assert infra.sanear_funciones_locales(raiz, rutas=RUTAS) == [], "es idempotente"
 
 
 def test_sanear_funciones_locales_sin_nombres_locales_ni_src_no_cambia_nada(raiz: Any) -> None:
     carpeta = raiz / "asm" / "nonmatchings" / "a"
     carpeta.mkdir(parents=True)
-    (carpeta / "func_80010000.s").write_text("glabel func_80010000\n", encoding="utf-8")
-    assert infra.sanear_funciones_locales(raiz) == []
-    assert infra.sanear_funciones_locales(raiz / "no_existe") == []
+    (carpeta / "func_00100000.s").write_text("glabel func_00100000\n", encoding="utf-8")
+    assert infra.sanear_funciones_locales(raiz, rutas=RUTAS) == []
+    assert infra.sanear_funciones_locales(raiz / "no_existe", rutas=RUTAS) == []
 
 
 def test_sanear_funciones_locales_sin_carpeta_src(raiz: Any) -> None:
     preparar_funcion_local(raiz)
     (raiz / "src" / "inicio.c").unlink()
     (raiz / "src").rmdir()
-    assert infra.sanear_funciones_locales(raiz) == [".L80044904"]
+    assert infra.sanear_funciones_locales(raiz, rutas=RUTAS) == [".L00100104"]
 
 
 class RegistroConFuncionLocal(Registro):
@@ -572,6 +620,14 @@ class RegistroConFuncionLocal(Registro):
 
 
 def test_dividir_sanea_las_funciones_locales_que_deja_splat(raiz: Any, original: Any) -> None:
-    infra.dividir(raiz, original, REFERENCIA, herramientas(), RegistroConFuncionLocal())
-    assert (raiz / "asm" / "nonmatchings" / "inicio" / "func_80044904.s").is_file()
-    assert "func_80044904" in (raiz / "src" / "inicio.c").read_text(encoding="utf-8")
+    infra.dividir(
+        raiz,
+        original,
+        REFERENCIA,
+        herramientas(),
+        RegistroConFuncionLocal(),
+        rutas=RUTAS,
+        convenciones=CONVENCIONES,
+    )
+    assert (raiz / "asm" / "nonmatchings" / "inicio" / "func_00100104.s").is_file()
+    assert "func_00100104" in (raiz / "src" / "inicio.c").read_text(encoding="utf-8")

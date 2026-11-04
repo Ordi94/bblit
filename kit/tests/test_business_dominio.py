@@ -44,7 +44,10 @@ def test_el_manifiesto_minimo_carga_con_rutas_y_convenciones_por_defecto() -> No
     assert proyecto.convenciones.macro_no_coincidente == "NON_MATCHING"
     assert proyecto.convenciones.macro_ensamblador == "INCLUDE_ASM"
     assert proyecto.rutas.macros == "asm/include"
-    assert (proyecto.rutas.asm_coincidente, proyecto.rutas.asm_pendiente) == ("asm/matchings", "asm/nonmatchings")
+    assert (proyecto.rutas.asm_coincidente, proyecto.rutas.asm_pendiente) == (
+        "asm/matchings",
+        "asm/nonmatchings",
+    )
     assert proyecto.convenciones.max_valor_g == 64
     assert proyecto.convenciones.patron_simbolo_datos == r"^D_([0-9A-F]{8})$"
     assert r"escrita\s+a\s+mano" in proyecto.convenciones.manuscrita

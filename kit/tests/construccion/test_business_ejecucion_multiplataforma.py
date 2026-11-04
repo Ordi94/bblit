@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tools.reconstruccion import infraestructura as infra
-
+from psxdecomp.construccion import infraestructura as infra
+from psxdecomp.entorno import Variables
 from psxdecomp.toolchain import plataforma
 
 
@@ -34,7 +34,7 @@ def test_en_linux_ejecutar_proceso_lanza_los_exe_con_wine_y_sin_ruido_de_depurac
     falsa = EjecucionFalsa()
     monkeypatch.setattr(subprocess, "run", falsa)
     monkeypatch.delenv("WINEDEBUG", raising=False)
-    monkeypatch.delenv("BBLIT_WINE", raising=False)
+    monkeypatch.delenv("PSXDECOMP_WINE", raising=False)
     ruta = "/root/tool chain/pssn/bin/CPPPSX.EXE"
     assert infra.ejecutar_proceso([ruta, "-Iinclude", "src/a.c"], tmp_path, 5) == "ok"
     assert falsa.comando == ["wine", ruta, "-Iinclude", "src/a.c"]
@@ -74,13 +74,13 @@ def test_en_linux_sin_wine_el_error_dice_que_instalar_y_no_filtra_rutas(
 ) -> None:
     simular_linux(monkeypatch)
     monkeypatch.setattr(subprocess, "run", lanzar_inexistente)
-    monkeypatch.setenv("BBLIT_WINE", "/opt/secreto/wine")
+    monkeypatch.setenv("PSXDECOMP_WINE", "/opt/secreto/wine")
     with pytest.raises(infra.ProcesoError) as error:
-        infra.ejecutar_proceso(["/t/CC1PSX.EXE"], tmp_path, 5)
+        infra.ejecutar_proceso(["/t/CC1PSX.EXE"], tmp_path, 5, variables=Variables(alias="JUEGO"))
     mensaje = str(error.value)
     assert "CC1PSX.EXE: Wine no esta instalado" in mensaje
     assert "wine32" in mensaje
-    assert "BBLIT_WINE" in mensaje
+    assert "PSXDECOMP_WINE (o JUEGO_WINE)" in mensaje
     assert "/opt/secreto" not in mensaje
     assert "/ruta/privada" not in mensaje
 
@@ -106,3 +106,15 @@ def test_en_linux_un_binutils_nativo_ausente_da_proceso_error_sin_mencionar_wine
     ) as error:
         infra.ejecutar_proceso(["/x/mipsel-none-elf-as"], tmp_path, 5)
     assert "Wine" not in str(error.value)
+
+
+def test_el_alias_del_proyecto_localiza_wine_cuando_el_prefijo_propio_no_esta_definido(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    simular_linux(monkeypatch)
+    falsa = EjecucionFalsa()
+    monkeypatch.setattr(subprocess, "run", falsa)
+    monkeypatch.delenv("PSXDECOMP_WINE", raising=False)
+    monkeypatch.setenv("JUEGO_WINE", "wine64")
+    infra.ejecutar_proceso(["/t/CPPPSX.EXE"], tmp_path, 5, variables=Variables(alias="JUEGO"))
+    assert falsa.comando[0] == "wine64"

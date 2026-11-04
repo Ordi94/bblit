@@ -31,7 +31,9 @@ from psxdecomp.construccion.dominio import EjecutableReferencia
 from psxdecomp.construccion.salidas import calcular_salidas
 from psxdecomp.diff.fuentes_c import MAX_BYTES_FUENTE
 from psxdecomp.dominio import Convenciones, Rutas
-from psxdecomp.entorno import SUFIJO_DISCO, SUFIJO_WINE, VARIABLES_PROPIAS, Variables
+from psxdecomp.entorno import SUFIJO_DISCO as _SUFIJO_DISCO
+from psxdecomp.entorno import SUFIJO_WINE as _SUFIJO_WINE
+from psxdecomp.entorno import VARIABLES_PROPIAS, Variables
 from psxdecomp.toolchain import iso9660, plataforma
 from psxdecomp.toolchain.dominio import Componente
 from psxdecomp.toolchain.instalacion import resolver_herramienta
@@ -75,7 +77,7 @@ def _mensaje_ejecutable_ausente(herramienta: str, falta_wine: bool, variables: V
     if falta_wine:
         return (
             f"{herramienta}: Wine no esta instalado; instale wine y wine32 "
-            f"o defina {variables.describir(SUFIJO_WINE)} con el ejecutable de Wine"
+            f"o defina {variables.describir(_SUFIJO_WINE)} con el ejecutable de Wine"
         )
     return f"{herramienta}: el ejecutable no esta instalado o no esta en el PATH"
 
@@ -231,7 +233,7 @@ def localizar_imagen(disc: Path, *, variables: Variables = VARIABLES_PROPIAS) ->
     if disc.is_file():
         sufijo = disc.suffix.lower()
         if sufijo not in (".bin", ".cue"):
-            raise ValueError(f"{variables.describir(SUFIJO_DISCO)} debe ser una carpeta, un .bin o un .cue")
+            raise ValueError(f"{variables.describir(_SUFIJO_DISCO)} debe ser una carpeta, un .bin o un .cue")
         imagen = disc.with_suffix(".bin") if sufijo == ".cue" else disc
         if not imagen.is_file():
             raise FileNotFoundError("el .cue no tiene un .bin hermano")
@@ -317,7 +319,7 @@ def obtener_original(
     """
     if disc is None:
         raise ValueError(
-            f"falta la ubicacion del disco: defina {variables.describir(SUFIJO_DISCO)}, "
+            f"falta la ubicacion del disco: defina {variables.describir(_SUFIJO_DISCO)}, "
             f"--disc o 'disc' en {rutas.local}"
         )
     if not disc.exists():

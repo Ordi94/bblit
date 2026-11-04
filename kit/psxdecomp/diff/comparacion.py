@@ -31,7 +31,8 @@ from psxdecomp.construccion.infraestructura import (
     leer_valores_g,
     listar_fuentes_c,
 )
-from psxdecomp.construccion.salidas import SUBCARPETA_DIFF, calcular_salidas
+from psxdecomp.construccion.salidas import SUBCARPETA_DIFF as _SUBCARPETA_DIFF
+from psxdecomp.construccion.salidas import calcular_salidas
 from psxdecomp.diff import fuentes_c
 from psxdecomp.diff.enlace_diff import bytes_coinciden, contar_referencias_numericas
 from psxdecomp.diff.fuentes_c import EstadoFuncion
@@ -424,7 +425,7 @@ def carpeta_de_trabajo(raiz: Path, etiqueta: str, *, rutas: Rutas) -> Iterator[s
         with carpeta_de_trabajo(Path("."), "rutina_a", rutas=rutas) as carpeta:
             candidato = f"{carpeta}/code_a.c.o"
     """
-    carpeta_diff = f"{rutas.build}/{SUBCARPETA_DIFF}"
+    carpeta_diff = f"{rutas.build}/{_SUBCARPETA_DIFF}"
     base = raiz / carpeta_diff
     base.mkdir(parents=True, exist_ok=True)
     creada = Path(tempfile.mkdtemp(prefix=f"{etiqueta}-{os.getpid()}-", dir=base))
@@ -598,7 +599,7 @@ def ruta_resultado(funcion: str, *, rutas: Rutas) -> str:
     Ejemplo:
         ruta = ruta_resultado("rutina_a", rutas=rutas)
     """
-    return f"{rutas.build}/{SUBCARPETA_DIFF}/{funcion}.resultado.json"
+    return f"{rutas.build}/{_SUBCARPETA_DIFF}/{funcion}.resultado.json"
 
 
 def guardar_resultado(

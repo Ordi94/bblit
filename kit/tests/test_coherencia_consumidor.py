@@ -148,3 +148,13 @@ def test_el_alias_del_prefijo_del_manifiesto_resuelve_las_variables_vigentes(pro
     configuracion = modulo("toolchain.configuracion")
     entorno = {configuracion.VARIABLE_DISCO: "valor"}
     assert proyecto.variable_entorno("DISC", entorno) == "valor"
+
+
+def test_las_carpetas_del_ensamblador_original_del_comparador_coinciden_con_el_manifiesto(
+    proyecto: Proyecto,
+) -> None:
+    comparador = modulo("reconstruccion.diff")
+    assert comparador.CARPETA_ASM_COINCIDENTE == proyecto.rutas.asm_coincidente
+    assert comparador.CARPETA_ASM_PENDIENTE == proyecto.rutas.asm_pendiente
+    assert comparador.RUTAS is proyecto.rutas or comparador.RUTAS == proyecto.rutas
+    assert comparador.NOMBRE_EJECUTABLE == proyecto.identidad.ejecutable
