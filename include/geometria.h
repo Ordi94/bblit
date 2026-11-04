@@ -354,13 +354,10 @@ typedef struct TrabajoRecorrido {
  * calcula la suma y guarda t4..t6 en otro vector con GEO_GUARDAR_W_T4, con la direccion de destino
  * calculada entre las dos secuencias. El cuerpo escribe $8 y $12..$14.
  */
-#define GEO_CARGAR_SUMAR_W(p)     __asm__ volatile ("move $8, %0
-	lw $12, 0($8)
-	lw $13, 4($8)
-	lw $14, 8($8)
-	"                       "add $12, $12, $9
-	add $13, $13, $10
-	add $14, $14, $11"                       : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
+#define GEO_CARGAR_SUMAR_W(p) \
+    __asm__ volatile ("move $8, %0\n\tlw $12, 0($8)\n\tlw $13, 4($8)\n\tlw $14, 8($8)\n\t" \
+                      "add $12, $12, $9\n\tadd $13, $13, $10\n\tadd $14, $14, $11" \
+                      : : "r"(p) : "$8", "$12", "$13", "$14", "memory")
 /*
  * GEO_SUMAR_H(p): las tres medias palabras de p += t1..t3, con los temporales que dejo la macro
  * anterior (GEO_CARGAR_H) y los mismos $8, $12..$14 y add con captura de desbordamiento que
@@ -413,7 +410,11 @@ typedef struct TrabajoRecorrido {
  * GEO_DISTANCIA_APROX_A(v, base, off): misma distancia aproximada que GEO_DISTANCIA_APROX sobre el
  * vector de tres palabras de v, pero el resultado (con el bit 0 activo) va a la palabra base + off en
  * lugar de v + 0x44 (func_80026FEC, 0x80028CC8 a 0x80028D54: addiu $5, base, off con la base del
- * scratchpad en un registro guardado). Mismo cuerpo y misma lista de registros destruidos.
+ * scratchpad en un registro guardado). Misma lista de registros destruidos y mismo calculo; el cuerpo
+ * difiere de GEO_DISTANCIA_APROX en dos instrucciones: la primera y la tercera bgez no llevan el nop
+ * explicito en el hueco de retardo, porque el original deja alli el sub del valor absoluto. Es posible
+ * que la macro original duplique ese nop; no unificar las dos macros sin medir func_80026FEC y
+ * func_800353B0.
  */
 #define GEO_DISTANCIA_APROX_A(v, base, off) \
     __asm__ volatile (".set push\n\t.set noreorder\n\t.set noat\n\t" \
