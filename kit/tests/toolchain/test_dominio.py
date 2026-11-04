@@ -15,6 +15,7 @@ def test_componente_minimo_se_parsea_con_valores_por_defecto() -> None:
     assert componente.extraer == ()
     assert componente.archivos_clave == ()
     assert componente.quitar_raiz is False
+    assert componente.nativo_fuera_de_windows is False
 
 
 def test_componente_completo_normaliza_rutas_y_patrones() -> None:
@@ -23,12 +24,14 @@ def test_componente_completo_normaliza_rutas_y_patrones() -> None:
         extraer=["Bin\\*.EXE", "psx/lib/*"],
         archivos_clave={"as": "bin\\as.exe"},
         quitar_raiz=True,
+        nativo_fuera_de_windows=True,
         formato="7z",
     )
     componente = parsear_componente("binutils", bloque)
     assert componente.extraer == ("Bin/*.EXE", "psx/lib/*")
     assert componente.archivos_clave == (("as", "bin/as.exe"),)
     assert componente.quitar_raiz is True
+    assert componente.nativo_fuera_de_windows is True
     assert componente.ruta_clave("as") == "bin/as.exe"
 
 
@@ -129,6 +132,12 @@ def test_archivos_clave_invalidos(claves: Any) -> None:
 def test_quitar_raiz_debe_ser_booleano() -> None:
     with pytest.raises(ValueError, match="quitar_raiz"):
         parsear_componente("m2c", bloque_componente(b"x", quitar_raiz="si"))
+
+
+@pytest.mark.parametrize("valor", ["si", 1, None, [], "true"])
+def test_nativo_fuera_de_windows_debe_ser_booleano(valor: Any) -> None:
+    with pytest.raises(ValueError, match="nativo_fuera_de_windows"):
+        parsear_componente("m2c", bloque_componente(b"x", nativo_fuera_de_windows=valor))
 
 
 @pytest.mark.parametrize("valor", [None, [], {}, {"version": 2, "componentes": {"a": {}}}, {"version": 1}])

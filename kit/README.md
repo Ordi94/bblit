@@ -57,6 +57,13 @@ manifiesto la ruta del archivo de bloqueo (`rutas.toolchain_lock`), la del archi
 (`rutas.local`) y el alias de las variables de entorno (`proyecto.prefijo_entorno`). La raiz del
 proyecto es `--proyecto` o la carpeta actual.
 
+Un componente del lock puede declarar `"nativo_fuera_de_windows": true` (booleano estricto; si
+falta, es falso). Fuera de Windows, `resolver_herramienta` toma entonces `as`, `ld`, `objcopy` y
+`objdump` de ese componente del `PATH` (con el prefijo de `BINUTILS_PREFIX`) en lugar del
+ejecutable de Windows empaquetado. La decision depende solo de ese campo, nunca del nombre del
+componente, de modo que cada proyecto nombra su entrada de binutils como quiera. Para pruebas,
+`resolver_herramienta` acepta `entorno`, un mapeo que sustituye a `os.environ`.
+
 Las rutas se resuelven con la regla: argumento, `PSXDECOMP_X`, `<alias>_X`, archivo local, valor por
 defecto. Las variables son `DISC`, `TOOLCHAIN`, `7ZIP`, `WINE` y `BINUTILS_PREFIX`; `psxdecomp.entorno.Variables`
 concentra la regla y los mensajes de error nombran las dos variables.

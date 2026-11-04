@@ -122,7 +122,14 @@ def main(
             return 0
         if args.orden == "ruta":
             print(
-                resolver_herramienta(lock, rutas.toolchain, args.componente, args.alias, proyecto.variables())
+                resolver_herramienta(
+                    lock,
+                    rutas.toolchain,
+                    args.componente,
+                    args.alias,
+                    variables=proyecto.variables(),
+                    entorno=entorno,
+                )
             )
             return 0
         if args.orden == "verificar":

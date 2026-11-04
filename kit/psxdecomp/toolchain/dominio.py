@@ -51,6 +51,9 @@ class Componente:
         archivos_clave: Alias de herramienta mapeado a su ruta relativa dentro del componente.
         quitar_raiz: Si es verdadero, descarta la carpeta unica de primer nivel de un zip
             (las descargas de GitHub traen ``proyecto-<commit>/``).
+        nativo_fuera_de_windows: Si es verdadero, fuera de Windows las herramientas del conjunto
+            de binutils (``as``, ``ld``, ``objcopy``, ``objdump``) se toman del ``PATH`` en lugar
+            del ejecutable de Windows empaquetado; ausente equivale a falso.
     """
 
     nombre: str
@@ -62,6 +65,7 @@ class Componente:
     extraer: tuple[str, ...]
     archivos_clave: tuple[tuple[str, str], ...]
     quitar_raiz: bool = False
+    nativo_fuera_de_windows: bool = False
 
     def ruta_clave(self, alias: str) -> str:
         """
@@ -320,6 +324,9 @@ def parsear_componente(nombre: str, datos: object) -> Componente:
         extraer=_validar_patrones(datos.get("extraer"), nombre),
         archivos_clave=_validar_archivos_clave(datos.get("archivos_clave"), nombre),
         quitar_raiz=_validar_booleano(datos.get("quitar_raiz", False), "quitar_raiz", nombre),
+        nativo_fuera_de_windows=_validar_booleano(
+            datos.get("nativo_fuera_de_windows", False), "nativo_fuera_de_windows", nombre
+        ),
     )
 
 

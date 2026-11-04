@@ -52,6 +52,7 @@
       "sha256": "51df48145d5ef4b396d3932b72ccba538cc605c7c7745b32c58c277aa00523c5",
       "fecha_registro": "2026-10-25",
       "formato": "zip",
+      "nativo_fuera_de_windows": true,
       "extraer": [
         "bin/mipsel-none-elf-as.exe",
         "bin/mipsel-none-elf-ld.exe",

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -23,7 +23,6 @@ from psxdecomp.toolchain.extraccion import extraer
 NOMBRE_MARCA = "INSTALADO.json"
 CARPETA_DESCARGA = "_descarga"
 MAX_BYTES_LOCK = 1024 * 1024
-COMPONENTE_BINUTILS = "binutils-mipsel"
 
 
 def leer_lock(ruta: Path) -> dict[str, Componente]:
@@ -228,7 +227,9 @@ def resolver_herramienta(
     raiz: Path,
     nombre: str,
     alias: str,
+    *,
     variables: Variables = VARIABLES_PROPIAS,
+    entorno: Mapping[str, str] | None = None,
 ) -> Path:
     """
     Devuelve la ruta absoluta de una herramienta instalada.
@@ -236,7 +237,8 @@ def resolver_herramienta(
     Contexto:
         La reconstruccion y la comparacion de funciones localizan ``as``, ``ld``,
         ``CC1PSX.EXE``, etc. por componente y alias, nunca por rutas fijas. Fuera de Windows
-        ``as``, ``ld``, ``objcopy`` y ``objdump`` se toman del ``PATH`` (binutils nativos con el
+        ``as``, ``ld``, ``objcopy`` y ``objdump`` de los componentes que declaran
+        ``nativo_fuera_de_windows`` se toman del ``PATH`` (binutils nativos con el
         prefijo de la variable ``BINUTILS_PREFIX`` del entorno) y el resto se busca sin distinguir mayusculas.
 
     Args:
@@ -246,6 +248,8 @@ def resolver_herramienta(
         alias (str): Alias declarado en ``archivos_clave``.
         variables (Variables, opcional): Nombres de variable del proyecto, para el prefijo de
             los binutils nativos; por omision solo el prefijo propio del kit.
+        entorno (Mapping[str, str], opcional): Variables de entorno donde se busca el prefijo y el
+            ``PATH`` de los binutils nativos; por omision ``os.environ``.
 
     Returns:
         Path: Ruta del archivo.
@@ -259,11 +263,16 @@ def resolver_herramienta(
         ensamblador = resolver_herramienta(lock, Path("toolchain"), "binutils-mipsel", "as")
     """
     componente = obtener_componente(lock, nombre)
-    if nombre == COMPONENTE_BINUTILS and alias in plataforma.ALIAS_BINUTILS and not plataforma.es_windows():
-        nativo = plataforma.localizar_binutils(alias, os.environ, variables=variables)
+    fuente = os.environ if entorno is None else entorno
+    if (
+        componente.nativo_fuera_de_windows
+        and alias in plataforma.ALIAS_BINUTILS
+        and not plataforma.es_windows()
+    ):
+        nativo = plataforma.localizar_binutils(alias, fuente, variables=variables)
         if nativo is None:
             raise FileNotFoundError(
-                f"binutils nativo '{plataforma.prefijo_binutils(os.environ, variables)}{alias}' "
+                f"binutils nativo '{plataforma.prefijo_binutils(fuente, variables)}{alias}' "
                 "no esta en el PATH; agregue al PATH los binutils 2.40 de mipsel-none-elf o defina "
                 f"{variables.describir(SUFIJO_PREFIJO_BINUTILS)}"
             )

@@ -71,6 +71,12 @@ coincide; si no, la instalación se detiene con un error que nombra el component
 ningún archivo en el destino. Las URL admitidas son HTTPS y de los dominios `archive.org`,
 `arthus.net`, `github.com` y `githubusercontent.com`.
 
+El campo opcional `nativo_fuera_de_windows` (booleano, falso si falta) marca los componentes
+cuyas herramientas `as`, `ld`, `objcopy` y `objdump` se toman del `PATH` cuando el sistema no es
+Windows, con el prefijo de la variable `BINUTILS_PREFIX` (por omision `mipsel-none-elf-`). En
+este proyecto solo lo declara `binutils-mipsel`; el resto de los componentes se resuelve siempre
+dentro de `toolchain/`. La decision sale del lock, no del nombre del componente.
+
 | Componente | Contenido | Versión | Procedencia | SHA-256 del archivo |
 |---|---|---|---|---|
 | `psyq-4.4` | `CC1PSX.EXE` (GCC 2.8.1), `CCPSX.EXE`, `CPPPSX.EXE`, `ASPSX.EXE` 2.79, `PSYLINK.EXE`, `DMPSX.EXE`, `LIB\*.LIB`, `INCLUDE\*.H` | Runtime Library 4.4 (octubre de 1998), GCC 2.8.1 SN32 build 4.0.0010 | Espejo `ps1_sdks` de archive.org | `75d20b9d31372ff0629482f30ee27edd726eaa57d8be39fa0d93e583144063f7` |

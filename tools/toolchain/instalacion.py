@@ -5,7 +5,6 @@ from functools import partial
 from psxdecomp.toolchain import instalacion as _kit
 from psxdecomp.toolchain.instalacion import (
     CARPETA_DESCARGA,
-    COMPONENTE_BINUTILS,
     MAX_BYTES_LOCK,
     NOMBRE_MARCA,
     carpeta_componente,
@@ -21,7 +20,6 @@ resolver_herramienta = partial(_kit.resolver_herramienta, variables=VARIABLES)
 
 __all__ = [
     "CARPETA_DESCARGA",
-    "COMPONENTE_BINUTILS",
     "MAX_BYTES_LOCK",
     "NOMBRE_MARCA",
     "carpeta_componente",

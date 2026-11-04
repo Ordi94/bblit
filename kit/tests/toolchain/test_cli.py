@@ -140,7 +140,11 @@ def test_un_binutils_nativo_ausente_nombra_las_dos_variables(
     (repo / "config" / "toolchain.lock.json").write_text(
         json.dumps(
             lock_de(
-                **{"binutils-mipsel": bloque_componente(ARCHIVO, archivos_clave={"as": "herramienta.py"})}
+                **{
+                    "binutils-mipsel": bloque_componente(
+                        ARCHIVO, archivos_clave={"as": "herramienta.py"}, nativo_fuera_de_windows=True
+                    )
+                }
             )
         ),
         encoding="utf-8",
