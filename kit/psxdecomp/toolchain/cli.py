@@ -149,6 +149,11 @@ def main(
     except (ValueError, FileNotFoundError, ConnectionError, TimeoutError, RuntimeError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
+    except OSError as error:
+        # Permisos, disco lleno o un reemplazo atomico que falla: se informa el motivo del sistema sin
+        # la ruta, que seria absoluta y revelaria la estructura de carpetas de quien lo ejecuta.
+        print(f"error: fallo de entrada/salida: {error.strerror or type(error).__name__}", file=sys.stderr)
+        return 1
 
 
 def _buscar_7zip(rutas: Rutas, entorno: Mapping[str, str], proyecto: Proyecto) -> Path | None:

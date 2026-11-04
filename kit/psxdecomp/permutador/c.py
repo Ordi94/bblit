@@ -1695,8 +1695,7 @@ def todos_los_bloques(bloque: Bloque) -> Iterator[Bloque]:
     yield bloque
     for sentencia in bloque.items:
         for hijo in bloques_hijos(sentencia):
-            if hijo is not bloque:
-                yield from todos_los_bloques(hijo)
+            yield from todos_los_bloques(hijo)
 
 
 def es_identificador(texto: str) -> bool:

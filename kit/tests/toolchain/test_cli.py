@@ -208,3 +208,29 @@ def test_modulo_principal_delega_en_main(
         runpy.run_module("psxdecomp.toolchain", run_name="__main__")
     assert salida.value.code in (0, 1)
     assert punto_entrada.main is cli.main
+
+
+def test_un_fallo_de_entrada_salida_sale_sin_traza_ni_rutas_absolutas(
+    repo: Any, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    secreta = str(repo / "carpeta_privada" / "pieza.tmp")
+
+    def sin_permiso(*_: Any, **__: Any) -> None:
+        raise PermissionError(13, "Permission denied", secreta)
+
+    monkeypatch.setattr(cli, "instalar", sin_permiso)
+    assert cli.main(["instalar"], entorno={}, sesion=sesion()) == 1
+    err = capsys.readouterr().err
+    assert err == "error: fallo de entrada/salida: Permission denied\n"
+    assert "carpeta_privada" not in err
+
+
+def test_un_oserror_sin_descripcion_del_sistema_informa_el_tipo(
+    repo: Any, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def disco_lleno(*_: Any, **__: Any) -> None:
+        raise OSError
+
+    monkeypatch.setattr(cli, "instalar", disco_lleno)
+    assert cli.main(["instalar"], entorno={}, sesion=sesion()) == 1
+    assert capsys.readouterr().err == "error: fallo de entrada/salida: OSError\n"
