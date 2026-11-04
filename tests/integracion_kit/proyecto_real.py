@@ -1,9 +1,12 @@
-"""Funciones del kit ya enlazadas con el manifiesto real del juego, para las pruebas de integracion.
+"""Capa de enlace entre el kit y el manifiesto real del juego, para las pruebas de integracion.
 
 Las pruebas de este paquete ejercen el kit contra ``psxdecomp.toml`` y los datos reales del
-repositorio. El kit recibe rutas, convenciones y cadena de compilacion por parametro; aqui se fijan
-una sola vez con el manifiesto del juego para que cada prueba llame a la funcion con su firma
-corta. No hay ninguna logica propia: cada nombre es una funcion o una constante de ``psxdecomp``.
+repositorio. El kit no conoce ningun proyecto: recibe rutas, convenciones y cadena de compilacion
+por parametro en cada llamada. Repetir esos tres argumentos en cada una de las cientos de llamadas
+de estas pruebas las volveria ilegibles y, peor, permitiria que dos pruebas usaran valores distintos
+sin que nadie lo notara. Por eso este modulo los fija una sola vez, con el manifiesto cargado por
+``tools.proyecto``, y expone cada funcion del kit con su firma corta. No tiene logica propia: cada
+nombre es una funcion o una constante de ``psxdecomp`` con los argumentos del proyecto ya aplicados.
 """
 
 from collections.abc import Mapping, Sequence

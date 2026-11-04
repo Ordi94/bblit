@@ -234,7 +234,8 @@ def test_el_repositorio_no_contiene_rutas_absolutas_de_ninguna_maquina() -> None
     archivos = [*(RAIZ_REPO / "src").glob("*.c"), *(RAIZ_REPO / "include").glob("*.h")]
     archivos += [RAIZ_REPO / "docs" / n for n in ("DESCOMPILACION.md", "PROGRESO.md", "TOOLCHAIN.md")]
     archivos += [RAIZ_REPO / "config" / "splat.yaml"]
-    archivos += sorted((RAIZ_REPO / "tools" / "reconstruccion").glob("*.py"))
+    archivos += sorted((RAIZ_REPO / "tools").rglob("*.py"))
+    archivos += sorted((RAIZ_REPO / "kit" / "psxdecomp").rglob("*.py"))
     for archivo in archivos:
         assert not absoluta.search(archivo.read_text(encoding="utf-8")), archivo.name
 

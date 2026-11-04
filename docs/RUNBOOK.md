@@ -18,6 +18,9 @@ comprueba el manifiesto:
 La segunda orden valida `psxdecomp.toml`, el manifiesto del proyecto (rutas, zonas de memoria y
 convenciones que el kit lee en vez de suponerlas). Las pruebas del proyecto y las del kit se lanzan juntas
 con `python -m pytest`; las del kit solas, con cobertura del 100 %, con `python -m pytest` desde `kit/`.
+Las pruebas del proyecto que ejercen el kit contra los datos reales (particion, compilacion, comparacion,
+progreso y ciclo completo) estan en `tests/integracion_kit/`; la cobertura de ramas del codigo propio
+(`tools/`) se mide con `python -m pytest tests --cov` y exige el 100 %.
 
 ```
 set PYTHONUTF8=1
