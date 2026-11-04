@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from tools.reconstruccion import cli, diff
 
+from .ayudantes_diff import ASM_FUNCION, EjecutorDiff, repo_diff  # noqa: F401 - fixture reutilizada
 from .test_compilacion import herramientas_compilacion
-from .test_diff import ASM_FUNCION, EjecutorDiff, repo_diff  # noqa: F401 - fixture reutilizada
 from .test_gp import EjecutorEnlace, crear_repo_diff, herramientas_con_enlace
 
 

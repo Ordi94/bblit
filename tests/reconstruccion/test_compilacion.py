@@ -8,9 +8,10 @@ from tools.reconstruccion.compilacion import HerramientasCompilacion
 from tools.reconstruccion.infraestructura import Herramientas, ProcesoError
 from tools.toolchain.dominio import cargar_lock
 
+from psxdecomp.construccion import infraestructura as infra_kit
 from toolchain.ayudantes import bloque_componente, lock_de
 
-from .test_infraestructura import CUERPO, EJECUTABLE, REFERENCIA, Registro
+from .ayudantes_infra import CUERPO, EJECUTABLE, REFERENCIA, Registro
 
 SALIDA_OBJDUMP = """
 build/src/a.c.o:     file format elf32-littlemips
@@ -378,7 +379,7 @@ def test_construir_mixto_valida_la_longitud_del_cuerpo(tmp_path: Path) -> None:
 
 
 def test_el_ejecutor_por_defecto_de_construir_mixto_es_ejecutar_proceso() -> None:
-    assert comp.construir_mixto.__defaults__ == (infra.ejecutar_proceso,)
+    assert comp.construir_mixto.func.__defaults__ == (infra_kit.ejecutar_proceso,)
     assert comp.compilar_fuente.func.__kwdefaults__ == {
         "definiciones": (),
         "exigir_solo_texto": True,

@@ -11,10 +11,10 @@ from tools.reconstruccion import infraestructura as infra
 
 from toolchain.ayudantes import bloque_componente, lock_de
 
+from .ayudantes_diff import ASM_FUNCION, EjecutorDiff
+from .ayudantes_infra import EJECUTABLE, REFERENCIA, Registro, referencia_json
 from .test_compilacion import SALIDA_OBJDUMP, EjecutorC
-from .test_diff import ASM_FUNCION, EjecutorDiff
 from .test_gp import EjecutorEnlace
-from .test_infraestructura import EJECUTABLE, REFERENCIA, Registro, referencia_json
 from .test_variantes import EjecutorVariantes, crear_repo, crear_variantes
 
 
@@ -35,7 +35,7 @@ def entorno_repo(tmp_path: Path) -> Any:
         (herramientas / nombre).write_bytes(b"")
     disco = tmp_path / "disco (copia)"
     (disco / "fs").mkdir(parents=True)
-    (disco / "fs" / "PRUEBA.EXE").write_bytes(EJECUTABLE)
+    (disco / "fs" / "SLUS_008.38").write_bytes(EJECUTABLE)
     variables = {"BBLIT_DISC": str(disco), "BBLIT_TOOLCHAIN": str(tmp_path / "tc")}
     return raiz, variables
 
@@ -53,7 +53,7 @@ def test_flujo_completo_split_build_verify_clean(
     (raiz / "asm" / "data").mkdir()
     (raiz / "asm" / "data" / "datos.s").write_text("d", encoding="utf-8")
     assert ejecutar_cli(raiz, variables, "build") == 0
-    assert capsys.readouterr().out == f"build completado: build/PRUEBA.EXE sha256={REFERENCIA.sha256}\n"
+    assert capsys.readouterr().out == f"build completado: build/SLUS_008.38 sha256={REFERENCIA.sha256}\n"
     assert ejecutar_cli(raiz, variables, "verify") == 0
     assert capsys.readouterr().out == f"OK esperado={REFERENCIA.sha256} obtenido={REFERENCIA.sha256}\n"
     assert ejecutar_cli(raiz, variables, "clean") == 0
@@ -67,7 +67,7 @@ def test_verify_con_huellas_distintas_devuelve_uno(
 ) -> None:
     raiz, variables = entorno_repo
     (raiz / "build").mkdir()
-    (raiz / "build" / "PRUEBA.EXE").write_bytes(EJECUTABLE[:-1] + b"\xff")
+    (raiz / "build" / "SLUS_008.38").write_bytes(EJECUTABLE[:-1] + b"\xff")
     assert ejecutar_cli(raiz, variables, "verify") == 1
     salida = capsys.readouterr().out
     assert salida.startswith("FAIL esperado=")
@@ -79,7 +79,7 @@ def test_disco_por_argumento_y_por_local_toml(
 ) -> None:
     raiz, variables = entorno_repo
     (raiz / "build").mkdir()
-    (raiz / "build" / "PRUEBA.EXE").write_bytes(EJECUTABLE)
+    (raiz / "build" / "SLUS_008.38").write_bytes(EJECUTABLE)
     disco = variables["BBLIT_DISC"]
     assert ejecutar_cli(raiz, {}, "--disc", disco, "verify") == 0
     (raiz / "config" / "local.toml").write_text(
@@ -94,10 +94,11 @@ def test_sin_disco_configurado_el_error_es_claro(
 ) -> None:
     raiz, _ = entorno_repo
     (raiz / "build").mkdir()
-    (raiz / "build" / "PRUEBA.EXE").write_bytes(EJECUTABLE)
+    (raiz / "build" / "SLUS_008.38").write_bytes(EJECUTABLE)
     assert ejecutar_cli(raiz, {}, "verify") == 1
     assert capsys.readouterr().err == (
-        "error: falta la ubicacion del disco: defina BBLIT_DISC, --disc o 'disc' en config/local.toml\n"
+        "error: falta la ubicacion del disco: defina PSXDECOMP_DISC (o BBLIT_DISC), "
+        "--disc o 'disc' en config/local.toml\n"
     )
 
 
@@ -174,7 +175,7 @@ def test_el_entorno_por_defecto_es_os_environ(
     for clave, valor in variables.items():
         monkeypatch.setenv(clave, valor)
     (raiz / "build").mkdir()
-    (raiz / "build" / "PRUEBA.EXE").write_bytes(EJECUTABLE)
+    (raiz / "build" / "SLUS_008.38").write_bytes(EJECUTABLE)
     assert cli.main(["verify"], raiz=raiz) == 0
 
 
@@ -255,7 +256,7 @@ def test_build_compila_los_archivos_c_del_script_y_diff_informa_la_puntuacion(
         )
         == 0
     )
-    assert capsys.readouterr().out == f"build completado: build/PRUEBA.EXE sha256={REFERENCIA.sha256}\n"
+    assert capsys.readouterr().out == f"build completado: build/SLUS_008.38 sha256={REFERENCIA.sha256}\n"
     assert ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=EjecutorDiff(0)) == 0
     assert capsys.readouterr().out == "TARGET   CURRENT\nfila\nfunc_80036204 (src/code_a.c): puntuacion 0\n"
     assert ejecutar_cli(raiz, variables, "diff", "func_80036204", ejecutor=EjecutorDiff(120)) == 1

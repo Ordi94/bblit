@@ -11,6 +11,10 @@ from tools.reconstruccion import infraestructura as infra
 from tools.reconstruccion.infraestructura import ProcesoError
 from tools.reconstruccion.variantes import ResultadoVariante
 
+from psxdecomp.construccion import infraestructura as infra_kit
+
+from .ayudantes_diff import ASM_FUNCION, EjecutorDiff
+from .ayudantes_infra import REFERENCIA
 from .test_compilacion import (
     SALIDA_OBJDUMP,
     SCRIPT_MIXTO,
@@ -19,8 +23,6 @@ from .test_compilacion import (
     herramientas_compilacion,
     preparar_construccion,
 )
-from .test_diff import ASM_FUNCION, EjecutorDiff
-from .test_infraestructura import REFERENCIA
 
 # ---------------------------------------------------------------- opciones por archivo
 
@@ -67,7 +69,7 @@ def test_leer_valores_g(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     escribir_opciones(tmp_path, "[archivos.a]\ng = 99\n")
     with pytest.raises(ValueError, match="entero entre 0 y 64"):
         infra.leer_valores_g(tmp_path)
-    monkeypatch.setattr(infra, "MAX_BYTES_REFERENCIA", 3)
+    monkeypatch.setattr(infra_kit, "MAX_BYTES_REFERENCIA", 3)
     with pytest.raises(ValueError, match="excede el tamano permitido"):
         infra.leer_valores_g(tmp_path)
 

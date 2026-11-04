@@ -11,6 +11,10 @@ from tools.reconstruccion.compilacion import HerramientasCompilacion
 from tools.reconstruccion.infraestructura import ProcesoError
 from tools.reconstruccion.variantes import ResultadoVariante
 
+from psxdecomp.construccion import infraestructura as infra_kit
+
+from .ayudantes_diff import ASM_FUNCION, EjecutorDiff
+from .ayudantes_infra import REFERENCIA
 from .test_compilacion import (
     SALIDA_OBJDUMP,
     SCRIPT_MIXTO,
@@ -19,8 +23,6 @@ from .test_compilacion import (
     herramientas_compilacion,
     preparar_construccion,
 )
-from .test_diff import ASM_FUNCION, EjecutorDiff
-from .test_infraestructura import REFERENCIA
 from .test_variantes import EjecutorVariantes, crear_variantes, escribir_opciones
 
 # ---------------------------------------------------------------- dominio
@@ -101,7 +103,7 @@ def test_leer_gp_datos_pequenos_y_direcciones(tmp_path: Path, monkeypatch: pytes
     simbolos = tmp_path / infra.SIMBOLOS_PROYECTO
     simbolos.write_text("func_80036204 = 0x80036204; // type:func size:0x4c\n", encoding="utf-8")
     assert infra.leer_direcciones_de_funciones(tmp_path) == {"func_80036204": 0x80036204}
-    monkeypatch.setattr(infra, "MAX_BYTES_SIMBOLOS", 3)
+    monkeypatch.setattr(infra_kit, "MAX_BYTES_SIMBOLOS", 3)
     with pytest.raises(ValueError, match="excede el tamano permitido"):
         infra.leer_direcciones_de_funciones(tmp_path)
 

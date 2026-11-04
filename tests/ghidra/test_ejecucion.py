@@ -21,7 +21,8 @@ from tools.ghidra.ejecucion import (
     resolver_instalacion,
     verificar_carga,
 )
-from tools.reconstruccion import infraestructura
+
+from psxdecomp.construccion import infraestructura as infra_kit
 
 REGISTRO_VALIDO = (
     "INFO  Using Loader: PSX Executables Loader (ProgramLoader)\n"
@@ -109,7 +110,7 @@ def extraccion(monkeypatch: pytest.MonkeyPatch) -> list[Path]:
         imagenes.append(imagen)
         destino.write_bytes(b"x")
 
-    monkeypatch.setattr(infraestructura, "extraer_de_imagen", doble)
+    monkeypatch.setattr(infra_kit, "extraer_de_imagen", doble)
     return imagenes
 
 

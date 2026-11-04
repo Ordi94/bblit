@@ -10,6 +10,7 @@ from tools.reconstruccion import infraestructura as infra
 from tools.reconstruccion.fuentes_c import EstadoFuncion
 from tools.reconstruccion.progreso import FuncionSimbolo
 
+from .ayudantes_infra import EJECUTABLE, REFERENCIA, Registro
 from .test_compilacion import (
     SALIDA_OBJDUMP,
     SCRIPT_MIXTO,
@@ -18,7 +19,6 @@ from .test_compilacion import (
     herramientas_compilacion,
     preparar_construccion,
 )
-from .test_infraestructura import EJECUTABLE, REFERENCIA, Registro
 
 CONFIGURACION: dict[str, Any] = {
     "segments": [
@@ -133,14 +133,14 @@ def test_leer_secciones_declaradas(tmp_path: Path) -> None:
 
 
 def test_salidas_de_enlace_e_invalidar_salida(tmp_path: Path) -> None:
-    salidas = infra.salidas_de_enlace("PRUEBA.EXE")
-    assert salidas == ("build/PRUEBA.EXE", "build/SLUS_008.bin", "build/SLUS_008.elf", "build/SLUS_008.map")
-    assert infra.invalidar_salida(tmp_path, "PRUEBA.EXE") == []
+    salidas = infra.salidas_de_enlace("SLUS_008.38")
+    assert salidas == ("build/SLUS_008.38", "build/SLUS_008.bin", "build/SLUS_008.elf", "build/SLUS_008.map")
+    assert infra.invalidar_salida(tmp_path, "SLUS_008.38") == []
     (tmp_path / "build").mkdir()
     for ruta in salidas:
         (tmp_path / ruta).write_bytes(b"x")
     (tmp_path / "build" / "ajeno.bin").write_bytes(b"a")
-    assert infra.invalidar_salida(tmp_path, "PRUEBA.EXE") == list(salidas)
+    assert infra.invalidar_salida(tmp_path, "SLUS_008.38") == list(salidas)
     assert [p.name for p in (tmp_path / "build").iterdir()] == ["ajeno.bin"]
 
 
@@ -153,7 +153,7 @@ def test_un_build_que_falla_a_mitad_no_deja_la_salida_anterior(tmp_path: Path) -
         herramientas_compilacion,
         EjecutorC(secciones=SALIDA_OBJDUMP.replace("0000001d", "00000000")),
     )
-    assert (tmp_path / "build" / "PRUEBA.EXE").is_file()
+    assert (tmp_path / "build" / "SLUS_008.38").is_file()
     with pytest.raises(ValueError, match="seccion inesperada"):
         comp.construir_mixto(
             tmp_path,
@@ -162,13 +162,13 @@ def test_un_build_que_falla_a_mitad_no_deja_la_salida_anterior(tmp_path: Path) -
             herramientas_compilacion,
             EjecutorC(secciones=SALIDA_OBJDUMP),
         )
-    for ruta in infra.salidas_de_enlace("PRUEBA.EXE"):
+    for ruta in infra.salidas_de_enlace("SLUS_008.38"):
         assert not (tmp_path / ruta).exists(), ruta
     (tmp_path / infra.SCRIPT_ENLAZADOR).unlink()
-    (tmp_path / "build" / "PRUEBA.EXE").write_bytes(b"viejo")
+    (tmp_path / "build" / "SLUS_008.38").write_bytes(b"viejo")
     with pytest.raises(FileNotFoundError, match="ejecute primero 'split'"):
         infra.construir(tmp_path, REFERENCIA, herramientas_base(), Registro())
-    assert not (tmp_path / "build" / "PRUEBA.EXE").exists()
+    assert not (tmp_path / "build" / "SLUS_008.38").exists()
 
 
 def test_motivos_no_coincidentes_toma_el_primer_comentario_de_cada_bloque() -> None:

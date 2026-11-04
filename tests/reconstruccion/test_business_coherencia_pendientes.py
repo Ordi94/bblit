@@ -8,9 +8,9 @@ from typing import Any
 import pytest
 from tools.reconstruccion import cli, coherencia_pendientes, diff, fuentes_c
 
+from .ayudantes_diff import EjecutorDiff, repo_diff  # noqa: F401 - fixture reutilizada
 from .test_business_pendientes import PENDIENTE, bloque, preparar_repositorio
 from .test_compilacion import herramientas_compilacion
-from .test_diff import EjecutorDiff, repo_diff  # noqa: F401 - fixture reutilizada
 from .test_gp import EjecutorEnlace, crear_repo_diff, herramientas_con_enlace
 
 FUNCION = "func_80014AC4"

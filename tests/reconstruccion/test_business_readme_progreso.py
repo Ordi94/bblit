@@ -19,7 +19,7 @@ from tools.reconstruccion.readme_progreso import (
     resumir_juego,
 )
 
-from .test_infraestructura import REFERENCIA, referencia_json
+from .ayudantes_infra import REFERENCIA, referencia_json
 
 SHA = "0fad70d9b4cb324d78f113f7fd70c0aa954388fefad01af373509e0473c87df0"
 RESUMEN = ResumenJuego(450, 362, 60, 16, 12, 59692, 201416, 29.64)

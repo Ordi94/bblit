@@ -9,6 +9,8 @@ from tools.reconstruccion import cli, dominio
 from tools.reconstruccion import infraestructura as infra
 from tools.reconstruccion.dominio import SimboloDeclarado
 
+from psxdecomp.construccion import infraestructura as infra_kit
+
 RAIZ_REPO = Path(__file__).resolve().parents[2]
 SIMBOLOS = (
     "// tabla de ejemplo\n"
@@ -103,7 +105,7 @@ def test_sin_symbols_txt_la_verificacion_lo_dice(tmp_path: Path) -> None:
 
 def test_un_symbols_txt_demasiado_grande_se_rechaza(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     preparar(tmp_path, None)
-    monkeypatch.setattr(infra, "MAX_BYTES_SIMBOLOS", 4)
+    monkeypatch.setattr(infra_kit, "MAX_BYTES_SIMBOLOS", 4)
     with pytest.raises(ValueError, match="excede el tamano permitido"):
         infra.verificar_configuracion(tmp_path)
 
