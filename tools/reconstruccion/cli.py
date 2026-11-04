@@ -3,137 +3,98 @@
 from __future__ import annotations
 
 import argparse
-import os
+import dataclasses
 import sys
 from collections.abc import Mapping, Sequence
 from datetime import date
-from pathlib import Path, PurePath
+from pathlib import Path
 
-from tools.reconstruccion import (
-    coherencia_pendientes,
-    compilacion,
-    diff,
-    progreso,
-    readme_progreso,
-    variantes,
-)
+from psxdecomp.cli import Contexto, describir_error_de_sistema, motivo_sin_rutas, resumir_comparacion
+from psxdecomp.cli import construir_parser as construir_parser_del_kit
+from psxdecomp.cli import main as main_del_kit
+from psxdecomp.cli.comandos import imprimir_avisos
+from psxdecomp.dominio import Proyecto
+from tools.reconstruccion import coherencia_pendientes, progreso, readme_progreso
 from tools.reconstruccion import infraestructura as infra
-from tools.reconstruccion import permutar as permutador
-from tools.reconstruccion.dominio import EjecutableReferencia
 from tools.reconstruccion.infraestructura import Ejecutor, ProcesoError, listar_fuentes_c
-from tools.toolchain.configuracion import Rutas, leer_local_toml, resolver_rutas
-from tools.toolchain.instalacion import leer_lock, resolver_herramienta
+from tools.toolchain.contexto import PROYECTO, RAIZ_REPOSITORIO
 
-RAIZ_REPOSITORIO = Path(__file__).resolve().parents[2]
-RUTA_REFERENCIA = Path("config") / "ejecutable.json"
-RUTA_LOCK = Path("config") / "toolchain.lock.json"
-RUTA_LOCAL = Path("config") / "local.toml"
 ERRORES_PROPIOS = (ValueError, ProcesoError)
+PROG = "python tools/build.py"
+
+__all__ = [
+    "ERRORES_PROPIOS",
+    "PROG",
+    "RAIZ_REPOSITORIO",
+    "construir_parser",
+    "describir_error_de_sistema",
+    "main",
+    "registrar_progreso",
+    "resumir_comparacion",
+]
 
 
 def construir_parser() -> argparse.ArgumentParser:
     """
-    Construye el analizador de argumentos de la CLI.
+    Construye el analizador de argumentos de la CLI del juego.
 
     Contexto:
-        Separado de ``main`` para probar la definicion de ordenes por si sola.
+        Es el analizador del kit con el manifiesto de este proyecto: las ordenes comunes (``split``,
+        ``build``, ``verify``, ``clean``, ``diff``, ``probar``, ``permutar`` y ``verificar-config``) mas
+        las que declaran los plugins del manifiesto, entre ellas ``progreso``. Separado de ``main``
+        para probar la definicion de ordenes por si sola.
 
     Returns:
-        argparse.ArgumentParser: Analizador con las ordenes ``split``, ``build``, ``verify``,
-        ``clean``, ``diff``, ``probar``, ``permutar``, ``progreso`` y ``verificar-config``.
+        argparse.ArgumentParser: Analizador con las ordenes de la linea de ordenes del juego.
 
     Ejemplo:
         args = construir_parser().parse_args(["clean"])
     """
-    parser = argparse.ArgumentParser(prog="python tools/build.py", description=__doc__)
-    parser.add_argument("--disc", help="carpeta del disco (por defecto BBLIT_DISC o config/local.toml)")
-    parser.add_argument(
-        "--toolchain", help="carpeta del toolchain (por defecto BBLIT_TOOLCHAIN o ./toolchain)"
-    )
-    sub = parser.add_subparsers(dest="orden", required=True)
-    sub.add_parser("split", help="particiona el ejecutable con splat (genera asm/ y el script del enlazador)")
-    sub.add_parser("build", help="compila los src/*.c, ensambla el resto, enlaza y genera build/<ejecutable>")
-    sub.add_parser("verify", help="compara el ejecutable reconstruido con el original por SHA-256")
-    sub.add_parser("clean", help="elimina asm/, expected/ y los artefactos generados en build/")
-    comparar = sub.add_parser("diff", help="compara una funcion compilada desde C con su original")
-    comparar.add_argument("funcion", help="nombre de la funcion (por ejemplo func_80036204)")
-    ensayar = sub.add_parser(
-        "probar", help="compara con el original cada variante .c de una carpeta y ordena por puntuacion"
-    )
-    ensayar.add_argument("funcion", help="nombre de la funcion (por ejemplo func_80035244)")
-    ensayar.add_argument(
-        "carpeta", type=Path, help="carpeta con una variante completa de la funcion por archivo .c"
-    )
-    buscar = sub.add_parser(
-        "permutar",
-        help="busca con mutaciones la forma de C que hace coincidir una funcion NON_MATCHING (no toca src/)",
-    )
-    buscar.add_argument("funcion", help="nombre de la funcion (por ejemplo func_80016C0C)")
-    buscar.add_argument("--iteraciones", type=int, help="variantes a medir como maximo")
-    buscar.add_argument("--minutos", type=float, help="duracion maxima de la sesion en minutos")
-    buscar.add_argument("--procesos", type=int, default=1, help="mediciones simultaneas (por omision 1)")
-    buscar.add_argument("--semilla", type=int, help="semilla aleatoria (por omision, una nueva)")
-    buscar.add_argument(
-        "--reanudar", action="store_true", help="continua la busqueda guardada en build/permutar/<funcion>/"
-    )
-    medir = sub.add_parser(
+    return construir_parser_del_kit(PROYECTO, prog=PROG, descripcion=__doc__)
+
+
+def registrar_progreso(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser], proyecto: Proyecto
+) -> None:
+    """
+    Anade la orden ``progreso`` a la linea de ordenes del kit.
+
+    Contexto:
+        Es el plugin de subcomandos que declara ``psxdecomp.toml`` mientras el medidor de progreso y la
+        seccion del README siguen viviendo en este proyecto. Los textos de ayuda nombran el documento
+        de progreso y el resumen en JSON que fija el manifiesto.
+
+    Args:
+        subparsers (argparse._SubParsersAction[argparse.ArgumentParser]): Registro de subcomandos del kit.
+        proyecto (Proyecto): Manifiesto del proyecto.
+
+    Ejemplo:
+        registrar_progreso(parser.add_subparsers(dest="orden"), proyecto)
+    """
+    documento = proyecto.rutas.documento_progreso
+    medir = subparsers.add_parser(
         "progreso",
-        help="mide la descompilacion y escribe docs/PROGRESO.md, build/progreso.json y la seccion del README",
+        help=f"mide la descompilacion y escribe {documento}, {infra.PROGRESO_JSON} y la seccion del README",
     )
     medir.add_argument(
         "--sin-readme", action="store_true", help="no actualiza la seccion de progreso del README.md"
     )
-    sub.add_parser(
-        "verificar-config",
-        help="falla si una clave de [datos_pequenos] ya esta declarada en config/symbols.txt",
-    )
-    return parser
+    medir.set_defaults(manejador=_manejar_progreso)
 
 
-def _ejecutar_clean(raiz: Path, referencia: EjecutableReferencia) -> int:
-    """Implementa ``clean``."""
-    eliminadas = infra.limpiar(raiz, referencia.nombre)
-    print("eliminado: " + (", ".join(eliminadas) if eliminadas else "nada que eliminar"))
-    return 0
-
-
-def _ejecutar_verificacion(raiz: Path, rutas: Rutas, referencia: EjecutableReferencia) -> int:
-    """Implementa ``verify``; un ejecutable ausente es un FAIL, no un error de uso."""
-    original = infra.obtener_original(raiz, rutas.disc, referencia)
-    if not (raiz / "build" / referencia.nombre).is_file():
-        print(f"FAIL el ejecutable reconstruido no existe: ejecute 'build' (esperado={referencia.sha256})")
-        return 1
-    coincide, mensaje = infra.verificar(raiz, original, referencia)
-    print(mensaje)
-    return 0 if coincide else 1
-
-
-def _imprimir_avisos(avisos: Sequence[str]) -> None:
-    """Imprime cada aviso de configuracion por la salida de errores."""
-    for aviso in avisos:
-        print(f"aviso: {aviso}", file=sys.stderr)
+def _manejar_progreso(contexto: Contexto) -> int:
+    """Adapta el contexto del kit a ``_ejecutar_progreso``."""
+    return _ejecutar_progreso(contexto.raiz, contexto.ejecutar, not contexto.args.sin_readme)
 
 
 def _avisar_configuracion(raiz: Path) -> None:
-    """Avisa de la configuracion repetida al terminar ``split`` sin tumbarlo.
-
-    Es una comprobacion informativa: si no se puede hacer, se dice y se sigue.
-    """
+    """Avisa de la configuracion repetida sin tumbar la orden que la pide."""
     try:
         avisos = infra.verificar_configuracion(raiz)
     except (ValueError, FileNotFoundError, OSError) as error:
         print(f"aviso: no se pudo verificar la configuracion: {error}", file=sys.stderr)
         return
-    _imprimir_avisos(avisos)
-
-
-def _ejecutar_verificacion_configuracion(raiz: Path) -> int:
-    """Implementa ``verificar-config``; cada duplicacion es un error y la orden devuelve 1."""
-    errores = infra.verificar_configuracion(raiz)
-    for error in errores:
-        print(f"error: {error}", file=sys.stderr)
-    print(f"verificar-config: {len(errores)} errores")
-    return 1 if errores else 0
+    imprimir_avisos(avisos)
 
 
 def _fecha_actual() -> str:
@@ -143,7 +104,7 @@ def _fecha_actual() -> str:
 
 def _actualizar_readme(raiz: Path, medido: progreso.Progreso, ejecutar: Ejecutor) -> None:
     """Reescribe la seccion de progreso del README e informa del resultado."""
-    referencia = infra.leer_referencia(raiz / RUTA_REFERENCIA)
+    referencia = infra.leer_referencia(raiz / PROYECTO.identidad.referencia)
     cambio = readme_progreso.actualizar_readme(
         raiz,
         medido,
@@ -154,35 +115,12 @@ def _actualizar_readme(raiz: Path, medido: progreso.Progreso, ejecutar: Ejecutor
     print(f"README.md: seccion de progreso {'actualizada' if cambio else 'sin cambios'}")
 
 
-def _motivo_sin_rutas(error: Exception) -> str:
-    """
-    Da el motivo de un fallo sin las rutas de la maquina.
-
-    Contexto:
-        Lo usa ``_actualizar_readme_sin_abortar``; un ``OSError`` trae la ruta completa en su
-        texto, asi que solo se conserva la descripcion del sistema.
-
-    Args:
-        error (Exception): Fallo capturado.
-
-    Returns:
-        str: ``strerror`` si el error de entrada/salida nombra una ruta; el mensaje tal cual
-        en el resto (los del proyecto ya van redactados sin rutas).
-
-    Ejemplo:
-        motivo = _motivo_sin_rutas(PermissionError(13, "Acceso denegado", "C:/x"))
-    """
-    if isinstance(error, OSError) and error.filename is not None:
-        return error.strerror or type(error).__name__
-    return str(error)
-
-
 def _actualizar_readme_sin_abortar(raiz: Path, medido: progreso.Progreso, ejecutar: Ejecutor) -> None:
     """
     Actualiza la seccion del README y convierte cualquier fallo en un aviso.
 
     Contexto:
-        La seccion del README es secundaria: ``docs/PROGRESO.md`` y ``build/progreso.json`` ya
+        La seccion del README es secundaria: el documento de progreso y el resumen en JSON ya
         estan escritos cuando se llega aqui, y abortar perderia los avisos de coherencia y de
         rutinas sin explicar que ``progreso`` emite despues.
 
@@ -198,7 +136,7 @@ def _actualizar_readme_sin_abortar(raiz: Path, medido: progreso.Progreso, ejecut
         _actualizar_readme(raiz, medido, ejecutar)
     except (*ERRORES_PROPIOS, OSError) as error:
         print(
-            f"aviso: no se pudo actualizar la seccion de progreso del README: {_motivo_sin_rutas(error)}",
+            f"aviso: no se pudo actualizar la seccion de progreso del README: {motivo_sin_rutas(error)}",
             file=sys.stderr,
         )
 
@@ -232,160 +170,6 @@ def _ejecutar_progreso(raiz: Path, ejecutar: Ejecutor, con_readme: bool = True) 
     return 0
 
 
-def resumir_comparacion(resultado: diff.ResultadoDiff) -> list[str]:
-    """
-    Da las lineas con que ``diff`` cierra su salida, despues de las columnas de ``asm-differ``.
-
-    Contexto:
-        Una funcion cuyos bytes enlazados coinciden con el original puntua 0, igual que una que
-        coincide instruccion por instruccion; las referencias que el C escribe en forma numerica y
-        el original en forma simbolica no son una diferencia. Se conservan como nota aparte, antes
-        de la linea de veredicto, para quien quiera normalizarlas.
-
-    Args:
-        resultado (diff.ResultadoDiff): Resultado de comparar una funcion.
-
-    Returns:
-        list[str]: Aviso de truncado (solo si ``asm-differ`` corto el candidato), nota de
-        referencias numericas (solo si los bytes coinciden) y linea de veredicto.
-
-    Ejemplo:
-        for linea in resumir_comparacion(resultado):
-            print(linea)
-    """
-    veredicto = f"{resultado.funcion} ({resultado.archivo}): puntuacion {resultado.puntuacion}"
-    lineas = []
-    if resultado.truncado:
-        lineas.append(
-            "aviso: asm-differ corto el desensamblado del candidato en el limite de lineas; "
-            "la puntuacion y las diferencias mostradas son parciales"
-        )
-    if not resultado.bytes_iguales:
-        return [*lineas, veredicto]
-    nota = (
-        f"nota: {resultado.referencias_numericas} referencias en forma numerica "
-        f"(asm-differ puntua {resultado.puntuacion_asm})"
-    )
-    return [*lineas, nota, f"{veredicto} (coincide en bytes)"]
-
-
-def _ejecutar_comparacion(raiz: Path, rutas: Rutas, funcion: str, python: str, ejecutar: Ejecutor) -> int:
-    """Implementa ``diff``; devuelve 0 solo si la medicion es completa y coincide."""
-    lock = leer_lock(raiz / RUTA_LOCK)
-    herramientas = compilacion.resolver_herramientas_compilacion(lock, rutas.toolchain, python)
-    script = resolver_herramienta(lock, rutas.toolchain, "asm-differ", "diff")
-    resultado = diff.comparar_funcion(raiz, funcion, herramientas, script, ejecutar)
-    print(resultado.texto)
-    print("\n".join(resumir_comparacion(resultado)))
-    return 0 if resultado.coincide else 1
-
-
-def _ejecutar_probar(
-    raiz: Path, rutas: Rutas, funcion: str, carpeta: Path, *, python: str, ejecutar: Ejecutor
-) -> int:
-    """Implementa ``probar``; devuelve 0 solo si alguna variante tiene puntuacion cero."""
-    lock = leer_lock(raiz / RUTA_LOCK)
-    herramientas = compilacion.resolver_herramientas_compilacion(lock, rutas.toolchain, python)
-    script = resolver_herramienta(lock, rutas.toolchain, "asm-differ", "diff")
-    resultados = variantes.probar_variantes(
-        raiz, funcion, carpeta, herramientas, script_diff=script, ejecutar=ejecutar
-    )
-    print(variantes.formatear_tabla(resultados))
-    return 0 if resultados[0].coincide else 1
-
-
-def _ejecutar_permutar(
-    raiz: Path, rutas: Rutas, args: argparse.Namespace, *, python: str, ejecutar: Ejecutor
-) -> int:
-    """Implementa ``permutar``; devuelve 0 si la funcion coincide, 1 si mejoro y 2 si no mejoro."""
-    lock = leer_lock(raiz / RUTA_LOCK)
-    herramientas = compilacion.resolver_herramientas_compilacion(lock, rutas.toolchain, python)
-    script = resolver_herramienta(lock, rutas.toolchain, "asm-differ", "diff")
-    opciones = permutador.Opciones(
-        iteraciones=args.iteraciones,
-        minutos=args.minutos,
-        procesos=args.procesos,
-        semilla=args.semilla,
-        reanudar=args.reanudar,
-    )
-    resumen = permutador.permutar_funcion(
-        raiz, args.funcion, herramientas, script, ejecutar, opciones=opciones
-    )
-    print(permutador.formatear_resumen(resumen, raiz))
-    return resumen.codigo_de_salida
-
-
-def _ejecutar_construccion(
-    raiz: Path, rutas: Rutas, referencia: EjecutableReferencia, orden: str, ejecutar: Ejecutor
-) -> int:
-    """Implementa ``split`` y ``build``."""
-    original = infra.obtener_original(raiz, rutas.disc, referencia) if orden == "split" else None
-    lock = leer_lock(raiz / RUTA_LOCK)
-    herramientas = infra.resolver_herramientas(lock, rutas.toolchain, sys.executable)
-    if original is not None:
-        infra.dividir(raiz, original, referencia, herramientas, ejecutar)
-        print("split completado: asm/ y script del enlazador generados")
-        _avisar_configuracion(raiz)
-        return 0
-    destino = compilacion.construir_mixto(
-        raiz,
-        referencia,
-        herramientas,
-        lambda: compilacion.resolver_herramientas_compilacion(lock, rutas.toolchain, sys.executable),
-        ejecutar,
-        declaradas=infra.leer_secciones_declaradas(raiz),
-    )
-    print(f"build completado: {destino.relative_to(raiz).as_posix()} sha256={infra.sha256_archivo(destino)}")
-    return 0
-
-
-def _despachar(
-    args: argparse.Namespace, raiz: Path, rutas: Rutas, referencia: EjecutableReferencia, ejecutar: Ejecutor
-) -> int:
-    """Ejecuta las ordenes que necesitan las rutas del disco o del toolchain."""
-    if args.orden == "diff":
-        return _ejecutar_comparacion(raiz, rutas, args.funcion, sys.executable, ejecutar)
-    if args.orden == "probar":
-        return _ejecutar_probar(
-            raiz, rutas, args.funcion, args.carpeta, python=sys.executable, ejecutar=ejecutar
-        )
-    if args.orden == "permutar":
-        return _ejecutar_permutar(raiz, rutas, args, python=sys.executable, ejecutar=ejecutar)
-    if args.orden == "verify":
-        return _ejecutar_verificacion(raiz, rutas, referencia)
-    return _ejecutar_construccion(raiz, rutas, referencia, args.orden, ejecutar)
-
-
-def describir_error_de_sistema(error: OSError) -> str:
-    """
-    Da el texto de un error de entrada/salida sin exponer rutas de la maquina.
-
-    Contexto:
-        Lo usa ``main``. Un ``OSError`` nativo (permisos, disco, archivo ausente) lleva en su texto
-        la ruta completa; el proyecto tambien lanza ``FileNotFoundError`` con un mensaje propio y
-        sin ``errno`` (por ejemplo "falta config/symbols.txt"), que se conserva tal cual porque es
-        una instruccion para el usuario y no contiene directorios de la maquina.
-
-    Args:
-        error (OSError): Error capturado.
-
-    Returns:
-        str: El mensaje propio si el error no trae ``errno``; si no, el tipo de error, el motivo
-        del sistema (``strerror``) y solo el nombre base del archivo, nunca el directorio.
-
-    Ejemplo:
-        print(describir_error_de_sistema(PermissionError(13, "Acceso denegado", "C:/datos/a.bin")))
-    """
-    if error.errno is None:
-        return str(error)
-    detalle = f"error de entrada/salida: {type(error).__name__}"
-    if error.strerror:
-        detalle += f" ({error.strerror})"
-    if error.filename:
-        detalle += f": {PurePath(str(error.filename)).name}"
-    return detalle
-
-
 def main(
     argv: Sequence[str] | None = None,
     entorno: Mapping[str, str] | None = None,
@@ -396,9 +180,9 @@ def main(
     Punto de entrada de la CLI de reconstruccion.
 
     Contexto:
-        Lo invoca ``tools/build.py``. Los errores esperados se imprimen en una linea sin
-        traza ni rutas de la maquina y devuelven 1; ``verify`` y ``diff`` devuelven 1 tambien
-        cuando las huellas o las funciones difieren.
+        Lo invoca ``tools/build.py``. Es la linea de ordenes del kit con el manifiesto de este proyecto:
+        los errores esperados se imprimen en una linea sin traza ni rutas de la maquina y devuelven 1;
+        ``verify`` y ``diff`` devuelven 1 tambien cuando las huellas o las funciones difieren.
 
     Args:
         argv (Sequence[str], opcional): Argumentos; por defecto ``sys.argv[1:]``.
@@ -412,21 +196,11 @@ def main(
     Ejemplo:
         codigo = main(["verify"])
     """
-    args = construir_parser().parse_args(argv)
-    variables = entorno if entorno is not None else os.environ
-    try:
-        if args.orden == "progreso":
-            return _ejecutar_progreso(raiz, ejecutar, not args.sin_readme)
-        if args.orden == "verificar-config":
-            return _ejecutar_verificacion_configuracion(raiz)
-        referencia = infra.leer_referencia(raiz / RUTA_REFERENCIA)
-        if args.orden == "clean":
-            return _ejecutar_clean(raiz, referencia)
-        rutas = resolver_rutas(raiz, variables, leer_local_toml(raiz / RUTA_LOCAL), args.disc, args.toolchain)
-        return _despachar(args, raiz, rutas, referencia, ejecutar)
-    except ERRORES_PROPIOS as error:
-        print(f"error: {error}", file=sys.stderr)
-        return 1
-    except OSError as error:
-        print(f"error: {describir_error_de_sistema(error)}", file=sys.stderr)
-        return 1
+    return main_del_kit(
+        argv,
+        entorno,
+        ejecutar,
+        proyecto=dataclasses.replace(PROYECTO, raiz=raiz),
+        prog=PROG,
+        descripcion=__doc__,
+    )

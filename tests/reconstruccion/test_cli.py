@@ -9,6 +9,7 @@ import pytest
 from tools.reconstruccion import cli
 from tools.reconstruccion import infraestructura as infra
 
+from psxdecomp.construccion import infraestructura as infra_kit
 from toolchain.ayudantes import bloque_componente, lock_de
 
 from .ayudantes_diff import ASM_FUNCION, EjecutorDiff
@@ -333,10 +334,10 @@ def test_un_error_de_permisos_se_informa_sin_traza_y_devuelve_uno(
 ) -> None:
     raiz, variables = entorno_repo
 
-    def denegado(*_: Any) -> Any:
+    def denegado(*_: Any, **__: Any) -> Any:
         raise PermissionError("acceso denegado")
 
-    monkeypatch.setattr(infra, "limpiar", denegado)
+    monkeypatch.setattr(infra_kit, "limpiar", denegado)
     assert ejecutar_cli(raiz, variables, "clean") == 1
     capturado = capsys.readouterr()
     assert capturado.err == "error: acceso denegado\n"
@@ -420,10 +421,10 @@ def test_un_error_nativo_del_sistema_no_expone_la_ruta_absoluta(
     raiz, variables = entorno_repo
     ruta_privada = str(raiz.parent / "usuarios" / "privado" / "datos.bin")
 
-    def denegado(*_: Any) -> Any:
+    def denegado(*_: Any, **__: Any) -> Any:
         raise PermissionError(13, "Acceso denegado", ruta_privada)
 
-    monkeypatch.setattr(infra, "limpiar", denegado)
+    monkeypatch.setattr(infra_kit, "limpiar", denegado)
     assert ejecutar_cli(raiz, variables, "clean") == 1
     capturado = capsys.readouterr()
     assert ruta_privada not in capturado.err + capturado.out
@@ -436,10 +437,10 @@ def test_un_error_nativo_sin_nombre_de_archivo_informa_solo_tipo_y_motivo(
 ) -> None:
     raiz, variables = entorno_repo
 
-    def fallo(*_: Any) -> Any:
+    def fallo(*_: Any, **__: Any) -> Any:
         raise OSError(5, "")
 
-    monkeypatch.setattr(infra, "limpiar", fallo)
+    monkeypatch.setattr(infra_kit, "limpiar", fallo)
     assert ejecutar_cli(raiz, variables, "clean") == 1
     assert capsys.readouterr().err == "error: error de entrada/salida: OSError\n"
 

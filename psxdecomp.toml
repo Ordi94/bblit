@@ -51,9 +51,9 @@ max_valor_g = 64
 version_aspsx = "2.80"
 opciones_compilador = ["-quiet", "-O2"]
 
-# Los modulos de extension del juego (subcomandos de overlay y bzz) aun no existen: se
-# registraran aqui cuando tools/ pase a consumir el manifiesto.
+# Extensiones del juego. `progreso` entra por este mecanismo mientras el medidor y la seccion del README
+# viven en tools/; los subcomandos de overlay y bzz se anadiran cuando consuman el manifiesto.
 [plugins]
-subcomandos = []
+subcomandos = ["tools.reconstruccion.cli:registrar_progreso"]
 antes_de_construir = []
 despues_de_verificar = []
