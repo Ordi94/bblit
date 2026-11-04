@@ -418,12 +418,12 @@ typedef struct TrabajoRecorrido {
 #define GEO_DISTANCIA_APROX_A(v, d) \
     __asm__ volatile (".set push\n\t.set noreorder\n\t.set noat\n\t" \
                       "addu $4, %0, $0\n\tlw $8, 0($4)\n\tlw $9, 4($4)\n\tlw $10, 8($4)\n\t" \
-                      "bgez $8, 1f\n\tnop\n\tsub $8, $0, $8\n" \
-                      "1:\tbgez $9, 2f\n\tnop\n\tsub $9, $0, $9\n" \
-                      "2:\taddu $2, $8, $0\n\tbgez $10, 3f\n\tnop\n\tsub $10, $0, $10\n" \
-                      "3:\taddu $3, $9, $0\n\tslt $1, $8, $9\n\tbeqz $1, 4f\n\tnop\n\t" \
+                      "bgez $8, 1f\n\tsub $8, $0, $8\n" \
+                      "1:\tbgez $9, 2f\n\tsub $9, $0, $9\n" \
+                      "2:\taddu $2, $8, $0\n\tbgez $10, 3f\n\tsub $10, $0, $10\n" \
+                      "3:\taddu $3, $9, $0\n\tslt $1, $8, $9\n\tbeqz $1, 4f\n\t" \
                       "addu $2, $9, $0\n\taddu $3, $8, $0\n" \
-                      "4:\taddu $7, $10, $0\n\tslt $1, $2, $10\n\tbeqz $1, 5f\n\tnop\n\t" \
+                      "4:\taddu $7, $10, $0\n\tslt $1, $2, $10\n\tbeqz $1, 5f\n\t" \
                       "addu $7, $2, $0\n\taddu $2, $10, $0\n" \
                       "5:\tsrl $3, $3, 2\n\tsrl $7, $7, 2\n\tadd $2, $2, $3\n\tadd $2, $2, $7\n\t" \
                       "ori $2, $2, 1\n\taddiu $5, %1, 0\n\taddu $4, $5, $0\n\tsw $2, 0($4)\n\t" \

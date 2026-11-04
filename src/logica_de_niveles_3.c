@@ -1074,13 +1074,10 @@ L_80028B94:
         if (t->aux == 0) {
             goto L_80028FD0;
         }
-busca_objetivo:
-        if (t->aux->w1C != (s16)t->fot->w16 || (t->aux->flags14 & 0x100)) {
-            t->aux = t->aux->siguiente;
-            if (t->aux != 0) {
-                goto busca_objetivo;
+        for (; t->aux != 0; t->aux = t->aux->siguiente) {
+            if (t->aux->w1C == (s16)t->fot->w16 && !(t->aux->flags14 & 0x100)) {
+                break;
             }
-            goto L_80028FD0;
         }
     } else {
         t->aux = D_80069698;
