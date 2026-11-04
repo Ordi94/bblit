@@ -446,8 +446,8 @@ void func_80026FEC(Objeto* o)
     /* Reaccion a golpe: solo si el fotograma en curso acepta el golpe recibido. */
     if ((o->flags14 & 0x06000000) &&
         (((o->registro184->w0C & 0x4000) && (o->flags14 & 0x04000000)) ||
-         ((o->registro184->w10 & 0x8000) && ((o->flags14 & 0x04000080) == 0x04000080)) ||
-         ((o->registro184->w10 & 8) && (o->flags14 & 0x02000000)))) {
+        ((o->registro184->w10 & 0x8000) && ((o->flags14 & 0x04000080) == 0x04000080)) ||
+        ((o->registro184->w10 & 8) && (o->flags14 & 0x02000000)))) {
         t->w_bc = 3;
         o->s1E = o->s1E - o->w38;
         o->w38 = 0;
@@ -868,7 +868,7 @@ L_80027D04:
             t->res.grupo = o->w26;
             GEO_CARGAR_W(&t->p40);
             GEO_CARGAR_SUMAR_W(&o->param.trans);
-        GEO_GUARDAR_W_T4(&t->p58);
+            GEO_GUARDAR_W_T4(&t->p58);
             BarrerTerreno(&t->p58, 0, &t->res, area);
             if (!(t->res.flags & 0xC)) {
                 t->w_a0 = t->w_a0 - (s16)t->res.pendiente_abs;
@@ -1428,7 +1428,7 @@ L_80029A74:
 
 L_80029B6C:
     /* Con el fotograma pidiendo cuenta de andadura y el objeto en el suelo o portado, se cuenta el cuadro y
-       se suelta al portador si la andadura supera el umbral. */
+    se suelta al portador si la andadura supera el umbral. */
     if (!(t->banderas & 0x08000000)) goto L_80029C44;
     if (!(o->flags14 & 0x12)) goto L_80029C44;
     o->u18C.estado.h194 = o->u18C.estado.h194 + 1;
@@ -1438,24 +1438,22 @@ L_80029B6C:
         goto L_80029EF8;
     }
     /* Aun dentro del umbral: se suelta al portador y se empuja con el giro actual. */
-    {
-        if (o->p70 != 0) {
-            if (o->p70->p6C == o) {
-                o->p70->p6C = 0;
-            }
+    if (o->p70 != 0) {
+        if (o->p70->p6C == o) {
+            o->p70->p6C = 0;
         }
-        o->coord.param = PARAMETROS_SDK(o);
-        o->coord.super = 0;
-        o->p70 = 0;
-        o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x2;
-        func_8001CFCC(&o->coord);
-        func_80020210(o, t->w118, (s16)t->fot->w1A);
-        goto L_80029EF8;
     }
+    o->coord.param = PARAMETROS_SDK(o);
+    o->coord.super = 0;
+    o->p70 = 0;
+    o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x2;
+    func_8001CFCC(&o->coord);
+    func_80020210(o, t->w118, (s16)t->fot->w1A);
+    goto L_80029EF8;
 
 L_80029C44:
     /* Quien es el portador candidato: el jugador cuando el objeto ya esta marcado o el fotograma lo pide;
-       si no, el primer solido de la lista con la plantilla del fotograma. */
+    si no, el primer solido de la lista con la plantilla del fotograma. */
     portador = 0;
     if ((o->flags08 & 0x08000000) || (t->fot->w10 & 0x100)) {
         portador = 1;
