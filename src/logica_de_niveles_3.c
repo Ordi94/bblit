@@ -2058,8 +2058,7 @@ L_8002B3B4:
             o->p6C->coord.super = 0;
             o->p6C->coord.param = PARAMETROS_SDK(o->p6C);
             o->p6C->w26 = o->w26;
-            o->p6C->param.giro.u.z = 0;
-            o->p6C->param.giro.u.x = 0;
+            o->p6C->param.giro.u.z = o->p6C->param.giro.u.x = 0;
             o->p6C->p70 = 0;
             func_8001CFCC(&o->p6C->coord);
             o->p6C = 0;
@@ -2148,11 +2147,12 @@ L_8002B868:
     }
     if (t->fot->w10 & 0x2000000) {
         /* Contador de cuadros propio de la animacion: se lleva la diferencia con el valor anterior. */
-        t->w114 = *(s32*)(*(u8**)(*(u8**)(*(u8**)o->u78.p + 0x10) + 0x44) + 0x1C);
+        giro = *(s32*)(*(u8**)(*(u8**)(*(u8**)o->u78.p + 0x10) + 0x44) + 0x1C);
+        t->w114 = giro;
         if ((u16)o->trabajo.cuadro != 1) {
-            D_800693C0 += t->w114 - D_800693B4;
+            D_800693C0 += giro - D_800693B4;
         }
-        D_800693B4 = t->w114;
+        D_800693B4 = giro;
     }
     if ((o->flags0C & 0x14) || (t->fot->w10 & 0x40)) {
         if (o->flags0C & 0x10) {
