@@ -925,8 +925,10 @@ ZonaColision* func_8001BF9C(s32* a0, s16 a1)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1078 con la configuracion versionada (g = 0, no carga globales). El compilador asigna s0/s1
- * al reves (el original guarda la estructura de trabajo en s0 y el resultado en s1) y falta un `move t2,a3`.
+ * Pendiente: puntuacion 460 con la configuracion versionada (g = 0, no carga globales). Los registros guardados y
+ * la copia de la zona coinciden; difiere el orden de las dos divisiones por 320 del resto de la baldosa (el original
+ * calcula x antes que z, GCC al reves con cualquier orden del fuente) y la suma del indice de subcelda (el original
+ * suma primero base + (baldosa << 6) y despues z / 40 * 8 + x / 40).
  *
  * Consulta la baldosa bajo el punto pos: busca la zona del punto (con el grupo recordado en
  * res), lee el valor de la baldosa de 320 unidades y la subcelda de 40 unidades, y rellena res
@@ -936,10 +938,20 @@ ZonaColision* func_8001BF9C(s32* a0, s16 a1)
 void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
 {
     ZonaColision* z;
+    ZonaColision* zona_cuesta;
+    TrabajoBaldosa* trabajo;
+    TrabajoBaldosa* trabajo_baldosa;
+    s32 zl;
 
+    /* Tres nombres para el area de trabajo y dos para la zona: el original reparte el area en s0 y el
+     * resultado en s1 solo cuando el area tiene mas referencias que el resultado, y conserva una copia
+     * de la zona (t2) para la rama de pendiente. */
+    trabajo_baldosa = w;
+    trabajo = trabajo_baldosa;
     GEO_CARGAR_W(pos);
-    GEO_GUARDAR_W_T1(&w->x);
-    z = func_8001BF9C(&w->x, r->grupo);
+    GEO_GUARDAR_W_T1(&trabajo->x);
+    z = func_8001BF9C(&trabajo->x, r->grupo);
+    zona_cuesta = z;
     r->zona = z;
     if (z == 0) {
         r->clase = 1;
@@ -950,13 +962,15 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
         r->grupo = -1;
         return;
     }
-    w->baldosa = z->baldosas[(w->x - z->x) / 320 + (w->z - z->z) / 320 * z->columnas];
-    r->tipo = w->baldosa & 0xF000;
-    w->x_local = w->x % 320;
-    w->z_local = w->z % 320;
-    w->baldosa &= 0xFFF;
-    w->celda = (s8)z->subceldas[(w->baldosa << 6) + w->z_local / 40 * 8 + w->x_local / 40];
-    if (w->celda == 0x7E) {
+    trabajo_baldosa = trabajo;
+    trabajo->baldosa = z->baldosas[(trabajo->x - z->x) / 320 + (trabajo->z - z->z) / 320 * z->columnas];
+    r->tipo = trabajo->baldosa & 0xF000;
+    trabajo->x_local = trabajo->x % 320;
+    trabajo->z_local = trabajo->z % 320;
+    zl = trabajo->z_local / 40 * 8;
+    trabajo_baldosa->baldosa &= 0xFFF;
+    trabajo->celda = (s8)z->subceldas[zl + (trabajo->baldosa << 6) + trabajo->x_local / 40];
+    if (trabajo->celda == 0x7E) {
         pos[1] = z->y_max;
         r->clase = 0;
         r->flags = 8;
@@ -966,7 +980,7 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
         r->suelo = pos[1];
         return;
     }
-    if (w->celda == 0x7F) {
+    if (trabajo->celda == 0x7F) {
         pos[1] = z->y_max;
         r->clase = 0;
         r->flags = 6;
@@ -977,17 +991,17 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
         return;
     }
     pos[1] = z->y_max;
-    r->clase = w->celda;
+    r->clase = trabajo->celda;
     r->flags = 2;
-    if (w->celda > 0) {
-        w->celda = -w->celda;
+    if (trabajo->celda > 0) {
+        trabajo->celda = -trabajo->celda;
         r->flags |= 0x20;
     }
-    w->celda = w->celda * z->pendiente;
-    r->pendiente = w->celda;
-    r->pendiente_abs = w->celda;
-    r->grupo = z->grupo;
-    r->suelo = z->y_max + w->celda;
+    trabajo->celda = trabajo->celda * zona_cuesta->pendiente;
+    r->pendiente = trabajo->celda;
+    r->pendiente_abs = trabajo->celda;
+    r->grupo = zona_cuesta->grupo;
+    r->suelo = zona_cuesta->y_max + trabajo->celda;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/colision_y_terreno", func_8001C134);
