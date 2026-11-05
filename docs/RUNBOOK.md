@@ -16,8 +16,8 @@ Tras crear el entorno virtual se instalan las dependencias: `requirements.txt` f
 ```
 
 **Actualizar el kit.** La primera línea de `requirements.txt` fija la versión por etiqueta
-(`psx-decomp-kit @ git+https://github.com/Ordi94/psx-decomp-kit@v0.1.0`). Cuando el kit publique una etiqueta
-nueva se cambia `v0.1.0` por la nueva, se repite `pip install -r requirements.txt` y se valida el cierre
+(`psx-decomp-kit @ git+https://github.com/Ordi94/psx-decomp-kit@v0.1.1`). Cuando el kit publique una etiqueta
+nueva se cambia `v0.1.1` por la nueva, se repite `pip install -r requirements.txt` y se valida el cierre
 completo (`clean`, `split`, `build`, `verify`, pruebas) antes de integrar el cambio. Las dependencias de
 particion y comparacion (`splat64`, `rapidfuzz`, etc.) se fijan en el mismo archivo.
 

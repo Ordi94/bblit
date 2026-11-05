@@ -1,4 +1,4 @@
-psx-decomp-kit @ git+https://github.com/Ordi94/psx-decomp-kit@v0.1.0
+psx-decomp-kit @ git+https://github.com/Ordi94/psx-decomp-kit@v0.1.1
 splat64[mips]==0.50.1
 PyYAML==6.0.3
 requests==2.34.2
