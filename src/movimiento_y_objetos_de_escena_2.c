@@ -299,13 +299,18 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D0FC);
  * bandera 4 de la camara, anulando la bandera de seguimiento y encendiendo la de reinicio.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1624 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y mismo orden de almacenes; el original no conserva el puntero a la camara en un registro salvado (recalcula D_8006D928 en los dos caminos y no reserva s0) y copia el primer argumento a a3 antes de cargar D_80069698, el C mantiene la camara en s0 y reparte v1 y a0 de otro modo en el prologo. */
+/* Pendiente: puntuacion 1124 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y mismo orden de almacenes; el original no conserva el puntero a la camara en un registro salvado (recalcula D_8006D928 en los dos caminos y no reserva s0) y copia el primer argumento a a3 antes de cargar D_80069698; el C mantiene la camara en s0 y reparte v1 y a0 de otro modo en el prologo. Con el simbolo de la camara escrito directo desaparece s0 y el cierre coincide, pero GCC adelanta entonces la lectura de D_8006D9A8 por encima de los almacenes de la posicion, que el original deja despues. */
 void func_8001D31C(s32 x, s32 y, s32 z)
 {
     VECTOR destino;
     Objeto* tenido;
     EstadoCamara* camara;
+    s32 x_copia;
+    u8 contador_guardado;
 
+    /* La copia de x y la lectura del contador de guardado en un byte con signo reproducen el reparto del
+     * prologo y del bloque de recolocacion de la camara. */
+    x_copia = x;
     tenido = D_80069698->p70;
     if (tenido != NULL) {
         D_80069698->coord.super = NULL;
@@ -317,21 +322,22 @@ void func_8001D31C(s32 x, s32 y, s32 z)
         D_80069698->p70 = NULL;
         D_80069698->flags14 &= ~0x14;
     }
-    D_80069698->param.trans.vx = x;
+    D_80069698->param.trans.vx = x_copia;
     D_80069698->param.trans.vy = y;
     D_80069698->param.trans.vz = z;
     camara = &D_8006D928;
     if (!(*(u32*)D_8006D9A8 & 0x304)) {
-        if ((s8)D_80010076 <= 0) {
-            destino.vx = x;
+        contador_guardado = D_80010076;
+        if ((s8)contador_guardado <= 0) {
+            destino.vx = x_copia;
             destino.vy = y;
             destino.vz = z;
             func_8001CC68(&destino);
         }
     }
     D_800693B8 = -1;
-    camara->flags80 &= 0xFFFB;
     D_80069608 |= 1;
+    camara->flags80 &= 0xFFFB;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D31C);
