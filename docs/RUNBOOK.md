@@ -7,7 +7,7 @@ la raiz del repositorio con `PYTHONUTF8=1` y el interprete `.venv\Scripts\python
 ## 1. Preparacion
 
 El generico de descompilacion vive en su propio repositorio, <https://github.com/Ordi94/psx-decomp-kit> (paquete `psxdecomp`).
-Tras crear el entorno virtual se instalan las dependencias: `requirements.txt` fija el kit por etiqueta y
+Tras crear el entorno virtual se instalan las dependencias: `requirements.txt` fija el kit por commit y
 `pip` lo descarga con `git` (debe estar instalado y en el `PATH`). Despues se comprueba el manifiesto:
 
 ```
@@ -15,15 +15,22 @@ Tras crear el entorno virtual se instalan las dependencias: `requirements.txt` f
 .venv\Scripts\python.exe -m psxdecomp.cli comprobar
 ```
 
-**Actualizar el kit.** La primera línea de `requirements.txt` fija la versión por etiqueta
-(`psx-decomp-kit @ git+https://github.com/Ordi94/psx-decomp-kit@v0.1.1`). Cuando el kit publique una etiqueta
-nueva se cambia `v0.1.1` por la nueva, se repite `pip install -r requirements.txt` y se valida el cierre
-completo (`clean`, `split`, `build`, `verify`, pruebas) antes de integrar el cambio. Las dependencias de
+**Actualizar el kit.** La línea del kit en `requirements.txt` se fija por el SHA completo del commit, no por
+la etiqueta: una etiqueta se puede reapuntar a otro commit sin que cambie el especificador, mientras que el SHA
+identifica un único contenido (la misma razón por la que `config/toolchain.lock.json` fija huellas). La
+etiqueta (hoy `v0.1.1`) es la referencia legible y queda nombrada en el comentario de la línea anterior. Cuando
+el kit publique una etiqueta nueva:
+
+1. Resolver la etiqueta a su commit: `git ls-remote --tags https://github.com/Ordi94/psx-decomp-kit`. Si la
+   etiqueta es anotada aparecen dos líneas; el commit es el de la línea que termina en `^{}`.
+2. Sustituir el SHA de 40 caracteres hexadecimales y el nombre de la etiqueta en el comentario.
+3. Repetir `pip install -r requirements.txt` y validar el cierre completo (`clean`, `split`, `build`, `verify`,
+   pruebas) antes de integrar el cambio. Las dependencias de
 particion y comparacion (`splat64`, `rapidfuzz`, etc.) se fijan en el mismo archivo.
 
 **Desarrollo local del kit (opcional).** Quien modifique el kit puede clonarlo junto a este repositorio e
 instalarlo en modo editable sobre el entorno: `pip install -e ../psx-decomp-kit`. Ese entorno deja de
-reproducir la etiqueta fijada; antes de integrar nada se vuelve a `pip install -r requirements.txt`.
+reproducir el commit fijado; antes de integrar nada se vuelve a `pip install -r requirements.txt`.
 
 La segunda orden valida `psxdecomp.toml`, el manifiesto del proyecto (rutas, zonas de memoria y
 convenciones que el kit lee en vez de suponerlas). Las pruebas del proyecto se lanzan con `python -m pytest`; las del

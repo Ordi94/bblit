@@ -1,4 +1,5 @@
-psx-decomp-kit @ git+https://github.com/Ordi94/psx-decomp-kit@v0.1.1
+# Kit psx-decomp-kit v0.1.1, fijado por commit: la etiqueta se puede reapuntar, el SHA no. Para actualizar, resolver la etiqueta nueva con git ls-remote --tags https://github.com/Ordi94/psx-decomp-kit (la linea con ^{} es el commit) y ver docs/RUNBOOK.md.
+psx-decomp-kit @ git+https://github.com/Ordi94/psx-decomp-kit@df960a5b0c1c149dfa7feb650b4e93105bc2b171
 splat64[mips]==0.50.1
 PyYAML==6.0.3
 requests==2.34.2

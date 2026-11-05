@@ -58,7 +58,7 @@ volcados) se genera localmente y esta excluido del control de versiones.
 
 ## Herramientas
 
-La reconstruccion, el diff, el permutador y el medidor de progreso vienen del kit `psx-decomp-kit` (paquete `psxdecomp`), que se instala desde su repositorio publicado, <https://github.com/Ordi94/psx-decomp-kit>, fijado por etiqueta en `requirements.txt` (contrato del manifiesto en su README). `tools/` contiene solo lo propio del juego. Los tres comandos de siempre:
+La reconstruccion, el diff, el permutador y el medidor de progreso vienen del kit `psx-decomp-kit` (paquete `psxdecomp`), que se instala desde su repositorio publicado, <https://github.com/Ordi94/psx-decomp-kit>, fijado por commit en `requirements.txt` (contrato del manifiesto en su README). `tools/` contiene solo lo propio del juego. Los tres comandos de siempre:
 
 ```
 python tools/build.py build      # compila y enlaza el ejecutable
@@ -91,7 +91,7 @@ Cada comando acepta `--help` con sus opciones. El flujo de descompilacion esta e
 
 ```
 python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt   # instala tambien el kit (editable)
+.venv\Scripts\pip install -r requirements.txt   # instala tambien el kit, fijado por commit (flujo editable: docs/RUNBOOK.md, "Desarrollo local del kit")
 python tools/build.py --help
 ```
 
