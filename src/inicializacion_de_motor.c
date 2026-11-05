@@ -335,46 +335,51 @@ void func_800450E8(Glifo* a0, u16 a1, OrigenEntrada* a2)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 3641 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s6 al contador y s7 y fp a las dimensiones del glifo, el C los reparte al reves y desplaza el resto de la planificacion. */
+/* Pendiente: puntuacion 1501 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s1 a la coordenada y y s3 a la v del glifo, s6 al contador y s7 y s8 a las dimensiones, el C los reparte al reves (el contador queda con la menor prioridad de los registros guardados), y carga el puntero a la primitiva (D_80076188) despues de la direccion de la cabeza de la lista, mientras GCC lo adelanta. */
 void func_80045150(EntradaLista* e)
 {
     Glifo* g;
+    s16 y;
     u8* p;
-    s32 i;
     u16 x;
-    s32 y;
-    u8 u;
     u8 v;
     s32 w;
+    u8 u;
+    s32 i;
     s32 h;
     s32 c;
     s32 color;
     u32* cabeza;
+    s32 c_rojo;
 
+    /* El orden de las lecturas del glifo y del elemento, la anchura y la altura menos uno en 32 bits, el
+     * componente desplazado del color en una local y D_80076188 sumado tras escribir el indice de paleta
+     * son los que acercan el reparto de registros guardados al original. */
     i = 0;
     if (D_80069652 > 0) {
         do {
             g = e->glifo;
-            x = e->x;
-            y = (s8)e->y;
             u = g->u;
-            v = g->v;
+            x = e->x;
             w = g->w - 1;
+            v = g->v;
+            y = (s8)e->y;
             h = g->h - 1;
             func_80039CD0(D_80076188);
             if (D_8006966A != 0) {
                 c = 0x80 - ((s16)D_800694E2 >> 5);
-                color = c + ((c << 16) + ((c << 8) + 0x2C000000));
+                c_rojo = c << 16;
+                color = c + ((c << 8) + 0x2C000000 + c_rojo);
             } else {
                 color = 0x2C808080;
             }
-            cabeza = (u32*)D_8006AE20[D_8006967C].org;
+            cabeza = (u32*)(D_8006AE20 + D_8006967C)->org;
             p = (u8*)D_80076188;
             *(s32*)(p + 4) = color;
             *(u32*)p = *cabeza | 0x09000000;
             *cabeza = ((s32)p << 8) >> 8;
             *(s16*)(p + 0x10) = x + w;
-            *(s16*)(p + 0x20) = x + w;
+            *(s16*)(p + 0x20) = w + x;
             *(s16*)(p + 0x22) = y + h;
             *(s16*)(p + 0x1A) = y + h;
             p[0x24] = u + w;
@@ -390,13 +395,13 @@ void func_80045150(EntradaLista* e)
             p[0x25] = v + h;
             p[0x1D] = v + h;
             *(u16*)(p + 0x16) = e->glifo->tpage;
-            D_80076188 += 0x28;
             *(u16*)(p + 0xE) = D_8006D018[e->idx];
+            D_80076188 = D_80076188 + 0x28;
             if (D_8006958C < D_80076188) {
                 D_80076188 = D_80069680;
             }
-            i++;
             e++;
+            i++;
         } while (i < D_80069652);
     }
 }
