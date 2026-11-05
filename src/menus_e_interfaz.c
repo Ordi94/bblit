@@ -354,18 +354,19 @@ void func_8003B26C(PedidoModelo* pedido, EscenaDibujo* escena, VistaDibujo* vist
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 325 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de v0/v1 en las constantes previas al bucle (el original deja el uno compartido en v1 y la prueba del numero de salas en v0) y los registros de la entrada visible del bucle y de la entrada nueva. */
+/* Pendiente: puntuacion 315 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de v0/v1 en las constantes previas al bucle (el original deja el uno compartido en v1, -0x80 en v0, la constante 0x10000 en v1 y el desplazado en v0; aqui van al reves) y los registros de la entrada visible del bucle (v1 en el original, a0 aqui) y de la entrada nueva. */
 void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vista)
 {
     PedidoModelo pedido;
     u16 anterior;
-    s16 actual;
     EntradaVisible* entrada;
     u16 cuenta;
-    u16 sala_actual;
-    /* Una sola variable para la sala ensanchada y la marca de varias salas:
-     * con dos, el reparto de v0/v1 empeora. */
+    s16 actual;
+    /* La sala del objeto ensanchada y la marca de varias salas comparten una variable de 32 bits,
+     * y la comparacion de salas y la copia de la marca comparten otra: con variables separadas
+     * el reparto de v0/v1 empeora. */
     s32 sala_o_marca;
+    s32 distinta;
 
     D_800695C4 = D_8006D1C8;
     D_800695DA = 0;
@@ -380,10 +381,11 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     D_80069688 = escena->objeto->w26;
     actual = -1;
     if (!(D_8006D9A8[0] & 0x300)) {
-        sala_actual = escena->objeto->w26;
-        sala_o_marca = sala_actual;
+
+        sala_o_marca = escena->objeto->w26;
         actual = D_80069698->w26;
-        if (actual != (s16)sala_o_marca && actual != -1) {
+        distinta = actual != (s16)sala_o_marca;
+        if (distinta && actual != -1) {
             pedido.profundidad = 0;
             pedido.grupo = 0;
             pedido.modelo = actual;
@@ -394,9 +396,10 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     cuenta = D_80069588;
     pedido.grupo = 1;
     sala_o_marca = (cuenta << 16) > 0x10000;
+    distinta = sala_o_marca;
     escena->estado.s6 = -0x80;
     pedido.profundidad = 1;
-    if (sala_o_marca) {
+    if (distinta) {
         do {
             if (pedido.profundidad == (s16)cuenta) {
                 pedido.grupo++;
@@ -413,7 +416,7 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     anterior = D_80069688;
     if (actual != D_80069688) {
         entrada = &D_8006A940[D_80069588];
-        D_80069588 = D_80069588 + 1;
+        D_80069588 += 1;
         entrada->bandera = 0;
         entrada->modelo = anterior;
     }
