@@ -3744,18 +3744,17 @@ void func_8002F970(void)
     func_80039094();
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 60 con la configuracion versionada (g = 8 del archivo). Los dos bytes se
- * leen y escriben con un unico lui y la copia del valor leido queda en el hueco del primer salto,
- * como el original; difiere solo el reparto de registros: el original deja el resultado de la
- * suma en a2 y GCC lo deja en v1 (los papeles de v1 y a2 estan invertidos).
- *
  * Operacion aritmetica sobre un registro de 16 bits repartido en dos bytes (D_80010047 es el
  * bajo y D_8001013C el alto: r[7] y r[0xFC] del banco del estado principal de 0x80010000). El operando se
  * trunca a un byte dentro de la rutina (andi 0xFF en 0x8002F9AC y 0x8002F9DC) y los llamadores
  * le pasan el valor de 16 bits sin truncar (lhu): por eso el parametro es s32 y el truncamiento
  * un cast. Declarado u8, cada llamador recorta el argumento con lbu.
+ *
+ * El valor de 16 bits se lee en `reg` y se copia a `res`; cada modo suma o resta sobre `res`
+ * (el original encadena sobre el registro del resultado y deja `reg` solo para la suma con el
+ * operando), y `reg` se reutiliza al final para el byte alto: asi el resultado cae en a2 y el
+ * valor leido en v1, como en el original.
  */
 void func_8002F990(s32 a0, s32 a1)
 {
@@ -3771,18 +3770,16 @@ void func_8002F990(s32 a0, s32 a1)
         res = (u8)a0 + reg;
     }
     if (a1 == 1) {
-        res = reg + 1;
+        res += 1;
     }
     if (a1 == 2) {
-        res = reg - 1;
+        res -= 1;
     }
     if (a1 == 3) {
-        res = reg - (u8)a0;
+        res -= (u8)a0;
     }
-    alto = res & 0xFFFF;
     e->r[7] = res;
+    reg = res;
+    alto = reg & 0xFFFF;
     e->r[0xFC] = alto >> 8;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", func_8002F990);
-#endif
