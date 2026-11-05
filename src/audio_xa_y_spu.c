@@ -666,81 +666,109 @@ INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003EDA8);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2792 con la configuracion versionada (g = 8 del archivo). El flujo coincide; el original recorre la tabla de efectos con dos punteros que avanzan juntos (entrada y entrada + 4) y aqui la reduccion de fuerza del bucle exterior reparte un tercero para los accesos de +2 y +3, lo que desplaza los registros s. */
+/* Pendiente: puntuacion 290 con la configuracion versionada (g = 8 del archivo). Los dos punteros de la tabla y el orden de los incrementos de los bucles coinciden; difieren el orden de los dos incrementos del bucle de busqueda (el original avanza el puntero a las banderas antes que la entrada y GCC al reves), la posicion de `addiu s2` frente a `addiu s1` en la entrada del bucle y el reparto de v0/v1 en el calculo del volumen replicado en los dos bytes. */
 void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
 {
-    Voz* v;
     Efecto* e;
+    Voz* v;
     u8* pf;
+    u8* pf_sig;
     s16 i;
     s16 j;
     u16 libre;
+    u8 vol_maximo;
+    u8 vol_efecto;
+    u16 nivel;
+    u16 vol_final;
+    u8 izq;
+    u8 izq_copia;
 
-    e = D_8006AEE0;
+    /* Los dos contadores de cada bucle avanzan primero el puntero y despues el indice, y las pruebas de
+     * volumen y de salida van dentro de la rama que las necesita: el original salta la prueba de volumen
+     * nulo cuando el volumen sale de la tabla de efectos. */
     D_80069458 = D_800100E5;
+    e = D_8006AEE0;
     if (modo & 1) {
         v = D_8006B378;
         pf = (u8*)&e->flags;
-        for (i = 0; i < 0x18; i++, v++) {
+        i = 0;
+        while (i < 0x18) {
             libre = v->flags & 0x8000;
             if (libre == 0) {
-                for (j = 0; j < D_80069568; j++) {
+                j = 0;
+                while (j < D_80069568) {
                     if (e->id == id) {
                         break;
                     }
+                    pf_sig = pf + 8;
                     e++;
-                    pf += 8;
+                    pf = pf_sig;
+                    j++;
                 }
-                if (j != D_80069568 && (!(*(u16*)pf & 0x80) || (BugsRand() >> 7) >= pf[3])) {
-                    if (*(u16*)pf & 2) {
-                        if (D_80069458 < pf[2]) {
-                            v->vol.w = D_80069458 + (D_80069458 << 8);
+                if (j != D_80069568 && (!(0x80 & *(u16*)pf) || (BugsRand() >> 7) >= pf[3])) {
+                    if (2 & *(u16*)pf) {
+                        vol_maximo = D_80069458;
+                        vol_efecto = pf[2];
+                        if (vol_efecto > vol_maximo) {
+                            nivel = D_80069458;
                         } else {
-                            v->vol.w = pf[2] + (pf[2] << 8);
+                            nivel = pf[2];
                         }
+                        v->vol.w = nivel + (nivel << 8);
                     } else {
                         v->vol.w = func_8003EDA8(objeto, e);
-                    }
-                    if (v->vol.w != 0 || (*(u16*)pf & 0x820) == 0x20) {
-                        if ((*(u16*)pf & 1) || (D_800100E8 & 1)) {
-                            if (v->vol.c.der < v->vol.c.izq) {
-                                v->vol.c.der = v->vol.c.izq;
-                            } else {
-                                v->vol.c.izq = v->vol.c.der;
-                            }
+                        vol_final = v->vol.w;
+                        if (vol_final == 0 && (*(u16*)pf & 0x820) != 0x20) {
+                            return;
                         }
-                        v->objeto = objeto;
-                        v->efecto = e;
-                        v->flags = modo | 0x8000;
-                        v->id = clave;
                     }
+                    if ((*(u16*)pf & 1) || (1 & D_800100E8)) {
+                        izq = v->vol.c.izq;
+                        if (v->vol.c.der < izq) {
+                            izq_copia = v->vol.c.izq;
+                            v->vol.c.der = izq_copia;
+                        } else {
+                            v->vol.c.izq = v->vol.c.der;
+                        }
+                    }
+                    v->objeto = objeto;
+                    v->efecto = e;
+                    v->flags = modo | 0x8000;
+                    v->id = clave;
                 }
                 return;
             }
+            v++, i++;
         }
-    } else if (modo & 2) {
-        v = D_8006B378;
-        for (i = 0; i < 0x18; i++, v++) {
-            if ((*(u32*)&v->flags & 0x8002) == 0x8000 && v->efecto->id == id && v->objeto == objeto) {
-                if (!(v->flags & 1)) {
-                    v->id = clave;
-                    v->flags = 0x8002;
-                } else {
-                    v->flags = 0;
-                }
-                break;
-            }
-        }
-        if (i == 0x18) {
+    } else {
+        if (modo & 2) {
             v = D_8006B378;
-            for (i = 0; i < 0x18; i++, v++) {
-                if ((*(u32*)&v->flags & 0x8002) == 0x8000 && v->efecto->id == id) {
-                    if (!(v->flags & 1)) {
+            i = 0;
+            while (0x18 > i) {
+                if ((*(u32*)&v->flags & 0x8002) == 0x8000 && v->efecto->id == id && v->objeto == objeto) {
+                    if (v->flags & 1) {
+                        v->flags = 0;
+                    } else {
                         v->id = clave;
                         v->flags = 0x8002;
-                        return;
                     }
-                    v->flags = 0;
+                    break;
+                }
+                v++, i++;
+            }
+            if (i == 0x18) {
+                v = D_8006B378;
+                i = 0;
+                while (i < 0x18) {
+                    if (0x8000 == (*(u32*)&v->flags & 0x8002) && v->efecto->id == id) {
+                        if (!(v->flags & 1)) {
+                            v->id = clave;
+                            v->flags = 0x8002;
+                            return;
+                        }
+                        v->flags = 0;
+                    }
+                    v++, i++;
                 }
             }
         }
