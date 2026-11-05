@@ -15,8 +15,10 @@
 #   BBLIT_OMITIR_APT=1     no instala paquetes del sistema
 #   BBLIT_BINUTILS_DIR     destino de los binutils (por omision $HOME/.local/mipsel-none-elf)
 #
-# Las herramientas que instala `pip install -r requirements.txt` (el kit psxdecomp incluido) leen las
-# variables BBLIT_* o sus equivalentes PSXDECOMP_* (esta ultima manda si ambas estan definidas).
+# `pip install -r requirements.txt` descarga el kit psxdecomp desde su repositorio publicado, por
+# etiqueta, y para ello necesita git: el paso de apt lo instala; con BBLIT_OMITIR_APT=1 debe estar ya
+# disponible. Las herramientas del kit leen las variables BBLIT_* o sus equivalentes PSXDECOMP_* (esta
+# ultima manda si ambas estan definidas).
 set -eo pipefail
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

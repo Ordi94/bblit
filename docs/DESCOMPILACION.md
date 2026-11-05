@@ -116,11 +116,11 @@ las funciones ya en C pasen a `asm/matchings/`. No se editan a mano las rutas de
 ## Qué es del kit y qué es del juego
 
 La reconstrucción, la comparación, el permutador y el medidor de progreso no son del juego: viven en el kit
-`psx-decomp-kit` (paquete `psxdecomp`, carpeta `kit/`; se publicará en
-<https://github.com/Ordi94/psx-decomp-kit> con licencia MIT). Todo lo que depende de este proyecto (nombre del
+`psx-decomp-kit` (paquete `psxdecomp`, repositorio
+<https://github.com/Ordi94/psx-decomp-kit>, licencia MIT, fijado por etiqueta en `requirements.txt`). Todo lo que depende de este proyecto (nombre del
 ejecutable, rutas, zonas de memoria, convenciones de los comentarios, versión del ensamblador original) lo
 declara el manifiesto `psxdecomp.toml` de la raíz y el kit lo lee; el kit nunca importa código del juego. El
-contrato completo del manifiesto (secciones, claves, valores por defecto y validación) está en `kit/README.md`.
+contrato completo del manifiesto (secciones, claves, valores por defecto y validación) está en el README de ese repositorio.
 
 | Paquete | Dónde | Contenido |
 |---|---|---|

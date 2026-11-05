@@ -6,20 +6,28 @@ la raiz del repositorio con `PYTHONUTF8=1` y el interprete `.venv\Scripts\python
 
 ## 1. Preparacion
 
-El generico de descompilacion vive en `kit/` (paquete `psxdecomp`, instalable por separado). Tras crear el
-entorno virtual se instalan las dependencias (`requirements.txt` incluye el kit en modo editable) y se
-comprueba el manifiesto:
+El generico de descompilacion vive en su propio repositorio, <https://github.com/Ordi94/psx-decomp-kit> (paquete `psxdecomp`).
+Tras crear el entorno virtual se instalan las dependencias: `requirements.txt` fija el kit por etiqueta y
+`pip` lo descarga con `git` (debe estar instalado y en el `PATH`). Despues se comprueba el manifiesto:
 
 ```
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 .venv\Scripts\python.exe -m psxdecomp.cli comprobar
 ```
 
-Cuando el kit se publique en su propio repositorio (`psx-decomp-kit`, <https://github.com/Ordi94/psx-decomp-kit>), la primera línea de `requirements.txt` (hoy `-e ./kit`) pasará a fijar el kit por etiqueta (`psx-decomp-kit[particion,comparacion] @ git+https://github.com/Ordi94/psx-decomp-kit@v0.1.0`) y el procedimiento de instalación no cambia.
+**Actualizar el kit.** La primera línea de `requirements.txt` fija la versión por etiqueta
+(`psx-decomp-kit @ git+https://github.com/Ordi94/psx-decomp-kit@v0.1.0`). Cuando el kit publique una etiqueta
+nueva se cambia `v0.1.0` por la nueva, se repite `pip install -r requirements.txt` y se valida el cierre
+completo (`clean`, `split`, `build`, `verify`, pruebas) antes de integrar el cambio. Las dependencias de
+particion y comparacion (`splat64`, `rapidfuzz`, etc.) se fijan en el mismo archivo.
+
+**Desarrollo local del kit (opcional).** Quien modifique el kit puede clonarlo junto a este repositorio e
+instalarlo en modo editable sobre el entorno: `pip install -e ../psx-decomp-kit`. Ese entorno deja de
+reproducir la etiqueta fijada; antes de integrar nada se vuelve a `pip install -r requirements.txt`.
 
 La segunda orden valida `psxdecomp.toml`, el manifiesto del proyecto (rutas, zonas de memoria y
-convenciones que el kit lee en vez de suponerlas). Las pruebas del proyecto y las del kit se lanzan juntas
-con `python -m pytest`; las del kit solas, con cobertura del 100 %, con `python -m pytest` desde `kit/`.
+convenciones que el kit lee en vez de suponerlas). Las pruebas del proyecto se lanzan con `python -m pytest`; las del
+kit viven y se ejecutan en su repositorio.
 Las pruebas del proyecto que ejercen el kit contra los datos reales (particion, compilacion, comparacion,
 progreso y ciclo completo) estan en `tests/integracion_kit/`; la cobertura de ramas del codigo propio
 (`tools/`) se mide con `python -m pytest tests --cov` y exige el 100 %.
@@ -57,7 +65,7 @@ lineas que llama a la linea de ordenes del kit con el manifiesto del juego (mism
 mismos codigos de retorno). `progreso` es una orden comun del kit y esta en las dos entradas. Los ganchos
 `antes_de_construir` y `despues_de_verificar` del manifiesto (hoy vacios) se invocan desde ambas entradas.
 
-Rutas, zonas de memoria, nombre del ejecutable, versión del ensamblador original y convenciones de los comentarios no son constantes del código: para cambiar cualquiera de ellas se edita `psxdecomp.toml` (contrato en `kit/README.md`) y `python -m psxdecomp.cli comprobar` valida el resultado.
+Rutas, zonas de memoria, nombre del ejecutable, versión del ensamblador original y convenciones de los comentarios no son constantes del código: para cambiar cualquiera de ellas se edita `psxdecomp.toml` (contrato en el README del repositorio del kit) y `python -m psxdecomp.cli comprobar` valida el resultado.
 
 ### Progreso del README
 
@@ -255,7 +263,7 @@ para anadir uno nuevo: `docs/DESCOMPILACION.md`, seccion «Opciones de compilaci
 ## 9. Linux (Wine)
 
 Las herramientas corren en Linux (probado en Debian 13). El SDK original (`CPPPSX.EXE`, `CC1PSX.EXE`) son
-ejecutables Win32: `kit/psxdecomp/toolchain/plataforma.py` los lanza con Wine fuera de Windows. Los binutils de MIPS
+ejecutables Win32: `psxdecomp/toolchain/plataforma.py` del kit los lanza con Wine fuera de Windows. Los binutils de MIPS
 (`as`, `ld`, `objcopy`, `objdump`) no pasan por Wine: se usan binutils nativos del `PATH`, que arrancan en
 milisegundos (un `.exe` bajo Wine paga el arranque del emulador en cada llamada, y una busqueda del permutador
 hace miles). `maspsx` y `asm-differ` son Python y no cambian.

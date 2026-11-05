@@ -42,7 +42,6 @@ volcados) se genera localmente y esta excluido del control de versiones.
 
 | Carpeta | Contenido |
 |---|---|
-| `kit/` | Kit generico de descompilacion (`psx-decomp-kit`, paquete `psxdecomp`): construccion, diff, permutador, progreso y toolchain |
 | `tools/` | Lo propio del juego: formato BZZ, imagen del disco, emulador, analisis con Ghidra y overlay |
 | `psxdecomp.toml` | Manifiesto: rutas, zonas de memoria y convenciones que lee el kit |
 | `config/` | Configuracion del desensamblador (splat), simbolos, hashes del toolchain |
@@ -59,7 +58,7 @@ volcados) se genera localmente y esta excluido del control de versiones.
 
 ## Herramientas
 
-La reconstruccion, el diff, el permutador y el medidor de progreso vienen del kit `psx-decomp-kit` (`kit/`, que se publicara en <https://github.com/Ordi94/psx-decomp-kit>; ver `kit/README.md`). `tools/` contiene solo lo propio del juego. Los tres comandos de siempre:
+La reconstruccion, el diff, el permutador y el medidor de progreso vienen del kit `psx-decomp-kit` (paquete `psxdecomp`), que se instala desde su repositorio publicado, <https://github.com/Ordi94/psx-decomp-kit>, fijado por etiqueta en `requirements.txt` (contrato del manifiesto en su README). `tools/` contiene solo lo propio del juego. Los tres comandos de siempre:
 
 ```
 python tools/build.py build      # compila y enlaza el ejecutable
@@ -69,7 +68,7 @@ python tools/build.py diff <funcion>
 
 | Comando | Para que sirve |
 |---|---|
-| `python -m psxdecomp.cli <orden>` | Entrada preferente: la linea de ordenes del kit (`kit/`) con el manifiesto `psxdecomp.toml`; mismas ordenes que `tools/build.py`, que se conserva como envoltorio |
+| `python -m psxdecomp.cli <orden>` | Entrada preferente: la linea de ordenes del kit instalado con el manifiesto `psxdecomp.toml`; mismas ordenes que `tools/build.py`, que se conserva como envoltorio |
 | `python tools/build.py split` | Particiona el ejecutable con splat (genera `asm/` y los `src/*.c` que falten) |
 | `python tools/build.py build` | Compila los `src/*.c`, ensambla el resto y enlaza `build/SLUS_008.38` |
 | `python tools/build.py verify` | Compara el SHA-256 del ejecutable reconstruido con el original |
