@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from tools.overlay import cli, dominio
 
+from tests.ayudantes_toolchain import bloque_componente, lock_de
 from tests.overlay.ayudantes import (
     Registro,
     construir_overlay,
@@ -14,7 +15,6 @@ from tests.overlay.ayudantes import (
     escribir_sistema_de_archivos,
     variantes_conocidas,
 )
-from toolchain.ayudantes import bloque_componente, lock_de
 
 A = construir_overlay(1)
 B = construir_overlay(2)

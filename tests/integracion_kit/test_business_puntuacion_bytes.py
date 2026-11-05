@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-
 from psxdecomp.diff.comparacion import ResultadoDiff
 
 from .proyecto_real import cli, diff, progreso

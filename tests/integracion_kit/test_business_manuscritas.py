@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-
 from psxdecomp.diff.fuentes_c import EstadoFuncion, MarcaAsm
 from psxdecomp.progreso.calculo import FuncionSimbolo
 

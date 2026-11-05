@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-
 from psxdecomp.construccion.infraestructura import ProcesoError
 from psxdecomp.diff.comparacion import ResultadoDiff
 

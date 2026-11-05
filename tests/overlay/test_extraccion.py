@@ -7,6 +7,7 @@ from tools.bzz.descompresion import descomprimir
 from tools.overlay import dominio, extraccion
 from tools.overlay.dominio import VarianteConocida, VarianteExtraida
 
+from tests.ayudantes_toolchain import construir_iso
 from tests.bzz.ayudantes import construir_bzz, flujo_literales
 from tests.overlay.ayudantes import (
     construir_overlay,
@@ -14,7 +15,6 @@ from tests.overlay.ayudantes import (
     escribir_sistema_de_archivos,
     variantes_conocidas,
 )
-from toolchain.ayudantes import construir_iso
 
 A = construir_overlay(1)
 B = construir_overlay(2)

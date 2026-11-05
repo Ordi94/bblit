@@ -2,12 +2,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from psxdecomp.construccion import infraestructura as infra_kit
 from psxdecomp.construccion.compilacion import HerramientasCompilacion
 from psxdecomp.construccion.infraestructura import Herramientas, ProcesoError
 from psxdecomp.toolchain.dominio import cargar_lock
-from toolchain.ayudantes import bloque_componente, lock_de
+
+from tests.ayudantes_toolchain import bloque_componente, lock_de
 
 from .ayudantes_infra import CUERPO, EJECUTABLE, REFERENCIA, Registro
 from .proyecto_real import comp, infra

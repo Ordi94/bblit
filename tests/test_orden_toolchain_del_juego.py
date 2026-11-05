@@ -6,10 +6,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, VARIABLES
-
 from psxdecomp.toolchain import cli as cli_kit
 from psxdecomp.toolchain import configuracion, extraccion, plataforma
+from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, VARIABLES
 
 
 def ejecutar_modulo(argumentos: list[str], monkeypatch: pytest.MonkeyPatch) -> int | str | None:
@@ -21,8 +20,9 @@ def ejecutar_modulo(argumentos: list[str], monkeypatch: pytest.MonkeyPatch) -> i
     return salida.value.code
 
 
-def test_el_kit_que_se_importa_es_el_de_esta_copia_del_repositorio() -> None:
-    assert Path(configuracion.__file__).resolve().is_relative_to(RAIZ_REPOSITORIO / "kit")
+def test_el_kit_que_se_importa_es_el_paquete_instalado_y_no_una_copia_del_repositorio() -> None:
+    assert not Path(configuracion.__file__).resolve().is_relative_to(RAIZ_REPOSITORIO)
+    assert not (RAIZ_REPOSITORIO / "kit").exists()
 
 
 def test_las_variables_del_juego_conservan_el_prefijo_historico() -> None:

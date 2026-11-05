@@ -8,10 +8,9 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+from psxdecomp.proyecto import ManifiestoError
 from tools.ghidra import dominio, zonas
 from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, cargar
-
-from psxdecomp.proyecto import ManifiestoError
 
 CABECERA = json.loads((RAIZ_REPOSITORIO / "config" / "ejecutable.json").read_text(encoding="utf-8"))[
     "cabecera"

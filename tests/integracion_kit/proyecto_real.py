@@ -16,8 +16,6 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
-from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, VARIABLES, ejecutar_proceso
-
 from psxdecomp.cli import construir_parser as _construir_parser
 from psxdecomp.cli import describir_error_de_sistema, resumir_comparacion
 from psxdecomp.cli import main as _main
@@ -38,6 +36,7 @@ from psxdecomp.progreso import calculo as _calculo
 from psxdecomp.progreso import documento as _documento
 from psxdecomp.progreso import medicion as _medicion
 from psxdecomp.progreso import readme as _readme
+from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO, VARIABLES, ejecutar_proceso
 
 RUTAS = PROYECTO.rutas
 CONVENCIONES = PROYECTO.convenciones

@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
+from psxdecomp.construccion import infraestructura as infra_kit
 from tools.ghidra.ejecucion import (
     CARGADOR_PSX,
     SIN_VALOR,
@@ -21,8 +22,6 @@ from tools.ghidra.ejecucion import (
     verificar_carga,
 )
 from tools.proyecto import RAIZ_REPOSITORIO
-
-from psxdecomp.construccion import infraestructura as infra_kit
 
 REGISTRO_VALIDO = (
     "INFO  Using Loader: PSX Executables Loader (ProgramLoader)\n"

@@ -14,6 +14,7 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 from psxdecomp.cli import main  # noqa: E402
+
 from tools.proyecto import PROYECTO, ejecutar_proceso  # noqa: E402
 
 DESCRIPCION = "Interfaz de linea de comandos de la reconstruccion: ``python tools/build.py``."

@@ -8,9 +8,10 @@ import json
 from pathlib import Path
 
 import pytest
+from psxdecomp.construccion.infraestructura import ProcesoError
 from tools.overlay import cli
 
-from psxdecomp.construccion.infraestructura import ProcesoError
+from tests.ayudantes_toolchain import bloque_componente, lock_de
 from tests.overlay.ayudantes import (
     Registro,
     construir_overlay,
@@ -18,7 +19,6 @@ from tests.overlay.ayudantes import (
     escribir_sistema_de_archivos,
     variantes_conocidas,
 )
-from toolchain.ayudantes import bloque_componente, lock_de
 
 A = construir_overlay(1)
 B = construir_overlay(2)

@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from psxdecomp.diff.fuentes_c import EstadoFuncion
 from psxdecomp.progreso.calculo import FuncionSimbolo
 

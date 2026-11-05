@@ -6,9 +6,9 @@ import struct
 from pathlib import Path
 
 import pytest
+from psxdecomp.construccion.infraestructura import ProcesoError
 from tools.overlay import cli, dominio, extraccion
 
-from psxdecomp.construccion.infraestructura import ProcesoError
 from tests.overlay.ayudantes import (
     FUNCIONES_SINTETICAS,
     Registro,

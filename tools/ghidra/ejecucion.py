@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Final
 
 from psxdecomp.entorno import SUFIJO_DISCO
+
 from tools.ghidra.dominio import DIRECCION_BASE, DIRECCION_ENTRADA
 from tools.proyecto import (
     PROYECTO,

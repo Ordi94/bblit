@@ -2,10 +2,10 @@ import re
 from pathlib import Path
 
 import pytest
+from psxdecomp.construccion.infraestructura import Herramientas, ProcesoError
 from tools.overlay import dominio, extraccion, particion
 from tools.overlay.dominio import VarianteExtraida
 
-from psxdecomp.construccion.infraestructura import Herramientas, ProcesoError
 from tests.overlay.ayudantes import FUNCIONES_SINTETICAS, Registro, construir_overlay
 
 A = construir_overlay(1)

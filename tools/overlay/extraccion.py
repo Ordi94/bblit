@@ -12,6 +12,7 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path
 
 from psxdecomp.toolchain import iso9660
+
 from tools.bzz.descompresion import descomprimir_detallado
 from tools.bzz.dominio import leer_cabecera, validar_consumo
 from tools.bzz.lectura import TAMANO_MAXIMO_ARCHIVO, leer_archivo_bzz

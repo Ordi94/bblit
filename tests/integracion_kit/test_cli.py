@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from psxdecomp.cli import main as main_del_kit
 from psxdecomp.construccion import infraestructura as infra_kit
-from toolchain.ayudantes import bloque_componente, lock_de
+
+from tests.ayudantes_toolchain import bloque_componente, lock_de
 
 from .ayudantes_diff import ASM_FUNCION, EjecutorDiff
 from .ayudantes_infra import EJECUTABLE, REFERENCIA, Registro, referencia_json

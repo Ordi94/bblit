@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from psxdecomp.toolchain.configuracion import leer_local_toml, resolver_rutas
+
 from tools.emulador import comparacion, proceso, sesion
 from tools.emulador.cliente import PUERTO_POR_DEFECTO, ClienteRedux
 from tools.emulador.dominio import EmuladorError

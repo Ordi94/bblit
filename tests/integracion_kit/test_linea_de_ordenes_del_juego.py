@@ -1,10 +1,9 @@
 """La linea de ordenes del juego es la del kit con su manifiesto: ordenes y ayuda, progreso incluido."""
 
 import pytest
-from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO
-
 from psxdecomp.cli import main as main_del_kit
 from psxdecomp.cli import orden_progreso
+from tools.proyecto import PROYECTO, RAIZ_REPOSITORIO
 
 from .proyecto_real import cli
 

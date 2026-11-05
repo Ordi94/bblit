@@ -4,10 +4,9 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
-from tools.proyecto import PROYECTO
-
 from psxdecomp.construccion.dominio import CabeceraPsx, EjecutableReferencia
 from psxdecomp.construccion.infraestructura import Herramientas
+from tools.proyecto import PROYECTO
 
 from .proyecto_real import dominio, infra
 

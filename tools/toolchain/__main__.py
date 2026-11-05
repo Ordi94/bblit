@@ -3,6 +3,7 @@
 import sys
 
 from psxdecomp.toolchain.cli import main
+
 from tools.proyecto import RAIZ_REPOSITORIO
 
 if __name__ == "__main__":

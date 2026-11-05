@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 [tool.ruff]
 line-length = 110
 target-version = "py313"
-src = ["tools", "tests", "kit", "kit/tests"]
+src = ["tools", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "D", "ANN", "S", "PL", "RUF"]
@@ -23,16 +23,15 @@ convention = "google"
 python_version = "3.13"
 strict = true
 warn_unreachable = true
-files = ["tools", "tests", "kit/psxdecomp", "kit/tests"]
-mypy_path = ["kit", "kit/tests"]
+files = ["tools", "tests"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "kit/tests"]
-pythonpath = [".", "kit", "kit/tests"]
+testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-q"
 
-# Cobertura del codigo propio del proyecto: lineas y ramas, sin tolerancia. El kit fija la suya
-# en kit/pyproject.toml. Uso: python -m pytest tests --cov
+# Cobertura del codigo propio del proyecto: lineas y ramas, sin tolerancia. El kit publicado fija la suya
+# en su repositorio. Uso: python -m pytest tests --cov
 [tool.coverage.run]
 branch = true
 source = ["tools"]

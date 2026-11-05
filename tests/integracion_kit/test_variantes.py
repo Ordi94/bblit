@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from psxdecomp.construccion import infraestructura as infra_kit
 
 from .ayudantes_diff import ASM_FUNCION, EjecutorDiff

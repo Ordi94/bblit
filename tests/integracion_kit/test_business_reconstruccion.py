@@ -9,10 +9,9 @@ from typing import Any
 
 import pytest
 import yaml
-from tools.proyecto import VARIABLES
-
 from psxdecomp.toolchain.configuracion import leer_local_toml, resolver_rutas
 from psxdecomp.toolchain.instalacion import leer_lock, resolver_herramienta
+from tools.proyecto import VARIABLES
 
 from .proyecto_real import cli, dominio, infra
 

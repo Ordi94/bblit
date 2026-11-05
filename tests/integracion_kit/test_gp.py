@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-
 from psxdecomp.construccion import infraestructura as infra_kit
 from psxdecomp.construccion.compilacion import HerramientasCompilacion
 from psxdecomp.construccion.infraestructura import ProcesoError

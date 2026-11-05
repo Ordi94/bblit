@@ -7,11 +7,10 @@ import json
 from pathlib import Path
 
 import pytest
-from tools.proyecto import PROYECTO
-
 from psxdecomp.cli import Contexto, comandos
 from psxdecomp.construccion import infraestructura as infra_kit
 from psxdecomp.construccion.dominio import SimboloDeclarado
+from tools.proyecto import PROYECTO
 
 from .proyecto_real import cli, dominio, infra
 

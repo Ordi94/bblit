@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-
 from psxdecomp.diff.comparacion import ResultadoDiff
 
 from .ayudantes_diff import ASM_FUNCION, EjecutorDiff, repo_diff  # noqa: F401 - fixture reutilizada
