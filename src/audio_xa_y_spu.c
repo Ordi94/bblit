@@ -666,7 +666,7 @@ INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003EDA8);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2792 con la configuracion versionada (g = 8 del archivo). El flujo coincide; el original recorre la tabla de efectos con dos punteros que avanzan juntos (entrada y entrada + 4) y aqui la reduccion de fuerza del bucle exterior reparte un tercero para los accesos de +2 y +3, lo que desplaza los registros s. */
+/* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Los dos punteros de la tabla y el orden de los incrementos de los bucles coinciden; difieren la posicion de `addiu s1,s3,4` en la entrada del bucle (el original la emite tras la de s2), la copia `move a0,v0` del contador del bucle de busqueda y el reparto de v0/v1 en el calculo del volumen replicado en los dos bytes (el original deja el nivel en v0 y el desplazado en v1). */
 void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
 {
     Efecto* e;
@@ -683,6 +683,9 @@ void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
     u8 izq;
     u8 izq_copia;
 
+    /* Los dos contadores de cada bucle avanzan primero el puntero y despues el indice, y las pruebas de
+     * volumen y de salida van dentro de la rama que las necesita: el original salta la prueba de volumen
+     * nulo cuando el volumen sale de la tabla de efectos. */
     D_80069458 = D_800100E5;
     e = D_8006AEE0;
     if (modo & 1) {
