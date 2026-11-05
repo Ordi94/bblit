@@ -7,3 +7,6 @@ dist/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+pipeline/
+CLAUDE.md
+.claude/
