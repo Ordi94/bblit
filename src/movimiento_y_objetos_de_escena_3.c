@@ -120,30 +120,46 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E528);
  * bits) y fija la anchura de la textura y el modo del sprite.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2665 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; el original calcula el desplazamiento de color en t2 y deja el puntero al sprite en v1, el C reparte otros registros y reordena las lecturas del registro del cuadro. */
+/* Pendiente: puntuacion 1010 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; difieren el reparto de registros (el original deja el cuadro en t1, la constante 2 en t0 y el objeto en a3, el C usa a2, t1 y t0) y la posicion de las lecturas: el original lee el puntero al sprite (+0x78 del objeto) y la tabla de fotogramas tras los campos del cuadro, y GCC las adelanta. */
 void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
-    Fotograma* r;
     SpriteEscalado* p;
-    u16 indice;
+    Fotograma* r;
+    s32 v_pagina;
+    s32 ancho;
     s32 desplazamiento;
+    u16 w2e;
+    u16 ancho16;
+    Objeto* objeto;
+    Fotograma* fotogramas;
+    s32 indice;
 
+    fotogramas = c->fotogramas;
+    objeto = o;
+    /* Los nombres `fotogramas` y `objeto` son copias deliberadas: cambian el recuento de usos y el orden
+     * de asignacion de los registros del objeto y del bloque de trabajo. */
     /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
     if (modo & 1) {
         indice = (u16)c->cuadro;
     } else {
         indice = c->duraciones[(u16)c->cuadro].indice;
     }
-    r = c->fotogramas + indice;
+    r = fotogramas + indice;
+    v_pagina = r->v + (0x100 & (r->pagina << 4));
+    ancho = r->w0C;
     desplazamiento = 2 - ((r->pagina >> 7) & 3);
-    p = (SpriteEscalado*)((u8*)o->u78.p + 0xC);
+    p = (SpriteEscalado*)(0xC + (u8*)objeto->u78.p);
+    ancho16 = ancho;
+    ancho = ancho16 >> desplazamiento;
     p->s00 = (r->u >> desplazamiento) + ((r->pagina & 0xF) << 6);
-    p->s02 = r->v + ((r->pagina << 4) & 0x100);
+    w2e = c->w2E;
+    p->s02 = v_pagina;
     p->w08 = c->w2C;
-    p->s10 = r->w0C >> desplazamiento;
     p->w12 = r->w0E;
-    p->w0A = c->w2E;
-    p->s04 = (r->h0A & 0x3F) * 0x10;
+    p->s10 = ancho;
+    p->w0A = w2e;
+    indice = r->h0A;
+    p->s04 = (0x3F & indice) * 0x10;
     p->s06 = r->h0A >> 6;
     p->w0C = c->w30;
     p->w0E = c->w32;
