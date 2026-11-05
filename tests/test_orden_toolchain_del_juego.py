@@ -1,10 +1,12 @@
 """``python -m tools.toolchain``: la orden del toolchain del kit sobre este repositorio y el alias BBLIT_*."""
 
+import importlib.metadata
 import runpy
 import shutil
 import sys
 from pathlib import Path
 
+import psxdecomp
 import pytest
 from psxdecomp.toolchain import cli as cli_kit
 from psxdecomp.toolchain import configuracion, extraccion, plataforma
@@ -21,7 +23,12 @@ def ejecutar_modulo(argumentos: list[str], monkeypatch: pytest.MonkeyPatch) -> i
 
 
 def test_el_kit_que_se_importa_es_el_paquete_instalado_y_no_una_copia_del_repositorio() -> None:
-    assert not Path(configuracion.__file__).resolve().is_relative_to(RAIZ_REPOSITORIO)
+    """El entorno virtual puede vivir dentro del repositorio: lo que no puede haber es una copia del kit."""
+    ruta_modulo = Path(configuracion.__file__).resolve()
+    assert not ruta_modulo.is_relative_to(RAIZ_REPOSITORIO / "kit")
+    assert not ruta_modulo.is_relative_to(RAIZ_REPOSITORIO / "tools")
+    assert "site-packages" in ruta_modulo.parts
+    assert importlib.metadata.version("psx-decomp-kit") == psxdecomp.__version__
     assert not (RAIZ_REPOSITORIO / "kit").exists()
 
 
