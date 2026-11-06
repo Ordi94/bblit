@@ -9,19 +9,19 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 383 | 73060 |
+| Código del juego | 450 | 201416 | 385 | 74064 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 73060 de 201416 (36.27 %).
-Funciones marcadas `NON_MATCHING`: 50.
-Coherencia con el ensamblador: correcta (719 `glabel` en `asm/` + 383 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 74064 de 201416 (36.77 %).
+Funciones marcadas `NON_MATCHING`: 48.
+Coherencia con el ensamblador: correcta (717 `glabel` en `asm/` + 385 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
 | Subsistema | Archivos | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |
 |---|---:|---:|---:|---:|---:|---:|
 | arranque_y_bucle_principal | 1 | 9 | 1 | 0 | 1364 | 3404 |
-| audio_xa_y_spu | 1 | 34 | 3 | 0 | 6316 | 8220 |
+| audio_xa_y_spu | 1 | 36 | 1 | 0 | 7320 | 8220 |
 | camara_y_bucle_logico | 1 | 8 | 3 | 0 | 2712 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 7 | 2 | 2 | 1096 | 14264 |
 | colision_y_terreno | 1 | 2 | 2 | 0 | 680 | 12480 |
@@ -41,7 +41,7 @@ Coherencia con el ensamblador: correcta (719 `glabel` en `asm/` + 383 en C = 110
 | Archivo | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |
 |---|---:|---:|---:|---:|---:|
 | `src/arranque_y_bucle_principal_2.c` | 9 | 1 | 0 | 1364 | 3404 |
-| `src/audio_xa_y_spu.c` | 34 | 3 | 0 | 6316 | 8220 |
+| `src/audio_xa_y_spu.c` | 36 | 1 | 0 | 7320 | 8220 |
 | `src/camara_y_bucle_logico.c` | 8 | 3 | 0 | 2712 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 7 | 2 | 0 | 1096 | 13592 |
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 0 | 2 | 0 | 672 |
@@ -110,8 +110,6 @@ Coherencia con el ensamblador: correcta (719 `glabel` en `asm/` + 383 en C = 110
 - `func_8003AF8C`: Pendiente: puntuacion 1515 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el original deja el color en a3 y el desplazamiento de la textura en a2, y aqui caen en a2 y a0; la direccion de las palabras del sprite queda en v1 en lugar de a0) y la posicion de dos lecturas: el original lee la bandera de transparencia y calcula la palabra de la lista de ordenacion despues de guardar la profundidad.
 - `func_8003B354`: Pendiente: puntuacion 315 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere el reparto de v0/v1 en las constantes previas al bucle (el original deja el uno compartido en v1, -0x80 en v0, la constante 0x10000 en v1 y el desplazado en v0; aqui van al reves) y los registros de la entrada visible del bucle (v1 en el original, a0 aqui) y de la entrada nueva.
 - `func_8003B5AC`: Pendiente: puntuacion 870 con la configuracion versionada (-G0 salvo g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el registro de la carga del desplazamiento geometrico (gte_SetGeomOffset usa t4/t5 y el original t2/t3), el reparto v0/v1 del nivel del fundido (el original relee esc->estado.w8 tras los dos almacenes y el compilador reutiliza el registro del nivel, y el almacen de D_800694E2 se coloca antes que la relectura) y el orden de dos cargas antes del bucle de objetos (el original calcula D_8006D928 antes que la tabla D_8006AD80, que aqui se usa direct
-- `func_8003E298`: Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere solo el orden de los dos lui iniciales (el original emite la base de la tabla de posiciones antes que la del estado principal).
-- `func_8003EDA8`: Pendiente: puntuacion 85 con la configuracion versionada (g = 8 del archivo). Las instrucciones y los registros coinciden (el resultado, una union de dos bytes, queda en s2); difiere solo la posicion de un sll (x << 8) respecto al mflo en la rama de angulo positivo.
 - `func_8003F06C`: Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Los dos punteros de la tabla y el orden de los incrementos de los bucles coinciden; difieren la posicion de `addiu s1,s3,4` en la entrada del bucle (el original la emite tras la de s2), la copia `move a0,v0` del contador del bucle de busqueda y el reparto de v0/v1 en el calculo del volumen replicado en los dos bytes (el original deja el nivel en v0 y el desplazado en v1).
 - `func_8004048C`: Pendiente: puntuacion 7254 con la configuracion versionada (g = 8 del archivo). El marco de pila del original es 8 bytes mayor, el reparto de registros de la rama de grabacion es otro y GCC fusiona el xor de (D_8006CFF2 ^ 0xFF) << 8 con el desplazamiento. Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS (D_8006CFF1..7: id, botones invertidos y ejes) en botones logicos y ejes de +/-0x7F.
 - `func_80045150`: Pendiente: puntuacion 1501 con la configuracion versionada (g = 8 del archivo). Misma estructura de bucle y de escrituras de la primitiva; el original reparte s1 a la coordenada y y s3 a la v del glifo, s6 al contador y s7 y s8 a las dimensiones, el C los reparte al reves (el contador queda con la menor prioridad de los registros guardados), y carga el puntero a la primitiva (D_80076188) despues de la direccion de la cabeza de la lista, mientras GCC lo adelanta.
