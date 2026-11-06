@@ -569,11 +569,14 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2420 con la configuracion versionada (g = 8 del archivo). Reparto de registros del prologo (el original usa a0 como
- * copia de la posicion de a) y cadena de comparaciones de las esquinas que el original comparte entre regiones.
+ * Pendiente: puntuacion 1555 con la configuracion versionada (g = 8 del archivo). Reparto de registros del tramo final del bucle de puntos (el original carga el area de trabajo en a2 y el objeto b en a1, y aqui caen al reves) y cadena de comparaciones de las esquinas que el original comparte entre regiones.
  *
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
  * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
+ *
+ * En las dos ramas de cierre (la de esquina positiva y la de esquina negativa en x) el objeto b se lee del area de
+ * trabajo en una local para la segunda comparacion: el original conserva ese puntero en un registro y sin la copia el
+ * compilador relee el campo y cambia el reparto de registros del bucle.
  */
 s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
 {
@@ -582,8 +585,8 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
     MATRIX* m2;
     /* El marco del original reserva 8 bytes de locales que ninguna sentencia toca. */
     SVECTOR reserva;
-
-
+    Objeto* objeto_der;
+    Objeto* objeto_izq;
     GEO_CARGAR_WH(&b->min);
     GEO_OR_WH(&b->max);
     GEO_GUARDAR_1W_T1(&w->caja);
@@ -618,17 +621,19 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
     w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->radio;
     w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->radio;
     w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->radio;
-    w->p[4].vx = w->p[4].vy = w->p[4].vz = 0;
+    w->p[4].vx = w->p[4].vy = (*(w->p + 4)).vz = 0;
     w->p[0].vy = w->p[1].vy = w->p[2].vy = w->p[3].vy = 0;
     m2 = &w->m2;
-    RotMatrix(&w->a->param.giro.rotate, m2);
+    RotMatrix(&(*w->a).param.giro.rotate, m2);
     gte_SetRotMatrix(m2);
     w->pt = w->p;
-    for (i = 0; i < 4; i++) {
+    i = 0;
+    while (i < 4) {
         gte_ldv0(w->pt);
         gte_rtv0();
         gte_stsv(w->pt);
         w->pt++;
+        i++;
     }
     gte_SetRotMatrix(&w->m);
     w->pt = w->p;
@@ -657,10 +662,11 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
                     continue;
                 }
             } else {
+                objeto_der = w->b;
                 if (w->pt->vz < w->b->min.vz - w->radio) {
                     continue;
                 }
-                if (w->b->max.vx + w->radio < w->pt->vx) {
+                if (objeto_der->max.vx + w->radio < w->pt->vx) {
                     continue;
                 }
             }
@@ -682,10 +688,11 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
                 continue;
             }
         } else {
+            objeto_izq = w->b;
             if (w->pt->vz < w->b->min.vz - w->radio) {
                 continue;
             }
-            if (w->pt->vx < w->b->min.vx - w->radio) {
+            if (w->pt->vx < objeto_izq->min.vx - w->radio) {
                 continue;
             }
         }
