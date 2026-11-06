@@ -941,7 +941,7 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
     ZonaColision* zona_cuesta;
     TrabajoBaldosa* trabajo;
     TrabajoBaldosa* trabajo_baldosa;
-    s32 zl;
+    s32 fila_subceldas;
 
     /* Tres nombres para el area de trabajo y dos para la zona: el original reparte el area en s0 y el
      * resultado en s1 solo cuando el area tiene mas referencias que el resultado, y conserva una copia
@@ -967,9 +967,9 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
     r->tipo = trabajo->baldosa & 0xF000;
     trabajo->x_local = trabajo->x % 320;
     trabajo->z_local = trabajo->z % 320;
-    zl = trabajo->z_local / 40 * 8;
+    fila_subceldas = trabajo->z_local / 40 * 8;
     trabajo_baldosa->baldosa &= 0xFFF;
-    trabajo->celda = (s8)z->subceldas[zl + (trabajo->baldosa << 6) + trabajo->x_local / 40];
+    trabajo->celda = (s8)z->subceldas[fila_subceldas +(trabajo->baldosa << 6) + trabajo->x_local / 40];
     if (trabajo->celda == 0x7E) {
         pos[1] = z->y_max;
         r->clase = 0;

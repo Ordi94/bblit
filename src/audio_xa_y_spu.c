@@ -681,7 +681,7 @@ void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
     u16 nivel;
     u16 vol_final;
     u8 izq;
-    u8 izq_copia;
+    u8 izq_releido;
 
     /* Los dos contadores de cada bucle avanzan primero el puntero y despues el indice, y las pruebas de
      * volumen y de salida van dentro de la rama que las necesita: el original salta la prueba de volumen
@@ -725,8 +725,8 @@ void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
                     if ((*(u16*)pf & 1) || (D_800100E8 & 1)) {
                         izq = v->vol.c.izq;
                         if (v->vol.c.der < izq) {
-                            izq_copia = v->vol.c.izq;
-                            v->vol.c.der = izq_copia;
+                            izq_releido = v->vol.c.izq;
+                            v->vol.c.der = izq_releido;
                         } else {
                             v->vol.c.izq = v->vol.c.der;
                         }
