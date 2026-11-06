@@ -55,7 +55,7 @@ typedef struct SpritePlano {
  * de indices del conjunto.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 470 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes, y el desplazamiento de 16 bytes del registro se hace tras la reunion de las dos ramas; difiere el reparto: el original deja el registro del cuadro en t0 hasta leer las banderas al final (y las coordenadas en a3, a1, a0, a2), mientras que el C debe leer las banderas antes para conservar esa reunion, de modo que el registro cae en v0 y la pagina y la paleta pasan por t0. */
+/* Pendiente: puntuacion 465 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; el original conserva el registro del cuadro en t0 hasta leer las banderas, que es lo ultimo que hace (y deja el indice en v0 y las coordenadas en a3, a1, a0, a2), mientras que el C debe leer paleta y banderas antes de los almacenes de coordenadas: con las banderas al final el compilador copia el desplazamiento del indice dentro de cada rama (1340 y 715) y el registro del cuadro cae en v0. */
 void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     Fotograma* r;
@@ -71,12 +71,12 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     s32 ancho;
     u16 clut;
     s32 espejo;
+    s32 alto_menos_uno;
 
     if (o->flags08 & 0x20) {
         func_8001E600(o, c, modo);
         return;
     }
-    /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
     if (modo & 1) {
         indice = (u16)c->cuadro;
     } else {
@@ -89,18 +89,18 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     v = r->v;
     pagina = r->pagina;
     h = r->w0E;
-    /* La anchura menos uno pasa por una variable de 32 bits: con la suma en una sola expresion el
-     * compilador estrecha la carga de w a un byte (lbu) y el original carga media palabra (lhu). */
+    /* La altura menos uno pasa por una variable de 32 bits: en la expresion `h - 1 + v` el compilador estrecha la resta a un byte (addiu 0xff) y el original suma -1. */
+    alto_menos_uno = h - 1;
+    /* La anchura menos uno pasa por una variable de 32 bits: con la suma en una sola expresion el compilador estrecha la carga de w a un byte (lbu) y el original carga media palabra (lhu). */
     ancho = w - 1;
     u_fin = u + ancho;
     p->tpage = pagina;
-    /* La paleta y las banderas se leen antes de los almacenes de coordenadas: es el orden en que
-     * el original reparte los registros y funde el desplazamiento del registro tras las ramas. */
+    /* La paleta y las banderas se leen antes de los almacenes de coordenadas: asi el desplazamiento del indice queda tras la reunion de las dos ramas, como en el original. */
     clut = r->h0A;
     p->v0 = v;
     p->v1 = v;
     espejo = r->flags & 8;
-    v_fin = h - 1 + v;
+    v_fin = alto_menos_uno + v;
     p->u0 = u;
     p->u1 = u_fin;
     p->u2 = u;
