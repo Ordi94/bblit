@@ -621,10 +621,10 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
     w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->radio;
     w->p[0].vz = w->p[1].vz = w->a->max.vz + w->a->radio;
     w->p[2].vz = w->p[3].vz = w->a->min.vz - w->a->radio;
-    w->p[4].vx = w->p[4].vy = (*(w->p + 4)).vz = 0;
+    w->p[4].vx = w->p[4].vy = w->p[4].vz = 0;
     w->p[0].vy = w->p[1].vy = w->p[2].vy = w->p[3].vy = 0;
     m2 = &w->m2;
-    RotMatrix(&(*w->a).param.giro.rotate, m2);
+    RotMatrix(&w->a->param.giro.rotate, m2);
     gte_SetRotMatrix(m2);
     w->pt = w->p;
     i = 0;

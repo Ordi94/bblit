@@ -300,7 +300,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         p[2] = sprite->palabras[0];
         p[3] = q[1] + desplazamiento;
         p[4] = q[2];
-        p[5] = *(q + 3);
+        p[5] = q[3];
         p[6] = q[4];
         p[7] = q[5];
         p[8] = q[6];
@@ -328,7 +328,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         }
         color |= modo;
         color |= 0x2C000000;
-        *(p + 0) = palabra;
+        *p = palabra;
         p[1] = color;
         *ranura = (s32)((s32)p << 8) >> 8;
         D_80076188 += 0x28;
