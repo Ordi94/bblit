@@ -249,6 +249,7 @@ void func_8001D0FC(Objeto* otro, u32 id, BusquedaAnim* b)
     Objeto* portador;
     Objeto* llevado;
     BusquedaAnim* busqueda;
+
     busqueda = b;
     b = (BusquedaAnim*)((u8*)b + 0x10);
     if (!(D_80069698->flags14 & 0x1000000)) {
@@ -754,7 +755,7 @@ void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
 
     /* Copia local del objeto: sin ella el reparto de a2 y a3 empeora; el segundo argumento no se copia. */
     objeto = o;
-    b->coordenadas = (s16*)(0xC + (u8*)objeto->u78.p);
+    b->coordenadas = (s16*)((u8*)objeto->u78.p + 0xC);
     b->pos.vx = objeto->param.trans.vx;
     b->pos.vy = objeto->param.trans.vy;
     b->pos.vz = objeto->param.trans.vz;
@@ -777,7 +778,7 @@ void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
     b->h50 = b->h4C + (((medida_doble * b->escala) >> 12) * objeto->param.escala.vx >> 12);
     medida_doble = objeto->min.vx * 2;
     b->h4C = b->h4C + (((medida_doble * b->escala) >> 12) * objeto->param.escala.vx >> 12);
-    medida_doble = 2 * objeto->max.vy;
+    medida_doble = objeto->max.vy * 2;
     alto = ((((medida_doble * b->escala) >> 12) * objeto->param.escala.vy) >> 12) * 15 >> 5;
     b->h94 = alto;
     if (objeto->flags0C & 0x8000000) {
@@ -808,7 +809,7 @@ void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
     p[9] = coordenada;
     z = b->z54;
     objeto->param.escala.vz = z;
-    if (0 > z) {
+    if (z < 0) {
         objeto->param.escala.vz = 0;
     }
     objeto->flags04 |= 2;

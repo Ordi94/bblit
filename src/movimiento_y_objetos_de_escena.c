@@ -222,11 +222,11 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
                     w->res.grupo = -1;
                     func_8001C134(&w->x, &w->res, trabajo_baldosa);
                     if (!(w->res.flags & 8)) {
-                        tope = r->techo - (*o).max.vy;
+                        tope = r->techo - o->max.vy;
                         if (base < tope) {
                             tope = base;
                         }
-                    } else if (!(cur < base)) {
+                    } else if (cur >= base) {
                         goto soltar;
                     } else {
                         tope = cur;
@@ -242,7 +242,7 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
         } else {
             modo = (s16)r->flags;
             /* La condicion de perdida de suelo se guarda en una variable antes de la rama: sin ella el compilador la parte en dos saltos. */
-            pierde_suelo = base < cur && 8 != modo;
+            pierde_suelo = base < cur && modo != 8;
             if (pierde_suelo) {
                 v = f & ~9;
                 goto guardar;
@@ -254,16 +254,16 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
                 tope = cur;
                 goto calcular;
             }
-        soltar:
+soltar:
             v = o->flags14 & ~9;
-        guardar:
+guardar:
             o->flags14 = v;
         }
-    calcular:
+calcular:
         v = tope - o->param.trans.vy;
     } else {
         if (f & 4) {
-            if (base < o->param.trans.vy + (*d).dy) {
+            if (base < o->param.trans.vy + d->dy) {
                 d->dy = base - o->param.trans.vy;
             }
             return;
