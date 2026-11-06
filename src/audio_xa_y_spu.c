@@ -578,8 +578,6 @@ void func_8003ED94(void)
     D_800695D8 = -1;
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 85 con la configuracion versionada (g = 8 del archivo). Las instrucciones y los registros coinciden (el resultado, una union de dos bytes, queda en s2); difiere solo la posicion de un sll (x << 8) respecto al mflo en la rama de angulo positivo. */
 u32 func_8003EDA8(Objeto* o, Efecto* e)
 {
     s32 d[3];
@@ -626,11 +624,12 @@ u32 func_8003EDA8(Objeto* o, Efecto* e)
         x = 0x7F - ((x << 7) >> 12);
         x = (x * D_80069458) >> 7;
         if (y >= 0) {
-            t = x * y;
+            /* El producto va despues de la prueba: asi el multiplicador abre el bloque comun de las dos
+             * ramas y el desplazamiento de x llena el hueco entre la multiplicacion y la lectura de LO. */
             if (y > 0x400) {
                 y = 0x800 - y;
-                t = x * y;
             }
+            t = x * y;
             r.c.der = x;
             y = t >> 10;
             r.c.izq = x - y;
@@ -660,9 +659,6 @@ u32 func_8003EDA8(Objeto* o, Efecto* e)
     }
     return r.w;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003EDA8);
-#endif
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Los dos punteros de la tabla y el orden de los incrementos de los bucles coinciden; difieren la posicion de `addiu s1,s3,4` en la entrada del bucle (el original la emite tras la de s2), la copia `move a0,v0` del contador del bucle de busqueda y el reparto de v0/v1 en el calculo del volumen replicado en los dos bytes (el original deja el nivel en v0 y el desplazado en v1). */
