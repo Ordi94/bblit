@@ -741,62 +741,77 @@ void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
  * centrar. Guarda la profundidad en el objeto (no negativa) y enciende la bandera 2.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 3500 con la configuracion versionada (g = 8 del archivo). Mismo codigo GTE (matriz de rotacion, vector de traslacion, rtps) y mismas operaciones; el original conserva el segundo argumento en a1 y copia solo el objeto a a2, y usa a3 como base de la matriz, el C copia ambos y usa t2. */
+/* Pendiente: puntuacion 585 con la configuracion versionada (g = 8 del archivo). Mismo codigo GTE y mismas operaciones; solo difiere el bloque de la bandera 0x8000000: el original calcula h52 antes que h94, repite el desplazamiento `(s16)alto >> 1` en dos expresiones sin fundirlas y resta el valor de 32 bits de h94 de h4E sin releerlo, mientras que GCC funde el desplazamiento, calcula primero h94 y relee la mitad con signo de 16 bits. */
 void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
 {
-    s32 t;
+    Objeto* objeto;
+    s32 alto;
+    u16 coordenada;
     s16* p;
+    s32 medida_doble;
+    s32 mitad_inferior;
+    s32 z;
 
-    b->coordenadas = (s16*)((u8*)o->u78.p + 0xC);
-    b->pos.vx = o->param.trans.vx;
-    b->pos.vy = o->param.trans.vy;
-    b->pos.vz = o->param.trans.vz;
+    /* Copia local del objeto: sin ella el reparto de a2 y a3 empeora; el segundo argumento no se copia. */
+    objeto = o;
+    b->coordenadas = (s16*)(0xC + (u8*)objeto->u78.p);
+    b->pos.vx = objeto->param.trans.vx;
+    b->pos.vy = objeto->param.trans.vy;
+    b->pos.vz = objeto->param.trans.vz;
     gte_SetRotMatrix(&D_80076130);
     gte_SetTransVector(&D_80076144);
     gte_ldv0(&b->pos);
     gte_rtps();
     MOTOR_GUARDAR_MAC3(&b->z54);
     if (b->z54 < 0x96) {
-        o->flags04 &= ~2;
-        o->flags18 |= 0x100;
+        objeto->flags04 &= ~2;
+        objeto->flags18 |= 0x100;
         return &b->w58;
     }
     b->escala = 0x190000 / (b->z54 | 1);
     gte_stsxy2(&b->h4C);
     b->w5C = 0;
     b->w58 = 0x808080;
-    b->h50 = b->h4C + (((b->escala * (o->max.vx * 2)) >> 12) * o->param.escala.vx >> 12);
-    b->h4C = b->h4C + (((b->escala * (o->min.vx * 2)) >> 12) * o->param.escala.vx >> 12);
-    t = ((((b->escala * (o->max.vy * 2)) >> 12) * o->param.escala.vy) >> 12) * 15 >> 5;
-    b->h94 = t;
-    if (o->flags0C & 0x8000000) {
-        b->h52 = b->h4E + ((s16)t >> 1);
-        b->h94 = t - ((s16)t >> 1);
-        b->h4E = b->h4E - b->h94;
+    /* El doble de cada medida pasa por una variable de 32 bits asignada justo antes de su producto: asi la escala se lee despues de la medida, como en el original. */
+    medida_doble = objeto->max.vx * 2;
+    b->h50 = b->h4C + (((medida_doble * b->escala) >> 12) * objeto->param.escala.vx >> 12);
+    medida_doble = objeto->min.vx * 2;
+    b->h4C = b->h4C + (((medida_doble * b->escala) >> 12) * objeto->param.escala.vx >> 12);
+    medida_doble = 2 * objeto->max.vy;
+    alto = ((((medida_doble * b->escala) >> 12) * objeto->param.escala.vy) >> 12) * 15 >> 5;
+    b->h94 = alto;
+    if (objeto->flags0C & 0x8000000) {
+        b->h52 = b->h4E + ((s16)alto >> 1);
+        b->h94 = alto - ((s16)alto >> 1);
+        /* La altura ya guardada se relee con signo de 16 bits antes de restarla de h4E. */
+        mitad_inferior = (s16)b->h94;
+        b->h4E -= mitad_inferior;
     } else {
-        b->h52 = t + b->h4E;
+        b->h52 = alto + b->h4E;
     }
     p = b->coordenadas;
-    t = b->h4C;
-    p[8] = t;
-    p[0] = t;
+    /* Las coordenadas se copian por una variable sin signo de 16 bits (lhu) y no por una de 32 bits (lh). */
+    coordenada = b->h4C;
+    p[8] = coordenada;
+    p[0] = coordenada;
     p = b->coordenadas;
-    t = b->h52;
-    p[5] = t;
-    p[1] = t;
+    coordenada = b->h52;
+    p[5] = coordenada;
+    p[1] = coordenada;
     p = b->coordenadas;
-    t = b->h50;
-    p[12] = t;
-    p[4] = t;
+    coordenada = b->h50;
+    p[12] = coordenada;
+    p[4] = coordenada;
     p = b->coordenadas;
-    t = b->h4E;
-    p[13] = t;
-    p[9] = t;
-    o->param.escala.vz = b->z54;
-    if (b->z54 < 0) {
-        o->param.escala.vz = 0;
+    coordenada = b->h4E;
+    p[13] = coordenada;
+    p[9] = coordenada;
+    z = b->z54;
+    objeto->param.escala.vz = z;
+    if (0 > z) {
+        objeto->param.escala.vz = 0;
     }
-    o->flags04 |= 2;
+    objeto->flags04 |= 2;
     return &b->w58;
 }
 #else
