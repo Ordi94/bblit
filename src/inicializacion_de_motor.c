@@ -251,28 +251,28 @@ void func_80044E58(void)
     func_8005595C(0x64);
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 310 con la configuracion versionada (g = 8 del archivo). Misma estructura y mismo reparto de registros que el original (la tabla comparte registro con la definicion del nodo); difiere la planificacion: el original coloca la parte alta de D_8006D018 (lui) en el hueco de la carga de la definicion y carga el arreglo de fotogramas despues de guardar la tabla en el objeto, mientras que GCC carga el arreglo antes del almacen y deja un nop tras la lectura de la definicion. */
+/*
+ * Guarda la tabla de fotogramas de la primera animacion de tipo 8 del objeto y anota en D_8006D018[ranura] el
+ * campo h0A del fotograma indicado. El mismo puntero recorre el arreglo de fotogramas y luego apunta al
+ * fotograma elegido: con una variable por cada paso la direccion del arreglo se calcula antes del almacen de la
+ * tabla y el reparto de registros deja de coincidir.
+ */
 void func_80044EA8(s32 a0, u32 a1, Objeto* a2)
 {
     NodoAnimacion* nodo;
     TablaFotogramas* tabla;
-    Fotograma* f;
+    Fotograma* fotograma;
 
     nodo = a2->lista;
     while (nodo != NULL && nodo->def->tipo != 8) {
         nodo = nodo->sig;
     }
     tabla = nodo->def->tabla;
-    /* La direccion del arreglo de fotogramas se calcula antes de guardar la tabla en el objeto:
-     * con el almacen primero la tabla cae en otro registro que la definicion del nodo. */
-    f = &tabla->fotogramas[a1 & 0xFFFF];
     a2->trabajo.tabla = tabla;
-    D_8006D018[(s16)a0] = f->h0A;
+    fotograma = tabla->fotogramas;
+    fotograma = &fotograma[a1 & 0xFFFF];
+    D_8006D018[(s16)a0] = fotograma->h0A;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80044EA8);
-#endif
 
 void func_80044F20(void)
 {
