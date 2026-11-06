@@ -128,12 +128,15 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     s32 desplazamiento_color;
     s32 indice;
     s32 paleta;
-    u16 ancho16;
+    u16 ancho_cuadro;
+    u16 ancho_bloque;
     Fotograma* fotogramas;
     s32 v_pagina;
 
     /* La tabla se lee antes de elegir el cuadro: sin esa lectura anticipada el compilador la coloca
-     * tras la reunion de las ramas y el reparto de registros se aleja del original. */
+     * tras la reunion de las ramas y el reparto de registros se aleja del original. La copia local
+     * de la tabla es deliberada: cambia el recuento de usos y con ello el orden en que se asignan
+     * los registros del bloque de trabajo. */
     fotogramas = c->fotogramas;
     /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
     if (modo & 1) {
@@ -148,16 +151,15 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     v_pagina = fotogramas->v + (0x100 & (fotogramas->pagina << 4));
     p = (SpriteEscalado*)(0xC + (u8*)o->u78.p);
     desplazamiento_color = 2 - ((fotogramas->pagina >> 7) & 3);
-    /* Una sola variable de 16 bits sirve para la anchura del cuadro y para la anchura del bloque de trabajo (w2E). */
-    ancho16 = ancho;
-    ancho = ancho16 >> desplazamiento_color;
+    ancho_cuadro = ancho;
+    ancho = ancho_cuadro >> desplazamiento_color;
     p->s00 = (fotogramas->u >> desplazamiento_color) + ((fotogramas->pagina & 0xF) << 6);
-    ancho16 = c->w2E;
+    ancho_bloque = c->w2E;
     p->s02 = v_pagina;
     p->w08 = c->w2C;
     p->w12 = fotogramas->w0E;
     p->s10 = ancho;
-    p->w0A = ancho16;
+    p->w0A = ancho_bloque;
     paleta = fotogramas->h0A;
     p->s04 = (0x3F & paleta) * 0x10;
     p->s06 = fotogramas->h0A >> 6;
