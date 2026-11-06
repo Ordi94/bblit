@@ -77,32 +77,30 @@ void ConstruirRegistrosArchivo(void)
     }
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 370 con la configuracion versionada (g = 8 del archivo). Mismas
- * instrucciones que el original, con el desplazamiento del indice como primer sumando de la
- * direccion de cada seccion; solo difiere el reparto de registros de la ultima etapa (el
- * original deja el puntero del bucle en a2 y la constante 4 en a3, el indice en t0 en todas las
- * etapas, y copia el puntero de la segunda etapa de una direccion calculada en v1).
- *
  * Recorre la cabecera de secciones de un contenedor (n entradas de tipo, tamano y tamano alineado)
  * y calcula la posicion, en bytes desde el inicio del archivo, de los datos del banco que se pide:
  * devuelve la suma de los tamanos alineados de las secciones que hay entre la primera de tipo 6
  * y la de tipo `tipo`. Como efectos laterales deja el tamano alineado de la seccion `tipo` en
  * D_800694A0 y en D_80069478 la suma de las secciones siguientes hasta la de tipo 4.
+ *
+ * Los tres ultimos recorridos se escriben con el indice (`secciones[i]`) y no con un puntero que
+ * avanza: asi el compilador deriva el puntero del bucle como una variable de induccion propia, con
+ * la copia que tiene el original, y el reparto de registros coincide.
  */
 s32 func_80040F78(EntradaSeccion* secciones, s32 n, s32 tipo)
 {
     s32 i;
     s32 anterior;
-    EntradaSeccion* p;
 
-    D_80069478 = 0;
     anterior = 0;
-    for (i = 0; i < n; i++) {
+    D_80069478 = 0;
+    i = 0;
+    while (i < n) {
         if (secciones[i].tipo == tipo) {
             break;
         }
+        i++;
     }
     D_800694A0 = secciones[i].alineado;
     for (i = 0; i < n; i++) {
@@ -110,30 +108,23 @@ s32 func_80040F78(EntradaSeccion* secciones, s32 n, s32 tipo)
             break;
         }
     }
-    p = (EntradaSeccion*)((i * 12) + (s32)secciones);
-    while (p->tipo != tipo) {
+    while (secciones[i].tipo != tipo) {
         if (i >= n) {
             break;
         }
-        anterior += p->alineado;
-        p++;
+        anterior += secciones[i].alineado;
         i++;
     }
     i++;
-    p = (EntradaSeccion*)((i * 12) + (s32)secciones);
-    while (p->tipo != 4) {
+    while (secciones[i].tipo != 4) {
         if (i >= n) {
             break;
         }
-        D_80069478 += p->alineado;
-        p++;
+        D_80069478 += secciones[i].alineado;
         i++;
     }
     return anterior;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd", func_80040F78);
-#endif
 
 /*
  * Retorno de llamada de la unidad (CdReadyCallback): cuando hay un sector listo (aviso 1) lo
