@@ -250,27 +250,32 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1680 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el desplazamiento de la textura cae en a0 y la plantilla en v1, en lugar de a2 y a0) y la posicion del almacen de la profundidad, que el original deja justo antes de indexar la lista de ordenacion. */
+/* Pendiente: puntuacion 1515 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el original deja el color en a3 y el desplazamiento de la textura en a2, y aqui caen en a2 y a0; la direccion de las palabras del sprite queda en v1 en lugar de a0) y la posicion de dos lecturas: el original lee la bandera de transparencia y calcula la palabra de la lista de ordenacion despues de guardar la profundidad. */
 void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
 {
     u32 color;
-    s32 desplazamiento;
-    s32 k;
-    ColorYDesplazamiento* par;
     AcumuladorNodos pila;
     u32* p;
+    ColorYDesplazamiento* par;
+    s32 k;
+    s32 desplazamiento;
     u32* q;
     u32* orden;
     u32* ranura;
     u32 palabra;
     u32 modo;
     s32 n;
+    u32 semitransparente;
+    VistaDibujo* vista_dibujo;
 
+    /* Copia del argumento de la vista para la llamada que calcula la proyeccion: cambia el recuento de usos y el reparto de los registros guardados. */
+    vista_dibujo = vista;
     func_80039CD0(D_80076188);
     if (sprite->banderas & 0x10) {
         if (D_8006966A != 0) {
             k = 0x80 - ((s16)D_800694E2 >> 5);
-            color = (k << 16) + (k << 8) + k;
+            /* La suma agrupa primero los dos desplazamientos y luego el componente bajo: con otro orden de sumandos el compilador cambia el reparto de a2 y a3. */
+            color = k + ((k << 16) + (k << 8));
         } else {
             color = 0x808080;
         }
@@ -284,7 +289,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
             ctx->objeto->param.trans.vy = pila.acc.vy;
             ctx->objeto->param.trans.vz = pila.acc.vz;
         }
-        par = func_8001DF28(ctx->objeto, vista);
+        par = func_8001DF28(ctx->objeto, vista_dibujo);
         color = par->color;
         desplazamiento = par->desplazamiento;
         ctx->estado.s4 = (ctx->objeto->param.escala.vz >> 2) - ctx->estado.s6;
@@ -295,11 +300,13 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         p[2] = sprite->palabras[0];
         p[3] = q[1] + desplazamiento;
         p[4] = q[2];
-        p[5] = q[3];
+        p[5] = *(q + 3);
         p[6] = q[4];
         p[7] = q[5];
         p[8] = q[6];
         p[9] = q[7];
+        /* La bandera de transparencia se lee antes de elegir la lista de ordenacion: asi el compilador la mantiene en un temporal y no la relee. */
+        semitransparente = sprite->semitransparente;
         if (ctx->estado.s4 < 0x200) {
             orden = (u32*)D_8006AE20[D_8006967C].org;
         } else {
@@ -307,21 +314,21 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
                 n = (s16)((u16)ctx->estado.s4 - 0x200) >> 1;
                 orden = (u32*)D_8006AE60[D_8006967C].org;
             } else {
-                n = (s16)((u16)ctx->estado.s4 - 0x400) >> 5;
                 orden = (u32*)D_8006AEA0[D_8006967C].org;
+                n = (s16)((u16)ctx->estado.s4 - 0x400) >> 5;
             }
             ctx->estado.s4 = n;
         }
         ranura = orden + ctx->estado.s4;
         palabra = *ranura | 0x09000000;
-        if (sprite->semitransparente != 0) {
+        if (semitransparente != 0) {
             modo = 0x2E000000;
         } else {
             modo = 0x2C000000;
         }
         color |= modo;
         color |= 0x2C000000;
-        p[0] = palabra;
+        *(p + 0) = palabra;
         p[1] = color;
         *ranura = (s32)((s32)p << 8) >> 8;
         D_80076188 += 0x28;
