@@ -382,7 +382,6 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     actual = -1;
     if (!(D_8006D9A8[0] & 0x300)) {
 
-        sala_o_marca = escena->objeto->w26;
         actual = D_80069698->w26;
         distinta = actual != (s16)sala_o_marca;
         if (distinta && actual != -1) {
@@ -427,12 +426,11 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B354);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1518 con la configuracion versionada (-G0 salvo g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el registro de la carga del desplazamiento geometrico (gte_SetGeomOffset usa t4/t5 y el original t2/t3), el reparto v0/v1 del nivel del fundido (el compilador reutiliza el registro en lugar de releer el nivel guardado, y el almacen de D_800694E2 se coloca antes que la relectura), el orden de las cargas de los limites del buffer en el prologo y el orden de dos movimientos de argumentos antes de func_8003AE08. Con D_8006AD80 declarada como Objeto*[] la puntuacion baja a 1085; con el cast local sube a 1518 porque cambia el reparto de la base de la tabla. */
+/* Pendiente: puntuacion 870 con la configuracion versionada (-G0 salvo g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el registro de la carga del desplazamiento geometrico (gte_SetGeomOffset usa t4/t5 y el original t2/t3), el reparto v0/v1 del nivel del fundido (el original relee esc->estado.w8 tras los dos almacenes y el compilador reutiliza el registro del nivel, y el almacen de D_800694E2 se coloca antes que la relectura) y el orden de dos cargas antes del bucle de objetos (el original calcula D_8006D928 antes que la tabla D_8006AD80, que aqui se usa directa). */
 void func_8003B5AC(Objeto* lista)
 {
     EscenaDibujo* esc;
     VistaDibujo* vista = (VistaDibujo*)0x1F800038;
-    Objeto** visibles = D_8006AD80; /* La tabla guarda punteros de 4 bytes: lui/addiu s7 con la base y sw indexado. */
     ModeloDibujo* modelo;
     Objeto* obj;
     s32 color;
@@ -448,6 +446,7 @@ void func_8003B5AC(Objeto* lista)
     s32 qz;
     s8 hecho;
     u16 nivel;
+    s16 nivel_guardado;
 
     func_8003ABB4();
     esc = ESCENA_DIBUJO;
@@ -498,8 +497,10 @@ void func_8003B5AC(Objeto* lista)
             nivel = D_80069668;
         }
         esc->estado.w8 = nivel;
+        /* El nivel guardado se relee con signo de 16 bits en una local antes del segundo almacen: con la lectura dentro de la division el reparto de registros empeora. */
+        nivel_guardado = (s16)esc->estado.w8;
         D_800694E2 = nivel;
-        k = (s16)esc->estado.w8 / 16 - 1;
+        k = nivel_guardado / 16 - 1;
         if (k < 0) {
             color = 0;
         } else {
@@ -547,7 +548,7 @@ void func_8003B5AC(Objeto* lista)
             if (esc->objeto->w3A != 0) {
                 if (D_80069532 < 0x28) {
                     if ((Objeto*)esc->objeto != D_80069698 || (D_8006D928.flags80 & 0x20) == 0) {
-                        visibles[D_80069532++] = esc->objeto;
+                        D_8006AD80[D_80069532++] = esc->objeto;
                     }
                 } else {
                     for (;;) {
