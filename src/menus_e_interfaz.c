@@ -381,7 +381,7 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     D_80069688 = escena->objeto->w26;
     actual = -1;
     if (!(D_8006D9A8[0] & 0x300)) {
-
+        sala_o_marca = escena->objeto->w26;
         actual = D_80069698->w26;
         distinta = actual != (s16)sala_o_marca;
         if (distinta && actual != -1) {
