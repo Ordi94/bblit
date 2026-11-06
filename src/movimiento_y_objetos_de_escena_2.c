@@ -235,61 +235,66 @@ typedef struct BusquedaAnim {
  * el objeto controlado lleva otro objeto en brazos (p6C) y no es del tipo 0x22 lo coloca
  * delante, le copia orientacion y rotacion y lo enlaza a su propia lista. Anula el seguimiento.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 670 con la configuracion versionada (g = 8 del archivo). Mismas busquedas y almacenes; el original conserva el argumento b en a3 y deriva b + 0x10 en s1 desde el principio, el C usa b en s1 y calcula b + 0x10 al final. */
+/*
+ * El argumento b se avanza al area de trabajo del desplazamiento (+0x10) nada mas entrar y las
+ * busquedas usan una copia (busqueda): el original deja el area en un registro guardado, que
+ * sobrevive a las llamadas del final, y la estructura de busqueda en un temporal. Las dos
+ * lecturas de D_80069698 (la asignacion de la animacion y la entrega de la carga) llevan
+ * variables distintas (controlado y portador) porque sus vidas no se solapan y el original las
+ * reparte en registros distintos.
+ */
 void func_8001D0FC(Objeto* otro, u32 id, BusquedaAnim* b)
 {
-    Objeto* j;
+    Objeto* controlado;
+    Objeto* portador;
     Objeto* llevado;
-    NodoSecuencia* n;
-
+    BusquedaAnim* busqueda;
+    busqueda = b;
+    b = (BusquedaAnim*)((u8*)b + 0x10);
     if (!(D_80069698->flags14 & 0x1000000)) {
-        b->nodo = D_80069698->secuencias;
-        while (b->nodo != NULL && b->nodo->id != id) {
-            b->nodo = b->nodo->sig;
+        busqueda->nodo = D_80069698->secuencias;
+        while (busqueda->nodo != NULL && busqueda->nodo->id != id) {
+            busqueda->nodo = busqueda->nodo->sig;
         }
-        b->desplazamiento = b->nodo->desplazamiento;
-        b->fotograma = (NodoSecuencia*)D_80069698->bloque;
-        while (b->fotograma != NULL && b->fotograma->id != b->desplazamiento) {
-            b->fotograma = b->fotograma->sig;
+        busqueda->desplazamiento = busqueda->nodo->desplazamiento;
+        busqueda->fotograma = (NodoSecuencia*)D_80069698->bloque;
+        while (busqueda->fotograma != NULL && busqueda->fotograma->id != busqueda->desplazamiento) {
+            busqueda->fotograma = busqueda->fotograma->sig;
         }
-        b->apoyo = D_80069698->apoyos;
-        while (b->apoyo != NULL && b->apoyo->id != b->fotograma->w0A) {
-            b->apoyo = b->apoyo->sig;
+        busqueda->apoyo = D_80069698->apoyos;
+        while (busqueda->apoyo != NULL && busqueda->apoyo->id != busqueda->fotograma->w0A) {
+            busqueda->apoyo = busqueda->apoyo->sig;
         }
-        j = D_80069698;
-        j->w17C = id;
-        j->p180 = b->nodo;
-        j->registro184 = (RegistroAnim*)b->fotograma;
-        j->nodo188 = b->apoyo;
-        j->trabajo.i14 = 0;
-        j->raiz_ayudantes = 0;
-        if ((b->fotograma->w10 & 0x800)) {
+        controlado = D_80069698;
+        controlado->w17C = id;
+        controlado->p180 = busqueda->nodo;
+        controlado->registro184 = (RegistroAnim*)busqueda->fotograma;
+        controlado->nodo188 = busqueda->apoyo;
+        controlado->trabajo.i14 = 0;
+        controlado->raiz_ayudantes = 0;
+        if (busqueda->fotograma->w10 & 0x800) {
             D_80069698->flags14 &= ~0x209;
         }
-        j = D_80069698;
-        llevado = j->p6C;
-        j->w17E = 0;
-        j->param.giro.u.z = 0;
+        portador = D_80069698;
+        llevado = portador->p6C;
+        portador->w17E = 0;
+        portador->param.giro.u.z = 0;
         if (llevado != NULL && llevado->clase != 0x22) {
             llevado->coord.param = PARAMETROS_SDK(llevado);
             llevado->coord.super = NULL;
             llevado->flags14 = (llevado->flags14 & ~0x800) | 0x1000;
             llevado->w26 = otro->w26;
-            llevado->param.giro.u.x = j->param.giro.u.x;
-            llevado->param.giro.u.y = j->param.giro.u.y;
+            llevado->param.giro.u.x = portador->param.giro.u.x;
+            llevado->param.giro.u.y = portador->param.giro.u.y;
+            llevado->param.giro.u.z = portador->param.giro.u.z;
             llevado->p70 = NULL;
-            llevado->param.giro.u.z = j->param.giro.u.z;
-            j->p6C = NULL;
+            portador->p6C = NULL;
             func_8001CFCC(&llevado->coord);
-            func_8001D028(D_80069698, llevado, (u8*)b + 0x10);
+            func_8001D028(D_80069698, llevado, (u8*)b);
         }
         D_800693B8 = -1;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D0FC);
-#endif
 
 /*
  * Coloca al objeto controlado en (x, y, z): suelta lo que lleve en brazos (el objeto enlazado
