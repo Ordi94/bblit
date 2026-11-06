@@ -250,11 +250,10 @@ void func_8003E16C(u8 track)
     }
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere solo el orden de los dos lui iniciales (el original emite la base de la tabla de posiciones antes que la del estado principal). */
 void func_8003E298(s32 a0)
 {
     EstadoAudio* g;
+    u8* tabla;
     s32 i;
     s32 n;
     s32 acc;
@@ -270,7 +269,10 @@ void func_8003E298(s32 a0)
             acc += D_8005E9B8[i];
         }
     }
-    acc = *(u16*)((u8*)D_8005EA38 + ((EstadoAudio*)0x80010000)->idioma * 2 + n * 16) << 3;
+    /* La base de la tabla de posiciones se materializa en un registro antes de leer el idioma del estado
+     * principal (el original emite su lui primero) y la suma lleva n * 16 antes que idioma * 2. */
+    tabla = (u8*)D_8005EA38;
+    acc = *(u16*)(n * 16 + ((EstadoAudio*)0x80010000)->idioma * 2 + tabla) << 3;
     g = (EstadoAudio*)0x80010000;
     pos = CdPosToInt(D_8005F90C);
     D_80069450 = D_80069450 + pos;
@@ -288,9 +290,6 @@ void func_8003E298(s32 a0)
     g->volumen = 0x50;
     D_80069594 = vol;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003E298);
-#endif
 
 void func_8003E3C0(void)
 {
