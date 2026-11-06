@@ -700,13 +700,13 @@ void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
                     if (e->id == id) {
                         break;
                     }
-pf_sig = pf + 8;
+                    pf_sig = pf + 8;
                     j++;
                     pf = pf_sig;
                     e++;
                 }
-                if (j != D_80069568 && (!(0x80 & *(u16*)pf) || (BugsRand() >> 7) >= pf[3])) {
-                    if (2 & *(u16*)pf) {
+                if (j != D_80069568 && (!(*(u16*)pf & 0x80) || (BugsRand() >> 7) >= pf[3])) {
+                    if (*(u16*)pf & 2) {
                         vol_maximo = D_80069458;
                         vol_efecto = pf[2];
                         if (vol_efecto > vol_maximo) {
@@ -722,7 +722,7 @@ pf_sig = pf + 8;
                             return;
                         }
                     }
-                    if ((*(u16*)pf & 1) || (1 & D_800100E8)) {
+                    if ((*(u16*)pf & 1) || (D_800100E8 & 1)) {
                         izq = v->vol.c.izq;
                         if (v->vol.c.der < izq) {
                             izq_copia = v->vol.c.izq;
@@ -744,7 +744,7 @@ pf_sig = pf + 8;
         if (modo & 2) {
             v = D_8006B378;
             i = 0;
-            while (0x18 > i) {
+            while (i < 0x18) {
                 if ((*(u32*)&v->flags & 0x8002) == 0x8000 && v->efecto->id == id && v->objeto == objeto) {
                     if (v->flags & 1) {
                         v->flags = 0;
@@ -760,7 +760,7 @@ pf_sig = pf + 8;
                 v = D_8006B378;
                 i = 0;
                 while (i < 0x18) {
-                    if (0x8000 == (*(u32*)&v->flags & 0x8002) && v->efecto->id == id) {
+                    if ((*(u32*)&v->flags & 0x8002) == 0x8000 && v->efecto->id == id) {
                         if (!(v->flags & 1)) {
                             v->id = clave;
                             v->flags = 0x8002;
