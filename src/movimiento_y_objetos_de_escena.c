@@ -188,9 +188,10 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C6CC);
  * maximo, o hasta el suelo anterior).
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 3636 con la configuracion versionada (-G0). Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a la altura nueva y s2 al suelo anterior, y precalcula area + 0x28 al principio, el C asigna los registros en otro orden y cambia el reparto de los saltos. */
+/* Pendiente: puntuacion 1292 con la configuracion versionada (-G0). Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a la altura nueva, s2 al suelo anterior y s4 al tope (el C rota esos cuatro registros: area en s4, altura en s0, suelo en s1, tope en s2) y ordena los bloques de salto de otro modo. El area + 0x28 se precalcula como el original. */
 void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* area)
 {
+    s32 i;
     TrabajoSuelo* w;
     s32 base;
     s32 tope;
@@ -198,12 +199,17 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
     s32 modo;
     s32 f;
     s32 v;
-    s32 i;
-
+    s32 desfase_suelo;
+    s32 pierde_suelo;
+    TrabajoBaldosa* trabajo_baldosa;
+    /* El area + 0x28 se calcula al entrar: el original lo deja en a2 antes de leer las banderas. */
+    trabajo_baldosa = (TrabajoBaldosa*)((u8*)area + 0x28);
+    /* El desfase del suelo se lee en una variable de 32 bits antes de sumarlo: leido dentro de la suma el reparto de registros empeora. */
+    desfase_suelo = o->h10C;
     w = (TrabajoSuelo*)area;
-    i = o->i100;
     f = o->flags14;
-    base = i + o->h10C;
+    i = o->i100;
+    base = i + desfase_suelo;
     tope = base;
     if (f & 1) {
         cur = o->param.trans.vy + o->h10A;
@@ -212,18 +218,18 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
                 if (base >= cur) {
                     w->x = o->param.trans.vx + d->x;
                     w->y = r->techo - 1;
-                    w->res.grupo = -1;
                     w->z = o->param.trans.vz + d->z;
-                    func_8001C134(&w->x, &w->res, &w->tb);
+                    w->res.grupo = -1;
+                    func_8001C134(&w->x, &w->res, trabajo_baldosa);
                     if (!(w->res.flags & 8)) {
-                        tope = r->techo - o->max.vy;
+                        tope = r->techo - (*o).max.vy;
                         if (base < tope) {
                             tope = base;
                         }
-                    } else if (cur < base) {
-                        tope = cur;
-                    } else {
+                    } else if (!(cur < base)) {
                         goto soltar;
+                    } else {
+                        tope = cur;
                     }
                     goto calcular;
                 }
@@ -235,7 +241,9 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
             goto soltar;
         } else {
             modo = (s16)r->flags;
-            if (base < cur && modo != 8) {
+            /* La condicion de perdida de suelo se guarda en una variable antes de la rama: sin ella el compilador la parte en dos saltos. */
+            pierde_suelo = base < cur && 8 != modo;
+            if (pierde_suelo) {
                 v = f & ~9;
                 goto guardar;
             }
@@ -246,16 +254,16 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
                 tope = cur;
                 goto calcular;
             }
-soltar:
+        soltar:
             v = o->flags14 & ~9;
-guardar:
+        guardar:
             o->flags14 = v;
         }
-calcular:
+    calcular:
         v = tope - o->param.trans.vy;
     } else {
         if (f & 4) {
-            if (base < o->param.trans.vy + d->dy) {
+            if (base < o->param.trans.vy + (*d).dy) {
                 d->dy = base - o->param.trans.vy;
             }
             return;
