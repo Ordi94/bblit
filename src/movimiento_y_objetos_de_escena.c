@@ -100,8 +100,12 @@ fin:
     }
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 100 con la configuracion versionada (-G0). Reparto de registros, llamadas y almacenes coinciden; difiere solo el hueco de retardo del salto previo a la comprobacion de D_80069698: el original lo deja en nop y GCC lo rellena con la parte alta de la direccion (lui), con las dos formas de la condicion compuesta. */
+/*
+ * Paso de movimiento horizontal contra el terreno. Con g = 8 (config/opciones_compilacion.toml) la
+ * lectura del puntero global D_80069698 es una sola macro de carga: el ensamblador la expande tras
+ * el hueco de retardo del salto previo, que queda en nop como en el original. Con -G0 el compilador
+ * emite la parte alta de la direccion como instruccion propia y reorg la sube a ese hueco (100).
+ */
 void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
 {
     s32* pos;
@@ -176,9 +180,6 @@ void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
     d->x = trab->dx;
     d->z = trab->dz;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C6CC);
-#endif
 
 /*
  * Movimiento vertical contra el suelo: calcula la altura hasta la que puede bajar o subir el
@@ -188,7 +189,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena", func_8001C6CC);
  * maximo, o hasta el suelo anterior).
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1292 con la configuracion versionada (-G0). Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a la altura nueva, s2 al suelo anterior y s4 al tope (el C rota esos cuatro registros: area en s4, altura en s0, suelo en s1, tope en s2) y ordena los bloques de salto de otro modo. El area + 0x28 se precalcula como el original. */
+/* Pendiente: puntuacion 1292 con la configuracion versionada (g = 8 del archivo). Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a la altura nueva, s2 al suelo anterior y s4 al tope (el C rota esos cuatro registros: area en s4, altura en s0, suelo en s1, tope en s2) y ordena los bloques de salto de otro modo. El area + 0x28 se precalcula como el original. */
 void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* area)
 {
     s32 i;

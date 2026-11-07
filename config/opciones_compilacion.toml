@@ -36,6 +36,9 @@ g = 8
 [archivos.inicializacion_de_motor]
 g = 8
 
+[archivos.movimiento_y_objetos_de_escena]
+g = 8
+
 [archivos.movimiento_y_objetos_de_escena_2]
 g = 8
 
