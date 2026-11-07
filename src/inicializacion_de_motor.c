@@ -536,9 +536,14 @@ s32 func_800453D0(u8** p)
  * Interprete de guiones de texto: recorre los bytes de `guion` y deja en la lista de glifos un glifo por
  * caracter imprimible, con la posicion que lleva en `pos`. Los codigos de control empiezan por '>'.
  * Devuelve la mascara de opciones de ventana (0x10, 0x20, 0x40, 0x80), o cero si el guion queda en pausa.
+ *
+ * La x inicial del cursor (x0) es de 16 bits: el estrechamiento del valor devuelto crea un pseudo temporal
+ * del retorno que el optimizador toma como canonico, y asi el truncado de la x leida sale desde v0 y no
+ * desde la copia en s8 (la rama de y0 ya se comporta asi). El do/while (0) no genera codigo: pondera por un
+ * nivel mas la definicion de x0, que suma 8 usos ponderados sobre 387 instrucciones de vida (0,062) y supera
+ * al objeto (15 usos sobre 822, 0,055), de modo que x0 ocupa $fp y el objeto se queda en la pila como en el
+ * original. Con 7 usos (0,036) el objeto roba $fp.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 35 con la configuracion versionada (g = 8 del archivo). Un operando de registro: la x del cursor se trunca desde su copia en s8 y el original la trunca desde v0 (el valor devuelto por la lectura del numero); sin la lectura posterior de x0 el objeto pasa a ocupar $fp. El resto son seis marcas de forma simbolica de las direcciones del estado principal (los bytes coinciden). */
 u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
 {
     /* pos es la pluma de texto (x en +0, y en +4) que func_800450E8 lee por la direccion. */
@@ -548,7 +553,7 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
     /* Hasta tres caracteres del nombre de un boton, terminados en cero. */
     u8 boton[3];
     s16 y0;
-    s32 x0;
+    s16 x0;
     s16 primero;
     s16 ancho;
     u32 mascara;
@@ -637,8 +642,10 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
                 } else if (c == sub) {
                     abierta = 1;
                     leer_x:
-                    x0 = func_800453D0(&guion);
-                    pos.x = (s16)x0;
+                    do {
+                        x0 = func_800453D0(&guion);
+                        pos.x = (s16)x0;
+                    } while (0);
                 } else if (c == CTRL_COLOR_PALETA) {
                     paleta = func_800453D0(&guion);
                 }
@@ -787,13 +794,6 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
     }
     return mascara;
 }
-#else
-/*
- * Pendiente de traducir: interprete de guiones de texto que compone una linea de glifos (0x7B4 bytes,
- * 14 llamadas); tiene marco de pila (0x58) y no es una rutina manuscrita.
- */
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045498);
-#endif
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Mismo flujo, mismas escrituras y mismo orden; el estado del lector se lee como D_8006AA70[0xC] (arreglo) para que el lui de la base pueda separarse de la carga, como en el original. Solo difiere la primera comparacion: el original la hace sobre una copia de a2 en v0 (move v0,a2 ; beqz v0) y GCC compara a2 directamente. */
