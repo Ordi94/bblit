@@ -229,10 +229,15 @@ void func_80032A24(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 123 con la configuracion versionada (g = 8 del archivo). El flujo y las macros vectoriales
- * coinciden; difiere el reparto de dos registros salvados (el original deja el argumento a0 en s5 y la direccion de
- * i58 en s6, GCC los intercambia porque la prioridad de a0 queda por debajo de la de esa direccion) y la posicion de
- * un almacen de cero (sh zero,0x4a) que sigue a ese reparto.
+ * Pendiente: puntuacion 60 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y el
+ * reparto de los registros salvados coinciden; difiere la posicion de una sola instruccion: el original coloca el
+ * almacen de i58 (sw v0,0x58) tras la copia del objeto en curso (move v1,a1) y GCC lo deja antes, porque el do/while
+ * que abre las escrituras de a48 impide subir la copia por encima del almacen. Meter el almacen en ese do/while
+ * lo coloca bien pero intercambia a1 y a2 en la cadena de pruebas (60 tambien).
+ *
+ * Los tres do/while (0) no generan codigo: ponderan por un nivel mas las referencias de su cuerpo para que la
+ * prioridad de global-alloc ordene los punteros como el original (v28 en s3, rot en s4, a0 en s5, i58 en s6):
+ * v28 pasa a 11 usos ponderados (0,146), rot a 6 (0,130) y a0 a 10 (0,123), todos por encima de i58 (0,106).
  *
  * Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la
  * mascara y cuya caja esta a menos de su alcance, lleva la posicion al sistema local del objeto, comprueba la caja
@@ -270,7 +275,9 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                     if (w->cur->alcance2 >= (u32)w->i58) {
                         w->i60 = w->cur->radio;
                         GEO_COMPLEMENTO(&w->cur->param.giro.rotate);
-                        GEO_GUARDAR_H_T1(prot);
+                        do {
+                            GEO_GUARDAR_H_T1(prot);
+                        } while (0);
                         if (((w->cur->param.giro.rotate.vz + w->cur->param.giro.rotate.vx) & 0xFFF) == 0) {
                             if (((u16)w->cur->param.giro.rotate.vy & 0xFFF) == 0) {
                                 GEO_CARGAR_WH(pd30);
@@ -291,12 +298,14 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                             && w->v28.vy > w->cur->max.vy
                             && w->cur->min.vy >= w->v28.vy - 0xF0) {
                             w->i58 = w->cur->max.vy - w->v28.vy;
-                            w->a48.vx = a0->x - w->cur->param.trans.vx;
-                            w->a48.vy = 0;
-                            w->a48.vz = a0->z - w->cur->param.trans.vz;
-                            /* Aqui el original calcula la direccion de la rotacion con un addiu propio en
-                             * lugar de reutilizar el puntero local, que queda para las otras dos llamadas. */
-                            RotMatrixZYX(&w->rot, &w->m);
+                            do {
+                                w->a48.vx = a0->x - w->cur->param.trans.vx;
+                                w->a48.vz = a0->z - w->cur->param.trans.vz;
+                                w->a48.vy = 0;
+                                /* Aqui el original calcula la direccion de la rotacion con un addiu propio en
+                                 * lugar de reutilizar el puntero local, que queda para las otras dos llamadas. */
+                                RotMatrixZYX(&w->rot, &w->m);
+                            } while (0);
                             ApplyMatrixSV(&w->m, &w->a48, &w->a50);
                             w->i5C = ratan2(w->a50.vx, w->a50.vz);
                             w->v28.vx = salida->x;
@@ -323,7 +332,9 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                                 }
                             }
                             RotMatrix(&w->cur->param.giro.rotate, &w->m);
-                            ApplyMatrixSV(&w->m, &w->v28, &w->v28);
+                            do {
+                                ApplyMatrixSV(&w->m, &w->v28, &w->v28);
+                            } while (0);
                             salida->x = w->v28.vx;
                             salida->y = w->i58;
                             salida->z = w->v28.vz;
