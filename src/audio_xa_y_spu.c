@@ -270,7 +270,9 @@ void func_8003E298(s32 a0)
         }
     }
     /* La base de la tabla de posiciones se materializa en un registro antes de leer el idioma del estado
-     * principal (el original emite su lui primero) y la suma lleva n * 16 antes que idioma * 2. */
+     * principal (el original emite su lui primero). El orden de los sumandos reproduce el de las dos addu
+     * del original: primero n * 16 con idioma * 2 y, al final, la base de la tabla; con la base delante o
+     * con los dos desplazamientos invertidos las sumas salen en otro orden. */
     tabla = (u8*)D_8005EA38;
     acc = *(u16*)(n * 16 + ((EstadoAudio*)0x80010000)->idioma * 2 + tabla) << 3;
     g = (EstadoAudio*)0x80010000;
