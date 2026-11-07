@@ -601,17 +601,24 @@ void func_8003861C(s32 idx)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Coincide la
- * estructura y el marco de pila (la reserva de 8 bytes sin uso lo iguala); difiere solo la
- * asignacion de registros: el original deja el parametro en $s4, la tabla de posiciones en $s3 y
- * los tres identificadores en $s7, $s6 y $s5 (GCC da a los identificadores los tres primeros
- * libres), y calcula la mitad de k directamente en $a2 en lugar de pasar por $v0.
+ * Pendiente: puntuacion 65 con la configuracion versionada (g = 8 del archivo). Coincide la
+ * estructura, el marco de pila y el reparto de los registros salvados (parametro en $s4, tabla de
+ * posiciones en $s3, identificadores en $s7, $s6 y $s5); difiere solo el registro de los temporales
+ * de la mitad de k en las tres ramas: el original los deja en $a2, junto con el indice que sigue, y
+ * aqui los dos primeros caen en $v0 (el asignador local los toma antes que el indice, que es global).
  */
 /*
  * Reinicia, de dos en dos, los objetos del grupo 'idx' (tres consecutivos de la tabla
  * D_8006AB70) para cada unidad de D_80010042: el identificador de plantilla de cada uno se
  * elige entre los tres de D_8005E830 segun cuantas unidades de D_80069524 alcanzan ese
  * indice, y la posicion sale de D_8005E86C.
+ *
+ * El do/while (0) alrededor de la llamada no genera codigo: pondera por un nivel mas las
+ * referencias a la tabla y a 'modo', de modo que la prioridad de global-alloc los ordena antes que
+ * los tres identificadores (tabla 0,095, 'modo' 0,057, identificadores 0,051) como en el original.
+ * El limite se lee antes de avanzar k porque el limite del bucle queda tras una nota de fin de
+ * bucle que impide reordenar la lectura del limite y el incremento; en ese orden el incremento
+ * llena el hueco de la carga, como en el original.
  */
 void func_80038884(s32 idx, s32 modo)
 {
@@ -631,6 +638,7 @@ void func_80038884(s32 idx, s32 modo)
     s32 j;
     s32 id;
     s32 nivel;
+    s32 limite;
 
     ids = &D_8005E830[idx];
     id0 = ids[0];
@@ -662,9 +670,12 @@ void func_80038884(s32 idx, s32 modo)
                 o = *celda_par_vacio;
                 id = id2;
             }
-            ((ReiniciarSinConversion)func_80037DB4)(o, id, D_8005E86C[j + idx], modo);
+            do {
+                ((ReiniciarSinConversion)func_80037DB4)(o, id, D_8005E86C[j + idx], modo);
+            } while (0);
+            limite = D_80010042;
             k += 2;
-        } while (k < D_80010042);
+        } while (k < limite);
     }
 }
 #else
