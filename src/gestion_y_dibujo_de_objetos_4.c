@@ -240,42 +240,39 @@ Objeto* OrientarSombraSobreSuperficie(Objeto* o, ParametrosObjeto* d, u32 mascar
     return 0;
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 38 con la configuracion versionada (g = 8 del archivo). El cuerpo, los
- * saltos y el reparto de registros coinciden; difiere solo el orden de las dos primeras copias de
- * argumento del prologo: el original copia a0 (objeto, $s2) antes que a1 (salida, $s1) y GCC
- * emite primero la de a1, con cualquier orden de las copias y de las declaraciones. Copiar tambien
- * la salida a un local empeora (130 a 176); prescindir de la copia del objeto o de la sonda sube a
- * 91 y 171.
- */
-/*
- * Calcula la posicion de apoyo de 'o' en 'sal': parte de la posicion del primer ayudante
+ * Calcula la posicion de apoyo de 'objeto' en 'sal': parte de la posicion del primer ayudante
  * visible (transformada por su jerarquia) o de la del propio objeto, la baja por el terreno con
  * func_8001C134 y la limita por D_8006960C y, salvo que el nivel lo desactive, por la altura
  * del objeto. Devuelve 0 si el ayudante no es visible y 1 en otro caso.
+ * Los dos do/while (0) no generan codigo: ponderan por un nivel mas una referencia al objeto y
+ * otra a la sonda. Sin ellos el objeto (7 usos sobre 134 instrucciones de vida, 0,104) queda por
+ * debajo del puntero de area (0,157) y toma $s4, y la salida (0,451) supera a la sonda (15 usos
+ * sobre 106, 0,425). Con ellos la sonda suma 16 usos (0,604), la salida queda segunda y el objeto
+ * sube a 8 usos (0,179), de modo que el reparto es el del original: sonda en $s0, salida en
+ * $s1, objeto en $s2, area en $s3. Envolver la asignacion del grupo en lugar de estas dos
+ * sentencias da el mismo reparto pero adelanta la copia del grupo al calculo de los argumentos
+ * de la llamada y desplaza las ramas del bloque.
  */
-s32 func_8003A3D0(Objeto* o, SalidaSonda* sal, Sonda* s)
+s32 func_8003A3D0(Objeto* objeto, SalidaSonda* sal, Sonda* sonda)
 {
     Ayuda* a;
     Ayuda* b;
     Objeto* p;
     TrabajoBaldosa* w;
     s16 sin_grupo;
-    Sonda* sonda;
-    Objeto* objeto;
 
-    /* El original conserva copias del objeto y de la sonda en registros salvados desde la
-     * entrada; sin ellas el asignador reparte $s0..$s3 de otro modo. */
-    objeto = o;
-    sonda = s;
-    a = objeto->u78.ayudas;
+    do {
+        a = objeto->u78.ayudas;
+    } while (0);
     w = &sonda->w;
     if (a != 0 && (b = (Ayuda*)a->cab.siguiente) != 0) {
         if (b->visible == 0) {
             return 0;
         }
-        sonda->ent.nodo = &b->coord;
+        do {
+            sonda->ent.nodo = &b->coord;
+        } while (0);
         func_8001CE64(&sonda->ent);
         GEO_CARGAR_W(&sonda->ent.acc);
         GEO_GUARDAR_W_T1(&sal->pos);
@@ -314,9 +311,6 @@ s32 func_8003A3D0(Objeto* o, SalidaSonda* sal, Sonda* s)
     }
     return 1;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", func_8003A3D0);
-#endif
 
 /*
  * Contexto de dibujo de las sombras en el scratchpad (0x1F800000). El estado del dibujador
