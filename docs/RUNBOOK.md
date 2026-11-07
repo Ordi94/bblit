@@ -18,7 +18,7 @@ Tras crear el entorno virtual se instalan las dependencias: `requirements.txt` f
 **Actualizar el kit.** La línea del kit en `requirements.txt` se fija por el SHA completo del commit, no por
 la etiqueta: una etiqueta se puede reapuntar a otro commit sin que cambie el especificador, mientras que el SHA
 identifica un único contenido (la misma razón por la que `config/toolchain.lock.json` fija huellas). La
-etiqueta (hoy `v0.1.1`) es la referencia legible y queda nombrada en el comentario de la línea anterior. Cuando
+etiqueta (hoy `v0.2.0`) es la referencia legible y queda nombrada en el comentario de la línea anterior. Cuando
 el kit publique una etiqueta nueva:
 
 1. Resolver la etiqueta a su commit: `git ls-remote --tags https://github.com/Ordi94/psx-decomp-kit`. Si la
