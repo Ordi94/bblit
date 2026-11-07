@@ -728,9 +728,13 @@ s32 func_80018C68(Objeto* a, ConsultaMatriz* o)
 /*
  * Prueba si el punto p cae dentro del volumen del objeto a ampliado por su radio. Descarta antes
  * por distancia al cuadrado en el plano.
+ * El do/while (0) no genera codigo: el optimizador de bucles pondera por un nivel mas las
+ * referencias a a y o de su cuerpo (13 usos ponderados de a sobre 102 instrucciones de vida), y
+ * eso sube la prioridad de a por encima de la del puntero a la diferencia (0,382 frente a 0,381)
+ * y por debajo de la de o (0,415): el original guarda o en $s1, a en $s2 y el puntero a la
+ * diferencia en $s3. Sin el, el puntero (4 usos sobre 21 instrucciones) se asigna antes que a y
+ * $s2 y $s3 se invierten.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 98 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
 s32 func_80018D98(Objeto* a, VECTOR* p, ConsultaVolumen* o)
 {
     GEO_CARGAR_W(p);
@@ -749,23 +753,25 @@ s32 func_80018D98(Objeto* a, VECTOR* p, ConsultaVolumen* o)
     if (a->min.vx - o->radio < o->res.vx
         && o->res.vx < a->max.vx + o->radio
         && a->min.vz - o->radio < o->res.vz
-        && o->res.vz < a->max.vz + o->radio
-        && o->res.vy < a->min.vy
-        && a->max.vy < o->res.vy) {
-        return 1;
+        && o->res.vz < a->max.vz + o->radio) {
+        do {
+            if (o->res.vy < a->min.vy && a->max.vy < o->res.vy) {
+                return 1;
+            }
+        } while (0);
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80018D98);
-#endif
 
 /*
  * Igual que func_80018D98 pero la posicion a probar es la del objeto b y la caja de b
  * (extensiones en y) se suma al margen vertical.
+ * Los dos do/while (0) no generan codigo: ponderan por un nivel mas la copia del radio y las
+ * pruebas en y, de modo que a suma 14 usos ponderados (0,3818 sobre 110 instrucciones de vida),
+ * por encima del puntero a la diferencia (0,3810) y por debajo de o (0,447). Con uno solo, a
+ * queda en 13 usos (0,3545) y $s2 y $s3 se invierten; extender el segundo a la prueba de z sube
+ * a 14 pero cambia entre v1 y a0 el registro de las cargas temporales.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 98 con la configuracion versionada (g = 8 del archivo). El area de trabajo y el puntero a la diferencia intercambian s2 y s3 respecto del original. Motivo: reparto de registros del compilador (global-alloc ordena por refs/vida); cierra solo con una barrera asm vacia, recurso no admitido. */
 s32 func_80018F80(Objeto* a, Objeto* b, ConsultaVolumen* o)
 {
     GEO_CARGAR_W(&b->param.trans);
@@ -775,7 +781,9 @@ s32 func_80018F80(Objeto* a, Objeto* b, ConsultaVolumen* o)
     if (o->dist2 > a->alcance2) {
         return 0;
     }
-    o->radio = a->radio;
+    do {
+        o->radio = a->radio;
+    } while (0);
     GEO_COMPLEMENTO(&a->param.giro.rotate);
     GEO_GUARDAR_H_T1(&o->rot);
     GEO_IDENTIDAD(&o->m);
@@ -784,16 +792,16 @@ s32 func_80018F80(Objeto* a, Objeto* b, ConsultaVolumen* o)
     if (a->min.vx - o->radio < o->res.vx
         && o->res.vx < a->max.vx + o->radio
         && a->min.vz - o->radio < o->res.vz
-        && o->res.vz < a->max.vz + o->radio
-        && o->res.vy + b->max.vy < a->min.vy
-        && a->max.vy < o->res.vy + b->min.vy) {
-        return 1;
+        && o->res.vz < a->max.vz + o->radio) {
+        do {
+            if (o->res.vy + b->max.vy < a->min.vy
+                && a->max.vy < o->res.vy + b->min.vy) {
+                return 1;
+            }
+        } while (0);
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80018F80);
-#endif
 
 /*
  * Recorre la lista de nodos de plano y devuelve el primero que contiene el punto p visto desde
