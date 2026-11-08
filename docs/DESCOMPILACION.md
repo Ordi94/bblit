@@ -592,7 +592,42 @@ el compilador no puede generar desde C, cada uno con comentario técnico en el c
   alternativa sin ensamblador.
 
 Barreras vacías, sentencias partidas, `register __asm__("$N")` locales, `"+r"`, `volatile` sin respaldo y registros
-destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE_ASM` con su comentario.
+destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE_ASM` con su comentario. La única
+envoltura de sentencias admitida es la de [Envolturas sin código](#envolturas-sin-código).
+
+## Envolturas sin código
+
+**Qué es.** Una `do { ... } while (0)` alrededor de sentencias reales de la función. La condición constante la
+elimina el optimizador de saltos y el ensamblador es idéntico al que saldría sin ella. Pero las notas de bucle que
+deja el parser hacen que el analizador de flujo cuente las referencias de su cuerpo con un nivel más de
+profundidad, y el asignador global ordena los pseudos por referencias ponderadas entre longitud de vida. Con ese
+peso extra, dos pseudos que se disputaban un registro salvado se reparten como en el original.
+
+**Cuándo se admite.** Solo si se cumplen las tres condiciones a la vez:
+
+1. El volcado de `cc1` muestra la disputa entre dos pseudos con sus cifras (usos ponderados, longitud de vida y
+   prioridad de cada uno, antes y después de la envoltura).
+2. El comentario de cabecera de la función dice que la envoltura no genera código, da la causa medida y termina el
+   párrafo con la oración fija «La forma del fuente original que producia este reparto se desconoce.»
+3. El cuerpo es código real de la función y la semántica no cambia: sin `break` ni `continue` que cambien de
+   destino, y sin sentencias añadidas solo para que haya algo dentro.
+
+**Qué sigue sin admitirse.** Barreras `asm`, `register __asm__("$N")`, `volatile` sin respaldo, partir una
+sentencia en varias, copias muertas y `x++; x--;` u otras operaciones que solo sumen referencias.
+
+**Cómo se cuentan.** La tabla de abajo lista cada función con su número de envolturas. La prueba
+`tests/test_business_envolturas_sin_codigo.py` la cruza con `src/`: cada `} while (0);` fuera de una macro debe
+estar en la tabla con el mismo número, y su comentario de cabecera debe llevar «no genera código» y la oración
+fija. Al añadir o quitar una envoltura se actualiza la tabla en el mismo cambio.
+
+| Función | Archivo | Envolturas | Estado | Qué decide |
+|---|---|---:|---|---|
+| `func_80018D98` | `src/graficos_y_gte.c` | 1 | coincide | Orden de `a` y del puntero a la diferencia (13 usos, 0,382 frente a 0,381) |
+| `func_80018F80` | `src/graficos_y_gte.c` | 2 | coincide | Orden de `a` y del puntero a la diferencia (14 usos, 0,3818 frente a 0,3810) |
+| `func_8003A3D0` | `src/gestion_y_dibujo_de_objetos_4.c` | 2 | coincide | Orden de sonda, salida, objeto y área (0,604 / 0,179) |
+| `func_80045498` | `src/inicializacion_de_motor.c` | 1 | coincide | `x0` en `$fp` frente al objeto (0,062 frente a 0,055) |
+| `func_80038884` | `src/gestion_y_dibujo_de_objetos_2.c` | 1 | NON_MATCHING 65 | Tabla y `modo` antes de los identificadores (0,095 / 0,057 / 0,051) |
+| `func_80032B2C` | `src/camara_y_bucle_logico.c` | 3 | NON_MATCHING 60 | `v28`, `rot`, `a0` por encima de `i58` (0,146 / 0,130 / 0,122 frente a 0,106) |
 
 ## Medir el progreso
 
