@@ -620,6 +620,7 @@ void func_8003861C(s32 idx)
  * El limite se lee antes de avanzar k porque el limite del bucle queda tras una nota de fin de
  * bucle que impide reordenar la lectura del limite y el incremento; en ese orden el incremento
  * llena el hueco de la carga, como en el original.
+ * La forma del fuente original que producia este reparto se desconoce.
  */
 void func_80038884(s32 idx, s32 modo)
 {

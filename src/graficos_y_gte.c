@@ -734,6 +734,7 @@ s32 func_80018C68(Objeto* a, ConsultaMatriz* o)
  * y por debajo de la de o (0,415): el original guarda o en $s1, a en $s2 y el puntero a la
  * diferencia en $s3. Sin el, el puntero (4 usos sobre 21 instrucciones) se asigna antes que a y
  * $s2 y $s3 se invierten.
+ * La forma del fuente original que producia este reparto se desconoce.
  */
 s32 func_80018D98(Objeto* a, VECTOR* p, ConsultaVolumen* o)
 {
@@ -771,6 +772,7 @@ s32 func_80018D98(Objeto* a, VECTOR* p, ConsultaVolumen* o)
  * por encima del puntero a la diferencia (0,3810) y por debajo de o (0,447). Con uno solo, a
  * queda en 13 usos (0,3545) y $s2 y $s3 se invierten; extender el segundo a la prueba de z sube
  * a 14 pero cambia entre v1 y a0 el registro de las cargas temporales.
+ * La forma del fuente original que producia este reparto se desconoce.
  */
 s32 func_80018F80(Objeto* a, Objeto* b, ConsultaVolumen* o)
 {

@@ -253,6 +253,7 @@ Objeto* OrientarSombraSobreSuperficie(Objeto* o, ParametrosObjeto* d, u32 mascar
  * $s1, objeto en $s2, area en $s3. Envolver la asignacion del grupo en lugar de estas dos
  * sentencias da el mismo reparto pero adelanta la copia del grupo al calculo de los argumentos
  * de la llamada y desplaza las ramas del bloque.
+ * La forma del fuente original que producia este reparto se desconoce.
  */
 s32 func_8003A3D0(Objeto* objeto, SalidaSonda* sal, Sonda* sonda)
 {

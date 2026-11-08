@@ -543,6 +543,7 @@ s32 func_800453D0(u8** p)
  * nivel mas la definicion de x0, que suma 8 usos ponderados sobre 387 instrucciones de vida (0,062) y supera
  * al objeto (15 usos sobre 822, 0,055), de modo que x0 ocupa $fp y el objeto se queda en la pila como en el
  * original. Con 7 usos (0,036) el objeto roba $fp.
+ * La forma del fuente original que producia este reparto se desconoce.
  */
 u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
 {
