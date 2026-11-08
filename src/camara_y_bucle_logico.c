@@ -237,7 +237,7 @@ void func_80032A24(void)
  *
  * Los tres do/while (0) no generan codigo: ponderan por un nivel mas las referencias de su cuerpo para que la
  * prioridad de global-alloc ordene los punteros como el original (v28 en s3, rot en s4, a0 en s5, i58 en s6):
- * v28 pasa a 11 usos ponderados (0,146), rot a 6 (0,130) y a0 a 10 (0,123), todos por encima de i58 (0,106).
+ * v28 pasa a 11 usos ponderados (0,146), rot a 6 (0,130) y a0 a 10 (0,122), todos por encima de i58 (0,106).
  *
  * Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la
  * mascara y cuya caja esta a menos de su alcance, lleva la posicion al sistema local del objeto, comprueba la caja
@@ -298,8 +298,10 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                             && w->v28.vy > w->cur->max.vy
                             && w->cur->min.vy >= w->v28.vy - 0xF0) {
                             w->i58 = w->cur->max.vy - w->v28.vy;
+                            /* Las tres escrituras de a48 son independientes; van en el orden x, z, y porque
+                             * asi el almacen de cero baja a su sitio, como en el original. */
                             do {
-                                w->a48.vx = a0->x - w->cur->param.trans.vx;
+                                w->a48.vx =a0->x - w->cur->param.trans.vx;
                                 w->a48.vz = a0->z - w->cur->param.trans.vz;
                                 w->a48.vy = 0;
                                 /* Aqui el original calcula la direccion de la rotacion con un addiu propio en
