@@ -1120,7 +1120,7 @@ ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara
  * alcanzado (+0x13C). Si el apoyo es plano (bandera 0x400000) solo compara con su altura.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2360 con la configuracion versionada (g = 8 del archivo). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica. */
+/* Pendiente: puntuacion 2350 con la configuracion versionada (g = 8 del archivo). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica. */
 u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
 {
     Objeto* t;
@@ -1152,7 +1152,7 @@ u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
                     break;
                 }
                 nodo = nodo->sig;
-                v = acc + paso;
+                v = paso + acc;
             } while (nodo != NULL);
         }
         if (nodo != NULL && altura > 0) {
