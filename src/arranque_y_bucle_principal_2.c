@@ -235,10 +235,12 @@ void func_800163E4(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1025 con la configuracion versionada (g = 8 del archivo). El flujo y los tipos coinciden (pausa y demostracion son s16, el
- * contador de cuadros D_80069676 es volatile u16); difieren el reparto de registros salvados de las
- * constantes 2 y 3 y de la tabla de tiempos D_8006CF68, y la base `lui` del estado se hoistea antes
- * que en el original.
+ * Pendiente: puntuacion 345 con la configuracion versionada (g = 8 del archivo). El flujo y los tipos coinciden (pausa y demostracion son s16, el
+ * contador de cuadros D_80069676 es volatile u16); el estado principal y los registros del mando se
+ * acceden por su direccion sin variable local (con una copia local del puntero la puntuacion es 1025).
+ * Difieren el reparto de registros salvados de la constante 3 y de la tabla de tiempos D_8006CF68
+ * (s8 y s7 en el original), la copia del cero del contador de ocioso (el original usa otro `move`
+ * desde zero) y los registros v0/v1 de la lectura de la pila de botones de la demostracion.
  *
  * Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta
  * del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la
