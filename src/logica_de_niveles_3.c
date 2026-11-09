@@ -215,7 +215,7 @@ sube:
         o->flags14 &= 0xFF9FFFFF;
         num = rsin((s16)o->w17E) * (s16)o->w17C;
         o->param.giro.u.z = num >> 12;
-        /* El avance de la fase se escribe despues del giro: el orden contrario baja la puntuacion 400 puntos peor. */
+        /* El avance de la fase se escribe despues del giro: el orden contrario sube la puntuacion en 400. */
         o->w17E += o->s1E;
         if ((s16)o->w17E >= 0x1000) {
             o->flags14 |= 0x200000;
@@ -371,7 +371,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 #define GIRO_Y(p) (((ParametrosObjeto*)(p))->giro.u.y)
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2815 con la configuracion versionada (g = 8 del archivo). Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0 en lugar de t7), el ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi 0xffff aqui) y el orden de un sw adicional a 0x14(s3). */
+/* Pendiente: puntuacion 2655 con la configuracion versionada (g = 8 del archivo). Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0 en lugar de t7), el ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi 0xffff aqui) y el orden de un sw adicional a 0x14(s3). */
 /*
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
@@ -411,6 +411,7 @@ void func_80026FEC(Objeto* o)
     s32 arg_giro;
     s32 azar;
     u32 f14;
+    RegistroAnim* registro_actual;
 
     t = (TrabajoPersonaje*)0x1F800000;
     area = (void*)0x1F800128;
@@ -1437,8 +1438,11 @@ andadura_del_portado:
     se suelta al portador si la andadura supera el umbral. */
     if (!(t->banderas & 0x08000000)) goto buscar_portador;
     if (!(o->flags14 & 0x12)) goto buscar_portador;
+    /* El registro de animacion se toma antes de incrementar el contador de andadura: asi su carga queda
+     * delante de la del contador, como en el original. */
+    registro_actual = t->fot;
     o->u18C.estado.h194 = o->u18C.estado.h194 + 1;
-    t->w118 = (s16)t->fot->w18 * (s16)o->u18C.estado.h194;
+    t->w118 = (s16)registro_actual->w18 * (s16)o->u18C.estado.h194;
     if (t->w118 >= 0x400) {
         o->flags14 = (o->flags14 | 0x800000) & 0xFFF7EFFF;
         goto fin_de_busqueda_de_portador;
