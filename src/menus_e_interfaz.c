@@ -202,7 +202,7 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 605 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere la posicion de la carga de la palabra 8 de los puntos (el original la hace despues del almacen del cursor), el planificado de los desplazamientos del segundo paquete (el original adelanta el sll) y el registro destino del desplazamiento del primer paquete (v1 en el original, v0 aqui). La copia del parametro de puntos y la variable que une la copia del cursor con su relectura final bajan de 990. */
+/* Pendiente: puntuacion 465 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere la posicion de la carga de la palabra 8 de los puntos (el original la hace despues del almacen del cursor), el planificado de los desplazamientos del segundo paquete (el original adelanta el sll) y el registro destino del desplazamiento del primer paquete (v1 en el original, v0 aqui). La copia del parametro de puntos y la variable que une la direccion de enlace con la comparacion final bajan de 990 a 465. */
 s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
 {
     u32* tabla;
@@ -210,6 +210,10 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
     s32 actual;
     s32 siguiente;
     s32 cursor;
+    /* Direccion de enlace de 24 bits del segundo paquete y, mas abajo, resultado de la comparacion con
+     * el limite: comparten variable (con dos variables o sin la direccion en variable la puntuacion
+     * vuelve a 605). */
+    s32 enlace_o_exceso;
 
     /* Copia local del parametro de puntos: sin ella el reparto de registros empeora de 605 a 943. */
     datos = puntos;
@@ -218,7 +222,7 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
     /* El cursor se copia aqui y se relee en la comprobacion final con la misma variable. */
     cursor = actual;
     tabla = (u32*)D_8006967C[D_8006AEA0].org;
-    *(u32*)actual = 0x05000000 | *tabla;
+    *(u32*)actual = *tabla | 0x05000000;
     ((u32*)actual)[1] = 1;
     ((u32*)cursor)[2] = 0x80000000;
     ((u32*)actual)[3] = datos[3];
@@ -236,11 +240,13 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
         ((u32*)siguiente)[3] = datos[4];
         ((u32*)siguiente)[4] = datos[6];
         ((u32*)siguiente)[5] = datos[8];
-        *tabla = (siguiente << 8) >> 8;
+        enlace_o_exceso = (siguiente << 8) >> 8;
+        *tabla = enlace_o_exceso;
         D_80076188 += 0x18;
     }
     cursor = D_80076188;
-    if (ctx->limite < cursor) {
+    enlace_o_exceso = cursor > ctx->limite;
+    if (enlace_o_exceso) {
         D_80076188 = ctx->inicio;
     }
     return 0;
