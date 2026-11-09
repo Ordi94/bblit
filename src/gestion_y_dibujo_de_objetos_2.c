@@ -620,8 +620,10 @@ void func_8003861C(s32 idx)
  * estructura, el marco de pila y el reparto de los registros salvados (parametro en $s4, tabla de
  * posiciones en $s3, identificadores en $s7, $s6 y $s5); difiere solo el registro de los temporales
  * de la mitad de k en las tres ramas: el original los deja en $a2, junto con el indice que sigue, y
- * aqui los dos primeros caen en $v0. La causa de ese reparto esta sin verificar: no se midio en el
- * volcado de cc1 por que el asignador deja el indice y los temporales en registros distintos.
+ * aqui los dos primeros caen en $v0. Los temporales (srl y addu de k / 2) son pseudos locales del
+ * bloque de cada rama, que el asignador local reparte antes que el indice (global, $a2); replicar la
+ * llamada en cada rama no los mueve, y el volcado no muestra que atadura los une al indice en el
+ * original (sin verificar).
  */
 /*
  * Reinicia, de dos en dos, los objetos del grupo 'idx' (tres consecutivos de la tabla
