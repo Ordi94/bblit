@@ -847,9 +847,14 @@ extern NodoVolumen* func_80019180(Objeto* a, VECTOR* p, ConsultaPlano* o);
  * corresponden: mismo tipo de objeto, mascara de banderas compatible y condicion cumplida. Cada
  * evento aplica los efectos que pidan sus banderas (accion, reaparicion, cambio de nivel, cambio de
  * secuencia de animacion, camara) y la lista continua solo si el evento lo permite (0x8000).
+ *
+ * Los dos pares `z--; z++` del bucle no generan codigo: el combinador los anula despues de la optimizacion de
+ * bucles, pero hasta entonces suman cuatro instrucciones al bucle. El original iza fuera del bucle la direccion de
+ * D_8006ACD0 y deja la de D_8006B558 dentro; el optimizador de bucles iza la de D_8006B558 cuando el bucle tiene
+ * 174 instrucciones o menos y no la iza con 175 o mas (medido en el volcado de bucles: 174 con la direccion izada,
+ * 175 y 176 sin izarla), y sin los pares el bucle queda en 172. Con ellos el argumento de func_8003F06C se carga
+ * con lw sin conversion, como el original. La forma del fuente original que producia este reparto se desconoce.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 200 con la configuracion versionada (g = 8 del archivo). La unica diferencia es la carga del argumento de func_8003F06C: el original usa lw y el C con la conversion (s16) usa lh; sin la conversion el bucle tiene menos instrucciones antes de la optimizacion de bucles y el compilador iza la direccion de D_8006B558 fuera de el, con lo que la puntuacion sube a 692. */
 void func_8001E1A4(Objeto* o, ConsultaPlano* c)
 {
     VECTOR destino;
@@ -868,6 +873,10 @@ void func_8001E1A4(Objeto* o, ConsultaPlano* c)
     }
     z = *(EventoZona**)((u8*)nodo + 0x30);
     while (z != NULL) {
+        z--;
+        z++;
+        z--;
+        z++;
         if (!((o->w1C != 6 && z->tipo != 6) || !(o->flags0C & 2))) {
             o->flags14 |= 0x100;
             return;
@@ -931,7 +940,7 @@ void func_8001E1A4(Objeto* o, ConsultaPlano* c)
                 return;
             }
             if (f & 0x200) {
-                func_8003F06C(NULL, (s16)z->v18, 1, D_8006967C);
+                func_8003F06C(NULL, z->v18, 1, D_8006967C);
             }
             if (z->flags & 0x2000) {
                 func_8001CD84(o, z->v18, (CursorAnim*)c);
@@ -949,6 +958,3 @@ void func_8001E1A4(Objeto* o, ConsultaPlano* c)
         z = z->sig;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001E1A4);
-#endif
