@@ -38,8 +38,8 @@ Ranura* AllocListNode(u8* base, s32 paso, s32 total)
     return 0;
 }
 """
-COINCIDENTES = ("CondCiseq", "CondCisltu", "AllocListNode", "func_8001CE64", "func_80030D60")
-NO_COINCIDENTES = ("func_8003B354", "func_80032B2C")
+COINCIDENTES = ("CondCiseq", "CondCisltu", "AllocListNode", "func_8001CE64", "func_80030D60", "func_8003B354")
+NO_COINCIDENTES = ("func_80038884", "func_80032B2C")
 INICIO_JUEGO = 0x80014AC4
 FIN_JUEGO = 0x80045DA0
 
