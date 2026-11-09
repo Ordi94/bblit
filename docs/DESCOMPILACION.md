@@ -599,38 +599,59 @@ referencias sin código admitidas son las de [Referencias sin código](#referenc
 
 **Qué es.** Una referencia sin código es una construcción de la función que no emite ninguna instrucción pero que
 el analizador de flujo cuenta como uso de una variable, de modo que el asignador global (que ordena los pseudos
-por referencias ponderadas entre longitud de vida, `floor_log2(R) * R / L`) los reparte como el original. Hay cuatro
-formas:
+por referencias ponderadas entre longitud de vida, `floor_log2(R) * R / L`) los reparte como el original, o de modo que el optimizador de bucles tome la misma decisión
+de izado que el original. Hay cinco formas:
 
 | Forma | Qué es | Mecanismo |
 |---|---|---|
 | envoltura | Una `do { ... } while (0)` alrededor de sentencias reales de la función | La condición constante la elimina el optimizador de saltos y el ensamblador es idéntico al que saldría sin ella, pero las notas de bucle que deja el parser hacen que el analizador de flujo cuente las referencias de su cuerpo con un nivel más de profundidad: con ese peso extra, dos pseudos que se disputaban un registro salvado se reparten como en el original |
 | decremento-incremento | El par `x--; x++;` (o `x++; x--;`) sobre una variable que ya existe en la función | El combinador anula el par y no queda instrucción, pero cada sentencia suma una referencia de lectura y otra de escritura a la variable (cuatro por par, ponderadas por la profundidad del bucle donde esté) |
 | condición vacía | `if (x) {}` o `if (p->campo) {}` sobre una variable o un campo real | El optimizador de saltos elimina la condición sin rama antes del análisis de flujo; medido sobre un campo cargado de memoria (`w->cur`), la lectura desaparece con ella y los usos ponderados no cambian (solo se desplaza la numeración de los pseudos): puede servir para mover un empate por número de pseudo, no para sumar referencias |
-| local sin uso | Una local con inicializador que ninguna sentencia lee | La asignación no deja instrucción; el efecto sobre el asignador solo existe si el volcado lo muestra para esa función (sin medir en esta tabla) |
+| local sin uso | Una local con inicializador que ninguna sentencia lee | La asignación no deja instrucción y el efecto sobre el asignador solo existe si el volcado lo muestra para esa función. Medido en `func_8003B354` (`src/menus_e_interfaz.c`, 270 a 0): una asignación muerta de la base de la tabla en una local da el mismo 0 que su uso real, y quitarla da 915, de modo que la forma actúa en este binario; la función conserva el uso real (la local se lee) y no queda ninguna referencia de esta forma en `src/` |
+| sentencia duplicada en ambas ramas | La misma sentencia escrita en las dos (o tres) ramas de un `if`/`else`, con una variable propia por rama si hace falta | Cada variable por rama es un pseudo local de su bloque y el asignador local lo reparte antes que los pseudos globales, como en el original, que tiene ese valor como local de cada rama. Las colas de las ramas quedan idénticas y el salto cruzado (cross-jumping) del compilador las vuelve a fusionar en una sola, así que la sentencia replicada no deja instrucciones propias |
 
-**Cuándo se admite.** Solo si se cumplen las tres condiciones a la vez, para las cuatro formas:
+**Cuándo se admite.** Solo si se cumplen las tres condiciones a la vez, para las cinco formas:
 
-1. El volcado de `cc1` muestra la disputa entre dos pseudos con sus cifras (usos ponderados, longitud de vida y
-   prioridad de cada uno, antes y después de la referencia) y la referencia añadida la resuelve de forma predecible
-   con `floor_log2(R) * R / L`. Además se comprueba en el volcado que la referencia no genera ninguna instrucción.
+1. El volcado de `cc1` muestra la decisión del compilador que la referencia cambia (la prioridad de dos pseudos del
+   asignador, o el umbral de izado del optimizador de bucles) y la referencia la cambia de forma predecible. En el
+   caso del asignador, el volcado da las cifras de la disputa (usos ponderados, longitud de vida y prioridad de cada
+   pseudo, antes y después de la referencia) y la referencia añadida la resuelve con `floor_log2(R) * R / L`. En el
+   caso del optimizador de bucles, el volcado de bucles (`-dL`, `.loop`) da el pseudo que se iza (con su vida y su ahorro) y el
+   número de instrucciones del bucle con el que se iza (`moved to`) o no (`not desirable`): la referencia cambia ese
+   número y con él la decisión (`func_8001E1A4`: dos pares `x--; x++` llevan el bucle de 172 a 176 instrucciones, y
+   con 174 se iza la dirección y con 175 o más no). Además se comprueba en el volcado que la referencia no genera
+   ninguna instrucción.
 2. El comentario de cabecera de la función dice que la referencia (o la envoltura) no genera código, da la causa
-   medida (pseudos, usos ponderados, longitud de vida, prioridad y registro que toma cada uno en el original) y
-   termina el párrafo con la oración fija «La forma del fuente original que producia este reparto se desconoce.»
+   medida y termina el párrafo con la oración fija «La forma del fuente original que producia este reparto se
+   desconoce.» La causa medida es, según el mecanismo, los pseudos con sus usos ponderados, longitud de vida,
+   prioridad y registro que toma cada uno en el original; o el pseudo que se iza con su vida, su ahorro y el
+   número de instrucciones del bucle en cada caso. Lo que no esté medido se marca como inferencia.
 3. La referencia va sobre una variable real de la función, sin valores nuevos ni almacenes, y la semántica no
    cambia: en una envoltura el cuerpo es código real de la función, sin `break` ni `continue` que cambien de
    destino y sin sentencias añadidas solo para que haya algo dentro.
 
+**Sentencia duplicada en ambas ramas.** Se admite cuando el original tiene un valor como local de cada rama y las
+colas de las ramas son idénticas, de modo que el volcado muestra el valor como pseudo local de cada bloque y el
+ensamblador original una sola cola compartida. Además de las tres condiciones: (a) la sentencia replicada es código
+real de la función, escrito tal cual en cada rama, con una variable propia por rama solo si el reparto la exige y sin
+valores ni almacenes nuevos; (b) cada sentencia replicada lleva en su línea anterior el comentario de una línea
+`/* Sentencia replicada: es la misma que la de las otras ramas. */`, que es el que localiza la prueba; (c) la
+cabecera dice qué colas fusiona el original, qué pseudos cambian de bloque o de orden por la variable de cada rama y
+qué registro toma cada uno. Si tras duplicar las colas el compilador no las fusiona (el ensamblador gana
+instrucciones), la forma no se aplica.
+
 **Qué sigue sin admitirse.** Barreras `asm`, `register __asm__("$N")`, `volatile` sin respaldo (también el
-`volatile` sin uso que reserva pila), partir una sentencia en varias, la sentencia duplicada en ambas ramas, el
-molde de puntero a función contra la fusión de colas, los almacenes muertos, las lecturas muertas con una variable
-nueva, la auto-referencia `u8 x = -x;` y la local sin inicializador y sin uso.
+`volatile` sin uso que reserva pila), partir una sentencia en varias, la sentencia duplicada que no es la misma
+sentencia real de la función (la duplicada solo para sumar referencias o en una rama que no la ejecuta), el molde de
+puntero a función contra la fusión de colas, los almacenes muertos, las lecturas muertas con una variable nueva, la
+auto-referencia `u8 x = -x;` y la local sin inicializador y sin uso.
 
 **Cómo se cuentan.** La tabla de abajo lista cada función con su forma y su número de referencias. La prueba
 `tests/test_business_envolturas_sin_codigo.py` la cruza con `src/` en los dos sentidos: cada `} while (0);`, cada
-par `x--; x++;`, cada `if (...) {}` y cada local con inicializador que nadie lee, fuera de una macro, debe estar en
-la tabla con la misma forma y el mismo número, y la cabecera de su función debe llevar «no genera código» (o «no
-generan código») y la oración fija. Al añadir o quitar una referencia se actualiza la tabla en el mismo cambio.
+par `x--; x++;`, cada `if (...) {}`, cada local con inicializador que nadie lee y cada comentario de sentencia
+replicada, fuera de una macro, debe estar en la tabla con la misma forma y el mismo número, y la cabecera de su
+función debe llevar «no genera código» (o «no generan código») y la oración fija. Al añadir o quitar una referencia
+se actualiza la tabla en el mismo cambio.
 
 | Función | Archivo | Forma | Referencias | Estado | Qué decide |
 |---|---|---|---:|---|---|
@@ -638,7 +659,8 @@ generan código») y la oración fija. Al añadir o quitar una referencia se act
 | `func_80018F80` | `src/graficos_y_gte.c` | envoltura | 2 | coincide | Orden de `a` y del puntero a la diferencia (14 usos, 0,3818 frente a 0,3810) |
 | `func_8003A3D0` | `src/gestion_y_dibujo_de_objetos_4.c` | envoltura | 2 | coincide | Orden de sonda, salida, objeto y área (0,604 / 0,179) |
 | `func_80045498` | `src/inicializacion_de_motor.c` | envoltura | 1 | coincide | `x0` en `$fp` frente al objeto (0,062 frente a 0,055) |
-| `func_80038884` | `src/gestion_y_dibujo_de_objetos_2.c` | envoltura | 1 | NON_MATCHING 65 | Tabla y `modo` antes de los identificadores (0,095 / 0,057 / 0,051) |
+| `func_80038884` | `src/gestion_y_dibujo_de_objetos_2.c` | sentencia duplicada en ambas ramas | 3 | coincide | Índice y temporales de k / 2 como pseudos locales de cada rama, todos en `$a2`; las tres colas las fusiona el salto cruzado |
+| `func_8003F06C` | `src/audio_xa_y_spu.c` | sentencia duplicada en ambas ramas | 2 | coincide | Nivel del volumen como pseudo local de cada rama (registros 94 y 95, 6 usos sobre 3 instrucciones): nivel en `$v0` y desplazado en `$v1` |
 | `func_80032B2C` | `src/camara_y_bucle_logico.c` | envoltura | 3 | NON_MATCHING 60 | `v28`, `rot`, `a0` por encima de `i58` (0,146 / 0,130 / 0,122 frente a 0,106) |
 | `func_8001E1A4` | `src/movimiento_y_objetos_de_escena_2.c` | decremento-incremento | 2 | coincide | Izado de la dirección de `D_8006B558`: el bucle pasa de 172 a 176 instrucciones y con 175 o más no se iza |
 | `func_800363D4` | `src/gestion_y_dibujo_de_objetos.c` | decremento-incremento | 2 | NON_MATCHING 110 | Nodo en `$a0` y puntero inducido en `$a1` (3,478 frente a 3,407) |

@@ -1,13 +1,15 @@
 """Las referencias sin codigo deben estar declaradas y contadas.
 
-Se admiten cuatro formas que no generan ninguna instruccion y que solo mueven el reparto de registros del
-compilador: la envoltura ``do { ... } while (0)``, el par ``x--; x++;``, la condicion vacia ``if (x) {}`` y la
-local sin uso con inicializador. La tecnica solo se admite con condiciones: el comentario de cabecera de la
-funcion dice que la referencia no genera codigo y cierra el parrafo con una oracion fija que reconoce que se
-desconoce la forma del fuente original, y ``docs/DESCOMPILACION.md`` lista cada funcion con su forma y su
-numero de referencias. Estas pruebas cruzan ``src/`` con esa tabla para que una referencia nueva no entre sin
-su comentario ni sin su fila, y para que una fila no sobreviva a la referencia que describia. Solo leen
-archivos.
+Se admiten cinco formas que no generan ninguna instruccion propia y que solo mueven el reparto de registros o
+una decision del optimizador de bucles: la envoltura ``do { ... } while (0)``, el par ``x--; x++;``, la
+condicion vacia ``if (x) {}``, la local sin uso con inicializador y la sentencia duplicada en ambas ramas (la
+misma sentencia escrita en las ramas de un ``if``/``else``, que el salto cruzado del compilador vuelve a
+fusionar; se localiza por su comentario fijo). La tecnica solo se admite con condiciones: el comentario de
+cabecera de la funcion dice que la referencia no genera codigo y cierra el parrafo con una oracion fija que
+reconoce que se desconoce la forma del fuente original, y ``docs/DESCOMPILACION.md`` lista cada funcion con su
+forma y su numero de referencias. Estas pruebas cruzan ``src/`` con esa tabla para que una referencia nueva no
+entre sin su comentario ni sin su fila, y para que una fila no sobreviva a la referencia que describia. Solo
+leen archivos.
 """
 
 import re
@@ -22,7 +24,9 @@ ENVOLTURA = "envoltura"
 DECREMENTO_INCREMENTO = "decremento-incremento"
 CONDICION_VACIA = "condición vacía"
 LOCAL_SIN_USO = "local sin uso"
-FORMAS = (ENVOLTURA, DECREMENTO_INCREMENTO, CONDICION_VACIA, LOCAL_SIN_USO)
+SENTENCIA_DUPLICADA = "sentencia duplicada en ambas ramas"
+FORMAS = (ENVOLTURA, DECREMENTO_INCREMENTO, CONDICION_VACIA, LOCAL_SIN_USO, SENTENCIA_DUPLICADA)
+COMENTARIO_REPLICADA = "Sentencia replicada: es la misma que la de las otras ramas."
 
 _CIERRE_ENVOLTURA = re.compile(r"^\s*\}\s*while\s*\(0\)\s*;")
 _DEFINICION = re.compile(r"^[A-Za-z_][\w \t\*]*?[\s\*](\w+)\([^;]*\)\s*\{?\s*$")
@@ -33,6 +37,8 @@ _IF_ABRE = re.compile(r"^\s*(?:\}\s*else\s+)?if\s*\(.*\)\s*\{\s*$")
 _CIERRE_SOLO = re.compile(r"^\s*\}\s*$")
 _DECLARACION_CON_VALOR = re.compile(r"^\s+((?:[A-Za-z_]\w*[\s\*]+)+?)(\w+)\s*=\s*[^=].*;\s*$")
 _PALABRAS_QUE_NO_DECLARAN = {"return", "else", "goto", "case", "sizeof", "do", "while", "if", "for", "switch"}
+_COMENTARIO_REPLICADA = re.compile(rf"^\s*/\*\s*{re.escape(COMENTARIO_REPLICADA)}\s*\*/\s*$")
+_IDENTIFICADOR = re.compile(r"[A-Za-z_]\w*")
 
 
 def _lineas_de_codigo(texto: str) -> list[str]:
@@ -159,6 +165,44 @@ def _locales_sin_uso(lineas: list[str], macros: dict[str, str], cuentas: dict[tu
                 _cuenta(cuentas, funcion, LOCAL_SIN_USO)
 
 
+def _sentencias_replicadas(lineas: list[str], cuentas: dict[tuple[str, str], int]) -> None:
+    """Cuenta los comentarios fijos que marcan una sentencia replicada en las ramas de la funcion."""
+    for indice, linea in enumerate(lineas):
+        if _COMENTARIO_REPLICADA.match(linea):
+            _cuenta(cuentas, _funcion_que_contiene(lineas, indice), SENTENCIA_DUPLICADA)
+
+
+def _esqueleto(sentencia: str) -> str:
+    """Devuelve la sentencia con cada identificador sustituido por ``I`` (la forma sin los nombres)."""
+    return _IDENTIFICADOR.sub("I", " ".join(sentencia.split()))
+
+
+def _incumplimientos_de_replicadas(texto: str) -> list[str]:
+    """Lista las funciones cuyas sentencias replicadas no son realmente la misma sentencia.
+
+    Una sentencia replicada necesita al menos dos marcas en la funcion, cada una seguida de una sentencia, y
+    todas las sentencias marcadas deben tener la misma forma una vez quitados los nombres de variable (la
+    variable propia de cada rama es lo unico que puede cambiar).
+    """
+    lineas = _lineas_de_codigo(texto)
+    sentencias: dict[str, list[str]] = {}
+    for indice, linea in enumerate(lineas):
+        if not _COMENTARIO_REPLICADA.match(linea):
+            continue
+        funcion = _funcion_que_contiene(lineas, indice) or "?"
+        siguiente = lineas[indice + 1] if indice + 1 < len(lineas) else ""
+        sentencias.setdefault(funcion, []).append(siguiente.strip())
+    fallos: list[str] = []
+    for funcion, marcadas in sorted(sentencias.items()):
+        if len(marcadas) < 2:
+            fallos.append(f"{funcion}: una sentencia replicada necesita al menos dos ramas")
+        if any(not sentencia.endswith(";") for sentencia in marcadas):
+            fallos.append(f"{funcion}: la marca de sentencia replicada no precede a una sentencia")
+        elif len({_esqueleto(sentencia) for sentencia in marcadas}) > 1:
+            fallos.append(f"{funcion}: las sentencias replicadas no son la misma sentencia")
+    return fallos
+
+
 def _buscar_referencias(texto: str) -> dict[tuple[str, str], int]:
     """Cuenta las referencias sin codigo por (funcion, forma), ignorando las que viven dentro de una macro."""
     lineas = _lineas_de_codigo(texto)
@@ -167,6 +211,7 @@ def _buscar_referencias(texto: str) -> dict[tuple[str, str], int]:
     _pares_decremento_incremento(lineas, cuentas)
     _condiciones_vacias(lineas, cuentas)
     _locales_sin_uso(lineas, _macros_del_archivo(texto), cuentas)
+    _sentencias_replicadas(lineas, cuentas)
     return cuentas
 
 
@@ -268,6 +313,65 @@ def test_una_asignacion_o_un_return_no_se_toman_por_una_declaracion() -> None:
     assert _buscar_referencias(texto) == {}
 
 
+def _rama_replicada(variable: str) -> str:
+    return (
+        f"        {variable} = a;\n"
+        f"        /* {COMENTARIO_REPLICADA} */\n"
+        f"        b = {variable} + ({variable} << 8);\n"
+    )
+
+
+def test_el_recuento_encuentra_las_sentencias_replicadas_por_su_comentario_fijo() -> None:
+    texto = _texto_con(
+        "    if (a) {\n" + _rama_replicada("p") + "    } else {\n" + _rama_replicada("q") + "    }\n"
+    )
+    assert _buscar_referencias(texto) == {("func_800000A0", SENTENCIA_DUPLICADA): 2}
+
+
+def test_un_comentario_distinto_o_dentro_de_una_macro_no_cuenta_como_sentencia_replicada() -> None:
+    texto = (
+        f"#define M(x) \\\n    /* {COMENTARIO_REPLICADA} */ \\\n    x\n\n"
+        + _texto_con("    /* Sentencia replicada: otra cosa. */\n    b = a;\n")
+    )
+    assert _buscar_referencias(texto) == {}
+
+
+def test_las_sentencias_replicadas_con_la_misma_forma_y_otra_variable_se_aceptan() -> None:
+    texto = _texto_con(
+        "    if (a) {\n" + _rama_replicada("p") + "    } else {\n" + _rama_replicada("q") + "    }\n"
+    )
+    assert _incumplimientos_de_replicadas(texto) == []
+
+
+def test_una_sola_marca_de_sentencia_replicada_se_rechaza() -> None:
+    texto = _texto_con("    if (a) {\n" + _rama_replicada("p") + "    }\n")
+    esperado = ["func_800000A0: una sentencia replicada necesita al menos dos ramas"]
+    assert _incumplimientos_de_replicadas(texto) == esperado
+
+
+def test_sentencias_marcadas_que_no_son_la_misma_sentencia_se_rechazan() -> None:
+    otra = f"        /* {COMENTARIO_REPLICADA} */\n        b = q * 3;\n"
+    texto = _texto_con("    if (a) {\n" + _rama_replicada("p") + "    } else {\n" + otra + "    }\n")
+    esperado = ["func_800000A0: las sentencias replicadas no son la misma sentencia"]
+    assert _incumplimientos_de_replicadas(texto) == esperado
+
+
+def test_una_marca_que_no_precede_a_una_sentencia_se_rechaza() -> None:
+    sola = f"        /* {COMENTARIO_REPLICADA} */\n    }}\n"
+    texto = _texto_con("    if (a) {\n" + _rama_replicada("p") + "    } else {\n" + sola)
+    assert _incumplimientos_de_replicadas(texto) == [
+        "func_800000A0: la marca de sentencia replicada no precede a una sentencia"
+    ]
+
+
+def test_toda_sentencia_replicada_de_src_es_la_misma_en_todas_sus_ramas() -> None:
+    fallos: list[str] = []
+    for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c")):
+        for fallo in _incumplimientos_de_replicadas(archivo.read_text(encoding="utf-8")):
+            fallos.append(f"{archivo.name}: {fallo}")
+    assert fallos == []
+
+
 def test_toda_referencia_declara_que_no_genera_codigo() -> None:
     fallos: list[str] = []
     for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c")):
@@ -300,7 +404,7 @@ def test_toda_fila_de_la_tabla_corresponde_a_una_referencia_en_src() -> None:
     assert sobran == [], f"filas de la tabla sin referencia en src: {sobran}"
 
 
-def test_toda_fila_de_la_tabla_usa_una_de_las_cuatro_formas() -> None:
+def test_toda_fila_de_la_tabla_usa_una_de_las_cinco_formas() -> None:
     formas = {forma for _, forma in _tabla_del_documento()}
     assert formas <= set(FORMAS), sorted(formas - set(FORMAS))
 

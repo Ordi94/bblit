@@ -851,9 +851,14 @@ extern NodoVolumen* func_80019180(Objeto* a, VECTOR* p, ConsultaPlano* o);
  * Los dos pares `z--; z++` del bucle no generan codigo: el combinador los anula despues de la optimizacion de
  * bucles, pero hasta entonces suman cuatro instrucciones al bucle. El original iza fuera del bucle la direccion de
  * D_8006ACD0 y deja la de D_8006B558 dentro; el optimizador de bucles iza la de D_8006B558 cuando el bucle tiene
- * 174 instrucciones o menos y no la iza con 175 o mas (medido en el volcado de bucles: 174 con la direccion izada,
- * 175 y 176 sin izarla), y sin los pares el bucle queda en 172. Con ellos el argumento de func_8003F06C se carga
- * con lw sin conversion, como el original. La forma del fuente original que producia este reparto se desconoce.
+ * 174 instrucciones o menos y no la iza con 175 o mas. Medido en el volcado de bucles (`-dL`, `.loop`): el
+ * pseudo que se iza es el (regno) 119, de vida 6 y con un ahorro de 1 instruccion al izarlo; con el bucle de 174
+ * instrucciones el volcado dice `moved to 540` y con 175 (el argumento con `(s16)`) y con 176 (los dos pares)
+ * dice `move-insn savings 1 not desirable`; sin los pares ni la conversion el bucle queda en 172 y tambien se
+ * iza. Que el umbral sea 29 * ahorro * vida >= instrucciones del bucle (29 * 1 * 6 = 174) es una inferencia de
+ * esos dos puntos, sin verificar contra el codigo del optimizador. Con los pares el argumento de func_8003F06C se
+ * carga con lw sin conversion, como el original. La forma del fuente original que producia este reparto se
+ * desconoce.
  */
 void func_8001E1A4(Objeto* o, ConsultaPlano* c)
 {
