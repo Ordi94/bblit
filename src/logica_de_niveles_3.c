@@ -24,7 +24,7 @@ s16 D_800693D0;
 extern void func_80039094(void);
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2925 con la configuracion versionada (g = 8 del archivo). Reparto de registros y orden de instrucciones: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1. */
+/* Pendiente: puntuacion 2515 con la configuracion versionada (g = 8 del archivo). Reparto de registros y orden de instrucciones: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1. */
 /*
  * Manejador de los objetos moviles por mascara (clases 12, 13, 18, 19 y 22 a 29): una sola rutina
  * atiende doce modos, uno por bit de la mascara (balancin, giro, bajar o subir con el jugador,
@@ -131,7 +131,7 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
                     goto decae;
                 }
                 if (o->param.giro.rotate.vz >= -0x163) {
-                    o->param.giro.u.z += (num * paso) / (o->radio - o->min.vx);
+                    o->param.giro.u.z += (paso * num) / (o->radio - o->min.vx);
                 }
                 sentido = (o->param.giro.rotate.vz * paso) / (o->radio - o->min.vx);
             } else {
@@ -139,7 +139,7 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
                     goto decae;
                 }
                 if (o->param.giro.rotate.vz < 0x164) {
-                    o->param.giro.u.z += (num * paso) / (o->max.vx + o->radio);
+                    o->param.giro.u.z += (paso * num) / (o->max.vx + o->radio);
                 }
                 sentido = (o->param.giro.rotate.vz * paso) / (o->radio + o->max.vx);
             }
@@ -214,8 +214,9 @@ sube:
     } else if (mascara & 8) {
         o->flags14 &= 0xFF9FFFFF;
         num = rsin((s16)o->w17E) * (s16)o->w17C;
-        o->w17E += o->s1E;
         o->param.giro.u.z = num >> 12;
+        /* El avance de la fase se escribe despues del giro: el orden contrario baja la puntuacion 400 puntos peor. */
+        o->w17E += o->s1E;
         if ((s16)o->w17E >= 0x1000) {
             o->flags14 |= 0x200000;
             o->w17E -= 0x1000;
