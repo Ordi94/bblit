@@ -621,9 +621,11 @@ void func_8003861C(s32 idx)
  * posiciones en $s3, identificadores en $s7, $s6 y $s5); difiere solo el registro de los temporales
  * de la mitad de k en las tres ramas: el original los deja en $a2, junto con el indice que sigue, y
  * aqui los dos primeros caen en $v0. Los temporales (srl y addu de k / 2) son pseudos locales del
- * bloque de cada rama, que el asignador local reparte antes que el indice (global, $a2); replicar la
- * llamada en cada rama no los mueve, y el volcado no muestra que atadura los une al indice en el
- * original (sin verificar).
+ * bloque de cada rama, que el asignador local reparte antes que el indice (global, $a2): en el original
+ * el indice es local de cada rama (la cola de las tres ramas, identica, la funde el salto cruzado), y
+ * reproducirlo exige una variable por rama y la llamada duplicada en cada una, con lo que el residuo
+ * baja a 0; esa forma duplica una sentencia y no se aplica. Con la misma variable y la llamada
+ * replicada no cambia nada.
  */
 /*
  * Reinicia, de dos en dos, los objetos del grupo 'idx' (tres consecutivos de la tabla
