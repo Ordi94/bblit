@@ -379,8 +379,12 @@ def test_construir_mixto_valida_la_longitud_del_cuerpo(tmp_path: Path) -> None:
 
 def test_el_ejecutor_por_defecto_de_construir_mixto_es_ejecutar_proceso() -> None:
     assert comp.construir_mixto.func.__defaults__ == (infra_kit.ejecutar_proceso,)
+    # La firma del kit fijado define el contrato: se compara el diccionario completo para que
+    # cualquier parametro nuevo con valor por omision sea una decision consciente. El kit 0.3.0
+    # anadio opciones_extra (opciones del compilador por archivo), vacio por omision.
     assert comp.compilar_fuente.func.__kwdefaults__ == {
         "definiciones": (),
+        "opciones_extra": (),
         "exigir_solo_texto": True,
         "secciones_declaradas": (),
         "valor_g": 0,
