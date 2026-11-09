@@ -662,14 +662,19 @@ u32 func_8003EDA8(Objeto* o, Efecto* e)
     return r.w;
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 55 con la configuracion versionada (g = 8 del archivo). Coinciden los dos punteros de la
- * tabla, la entrada de los bucles y el orden de los incrementos; difiere solo el reparto de v0/v1 en el calculo
- * del volumen replicado en los dos bytes: el original deja el nivel en v0 y el desplazado en v1, y aqui salen al
- * reves (el nivel en v1 y el desplazado en v0), con la misma secuencia de instrucciones. En el original el nivel
- * es local de cada rama; reproducirlo exige una variable por rama y la suma duplicada en cada una, con lo que el
- * residuo baja a 0; esa forma duplica una sentencia y no se aplica.
+ * La sentencia que replica el volumen en los dos bytes (`v->vol.w = nivel + (nivel << 8);`) esta escrita en las dos
+ * ramas de la comparacion con el volumen maximo, cada una con su propia variable (`nivel` y `nivel2`). La sentencia
+ * replicada no genera codigo propio: las dos colas de las ramas son identicas y el salto cruzado del compilador las
+ * vuelve a fusionar, de modo que el ensamblador es una sola cola, como en el original.
+ *
+ * Causa medida (volcados `.lreg` y `.greg` de `cc1`): con una variable por rama, cada nivel es un pseudo local de su
+ * bloque (registros 94 y 95: 6 usos sobre 3 instrucciones, en los bloques 12 y 13) y el asignador local lo reparte
+ * antes que los pseudos globales; el nivel queda en v0 y el desplazado en v1, como en el original, y la funcion da
+ * puntuacion 0. Con una sola variable compartida por las dos ramas el reparto salia al reves (nivel en v1 y
+ * desplazado en v0, con la misma secuencia de instrucciones, puntuacion 55); que la causa fuera que un pseudo que
+ * vive en dos bloques deja de ser local y pasa al asignador global es una inferencia, sin volcado de esa forma citado.
+ * La forma del fuente original que producia este reparto se desconoce.
  */
 void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
 {
@@ -681,14 +686,16 @@ void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
     u8 vol_maximo;
     u8 vol_efecto;
     u16 nivel;
+    u16 nivel2;
     u16 vol_final;
     u8 izq;
     u8 izq_releido;
 
-    /* Los campos de la entrada se leen por `e` y no por un puntero propio: los accesos a +4, +6 y +7 tras el
-     * bucle de busqueda hacen que el optimizador de bucles derive el puntero inducido e + 4 (que avanza 8 con
-     * `e`) y lo coloque a la entrada, como el original; con un puntero explicito el `addiu` salia antes.
-     * En el bucle de busqueda avanza primero `e` y despues el indice, y las pruebas de volumen y de salida
+    /* Los campos de la entrada se leen por `e` y no por un puntero propio: medido, con un puntero explicito el
+     * `addiu` de la entrada salia antes del de la ranura y con los campos por `e` sale despues, como en el
+     * original (175 a 115). Que la causa sea que el optimizador de bucles derive el puntero inducido e + 4 (que
+     * avanza 8 con `e`) y lo numere despues del de la ranura es una inferencia por el orden de los numeros de
+     * instruccion, sin volcado `.sched` citado. En el bucle de busqueda avanza primero `e` y despues el indice, y las pruebas de volumen y de salida
      * van dentro de la rama que las necesita: el original salta la prueba de volumen nulo cuando el volumen
      * sale de la tabla de efectos. */
     D_80069458 = D_800100E5;
@@ -713,10 +720,13 @@ void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
                         vol_efecto = e->cuenta;
                         if (vol_efecto > vol_maximo) {
                             nivel = D_80069458;
+                            /* Sentencia replicada: es la misma que la de las otras ramas. */
+                            v->vol.w = nivel +(nivel << 8);
                         } else {
-                            nivel = e->cuenta;
+                            nivel2 = e->cuenta;
+                            /* Sentencia replicada: es la misma que la de las otras ramas. */
+                            v->vol.w = nivel2 +(nivel2 << 8);
                         }
-                        v->vol.w = nivel + (nivel << 8);
                     } else {
                         v->vol.w = func_8003EDA8(objeto, e);
                         vol_final = v->vol.w;
@@ -776,9 +786,6 @@ void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/audio_xa_y_spu", func_8003F06C);
-#endif
 
 void func_8003F3F0(void)
 {
