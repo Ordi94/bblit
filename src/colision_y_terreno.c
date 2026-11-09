@@ -254,7 +254,7 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2080 con la configuracion versionada (g = 0 del archivo). Difieren el orden de
+ * Pendiente: puntuacion 2060 con la configuracion versionada (g = 0 del archivo). Difieren el orden de
  * las escrituras del avance por subcelda y por baldosa del recorrido general (rangos
  * 0x8001A050-0x8001A563), el reparto de v0/v1 en las banderas de los planos 0x7E y 0x7F del caso
  * estatico (0x8001BCD4-0x8001BF6B) y la posicion de dos instrucciones del prologo.
@@ -530,7 +530,7 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                     w->rx = w->rx + (w->t0 - w->t2);
                                 }
                             } else {
-                                if (w->t0 < w->t2) {
+                                if (w->t2 > w->t0) {
                                     w->rx = w->rx + (w->t0 - w->t2);
                                 }
                             }
