@@ -614,28 +614,25 @@ void func_8003861C(s32 idx)
     }
 }
 
-#ifdef NON_MATCHING
-/*
- * Pendiente: puntuacion 65 con la configuracion versionada (g = 8 del archivo). Coincide la
- * estructura, el marco de pila y el reparto de los registros salvados (parametro en $s4, tabla de
- * posiciones en $s3, identificadores en $s7, $s6 y $s5); difiere solo el registro de los temporales
- * de la mitad de k en las tres ramas: el original los deja en $a2, junto con el indice que sigue, y
- * aqui los dos primeros caen en $v0. Los temporales (srl y addu de k / 2) son pseudos locales del
- * bloque de cada rama, que el asignador local reparte antes que el indice (global, $a2): en el original
- * el indice es local de cada rama (la cola de las tres ramas, identica, la funde el salto cruzado), y
- * reproducirlo exige una variable por rama y la llamada duplicada en cada una, con lo que el residuo
- * baja a 0; esa forma duplica una sentencia y no se aplica. Con la misma variable y la llamada
- * replicada no cambia nada.
- */
 /*
  * Reinicia, de dos en dos, los objetos del grupo 'idx' (tres consecutivos de la tabla
  * D_8006AB70) para cada unidad de D_80010042: el identificador de plantilla de cada uno se
  * elige entre los tres de D_8005E830 segun cuantas unidades de D_80069524 alcanzan ese
  * indice, y la posicion sale de D_8005E86C.
  *
- * El do/while (0) alrededor de la llamada no genera codigo: pondera por un nivel mas las
- * referencias a la tabla y a 'modo', de modo que la prioridad de global-alloc los ordena antes que
- * los tres identificadores (tabla 0,095, 'modo' 0,057, identificadores 0,051) como en el original.
+ * La llamada a func_80037DB4 esta escrita en las tres ramas, cada una con su propio indice
+ * ('ja', 'jb', 'jc'). La sentencia replicada no genera codigo propio: las colas de las tres ramas
+ * son identicas (calculo de la posicion, llamada, lectura del limite y avance de k) y el salto
+ * cruzado del compilador las vuelve a fusionar en una sola a partir de la etiqueta comun, como en
+ * el original.
+ *
+ * Causa medida (volcado `.lreg` de `cc1`): con una variable por rama, cada indice es un pseudo
+ * local de su bloque (registros 93, 94 y 95: 6 usos sobre 6 instrucciones, en los bloques 3, 5 y
+ * 6) y el asignador local lo reparte junto con los temporales de la mitad de k (`srl` y `addu`),
+ * de modo que los tres quedan en $a2 en cada rama, como en el original. Con un indice compartido
+ * por las tres ramas el indice es un pseudo global que toma $a2 despues de los temporales locales,
+ * y los dos primeros temporales caen en $v0 (puntuacion 65). Con la misma variable y la llamada
+ * replicada no cambia nada: la variable por rama es lo que ata el reparto.
  * El limite se lee antes de avanzar k porque el limite del bucle queda tras una nota de fin de
  * bucle que impide reordenar la lectura del limite y el incremento; en ese orden el incremento
  * llena el hueco de la carga, como en el original.
@@ -657,6 +654,9 @@ void func_80038884(s32 idx, s32 modo)
     s32 id2;
     s32 k;
     s32 j;
+    s32 ja;
+    s32 jb;
+    s32 jc;
     s32 id;
     s32 nivel;
     s32 limite;
@@ -676,32 +676,32 @@ void func_80038884(s32 idx, s32 modo)
             /* Cada rama lleva su propio puntero a la celda de 'v' (par completo: la unidad alcanza k + 2; parcial: k + 1; vacio: ninguna): con uno compartido, o leyendo
              * v[j] directamente, el asignador reparte los registros de otro modo. */
             if (nivel >= k + 2) {
-                j = k / 2;
-                celda_par_completo = p + j;
+                ja = k / 2;
+                celda_par_completo = p + ja;
                 o = *celda_par_completo;
                 id = id0;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
+                ((ReiniciarSinConversion)func_80037DB4)(o, id, D_8005E86C[idx + ja], modo);
             } else if (nivel >= k + 1) {
-                j = k / 2;
-                celda_par_parcial = p + j;
+                jb = k / 2;
+                celda_par_parcial = p + jb;
                 o = *celda_par_parcial;
                 id = id1;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
+                ((ReiniciarSinConversion)func_80037DB4)(o, id, D_8005E86C[idx + jb], modo);
             } else {
-                j = k / 2;
-                celda_par_vacio = p + j;
+                jc = k / 2;
+                celda_par_vacio = p + jc;
                 o = *celda_par_vacio;
                 id = id2;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
+                ((ReiniciarSinConversion)func_80037DB4)(o, id, D_8005E86C[idx + jc], modo);
             }
-            do {
-                ((ReiniciarSinConversion)func_80037DB4)(o, id, D_8005E86C[j + idx], modo);
-            } while (0);
             limite = D_80010042;
             k += 2;
         } while (k < limite);
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_2", func_80038884);
-#endif
 
 /*
  * Posiciona los tres objetos 'idx'..'idx + 2' de la tabla D_8006AB70: si 'apagar' es cero los
