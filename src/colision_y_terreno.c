@@ -530,6 +530,9 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                     w->rx = w->rx + (w->t0 - w->t2);
                                 }
                             } else {
+                                /* Escrita como `t2 > t0`, la comparacion carga `t2` (a0) antes que
+                                 * `t0` (v1) y emite `slt v0, v1, a0`, el orden de cargas y de
+                                 * operandos del original. */
                                 if (w->t2 > w->t0) {
                                     w->rx = w->rx + (w->t0 - w->t2);
                                 }
@@ -970,7 +973,8 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
     trabajo->z_local = trabajo->z % 320;
     fila_subceldas = trabajo->z_local / 40 * 8;
     trabajo_baldosa->baldosa &= 0xFFF;
-    /* La baldosa enmascarada se relee en una local de 16 bits para el indice de subcelda: leerla del area de trabajo da 475. */
+    /* La baldosa enmascarada se relee en una local de 16 bits para el indice de subcelda: leerla
+     * del area de trabajo da 475. */
     baldosa = trabajo->baldosa;
     trabajo->celda = (s8)z->subceldas[trabajo->x_local / 40 + (fila_subceldas + (baldosa << 6))];
     if (trabajo->celda == 0x7E) {

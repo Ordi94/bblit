@@ -126,6 +126,10 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
         }
         if (o->p6C == D_80069698 && o->p6C->p70 == o) {
             num = o->p6C->u18C.agarre.trans.vx;
+            /* Los productos `paso * num` se escriben con el paso como primer factor: el orden de
+             * los factores decide en que registros caen los dos operandos del `mult` y con este
+             * se acerca al reparto del original (`mult v1, a0` en el hueco de salto de la
+             * comparacion del giro; aqui queda `mult a1, a0`). */
             if (num < 0) {
                 if (o->w17C & 1) {
                     goto decae;

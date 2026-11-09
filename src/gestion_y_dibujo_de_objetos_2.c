@@ -415,22 +415,24 @@ void func_80037FB8(NodoLista* n)
  */
 void func_80037FE8(void* lista)
 {
-    s32 ancho_alto;
     s32 ids[6];
-    s32 bcd;
-    s16 (*tpos)[2];
     s32* pid;
     s16 (*pos)[2];
+    s32 i;
+    s32 bcd;
     s32 pct;
     Objeto* o;
+    s16 (*tpos)[2];
     EstadoPrincipal* e;
-    u8 campo_corto;
-    s32 i;
-    s32 id_sin_estado;
-    u8 campo_alto;
-    u8 campo_bajo;
+    s32 byte_alto_ampliado;
+    u8 byte_alto_contador;
+    u8 byte_extra_contador;
+    u8 byte_extra_copia;
+    s32 id_plantilla_copia;
+
     func_80038C2C(0, D_80010043, 1);
     func_80038884(0xE, 1);
+
     bcd = ((DigitosSinConversion)func_80037D3C)((ESTADO_PRINCIPAL->r[0xFC] << 8) | ESTADO_PRINCIPAL->r[0x07]);
     ids[0] = D_8005E830[3];
     ids[1] = D_8005E81C[(bcd & 0xF00) >> 8];
@@ -443,6 +445,7 @@ void func_80037FE8(void* lista)
     for (i = 0; i < 4; i++) {
         ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[3 + i], ids[i], pos[i], 1);
     }
+
     i = 0;
     bcd = ((DigitosSinConversion)func_80037D3C)(D_80010045);
     ids[0] = D_8005E830[7];
@@ -453,15 +456,16 @@ void func_80037FE8(void* lista)
     for (; i < 4; i++) {
         ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[7 + i], ids[i], pos[i], 1);
     }
+
     e = ESTADO_PRINCIPAL;
     /* Los dos bytes del contador se leen en locales de 8 bits y se copian a otra de 32 bits y a
      * otra de 8: con las lecturas dentro de la expresion la puntuacion sube de 2297 a 2422. */
-    campo_alto = e->r[0xFC];
-    ancho_alto = (u8)campo_alto;
-    campo_bajo = e->r[0x05];
-    campo_corto = campo_bajo;
+    byte_alto_contador = e->r[0xFC];
+    byte_alto_ampliado = (u8)byte_alto_contador;
+    byte_extra_contador = e->r[0x05];
+    byte_extra_copia = byte_extra_contador;
     i = 0;
-    pct = ((ancho_alto << 8) + e->r[0x07] + campo_corto) * 100 / 457;
+    pct = ((byte_alto_ampliado << 8) + e->r[0x07] + byte_extra_copia) * 100 / 457;
     bcd = ((DigitosSinConversion)func_80037D3C)(pct);
     ids[0] = D_8005E81C[(bcd & 0xF00) >> 8];
     ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
@@ -480,6 +484,7 @@ void func_80037FE8(void* lista)
         }
         ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[20 + i], ids[i], pos[i], 1);
     }
+
     if (D_800100F7 != 0) {
         e = ESTADO_PRINCIPAL;
         bcd = ((DigitosSinConversion)func_80037D3C)(e->r[e->r[0xB6]]);
@@ -498,6 +503,7 @@ void func_80037FE8(void* lista)
             o->u78.ayudas->m94.t[2] = 0x5DC;
         }
     }
+
     if (D_800100F9 != 0) {
         e = ESTADO_PRINCIPAL;
         bcd = ((DigitosSinConversion)func_80037D3C)(e->r[e->r[0xB8]]);
@@ -516,12 +522,13 @@ void func_80037FE8(void* lista)
             if (D_800100F7 != 0) {
                 ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], pos[i], 1);
             } else {
-                id_sin_estado = ids[i];
-                ((ReiniciarSinConversion)func_80037DB4)(o, id_sin_estado, tpos[i], 1);
+                id_plantilla_copia = ids[i];
+                ((ReiniciarSinConversion)func_80037DB4)(o, id_plantilla_copia, tpos[i], 1);
             }
             o->u78.ayudas->m94.t[2] = 0x5DC;
         }
     }
+
     if (D_800100FA != 0) {
         e = ESTADO_PRINCIPAL;
         bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0x04]);

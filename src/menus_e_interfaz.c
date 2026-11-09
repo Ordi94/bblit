@@ -222,6 +222,8 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
     /* El cursor se copia aqui y se relee en la comprobacion final con la misma variable. */
     cursor = actual;
     tabla = (u32*)D_8006967C[D_8006AEA0].org;
+    /* El original lee la palabra de la tabla y le aplica la constante `0x05000000` como segundo
+     * operando del `or` (`or v0, v0, a3`); esta forma del OR reproduce ese orden de operandos. */
     *(u32*)actual = *tabla | 0x05000000;
     ((u32*)actual)[1] = 1;
     ((u32*)cursor)[2] = 0x80000000;
@@ -245,6 +247,8 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
         D_80076188 += 0x18;
     }
     cursor = D_80076188;
+    /* El original carga el cursor, luego el limite, y emite `slt limite, cursor`; la comparacion
+     * escrita como `cursor > limite` produce ese orden de operandos. */
     enlace_o_exceso = cursor > ctx->limite;
     if (enlace_o_exceso) {
         D_80076188 = ctx->inicio;
@@ -373,10 +377,10 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     PedidoModelo pedido;
     u16 anterior;
     EntradaVisible* entrada;
-    s32 cuenta;
+    s32 sala_o_cuenta;
     s16 actual;
-    /* La sala del objeto ensanchada y la cuenta de entradas visibles comparten `cuenta` (32 bits),
-     * y la comparacion de salas y la marca de varias salas comparten `sala_o_marca`: con
+    /* La sala del objeto ensanchada y la cuenta de entradas visibles comparten `sala_o_cuenta`
+     * (32 bits), y la comparacion de salas y la marca de varias salas comparten `sala_o_marca`: con
      * variables separadas, o sin la copia de la sala en `sala_o_marca`, el reparto de v0/v1
      * empeora (315 y 485 respectivamente). */
     s32 sala_o_marca;
@@ -395,9 +399,9 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     D_80069688 = escena->objeto->w26;
     actual = -1;
     if (!(D_8006D9A8[0] & 0x300)) {
-        cuenta = escena->objeto->w26;
+        sala_o_cuenta = escena->objeto->w26;
         actual = D_80069698->w26;
-        sala_o_marca = cuenta;
+        sala_o_marca = sala_o_cuenta;
         distinta = actual != (s16)sala_o_marca;
         if (distinta && actual != -1) {
             pedido.profundidad = 0;
@@ -407,16 +411,18 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
             D_8006A940[0].modelo = actual;
         }
     }
-    cuenta = (u16)D_80069588;
+    /* El `(u16)` conserva el ancho del acceso original: la cuenta se lee con `lhu` (sin signo de
+     * 16 bits) y no como el entero de 32 bits que daria la lectura directa. */
+    sala_o_cuenta = (u16)D_80069588;
     pedido.grupo = 1;
-    sala_o_marca = (cuenta << 16) > 0x10000;
+    sala_o_marca = (sala_o_cuenta << 16) > 0x10000;
     escena->estado.s6 = -0x80;
     pedido.profundidad = 1;
     if (sala_o_marca) {
         do {
-            if (pedido.profundidad == (s16)cuenta) {
+            if (pedido.profundidad == (s16)sala_o_cuenta) {
                 pedido.grupo++;
-                cuenta = (u16)D_80069588;
+                sala_o_cuenta = (u16)D_80069588;
             }
             entrada = &D_8006A940[pedido.profundidad];
             if (!(entrada->bandera & 1) && entrada->modelo != actual) {

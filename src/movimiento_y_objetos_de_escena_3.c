@@ -411,6 +411,10 @@ sigue:
                                         D_80069698->param.trans.vx = o->objetivo.vx;
                                         D_80069698->param.trans.vy = o->objetivo.vy;
                                         D_80069698->param.trans.vz = o->objetivo.vz;
+                                        /* Escala copiada en orden vx, vy, vz: el original carga
+                                         * las componentes juntas y las almacena intercaladas
+                                         * con los ceros del giro; con vz antes que vy el
+                                         * planificador reparte esas cargas de otra forma. */
                                         D_80069698->u18C.agarre.escala.vx = D_80069698->param.escala.vx;
                                         D_80069698->u18C.agarre.escala.vy = D_80069698->param.escala.vy;
                                         D_80069698->u18C.agarre.escala.vz = D_80069698->param.escala.vz;
@@ -1152,6 +1156,9 @@ u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
                     break;
                 }
                 nodo = nodo->sig;
+                /* Con `paso + acc` el bucle deja el acumulador en a0 y el paso en v1 y emite
+                 * `addu v0, a0, v1`, igual que el original; con `acc + paso` el reparto de
+                 * registros del bucle cambia. */
                 v = paso + acc;
             } while (nodo != NULL);
         }
