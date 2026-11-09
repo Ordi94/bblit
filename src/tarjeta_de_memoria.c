@@ -417,7 +417,7 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3175 con la configuracion versionada (g = 8 del archivo). Flujo y distribucion de bloques iguales al original;
+ * Pendiente: puntuacion 3160 con la configuracion versionada (g = 8 del archivo). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
  * original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante.
@@ -433,6 +433,7 @@ void SondearTarjeta(void)
 {
     CabeceraGuardado* cabecera;
     s32 cuenta_previa;
+    s32 con_parcial;
     s32 completos;
     EntradaDirectorio* entrada;
     s16* bloques;
@@ -613,7 +614,10 @@ void SondearTarjeta(void)
                     completos = tam / 0x2000;
                     cuenta_previa = *bloques;
                     if ((tam & 0x1FFF) != 0) {
-                        *bloques = cuenta_previa + 1 + completos;
+                        /* El bloque parcial se suma en una temporal antes de los completos: el reparto
+                         * de registros de la suma se acerca al original (3175 a 3160). */
+                        con_parcial = cuenta_previa + 1;
+                        *bloques = con_parcial + completos;
                     } else {
                         *bloques = cuenta_previa + completos;
                     }
