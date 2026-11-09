@@ -233,7 +233,11 @@ void func_80032A24(void)
  * reparto de los registros salvados coinciden; difiere la posicion de una sola instruccion: el original coloca el
  * almacen de i58 (sw v0,0x58) tras la copia del objeto en curso (move v1,a1) y GCC lo deja antes, porque el do/while
  * que abre las escrituras de a48 impide subir la copia por encima del almacen. Meter el almacen en ese do/while
- * lo coloca bien pero intercambia a1 y a2 en la cadena de pruebas (60 tambien).
+ * lo coloca bien pero intercambia a1 y a2 en la cadena de pruebas (60 tambien): el temporal del objeto en curso
+ * (14 usos ponderados sobre 25 instrucciones, 1,68) queda por debajo del de max.vy (7 sobre 8, 1,75) y el original
+ * da a1 al primero. Una condicion vacia sobre w->cur no suma usos (el optimizador de saltos la elimina antes del
+ * analisis de flujo), y una local con el objeto asignada antes del almacen coloca el almacen bien pero funde las
+ * dos copias `move v1,a1` con el puntero.
  *
  * Los tres do/while (0) no generan codigo: ponderan por un nivel mas las referencias de su cuerpo para que la
  * prioridad de global-alloc ordene los punteros como el original (v28 en s3, rot en s4, a0 en s5, i58 en s6):
