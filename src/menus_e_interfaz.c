@@ -371,12 +371,28 @@ void func_8003B26C(PedidoModelo* pedido, EscenaDibujo* escena, VistaDibujo* vist
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 270 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere solo el reparto de a0/v1/v0 en la entrada nueva que se anade al final (el original calcula la direccion en v1/v0 con la base de la tabla en a0; aqui la tabla va en v1 y la direccion en a0) y la entrada visible del bucle (v1 en el original, a0 aqui). */
+/*
+ * Pendiente: puntuacion 35 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo
+ * coinciden; difiere solo el registro del puntero a la entrada visible: el original lo deja en v1 dentro del
+ * bucle y en v0 en la entrada nueva del final, y aqui sale en a0 en los dos sitios (el puntero de la entrada
+ * nueva se escribe sobre la misma variable que el del bucle; con una variable propia el codigo cambia mucho).
+ *
+ * El par `cuenta--; cuenta++` no genera codigo: el combinador lo anula y no deja instruccion. La cuenta de
+ * entradas (lectura con signo de D_80069588) pasa de 3 usos sobre una vida de 6 (prioridad 0,50) a 3 usos sobre
+ * una vida de 4 (0,75), por encima de los tres temporales del desplazamiento (2 usos sobre 2 y sobre 3
+ * instrucciones), de modo que el asignador local le da v1 y deja v0 para el desplazamiento, como en el
+ * original; sin el par la cuenta toma v0 (270 pasa a 100 con la base de la tabla en una local y de 100 a 35 con
+ * el par). Aqui el par no suma usos ponderados (siguen siendo 3): lo que cambia es la vida de la cuenta, un
+ * efecto que no se predijo con la formula y que se midio en el volcado. La forma del fuente original que
+ * producia este reparto se desconoce.
+ */
 void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vista)
 {
     PedidoModelo pedido;
     u16 anterior;
     EntradaVisible* entrada;
+    EntradaVisible* nueva;
+    s16 cuenta;
     s32 sala_o_cuenta;
     s16 actual;
     /* La sala del objeto ensanchada y la cuenta de entradas visibles comparten `sala_o_cuenta`
@@ -434,7 +450,13 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     }
     anterior = D_80069688;
     if (actual != D_80069688) {
-        entrada = &D_8006A940[D_80069588];
+        /* La base de la tabla en una local propia hace que el original y el C la calculen antes que el
+         * desplazamiento y la dejen en a0; la cuenta, en otra local, se lee con signo para el indice. */
+        nueva = D_8006A940;
+        cuenta = D_80069588;
+        cuenta--;
+        cuenta++;
+        entrada = &nueva[cuenta];
         D_80069588 += 1;
         entrada->bandera = 0;
         entrada->modelo = anterior;

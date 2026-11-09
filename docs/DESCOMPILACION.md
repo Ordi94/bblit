@@ -641,6 +641,7 @@ generan código») y la oración fija. Al añadir o quitar una referencia se act
 | `func_80038884` | `src/gestion_y_dibujo_de_objetos_2.c` | envoltura | 1 | NON_MATCHING 65 | Tabla y `modo` antes de los identificadores (0,095 / 0,057 / 0,051) |
 | `func_80032B2C` | `src/camara_y_bucle_logico.c` | envoltura | 3 | NON_MATCHING 60 | `v28`, `rot`, `a0` por encima de `i58` (0,146 / 0,130 / 0,122 frente a 0,106) |
 | `func_800363D4` | `src/gestion_y_dibujo_de_objetos.c` | decremento-incremento | 2 | NON_MATCHING 110 | Nodo en `$a0` y puntero inducido en `$a1` (3,478 frente a 3,407) |
+| `func_8003B354` | `src/menus_e_interfaz.c` | decremento-incremento | 1 | NON_MATCHING 35 | Cuenta de entradas en `$v1` y desplazamiento en `$v0` (vida de la cuenta de 6 a 4: 0,75 frente a 0,50) |
 
 ## Medir el progreso
 
