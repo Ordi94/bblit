@@ -925,7 +925,7 @@ ZonaColision* func_8001BF9C(s32* a0, s16 a1)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 460 con la configuracion versionada (g = 0, no carga globales). Los registros guardados y
+ * Pendiente: puntuacion 455 con la configuracion versionada (g = 0, no carga globales). Los registros guardados y
  * la copia de la zona coinciden; difiere el orden de las dos divisiones por 320 del resto de la baldosa (el original
  * calcula x antes que z, GCC al reves con cualquier orden del fuente) y la suma del indice de subcelda (el original
  * suma primero base + (baldosa << 6) y despues z / 40 * 8 + x / 40).
@@ -942,6 +942,7 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
     TrabajoBaldosa* trabajo;
     TrabajoBaldosa* trabajo_baldosa;
     s32 fila_subceldas;
+    u16 baldosa;
 
     /* Tres nombres para el area de trabajo y dos para la zona: el original reparte el area en s0 y el
      * resultado en s1 solo cuando el area tiene mas referencias que el resultado, y conserva una copia
@@ -969,7 +970,9 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
     trabajo->z_local = trabajo->z % 320;
     fila_subceldas = trabajo->z_local / 40 * 8;
     trabajo_baldosa->baldosa &= 0xFFF;
-    trabajo->celda = (s8)z->subceldas[fila_subceldas +(trabajo->baldosa << 6) + trabajo->x_local / 40];
+    /* La baldosa enmascarada se relee en una local de 16 bits para el indice de subcelda: leerla del area de trabajo da 475. */
+    baldosa = trabajo->baldosa;
+    trabajo->celda = (s8)z->subceldas[trabajo->x_local / 40 + (fila_subceldas + (baldosa << 6))];
     if (trabajo->celda == 0x7E) {
         pos[1] = z->y_max;
         r->clase = 0;
