@@ -663,13 +663,16 @@ u32 func_8003EDA8(Objeto* o, Efecto* e)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 175 con la configuracion versionada (g = 8 del archivo). Los dos punteros de la tabla y el orden de los incrementos de los bucles coinciden; difieren la posicion de `addiu s1,s3,4` en la entrada del bucle (el original la emite tras la de s2), la copia `move a0,v0` del contador del bucle de busqueda y el reparto de v0/v1 en el calculo del volumen replicado en los dos bytes (el original deja el nivel en v0 y el desplazado en v1). */
+/*
+ * Pendiente: puntuacion 55 con la configuracion versionada (g = 8 del archivo). Coinciden los dos punteros de la
+ * tabla, la entrada de los bucles y el orden de los incrementos; difiere solo el reparto de v0/v1 en el calculo
+ * del volumen replicado en los dos bytes: el original deja el nivel en v0 y el desplazado en v1, y aqui salen al
+ * reves (el nivel en v1 y el desplazado en v0), con la misma secuencia de instrucciones.
+ */
 void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
 {
     Efecto* e;
     Voz* v;
-    u8* pf;
-    u8* pf_sig;
     s16 i;
     s16 j;
     u16 libre;
@@ -680,14 +683,16 @@ void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
     u8 izq;
     u8 izq_releido;
 
-    /* Los dos contadores de cada bucle avanzan primero el puntero y despues el indice, y las pruebas de
-     * volumen y de salida van dentro de la rama que las necesita: el original salta la prueba de volumen
-     * nulo cuando el volumen sale de la tabla de efectos. */
+    /* Los campos de la entrada se leen por `e` y no por un puntero propio: los accesos a +4, +6 y +7 tras el
+     * bucle de busqueda hacen que el optimizador de bucles derive el puntero inducido e + 4 (que avanza 8 con
+     * `e`) y lo coloque a la entrada, como el original; con un puntero explicito el `addiu` salia antes.
+     * En el bucle de busqueda avanza primero `e` y despues el indice, y las pruebas de volumen y de salida
+     * van dentro de la rama que las necesita: el original salta la prueba de volumen nulo cuando el volumen
+     * sale de la tabla de efectos. */
     D_80069458 = D_800100E5;
     e = D_8006AEE0;
     if (modo & 1) {
         v = D_8006B378;
-        pf = (u8*)&e->flags;
         i = 0;
         while (i < 0x18) {
             libre = v->flags & 0x8000;
@@ -697,29 +702,27 @@ void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
                     if (e->id == id) {
                         break;
                     }
-                    pf_sig = pf + 8;
-                    j++;
-                    pf = pf_sig;
                     e++;
+                    j++;
                 }
-                if (j != D_80069568 && (!(*(u16*)pf & 0x80) || (BugsRand() >> 7) >= pf[3])) {
-                    if (*(u16*)pf & 2) {
+                if (j != D_80069568 && (!(e->flags & 0x80) || (BugsRand() >> 7) >= e->azar)) {
+                    if (e->flags & 2) {
                         vol_maximo = D_80069458;
-                        vol_efecto = pf[2];
+                        vol_efecto = e->cuenta;
                         if (vol_efecto > vol_maximo) {
                             nivel = D_80069458;
                         } else {
-                            nivel = pf[2];
+                            nivel = e->cuenta;
                         }
                         v->vol.w = nivel + (nivel << 8);
                     } else {
                         v->vol.w = func_8003EDA8(objeto, e);
                         vol_final = v->vol.w;
-                        if (vol_final == 0 && (*(u16*)pf & 0x820) != 0x20) {
+                        if (vol_final == 0 && (e->flags & 0x820) != 0x20) {
                             return;
                         }
                     }
-                    if ((*(u16*)pf & 1) || (D_800100E8 & 1)) {
+                    if ((e->flags & 1) || (D_800100E8 & 1)) {
                         izq = v->vol.c.izq;
                         if (v->vol.c.der < izq) {
                             izq_releido = v->vol.c.izq;
