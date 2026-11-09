@@ -400,11 +400,12 @@ void func_80037FB8(NodoLista* n)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3403 con la configuracion versionada (g = 8 del archivo). La estructura
+ * Pendiente: puntuacion 2297 con la configuracion versionada (g = 8 del archivo). La estructura
  * de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada
  * grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la
  * llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de
- * otra forma.
+ * otra forma. El valor BCD queda en a1 en el original y aqui en a3, y las bases de las tablas
+ * de plantillas (D_8005E81C, D_8005E830, D_8006AB70) se cargan en otro orden.
  */
 /*
  * Crea los objetos de los indicadores de la interfaz al entrar en un nivel: reinicia los
@@ -414,30 +415,34 @@ void func_80037FB8(NodoLista* n)
  */
 void func_80037FE8(void* lista)
 {
+    s32 ancho_alto;
     s32 ids[6];
+    s32 bcd;
+    s16 (*tpos)[2];
     s32* pid;
     s16 (*pos)[2];
-    s32 i;
-    s32 bcd;
     s32 pct;
     Objeto* o;
-    s16 (*tpos)[2];
     EstadoPrincipal* e;
-
+    u8 campo_corto;
+    s32 i;
+    s32 id_sin_estado;
+    u8 campo_alto;
+    u8 campo_bajo;
     func_80038C2C(0, D_80010043, 1);
     func_80038884(0xE, 1);
-
-    e = ESTADO_PRINCIPAL;
-    bcd = ((DigitosSinConversion)func_80037D3C)((e->r[0xFC] << 8) | e->r[0x07]);
+    bcd = ((DigitosSinConversion)func_80037D3C)((ESTADO_PRINCIPAL->r[0xFC] << 8) | ESTADO_PRINCIPAL->r[0x07]);
     ids[0] = D_8005E830[3];
     ids[1] = D_8005E81C[(bcd & 0xF00) >> 8];
     ids[2] = D_8005E81C[(bcd & 0xF0) >> 4];
-    ids[3] = D_8005E81C[bcd & 0xF];
+    /* El contador de las vueltas toma prestado el valor BCD para el ultimo digito: con `bcd`
+     * directo la puntuacion sube de 2297 a 2845. */
+    i = bcd;
     pos = D_8005E928;
+    ids[3] = D_8005E81C[i & 0xF];
     for (i = 0; i < 4; i++) {
         ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[3 + i], ids[i], pos[i], 1);
     }
-
     i = 0;
     bcd = ((DigitosSinConversion)func_80037D3C)(D_80010045);
     ids[0] = D_8005E830[7];
@@ -448,10 +453,15 @@ void func_80037FE8(void* lista)
     for (; i < 4; i++) {
         ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[7 + i], ids[i], pos[i], 1);
     }
-
-    i = 0;
     e = ESTADO_PRINCIPAL;
-    pct = ((e->r[0xFC] << 8) + e->r[0x07] + e->r[0x05]) * 100 / 457;
+    /* Los dos bytes del contador se leen en locales de 8 bits y se copian a otra de 32 bits y a
+     * otra de 8: con las lecturas dentro de la expresion la puntuacion sube de 2297 a 2422. */
+    campo_alto = e->r[0xFC];
+    ancho_alto = (u8)campo_alto;
+    campo_bajo = e->r[0x05];
+    campo_corto = campo_bajo;
+    i = 0;
+    pct = ((ancho_alto << 8) + e->r[0x07] + campo_corto) * 100 / 457;
     bcd = ((DigitosSinConversion)func_80037D3C)(pct);
     ids[0] = D_8005E81C[(bcd & 0xF00) >> 8];
     ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
@@ -470,7 +480,6 @@ void func_80037FE8(void* lista)
         }
         ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[20 + i], ids[i], pos[i], 1);
     }
-
     if (D_800100F7 != 0) {
         e = ESTADO_PRINCIPAL;
         bcd = ((DigitosSinConversion)func_80037D3C)(e->r[e->r[0xB6]]);
@@ -489,31 +498,30 @@ void func_80037FE8(void* lista)
             o->u78.ayudas->m94.t[2] = 0x5DC;
         }
     }
-
     if (D_800100F9 != 0) {
         e = ESTADO_PRINCIPAL;
         bcd = ((DigitosSinConversion)func_80037D3C)(e->r[e->r[0xB8]]);
         ids[0] = D_8005E830[7];
+        i = 0;
         ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
         ids[2] = D_8005E81C[bcd & 0xF];
-        i = 0;
         bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0xB9]);
         ids[3] = D_8005E830[0x19];
         ids[4] = D_8005E81C[(bcd & 0xF0) >> 4];
-        ids[5] = D_8005E81C[bcd & 0xF];
         pos = D_8005E8F8;
+        ids[5] = D_8005E81C[bcd & 0xF];
         tpos = D_8005E8F8 - 6;
         for (; i < 6; i++) {
             o = D_8006AB70[35 + i];
             if (D_800100F7 != 0) {
                 ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], pos[i], 1);
             } else {
-                ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], tpos[i], 1);
+                id_sin_estado = ids[i];
+                ((ReiniciarSinConversion)func_80037DB4)(o, id_sin_estado, tpos[i], 1);
             }
             o->u78.ayudas->m94.t[2] = 0x5DC;
         }
     }
-
     if (D_800100FA != 0) {
         e = ESTADO_PRINCIPAL;
         bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0x04]);
