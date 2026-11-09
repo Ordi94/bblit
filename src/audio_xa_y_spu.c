@@ -667,7 +667,9 @@ u32 func_8003EDA8(Objeto* o, Efecto* e)
  * Pendiente: puntuacion 55 con la configuracion versionada (g = 8 del archivo). Coinciden los dos punteros de la
  * tabla, la entrada de los bucles y el orden de los incrementos; difiere solo el reparto de v0/v1 en el calculo
  * del volumen replicado en los dos bytes: el original deja el nivel en v0 y el desplazado en v1, y aqui salen al
- * reves (el nivel en v1 y el desplazado en v0), con la misma secuencia de instrucciones.
+ * reves (el nivel en v1 y el desplazado en v0), con la misma secuencia de instrucciones. En el original el nivel
+ * es local de cada rama; reproducirlo exige una variable por rama y la suma duplicada en cada una, con lo que el
+ * residuo baja a 0; esa forma duplica una sentencia y no se aplica.
  */
 void func_8003F06C(void* objeto, s16 id, u16 modo, u8 clave)
 {
