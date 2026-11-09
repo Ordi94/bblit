@@ -47,6 +47,8 @@ COINCIDENTES = (
     "func_8003B354",
     "func_80038884",
     "func_8003F06C",
+    "func_80036164",
+    "func_8001E1A4",
 )
 NO_COINCIDENTES = ("func_80032B2C", "func_800363D4")
 INICIO_JUEGO = 0x80014AC4
@@ -280,7 +282,13 @@ def test_ciclo_real_con_funciones_en_c_reproduce_el_ejecutable_y_discrimina(
     assert cli.main(["verify"], variables, raiz) == 0
     assert capsys.readouterr().out.startswith("OK ")
 
-    for funcion in ("AllocListNode", "func_8001CE64", "func_80030D60"):
+    for funcion in (
+        "AllocListNode",
+        "func_8001CE64",
+        "func_80030D60",
+        "func_80036164",
+        "func_8001E1A4",
+    ):
         assert cli.main(["diff", funcion], variables, raiz) == 0
         assert "puntuacion 0" in capsys.readouterr().out
     assert cli.main(["diff", "func_80032B2C"], variables, raiz) == 1
