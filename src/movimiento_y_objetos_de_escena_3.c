@@ -55,7 +55,7 @@ typedef struct SpritePlano {
  * de indices del conjunto.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 465 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; el original conserva el registro del cuadro en t0 hasta leer las banderas, que es lo ultimo que hace (y deja el indice en v0 y las coordenadas en a3, a1, a0, a2), mientras que el C debe leer paleta y banderas antes de los almacenes de coordenadas: con las banderas al final el compilador copia el desplazamiento del indice dentro de cada rama (1340 y 715) y el registro del cuadro cae en v0. */
+/* Pendiente: puntuacion 400 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; el original conserva el registro del cuadro en t0 hasta leer las banderas, que es lo ultimo que hace (y deja el indice en v0 y las coordenadas en a3, a1, a0, a2), mientras que el C debe leer paleta y banderas antes de los almacenes de coordenadas: con las banderas al final el compilador copia el desplazamiento del indice dentro de cada rama (1340 y 715) y el registro del cuadro cae en v0, con la base de los fotogramas en v1 en vez de v0. */
 void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     Fotograma* r;
@@ -97,9 +97,11 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     p->tpage = pagina;
     /* La paleta y las banderas se leen antes de los almacenes de coordenadas: asi el desplazamiento del indice queda tras la reunion de las dos ramas, como en el original. */
     clut = r->h0A;
+    /* Las banderas se leen sobre la variable del indice, ya muerta: el original las deja en el registro del indice. */
+    indice = r->flags;
     p->v0 = v;
+    espejo = indice & 8;
     p->v1 = v;
-    espejo = r->flags & 8;
     v_fin = alto_menos_uno + v;
     p->u0 = u;
     p->u1 = u_fin;
