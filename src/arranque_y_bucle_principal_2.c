@@ -248,12 +248,10 @@ void func_800163E4(void)
 s32 main(void)
 {
     EstadoPrincipal* e0;
-    EstadoPrincipal* e;
     s16 contador;
     s16 ocioso;
     s16 demo;
     s16 pausa;
-    u8* regs;
 
     func_80044D44();
     func_80044E58();
@@ -266,11 +264,9 @@ s32 main(void)
     func_8004443C(e0->nivel);
     while (CargarContenedor((s16)ESTADO_PRINCIPAL->nivel, (void*)0x80077000) != 0) {
     }
-    e = ESTADO_PRINCIPAL;
     pausa = 0;
     ocioso = 0;
     demo = 0x4A;
-    regs = D_8006AA70;
     func_80019364((void*)D_800694FC);
     DrawSyncCallback(0);
     VSyncCallback(func_80040AF0);
@@ -296,26 +292,26 @@ s32 main(void)
         D_8006CF68[D_8006967C] = VSync(1);
         func_80016218();
         D_8006CF68[D_8006967C] = VSync(1) - D_8006CF68[D_8006967C];
-        if (D_80069662 == 0 && regs[3] != 0) {
+        if (D_80069662 == 0 && D_8006AA70[3] != 0) {
             SondearTarjeta(1);
         } else {
             func_80015E94();
         }
         if (pausa != 0) {
-            if (!(e->mando.botones_a & 0x800)) {
+            if (!(ESTADO_PRINCIPAL->mando.botones_a & 0x800)) {
                 pausa = 0;
             }
         } else if (D_8006AA70[0] == 0) {
-            if (regs[0xC] == 0 && D_80069662 == 0) {
-                if ((e->mando.botones_a & 0x800) && D_8006966A == 0 && (!(D_8006D9A8[0] & 0x300) || (D_8006D9A8[0] & 1)) && e->r[BANCO_PAUSA] == 0) {
+            if (D_8006AA70[0xC] == 0 && D_80069662 == 0) {
+                if ((ESTADO_PRINCIPAL->mando.botones_a & 0x800) && D_8006966A == 0 && (!(D_8006D9A8[0] & 0x300) || (D_8006D9A8[0] & 1)) && ESTADO_PRINCIPAL->r[BANCO_PAUSA] == 0) {
                     contador = 0;
                     func_80037FB8(D_80069508);
                     func_80037FE8(D_80069508);
-                    regs[0xC] = 1;
-                    regs[0xD] = 0;
-                    regs[0xE] = 1;
-                    regs[0xF] = 0;
-                    regs[0x10] = 1;
+                    D_8006AA70[0xC] = 1;
+                    D_8006AA70[0xD] = 0;
+                    D_8006AA70[0xE] = 1;
+                    D_8006AA70[0xF] = 0;
+                    D_8006AA70[0x10] = 1;
                     D_8006965A = 0;
                     D_80069659 = 0;
                     func_80040240();
@@ -336,17 +332,17 @@ s32 main(void)
                     func_80040240();
                     func_8003E88C();
                     func_8003FC88();
-                    if (e->mando.botones != 0) {
+                    if (ESTADO_PRINCIPAL->mando.botones != 0) {
                         for (;;) {
                             func_8004048C();
-                            if (e->mando.botones == 0) {
+                            if (ESTADO_PRINCIPAL->mando.botones == 0) {
                                 break;
                             }
                         }
                     }
                 }
-            } else if (regs[0xC] == 2) {
-                regs[0xC] = 0;
+            } else if (D_8006AA70[0xC] == 2) {
+                D_8006AA70[0xC] = 0;
                 D_8006963C = 0;
                 D_80069595 = 0;
                 D_800695A0 = 0;
@@ -357,16 +353,16 @@ s32 main(void)
                 func_80037FB8(D_80069508);
             }
         }
-        if (e->nivel == 0) {
+        if (ESTADO_PRINCIPAL->nivel == 0) {
             ocioso++;
-            if (e->r[0x8D] & 2) {
+            if (ESTADO_PRINCIPAL->r[0x8D] & 2) {
                 ocioso = 0;
             }
             if (ocioso >= 0x385) {
                 ocioso = 0;
                 D_80069662 = 1;
-                e->nivel = demo;
-                e->r[BANCO_DEMO] = 1;
+                ESTADO_PRINCIPAL->nivel = demo;
+                ESTADO_PRINCIPAL->r[BANCO_DEMO] = 1;
             }
         }
         if (D_80069662 != 0) {
@@ -377,43 +373,43 @@ s32 main(void)
                 D_800694E1 = 0;
                 D_800694E8 = 0;
                 func_80037FB8(D_80069508);
-            } else if (D_80069662 >= 0x16 && e->nivel >= 0) {
+            } else if (D_80069662 >= 0x16 && ESTADO_PRINCIPAL->nivel >= 0) {
                 func_8003E068();
-                if (e->nivel == 0) {
+                if (ESTADO_PRINCIPAL->nivel == 0) {
                     ocioso = 0;
                     func_80015F38();
                 }
                 D_8006965A = 0;
                 D_80069659 = 0;
                 func_80040240();
-                D_800694F0 = e->nivel;
-                func_8004443C(e->nivel);
-                func_800445E8(e->nivel);
+                D_800694F0 = ESTADO_PRINCIPAL->nivel;
+                func_8004443C(ESTADO_PRINCIPAL->nivel);
+                func_800445E8(ESTADO_PRINCIPAL->nivel);
                 D_8006965A = 0;
                 D_80069659 = 0;
                 func_80040240();
-                if (e->r[BANCO_DEMO] == 0) {
+                if (ESTADO_PRINCIPAL->r[BANCO_DEMO] == 0) {
                     srand((BugsRand() + VSync(1)) % 300);
                 } else {
                     func_80015F38();
                     if (demo == 0x4A) {
                         demo = 0x4B;
-                        e->r[0xB8] = 0x83;
-                        e->r[0xB6] = 0x5D;
+                        ESTADO_PRINCIPAL->r[0xB8] = 0x83;
+                        ESTADO_PRINCIPAL->r[0xB6] = 0x5D;
                     } else if (demo == 0x4B) {
                         demo = 0x4C;
-                        e->r[0xB8] = 0x85;
-                        e->r[0xB6] = 0x5F;
+                        ESTADO_PRINCIPAL->r[0xB8] = 0x85;
+                        ESTADO_PRINCIPAL->r[0xB6] = 0x5F;
                     } else if (demo == 0x4C) {
                         demo = 0x4D;
-                        e->r[0xB8] = 0x8C;
-                        e->r[0xB6] = 0x66;
+                        ESTADO_PRINCIPAL->r[0xB8] = 0x8C;
+                        ESTADO_PRINCIPAL->r[0xB6] = 0x66;
                     } else if (demo == 0x4D) {
                         demo = 0x4A;
-                        e->r[0xB8] = 0xEA;
-                        e->r[0xB6] = 0xEB;
+                        ESTADO_PRINCIPAL->r[0xB8] = 0xEA;
+                        ESTADO_PRINCIPAL->r[0xB6] = 0xEB;
                     }
-                    e->r[BANCO_DEMO] = 1;
+                    ESTADO_PRINCIPAL->r[BANCO_DEMO] = 1;
                     srand(1);
                 }
                 D_80069534 = 0;
@@ -429,17 +425,17 @@ s32 main(void)
             }
             D_80069662 += 1;
         }
-        if (e->r[BANCO_DEMO] != 0 && (e->mando.botones & 0x100)) {
-            e->mando.botones_a = *D_800695B0--;
-            e->mando.botones_e = *D_800695B0--;
-            e->mando.botones_c = *D_800695B0--;
-            e->mando.botones = *D_800695B0--;
+        if (ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0 && (ESTADO_PRINCIPAL->mando.botones & 0x100)) {
+            ESTADO_PRINCIPAL->mando.botones_a = *D_800695B0--;
+            ESTADO_PRINCIPAL->mando.botones_e = *D_800695B0--;
+            ESTADO_PRINCIPAL->mando.botones_c = *D_800695B0--;
+            ESTADO_PRINCIPAL->mando.botones = *D_800695B0--;
             if (D_80069662 == 0) {
                 D_80069662 = 1;
-                e->nivel = 0;
+                ESTADO_PRINCIPAL->nivel = 0;
             }
         }
-        if (regs[0xC] == 0) {
+        if (D_8006AA70[0xC] == 0) {
             func_800163E4();
         }
         D_8006967C += 1;
