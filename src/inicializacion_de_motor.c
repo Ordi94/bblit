@@ -797,7 +797,7 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Mismo flujo, mismas escrituras y mismo orden; el estado del lector se lee como D_8006AA70[0xC] (arreglo) para que el lui de la base pueda separarse de la carga, como en el original. Solo difiere la primera comparacion: el original la hace sobre una copia de a2 en v0 (move v0,a2 ; beqz v0) y GCC compara a2 directamente, porque el CSE sustituye cualquier copia local del parametro por el primer pseudo de su clase (copia previa, bandera entera y copia dentro de un do/while dan 115; a diferencia de un retorno estrechado a 16 bits, aqui no se crea un temporal canonico). */
+/* Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Mismo flujo, mismas escrituras y mismo orden; el estado del lector se lee como D_8006AA70[0xC] (arreglo) para que el lui de la base pueda separarse de la carga, como en el original. Solo difiere la primera comparacion: el original la hace sobre una copia de a2 en v0 (move v0,a2 ; beqz v0) y GCC compara a2 directamente, porque el CSE sustituye cualquier copia local del parametro por el primer pseudo de su clase (copia previa, bandera entera y copia dentro de un do/while dan 115; a diferencia de un retorno estrechado a 16 bits, aqui no se crea un temporal canonico). El parametro entra con una copia propia (pseudo 82) y la prueba la lee directamente; una copia local no sobrevive al CSE, y un par `a2--; a2++` sobre el parametro tampoco: el CSE y el combinador lo pliegan y la prueba sigue sobre a2. */
 u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
 {
     BloqueTrabajo* bloque;
