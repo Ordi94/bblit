@@ -13,34 +13,39 @@ typedef struct NodoClave {
 
 extern Objeto* D_800694B4;
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 395 con la configuracion versionada (g = 8 del archivo). GCC deriva un segundo puntero inducido (p + 4) para los dos accesos de campo y devuelve el puntero base; el original usa un solo puntero con desplazamientos 0x0C y 0x04 y conserva una copia de la cuenta (move a2,v0) para la prueba del bucle. Compartir la variable del indice con la que recibe la cuenta baja de 415; el recorrido por indice sobre el arreglo, la reordenacion de los incrementos y el acceso por desplazamiento en bytes no eliminan el puntero derivado. */
+/*
+ * Busca en el arreglo de entradas D_800695D4 la primera cuyo identificador coincide y no esta libre; devuelve
+ * NULL si no hay ninguna.
+ *
+ * El puntero es la direccion del elemento del arreglo y no un puntero que avance: asi el compilador lo trata como
+ * una variable de induccion derivada del indice, y los dos accesos de campo (+0x0C y +0x04) y el valor devuelto
+ * comparten un solo registro. Con un puntero que se incrementa por su cuenta, el optimizador de bucles deriva un
+ * segundo puntero (p + 4) para los accesos y conserva el primero solo para el retorno. La cuenta se copia a
+ * `limite` antes del bucle porque la prueba del final lee la copia y no el registro que se probo al entrar.
+ */
 EntradaId* func_80036164(s32 id)
 {
     s32 indice;
     s32 n;
+    s32 limite;
     EntradaId* p;
 
-    indice = D_800694E6;
-    n = indice;
+    n = D_800694E6;
     indice = 0;
     if (n > 0) {
-        p = D_800695D4;
+        limite = n;
         do {
+            p = &D_800695D4[indice];
             if (p->id == id) {
                 if ((p->cab.libre & 1) == 0) {
                     return p;
                 }
             }
             indice++;
-            p++;
-        } while (indice < n);
+        } while (indice < limite);
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_80036164);
-#endif
 
 /* Busca en una lista el nodo cuya clave coincide; devuelve NULL si no existe. */
 NodoClave* func_800361CC(NodoClave* n, s32 clave)
