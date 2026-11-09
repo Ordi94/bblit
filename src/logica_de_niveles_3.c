@@ -2403,7 +2403,7 @@ siguiente:
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 365 con la configuracion versionada (g = 8 del archivo). Prologo y salida de la busqueda por id: el original deriva la matriz del scratchpad de la base despues de calcular la parte alta de la camara, y sale de la busqueda con un salto directo al caso sin origen en lugar de volver a probar el cursor. */
+/* Pendiente: puntuacion 365 con la configuracion versionada (g = 8 del archivo). Prologo y salida de la busqueda por id: el original deriva la matriz del scratchpad de la base despues de calcular la parte alta de la camara, y sale de la busqueda con un salto directo al caso sin origen en lugar de volver a probar el cursor. La constante de la matriz (lui compartido con la base, ori) la emite el original despues del par que el optimizador de bucles iza para D_8006D928, y aqui sale antes: es la posicion de una constante fuera del bucle frente a una izada, y las colocaciones dentro del bucle la dejan en el bucle o antes del par. */
 /*
  * Manejador del director de camara (clase 36): por cada disparador cuya condicion y distancia se
  * cumplen reescribe el destino de vista y de mira de la camara global, la distancia de acercamiento
