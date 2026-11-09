@@ -182,11 +182,20 @@ NodoLista* AppendListNode(NodoLista* cab, NodoLista* nodo)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 205 con la configuracion versionada (g = 8 del archivo). El original
- * mantiene el nodo en $a0 y deriva el puntero inducido en $a1; GCC los intercambia. Las 0x2E
- * escrituras de sw $zero,0($a2) del original son un bucle real de 0x2E vueltas (contador en $v1,
- * sltiu/bnez, la escritura en el hueco de retardo), no una secuencia desenrollada; escritas como
- * 0x2E sentencias explicitas el resultado empeora (895), porque GCC no las pliega a ese bucle.
+ * Pendiente: puntuacion 110 con la configuracion versionada (g = 8 del archivo). Coincide el reparto
+ * del nodo en $a0 y del puntero inducido en $a1; difiere solo la base de la ultima escritura (el
+ * original escribe sw $zero,0x48($a0) tras copiar la direccion de la subestructura a $a0, y GCC
+ * la plega a 0x50($a1) sobre el puntero inducido). Las 0x2E escrituras de sw $zero,0($a2) del
+ * original son un bucle real de 0x2E vueltas (contador en $v1, sltiu/bnez, la escritura en el
+ * hueco de retardo), no una secuencia desenrollada; escritas como 0x2E sentencias explicitas el
+ * resultado empeora (895), porque GCC no las pliega a ese bucle.
+ *
+ * Los dos pares `e--; e++` antes del bucle no generan codigo: suman cuatro referencias cada uno al
+ * puntero del nodo, de 12 a 20 usos ponderados sobre una vida de 23 (prioridad 3,478), por encima
+ * del puntero inducido (23 usos sobre 27, prioridad 3,407), de modo que global-alloc asigna primero
+ * el nodo ($a0) y despues el inducido ($a1), como en el original; con un solo par o dentro del
+ * bucle el puntero inducido sube con el nodo y el reparto no cambia. La forma del fuente original
+ * que producia este reparto se desconoce.
  */
 Ayuda* func_800363D4(void)
 {
@@ -198,6 +207,10 @@ Ayuda* func_800363D4(void)
     s32 n;
 
     e = D_8006964C;
+    e--;
+    e++;
+    e--;
+    e++;
     n = D_80069660;
     for (i = 0; i < n; i++, e++) {
         if (e->cab.libre & 1) {
