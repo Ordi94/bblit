@@ -122,29 +122,34 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E528);
  * bits) y fija la anchura de la textura y el modo del sprite.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 935 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; difieren el momento de dos lecturas y el reparto de registros: el original copia el objeto a a3 al entrar, lee la tabla de fotogramas despues de la reunion de las dos ramas del cuadro y el puntero al sprite (+0x78 del objeto) tras los campos del cuadro (la altura en a3 y la anchura del bloque despues del primer almacen), mientras que GCC lee la tabla antes de la rama y el puntero justo despues del cuadro, y usa t3, t1 y a3 en otro orden. */
+/* Pendiente: puntuacion 905 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 55 insertadas o borradas). Difiere en: momento de dos lecturas y reparto de registros. La lectura del campo 0x0E del fotograma en una local tres sentencias antes de su almacen, el cuadro por indice, la copia del modo y la copia del fotograma para la paleta bajan de 935 a 905. Mismos accesos y almacenes; difieren el momento de dos lecturas y el reparto de registros: el original copia el objeto a a3 al entrar, lee la tabla de fotogramas despues de la reunion de las dos ramas del cuadro y el puntero al sprite (+0x78 del objeto) tras los campos del cuadro (la altura en a3 y la anchura del bloque despues del primer almacen), mientras que GCC lee la tabla antes de la rama y el puntero justo despues del cuadro, y usa t3, t1 y a3 en otro orden. */
 void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     SpriteEscalado* p;
     s32 ancho;
     s32 desplazamiento_color;
     s32 indice;
-    s32 paleta;
     u16 ancho_cuadro;
-    u16 ancho_bloque;
     Fotograma* fotogramas;
-    s32 v_pagina;
-
+    s16 v_pagina;
+    /* Copias que cambian el recuento de usos y con ello el orden de asignacion de registros: el modo se
+     * copia al entrar, el campo 0x0E del fotograma se lee tres sentencias antes de su almacen y la paleta
+     * se lee por una copia del puntero al fotograma; quitar cualquiera sube la puntuacion (905 a 920 al
+     * quitar la copia del modo). */
+    u32 modo_copia;
+    u16 campo_0e;
+    Fotograma* fotograma_paleta;
     /* La tabla se lee antes de elegir el cuadro: sin esa lectura anticipada el compilador la coloca
      * tras la reunion de las ramas y el reparto de registros se aleja del original. La copia local
      * de la tabla es deliberada: cambia el recuento de usos y con ello el orden en que se asignan
      * los registros del bloque de trabajo. */
     fotogramas = c->fotogramas;
+    modo_copia = modo;
     /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
-    if (modo & 1) {
+    if (modo_copia & 1) {
         indice = (u16)c->cuadro;
     } else {
-        indice = c->duraciones[(u16)c->cuadro].indice;
+        indice = (c->duraciones + (u16)c->cuadro)->indice;
     }
     /* El mismo puntero recorre la tabla y apunta luego al cuadro elegido; con una variable por paso
      * el reparto de registros empeora. */
@@ -152,18 +157,19 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     ancho = fotogramas->w0C;
     v_pagina = fotogramas->v + (0x100 & (fotogramas->pagina << 4));
     p = (SpriteEscalado*)(0xC + (u8*)o->u78.p);
+    fotograma_paleta = fotogramas;
     desplazamiento_color = 2 - ((fotogramas->pagina >> 7) & 3);
     ancho_cuadro = ancho;
     ancho = ancho_cuadro >> desplazamiento_color;
     p->s00 = (fotogramas->u >> desplazamiento_color) + ((fotogramas->pagina & 0xF) << 6);
-    ancho_bloque = c->w2E;
+    campo_0e = fotogramas->w0E;
     p->s02 = v_pagina;
     p->w08 = c->w2C;
-    p->w12 = fotogramas->w0E;
+    ancho_cuadro = c->w2E;
     p->s10 = ancho;
-    p->w0A = ancho_bloque;
-    paleta = fotogramas->h0A;
-    p->s04 = (0x3F & paleta) * 0x10;
+    p->w12 = campo_0e;
+    p->w0A = ancho_cuadro;
+    p->s04 = (0x3F & fotograma_paleta->h0A) * 0x10;
     p->s06 = fotogramas->h0A >> 6;
     p->w0C = c->w30;
     p->w0E = c->w32;
@@ -172,7 +178,7 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
         p->s16 = 1;
         return;
     }
-    if (desplazamiento_color == 1) {
+    if (1 == desplazamiento_color) {
         p->s14 = 0x100;
         p->s16 = desplazamiento_color;
         return;
