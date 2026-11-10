@@ -400,7 +400,10 @@ void func_80037FB8(NodoLista* n)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2297 con la configuracion versionada (g = 8 del archivo). La estructura
+ * Pendiente: puntuacion 2287 con la configuracion versionada (g = 8 del archivo; ejes 16 de
+ * operando, 0 reordenadas, 174 insertadas o borradas). Difiere en: reparto de registros y orden de
+ * cargas de las tablas. Una sola local de 32 bits para el byte alto y el byte extra del contador
+ * baja de 2297 a 2287. La estructura
  * de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada
  * grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la
  * llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de
@@ -426,8 +429,7 @@ void func_80037FE8(void* lista)
     EstadoPrincipal* e;
     s32 byte_alto_ampliado;
     u8 byte_alto_contador;
-    u8 byte_extra_contador;
-    u8 byte_extra_copia;
+    s32 byte_contador;
     s32 id_plantilla_copia;
 
     func_80038C2C(0, D_80010043, 1);
@@ -458,14 +460,15 @@ void func_80037FE8(void* lista)
     }
 
     e = ESTADO_PRINCIPAL;
-    /* Los dos bytes del contador se leen en locales de 8 bits y se copian a otra de 32 bits y a
-     * otra de 8: con las lecturas dentro de la expresion la puntuacion sube de 2297 a 2422. */
+    /* Los dos bytes del contador se leen en una local de 8 bits y se copian a una sola local de 32
+     * bits que se reutiliza: con las lecturas dentro de la expresion la puntuacion sube a 2422 y con
+     * una local de 8 bits para el byte extra a 2297. */
     byte_alto_contador = e->r[0xFC];
-    byte_alto_ampliado = (u8)byte_alto_contador;
-    byte_extra_contador = e->r[0x05];
-    byte_extra_copia = byte_extra_contador;
+    byte_contador = (u8)byte_alto_contador;
+    byte_alto_ampliado = (u8)byte_contador;
+    byte_contador = (u8)e->r[0x05];
     i = 0;
-    pct = ((byte_alto_ampliado << 8) + e->r[0x07] + byte_extra_copia) * 100 / 457;
+    pct = ((byte_alto_ampliado << 8) + e->r[0x07] + byte_contador) * 100 / 457;
     bcd = ((DigitosSinConversion)func_80037D3C)(pct);
     ids[0] = D_8005E81C[(bcd & 0xF00) >> 8];
     ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
