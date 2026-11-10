@@ -874,12 +874,14 @@ void func_80038E84(s32 idx, s32 paso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1950 con la configuracion versionada (g = 8 del archivo). Coinciden la
+ * Pendiente: puntuacion 1745 con la configuracion versionada (g = 8 del archivo; ejes 66 de
+ * operando, 0 reordenadas, 207 insertadas o borradas). Coinciden la
  * estructura, los desplazamientos y los simbolos; difiere en el reparto de registros (la base de
  * 0x80010000, el indice y el valor de las barras 3 y 7 caen en registros distintos de los del
  * original, que usa a1, v0 y a0 segun el bloque), en el orden de dos copias y tres huecos de
  * retardo de la barra 0 y de las barras 3 y 7, y en una recarga de la parte alta de D_8006AA7C
- * que el compilador anade en los tres ultimos temporizadores.
+ * que el compilador anade en los tres ultimos temporizadores. Leer el estado principal en una
+ * copia propia de la rama de la barra 0 (en lugar de reutilizar la local del cuerpo) baja de 1950 a 1745.
  */
 /*
  * Una vez por cuadro de juego, con el estado principal distinto de 3, sin pantalla pedida
@@ -916,11 +918,15 @@ void func_80039094(void)
     u16 cuadros;
     EstadoPrincipal* e;
     EstadoPrincipal* f;
+    EstadoPrincipal* e_rama;
 
     e = ESTADO_PRINCIPAL;
     if (e->nivel != 3 && D_80069662 == 0 && D_8006AA7C == 0) {
         if (e->r[0x03] != D_80069525) {
             mostrado = D_80069525;
+            /* Copia propia del estado para las comparaciones de esta rama: con la local del cuerpo
+             * la puntuacion sube de 1745 a 1950. */
+            e_rama = e;
             if (e->r[0x03] >= 0x64) {
                 e->r[0x03] = 0x63;
             }
@@ -931,9 +937,9 @@ void func_80039094(void)
                 nuevo = valor;
             } else {
                 modo = 0;
-                if (mostrado == e->r[0x03]) {
+                if (mostrado == e_rama->r[0x03]) {
                     nuevo = D_80069525;
-                } else if (mostrado < e->r[0x03]) {
+                } else if (mostrado < e_rama->r[0x03]) {
                     nuevo = D_80069525 + 1;
                 } else {
                     nuevo = D_80069525 - 1;
