@@ -923,13 +923,10 @@ void func_80020210(Objeto* o, u16 paso, u16 amplitud)
  * arco) y la fase crece `paso` cada cuadro hasta 0xC00. Al terminar deja la altura a cero, apaga
  * las banderas de movimiento y marca 0x200 si el objeto no estaba en suelo.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 605 con la configuracion versionada (g = 8 del archivo). La condicion de continuar (bit 4 apagado o bit 0x10 activo) y la reunion de las dos ramas de la altura no se reproducen: el compilador adelanta la carga de las banderas y repite el almacen de h10A en cada rama. */
 void func_80020240(Objeto* o)
 {
-    s32 v;
     s32 t;
-    s32 u;
+    s32 bit4;
     s32 f;
 
     if (o->h108 < 0x800) {
@@ -938,14 +935,18 @@ void func_80020240(Objeto* o)
         o->flags14 = o->flags14 | 8;
     }
     t = o->h108;
-    u = o->flags14 & 4;
-    if (t < 0xC01 && (u == 0 || (o->flags14 & 0x10))) {
+    /* La bandera 4 se lee solo si la fase no ha pasado de 0xC00 y la altura se escribe directa en cada
+     * rama: con la lectura incondicional o con la altura en una variable intermedia el compilador
+     * adelanta la carga de las banderas y reparte los registros de otro modo. */
+    if (t < 0xC01) {
+        bit4 = o->flags14 & 4;
+    }
+    if (t < 0xC01 && (bit4 == 0 || (o->flags14 & 0x10))) {
         if (o->flags14 & 8) {
-            v = ((-o->h104 * rsin(t)) >> 12) * 2;
+            o->h10A = ((-o->h104 * rsin(t)) >> 12) * 2;
         } else {
-            v = (-o->h104 * rsin(t)) >> 12;
+            o->h10A = (-o->h104 * rsin(t)) >> 12;
         }
-        o->h10A = v;
         o->h108 = o->h108 + o->h106;
         return;
     }
@@ -956,9 +957,6 @@ void func_80020240(Objeto* o)
         o->flags14 = (f & ~9) | 0x200;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020240);
-#endif
 
 /*
  * Busca el objeto solido que sirve de apoyo bajo un punto. Recorre la lista de solidos (D_80069630)
