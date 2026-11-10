@@ -24,7 +24,7 @@ s16 D_800693D0;
 extern void func_80039094(void);
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2515 con la configuracion versionada (g = 8 del archivo). Reparto de registros y orden de instrucciones: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1. */
+/* Pendiente: puntuacion 2510 con la configuracion versionada (g = 8 del archivo; ejes 106 de operando, 3 reordenadas, 134 insertadas o borradas). Reparto de registros y orden de instrucciones: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1; en el modo de movil con limites el original deja el limite alto en v0 y el bajo en v1 y escribe los dos antes de comprobar la bandera 0x40, mientras aqui caen en a0 y a2. */
 /*
  * Manejador de los objetos moviles por mascara (clases 12, 13, 18, 19 y 22 a 29): una sola rutina
  * atiende doce modos, uno por bit de la mascara (balancin, giro, bajar o subir con el jugador,
@@ -87,8 +87,9 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
             paso = (s16)o->w17C;
             if (paso < 0) {
                 num = o->param.trans.vy;
-                sentido = num;
-                sentido += paso;
+                /* Suma con el paso como primer operando: GCC la canoniza igual, pero cambia el orden de
+                 * creacion de los pseudos y la puntuacion baja de 2515 a 2510. */
+                sentido = paso + num;
             } else {
                 num = o->param.trans.vy;
                 sentido = num;
