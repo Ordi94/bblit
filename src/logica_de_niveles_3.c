@@ -376,7 +376,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 #define GIRO_Y(p) (((ParametrosObjeto*)(p))->giro.u.y)
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2655 con la configuracion versionada (g = 8 del archivo). Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0 en lugar de t7), el ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi 0xffff aqui) y el orden de un sw adicional a 0x14(s3). */
+/* Pendiente: puntuacion 2625 con la configuracion versionada (g = 8 del archivo; ejes 494 de operando, 6 reordenadas, 321 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una local antes de la histeresis baja de 2655 a 2625. Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0 en lugar de t7), el ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi 0xffff aqui) y el orden de un sw adicional a 0x14(s3). */
 /*
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
@@ -417,6 +417,7 @@ void func_80026FEC(Objeto* o)
     s32 azar;
     u32 f14;
     RegistroAnim* registro_actual;
+    long altura_objeto;
 
     t = (TrabajoPersonaje*)0x1F800000;
     area = (void*)0x1F800128;
@@ -797,7 +798,9 @@ flotador_de_ave:
                 t->w114 = suelo - 0x190;
             }
             /* Histeresis: el sentido solo cambia al salir de la banda [w118, w114]. */
-            if (t->w114 < o->param.trans.vy) {
+            /* La altura se lee una vez en una local de 32 bits para la comparacion de la banda superior. */
+            altura_objeto = o->param.trans.vy;
+            if (t->w114 < altura_objeto) {
                 o->u18C.estado.h194 = 0;
             } else if (o->param.trans.vy < t->w118) {
                 o->u18C.estado.h194 = 1;
