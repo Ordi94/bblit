@@ -462,7 +462,9 @@ void func_80037FE8(void* lista)
     e = ESTADO_PRINCIPAL;
     /* Los dos bytes del contador se leen en una local de 8 bits y se copian a una sola local de 32
      * bits que se reutiliza: con las lecturas dentro de la expresion la puntuacion sube a 2422 y con
-     * una local de 8 bits para el byte extra a 2297. */
+     * una local de 8 bits para el byte extra a 2297. `byte_contador` guarda primero el byte alto y
+     * despues el byte extra: comparten variable porque una sola local de 32 bits para los dos
+     * bytes baja la puntuacion de 2297 a 2287. */
     byte_alto_contador = e->r[0xFC];
     byte_contador = (u8)byte_alto_contador;
     byte_alto_ampliado = (u8)byte_contador;

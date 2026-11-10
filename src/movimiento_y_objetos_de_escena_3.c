@@ -130,6 +130,7 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     s32 desplazamiento_color;
     s32 indice;
     u16 ancho_cuadro;
+    u16 ancho_bloque;
     Fotograma* fotogramas;
     s16 v_pagina;
     /* Copias que cambian el recuento de usos y con ello el orden de asignacion de registros: el modo se
@@ -139,6 +140,7 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     u32 modo_copia;
     u16 campo_0e;
     Fotograma* fotograma_paleta;
+
     /* La tabla se lee antes de elegir el cuadro: sin esa lectura anticipada el compilador la coloca
      * tras la reunion de las ramas y el reparto de registros se aleja del original. La copia local
      * de la tabla es deliberada: cambia el recuento de usos y con ello el orden en que se asignan
@@ -165,10 +167,10 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     campo_0e = fotogramas->w0E;
     p->s02 = v_pagina;
     p->w08 = c->w2C;
-    ancho_cuadro = c->w2E;
+    ancho_bloque = c->w2E;
     p->s10 = ancho;
     p->w12 = campo_0e;
-    p->w0A = ancho_cuadro;
+    p->w0A = ancho_bloque;
     p->s04 = (0x3F & fotograma_paleta->h0A) * 0x10;
     p->s06 = fotogramas->h0A >> 6;
     p->w0C = c->w30;
@@ -178,7 +180,7 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
         p->s16 = 1;
         return;
     }
-    if (1 == desplazamiento_color) {
+    if (desplazamiento_color == 1) {
         p->s14 = 0x100;
         p->s16 = desplazamiento_color;
         return;
@@ -943,7 +945,9 @@ void func_80020240(Objeto* o)
     t = o->h108;
     /* La bandera 4 se lee solo si la fase no ha pasado de 0xC00 y la altura se escribe directa en cada
      * rama: con la lectura incondicional o con la altura en una variable intermedia el compilador
-     * adelanta la carga de las banderas y reparte los registros de otro modo. */
+     * adelanta la carga de las banderas y reparte los registros de otro modo. Toda lectura de bit4
+     * queda bajo la misma condicion que la asigna (t < 0xC01, por el cortocircuito del &&), asi que
+     * nunca se lee sin valor. */
     if (t < 0xC01) {
         bit4 = o->flags14 & 4;
     }

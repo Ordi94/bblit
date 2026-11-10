@@ -333,16 +333,16 @@ void func_8001D31C(s32 x, s32 y, s32 z)
     *(s32*)&D_80069698->param.trans.vy = y;
     *(s32*)&D_80069698->param.trans.vz = z;
     if (!(*(u32*)D_8006D9A8 & 0x304)) {
-        if ((s8)D_80010076 < 1) {
+        if ((s8)D_80010076 <= 0) {
             destino.vx = x_copia;
             destino.vy = y;
             destino.vz = z;
             func_8001CC68(&destino);
         }
     }
+    D_800693B8 = -1;
     D_80069608 |= 1;
     D_8006D928.flags80 &= 0xFFFB;
-    D_800693B8 = -1;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D31C);

@@ -417,7 +417,7 @@ void func_80026FEC(Objeto* o)
     s32 azar;
     u32 f14;
     RegistroAnim* registro_actual;
-    long altura_objeto;
+    s32 altura_objeto;
 
     t = (TrabajoPersonaje*)0x1F800000;
     area = (void*)0x1F800128;

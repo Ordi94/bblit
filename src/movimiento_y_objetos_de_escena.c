@@ -200,8 +200,15 @@ void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
  * las referencias del area de trabajo `w`, de 9 a 15 usos ponderados sobre una vida de 78 (prioridad
  * floor_log2(R) * R / L: de 3 * 9 / 78 = 0,346 a 3 * 15 / 78 = 0,577). La altura nueva tiene 10 usos
  * sobre 52 (0,577), de modo que con la envoltura el area queda empatada con ella y global-alloc la
- * asigna antes (el desempate por numero de pseudo es inferencia, sin verificar), y le da el primer
+ * asigna antes (desempate por numero de pseudo, ver abajo), y le da el primer
  * registro guardado, s0, como el original; sin la envoltura la altura nueva toma s0 y el area s4.
+ *
+ * El empate y su desempate vienen de la fuente de GCC 2.8.1 (global.c, lineas 594-616): el asignador
+ * global ordena los pseudos por prioridad floor_log2(refs) * refs / vida y, a igual prioridad,
+ * por numero de pseudo en orden de declaracion. 3 * 15 / 78 y 3 * 10 / 52 son el mismo racional
+ * (15/26), de modo que la decision depende solo de ese desempate. El reparto es fragil: un uso
+ * ponderado de mas o de menos en el area de trabajo o en la altura nueva rompe el empate e
+ * invierte los registros.
  * La forma del fuente original que producia este reparto se desconoce.
  */
 void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* area)
@@ -273,6 +280,7 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
                 goto calcular;
             }
 soltar:
+            /* La mascara en una sentencia propia reproduce el original: carga de las banderas en v0, mascara en v1 y un solo and. */
             v = ~9;
             v &= o->flags14;
 guardar:

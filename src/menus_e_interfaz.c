@@ -220,9 +220,12 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
     datos = puntos;
     func_80039CD0(D_80076188);
     actual = D_80076188;
-    /* El cursor se copia aqui y se relee en la comprobacion final con la misma variable. */
+    /* `cursor` guarda tres contenidos sucesivos: la copia de `actual`, el enlace de 24 bits de cada
+     * paquete y la relectura final del anillo. Compartir una sola variable es lo que produce el
+     * reparto de registros del original: con una local nueva para el enlace la puntuacion es 865,
+     * reutilizando `actual` 1240 y con el enlace en una sola expresion 605. */
     cursor = actual;
-    tabla = (u32*)D_8006967C[D_8006AEA0].org;
+    tabla = (u32*)D_8006AEA0[D_8006967C].org;
     /* El original lee la palabra de la tabla y le aplica la constante `0x05000000` como segundo
      * operando del `or` (`or v0, v0, a3`); esta forma del OR reproduce ese orden de operandos. */
     *(u32*)actual = *tabla | 0x05000000;
@@ -240,8 +243,8 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
     siguiente = actual + 0x18;
     D_80076188 = siguiente;
     /* La palabra 8 de los puntos se lee por su desplazamiento en bytes: como indice del arreglo el
-     * planificador sube la carga por encima del almacen del cursor (el original la deja despues) y la
-     * puntuacion es 260. */
+     * planificador sube la carga por encima del almacen del cursor (el original la deja despues); esa
+     * lectura como indice da una puntuacion de 260 frente a 0 con la lectura por desplazamiento. */
     if (*(u32*)((u8*)datos + 0x20) != 0) {
         tabla = (u32*)D_8006AEA0[D_8006967C].org;
         ((u32*)actual)[6] = *tabla | 0x05000000;
