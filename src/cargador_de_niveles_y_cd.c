@@ -199,10 +199,12 @@ void CopiarBytes(u8* origen, u8* destino, s16 n)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1115 con la configuracion versionada (g = 8 del archivo). Mismas
- * instrucciones y mismo flujo que el original; difiere el reparto de registros (el original deja el
- * puntero de la lista A en v1 y el de busqueda en a1, aqui salen a2 y v1) y un nop de retardo que el
- * original rellena.
+ * Pendiente: puntuacion 1070 con la configuracion versionada (g = 8 del archivo; ejes 19 de
+ * operando, 0 reordenadas, 92 insertadas o borradas). Difiere en: reparto de registros y un nop de
+ * retardo. Mismas instrucciones y mismo flujo que el original; el original deja el puntero de la
+ * lista A en v1 y el de busqueda en a1, aqui salen a2 y v1, y rellena un nop de retardo que aqui
+ * queda. El identificador en 32 bits y las copias locales del contenedor y del nodo de C en sus
+ * ramas bajan de 1115 a 1070.
  *
  * Convierte, en un contenedor ya cargado, las referencias entre registros por identificador en
  * desplazamientos dentro de cada lista, para que el codigo que las usa no tenga que buscar:
@@ -218,9 +220,12 @@ void ResolverReferenciasContenedor(ContenedorCarga* c)
     NodoA* a;
     NodoB* b;
     NodoC* k;
+    NodoC* k_destino;
+    ContenedorCarga* c_rama;
     NodoA* na;
     NodoB* nb;
-    u16 id;
+    /* De 32 bits aunque los campos que lee sean de 16: con 16 bits la puntuacion sube a 1115. */
+    s32 id;
     u32 i;
     s32 idx;
     u32 desp;
@@ -246,13 +251,16 @@ void ResolverReferenciasContenedor(ContenedorCarga* c)
         for (b = c->listaB; b != NULL; b = b->sig) {
             id = b->refC;
             if (id != 0) {
+                /* Copia del contenedor para el calculo del indice de C: con el parametro directo y el
+                 * identificador de 32 bits la puntuacion sube a 1365. */
+                c_rama = c;
                 for (k = c->listaC; k != NULL; k = k->sig) {
                     if (k->id == id) {
                         break;
                     }
                 }
                 if (k != NULL) {
-                    idx = k - c->listaC;
+                    idx = k - c_rama->listaC;
                     b->desplazamiento = idx * 0x24;
                 }
             }
@@ -260,6 +268,9 @@ void ResolverReferenciasContenedor(ContenedorCarga* c)
         for (k = c->listaC; k != NULL; k = k->sig) {
             id = k->refA;
             if (id != 0) {
+                /* El nodo de C se copia antes de buscar en la lista A y la referencia se escribe por la
+                 * copia: sin ella la puntuacion sube a 1375. */
+                k_destino = k;
                 for (na = c->listaA; na != NULL; na = na->sig) {
                     if (na->id == id) {
                         break;
@@ -267,7 +278,7 @@ void ResolverReferenciasContenedor(ContenedorCarga* c)
                 }
                 if (na != NULL) {
                     desp = ((u8*)na - (u8*)c->listaA) & 0xFFF0;
-                    k->refA = desp;
+                    k_destino->refA = desp;
                 }
             }
             if (k->banderas & 0x20) {
