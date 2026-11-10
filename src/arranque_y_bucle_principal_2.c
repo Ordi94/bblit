@@ -235,12 +235,20 @@ void func_800163E4(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 345 con la configuracion versionada (g = 8 del archivo). El flujo y los tipos coinciden (pausa y demostracion son s16, el
- * contador de cuadros D_80069676 es volatile u16); el estado principal y los registros del mando se
- * acceden por su direccion sin variable local (con una copia local del puntero la puntuacion es 1025).
- * Difieren el reparto de registros salvados de la constante 3 y de la tabla de tiempos D_8006CF68
- * (s8 y s7 en el original), la copia del cero del contador de ocioso (el original usa otro `move`
- * desde zero) y los registros v0/v1 de la lectura de la pila de botones de la demostracion.
+ * Pendiente: puntuacion 315 con la configuracion versionada (g = 8 del archivo; ejes 48 de operando,
+ * 0 reordenadas, 108 insertadas o borradas). Difiere en: copia del cero y registros v0/v1. El flujo y
+ * los tipos coinciden (pausa y demostracion son s16, el contador de cuadros D_80069676 es volatile
+ * u16); el estado principal y los registros del mando se acceden por su direccion sin variable local
+ * (con una copia local del puntero la puntuacion es 1025). Difieren la copia del cero del contador
+ * de ocioso (el original usa otro `move` desde zero) y los registros v0/v1 de la lectura de la pila
+ * de botones de la demostracion (el puntero va en v0 en el original).
+ *
+ * La envoltura do/while (0) de la lectura del tiempo inicial del cuadro no genera codigo: pondera por
+ * un nivel mas la referencia a la tabla de tiempos D_8006CF68 que contiene (de 5 a 6 usos ponderados
+ * sobre una vida de 564: prioridad floor_log2(R) * R / L de 2 * 5 / 564 = 0,0177 a 2 * 6 / 564 =
+ * 0,0213), que pasa por encima de la constante 3 (6 usos sobre 640: 2 * 6 / 640 = 0,0188) en el orden
+ * de global-alloc. Con la envoltura la tabla toma s7 y la constante 3 toma s8, como el original; sin
+ * ella salen al reves (345). La forma del fuente original que producia este reparto se desconoce.
  *
  * Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta
  * del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la
@@ -291,7 +299,10 @@ s32 main(void)
         do {
             func_8003E9E8();
         } while ((s16)D_80069676 == 2);
-        D_8006CF68[D_8006967C] = VSync(1);
+        /* Envoltura sin codigo: pondera la tabla de tiempos (ver la cabecera). */
+        do {
+            D_8006CF68[D_8006967C] = VSync(1);
+        } while (0);
         func_80016218();
         D_8006CF68[D_8006967C] = VSync(1) - D_8006CF68[D_8006967C];
         if (D_80069662 == 0 && D_8006AA70[3] != 0) {

@@ -664,6 +664,7 @@ se actualiza la tabla en el mismo cambio.
 | `func_80032B2C` | `src/camara_y_bucle_logico.c` | envoltura | 3 | NON_MATCHING 60 | `v28`, `rot`, `a0` por encima de `i58` (0,146 / 0,130 / 0,122 frente a 0,106) |
 | `func_8001E1A4` | `src/movimiento_y_objetos_de_escena_2.c` | decremento-incremento | 2 | coincide | Izado de la dirección de `D_8006B558`: el bucle pasa de 172 a 176 instrucciones y con 175 o más no se iza |
 | `func_800363D4` | `src/gestion_y_dibujo_de_objetos.c` | decremento-incremento | 2 | NON_MATCHING 110 | Nodo en `$a0` y puntero inducido en `$a1` (3,478 frente a 3,407) |
+| `main` | `src/arranque_y_bucle_principal_2.c` | envoltura | 1 | NON_MATCHING 315 | Tabla de tiempos `D_8006CF68` en `$s7` y constante 3 en `$s8` (0,0213 frente a 0,0188; sin la envoltura 0,0177) |
 | `func_8001C998` | `src/movimiento_y_objetos_de_escena.c` | envoltura | 1 | NON_MATCHING 1055 | Área de trabajo en `$s0` frente a la altura nueva (0,577 frente a 0,577, empate; sin la envoltura 0,346) |
 
 ## Medir el progreso
