@@ -254,7 +254,8 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2060 con la configuracion versionada (g = 0 del archivo). Difieren el orden de
+ * Pendiente: puntuacion 2040 con la configuracion versionada (g = 0 del archivo; ejes 213 de operando,
+ * 3 reordenadas, 122 insertadas o borradas). Difiere en: orden de escrituras y reparto de registros. Difieren el orden de
  * las escrituras del avance por subcelda y por baldosa del recorrido general (rangos
  * 0x8001A050-0x8001A563), el reparto de v0/v1 en las banderas de los planos 0x7E y 0x7F del caso
  * estatico (0x8001BCD4-0x8001BF6B) y la posicion de dos instrucciones del prologo.
@@ -542,7 +543,9 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                     w->rz = w->rz + (w->t1 - w->t3);
                                 }
                             } else {
-                                if (w->t1 < w->t3) {
+                                /* Comparacion conmutada (t3 > t1): GCC la canoniza igual y solo cambia el orden de
+                                 * creacion de los pseudos, que baja la puntuacion de 2060 a 2040. */
+                                if (w->t3 > w->t1) {
                                     w->rz = w->rz + (w->t1 - w->t3);
                                 }
                             }
