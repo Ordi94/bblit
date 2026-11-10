@@ -49,6 +49,8 @@ COINCIDENTES = (
     "func_8003F06C",
     "func_80036164",
     "func_8001E1A4",
+    "func_8003AE08",
+    "func_80020240",
 )
 NO_COINCIDENTES = ("func_80032B2C", "func_800363D4")
 INICIO_JUEGO = 0x80014AC4
@@ -288,6 +290,8 @@ def test_ciclo_real_con_funciones_en_c_reproduce_el_ejecutable_y_discrimina(
         "func_80030D60",
         "func_80036164",
         "func_8001E1A4",
+        "func_8003AE08",
+        "func_80020240",
     ):
         assert cli.main(["diff", funcion], variables, raiz) == 0
         assert "puntuacion 0" in capsys.readouterr().out
