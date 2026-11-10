@@ -189,7 +189,21 @@ void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
  * maximo, o hasta el suelo anterior).
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1292 con la configuracion versionada (g = 8 del archivo). Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a la altura nueva, s2 al suelo anterior y s4 al tope (el C rota esos cuatro registros: area en s4, altura en s0, suelo en s1, tope en s2) y ordena los bloques de salto de otro modo. El area + 0x28 se precalcula como el original. */
+/*
+ * Pendiente: puntuacion 1055 con la configuracion versionada (g = 8 del archivo; ejes 15 de operando,
+ * 1 reordenada, 43 insertadas o borradas). Difiere en: reparto de registros y orden de bloques de
+ * salto. Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a
+ * la altura nueva, s2 al suelo anterior y s4 al tope, y con la envoltura el C los reparte igual; queda
+ * el orden de los bloques de salto del final. El area + 0x28 se precalcula como el original.
+ *
+ * La envoltura do/while (0) de la consulta de la baldosa no genera codigo: pondera por un nivel mas
+ * las referencias del area de trabajo `w`, de 9 a 15 usos ponderados sobre una vida de 78 (prioridad
+ * floor_log2(R) * R / L: de 3 * 9 / 78 = 0,346 a 3 * 15 / 78 = 0,577). La altura nueva tiene 10 usos
+ * sobre 52 (0,577), de modo que con la envoltura el area queda empatada con ella y global-alloc la
+ * asigna antes (el desempate por numero de pseudo es inferencia, sin verificar), y le da el primer
+ * registro guardado, s0, como el original; sin la envoltura la altura nueva toma s0 y el area s4.
+ * La forma del fuente original que producia este reparto se desconoce.
+ */
 void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* area)
 {
     s32 i;
@@ -217,11 +231,14 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
         if (o->h108 <= 0x800) {
             if (cur + o->max.vy < r->techo) {
                 if (base >= cur) {
-                    w->x = o->param.trans.vx + d->x;
-                    w->y = r->techo - 1;
-                    w->z = o->param.trans.vz + d->z;
-                    w->res.grupo = -1;
-                    func_8001C134(&w->x, &w->res, trabajo_baldosa);
+                    /* Envoltura sin codigo: pondera las referencias del area de trabajo (ver la cabecera). */
+                    do {
+                        w->x = o->param.trans.vx + d->x;
+                        w->y = r->techo - 1;
+                        w->z = o->param.trans.vz + d->z;
+                        w->res.grupo = -1;
+                        func_8001C134(&w->x, &w->res, trabajo_baldosa);
+                    } while (0);
                     if (!(w->res.flags & 8)) {
                         tope = r->techo - o->max.vy;
                         if (base < tope) {
@@ -256,7 +273,8 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
                 goto calcular;
             }
 soltar:
-            v = o->flags14 & ~9;
+            v = ~9;
+            v &= o->flags14;
 guardar:
             o->flags14 = v;
         }
