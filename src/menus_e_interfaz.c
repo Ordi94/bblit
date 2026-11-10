@@ -201,8 +201,13 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
     D_80069416 = D_80069402;
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 290 con la configuracion versionada (g = 8 del archivo; ejes 1 de operando, 0 reordenadas, 14 insertadas o borradas). Difiere en: orden de planificacion y reparto de registros. Las instrucciones y el flujo coinciden; el original deja la carga del limite del buffer tras el almacen de la tabla (aqui sube al hueco de retardo de la carga de la palabra 8 de los puntos) y el desplazamiento del enlace del segundo paquete lo hace sobre v1 (v0 aqui). La copia del parametro de puntos, la variable que une la direccion de enlace con la comparacion final y el desplazamiento a izquierda y a derecha del enlace en dos sentencias bajan de 990 a 290. */
+/*
+ * Encola en la lista de ordenacion activa un primitivo de 0x18 bytes (codigo 0x05000000, un
+ * solo dato por vertice) con los puntos 3, 5 y 7 de la lista recibida y, si el punto 8 no es
+ * cero, un segundo primitivo con los puntos 4, 6 y 8 encadenado tras el primero. El cursor del
+ * anillo de primitivas (D_80076188) avanza 0x18 por primitivo y vuelve al inicio del buffer
+ * cuando supera el limite del contexto. Devuelve siempre 0.
+ */
 s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
 {
     u32* tabla;
@@ -210,10 +215,6 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
     s32 actual;
     s32 siguiente;
     s32 cursor;
-    /* Direccion de enlace de 24 bits del segundo paquete y, mas abajo, resultado de la comparacion con
-     * el limite: comparten variable (con dos variables o sin la direccion en variable la puntuacion
-     * vuelve a 605). */
-    s32 enlace_o_exceso;
 
     /* Copia local del parametro de puntos: sin ella el reparto de registros empeora de 605 a 943. */
     datos = puntos;
@@ -230,11 +231,18 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
     ((u32*)actual)[3] = datos[3];
     ((u32*)actual)[4] = datos[5];
     ((u32*)actual)[5] = datos[7];
-    *tabla = (actual << 8) >> 8;
+    /* Enlace de 24 bits del primer paquete, en dos sentencias sobre el cursor (en una sola expresion la
+     * puntuacion es 20). */
+    cursor = actual << 8;
+    cursor = cursor >> 8;
+    *tabla = cursor;
     actual = D_80076188;
     siguiente = actual + 0x18;
     D_80076188 = siguiente;
-    if (datos[8] != 0) {
+    /* La palabra 8 de los puntos se lee por su desplazamiento en bytes: como indice del arreglo el
+     * planificador sube la carga por encima del almacen del cursor (el original la deja despues) y la
+     * puntuacion es 260. */
+    if (*(u32*)((u8*)datos + 0x20) != 0) {
         tabla = (u32*)D_8006AEA0[D_8006967C].org;
         ((u32*)actual)[6] = *tabla | 0x05000000;
         ((u32*)siguiente)[1] = 1;
@@ -242,25 +250,21 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
         ((u32*)siguiente)[3] = datos[4];
         ((u32*)siguiente)[4] = datos[6];
         ((u32*)siguiente)[5] = datos[8];
-        /* Los dos desplazamientos van en sentencias separadas: en una sola expresion el enlace
-         * queda en otro registro y la puntuacion sube de 290 a 465. */
-        enlace_o_exceso = siguiente << 8;
-        enlace_o_exceso = enlace_o_exceso >> 8;
-        *tabla = enlace_o_exceso;
+        /* Los dos desplazamientos del enlace van en sentencias separadas sobre el cursor: en una sola
+         * expresion el enlace queda en otro registro y la puntuacion sube a 605. */
+        cursor = siguiente << 8;
+        cursor = cursor >> 8;
+        *tabla = cursor;
         D_80076188 += 0x18;
     }
     cursor = D_80076188;
     /* El original carga el cursor, luego el limite, y emite `slt limite, cursor`; la comparacion
      * escrita como `cursor > limite` produce ese orden de operandos. */
-    enlace_o_exceso = cursor > ctx->limite;
-    if (enlace_o_exceso) {
+    if (cursor > ctx->limite) {
         D_80076188 = ctx->inicio;
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
-#endif
 
 #ifdef NON_MATCHING
 /* Pendiente: puntuacion 1135 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas, 73 insertadas o borradas). Difiere en: reparto de registros y posicion de lecturas. Mismas instrucciones y flujo; el original deja el color en a3 y el desplazamiento de la textura en a2, y aqui caen en a0 y a1; la direccion de las palabras del sprite queda en v1 en lugar de a0, y la bandera de transparencia se lee en t0 (el original la deja en v1) y el almacen de la palabra de ordenacion va antes de elegir el modo. La direccion de la ranura en dos sentencias (base y luego desplazamiento) y el almacen de la palabra de ordenacion antes de elegir el modo bajan de 1515 a 1135. */
