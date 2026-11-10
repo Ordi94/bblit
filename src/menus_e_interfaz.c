@@ -202,7 +202,7 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 465 con la configuracion versionada (g = 8 del archivo). Las instrucciones y el flujo coinciden; difiere la posicion de la carga de la palabra 8 de los puntos (el original la hace despues del almacen del cursor), el planificado de los desplazamientos del segundo paquete (el original adelanta el sll) y el registro destino del desplazamiento del primer paquete (v1 en el original, v0 aqui). La copia del parametro de puntos y la variable que une la direccion de enlace con la comparacion final bajan de 990 a 465. */
+/* Pendiente: puntuacion 290 con la configuracion versionada (g = 8 del archivo; ejes 1 de operando, 0 reordenadas, 14 insertadas o borradas). Difiere en: orden de planificacion y reparto de registros. Las instrucciones y el flujo coinciden; el original deja la carga del limite del buffer tras el almacen de la tabla (aqui sube al hueco de retardo de la carga de la palabra 8 de los puntos) y el desplazamiento del enlace del segundo paquete lo hace sobre v1 (v0 aqui). La copia del parametro de puntos, la variable que une la direccion de enlace con la comparacion final y el desplazamiento a izquierda y a derecha del enlace en dos sentencias bajan de 990 a 290. */
 s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
 {
     u32* tabla;
@@ -242,7 +242,10 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
         ((u32*)siguiente)[3] = datos[4];
         ((u32*)siguiente)[4] = datos[6];
         ((u32*)siguiente)[5] = datos[8];
-        enlace_o_exceso = (siguiente << 8) >> 8;
+        /* Los dos desplazamientos van en sentencias separadas: en una sola expresion el enlace
+         * queda en otro registro y la puntuacion sube de 290 a 465. */
+        enlace_o_exceso = siguiente << 8;
+        enlace_o_exceso = enlace_o_exceso >> 8;
         *tabla = enlace_o_exceso;
         D_80076188 += 0x18;
     }
