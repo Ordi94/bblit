@@ -263,7 +263,7 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
 #endif
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1515 con la configuracion versionada (g = 8 del archivo). Mismas instrucciones y flujo; difiere el reparto de registros (el original deja el color en a3 y el desplazamiento de la textura en a2, y aqui caen en a2 y a0; la direccion de las palabras del sprite queda en v1 en lugar de a0) y la posicion de dos lecturas: el original lee la bandera de transparencia y calcula la palabra de la lista de ordenacion despues de guardar la profundidad. */
+/* Pendiente: puntuacion 1135 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas, 73 insertadas o borradas). Difiere en: reparto de registros y posicion de lecturas. Mismas instrucciones y flujo; el original deja el color en a3 y el desplazamiento de la textura en a2, y aqui caen en a0 y a1; la direccion de las palabras del sprite queda en v1 en lugar de a0, y la bandera de transparencia se lee en t0 (el original la deja en v1) y el almacen de la palabra de ordenacion va antes de elegir el modo. La direccion de la ranura en dos sentencias (base y luego desplazamiento) y el almacen de la palabra de ordenacion antes de elegir el modo bajan de 1515 a 1135. */
 void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
 {
     u32 color;
@@ -332,8 +332,12 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
             }
             ctx->estado.s4 = n;
         }
-        ranura = orden + ctx->estado.s4;
+        /* La base de la lista y el desplazamiento se suman en dos sentencias: en una sola expresion el
+         * reparto de registros de la ranura y la palabra empeora (la puntuacion sube de 1135 a 1340). */
+        ranura = orden;
+        ranura += ctx->estado.s4;
         palabra = *ranura | 0x09000000;
+        *p = palabra;
         if (semitransparente != 0) {
             modo = 0x2E000000;
         } else {
@@ -341,7 +345,6 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         }
         color |= modo;
         color |= 0x2C000000;
-        *p = palabra;
         p[1] = color;
         *ranura = (s32)((s32)p << 8) >> 8;
         D_80076188 += 0x28;
