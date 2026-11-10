@@ -305,45 +305,44 @@ void func_8001D0FC(Objeto* otro, u32 id, BusquedaAnim* b)
  * bandera 4 de la camara, anulando la bandera de seguimiento y encendiendo la de reinicio.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1124 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y mismo orden de almacenes; el original no conserva el puntero a la camara en un registro salvado (recalcula D_8006D928 en los dos caminos y no reserva s0) y copia el primer argumento a a3 antes de cargar D_80069698; el C mantiene la camara en s0 y reparte v1 y a0 de otro modo en el prologo. Con el simbolo de la camara escrito directo desaparece s0 y el cierre coincide, pero GCC adelanta entonces la lectura de D_8006D9A8 por encima de los almacenes de la posicion, que el original deja despues. */
+/* Pendiente: puntuacion 190 con la configuracion versionada (g = 8 del archivo; ejes 2 de operando, 0 reordenadas, 29 insertadas o borradas). Difiere en: reparto de registros del prologo. El original copia el primer argumento a a3 antes de cargar D_80069698 (puntero en a0, objeto llevado en v0 con su copia en v1); aqui el puntero queda en v1, el objeto llevado en a3 y la copia de x en t0, que ocupa el hueco de retardo del salto que en el original ocupa la copia del objeto llevado. El compilador funde la copia que el original conserva y no se ha encontrado una forma que la mantenga. */
 void func_8001D31C(s32 x, s32 y, s32 z)
 {
     VECTOR destino;
-    Objeto* tenido;
-    EstadoCamara* camara;
+    Objeto* llevado;
     s32 x_copia;
-    u8 contador_guardado;
 
-    /* La copia de x y la lectura del contador de guardado en un byte con signo reproducen el reparto del
-     * prologo y del bloque de recolocacion de la camara. */
     x_copia = x;
-    tenido = D_80069698->p70;
-    if (tenido != NULL) {
+    llevado = D_80069698->p70;
+    if (llevado != NULL) {
         D_80069698->coord.super = NULL;
         D_80069698->coord.param = PARAMETROS_SDK(D_80069698);
-        tenido->p6C = D_80069698;
+        llevado->p6C = D_80069698;
         if (D_80069698 != NULL) {
             D_80069698->p70->p6C = NULL;
         }
         D_80069698->p70 = NULL;
         D_80069698->flags14 &= ~0x14;
     }
-    D_80069698->param.trans.vx = x_copia;
-    D_80069698->param.trans.vy = y;
-    D_80069698->param.trans.vz = z;
-    camara = &D_8006D928;
+    /* La posicion se escribe como tres palabras sueltas y no como campos de la estructura: con campos,
+     * el planificador sube la lectura de D_8006D9A8 por encima de los almacenes (el original la deja
+     * despues); medido, basta dejar uno solo como campo para que la puntuacion pase de 190 a 745 o mas.
+     * Se supone, sin verificar en el volcado, que un acceso a miembro de estructura no se ordena frente
+     * a una lectura que no lo es. */
+    *(s32*)&D_80069698->param.trans.vx = x_copia;
+    *(s32*)&D_80069698->param.trans.vy = y;
+    *(s32*)&D_80069698->param.trans.vz = z;
     if (!(*(u32*)D_8006D9A8 & 0x304)) {
-        contador_guardado = D_80010076;
-        if ((s8)contador_guardado <= 0) {
+        if ((s8)D_80010076 < 1) {
             destino.vx = x_copia;
             destino.vy = y;
             destino.vz = z;
             func_8001CC68(&destino);
         }
     }
-    D_800693B8 = -1;
     D_80069608 |= 1;
-    camara->flags80 &= 0xFFFB;
+    D_8006D928.flags80 &= 0xFFFB;
+    D_800693B8 = -1;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D31C);
