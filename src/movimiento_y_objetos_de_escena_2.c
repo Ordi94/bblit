@@ -391,7 +391,7 @@ void func_8001D414(s16 accion)
  * seguimiento.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 660 con la configuracion versionada (g = 8 del archivo). Mismas operaciones y almacenes; el original ejecuta los dos almacenes de bytes de D_8006965A y D_80069659 antes de leer la lista del objeto (el planificador del C los deja despues de los almacenes de la camara) y reparte el objeto controlado en a2 y su alias en v1/a1 de otra forma. Leer p->vz antes de los almacenes al objeto y compartir la variable del alias bajan de 840. */
+/* Pendiente: puntuacion 335 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 12 insertadas o borradas). Difiere en: copia del objeto liberado y orden de un almacen. Mismas operaciones y almacenes; el original carga el objeto enlazado en +0x70 en v0 y lo copia a v1 en el hueco de retardo del salto (aqui se carga directo en v1) y ejecuta el almacen de cero a D_80069402 justo tras los de la posicion (el planificador lo hunde hasta el hueco de la carga del giro). Leer p->vz antes de los almacenes al objeto baja de 840 a 660, y leer las banderas y el enlace por su desplazamiento en bytes (en lugar de como miembros) baja de 660 a 335: con miembros el planificador sube esas cargas sobre los almacenes de bytes a D_8006965A y D_80069659, que el original ejecuta antes. */
 void func_8001D588(s32 modo, VECTOR* p)
 {
     Objeto* e;
@@ -406,22 +406,21 @@ void func_8001D588(s32 modo, VECTOR* p)
     D_80069659 = 0;
     j->w17E = 0;
     j->w17C = modo;
-    j->flags14 = (j->flags14 | 0x1000004) & 0xFFFEFFFF;
+    /* Las banderas y el enlace +0x70 se leen por su desplazamiento en bytes y no como miembros: asi el
+     * planificador no sube la carga sobre los almacenes de bytes anteriores (ver la nota de pendiente). */
+    j->flags14 = (*(u32*)((u8*)j + 0x14) | 0x1000004) & 0xFFFEFFFF;
     c = &D_8006D928;
     c->s88 = 0;
     c->h8C = 0;
     c->h8E = 0;
-    t = j->p70;
+    t = *(Objeto**)((u8*)j + 0x70);
     D_80069690 = 0;
     D_800693F6 = 0;
     if (t != NULL) {
         j->coord.super = NULL;
         j->coord.param = PARAMETROS_SDK(j);
         t->p6C = NULL;
-        /* Alias del objeto controlado en la misma variable que luego recibe el hijo suelto:
-         * separarlas sube la cifra de 660 a 720. */
-        e = j;
-        e->p70 = NULL;
+        j->p70 = NULL;
         j->flags14 &= ~0x14;
     }
     e = D_80069698->p6C;
