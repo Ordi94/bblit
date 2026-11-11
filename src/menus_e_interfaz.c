@@ -464,7 +464,7 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 870 con la configuracion versionada (-G0 salvo g = 8 del archivo). Misma estructura de bloques y mismo bucle de objetos; difieren el registro de la carga del desplazamiento geometrico (gte_SetGeomOffset usa t4/t5 y el original t2/t3), el reparto v0/v1 del nivel del fundido (el original relee esc->estado.w8 tras los dos almacenes y el compilador reutiliza el registro del nivel, y el almacen de D_800694E2 se coloca antes que la relectura) y el orden de dos cargas antes del bucle de objetos (el original calcula D_8006D928 antes que la tabla D_8006AD80, que aqui se usa directa). */
+/* Pendiente: puntuacion 790 con la configuracion versionada (-G0 salvo g = 8 del archivo; ejes 45 de operando, 1 reordenada, 49 insertadas o borradas). Misma estructura de bloques y mismo bucle de objetos; difieren el registro de la carga del desplazamiento geometrico (gte_SetGeomOffset usa t4/t5 con dos desplazamientos y el original t2/t3 sin ellos), el reparto v0/v1 del nivel del fundido (el original guarda el nivel una sola vez tras la union y relee esc->estado.w8 despues del almacen de D_800694E2; aqui el almacen en cada rama obliga a la relectura pero la deja antes de ese almacen) y el orden de dos cargas antes del bucle de objetos (el original calcula D_8006D928 antes que la tabla D_8006AD80, que aqui se usa directa). */
 void func_8003B5AC(Objeto* lista)
 {
     EscenaDibujo* esc;
@@ -529,12 +529,15 @@ void func_8003B5AC(Objeto* lista)
         }
     }
     if (D_8006966A != 0) {
+        /* El nivel se guarda en cada rama y no tras la union: asi la lectura posterior de estado.w8 ya no se
+         * resuelve con el valor recien guardado y el compilador la emite como carga. */
         if ((u8)D_8006966A & 0x40) {
             nivel = 0x1000 - D_80069668;
+            esc->estado.w8 = nivel;
         } else {
             nivel = D_80069668;
+            esc->estado.w8 = nivel;
         }
-        esc->estado.w8 = nivel;
         /* El nivel guardado se relee con signo de 16 bits en una local antes del segundo almacen: con la lectura dentro de la division el reparto de registros empeora. */
         nivel_guardado = (s16)esc->estado.w8;
         D_800694E2 = nivel;
