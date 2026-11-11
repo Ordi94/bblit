@@ -391,19 +391,20 @@ void func_8001D414(s16 accion)
  * seguimiento.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 275 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 25 insertadas o borradas). Difiere en: copia del objeto liberado, alias del objeto controlado y orden de un almacen. Mismas operaciones y almacenes; el original carga el objeto enlazado en +0x70 en v0 y lo copia a v1 en el hueco de retardo del salto (aqui se carga directo en v1), usa el objeto controlado en a2 sin copiarlo (aqui el alias de la variable `e` lo copia a a1) y ejecuta el almacen de cero a D_80069402 justo tras los de la posicion (el planificador lo hunde hasta el hueco de la carga del giro). Leer p->vz antes de los almacenes al objeto baja de 840 a 660, y leer las banderas y el enlace por su desplazamiento en bytes (en lugar de como miembros) baja de 660 a 275: con miembros el planificador sube esas cargas sobre los almacenes de bytes a D_8006965A y D_80069659, que el original ejecuta antes. */
+/* Pendiente: puntuacion 110 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 20 insertadas o borradas). Difiere en: copia del objeto enlazado, alias del objeto controlado y orden de un almacen. Mismas operaciones y almacenes; el original carga el objeto enlazado en +0x70 en v0 y lo copia a v1 en el hueco de retardo del salto (aqui se carga directo en v1), usa el objeto controlado en a2 sin copiarlo (aqui el alias de la variable `e` lo copia a a0) y ejecuta el almacen de la coordenada z del objeto (sw 0xec) antes del de cero a D_80069402 (el planificador lo hunde tras el). Leer p->vz por su desplazamiento (+8) antes de los almacenes al objeto, y las banderas y el enlace por su desplazamiento en bytes, mantiene las cargas tras los almacenes de bytes a D_8006965A y D_80069659 como en el original; la copia aparte del acompanante baja 5. */
 void func_8001D588(s32 modo, VECTOR* p)
 {
     Objeto* e;
     s32 pos_z;
-    Objeto* j;
     EstadoCamara* c;
+    Objeto* j;
     Objeto* t;
-    u16 ang;
+    Objeto* acompanante;
+    s16 ang;
 
-    j = D_80069698;
     D_8006965A = 0;
     D_80069659 = 0;
+    j = D_80069698;
     j->w17E = 0;
     j->w17C = modo;
     /* Las banderas y el enlace +0x70 se leen por su desplazamiento en bytes y no como miembros: asi el
@@ -418,36 +419,38 @@ void func_8001D588(s32 modo, VECTOR* p)
     D_800693F6 = 0;
     if (t != NULL) {
         j->coord.super = NULL;
+        /* Alias del objeto controlado en la misma variable que luego recibe el acompanante:
+         * separarlas sube la puntuacion. */
+        e = j;
         j->coord.param = PARAMETROS_SDK(j);
         t->p6C = NULL;
-        /* Alias del objeto controlado en la misma variable que luego recibe el hijo suelto:
-         * separarlas sube la puntuacion de 275 a 335. */
-        e = j;
         e->p70 = NULL;
         j->flags14 &= ~0x14;
     }
     e = D_80069698->p6C;
-    if (e != NULL) {
-        if (e->clase == 0x22) {
-            e->flags14 |= 0x100;
+    acompanante = e; /* copia aparte: sin ella la puntuacion sube */
+    if (acompanante != NULL) {
+        if (acompanante->clase == 0x22) {
+            acompanante->flags14 = acompanante->flags14 | 0x100;
         }
-        e->coord.param = PARAMETROS_SDK(e);
-        e->coord.super = NULL;
-        e->p70 = NULL;
-        e->flags14 = (e->flags14 & ~0x800) | 0x1000;
+        acompanante->coord.param = PARAMETROS_SDK(acompanante);
+        acompanante->coord.super = NULL;
+        acompanante->flags14 = (acompanante->flags14 & ~0x800) | 0x1000;
+        acompanante->p70 = NULL;
         D_80069698->p6C = NULL;
-        func_8001CFCC(&e->coord);
+        func_8001CFCC(&acompanante->coord);
     }
-    if (p != NULL) {
+    if (NULL != p) {
         D_80069698->param.trans.vx = p->vx;
         D_80069698->param.trans.vy = p->vy;
-        pos_z = p->vz;
+        /* La coordenada z de la posicion se lee por su desplazamiento en bytes (+8), como en el original. */
+        pos_z = *(long*)((u8*)p + 8);
         D_80069698->param.giro.u.y = 0;
         D_80069698->param.trans.vz = pos_z;
         D_80069402 = 0;
         D_8006D928.vpx = p->vx;
         D_8006D928.vpy = p->vy;
-        D_8006D928.vpz = p->vz;
+        D_8006D928.vpz = *(long*)((u8*)p + 8);
         D_8006D928.x = p->vx;
         D_8006D928.y = p->vy;
         D_8006D928.z = p->vz;
