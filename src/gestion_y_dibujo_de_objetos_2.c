@@ -879,14 +879,16 @@ void func_80038E84(s32 idx, s32 paso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1745 con la configuracion versionada (g = 8 del archivo; ejes 66 de
- * operando, 0 reordenadas, 207 insertadas o borradas). Coinciden la
+ * Pendiente: puntuacion 1525 con la configuracion versionada (g = 8 del archivo; ejes 69 de
+ * operando, 0 reordenadas, 185 insertadas o borradas). Coinciden la
  * estructura, los desplazamientos y los simbolos; difiere en el reparto de registros (la base de
  * 0x80010000, el indice y el valor de las barras 3 y 7 caen en registros distintos de los del
  * original, que usa a1, v0 y a0 segun el bloque), en el orden de dos copias y tres huecos de
  * retardo de la barra 0 y de las barras 3 y 7, y en una recarga de la parte alta de D_8006AA7C
  * que el compilador anade en los tres ultimos temporizadores. Leer el estado principal en una
- * copia propia de la rama de la barra 0 (en lugar de reutilizar la local del cuerpo) baja de 1950 a 1745.
+ * copia propia de la rama de la barra 0 (en lugar de reutilizar la local del cuerpo) baja de 1950 a 1745;
+ * la envoltura del medidor y del contador de golpes junto con el orden de la actualizacion del valor
+ * mostrado en las barras 3 y 7 lo bajan de 1745 a 1525 (ver la cabecera de abajo).
  */
 /*
  * Una vez por cuadro de juego, con el estado principal distinto de 3, sin pantalla pedida
@@ -898,6 +900,19 @@ void func_80038E84(s32 idx, s32 paso)
  * (grupo 0x11) cargan su contador de cuadros desde el registro de peticion (-1 = indefinido, si no
  * n * 30), lo descuentan cada cuadro sin pausa y publican los segundos restantes; los tres iconos
  * de estado se crean o se apagan segun sus banderas. Cierra siempre limpiando D_80069554.
+ *
+ * La envoltura do/while (0) del medidor del grupo 0xB y del contador de golpes no genera codigo:
+ * pondera por un nivel mas las referencias que contiene, y el volcado de cc1 (.lreg y .greg) lo
+ * muestra. `valor` (la lectura de un byte de la barra) pasa de 11 a 14 usos ponderados sobre 22
+ * instrucciones, la base 0x80010000 de 7 a 12 sobre 18, y la lectura de D_80069514 con su extension
+ * de 3 a 6. Las prioridades floor_log2(R) * R / L quedan en 3 * 14 / 22 = 1,909 para `valor` frente
+ * a 3 * 12 / 18 = 2,0 de la base, de modo que `valor` se asigna despues y toma a0, como en el original
+ * (lbu a0 sobre D_80010040 mas el indice). Sin la envoltura `valor` pasa por delante (3 * 11 / 22 = 1,5
+ * frente a 2 * 7 / 18 = 0,78) y cae en v1; lo mismo ocurre si la actualizacion del valor mostrado va
+ * antes de preparar `nuevo` (la vida de `valor` baja de 22 a 20 instrucciones: 3 * 14 / 20 = 2,1). El
+ * resto de pseudos de la region tambien cambia de orden en el volcado; solo se comprobo en el
+ * ensamblador el registro de `valor`. La forma del fuente original que producia este reparto se
+ * desconoce.
  *
  * Los campos del estado principal se leen por la vista EstadoPrincipal (arranque.h) con un
  * puntero local a 0x80010000 para que el compilador comparta la parte alta de la direccion,
@@ -971,9 +986,11 @@ void func_80039094(void)
         if (valor != D_80069574) {
             modo = 0;
             if (D_80069574 == 0xFF) {
+                /* El orden de estas tres sentencias fija la vida de valor en esta barra: con la actualizacion
+                 * del valor mostrado antes de preparar nuevo la puntuacion sube de 1525 a 1745. */
+                nuevo = valor;
                 D_80069574 = valor;
                 modo = 1;
-                nuevo = valor;
             } else if (D_80069574 < valor) {
                 nuevo = D_80069574 + 1;
             } else {
@@ -993,42 +1010,45 @@ void func_80039094(void)
         func_80038E84(3, 0xC8);
 
         g = ESTADO_PRINCIPAL;
-        idx = g->r[0xB8];
-        valor = g->r[idx];
-        if (valor != D_80069514) {
-            modo = 0;
-            if (D_80069514 == 0xFF) {
-                D_80069514 = valor;
-                modo = 1;
-                nuevo = valor;
-            } else {
-                nuevo = D_80069514 + 1;
-            }
-            if (func_80038C2C(7, nuevo, modo) != 0) {
-                f = ESTADO_PRINCIPAL;
-                if (D_80069514 != f->r[idx]) {
-                    D_80069514 = D_80069514 + 1;
+        do {
+            idx = g->r[0xB8];
+            valor = g->r[idx];
+            if (valor != D_80069514) {
+                modo = 0;
+                if (D_80069514 == 0xFF) {
+                    modo = 1;
+                    nuevo = valor;
+                    /* La actualizacion del valor mostrado va despues de preparar nuevo: alarga la vida de valor
+                     * y con ella baja su prioridad de asignacion (ver la cabecera). */
+                    D_80069514 = valor;
+                } else {
+                    nuevo = D_80069514 + 1;
                 }
-            }
-        }
-        func_80038E84(7, 0xC8);
-
-        f = ESTADO_PRINCIPAL;
-        if (f->r[0x01] != D_80069524) {
-            if ((s8)f->r[0x01] <= 0) {
-                if (!(D_80069698->flags14 & 0x01000000)) {
-                    pantalla = D_80069554;
-                    f->r[0x01] = 0;
-                    if (pantalla == 0) {
-                        pantalla = D_800694F8;
+                if (func_80038C2C(7, nuevo, modo) != 0) {
+                    f = ESTADO_PRINCIPAL;
+                    if (D_80069514 != f->r[idx]) {
+                        D_80069514 = D_80069514 + 1;
                     }
-                    func_8001D588(pantalla, 0);
                 }
             }
-            ant = D_80069524;
-            D_80069524 = D_80010041;
-            func_80038884(0xE, ant == 0xFF);
-        }
+            func_80038E84(7, 0xC8);
+            f = ESTADO_PRINCIPAL;
+            if (f->r[0x01] != D_80069524) {
+                if ((s8)f->r[0x01] <= 0) {
+                    if (!(D_80069698->flags14 & 0x01000000)) {
+                        pantalla = D_80069554;
+                        f->r[0x01] = 0;
+                        if (pantalla == 0) {
+                            pantalla = D_800694F8;
+                        }
+                        func_8001D588(pantalla, 0);
+                    }
+                }
+                ant = D_80069524;
+                D_80069524 = D_80010041;
+                func_80038884(0xE, ant == 0xFF);
+            }
+        } while (0);
         func_80038E84(0xE, 0xC8);
 
         if (D_800100D0 != 0) {
