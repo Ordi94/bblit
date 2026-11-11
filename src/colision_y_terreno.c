@@ -502,7 +502,8 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                 if (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z) {
                                     tx = w->sz_x;
                                     w->rz = w->sz_z;
-                                    /* Copiar sz_y despues de sz_z es el orden que menos difiere del original (con sz_y antes la puntuacion sube de 2030 a 2040). */
+                                    /* Copiar sz_y despues de sz_z es el orden que menos difiere del original
+                                     * (con sz_y antes la puntuacion sube de 2030 a 2040). */
                                     w->aux = w->sz_y;
                                     w->sz_z = w->lim_z = w->lim_z + w->celda_z;
                                     w->rx = tx;

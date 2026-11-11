@@ -400,7 +400,7 @@ void func_8001D588(s32 modo, VECTOR* p)
     Objeto* j;
     Objeto* t;
     Objeto* acompanante;
-    s16 ang;
+    u16 ang;
 
     D_8006965A = 0;
     D_80069659 = 0;
@@ -420,7 +420,7 @@ void func_8001D588(s32 modo, VECTOR* p)
     if (t != NULL) {
         j->coord.super = NULL;
         /* Alias del objeto controlado en la misma variable que luego recibe el acompanante:
-         * separarlas sube la puntuacion. */
+         * separarlas sube la puntuacion de 110 a 175. */
         e = j;
         j->coord.param = PARAMETROS_SDK(j);
         t->p6C = NULL;
@@ -428,29 +428,29 @@ void func_8001D588(s32 modo, VECTOR* p)
         j->flags14 &= ~0x14;
     }
     e = D_80069698->p6C;
-    acompanante = e; /* copia aparte: sin ella la puntuacion sube */
+    acompanante = e; /* copia aparte: la puntuacion es 115 sin ella frente a 110 con ella */
     if (acompanante != NULL) {
         if (acompanante->clase == 0x22) {
-            acompanante->flags14 = acompanante->flags14 | 0x100;
+            acompanante->flags14 |= 0x100;
         }
         acompanante->coord.param = PARAMETROS_SDK(acompanante);
         acompanante->coord.super = NULL;
-        acompanante->flags14 = (acompanante->flags14 & ~0x800) | 0x1000;
         acompanante->p70 = NULL;
+        acompanante->flags14 = (acompanante->flags14 & ~0x800) | 0x1000;
         D_80069698->p6C = NULL;
         func_8001CFCC(&acompanante->coord);
     }
-    if (NULL != p) {
+    if (p != NULL) {
         D_80069698->param.trans.vx = p->vx;
         D_80069698->param.trans.vy = p->vy;
         /* La coordenada z de la posicion se lee por su desplazamiento en bytes (+8), como en el original. */
-        pos_z = *(long*)((u8*)p + 8);
+        pos_z = *(s32*)((u8*)p + 8);
         D_80069698->param.giro.u.y = 0;
         D_80069698->param.trans.vz = pos_z;
         D_80069402 = 0;
         D_8006D928.vpx = p->vx;
         D_8006D928.vpy = p->vy;
-        D_8006D928.vpz = *(long*)((u8*)p + 8);
+        D_8006D928.vpz = *(s32*)((u8*)p + 8);
         D_8006D928.x = p->vx;
         D_8006D928.y = p->vy;
         D_8006D928.z = p->vz;

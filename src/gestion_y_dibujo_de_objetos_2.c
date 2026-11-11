@@ -907,7 +907,10 @@ void func_80038E84(s32 idx, s32 paso)
  * instrucciones, la base 0x80010000 de 7 a 12 sobre 18, y la lectura de D_80069514 con su extension
  * de 3 a 6. Las prioridades floor_log2(R) * R / L quedan en 3 * 14 / 22 = 1,909 para `valor` frente
  * a 3 * 12 / 18 = 2,0 de la base, de modo que `valor` se asigna despues y toma a0, como en el original
- * (lbu a0 sobre D_80010040 mas el indice). Sin la envoltura `valor` pasa por delante (3 * 11 / 22 = 1,5
+ * (lbu a0 sobre D_80010040 mas el indice). El margen de prioridad de `valor` frente al otro pseudo en
+ * disputa (20 usos sobre 42 instrucciones: 4 * 20 / 42 = 1,905) es de solo 0,004 (1,909 frente a
+ * 1,905), asi que el reparto es fragil: un uso mas o menos de `valor`, o dos instrucciones de vida,
+ * invierten el orden entre ambos. Sin la envoltura `valor` pasa por delante (3 * 11 / 22 = 1,5
  * frente a 2 * 7 / 18 = 0,78) y cae en v1; lo mismo ocurre si la actualizacion del valor mostrado va
  * antes de preparar `nuevo` (la vida de `valor` baja de 22 a 20 instrucciones: 3 * 14 / 20 = 2,1). El
  * resto de pseudos de la region tambien cambia de orden en el volcado; solo se comprobo en el
