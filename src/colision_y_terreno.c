@@ -254,8 +254,8 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2040 con la configuracion versionada (g = 0 del archivo; ejes 213 de operando,
- * 3 reordenadas, 122 insertadas o borradas). Difiere en: orden de escrituras y reparto de registros,
+ * Pendiente: puntuacion 2030 con la configuracion versionada (g = 0 del archivo; ejes 213 de operando,
+ * 3 reordenadas, 118 insertadas o borradas). Difiere en: orden de escrituras y reparto de registros,
  * a saber, el orden de las escrituras del avance por subcelda y por baldosa del recorrido general
  * (rangos 0x8001A050-0x8001A563), el reparto de v0/v1 en las banderas de los planos 0x7E y 0x7F del
  * caso estatico (0x8001BCD4-0x8001BF6B) y la posicion de dos instrucciones del prologo.
@@ -501,8 +501,9 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             if (w->d_sz < w->d_sx) {
                                 if (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z) {
                                     tx = w->sz_x;
-                                    w->aux = w->sz_y;
                                     w->rz = w->sz_z;
+                                    /* Copiar sz_y despues de sz_z es el orden que menos difiere del original (con sz_y antes la puntuacion sube de 2030 a 2040). */
+                                    w->aux = w->sz_y;
                                     w->sz_z = w->lim_z = w->lim_z + w->celda_z;
                                     w->rx = tx;
                                     w->sz_x = tx + ((w->pend_z * w->celda_z) >> 12);
