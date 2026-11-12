@@ -55,26 +55,28 @@ typedef struct SpritePlano {
  * de indices del conjunto.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 400 con la configuracion versionada (g = 8 del archivo). Mismos accesos y almacenes; el original conserva el registro del cuadro en t0 hasta leer las banderas, que es lo ultimo que hace (y deja el indice en v0 y las coordenadas en a3, a1, a0, a2), mientras que el C debe leer paleta y banderas antes de los almacenes de coordenadas: con las banderas al final el compilador copia el desplazamiento del indice dentro de cada rama (1340 y 715) y el registro del cuadro cae en v0, con la base de los fotogramas en v1 en vez de v0. */
+/* Pendiente: puntuacion 385 con la configuracion versionada (g = 8 del archivo; ejes 1 de operando, 0 reordenadas, 29 insertadas o borradas). Mismos accesos y almacenes; el original conserva el registro del cuadro en t0 hasta leer las banderas, que es lo ultimo que hace (y deja el indice en v0 y las coordenadas en a3, a1, a0, a2), mientras que el C debe leer paleta y banderas antes de los almacenes de coordenadas: con las banderas al final el compilador copia el desplazamiento del indice dentro de cada rama y mueve el objeto a a3 (690), y con ellas antes el registro del cuadro cae en v0 y las banderas en t0. */
 void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     Fotograma* r;
     u8 u;
-    u16 h;
-    u16 w;
+    s32 w;
     SpritePlano* p;
     s8 u_fin;
     s8 v_fin;
-    u32 pagina;
-    u16 indice;
+    s32 indice;
     u8 v;
     s32 ancho;
-    u16 clut;
+    s32 clut;
     s32 espejo;
     s32 alto_menos_uno;
+    u32 modo_o_pagina;
 
     if (o->flags08 & 0x20) {
-        func_8001E600(o, c, modo);
+        /* La copia del modo y la pagina de textura comparten una sola local: con dos locales distintas el
+         * reparto de registros de toda la funcion cambia (495 en lugar de 385). */
+        modo_o_pagina = modo;
+        func_8001E600(o, c, modo_o_pagina);
         return;
     }
     if (modo & 1) {
@@ -82,26 +84,25 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     } else {
         indice = c->duraciones[(u16)c->cuadro].indice;
     }
-    r = c->fotogramas + indice;
     p = (SpritePlano*)((u8*)o->u78.p + 0xC);
+    r = c->fotogramas + indice;
     u = r->u;
-    w = r->w0C;
     v = r->v;
-    pagina = r->pagina;
-    h = r->w0E;
+    w = r->w0C;
     /* La altura menos uno pasa por una variable de 32 bits: en la expresion `h - 1 + v` el compilador estrecha la resta a un byte (addiu 0xff) y el original suma -1. */
-    alto_menos_uno = h - 1;
+    alto_menos_uno = r->w0E - 1;
+    modo_o_pagina = r->pagina;
     /* La anchura menos uno pasa por una variable de 32 bits: con la suma en una sola expresion el compilador estrecha la carga de w a un byte (lbu) y el original carga media palabra (lhu). */
     ancho = w - 1;
     u_fin = u + ancho;
-    p->tpage = pagina;
+    p->tpage = modo_o_pagina;
     /* La paleta y las banderas se leen antes de los almacenes de coordenadas: asi el desplazamiento del indice queda tras la reunion de las dos ramas, como en el original. */
     clut = r->h0A;
     /* Las banderas se leen sobre la variable del indice, ya muerta: el original las deja en el registro del indice. */
     indice = r->flags;
     p->v0 = v;
-    espejo = indice & 8;
     p->v1 = v;
+    espejo = indice & 8;
     v_fin = alto_menos_uno + v;
     p->u0 = u;
     p->u1 = u_fin;
