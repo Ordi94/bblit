@@ -55,7 +55,12 @@ typedef struct SpritePlano {
  * de indices del conjunto.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 36 insertadas o borradas). Mismos accesos, almacenes y orden de instrucciones; solo difiere el reparto de los registros de las lecturas del fotograma: el original deja la coordenada u en a3, v en a1, la anchura en a0, la altura en a2 y la pagina de textura en v0, y aqui caen en a1, a0, v0, a2 y a3. */
+/*
+ * Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 36
+ * insertadas o borradas). Mismos accesos, almacenes y orden de instrucciones; solo difiere el reparto de los
+ * registros de las lecturas del fotograma: el original deja la coordenada u en a3, v en a1, la anchura en a0, la
+ * altura en a2 y la pagina de textura en v0, y aqui caen en a1, a0, v0, a2 y a3.
+ */
 void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     Fotograma* r;
@@ -64,11 +69,9 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     SpritePlano* p;
     s8 u_fin;
     s8 v_fin;
-    s32 indice;
     u8 v;
     s32 ancho;
     s32 clut;
-    s32 espejo;
     s32 alto_menos_uno;
     u32 modo_o_pagina;
 

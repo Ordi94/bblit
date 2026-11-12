@@ -271,7 +271,28 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 975 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas, 79 insertadas o borradas). Difiere en: reparto de registros y posicion de lecturas. Mismas instrucciones y flujo; el original deja el color en a3 y el desplazamiento de la textura en a2, y aqui caen en a2 y a0; la direccion de las palabras del sprite queda en v1 en lugar de a0, y la bandera de transparencia se lee en t0 (el original la deja en v1). La direccion de la ranura en dos sentencias (base y luego desplazamiento) y los dos almacenes del primitivo en cada rama de la bandera de transparencia bajan de 1515 a 975. */
+/*
+ * Pendiente: puntuacion 985 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
+ * 81 insertadas o borradas). Difiere en el reparto de registros y la posicion de lecturas: el original deja el color
+ * en a3 y el desplazamiento de la textura en a2, y aqui caen en a2 y a0; la direccion de las palabras del sprite
+ * queda en v1 en lugar de a0 y la bandera de transparencia se lee en t0 (el original la deja en v1). La ranura en
+ * dos sentencias y el almacen del color en cada rama bajan de 1515 a 985.
+ */
+/*
+ * La sentencia replicada (`p[1] = color;` en cada rama de la bandera de transparencia) no genera codigo propio: tras
+ * la bandera el original tiene una sola cola, el segundo `or` con 0x2C000000 y los dos almacenes del primitivo, y el
+ * salto cruzado del compilador vuelve a fusionar las dos copias en una (una sola copia del `sw` en el ensamblador
+ * generado, y la funcion ocupa los mismos 0x2E0 bytes que el original). Causa medida en el volcado de planificacion
+ * posterior al reparto (`-dR`): con el almacen en cada rama el planificador lo deja al final de cada bloque de rama
+ * (bloques 18 y 19) y el `sw` del color sale antes del par `sll`/`sra` que recorta la direccion del primitivo; con
+ * un solo almacen tras la union (bloque 19) lo coloca despues de ese par y la puntuacion sube de 985 a 1180. Que el
+ * original conserve ese orden por tener la cola compartida es una inferencia, no una medida.
+ * La forma del fuente original que producia este reparto se desconoce.
+ *
+ * Encola un sprite de ocho palabras en la lista de ordenacion segun la profundidad del objeto: calcula el color y
+ * el desplazamiento de la textura, copia las palabras del sprite al primitivo del anillo (D_80076188), lo enlaza en
+ * la lista elegida por la profundidad y avanza el cursor.
+ */
 void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
 {
     u32 color;
@@ -283,7 +304,6 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     u32* q;
     u32* orden;
     u32* ranura;
-    u32 palabra;
     s32 n;
     u32 semitransparente;
     VistaDibujo* vista_dibujo;
@@ -343,20 +363,19 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
          * reparto de registros de la ranura y la palabra empeora (la puntuacion sube de 1135 a 1340). */
         ranura = orden;
         ranura += ctx->estado.s4;
-        palabra = *ranura | 0x09000000;
-        /* Los dos almacenes del primitivo (color y palabra de ordenacion) van al final de cada rama de la
-         * bandera de transparencia y no tras la union: el salto de cola los fusiona en uno solo, igual que
-         * en el original (medido: 1115 con la pareja tras la union y 975 con ella en cada rama). */
+        /* La palabra de ordenacion se guarda antes de elegir la constante del color, como en el original. */
+        *p = *ranura | 0x09000000;
         if (semitransparente != 0) {
             color |= 0x2E000000;
+            /* El `or` con 0x2C000000 se repite tras 0x2E000000 porque el original lo aplica en la cola comun a las
+             * dos ramas; sin la repeticion la puntuacion sube de 985 a 1110. */
             color |= 0x2C000000;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             p[1] = color;
-            *p = palabra;
         } else {
             color |= 0x2C000000;
-            color |= 0x2C000000;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             p[1] = color;
-            *p = palabra;
         }
         *ranura = (s32)((s32)p << 8) >> 8;
         D_80076188 += 0x28;
@@ -486,7 +505,6 @@ void func_8003B5AC(Objeto* lista)
     s32 qy;
     s32 qz;
     s8 hecho;
-    u16 nivel;
 
     func_8003ABB4();
     esc = ESCENA_DIBUJO;
@@ -537,15 +555,15 @@ void func_8003B5AC(Objeto* lista)
         /* Los dos almacenes del nivel (estado.w8 y D_800694E2) van en cada rama y no tras la union: con una sola
          * escritura tras la union el compilador reenvia el valor recien guardado a la lectura de estado.w8 y no
          * la emite como carga, y el original la recarga antes de dividir. Con ambos almacenes en cada rama el
-         * salto de cola los fusiona en uno solo y la lectura queda en un bloque nuevo. */
+         * salto de cola los fusiona en uno solo y la lectura queda en un bloque nuevo. Cada rama escribe el
+         * valor con su propia expresion: sin variable intermedia comun las sentencias de las dos ramas
+         * son distintas y la puntuacion sigue siendo 0. */
         if ((u8)D_8006966A & 0x40) {
-            nivel = 0x1000 - D_80069668;
-            esc->estado.w8 = nivel;
-            D_800694E2 = nivel;
+            esc->estado.w8 = 0x1000 - D_80069668;
+            D_800694E2 = 0x1000 - D_80069668;
         } else {
-            nivel = D_80069668;
-            esc->estado.w8 = nivel;
-            D_800694E2 = nivel;
+            esc->estado.w8 = D_80069668;
+            D_800694E2 = D_80069668;
         }
         k = (s16)esc->estado.w8 / 16 - 1;
         if (k < 0) {

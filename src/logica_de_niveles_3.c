@@ -24,8 +24,24 @@ s16 D_800693D0;
 extern void func_80039094(void);
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2195 con la configuracion versionada (g = 8 del archivo; ejes 98 de operando, 4 reordenadas, 142 insertadas o borradas). Reparto de registros y orden de instrucciones: el original comparte entre los modos 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el paso y el empuje en a0 y v1; en el modo de movil con limites el original deja el limite alto en v0 y el bajo en v1 y escribe los dos antes de comprobar la bandera 0x40, mientras aqui caen en a0 y a2. */
 /*
+ * Pendiente: puntuacion 2195 con la configuracion versionada (g = 8 del archivo; ejes 98 de operando, 4 reordenadas,
+ * 142 insertadas o borradas). Reparto de registros y orden de instrucciones: el original comparte entre los modos
+ * 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el
+ * paso y el empuje en a0 y v1; en el modo de movil con limites el original deja el limite alto en v0 y el bajo en
+ * v1 y escribe los dos antes de comprobar la bandera 0x40, mientras aqui caen en a0 y a2.
+ */
+/*
+ * Las sentencias replicadas (los dos almacenes de los limites, `MOVIL_LIMITE_ALTO(o) = num;` y
+ * `MOVIL_LIMITE_BAJO(o) = sentido;`, en cada rama del signo del paso) no generan codigo propio: el original escribe
+ * los dos limites en una sola cola tras el signo del paso y el salto cruzado del compilador funde las dos copias
+ * en una (en el ensamblador generado queda un solo `sw` de cada limite junto al `andi` de la mascara). Causa medida
+ * en el volcado de planificacion posterior al reparto (`-dR`): con los almacenes en cada rama quedan en dos bloques
+ * (15 y 16), cada uno al final de su rama, y la comprobacion `andi` de la mascara 0x40 sigue a los almacenes, como
+ * en el original; con la pareja tras la union (un solo bloque, el 16) el planificador sube el `andi` por encima del
+ * almacen del limite alto y la puntuacion sube de 2195 a 2450. Que el original reparta asi los registros por tener
+ * esa cola es una inferencia, no una medida. La forma del fuente original que producia este reparto se desconoce.
+ *
  * Manejador de los objetos moviles por mascara (clases 12, 13, 18, 19 y 22 a 29): una sola rutina
  * atiende doce modos, uno por bit de la mascara (balancin, giro, bajar o subir con el jugador,
  * oscilacion senoidal, recorrido entre limites, rampa), arrastra al jugador cuando lo lleva encima,
@@ -85,24 +101,26 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
             if (o->s1E == 0) {
                 o->s1E = 5;
             }
-            /* Los dos limites se escriben dentro de cada rama y no tras la union: con una sola pareja de
-             * almacenes despues del if el compilador deja la comprobacion de la mascara (andi) antes de
-             * ellos, y el original la comprueba despues; con la pareja en cada rama el salto de cola la
-             * fusiona en una. La rama del paso no negativo va primero: medido, con la rama negativa
-             * primero la puntuacion sube (la causa no se ha visto en el volcado del compilador). */
+            /* Los dos limites se escriben dentro de cada rama y no tras la union (causa medida en la
+             * cabecera de la funcion). La rama del paso no negativo va primero: medido, con la rama
+             * negativa primero la puntuacion sube; la causa de ese orden no esta medida. */
             paso = (s16)o->w17C;
             if (paso >= 0) {
                 num = o->param.trans.vy;
                 sentido = num;
                 num += paso;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 MOVIL_LIMITE_ALTO(o) = num;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 MOVIL_LIMITE_BAJO(o) = sentido;
             } else {
                 num = o->param.trans.vy;
                 /* Suma con el paso como primer operando: GCC la canoniza igual, pero cambia el orden de
                  * creacion de los pseudos. */
                 sentido = paso + num;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 MOVIL_LIMITE_ALTO(o) = num;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 MOVIL_LIMITE_BAJO(o) = sentido;
             }
             if (mascara & 0x40) {
@@ -387,7 +405,18 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 #define GIRO_Y(p) (((ParametrosObjeto*)(p))->giro.u.y)
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2590 con la configuracion versionada (g = 8 del archivo; ejes 497 de operando, 3 reordenadas, 325 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`) reproduce la carga del original del hijo y baja de 2625 a 2605; leer la X del portador en una local antes de restarla (`x_portador`) baja a 2590. El residuo que queda es de operandos (497) y de orden (3 lineas reordenadas, 325 insertadas o borradas). Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0 en lugar de t7), el ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi 0xffff aqui) y el orden de un sw adicional a 0x14(s3). */
+/*
+ * Pendiente: puntuacion 2590 con la configuracion versionada (g = 8 del archivo; ejes 497 de operando, 3 reordenadas,
+ * 325 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
+ * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
+ * reproduce la carga del original del hijo y baja de 2625 a 2605; leer la X del portador en una local antes de
+ * restarla (`x_portador`) baja a 2590. El residuo que queda es de operandos (497) y de orden (3 lineas reordenadas,
+ * 325 insertadas o borradas). Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6
+ * instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la
+ * llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0
+ * en lugar de t7), el ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi
+ * 0xffff aqui) y el orden de un sw adicional a 0x14(s3).
+ */
 /*
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o

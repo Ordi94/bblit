@@ -620,7 +620,9 @@ de izado que el original. Hay cinco formas:
    número de instrucciones del bucle con el que se iza (`moved to`) o no (`not desirable`): la referencia cambia ese
    número y con él la decisión (`func_8001E1A4`: dos pares `x--; x++` llevan el bucle de 172 a 176 instrucciones, y
    con 174 se iza la dirección y con 175 o más no). Además se comprueba en el volcado que la referencia no genera
-   ninguna instrucción.
+   ninguna instrucción. En la sentencia duplicada en ambas ramas el volcado puede ser el de planificación posterior
+   al reparto (`-dR`): muestra la sentencia replicada en el bloque de cada rama y, con una sola copia tras la unión,
+   el planificador moviendo otra instrucción por encima de ella.
 2. El comentario de cabecera de la función dice que la referencia (o la envoltura) no genera código, da la causa
    medida y termina el párrafo con la oración fija «La forma del fuente original que producia este reparto se
    desconoce.» La causa medida es, según el mecanismo, los pseudos con sus usos ponderados, longitud de vida,
@@ -661,6 +663,8 @@ se actualiza la tabla en el mismo cambio.
 | `func_80045498` | `src/inicializacion_de_motor.c` | envoltura | 1 | coincide | `x0` en `$fp` frente al objeto (0,062 frente a 0,055) |
 | `func_80038884` | `src/gestion_y_dibujo_de_objetos_2.c` | sentencia duplicada en ambas ramas | 3 | coincide | Índice y temporales de k / 2 como pseudos locales de cada rama, todos en `$a2`; las tres colas las fusiona el salto cruzado |
 | `func_8003F06C` | `src/audio_xa_y_spu.c` | sentencia duplicada en ambas ramas | 2 | coincide | Nivel del volumen como pseudo local de cada rama (registros 94 y 95, 6 usos sobre 3 instrucciones): nivel en `$v0` y desplazado en `$v1` |
+| `func_8003AF8C` | `src/menus_e_interfaz.c` | sentencia duplicada en ambas ramas | 2 | NON_MATCHING 985 | Posición del `sw` del color: en cada rama queda antes del par `sll`/`sra` de la dirección del primitivo (bloques 18 y 19 de `-dR`); con un solo almacén tras la unión queda después (1180); el salto cruzado deja una sola copia |
+| `LogicaObjetoMovil` | `src/logica_de_niveles_3.c` | sentencia duplicada en ambas ramas | 4 | NON_MATCHING 2195 | Posición del `andi` de la máscara 0x40 respecto a los dos almacenes de límites: con la pareja en cada rama (bloques 15 y 16 de `-dR`) el `andi` los sigue; con la pareja tras la unión sube sobre el almacén del límite alto (2450); el salto cruzado deja una sola copia de cada `sw` |
 | `func_80032B2C` | `src/camara_y_bucle_logico.c` | envoltura | 3 | NON_MATCHING 60 | `v28`, `rot`, `a0` por encima de `i58` (0,146 / 0,130 / 0,122 frente a 0,106) |
 | `func_8001E1A4` | `src/movimiento_y_objetos_de_escena_2.c` | decremento-incremento | 2 | coincide | Izado de la dirección de `D_8006B558`: el bucle pasa de 172 a 176 instrucciones y con 175 o más no se iza |
 | `func_800363D4` | `src/gestion_y_dibujo_de_objetos.c` | decremento-incremento | 2 | NON_MATCHING 110 | Nodo en `$a0` y puntero inducido en `$a1` (3,478 frente a 3,407) |
