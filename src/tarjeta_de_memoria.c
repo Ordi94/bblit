@@ -417,7 +417,7 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3160 con la configuracion versionada (g = 8 del archivo). Flujo y distribucion de bloques iguales al original;
+ * Pendiente: puntuacion 2870 con la configuracion versionada (g = 8 del archivo; ejes 71 de operando, 0 reordenadas, 239 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
  * original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante.
@@ -438,6 +438,7 @@ void SondearTarjeta(void)
     EntradaDirectorio* entrada;
     s16* bloques;
     s32 grupo;
+    s32 desplazamiento_grupo;
     s32 salvado;
     s32 partida;
     s32 tam;
@@ -627,10 +628,14 @@ void SondearTarjeta(void)
                 for (; i < D_80069358[0]; i++) {
                     for (j = 0; D_800697B0[j + i * 0x28 + grupo * 120] != 0; j++) {
                     }
+                    /* El desplazamiento del grupo se calcula entre los dos bucles interiores y se usa en el de
+                     * relleno y en la direccion de la entrada: asi el reparto de registros del recorrido se acerca
+                     * al original (2970 con el calculo solo en la entrada y 3160 sin el). */
+                    desplazamiento_grupo = grupo * 120;
                     for (; j < 0x14; j++) {
-                        D_800697B0[j + i * 0x28 + grupo * 120] = 0;
+                        D_800697B0[j + i * 0x28 + desplazamiento_grupo] = 0;
                     }
-                    entrada = (EntradaDirectorio*)(D_800697B0 + i * 0x28 + grupo * 120);
+                    entrada = (EntradaDirectorio*)(D_800697B0 + i * 0x28 + desplazamiento_grupo);
                     entrada->attr = 0;
                     entrada->tam = 0;
                     entrada->sig = 0;
