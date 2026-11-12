@@ -271,7 +271,7 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1135 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas, 73 insertadas o borradas). Difiere en: reparto de registros y posicion de lecturas. Mismas instrucciones y flujo; el original deja el color en a3 y el desplazamiento de la textura en a2, y aqui caen en a0 y a1; la direccion de las palabras del sprite queda en v1 en lugar de a0, y la bandera de transparencia se lee en t0 (el original la deja en v1) y el almacen de la palabra de ordenacion va antes de elegir el modo. La direccion de la ranura en dos sentencias (base y luego desplazamiento) y el almacen de la palabra de ordenacion antes de elegir el modo bajan de 1515 a 1135. */
+/* Pendiente: puntuacion 975 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas, 79 insertadas o borradas). Difiere en: reparto de registros y posicion de lecturas. Mismas instrucciones y flujo; el original deja el color en a3 y el desplazamiento de la textura en a2, y aqui caen en a2 y a0; la direccion de las palabras del sprite queda en v1 en lugar de a0, y la bandera de transparencia se lee en t0 (el original la deja en v1). La direccion de la ranura en dos sentencias (base y luego desplazamiento) y los dos almacenes del primitivo en cada rama de la bandera de transparencia bajan de 1515 a 975. */
 void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
 {
     u32 color;
@@ -284,7 +284,6 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     u32* orden;
     u32* ranura;
     u32 palabra;
-    u32 modo;
     s32 n;
     u32 semitransparente;
     VistaDibujo* vista_dibujo;
@@ -345,15 +344,20 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         ranura = orden;
         ranura += ctx->estado.s4;
         palabra = *ranura | 0x09000000;
-        *p = palabra;
+        /* Los dos almacenes del primitivo (color y palabra de ordenacion) van al final de cada rama de la
+         * bandera de transparencia y no tras la union: el salto de cola los fusiona en uno solo, igual que
+         * en el original (medido: 1115 con la pareja tras la union y 975 con ella en cada rama). */
         if (semitransparente != 0) {
-            modo = 0x2E000000;
+            color |= 0x2E000000;
+            color |= 0x2C000000;
+            p[1] = color;
+            *p = palabra;
         } else {
-            modo = 0x2C000000;
+            color |= 0x2C000000;
+            color |= 0x2C000000;
+            p[1] = color;
+            *p = palabra;
         }
-        color |= modo;
-        color |= 0x2C000000;
-        p[1] = color;
         *ranura = (s32)((s32)p << 8) >> 8;
         D_80076188 += 0x28;
         if (ctx->limite < D_80076188) {
