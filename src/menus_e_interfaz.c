@@ -206,9 +206,10 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
  * solo dato por vertice) con los puntos 3, 5 y 7 de la lista recibida y, si el punto 8 no es
  * cero, un segundo primitivo con los puntos 4, 6 y 8 encadenado tras el primero. El cursor del
  * anillo de primitivas (D_80076188) avanza 0x18 por primitivo y vuelve al inicio del buffer
- * cuando supera el limite del contexto. Devuelve siempre 0.
+ * cuando supera el limite del contexto. Devuelve siempre 0. El tercer parametro no se lee: el
+ * llamador (func_8003B5AC) pasa la vista en a2 y el original conserva esa carga.
  */
-s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx)
+s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 {
     u32* tabla;
     u32* datos;
@@ -463,8 +464,6 @@ void func_8003B354(ModeloDibujo* modelo, EscenaDibujo* escena, VistaDibujo* vist
     escena->estado.b0 = 0;
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 790 con la configuracion versionada (-G0 salvo g = 8 del archivo; ejes 45 de operando, 1 reordenada, 49 insertadas o borradas). Misma estructura de bloques y mismo bucle de objetos; difieren el registro de la carga del desplazamiento geometrico (gte_SetGeomOffset usa t4/t5 con dos desplazamientos y el original t2/t3 sin ellos), el reparto v0/v1 del nivel del fundido (el original guarda el nivel una sola vez tras la union y relee esc->estado.w8 despues del almacen de D_800694E2; aqui el almacen en cada rama obliga a la relectura pero la deja antes de ese almacen) y el orden de dos cargas antes del bucle de objetos (el original calcula D_8006D928 antes que la tabla D_8006AD80, que aqui se usa directa). */
 void func_8003B5AC(Objeto* lista)
 {
     EscenaDibujo* esc;
@@ -484,7 +483,6 @@ void func_8003B5AC(Objeto* lista)
     s32 qz;
     s8 hecho;
     u16 nivel;
-    s16 nivel_guardado;
 
     func_8003ABB4();
     esc = ESCENA_DIBUJO;
@@ -492,7 +490,10 @@ void func_8003B5AC(Objeto* lista)
     D_800695A4 = 0;
     D_80069600 = 0;
     D_80069532 = 0;
-    gte_SetGeomOffset(0, 0);
+    /* Desplazamiento de pantalla a cero: el original escribe los registros de control 24 y 25 con ctc2 desde
+     * dos registros que valen cero, sin los dos desplazamientos de 16 bits que anade gte_SetGeomOffset (el
+     * argumento ya viene escalado). Instruccion GTE suelta que ninguna macro de INLINE_C.H cubre. */
+    __asm__ volatile ("ctc2 %0, $24; ctc2 %1, $25" : : "r" (0), "r" (0));
     esc->cuenta_a = &D_800695A2;
     esc->cuenta_b = &D_800695A4;
     esc->inicio = D_80069680;
@@ -529,19 +530,20 @@ void func_8003B5AC(Objeto* lista)
         }
     }
     if (D_8006966A != 0) {
-        /* El nivel se guarda en cada rama y no tras la union: asi la lectura posterior de estado.w8 ya no se
-         * resuelve con el valor recien guardado y el compilador la emite como carga. */
+        /* Los dos almacenes del nivel (estado.w8 y D_800694E2) van en cada rama y no tras la union: con una sola
+         * escritura tras la union el compilador reenvia el valor recien guardado a la lectura de estado.w8 y no
+         * la emite como carga, y el original la recarga antes de dividir. Con ambos almacenes en cada rama el
+         * salto de cola los fusiona en uno solo y la lectura queda en un bloque nuevo. */
         if ((u8)D_8006966A & 0x40) {
             nivel = 0x1000 - D_80069668;
             esc->estado.w8 = nivel;
+            D_800694E2 = nivel;
         } else {
             nivel = D_80069668;
             esc->estado.w8 = nivel;
+            D_800694E2 = nivel;
         }
-        /* El nivel guardado se relee con signo de 16 bits en una local antes del segundo almacen: con la lectura dentro de la division el reparto de registros empeora. */
-        nivel_guardado = (s16)esc->estado.w8;
-        D_800694E2 = nivel;
-        k = nivel_guardado / 16 - 1;
+        k = (s16)esc->estado.w8 / 16 - 1;
         if (k < 0) {
             color = 0;
         } else {
@@ -615,7 +617,7 @@ void func_8003B5AC(Objeto* lista)
                     } else if ((modelo->banderas & 0x11) && !(modelo->banderas & 0x8000)) {
                         func_8003AF8C((SpriteDibujo*)modelo, esc, vista);
                     } else if (modelo->banderas & 0x20) {
-                        func_8003AE08((u32*)modelo, esc);
+                        func_8003AE08((u32*)modelo, esc, vista);
                     } else if (modelo->banderas & 0x40) {
                         obj = esc->objeto;
                         if ((obj->max.vx | obj->max.vy | obj->max.vz | obj->min.vx | obj->min.vy | obj->min.vz) != 0) {
@@ -659,9 +661,6 @@ void func_8003B5AC(Objeto* lista)
         } while (esc->objeto != NULL);
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003B5AC);
-#endif
 
 /* Rutina escrita a mano en el original: sin prologo de pila, registros temporales fijos y mtc2 desde s0-s5 con la lectura de los vertices siguientes adelantada. */
 INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003BDD0);
