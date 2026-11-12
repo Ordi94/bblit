@@ -55,7 +55,7 @@ typedef struct SpritePlano {
  * de indices del conjunto.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 385 con la configuracion versionada (g = 8 del archivo; ejes 1 de operando, 0 reordenadas, 29 insertadas o borradas). Mismos accesos y almacenes; el original conserva el registro del cuadro en t0 hasta leer las banderas, que es lo ultimo que hace (y deja el indice en v0 y las coordenadas en a3, a1, a0, a2), mientras que el C debe leer paleta y banderas antes de los almacenes de coordenadas: con las banderas al final el compilador copia el desplazamiento del indice dentro de cada rama y mueve el objeto a a3 (690), y con ellas antes el registro del cuadro cae en v0 y las banderas en t0. */
+/* Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 36 insertadas o borradas). Mismos accesos, almacenes y orden de instrucciones; solo difiere el reparto de los registros de las lecturas del fotograma: el original deja la coordenada u en a3, v en a1, la anchura en a0, la altura en a2 y la pagina de textura en v0, y aqui caen en a1, a0, v0, a2 y a3. */
 void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     Fotograma* r;
@@ -74,20 +74,22 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 
     if (o->flags08 & 0x20) {
         /* La copia del modo y la pagina de textura comparten una sola local: con dos locales distintas el
-         * reparto de registros de toda la funcion cambia (495 en lugar de 385). */
+         * reparto de registros de toda la funcion cambia. */
         modo_o_pagina = modo;
         func_8001E600(o, c, modo_o_pagina);
         return;
     }
+    /* El fotograma se calcula en cada rama y no tras la union: con el indice calculado antes y las banderas
+     * leidas al final, el compilador copia el desplazamiento del indice dentro de cada rama y mueve el
+     * objeto a otro registro. */
     if (modo & 1) {
-        indice = (u16)c->cuadro;
+        r = c->fotogramas + (u16)c->cuadro;
     } else {
-        indice = c->duraciones[(u16)c->cuadro].indice;
+        r = c->fotogramas + c->duraciones[(u16)c->cuadro].indice;
     }
     p = (SpritePlano*)((u8*)o->u78.p + 0xC);
-    r = c->fotogramas + indice;
-    u = r->u;
     v = r->v;
+    u = r->u;
     w = r->w0C;
     /* La altura menos uno pasa por una variable de 32 bits: en la expresion `h - 1 + v` el compilador estrecha la resta a un byte (addiu 0xff) y el original suma -1. */
     alto_menos_uno = r->w0E - 1;
@@ -96,13 +98,9 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     ancho = w - 1;
     u_fin = u + ancho;
     p->tpage = modo_o_pagina;
-    /* La paleta y las banderas se leen antes de los almacenes de coordenadas: asi el desplazamiento del indice queda tras la reunion de las dos ramas, como en el original. */
     clut = r->h0A;
-    /* Las banderas se leen sobre la variable del indice, ya muerta: el original las deja en el registro del indice. */
-    indice = r->flags;
     p->v0 = v;
     p->v1 = v;
-    espejo = indice & 8;
     v_fin = alto_menos_uno + v;
     p->u0 = u;
     p->u1 = u_fin;
@@ -111,7 +109,7 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     p->u3 = u_fin;
     p->v3 = v_fin;
     p->clut = clut;
-    p->bandera = espejo;
+    p->bandera = r->flags & 8;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E528);
