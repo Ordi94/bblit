@@ -1286,11 +1286,12 @@ void func_80035244(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3608 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales
+ * Pendiente: puntuacion 2465 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales
  * y las constantes coinciden. Quedan el reparto de registros guardados y temporales (la constante -3 en s2 y el
- * original en s3; un puntero del contexto GTE en t7 y el original en a3), el orden de las instrucciones del
- * prologo (el original lee el byte D_8006AA7C y el contexto antes de los almacenes y deja `move s3,a0` en el hueco
- * de retardo del primer salto) y la llamada a func_800351B4 tras la atenuacion: el original salta a la `jal` de la
+ * original en s3 con el puntero a la proyeccion al reves; un puntero del contexto GTE en t7 y el original en a3;
+ * el puntero al objeto actual en v1 en varios bloques y el original en a0), el orden de las dos primeras cargas del
+ * prologo (el original lee el byte D_8006AA7C antes que el contexto; leerlo en una local antes de los almacenes da
+ * 2945) y la llamada a func_800351B4 tras la atenuacion: el original salta a la `jal` de la
  * busqueda del modelo (0x800358A4, una sola llamada en la funcion) y aqui salen dos. Escribir la atenuacion como
  * salto a esa llamada deja una sola `jal` y la estructura del original, pero la puntuacion sube a 3783 porque el
  * puntero al objeto sale en `v1` donde el original lo tiene en `a0` (causa sin medir). Reescribir en C la suma de
@@ -1306,7 +1307,9 @@ void func_80035244(void)
  *
  * La busqueda del modelo guarda el indice leido en la condicion (`idx`) y lo reutiliza en el incremento, como el
  * original (`lw a0,0x40(s1)` en 0x800357B8 y `addiu v0,a0,1` en 0x800357F0 del original), en lugar de leer el
- * campo otra vez (4188 a 3608).
+ * campo otra vez (4188 a 3608). La direccion del scratchpad se asigna despues de la llamada a la camara y no al
+ * principio: con la asignacion inicial el compilador la calcula en el hueco de retardo del primer salto y
+ * desplaza el resto del prologo; el original calcula `lui s1,0x1f80` mas tarde (3608 a 2465).
  *
  * Los dos recorridos de la rama de volumen (los nodos de coordenadas y la busqueda del modelo) se escriben con
  * salto hacia atras en lugar de `do { } while`: con el bucle natural el optimizador de bucles saca de ambos la
@@ -1338,8 +1341,8 @@ void func_800353B0(Objeto* a0)
     Objeto* busca;
     EstadoCamara* cam;
 
-    D_800694D4 = D_800694B8;
     D_80069652 = 0;
+    D_800694D4 = D_800694B8;
     if (D_8006AA7C == 0) {
         if (D_80069560 != 0) {
             ActualizarCamaraSeguimiento(D_80069560, D_80069698->reiniciar_camara);
