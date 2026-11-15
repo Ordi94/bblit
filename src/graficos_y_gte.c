@@ -569,13 +569,20 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
 
 /*
  * Estructura del original en los seis caminos de clasificacion del bucle (0x44c, 0x498, 0x4b4, 0x500,
- * 0x558 y 0x5b4, en el orden del fuente): cada camino termina con su propia prueba `if (cmp) continue; return 1;`
- * escrita con las lecturas del area de trabajo, sin variables intermedias. Las colas identicas las funde el
- * compilador, como el original: los caminos de 0x498 y 0x558 comparten la cadena de 0x570 a 0x5a0 (el primero
+ * 0x558 y 0x5b4, en el orden del fuente): cada camino evalua su propia cadena de comparaciones del bloque contra
+ * el punto y su ultima prueba es su salida, `if (cmp) continue; return 1;`, escrita con las lecturas del area de
+ * trabajo, sin variables intermedias. Las cadenas se distinguen por el conjunto y el orden de comparaciones:
+ * el camino de 0x44c prueba z maxima y luego x maxima, el de 0x4b4 z minima y luego x maxima, el de 0x498 x
+ * maxima, z maxima y z minima, el de 0x558 x minima, z maxima y z minima, el de 0x500 z maxima y luego x
+ * minima, y el de 0x5b4 z minima y luego x minima. Aunque tres parejas acaban en la misma comparacion, llegan
+ * a ella por pruebas distintas y todos los caminos terminan en `continue` o en `return`: no hay un punto comun
+ * donde escribir una sola copia sin un resultado intermedio y un `goto`, de modo que son flujo de control
+ * corriente y no una sentencia replicada. El compilador comparte el codigo final de los caminos (salto
+ * cruzado), como el original: los caminos de 0x498 y 0x558 comparten la cadena de 0x570 a 0x5a0 (el primero
  * entra por `j 0x570`), los de 0x500 y 0x5b4 la de 0x518 a 0x540 (el segundo entra por `j 0x518`), y los de
  * 0x44c y 0x4b4 entran por `j 0x5a4` en la cola comun `bnez v0,0x5d0 ; li v0,1 ; j 0x5f0`, cada uno con su
- * `slt` en el hueco del salto. Con las pruebas escritas directas todos los resultados de comparacion son
- * temporales de su bloque y caen en v0.
+ * `slt` en el hueco del salto. Se supone, sin verificar, que con las pruebas escritas directas todos los
+ * resultados de comparacion son temporales de su bloque y caen en v0.
  *
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
  * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.

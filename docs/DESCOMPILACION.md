@@ -642,6 +642,14 @@ cabecera dice qué colas fusiona el original, qué pseudos cambian de bloque o d
 qué registro toma cada uno. Si tras duplicar las colas el compilador no las fusiona (el ensamblador gana
 instrucciones), la forma no se aplica.
 
+**Frontera de la sentencia duplicada.** La forma regulada es la sentencia de texto idéntico repetida en caminos que
+se reúnen, de modo que una sola copia escrita tras la reunión sería equivalente y la repetición existe solo para
+guiar al compilador. Las salidas propias de cada camino (`return`, `continue` o `break` con su propia condición)
+son flujo de control corriente de C89 y no se cuentan: varios caminos que acaban en `if (cmp) { continue; }
+return 1;` no se reúnen en ningún punto donde una sola copia no exija un resultado intermedio o un `goto`, y
+aunque dos de ellos terminen en la misma comparación, el compilador los comparte por salto cruzado igual que el
+original. Esas funciones no llevan marca ni fila; la cabecera explica qué distingue a cada camino.
+
 **Qué sigue sin admitirse.** Barreras `asm`, `register __asm__("$N")`, `volatile` sin respaldo (también el
 `volatile` sin uso que reserva pila), partir una sentencia en varias, la sentencia duplicada que no es la misma
 sentencia real de la función (la duplicada solo para sumar referencias o en una rama que no la ejecuta), el molde de
