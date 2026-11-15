@@ -1338,7 +1338,6 @@ void func_800353B0(Objeto* a0)
     Objeto* busca;
     EstadoCamara* cam;
 
-    sc = (Scratch*)0x1F800000;
     D_800694D4 = D_800694B8;
     D_80069652 = 0;
     if (D_8006AA7C == 0) {
@@ -1346,6 +1345,7 @@ void func_800353B0(Objeto* a0)
             ActualizarCamaraSeguimiento(D_80069560, D_80069698->reiniciar_camara);
         }
     }
+    sc = (Scratch*)0x1F800000;
     func_80035244();
     sc->m18 = D_8006D928.x - D_8006D928.vpx;
     sc->m20 = D_8006D928.z - D_8006D928.vpz;
