@@ -400,25 +400,29 @@ void func_80037FB8(NodoLista* n)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2287 con la configuracion versionada (g = 8 del archivo; ejes 16 de
- * operando, 0 reordenadas, 174 insertadas o borradas). Difiere en: reparto de registros y orden de
- * cargas de las tablas. Una sola local de 32 bits para el byte alto y el byte extra del contador
- * baja de 2297 a 2287. La estructura
- * de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada
- * grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la
- * llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de
- * otra forma. El valor BCD queda en a1 en el original y aqui en a3, y las bases de las tablas
- * de plantillas (D_8005E81C, D_8005E830, D_8006AB70) se cargan en otro orden.
- * Medido en el volcado de cc1 (`.lreg` y `.greg`): el puntero al estado principal (pseudo 86, 20 usos ponderados
- * sobre 29 insns de vida, prioridad 2,76, cruza 4 llamadas) y la base de la tabla de plantillas D_8005E81C
- * (pseudo 82, 13 sobre 18, 2,17) se asignan antes que el pseudo de vida larga de 30 usos sobre 124 insns (0,97);
- * la base toma a2 y el otro cae en a3, mientras que el original deja la base en a0 y el valor BCD en a1. Se
- * supone, sin verificar, que ese pseudo de 0,97 es el valor BCD: es el unico con nueve muertes y una vida que
- * abarca los grupos. Partir el valor BCD en dos locales (una para la primera conversion de cada grupo y otra para
- * la segunda) no cambia el ensamblador generado: la cifra sigue en 2287. En los grupos de dos digitos la carga del
- * primer id sale de a2 y se almacena despues de la carga del tercero, mientras que el original almacena cada id
- * justo despues de cargarlo; ese orden de almacenes a la pila frente a cargas de la tabla es el residuo de
- * insertadas o borradas, y no se midio con volcado de planificacion.
+ * Pendiente: puntuacion 925 con la configuracion versionada (g = 8 del archivo; ejes 16 de
+ * operando, 0 reordenadas, 75 insertadas o borradas). Difiere en: reparto de registros de los dos
+ * ultimos grupos. Los cuatro primeros grupos coinciden en codigo (quedan solo las marcas de operando
+ * por nombre de simbolo: el original lleva D_8005E836 y D_8005E858 donde el C genera
+ * D_8005E830+6 y D_8005E830+0x28, y D_8001013C o D_80010047 donde el C genera 0x13c(v0) o 0x47(v0)).
+ * Residuo medido: (1) grupo del contador 0xB8 (D_800100F8): el original guarda el puntero a
+ * 0x80010000 en s4 y el puntero a la pila en s3, aqui al reves, y la base de las posiciones
+ * D_8005E8F8 cae en a2 en vez de v1 (0x48c, 0x494, 0x4ac); (2) grupo del contador 0xBA (el
+ * ultimo): el original conserva el puntero a 0x80010000 en s3 a traves de la primera conversion
+ * BCD (lui en 0x520, lbu 0x44 y, tras la llamada, lbu 0xFA en 0x578) y aqui el compilador lo
+ * rematerializa con un lui propio en cada lectura (a0). Se supone, sin verificar, que el CSE
+ * sustituye el puntero constante por su valor en cada lectura cuando ninguna lectura lo usa como
+ * base de un indice, que es lo que lo mantiene en un registro salvado en los grupos de los
+ * contadores 0xB6 y 0xB8 (`e->r[e->r[0xB6]]`); no se encontro la forma que lo mantenga en el ultimo.
+ * Formas que bajaron la cifra: leer los tres bytes del contador de porcentaje con ESTADO_PRINCIPAL
+ * directo (sin la local `e`, que abarcaba el grupo) en una sola expresion y sumar `r[7] + r[5]`
+ * antes de sumarlo al byte alto desplazado (2287 a 2137: el lui compartido y la suma coinciden con
+ * 0x1b8..0x1d0); escribir los ids del porcentaje en orden de indices 2 y 3 (2137 a 1325: el valor
+ * BCD pasa a a1 como en el original); dejar la prueba `i == 1` como `if` independiente y no como
+ * `else if`, porque el original cae del bloque `i == 0` a esa prueba (1325 a 925). Formas medidas
+ * sin bajada: una variable BCD distinta por conversion da 13847 (cambia la planificacion del
+ * primer grupo); un puntero propio para el ultimo grupo da 950 y para los dos ultimos 2508 (se
+ * redistribuyen los registros salvados de todos los grupos).
  */
 /*
  * Crea los objetos de los indicadores de la interfaz al entrar en un nivel: reinicia los
@@ -437,9 +441,6 @@ void func_80037FE8(void* lista)
     Objeto* o;
     s16 (*tpos)[2];
     EstadoPrincipal* e;
-    s32 byte_alto_ampliado;
-    u8 byte_alto_contador;
-    s32 byte_contador;
     s32 id_plantilla_copia;
 
     func_80038C2C(0, D_80010043, 1);
@@ -469,30 +470,21 @@ void func_80037FE8(void* lista)
         ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[7 + i], ids[i], pos[i], 1);
     }
 
-    e = ESTADO_PRINCIPAL;
-    /* Los dos bytes del contador se leen en una local de 8 bits y se copian a una sola local de 32
-     * bits que se reutiliza: con las lecturas dentro de la expresion la puntuacion sube a 2422 y con
-     * una local de 8 bits para el byte extra a 2297. `byte_contador` guarda primero el byte alto y
-     * despues el byte extra: comparten variable porque una sola local de 32 bits para los dos
-     * bytes baja la puntuacion de 2297 a 2287. */
-    byte_alto_contador = e->r[0xFC];
-    byte_contador = (u8)byte_alto_contador;
-    byte_alto_ampliado = (u8)byte_contador;
-    byte_contador = (u8)e->r[0x05];
     i = 0;
-    pct = ((byte_alto_ampliado << 8) + e->r[0x07] + byte_contador) * 100 / 457;
+    pct = ((ESTADO_PRINCIPAL->r[0xFC] << 8) + (ESTADO_PRINCIPAL->r[0x07] + ESTADO_PRINCIPAL->r[0x05])) * 100 / 457;
     bcd = ((DigitosSinConversion)func_80037D3C)(pct);
     ids[0] = D_8005E81C[(bcd & 0xF00) >> 8];
     ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
-    ids[3] = D_8005E830[0x14];
     ids[2] = D_8005E81C[bcd & 0xF];
+    ids[3] = D_8005E830[0x14];
     pos = D_8005E8BC;
     for (; i < 4; i++) {
         if (i == 0) {
             if (ids[0] == 0x1D8) {
                 continue;
             }
-        } else if (i == 1) {
+        }
+        if (i == 1) {
             if (ids[0] == 0x1D8 && ids[1] == ids[0]) {
                 continue;
             }
