@@ -204,9 +204,11 @@ void CopiarBytes(u8* origen, u8* destino, s16 n)
  * retardo. Mismas instrucciones y mismo flujo que el original; el original deja el puntero de la
  * lista A en v1 y el de busqueda en a1, aqui salen a2 y v1, y rellena un nop de retardo que aqui
  * queda. El identificador en 32 bits y las copias locales del contenedor y del nodo de C en sus
- * ramas bajan de 1115 a 1070. Medido en el ensamblador: en cada busqueda el original copia el identificador
- * (`move a3,v0` en el hueco del salto de guarda) y compara contra la copia; una variable local para la
- * clave de busqueda la funde el compilador con el identificador y sube a 1180.
+ * ramas bajan de 1115 a 1070. Medido en el ensamblador: en cada busqueda el original tiene un
+ * `move a3,v0` en el hueco del salto de guarda; una variable local para la clave de busqueda sube a
+ * 1180. Se supone, sin verificar, que ese `move` copia el identificador y que la comparacion se hace
+ * contra la copia (podria ser una segunda lectura de `a->ref[i]`) y que el compilador funde la local
+ * con el identificador; no se ha medido en un volcado.
  *
  * Convierte, en un contenedor ya cargado, las referencias entre registros por identificador en
  * desplazamientos dentro de cada lista, para que el codigo que las usa no tenga que buscar:

@@ -262,8 +262,8 @@ void func_80019364(s32* a0)
  * lecturas y los registros salen permutados; el reparto de v0/v1 en las banderas de los planos 0x7E y
  * 0x7F del caso estatico (0x8001BCD4-0x8001BF6B) y la posicion de dos instrucciones del prologo.
  * Medido: escribir la suma que actualiza el punto de cruce como segunda lectura del campo (el original
- * tiene `move v0,v1` tras los almacenes) baja de 2020 a 1565; con una sola lectura local o con las dos
- * lecturas como campo sube (2500).
+ * tiene `move v0,v1` tras los almacenes) baja de 2020 a 1565; con una sola lectura local da 2020 (la
+ * cifra anterior, sin cambio) y con las dos lecturas como campo sube a 2500.
  */
 /*
  * Barrido de un desplazamiento (desp) del punto pos contra el terreno por baldosas: avanza baldosa a
