@@ -87,7 +87,7 @@ void func_80020B90(Objeto* o)
     Objeto* t2;
     RegistroEstado* rg;
     s32 mz;
-    s16* ptr16;
+    SVECTOR* ptr16;
     s32 vs;
     u16 hw;
     s32 sum;
@@ -191,8 +191,8 @@ void func_80020B90(Objeto* o)
         }
         o->w17C = a;
         o->flags14 &= 0xFDFFFFDF;
-        o->w17E = 0;
         o->p180 = sc->sec;
+        o->w17E = 0;
         sc->paso_vigente = sc->sec->desplazamiento;
         sc->reg = (RegistroEstado*)o->bloque;
         while (sc->reg != NULL && sc->reg->id != sc->paso_vigente) {
@@ -767,12 +767,12 @@ llamar_salto:
             BarrerTerreno(&sc->punto, &sc->tmp_v, &sc->res, w);
             pp->param.trans.vx = o->param.trans.vx + sc->tmp_v.vx;
             pp->param.trans.vy = o->objetivo.vy;
+            pp->param.trans.vz = o->param.trans.vz + sc->tmp_v.vz;
             pp->coord.super = NULL;
             pp->coord.param = (GsCOORD2PARAM*)&pp->param;
-            pp->param.trans.vz = o->param.trans.vz + sc->tmp_v.vz;
             pp->w26 = o->w26;
-            pp->p70 = NULL;
             pp->param.giro.u.y = o->param.giro.u.y;
+            pp->p70 = NULL;
             o->p6C = NULL;
             func_8001CFCC(&pp->coord);
             o->min.vx = -0x46;
@@ -801,7 +801,7 @@ llamar_salto:
                     o->p70 = t1;
                     APOYO(o)->trans.vz = 0;
                     APOYO(o)->trans.vy = sc->apoyo_hallado->h0A;
-                    sc->tmp = (s16)o->param.giro.u.y - (s16)t1->param.giro.u.y;
+                    sc->tmp = (s16)o->param.giro.u.y - (s16)o->p70->param.giro.u.y;
                     if (sc->tmp < 0) {
                         sc->tmp = sc->tmp - 0x1000;
                     }
@@ -868,7 +868,6 @@ llamar_salto:
             sc->desp.z += sc->rel.vz - (s16)sc->tmp_sv.vz;
             o->param.giro.u.y = ratan2(sc->paso_x, (s16)sc->paso_z);
         }
-        pt = &sc->punto;
         t2 = o->p6C;
         sc->tocado = t2;
         if (t2 != NULL) {
@@ -877,10 +876,10 @@ llamar_salto:
                     D_80069D60[0].vx = D_80069D60[2].vx = o->min.vx;
                     D_80069D60[1].vx = D_80069D60[3].vx = o->max.vx;
                     D_80069D60[0].vz = D_80069D60[1].vz = o->max.vz;
-                    D_80069D60[3].vy = 0;
-                    D_80069D60[2].vy = 0;
-                    D_80069D60[1].vy = 0;
-                    D_80069D60[0].vy = 0;
+                    *(s16*)((u8*)D_80069D60 + 0x1A) = 0;
+                    *(s16*)((u8*)D_80069D60 + 0x12) = 0;
+                    *(s16*)((u8*)D_80069D60 + 0xA) = 0;
+                    *(s16*)((u8*)D_80069D60 + 2) = 0;
                     D_80069D60[2].vz = D_80069D60[3].vz = o->min.vz;
                     gte_SetRotMatrix(&sc->m);
                     a = 0;
@@ -933,16 +932,17 @@ llamar_salto:
                         sc->punto.vy = o->param.trans.vy - 0x64;
                         BarrerTerreno(&sc->punto, &sc->tmp_v, &sc->res, w);
                         a++;
-                        ptr16 = D_800693DC;
+                        ptr16 = (SVECTOR*)D_800693DC;
                         D_800693DC += 4;
-                        sc->desp.x += sc->tmp_v.vx - ptr16[0];
-                        sc->desp.z += sc->tmp_v.vz - ptr16[2];
-                        sc->resp.x += sc->tmp_v.vx - ptr16[0];
-                        sc->resp.z += sc->tmp_v.vz - ptr16[2];
+                        sc->desp.x += sc->tmp_v.vx - ptr16->vx;
+                        sc->desp.z += sc->tmp_v.vz - ptr16->vz;
+                        sc->resp.x += sc->tmp_v.vx - ptr16->vx;
+                        sc->resp.z += sc->tmp_v.vz - ptr16->vz;
                     } while (a < 4);
                 }
             }
         }
+        pt = &sc->punto;
         sc->tmp = sc->desp.x + sc->desp.z;
         sc->punto.vx = o->param.trans.vx;
         sc->punto.vy = o->param.trans.vy;
