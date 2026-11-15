@@ -409,6 +409,16 @@ void func_80037FB8(NodoLista* n)
  * llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de
  * otra forma. El valor BCD queda en a1 en el original y aqui en a3, y las bases de las tablas
  * de plantillas (D_8005E81C, D_8005E830, D_8006AB70) se cargan en otro orden.
+ * Medido en el volcado de cc1 (`.lreg` y `.greg`): el puntero al estado principal (pseudo 86, 20 usos ponderados
+ * sobre 29 insns de vida, prioridad 2,76, cruza 4 llamadas) y la base de la tabla de plantillas D_8005E81C
+ * (pseudo 82, 13 sobre 18, 2,17) se asignan antes que el pseudo de vida larga de 30 usos sobre 124 insns (0,97);
+ * la base toma a2 y el otro cae en a3, mientras que el original deja la base en a0 y el valor BCD en a1. Se
+ * supone, sin verificar, que ese pseudo de 0,97 es el valor BCD: es el unico con nueve muertes y una vida que
+ * abarca los grupos. Partir el valor BCD en dos locales (una para la primera conversion de cada grupo y otra para
+ * la segunda) no cambia el ensamblador generado: la cifra sigue en 2287. En los grupos de dos digitos la carga del
+ * primer id sale de a2 y se almacena despues de la carga del tercero, mientras que el original almacena cada id
+ * justo despues de cargarlo; ese orden de almacenes a la pila frente a cargas de la tabla es el residuo de
+ * insertadas o borradas, y no se midio con volcado de planificacion.
  */
 /*
  * Crea los objetos de los indicadores de la interfaz al entrar en un nivel: reinicia los
