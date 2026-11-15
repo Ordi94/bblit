@@ -25,22 +25,34 @@ extern void func_80039094(void);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2195 con la configuracion versionada (g = 8 del archivo; ejes 98 de operando, 4 reordenadas,
- * 142 insertadas o borradas). Reparto de registros y orden de instrucciones: el original comparte entre los modos
- * 0x10 y 0x400 la llamada a ApplyMatrixLV, calcula el divisor del balancin con otro orden de cargas y reparte el
- * paso y el empuje en a0 y v1; en el modo de movil con limites el original deja el limite alto en v0 y el bajo en
- * v1 y escribe los dos antes de comprobar la bandera 0x40, mientras aqui caen en a0 y a2.
+ * Pendiente: puntuacion 838 con la configuracion versionada (g = 8 del archivo; ejes 112 de operando, 3 reordenadas,
+ * 90 insertadas o borradas). Residuo medido en tres trozos: (1) bloque de limites del movil: el original deja el paso
+ * en a0, el limite alto en v0 y el bajo en v1 y conserva la copia `move v1,v0` tambien en la rama del paso negativo,
+ * mientras aqui caen en v0, a0 y a1 y la suma de la rama negativa se pliega sin copia; (2) divisor del balancin: el
+ * original carga el radio (0x20) antes que el limite del eje (0x48) y resta en ese orden; (3) el desplazamiento del
+ * jugador (`sentido`) queda en a1 y el puntero al padre en v1, al reves que en el original. El resto del balancin
+ * (paso en a0, empuje en v1, productos) coincide.
  */
 /*
- * Las sentencias replicadas (los dos almacenes de los limites, `MOVIL_LIMITE_ALTO(o) = num;` y
- * `MOVIL_LIMITE_BAJO(o) = sentido;`, en cada rama del signo del paso) no generan codigo propio: el original escribe
- * los dos limites en una sola cola tras el signo del paso y el salto cruzado del compilador funde las dos copias
- * en una (en el ensamblador generado queda un solo `sw` de cada limite junto al `andi` de la mascara). Causa medida
- * en el volcado de planificacion posterior al reparto (`-dR`): con los almacenes en cada rama quedan en dos bloques
- * (15 y 16), cada uno al final de su rama, y la comprobacion `andi` de la mascara 0x40 sigue a los almacenes, como
- * en el original; con la pareja tras la union (un solo bloque, el 16) el planificador sube el `andi` por encima del
- * almacen del limite alto y la puntuacion sube de 2195 a 2450. Que el original reparta asi los registros por tener
- * esa cola es una inferencia, no una medida. La forma del fuente original que producia este reparto se desconoce.
+ * Las sentencias replicadas son tres parejas que no generan codigo propio. (a) Los dos almacenes de los limites,
+ * `MOVIL_LIMITE_ALTO(o) = num;` y `MOVIL_LIMITE_BAJO(o) = sentido;`, en cada rama del signo del paso: el original
+ * escribe los dos limites en una sola cola tras el signo del paso y el salto cruzado del compilador funde las dos
+ * copias en una (en el ensamblador generado queda un solo `sw` de cada limite junto al `andi` de la mascara). Causa
+ * medida en el volcado de planificacion posterior al reparto (`-dR`): con los almacenes en cada rama quedan en dos
+ * bloques, cada uno al final de su rama, y la comprobacion `andi` de la mascara 0x40 sigue a los almacenes, como en el
+ * original; con la pareja tras la union el planificador sube el `andi` por encima del almacen del limite alto
+ * (puntuacion 2450 frente a 2195 en la medida de esa pareja). (b) La llamada `ApplyMatrixLV(&o->coord.coord, &v, &v)`
+ * en la rama de la oscilacion (0x10) y en la del recorrido por tramos (0x400): el original prepara los tres argumentos
+ * en cada camino (0x874 a 0x884 y 0x940 a 0x958) y comparte un solo `jal` (0x95c). Medido con `diff`: con la llamada
+ * escrita una vez tras una etiqueta comun 2530, con la llamada en cada rama 1228, y el recuento de `jal ApplyMatrixLV`
+ * del ensamblador generado coincide con el del original (3); que la causa sea el salto cruzado de la cola y no otra
+ * decision del planificador se supone, sin verificar. La forma del fuente original que producia este reparto se
+ * desconoce.
+ *
+ * Variables aparte para cada uso (medido con `diff` y en el volcado `.greg`): la altura del recorrido por tramos
+ * (`altura`), el empuje del balancin (`empuje`) y el paso de los limites (`ritmo`) son variables propias. Con una sola
+ * `num`/`paso` el pseudo de `num` (26 usos ponderados sobre 80 insns de vida, 1,30) se asigna antes que el de `paso`
+ * (23 sobre 86, 1,07), toma a0 y deja a `paso` en a1; el original da a0 al paso y v1 al empuje.
  *
  * Manejador de los objetos moviles por mascara (clases 12, 13, 18, 19 y 22 a 29): una sola rutina
  * atiende doce modos, uno por bit de la mascara (balancin, giro, bajar o subir con el jugador,
@@ -55,9 +67,11 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
     VECTOR v;
     s32 paso;
     s32 num;
+    s32 empuje;
+    s32 altura;
+    s32 ritmo;
     s32 sentido;
     void* area;
-    Objeto* oscilante;
 
     t = TRABAJO_MOVIL;
     area = (void*)0x1F80001C;
@@ -104,11 +118,11 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
             /* Los dos limites se escriben dentro de cada rama y no tras la union (causa medida en la
              * cabecera de la funcion). La rama del paso no negativo va primero: medido, con la rama
              * negativa primero la puntuacion sube; la causa de ese orden no esta medida. */
-            paso = (s16)o->w17C;
-            if (paso >= 0) {
+            ritmo = (s16)o->w17C;
+            if (ritmo >= 0) {
                 num = o->param.trans.vy;
                 sentido = num;
-                num += paso;
+                num += ritmo;
                 /* Sentencia replicada: es la misma que la de las otras ramas. */
                 MOVIL_LIMITE_ALTO(o) = num;
                 /* Sentencia replicada: es la misma que la de las otras ramas. */
@@ -117,7 +131,7 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
                 num = o->param.trans.vy;
                 /* Suma con el paso como primer operando: GCC la canoniza igual, pero cambia el orden de
                  * creacion de los pseudos. */
-                sentido = paso + num;
+                sentido = ritmo + num;
                 /* Sentencia replicada: es la misma que la de las otras ramas. */
                 MOVIL_LIMITE_ALTO(o) = num;
                 /* Sentencia replicada: es la misma que la de las otras ramas. */
@@ -152,17 +166,17 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
             paso = 0x20;
         }
         if (o->p6C == D_80069698 && o->p6C->p70 == o) {
-            num = o->p6C->u18C.agarre.trans.vx;
-            /* Los productos `paso * num` se escriben con el paso como primer factor: el orden de
+            empuje = o->p6C->u18C.agarre.trans.vx;
+            /* Los productos `paso * empuje` se escriben con el paso como primer factor: el orden de
              * los factores decide en que registros caen los dos operandos del `mult` y con este
              * se acerca al reparto del original (`mult v1, a0` en el hueco de salto de la
              * comparacion del giro; aqui queda `mult a1, a0`). */
-            if (num < 0) {
+            if (empuje < 0) {
                 if (o->w17C & 1) {
                     goto decae;
                 }
                 if (o->param.giro.rotate.vz >= -0x163) {
-                    o->param.giro.u.z += (paso * num) / (o->radio - o->min.vx);
+                    o->param.giro.u.z += (empuje * paso) / (o->radio - o->min.vx);
                 }
                 sentido = (o->param.giro.rotate.vz * paso) / (o->radio - o->min.vx);
             } else {
@@ -170,7 +184,7 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
                     goto decae;
                 }
                 if (o->param.giro.rotate.vz < 0x164) {
-                    o->param.giro.u.z += (paso * num) / (o->max.vx + o->radio);
+                    o->param.giro.u.z += (empuje * paso) / (o->max.vx + o->radio);
                 }
                 sentido = (o->param.giro.rotate.vz * paso) / (o->radio + o->max.vx);
             }
@@ -218,10 +232,10 @@ sube:
     } else if (mascara & 0x40) {
         if (o->flags14 & 0x400000) {
             num = MOVIL_LIMITE_ALTO(o);
-            paso = o->param.trans.vy;
+            altura = o->param.trans.vy;
             o->flags14 &= ~0x2000;
-            if (paso < num) {
-                o->param.trans.vy = paso + o->s1E;
+            if (altura < num) {
+                o->param.trans.vy = altura + o->s1E;
                 if (!(o->param.trans.vy < num)) {
                     o->param.trans.vy = num;
                 }
@@ -230,10 +244,10 @@ sube:
             }
         } else if (o->flags14 & 0x200000) {
             num = MOVIL_LIMITE_BAJO(o);
-            paso = o->param.trans.vy;
+            altura = o->param.trans.vy;
             o->flags14 &= ~0x2000;
-            if (num < paso) {
-                o->param.trans.vy = paso - o->s1E;
+            if (num < altura) {
+                o->param.trans.vy = altura - o->s1E;
                 if (!(num < o->param.trans.vy)) {
                     o->flags14 |= 0x2000;
                     o->param.trans.vy = num;
@@ -279,9 +293,6 @@ sube:
             D_80069698->param.trans.vz = t->az;
         }
     } else if (mascara & 0x10) {
-        /* En la oscilacion los cruces de fase se escriben sobre una copia local del objeto: con `o` el
-         * compilador reparte los registros de la fase y de las banderas de otra forma (2290 frente a 2195). */
-        oscilante = o;
         v.vx = 0;
         v.vz = (rsin((s16)o->w17E) * (s16)o->w17C) >> 12;
         v.vy = 0;
@@ -289,11 +300,13 @@ sube:
         o->w17E = (o->w17E + o->s1E) & 0xFFF;
         if (paso < 0x400 && (s16)o->w17E >= 0x400) {
             o->flags14 |= 0x2000;
-        } else if (paso < 0xC00 && (s16)oscilante->w17E >= 0xC00) {
-            oscilante->flags14 |= 0x2000;
+        } else if (paso < 0xC00 && (s16)o->w17E >= 0xC00) {
+            o->flags14 |= 0x2000;
         } else {
-            oscilante->flags14 &= ~0x2000;
+            o->flags14 &= ~0x2000;
         }
+        /* Sentencia replicada: es la misma que la de las otras ramas. */
+        ApplyMatrixLV(&o->coord.coord, &v, &v);
         goto aplica;
     } else if (mascara & 0x400) {
         if (o->flags14 & 0x400000) {
@@ -316,8 +329,9 @@ sube:
         v.vz = (s16)o->w17E;
         v.vy = 0;
         v.vx = 0;
-aplica:
+        /* Sentencia replicada: es la misma que la de las otras ramas. */
         ApplyMatrixLV(&o->coord.coord, &v, &v);
+aplica:
         o->param.trans.vx = v.vx + MOVIL_ORIGEN_X(o);
         o->param.trans.vy = v.vy + MOVIL_LIMITE_ALTO(o);
         o->param.trans.vz = v.vz + MOVIL_ORIGEN_Z(o);
