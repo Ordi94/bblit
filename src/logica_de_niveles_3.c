@@ -3273,7 +3273,6 @@ void LogicaBloqueEmpujable(Objeto* o)
             for (;;) {
             }
         }
-        m = &t->m;
         if (o->lista->def->wA & 2) {
             o->u78.ayudas->flags8 |= 2;
             GsInitCoordinate2(0, o->u78.ayudas->pcoord);
@@ -3281,6 +3280,7 @@ void LogicaBloqueEmpujable(Objeto* o)
             o->coord.param = PARAMETROS_SDK(o);
             o->u78.ayudas->w14 = (s32)o->lista->def->tabla;
         }
+        m = &t->m;
         GEO_IDENTIDAD(m);
         ScaleMatrix(m, (VECTOR*)&o->param);
         ApplyMatrixSV(m, &o->min, &o->min);
@@ -3297,7 +3297,7 @@ void LogicaBloqueEmpujable(Objeto* o)
         o->empuje.vz = 0;
         goto reposo;
     }
-    if (!((o->flags14 & 0x8000) && !(D_80069698->flags14 & 0x4000))) {
+    if (!((o->flags14 & 0x8000) && (D_80069698->flags14 & 0x4000))) {
         if (func_80016C0C(o, 0x20000, area) == 0) {
             goto sin_empuje;
         }
