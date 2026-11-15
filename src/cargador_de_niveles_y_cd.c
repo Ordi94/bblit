@@ -208,8 +208,12 @@ void CopiarBytes(u8* origen, u8* destino, s16 n)
  * -dg: global-alloc asigna por prioridad floor_log2(R) * R / L y cada pseudo toma el primer registro
  * libre; el orden de aqui es la busqueda (28 usos sobre 10, 11,2), el puntero a los campos (20 sobre
  * 19, 4,21), el nodo de C (44 sobre 57, 3,86), el identificador (27 sobre 30, 3,60), la lista A (12
- * sobre 24, 1,5) y el fin (5 sobre 18, 0,56). Para dejar a1 a la busqueda y a3 al identificador la
- * lista A tendria que asignarse antes que la busqueda y el identificador al final; se supone, sin
+ * sobre 24, 1,5) y el fin (5 sobre 18, 0,56). Respecto del original son dos pares intercambiados: la
+ * lista A y la busqueda (v1 y a1 en el original) y el fin y el identificador (a2 y a3); en los bucles
+ * de B y de C el identificador tambien queda en a2 donde el original lo deja en a3, y el recorrido
+ * exterior queda en a3 (B) y a1 (C) frente a a1 y a2 del original. Para dejar a1 a la busqueda y
+ * a3 al identificador la lista A tendria que asignarse antes que la busqueda y el identificador al
+ * final; se supone, sin
  * verificar, que el original los asigna asi, pero ninguna forma medida mueve esas prioridades en la
  * proporcion que pide (la lista A necesitaria una prioridad mayor que 11,2). Tambien difiere la
  * secuencia de la division por el tamano del nodo: el original deja el cociente en v0 y el producto
