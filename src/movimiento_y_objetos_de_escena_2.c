@@ -313,6 +313,11 @@ void func_8001D0FC(Objeto* otro, u32 id, BusquedaAnim* b)
  *  - La posicion se escribe como tres palabras sueltas y no como campos de la estructura: un acceso a miembro de
  *    estructura no se ordena frente a una lectura que no lo es, y con campos el planificador sube la lectura de
  *    D_8006D9A8 por encima de los almacenes (el original la deja despues).
+ *  - Los dos almacenes en +0x6C y la comprobacion del puntero del objeto controlado son del original, no una
+ *    guarda puesta para influir en el compilador: `beqz a0` en 0x8001D34C con `sw a0,0x6C(v1)` en su hueco de
+ *    retardo (0x8001D350), y despues la relectura de +0x70 en 0x8001D354 y `sw zero,0x6C(v0)` en 0x8001D35C.
+ *    Es probablemente una rutina de enlazar y desenlazar expandida en linea. No se simplifican porque dejarian
+ *    de reproducir esas instrucciones.
  * Coincide en bytes (1 referencia en forma numerica; el diff puntua 5 por la forma simbolica).
  */
 void func_8001D31C(s32 x, s32 y, s32 z)
