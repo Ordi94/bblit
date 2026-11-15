@@ -1315,10 +1315,10 @@ sin_rebote:
                     sc->res.grupo = o->w26;
                     BarrerTerreno(&sc->punto, &sc->rel, &sc->res, w);
                     o->param.trans.vx = o->p70->param.trans.vx + sc->rel.vx;
+                    o->param.trans.vz = o->p70->param.trans.vz + sc->rel.vz;
                     o->coord.param = (GsCOORD2PARAM*)&o->param;
                     o->param.giro.u.z = 0;
                     o->coord.super = NULL;
-                    o->param.trans.vz = o->p70->param.trans.vz + sc->rel.vz;
                     o->p70->p6C = NULL;
                     o->p70 = NULL;
                     o->flags14 = (o->flags14 & ~0x214) | 2;
