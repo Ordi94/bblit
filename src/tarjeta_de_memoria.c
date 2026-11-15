@@ -427,7 +427,7 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  * de los bucles interiores de 17 y 20 instrucciones de vida), que el original deja dentro del cuerpo (tres cadenas
  * `sll 4 ; subu ; sll 3` por vuelta, en 0x80015CC0, 0x80015D10 y 0x80015D40); los bucles interiores de 12 y 16 instrucciones
  * no izan un incremento inducido (`giv of insn ... not worth while, 0 vs 12` y `0 vs 16`). Con `desplazamiento_grupo` en una
- * sola local usada en el relleno y en la entrada da 2835; con el producto escrito en cada uso 3160. Queda sin causa medida
+ * sola local usada en el relleno y en la entrada da 2835; con el producto escrito en cada uso 3125. Queda sin causa medida
  * por que el original no iza esas cadenas. El `move a1,v0 ; bnez a1` de la llamada de sondeo (el original comprueba una copia
  * del resultado que despues compara con -1) tampoco se reproduce: aqui se comprueba `v0` directamente.
  *
@@ -629,7 +629,7 @@ void SondearTarjeta(void)
                     cuenta_previa = *bloques;
                     if ((tam & 0x1FFF) != 0) {
                         /* El bloque parcial se suma en una temporal antes de los completos: el reparto
-                         * de registros de la suma se acerca al original (3175 a 3160). */
+                         * de registros de la suma se acerca al original (2850 a 2835). */
                         con_parcial = cuenta_previa + 1;
                         *bloques = con_parcial + completos;
                     } else {
@@ -643,7 +643,7 @@ void SondearTarjeta(void)
                     }
                     /* El desplazamiento del grupo se calcula entre los dos bucles interiores y se usa en el de
                      * relleno y en la direccion de la entrada: asi el reparto de registros del recorrido se acerca
-                     * al original (2970 con el calculo solo en la entrada y 3160 sin el). */
+                     * al original (3125 con el producto escrito en cada uso y tambien 3125 con el calculo solo en la entrada). */
                     desplazamiento_grupo = grupo * 120;
                     for (; j < 0x14; j++) {
                         D_800697B0[j + i * 0x28 + desplazamiento_grupo] = 0;
