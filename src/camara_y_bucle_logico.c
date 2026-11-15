@@ -245,6 +245,16 @@ void func_80032A24(void)
  * dos copias `move v1,a1` con el puntero (el CSE la sustituye por el pseudo de la cadena de pruebas y el combinador
  * borra la copia).
  *
+ * Medido en el volcado: con el almacen de i58 dentro del primer do/while (el calculo tambien dentro) el valor de
+ * max.vy pasa a 7 usos ponderados sobre 8 instrucciones (1,75) y supera al objeto en curso (14 sobre 25, 1,68), de
+ * modo que toma a1 y el objeto a2. Calculando antes la diferencia en una local `nivel = w->cur->max.vy - w->v28.vy;`
+ * y almacenandola como primera sentencia del do/while, max.vy baja a 6 usos (1,5), el objeto en curso se asigna
+ * antes y los registros coinciden, pero el almacen sale antes de la copia `move v1,a1` (60 con una sola
+ * instruccion fuera de sitio): se supone, sin verificar, que sin el calculo dentro de la region que abre el do/while
+ * el almacen queda listo desde su primer instante y el planificador lo coloca primero. Una local con el objeto en curso
+ * asignada antes del almacen coloca bien el almacen pero funde la primera copia con el puntero (105), y envolver
+ * `RotMatrix` en el ultimo do/while no cambia nada (la vida del objeto termina antes).
+ *
  * Los tres do/while (0) no generan codigo: ponderan por un nivel mas las referencias de su cuerpo para que la
  * prioridad de global-alloc ordene los punteros como el original (v28 en s3, rot en s4, a0 en s5, i58 en s6):
  * v28 pasa a 11 usos ponderados (0,146), rot a 6 (0,130) y a0 a 10 (0,122), todos por encima de i58 (0,106).
