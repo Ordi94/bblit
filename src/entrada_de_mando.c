@@ -271,7 +271,7 @@ void func_80040430(s8* contador, u16 mascara)
  * del almacen del banco de vibracion (0xe7) se recalcula tras la union de los dos casos,
  * cuando el original reutiliza la base cargada antes de ellos (el puntero propio `est` para
  * esa zona baja la cifra solo de 6664 a 6644: la base sigue sin compartirse como en el original).
- * Al entrar en `normal` el original lee el byte 0xc del banco (`lbu v0,0xc(s1)`, 0x800404A0 en adelante) ANTES
+ * Al entrar en `normal` el original lee el byte 0xc del banco (`lbu v0,0xc(s1)`, 0x80040520) ANTES
  * del almacen a D_800695EA y conserva en s2 el `lui` de D_8006AA70; aqui el almacen sale antes de la carga y
  * el `lui` va a un temporal, lo que anade un `nop` y desplaza cuatro bytes lo que sigue. Probado sin efecto en
  * la copia de diagnostico: leer el byte en una local antes del almacen, y usar un puntero local al banco para
