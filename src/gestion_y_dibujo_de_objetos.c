@@ -198,8 +198,9 @@ NodoLista* AppendListNode(NodoLista* cab, NodoLista* nodo)
  * propio ($a0, copiado de $v1 tras el almacen). Medido: escrita por una variable local con la direccion de la
  * subestructura, la funcion da 110 (`sw $zero,0x50($a1)`, el acceso reducido al puntero inducido del nodo, el
  * volcado del bucle da `giv reg 84 src reg 82 add 28`). Se supone, sin verificar, que la lectura del campo
- * recien almacenado hace que el CSE reutilice el pseudo de la suma y que ese pseudo no se reduzca al giv.
- * Sin referencias sin codigo: los dos pares `e--; e++` que la funcion llevaba antes ya no cambian nada.
+ * recien almacenado hace que el CSE reutilice el pseudo de la suma y que ese pseudo no se reduzca al giv. Por
+ * eso la ultima escritura va por `e->pcoord` y no por una local, y ninguna sentencia de la funcion existe solo
+ * para mover el reparto de registros.
  */
 Ayuda* func_800363D4(void)
 {
