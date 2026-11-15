@@ -970,9 +970,16 @@ ZonaColision* func_8001BF9C(s32* a0, s16 a1)
  * suma primero base + (baldosa << 6) y despues z / 40 * 8 + x / 40). El original emite ademas un `andi 0xffff` tras
  * guardar la baldosa enmascarada. Los dos restos en locales y el indice como puntero a la fila
  * (`(subceldas + (baldosa << 6))[fila + x / 40]`) no cambian el orden de las cargas y rotan el reparto de a2, a3, t0 y
- * t1 de toda la funcion (1380 con los restos en locales, 1355 con el puntero a la fila). Se supone, sin verificar, que
- * GCC carga z primero porque su cadena, mas larga por `/ 40 * 8`, gana prioridad en la planificacion: no se contrasto
- * con el volcado de la planificacion.
+ * t1 de toda la funcion (1380 con los restos en locales, 1355 con el puntero a la fila). Medido en el volcado de la
+ * planificacion (-dS): con la local `fila_subceldas` el orden de las dos cargas es z, x; escribiendo el indice sin esa
+ * local (`z->subceldas[x_local / 40 + (z_local / 40 * 8 + (baldosa << 6))]`) la planificacion emite x primero, como el
+ * original, pero el reparto de registros rota (1295 con las coordenadas cargadas en dos locales: la constante de la
+ * division en a3 en lugar de a2, la zona en t0 en lugar de a3 y la coordenada z en a2 en lugar de a1). Con el
+ * indice `(baldosa << 6) + z_local / 40 * 8 + x_local / 40` el reparto de registros del original sale completo (690) pero
+ * la planificacion vuelve a cargar z primero: orden y reparto van acoplados. Se supone, sin verificar, que el
+ * cociente `x_local / 40` (vida corta) se asigna antes que la local de z cuando x va primero y toma a1; no se midio su
+ * prioridad. Dos formas de truncar la baldosa a 16 bits (asignacion encadenada y local `u16` asignada antes del
+ * almacen) no generan el `andi 0xffff` del original: dan 455 igual.
  *
  * Consulta la baldosa bajo el punto pos: busca la zona del punto (con el grupo recordado en
  * res), lee el valor de la baldosa de 320 unidades y la subcelda de 40 unidades, y rellena res
