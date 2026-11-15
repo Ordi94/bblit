@@ -1190,10 +1190,10 @@ u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
             return 0;
         }
         (*apoyo)->portado.trans.vz = ((NodoPeldano*)(*apoyo)->u78.p)->w10;
-        if (altura > 0) {
-            return 1;
+        if (altura <= 0) {
+            return 2;
         }
-        return 2;
+        return 1;
     }
     return 1;
 }
