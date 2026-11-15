@@ -481,10 +481,31 @@ void func_8001D588(s32 modo, VECTOR* p)
  * del llamador) que esta definicion no usa y no declara: con el parametro el reparto de registros
  * de `otro` cambia y la puntuacion sube.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 110 con la configuracion versionada (g = 8 del archivo). El orden de bloques y los saltos coinciden; quedan 16 instrucciones distintas, diez de forma simbolica y seis de registros. Las diez simbolicas (0x38, 0x3c, 0x108, 0x110, 0x12c, 0x1d0, 0x1d8, 0x1ec, 0x210 y 0x214): el original lee y resta la salud con el simbolo D_80010041 (`lui a1,%hi(D_80010041)`, `lbu`/`sb %lo(...)(a1)` con una sola base) y la prueba inicial con D_8006AA73, y aqui el acceso por el banco de registros del estado da `lui 0x8001` y el desplazamiento 0x41 y la prueba sale como D_8006AA70+3. Las seis de registros (0x18c, 0x198, 0x19c, 0x1a4, 0x1a8 y 0x1ac) son la rama que recorta el dano a 2 y resta la salud: el original usa a0 como base de la salud, v0 como valor leido y restado y v1 como constante 0x1e, y el C usa v0 como base, v1 como valor y a0 como constante. Con el simbolo directo (`D_80010041 -= x`) el almacen usa `lui at` propio y la lectura de la salud sale antes del almacen a `flags18` (2120; se supone, sin verificar, que el planificador no ordena un acceso a un simbolo respecto de un acceso a un campo); con una vista de un solo campo sobre el simbolo da 1900.
+/*
+ * Notas de forma (el ensamblador original esta en `asm/matchings`):
  *
- * Que dio cada cambio (cifras del diff, 8935 de partida): el campo de indicadores del objeto controlado se declara sin signo y la prueba de signo del original (`bgez`) desaparecia con `< 0`; con el molde a s32 la prueba vuelve (7705). Las dos comprobaciones sobre el registro de animacion (`registro184` nulo y bit 0x4000) se escriben como un solo `if` que envuelve el resto, de modo que el `return 0` de esas dos sale al final tras el `return 1`, como en el original, y no se funde con el de las comprobaciones iniciales (7165 a 3200). La salud (0x80010041) se lee y se resta por el banco de registros del estado (`ESTADO_PRINCIPAL->r[1]`): es un acceso de miembro y la lectura queda tras el almacen a `flags18` y comparte base con su escritura (3200 a 1670). El dano bruto va en su propia local antes de la copia que se recorta a 2 (1670 a 1560): el original conserva dos pseudos (`lh v0` y `move a1,v0`). En la rama del tipo 0x1F la resta de la salud va antes del almacen de D_80069690 (1560 a 945). El dano por defecto lee D_80069698 de nuevo en lugar de usar `j`: el original deja separada la suma de la bandera 0x2000000 de esa rama de la de las ramas con atacante, y con la misma local en las dos colas el salto cruzado las fusiona. */
+ * - El puntero al estado principal (`est`) se asigna ANTES de la prueba `danio >= 3` y se usa en el
+ *   bloque siguiente: al vivir a traves de dos bloques el asignador global lo toma (reparte a0), y
+ *   asi la base de la resta de la salud queda en a0, el valor leido en v0 y la constante 0x1e en
+ *   v1 como en el original (0x8001D8E8 a 0x8001D908). Asignado dentro de la rama, el pseudo es local
+ *   de bloque y el reparto local pone la base en v0, el valor en v1 y la constante en a0.
+ * - El campo de indicadores del objeto controlado se declara sin signo y la prueba de signo del
+ *   original (`bgez`) desaparece con `< 0`: se usa el molde a s32.
+ * - Las dos comprobaciones sobre el registro de animacion (`registro184` nulo y bit 0x4000) van en un
+ *   solo `if` que envuelve el resto, de modo que el `return 0` de esas dos sale al final tras el
+ *   `return 1`, como en el original, y no se funde con el de las comprobaciones iniciales.
+ * - La salud (0x80010041) se lee y se resta por el banco de registros del estado
+ *   (`ESTADO_PRINCIPAL->r[1]`): es un acceso de miembro, la lectura queda tras el almacen a `flags18`
+ *   y comparte base con su escritura. Los bytes son los del original; el desensamblado del original
+ *   los nombra con el simbolo D_80010041 y D_8006AA73 y aqui salen como constante y como
+ *   D_8006AA70+3, sin diferencia en el ejecutable.
+ * - El dano bruto va en su propia local antes de la copia que se recorta a 2: el original conserva
+ *   dos pseudos (`lh v0` y `move a1,v0`).
+ * - En la rama del tipo 0x1F la resta de la salud va antes del almacen de D_80069690.
+ * - El dano por defecto lee D_80069698 de nuevo en lugar de usar `j`: el original deja separada la
+ *   suma de la bandera 0x2000000 de esa rama de la de las ramas con atacante, y con la misma local en
+ *   las dos colas el salto cruzado las fusiona.
+ */
 s32 func_8001D75C(Objeto* otro, RegistroAnim* a1)
 {
     u32 estado;
@@ -492,6 +513,7 @@ s32 func_8001D75C(Objeto* otro, RegistroAnim* a1)
     s32 bruto;
     u32 v1;
     Objeto* j;
+    EstadoPrincipal* est;
 
     if (D_80069690 > 0) {
         return 0;
@@ -529,12 +551,13 @@ s32 func_8001D75C(Objeto* otro, RegistroAnim* a1)
                 bruto = (s16)a1->w16;
                 if (bruto != 0) {
                     danio = bruto;
+                    est = ESTADO_PRINCIPAL;
                     if (danio >= 3) {
                         danio = 2;
                     }
                     j->w38 = danio;
                     D_80069690 = 0x1E;
-                    ESTADO_PRINCIPAL->r[1] -= danio;
+                    est->r[1] -= danio;
 marcar:
                     j->flags14 |= 0x2000000;
                 }
@@ -555,9 +578,6 @@ fin:
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D75C);
-#endif
 
 /*
  * Reinicia al objeto controlado en el punto de reaparicion guardado (D_8006ACD0): borra sus
