@@ -271,6 +271,12 @@ def repo_mixto(tmp_path: Path) -> Any:
 def test_ciclo_real_con_funciones_en_c_reproduce_el_ejecutable_y_discrimina(
     repo_mixto: Any, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    """Reconstruye el ejecutable con las funciones en C y comprueba que una variante mala se detecta.
+
+    Las listas de funciones que coinciden y que no coinciden de este modulo son una muestra representativa
+    y no el inventario: el inventario lo comprueban la verificacion del ejecutable completo y el progreso
+    generado.
+    """
     raiz, variables = repo_mixto
     assert cli.main(["split"], variables, raiz) == 0
     fuentes = {p.name: sha256(p) for p in (raiz / "src").glob("*.c")}
