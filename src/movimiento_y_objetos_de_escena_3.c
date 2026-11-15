@@ -1143,9 +1143,26 @@ ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara
  * entrega el apoyo por *apoyo y devuelve 1 si el objeto esta por encima del peldano, 2 si
  * esta en el suelo del apoyo y 0 si lo toca; guarda en el apoyo la altura del peldano
  * alcanzado (+0x13C). Si el apoyo es plano (bandera 0x400000) solo compara con su altura.
+ *
+ * Estructura del original que el C reproduce: la guarda de apoyo nulo es un retorno anticipado
+ * (el 1 de esa guarda y el 1 del peldano no alcanzado comparten el mismo bloque `jr ra`/`li v0,1`
+ * de 0x80020B74); el bucle `while (nodo != NULL)` con la suma primero lo rota el compilador por
+ * si mismo (guarda de entrada `beqz a3` y suma repetida en el hueco del salto de vuelta); y la
+ * cola deja el retorno 0 al final, de modo que el `blez a1` de 0x80020B6C y el retorno 0 comparten
+ * el `jr ra`/`nop` de 0x80020B88.
+ *
+ * La envoltura `do { } while (0)` de la copia del acumulador no genera codigo. Causa medida: el
+ * `sll` de la comparacion del peldano lee la suma (pseudo 87, en `$v0`) en el original
+ * (`move a0,v0` y despues `sll v0,v0,0x10`). Sin la envoltura, tras la primera planificacion el
+ * `sll` todavia lee el pseudo 87 (con su nota de muerte) y en el volcado de la asignacion local ya
+ * lee el acumulador (pseudo 86, en `$a0`): sale `sll v0,a0,0x10` (puntuacion 5, una sola
+ * diferencia de operando). Con la envoltura sigue leyendo el pseudo 87 (7 usos ponderados sobre 3
+ * instrucciones de vida, antes 4 sobre 2; el acumulador pasa de 7 a 6 usos sobre 13) y el
+ * ensamblador es identico al original (puntuacion 0, sin instrucciones nuevas). Se supone, sin
+ * verificar, que el cambio lo hace el paso de propagacion de copias entre pseudos que corre antes
+ * de la asignacion local y que se detiene ante una nota de bucle entre la copia y el uso. La forma
+ * del fuente original que producia este reparto se desconoce.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 265 con la configuracion versionada (g = 8 del archivo; ejes 8 de operando, 2 reordenadas, 24 insertadas o borradas). Difiere en: (1) la comparacion del peldano lee el acumulador: el original hace `move a0,v0` y despues `sll v0,v0,0x10` sobre la suma, y aqui el `sll` parte de `a0` (medido en los volcados de `cc1`: en `.rtl`, `.cse` y `.combine` el desplazamiento parte de la suma, pseudo 87, y no del acumulador, pseudo 86; la sustitucion por el acumulador ocurre despues, tras el reparto de registros, y se supone, sin verificar, que la hace la propagacion de copias posterior a la asignacion); escribir la copia despues de la comparacion da 595, y ni extender a 16 bits antes de copiar el acumulador ni declarar la suma antes que el acumulador cambian ese `sll` (265); (2) el resultado de la cola: el original comparte un solo `jr ra`/`nop` (0x80020B88, al que salta el `blez a1` de 0x80020B6C y al que cae el retorno 0) y deja el 2 y el 0 directamente en `v0` en los bloques de origen; con la variable `resultado` el compilador comparte el `jr ra` igual, pero reparte el pseudo en `a0` y emite `move v0,a0` antes del retorno, y desplaza `v0`/`v1`/`a0` en el bloque del apoyo. Medido: con la cola en tres `return` (2, 1 y 0) da 275; con `resultado` asignado tras la comparacion en lugar de antes, y un unico `return` al final, 620 (el pseudo toma `v1`). Medido: el bucle como `while (nodo != NULL)` con la lectura de h0A dentro del cuerpo y la suma `acc + h0A` al principio baja de 1785 a 755 (el original rota el bucle por si mismo, con la guarda de entrada `beqz a3` y la suma repetida en el hueco del salto de vuelta; con la suma al final y una guarda `if` externa el compilador pliega `0 + paso` y deja un salto de entrada al medio); escribir la cola como `if (nodo == NULL || altura <= 0) { ...retornos 2 y 1... } retorno 0` baja a 275 (el retorno 0 queda al final, como en el original). */
 u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
 {
     Objeto* t;
@@ -1153,43 +1170,39 @@ u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
     s32 altura;
     s32 acc;
     s32 v;
-    u8 resultado;
 
     t = o->p70;
     *apoyo = t;
-    if (o->p70 != NULL) {
-        nodo = (NodoPeldano*)t->u78.p; /* lw 0x78(t): cabeza de la lista de peldanos */
-        if (t->flags08 & 0x400000) {
-            altura = o->u18C.agarre.trans.vy + d->dy - 0x12C;
-            if (altura <= 0) {
-                return 2;
-            }
-            return altura >= t->trabajo.h0A;
-        }
-        altura = o->u18C.agarre.trans.vy + d->dy - 0x12C;
-        acc = 0;
-        while (nodo != NULL) {
-            v = acc + (u16)t->trabajo.h0A;
-            acc = v;
-            if (altura < (s16)v) {
-                break;
-            }
-            nodo = nodo->sig;
-        }
-        if (nodo == NULL || altura <= 0) {
-            (*apoyo)->portado.trans.vz = ((NodoPeldano*)(*apoyo)->u78.p)->w10;
-            resultado = 2;
-            if (altura > 0) {
-                return 1;
-            }
-        } else {
-            t->portado.trans.vz = nodo->w10;
-            resultado = 0;
-        }
-        return resultado;
+    if (o->p70 == NULL) {
+        return 1;
     }
-    return 1;
+    nodo = (NodoPeldano*)t->u78.p; /* lw 0x78(t): cabeza de la lista de peldanos */
+    if (t->flags08 & 0x400000) {
+        altura = o->u18C.agarre.trans.vy + d->dy - 0x12C;
+        if (altura <= 0) {
+            return 2;
+        }
+        return altura >= t->trabajo.h0A;
+    }
+    altura = o->u18C.agarre.trans.vy + d->dy - 0x12C;
+    acc = 0;
+    while (nodo != NULL) {
+        v = acc + (u16)t->trabajo.h0A;
+        do {
+            acc = v;
+        } while (0);
+        if (altura < (s16)v) {
+            break;
+        }
+        nodo = nodo->sig;
+    }
+    if (nodo == NULL || altura <= 0) {
+        (*apoyo)->portado.trans.vz = ((NodoPeldano*)(*apoyo)->u78.p)->w10;
+        if (altura <= 0) {
+            return 2;
+        }
+        return 1;
+    }
+    t->portado.trans.vz = nodo->w10;
+    return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_80020A90);
-#endif

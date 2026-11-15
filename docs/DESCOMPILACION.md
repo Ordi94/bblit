@@ -670,6 +670,7 @@ se actualiza la tabla en el mismo cambio.
 | `main` | `src/arranque_y_bucle_principal_2.c` | envoltura | 1 | NON_MATCHING 315 | Tabla de tiempos `D_8006CF68` en `$s7` y constante 3 en `$s8` (0,0213 frente a 0,0188; sin la envoltura 0,0177) |
 | `func_8001C998` | `src/movimiento_y_objetos_de_escena.c` | envoltura | 1 | NON_MATCHING 1055 | Área de trabajo en `$s0` frente a la altura nueva (0,577 frente a 0,577, empate; sin la envoltura 0,346) |
 | `AplicarCuadro` | `src/gestion_y_dibujo_de_objetos.c` | envoltura | 2 | coincide | Orden de la ayuda y del área de trabajo: la ayuda sube de 56 a 64 usos (prioridad 2,41 a 3,31) y pasa por delante del área (2,82 a 2,90), que toma `$s1` y deja `$s0` a la ayuda; con una sola envoltura la ayuda queda en 58 usos (2,50) o en 62 (2,67) y el reparto no cambia |
+| `func_80020A90` | `src/movimiento_y_objetos_de_escena_3.c` | envoltura | 1 | coincide | Operando del `sll` de la comparación del peldaño: sin la envoltura lee el acumulador (`sll v0,a0,0x10`, 5) y con ella la suma, como el original (`sll v0,v0,0x10`, 0); la suma pasa de 4 a 7 usos ponderados y de 2 a 3 instrucciones de vida |
 | `func_80039094` | `src/gestion_y_dibujo_de_objetos_2.c` | envoltura | 1 | NON_MATCHING 1525 | Valor leído de la barra en `$a0` por detrás de la base 0x80010000 (1,909 frente a 2,0; sin la envoltura 1,5 frente a 0,78); margen de 0,004 frente al otro pseudo en disputa (1,909 frente a 1,905), reparto fragil |
 
 ## Medir el progreso
