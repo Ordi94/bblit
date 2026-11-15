@@ -250,6 +250,14 @@ void func_800163E4(void)
  * de global-alloc. Con la envoltura la tabla toma s7 y la constante 3 toma s8, como el original; sin
  * ella salen al reves (345). La forma del fuente original que producia este reparto se desconoce.
  *
+ * Pendiente medido: el puntero de la pila de botones del ciclo de demostracion (bloque 60 de local-alloc, cuatro
+ * lecturas con decremento) toma v1 y el original le da v0. Una segunda envoltura sobre la sentencia de la demostracion
+ * (una sola) sube sus usos ponderados de 22 a 33 (el logaritmo entero pasa de 4 a 5) y su registro pasa a v0; la
+ * puntuacion baja a 200 y solo queda la copia del cero del contador de ocioso (`move s4,s5` frente a `move s4,zero`)
+ * mas las filas de forma numerica. No se aplica: el orden de asignacion que da la formula con la vida medida no
+ * predice el cambio de registro, y envolver solo las cuatro lecturas da 945 porque los limites de bucle son barrera de
+ * planificacion.
+ *
  * Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta
  * del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la
  * pausa y la maquina de estados D_80069662 (el estado 0x16 en adelante recarga el contenido).

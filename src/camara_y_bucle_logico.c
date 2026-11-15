@@ -235,9 +235,15 @@ void func_80032A24(void)
  * que abre las escrituras de a48 impide subir la copia por encima del almacen. Meter el almacen en ese do/while
  * lo coloca bien pero intercambia a1 y a2 en la cadena de pruebas (60 tambien): el temporal del objeto en curso
  * (14 usos ponderados sobre 25 instrucciones, 1,68) queda por debajo del de max.vy (7 sobre 8, 1,75) y el original
- * da a1 al primero. Una condicion vacia sobre w->cur no suma usos (el optimizador de saltos la elimina antes del
+ * da a1 al primero. Con el almacen dentro del do/while la relectura de w->cur no depende de el (misma base,
+ * desplazamientos distintos) y sube por encima; las lecturas por otra base (a0->x y el campo de posicion del objeto)
+ * si dependen del almacen y quedan despues, como en el original. Para que el objeto en curso se asigne antes que max.vy
+ * bastan 15 usos ponderados (3 * 15 / 25 = 1,8); una pareja `x--; x++` sobre un puntero local con el objeto suma 8 de
+ * golpe (22 usos, 3,52): pasa por delante de i60 y de v28.vx y desplaza los tres registros, y no hay referencia sin
+ * codigo de un solo uso. Una condicion vacia sobre w->cur no suma usos (el optimizador de saltos la elimina antes del
  * analisis de flujo), y una local con el objeto asignada antes del almacen coloca el almacen bien pero funde las
- * dos copias `move v1,a1` con el puntero.
+ * dos copias `move v1,a1` con el puntero (el CSE la sustituye por el pseudo de la cadena de pruebas y el combinador
+ * borra la copia).
  *
  * Los tres do/while (0) no generan codigo: ponderan por un nivel mas las referencias de su cuerpo para que la
  * prioridad de global-alloc ordene los punteros como el original (v28 en s3, rot en s4, a0 en s5, i58 en s6):
