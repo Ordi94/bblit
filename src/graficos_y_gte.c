@@ -570,8 +570,9 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo; ejes 22 de operando, 0
- * reordenadas, 22 insertadas o borradas). Mismo flujo, mismas cadenas compartidas, misma cola de salida y
- * mismas instrucciones que el ensamblador; difiere solo en el reparto de registros de tres puntos del bucle
+ * reordenadas, 22 insertadas o borradas; el diff no muestra ninguna linea de un solo lado, todas son
+ * diferencias de registro). Mismo flujo, mismas cadenas compartidas, misma cola de salida y mismas
+ * instrucciones que el ensamblador; difiere solo en el reparto de registros de tres puntos del bucle
  * de puntos: (1) el resultado de la ultima comparacion (`toca`) queda en a0 y el original lo deja en v0
  * entre el `slt` y el `bnez` (0x478 y 0x480, 0x5a0 y 0x5a4). Medido en -dS y -dg: el compilador usa la propia
  * variable como destino de la suma y de la carga del punto antes del `slt` (insns 629, 638, 772 y 783 de -dS),

@@ -200,8 +200,9 @@ void CopiarBytes(u8* origen, u8* destino, s16 n)
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 335 con la configuracion versionada (g = 8 del archivo; ejes 17 de
- * operando, 0 reordenadas, 108 insertadas o borradas). Mismas instrucciones, mismo flujo y mismos
- * huecos de retardo que el ensamblador; difiere solo en el reparto de registros. El original deja en
+ * operando, 0 reordenadas, 108 insertadas o borradas; el diff no muestra ninguna linea de un solo lado,
+ * todas son diferencias de registro). Mismas instrucciones, mismo flujo y mismos huecos de retardo que
+ * el ensamblador; difiere solo en el reparto de registros. El original deja en
  * las cinco variables del primer bucle (lista A, puntero a los campos, busqueda en B, fin de los
  * campos e identificador) v1, a0, a1, a2 y a3, y el identificador en a3 en todos los bucles de
  * busqueda; aqui salen v1 (busqueda), a0, a1 (lista A), a2 (identificador) y a3 (fin). Medido en
