@@ -1439,9 +1439,9 @@ sin_rebote:
                 hw = (u16)o->trabajo.i14;
                 o->p180 = sc->sec;
                 o->registro184 = (RegistroAnim*)sc->reg;
+                o->nodo188 = (NodoSecuencia*)sc->trans;
                 o->trabajo.i14 = 0;
                 o->raiz_ayudantes = 0;
-                o->nodo188 = (NodoSecuencia*)sc->trans;
                 D_80069584 = hw;
                 if (sc->reg->flags10 & 0x800) {
                     o->flags14 &= ~0x209;
@@ -1449,8 +1449,7 @@ sin_rebote:
             }
         }
         GEO_CERO_WH(&sc->tmp_sv);
-        if (o->p6C == NULL && (sc->reg->flags0C & 0x20) && o->raiz_ayudantes != 0 && D_80069388 != NULL) {
-            sc->tocado = D_80069388;
+        if (o->p6C == NULL && (sc->reg->flags0C & 0x20) && o->raiz_ayudantes != 0 && (sc->tocado = D_80069388) != NULL) {
             if ((sc->tocado->flags08 & 0x2802) && o->p70 != sc->tocado) {
                 if (sc->tocado->flags08 & 0x2000) {
                     sc->tmp_sv.vx = 0;
