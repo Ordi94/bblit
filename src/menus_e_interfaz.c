@@ -287,6 +287,8 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
  * direccion de las palabras (local de bloque) toma v1 aunque a0 esta libre en su vida y el desplazamiento de la
  * textura (global, prioridad 0,136) toma a0; se supone, sin verificar, que el original deja v1 ocupado durante esa vida
  * por otra local de bloque, de modo que la direccion toma a0 y el desplazamiento a2.
+ * Medido ademas: calcular el brillo sobre la variable del color (en vez de la del color acumulado de la cola) da
+ * 395, y leer la bandera de transparencia directamente en la condicion, sin variable, da 920.
  */
 /*
  * Encola un sprite de ocho palabras en la lista de ordenacion segun la profundidad del objeto: calcula el color y

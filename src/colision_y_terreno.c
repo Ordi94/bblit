@@ -276,6 +276,11 @@ void func_80019364(s32* a0)
  * escribir `tx = w->sz_x` despues de los almacenes de `w->sz_z` y `w->lim_z` del avance del eje z deja 800
  * con el mismo ensamblador (diff identico fila a fila), de modo que el orden de las sentencias no mueve las
  * cargas de ese avance.
+ * Medido en el avance de subcelda del eje z (original: cargas de +0x24 y +0x28, segunda lectura de celda_z y
+ * al final +0x20, con `tx` en v1 tras el `mult`; aqui +0x24, +0x20 antes del `mult` en a2 y +0x28 al final):
+ * con `tx` tras los almacenes de lim_z y sz_z 810; con las tres lecturas como campo, sin `tx`, 1400; con `tx`
+ * escrita la primera 800 (el mismo ensamblador que la forma actual). Ninguna cambia que `tx` se cargue antes del
+ * `mult` y tome a2, de modo que el orden de cargas y el reparto de ese avance no dependen del orden del fuente.
  * Los planos 0x7E y 0x7F del caso estatico (0x8001BCD4-0x8001BF6B) dejaron de diferir en su reparto de
  * registros (1565 a 800): ver la cabecera de la funcion. Medido: escribir la cola entera de esos planos
  * (diez sentencias) en cada rama da 775, 25 puntos menos; no se adopta porque no acerca el cierre y
