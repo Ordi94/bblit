@@ -190,29 +190,38 @@ void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
  */
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1055 con la configuracion versionada (g = 8 del archivo; ejes 15 de operando,
- * 1 reordenada, 43 insertadas o borradas). Difiere en: reparto de registros y orden de bloques de
- * salto. Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a
- * la altura nueva, s2 al suelo anterior y s4 al tope, y con la envoltura el C los reparte igual; queda
- * el orden de los bloques de salto del final. El area + 0x28 se precalcula como el original.
- * Medido en el ensamblador: el original tiene dos copias de la prueba `cur < tope` (`slt v0,s1,s4` en
- * 0x120 y en 0x174) y el C actual una; escribir una de ellas como `tope > cur` no cambia la cifra. Se
- * supone, sin verificar, que cada copia cierra una de las dos ramas (altura baja y altura alta) y que
- * el compilador las funde en una.
+ * Pendiente: puntuacion 150 con la configuracion versionada (g = 8 del archivo; ejes 22 de operando,
+ * 0 reordenadas, 19 insertadas o borradas). Mismas ramas, mismo orden de bloques y mismos almacenes que
+ * el ensamblador; difiere en tres puntos de reparto de registros: (1) prologo: el original copia el
+ * cuarto argumento con `move a2,a3` y desde esa copia hace `move s0,a2` y `addiu a2,a2,0x28`; aqui el
+ * compilador funde la copia con el area de trabajo y emite `move s0,a3` y `addiu a2,s0,0x28` (una
+ * instruccion menos). Se supone, sin verificar, que el original mantiene la copia como pseudo propio.
+ * (2) mascara de las banderas (0x188 a 0x190): el original carga en v0, pone la constante en v1 y
+ * deja el resultado en v0; aqui carga en v1 y la constante en v0. Medido en -dg: el pseudo de la
+ * mascara (92) solo conflictua con 80, 81 y 87 y toma v0, de modo que la carga cae en v1. (3) altura
+ * calculada (0x1a0, 0x1e4 y 0x1f0): el original la deja en v0; aqui el pseudo (91) conflictua con el
+ * registro 2 en -dg y toma v1. Medido en -dS: el `li` de 200 queda entre el `lhu` de las banderas del
+ * resultado y su `andi`; se supone, sin verificar, que ese solape es el conflicto con v0.
  *
- * La envoltura do/while (0) de la consulta de la baldosa no genera codigo: pondera por un nivel mas
- * las referencias del area de trabajo `w`, de 9 a 15 usos ponderados sobre una vida de 78 (prioridad
- * floor_log2(R) * R / L: de 3 * 9 / 78 = 0,346 a 3 * 15 / 78 = 0,577). La altura nueva tiene 10 usos
- * sobre 52 (0,577), de modo que con la envoltura el area queda empatada con ella y global-alloc la
- * asigna antes (desempate por numero de pseudo, ver abajo), y le da el primer
- * registro guardado, s0, como el original; sin la envoltura la altura nueva toma s0 y el area s4.
+ * La mascara `o->flags14 & ~9` esta escrita en tres ramas y no genera codigo adicional: el volcado -dR
+ * muestra tres cargas de las banderas (insns 177, 211 y 283) y -dJ y -dd una sola (insn 283); el
+ * ensamblador final tiene una sola `lw v0,0x14(s3)` en 0x188, a la que saltan las tres ramas desde
+ * 0x110, 0x124 y 0x178, como el original. Cada copia es un pseudo local del bloque; la rama de perdida
+ * de suelo (`f & ~9`, `and v0,a1,v0` en 0x154) comparte el almacen de 0x194. El original tiene tres
+ * pruebas `cur < tope` separadas (0x120, 0x168 y 0x174) y aqui tambien salen tres.
  *
- * El empate y su desempate vienen de la fuente de GCC 2.8.1 (global.c, lineas 594-616): el asignador
- * global ordena los pseudos por prioridad floor_log2(refs) * refs / vida y, a igual prioridad,
- * por numero de pseudo en orden de declaracion. 3 * 15 / 78 y 3 * 10 / 52 son el mismo racional
- * (15/26), de modo que la decision depende solo de ese desempate. El reparto es fragil: un uso
- * ponderado de mas o de menos en el area de trabajo o en la altura nueva rompe el empate e
- * invierte los registros.
+ * La envoltura do/while (0) de la consulta de la baldosa (cuatro almacenes, la llamada y la salida
+ * hacia la rama de baldosa con suelo) no genera codigo: pondera por un nivel mas las referencias del
+ * area de trabajo `w` (pseudo 83), de 9 a 16 usos ponderados sobre una vida de 78 (prioridad
+ * floor_log2(R) * R / L: de 3 * 9 / 78 = 0,346 a 4 * 16 / 78 = 0,821; el logaritmo pasa de 3 a 4). La
+ * altura nueva (88) tiene 10 usos sobre 51 (3 * 10 / 51 = 0,588), el suelo anterior (86) 10 sobre 62
+ * (0,484), el objeto (80) 21 sobre 192 con la envoltura y 19 sin ella (0,438 y 0,396) y el tope (87)
+ * 10 sobre 84 (0,357): sin la envoltura el area queda por detras de todos ellos; con ella se asigna
+ * antes y toma s0, la altura nueva s1, el suelo anterior s2, el objeto s3 y el tope s4, como el
+ * original. Sin la envoltura el C puntua 502. La salida hacia la rama con suelo va dentro de la
+ * envoltura porque suma la lectura de `w->res.flags` con el peso del bucle; un `goto` a una etiqueta
+ * tiene el mismo destino con o sin la envoltura y no cambia el flujo. El reparto es fragil: 16 es
+ * justo el valor en que el logaritmo sube, y un uso ponderado menos en el area lo pierde.
  * La forma del fuente original que producia este reparto se desconoce.
  */
 void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* area)
@@ -225,6 +234,7 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
     s32 modo;
     s32 f;
     s32 v;
+    s32 m;
     s32 desfase_suelo;
     s32 pierde_suelo;
     TrabajoBaldosa* trabajo_baldosa;
@@ -249,17 +259,22 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
                         w->z = o->param.trans.vz + d->z;
                         w->res.grupo = -1;
                         func_8001C134(&w->x, &w->res, trabajo_baldosa);
-                    } while (0);
-                    if (!(w->res.flags & 8)) {
-                        tope = r->techo - o->max.vy;
-                        if (base < tope) {
-                            tope = base;
+                        if (w->res.flags & 8) {
+                            goto con_suelo;
                         }
-                    } else if (cur >= base) {
-                        goto soltar;
-                    } else {
-                        tope = cur;
+                    } while (0);
+                    tope = r->techo - o->max.vy;
+                    if (base < tope) {
+                        tope = base;
                     }
+                    goto calcular;
+con_suelo:
+                    if (cur >= base) {
+                        /* Sentencia replicada: es la misma que la de las otras ramas. */
+                        m = o->flags14 & ~9;
+                        goto guardar;
+                    }
+                    tope = cur;
                     goto calcular;
                 }
             }
@@ -267,13 +282,15 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
                 tope = cur;
                 goto calcular;
             }
-            goto soltar;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
+            m = o->flags14 & ~9;
+            goto guardar;
         } else {
             modo = (s16)r->flags;
             /* La condicion de perdida de suelo se guarda en una variable antes de la rama: sin ella el compilador la parte en dos saltos. */
-            pierde_suelo = base < cur && modo != 8;
+            pierde_suelo = (base < cur) & (modo != 8);
             if (pierde_suelo) {
-                v = f & ~9;
+                m = f & ~9;
                 goto guardar;
             }
             if (modo == 8 || modo == 1) {
@@ -283,13 +300,11 @@ void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* ar
                 tope = cur;
                 goto calcular;
             }
-soltar:
-            /* La mascara en una sentencia propia reproduce el original: carga de las banderas en v0, mascara en v1 y un solo and. */
-            v = ~9;
-            v &= o->flags14;
-guardar:
-            o->flags14 = v;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
+            m = o->flags14 & ~9;
         }
+guardar:
+        o->flags14 = m;
 calcular:
         v = tope - o->param.trans.vy;
     } else {
