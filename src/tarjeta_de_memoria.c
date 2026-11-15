@@ -439,17 +439,18 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  * en a0 como en el original. Cada asignacion se consume en el bucle siguiente y emite codigo, de modo que no es una
  * referencia sin codigo. La segunda cadena se escribe dentro del cuerpo del bucle de relleno: el optimizador de bucles la
  * saca al preludio del propio bucle interior, tras la guardia de entrada, que es donde la tiene el original (0x80015D10
- * a 0x80015D1C); escrita antes del bucle, queda antes de la guardia (1935). Cifras: cadena con una sola local y asignaciones
- * compuestas `d = g << 4; d -= g; d <<= 3;` en cada uso 2095 (el pseudo unico cae en v1 y no en v0 y a0); con la local
- * intermedia 1935; con la segunda cadena dentro del bucle de relleno 1765; con la tercera cadena tambien escrita en
- * linea en las dos expresiones del almacen 2075 (se iza de nuevo) y con la tercera en `quince` y el desplazamiento en
- * linea 1905. Con la asignacion `grupo * 120` en los tres usos, que era la forma anterior, 1960. Queda el reparto de registros: `i` cae en t0 y `grupo` en t1 (el original
+ * a 0x80015D1C); escrita antes del bucle, queda antes de la guardia (1935). Las tres cadenas son el recalculo que hace el
+ * original en 0x80015CC0, 0x80015D10 y 0x80015D40, no una sentencia duplicada regulada: cada copia se consume y emite
+ * codigo, y los tres usos van en secuencia y no en caminos que se reunan. Cifras: con la cadena en dos locales en los
+ * tres usos, escrita la segunda dentro del bucle de relleno, 1765; con la segunda cadena antes del bucle de relleno
+ * 1935; con una sola local y asignaciones compuestas `d = g << 4; d -= g; d <<= 3;` en cada uso 1905; con
+ * `desplazamiento_grupo = grupo * 120;` en los tres usos 1960; con una sola asignacion de la cadena por vuelta,
+ * reutilizada en los tres usos, 2440. Queda el reparto de registros: `i` cae en t0 y `grupo` en t1 (el original
  * los tiene en a1 y t0), la copia de la base de la fila cae en a1 y no en a3, y el original no recalcula en los bucles
  * interiores la direccion del simbolo de la tabla. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
  * del resultado que despues compara con 1) se reproduce guardando el resultado en la local `rc`, compartida con la del
- * sondeo (cifras de este parrafo medidas sobre la forma anterior, de 1960): con una local propia (`fmt` o `tam`) el CSE funde la copia y se comprueba `v0` directamente (2350); con `rc` o
- * `estado` baja a 1960, pero la copia cae en v1 y no en a1 como en el original, y con `partida` cae en s1 (2635). Sin
- * bajada: calcular la mascara de ranuras en una local antes del almacen de 0xE da 2190.
+ * sondeo. Con `rc` o `estado` la cifra es 1765, con `tam` 2155 y con `partida` 2440; calcular la mascara de ranuras
+ * (`1 << (partida - 1)`) en una local antes del almacen de 0xE da 3090.
  *
  * Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de registros (D_8006AA70[0xA]: 1 aceptar,
  * 2 formatear, 3 crear el archivo, 4 grabar con sonido, 5 cargar, 6 grabar) y la limpia; despues sondea con MemCardSync(1) la ultima
