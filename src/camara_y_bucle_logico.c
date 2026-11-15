@@ -1580,20 +1580,18 @@ fin:
     cam = &D_8006D928;
     if (s0 != NULL) {
         do {
-            o = s0;
             if (D_8006AA70[0xC] == 0) {
                 if ((s0->flags14 & 0x100) == 0) {
                     D_8005E35C[s0->clase](s0);
                 }
                 if ((*(u32*)&cam->flags80 & 0x300) != 0x100 || s0->clase == 0x20 || (s0->flags18 & 0x1000) != 0) {
                     s0->w22++;
-                    o = s0;
                 }
             } else if ((s0->flags14 & 0x100) == 0 && (s0->flags0C & 0x40000000) != 0) {
                 D_8005E35C[s0->clase](s0);
                 s0->w22++;
-                o = s0;
             }
+            o = s0;
             s0 = s0->sig10;
             if ((o->flags14 & 0x100) != 0) {
                 func_8003502C(o);
