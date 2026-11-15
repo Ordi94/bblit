@@ -2533,10 +2533,10 @@ siguiente:
  * la elimina y no queda ninguna instruccion. Su efecto es el orden en que el optimizador de bucles iza las
  * instrucciones invariantes al preludio. El original emite el par `lui s5 ; addiu s2,s5,%lo(D_8006D928)` antes de la
  * matriz del scratchpad (`move s3,s1 ; ori s3,s3,0x50`). Medido en el volcado del bucle: sin la condicion el par se
- * iza como las instrucciones 1639 y 1641 (candidatos 78 y 79, vidas 176 y 192, ahorros 35 y 19) y la matriz, asignada
+ * iza como las instrucciones 1639 y 1641 (las instrucciones 78 y 79 del bucle, vidas 176 y 192, ahorros 35 y 19) y la matriz, asignada
  * como primera sentencia del bucle, como la 1637, de modo que sale delante del par (y asignada tras cualquier salto
  * condicional del bucle no se iza y se queda dentro, con su `lui` y su `ori` en cada vuelta); con la condicion la
- * referencia a D_8006D928 precede a la matriz, el par pasa a ser los candidatos 40 y 41 (vidas 193 y 209) izados como
+ * referencia a D_8006D928 precede a la matriz, el par pasa a ser las instrucciones 40 y 41 (vidas 193 y 209) izados como
  * 1648 y 1650 y la matriz el 50 izado como 1652, con lo que sale detras, como en el original (365 a 245). La matriz se
  * asigna dentro del bucle, antes de la primera prueba condicional, porque solo asi se iza; los ocho usos comparten un
  * unico registro (s3), de modo que en el original es una variable asignada una vez. Se supone, sin verificar, que el
