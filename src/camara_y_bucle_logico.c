@@ -1286,18 +1286,33 @@ void func_80035244(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1250 con la configuracion versionada (g = 8 del archivo): 82 diferencias de operando, 1 linea
- * reordenada y 183 insertadas o borradas (el desplazamiento de un `nop` y de la busqueda del modelo arrastra el
- * resto). El flujo, las macros vectoriales
+ * Pendiente: puntuacion 820 con la configuracion versionada (g = 8 del archivo): 86 diferencias de operando, 1 linea
+ * reordenada y 162 insertadas o borradas (el `nop` del hueco de retardo de 0x80035704 y la segunda llamada a
+ * func_800351B4 desplazan el resto). El flujo, las macros vectoriales
  * y las constantes coinciden. Quedan el reparto de registros guardados y temporales (la constante -3 en s2 y el
  * original en s3 con el puntero a la proyeccion al reves; un puntero del contexto GTE en t7 y el original en a3;
  * el puntero al objeto actual en v1 en varios bloques y el original en a0), el byte D_8006AA7C que el original
  * lee por el simbolo y aqui sale como `D_8006AA70+0xc` (diferencia de forma simbolica de los mismos bytes; con
- * el simbolo escalar en los dos sitios la funcion mide 1470) y la llamada a func_800351B4 tras la atenuacion: el original
+ * el simbolo escalar en los dos sitios la funcion mide 1470 antes de corregir la prueba de la busqueda de
+ * modelo) y la llamada a func_800351B4 tras la atenuacion: el original
  * salta a la `jal` de la busqueda del modelo (0x800358A4, una sola llamada en la funcion) y aqui salen dos.
  * Escribir la atenuacion como salto a esa llamada deja una sola `jal` y la estructura del original, pero la
- * puntuacion sube a 1645 porque el puntero al objeto sale en `v1` donde el original lo tiene en `a0` (causa sin
+ * puntuacion sube de 820 a 1035 porque el puntero al objeto sale en `v1` donde el original lo tiene en `a0` (causa sin
  * medir). Reescribir en C la suma de vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W).
+ *
+ * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
+ * asigna el reparto global a `a0` y la recarga lo mueve a `t7` porque la macro lo pide en un registro distinto
+ * de los que declara destruidos; el original lo tiene en `a3` (medido en el volcado; por que `a3` queda
+ * ocupado en el C actual no se leyo). La busqueda del modelo copia el limite (`lim`) en una local propia dentro
+ * del bloque, como el original (`addu a1,v1,zero`): con la copia el limite sale en `a1` y el puntero al objeto en
+ * `a2` (940 a 820); la copia hecha antes de la comparacion se vuelve a fundir con `nmod` (940). El original
+ * rellena el hueco de la primera comparacion con esa copia; aqui el hueco queda con un `nop` (se supone, sin
+ * verificar, que porque la copia depende de la rama).
+ *
+ * La prueba tras la busqueda del modelo sigue la estructura del original: con la entrada hallada se
+ * comprueba el bit 1 de la bandera y el bit 0x10000 de las banderas del objeto, y sin el bit 1 se cae a la
+ * misma comparacion de indice que la rama de no hallado (0x80035824 a 0x80035878); antes de corregirlo el C
+ * saltaba al bloque siguiente en ese caso (1250 a 940).
  *
  * El bucle final copia el objeto en curso a `o` una sola vez, tras las rutinas de logica y antes de avanzar a la
  * lista siguiente: el original tiene `move a0,s0` en los huecos de retardo de los saltos al final del cuerpo
