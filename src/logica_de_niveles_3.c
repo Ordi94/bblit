@@ -3435,12 +3435,12 @@ void LogicaBloqueEmpujable(Objeto* o)
     if (!(o->flags0C & 0x80)) {
         if (t->dx != 0) {
             t->py = o->param.trans.vy;
+            t->pz = o->param.trans.vz + o->min.vz - margen;
             if (t->dx < 0) {
                 t->px = o->param.trans.vx + o->min.vx - margen;
             } else {
                 t->px = o->param.trans.vx + o->max.vx + margen;
             }
-            t->pz = o->param.trans.vz + o->min.vz - margen;
             t->vx = 0;
             t->vy = 0;
             t->vz = o->max.vz - o->min.vz + margen;
