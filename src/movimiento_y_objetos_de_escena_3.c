@@ -1145,7 +1145,7 @@ ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara
  * alcanzado (+0x13C). Si el apoyo es plano (bandera 0x400000) solo compara con su altura.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1785 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 38 insertadas o borradas). Difiere en: orden de bloques de salto (la suma del paso en dos sentencias baja de 2350 a 2290; escribir el ultimo retorno como `if (altura <= 0) return 2; return 1;` baja a 1785). Misma logica y mismos accesos; queda la forma del bucle de peldanos: el original lo coloca con la prueba de salida hacia delante (`bnez v0,b4`), la lectura del siguiente nodo y el salto atras con la suma en el hueco, y el C lo deja rotado, con un salto de entrada al medio (`j` con `move v0,a0` en su hueco) y la lectura del siguiente nodo antes del cuerpo; reescribirlo como `for (;;)` con la salida por nodo nulo da la misma cifra. */
+/* Pendiente: puntuacion 275 con la configuracion versionada (g = 8 del archivo; ejes 7 de operando, 0 reordenadas, 12 insertadas o borradas). Difiere en: (1) la comparacion del peldano lee el acumulador: el original hace `move a0,v0` y despues `sll v0,v0,0x10` sobre la suma, y aqui el `sll` parte de `a0` (el compilador sustituye la suma por el acumulador al propagar la copia); escribir la copia despues de la comparacion da 595; (2) la cola de salida: el original deja el retorno 0 sin `jr ra` propio, cae al `jr ra`/`nop` que comparte con el retorno 2 (0x80020B88, al que salta el `blez a1` de 0x80020B6C), y aqui el retorno 0 lleva su `jr ra` con el almacen en el hueco; una variable de resultado con un unico `return` da 620 (el pseudo del resultado toma `v1` y desplaza el reparto de `a0`/`a1`). Medido: el bucle como `while (nodo != NULL)` con la lectura de h0A dentro del cuerpo y la suma `acc + h0A` al principio baja de 1785 a 755 (el original rota el bucle por si mismo, con la guarda de entrada `beqz a3` y la suma repetida en el hueco del salto de vuelta; con la suma al final y una guarda `if` externa el compilador pliega `0 + paso` y deja un salto de entrada al medio); escribir la cola como `if (nodo == NULL || altura <= 0) { ...retornos 2 y 1... } retorno 0` baja a 275 (el retorno 0 queda al final, como en el original). */
 u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
 {
     Objeto* t;
@@ -1153,7 +1153,6 @@ u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
     s32 altura;
     s32 acc;
     s32 v;
-    s32 paso;
 
     t = o->p70;
     *apoyo = t;
@@ -1168,32 +1167,23 @@ u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
         }
         altura = o->u18C.agarre.trans.vy + d->dy - 0x12C;
         acc = 0;
-        if (nodo != NULL) {
-            paso = (u16)t->trabajo.h0A;
-            /* Suma en dos sentencias: en una sola expresion la puntuacion sube de 2290 a 2350. */
-            v = acc;
-            v += paso;
-            do {
-                acc = v;
-                if (altura < (s16)v) {
-                    break;
-                }
-                nodo = nodo->sig;
-                /* Con `paso + acc` el bucle deja el acumulador en a0 y el paso en v1 y emite
-                 * `addu v0, a0, v1`, igual que el original; con `acc + paso` el reparto de
-                 * registros del bucle cambia. */
-                v = paso + acc;
-            } while (nodo != NULL);
+        while (nodo != NULL) {
+            v = acc + (u16)t->trabajo.h0A;
+            acc = v;
+            if (altura < (s16)v) {
+                break;
+            }
+            nodo = nodo->sig;
         }
-        if (nodo != NULL && altura > 0) {
-            t->portado.trans.vz = nodo->w10;
-            return 0;
+        if (nodo == NULL || altura <= 0) {
+            (*apoyo)->portado.trans.vz = ((NodoPeldano*)(*apoyo)->u78.p)->w10;
+            if (altura <= 0) {
+                return 2;
+            }
+            return 1;
         }
-        (*apoyo)->portado.trans.vz = ((NodoPeldano*)(*apoyo)->u78.p)->w10;
-        if (altura <= 0) {
-            return 2;
-        }
-        return 1;
+        t->portado.trans.vz = nodo->w10;
+        return 0;
     }
     return 1;
 }
