@@ -1125,7 +1125,7 @@ aterrizar:
                 if (!(o->flags14 & 0x10000) && (o->flags14 & 0x208) && (s16)sc->paso_y >= -0x63) {
                     sc->tocado->flags14 |= 0x80;
                 }
-                if (!(o->flags14 & 0x03000000) && ((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->clase == 0xE && (rg = (RegistroEstado*)sc->tocado->registro184) != NULL) {
+                if (!(o->flags14 & 0x03000000) && ((f4 = (t1 = sc->tocado)->flags14) & 0x80) && sc->tocado->clase == 0xE && (rg = (RegistroEstado*)sc->tocado->registro184) != NULL) {
                     goto marcar_estado;
                 }
                 if (!(sc->tocado->flags08 & 0x02000000)) {
@@ -1137,10 +1137,10 @@ aterrizar:
                 if (!(o->flags14 & 0x10000) && (o->flags14 & 0x208) && (s16)sc->paso_y >= -0x63) {
                     sc->tocado->flags14 |= 0x80;
                 }
-                if (!(o->flags14 & 0x03000000) && ((f4 = sc->tocado->flags14) & 0x80) && sc->tocado->clase == 0xE && (rg = (RegistroEstado*)sc->tocado->registro184) != NULL) {
+                if (!(o->flags14 & 0x03000000) && ((f4 = (t1 = sc->tocado)->flags14) & 0x80) && sc->tocado->clase == 0xE && (rg = (RegistroEstado*)sc->tocado->registro184) != NULL) {
 marcar_estado:
                     if (rg->flags10 & 0x8000) {
-                        sc->tocado->flags14 = f4 | 0x04000000;
+                        t1->flags14 = f4 | 0x04000000;
                         sc->tocado->w38 = 1;
                         sc->tocado->id_atacante = 1;
                         o->id_atacante = sc->tocado->w1C;
@@ -1172,11 +1172,11 @@ fin_choque:
             }
             if (o->flags14 & 8) {
 rebotar:
-                sc->tocado->flags14 |= 0x8000;
+                *(u32*)((u8*)sc->tocado + 0x14) |= 0x8000;
                 D_8006965A = 5;
                 D_8006965B = 0x50;
                 D_8006965E = 0;
-                if (o->flags14 & 0x10) {
+                if (*(u32*)((u8*)o + 0x14) & 0x10) {
                     o->param.giro.u.z = 0;
                     o->coord.super = NULL;
                     o->coord.param = (GsCOORD2PARAM*)&o->param;
