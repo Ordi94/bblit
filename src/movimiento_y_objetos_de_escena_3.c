@@ -56,15 +56,14 @@ typedef struct SpritePlano {
  */
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 36
+ * Pendiente: puntuacion 55 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 18
  * insertadas o borradas). Mismos accesos, almacenes y orden de instrucciones; solo difiere el reparto de los
- * registros de las lecturas del fotograma: el original deja la coordenada u en a3, v en a1, la anchura en a0, la
- * altura en a2 y la pagina de textura en v0, y aqui caen en a1, a0, v0, a2 y a3.
+ * registros de las lecturas del fotograma: el original deja la coordenada u en a3 y la pagina de textura en v0, y
+ * aqui caen en v0 y a3 (la paleta en a3 en lugar de v0 es consecuencia del mismo intercambio).
  */
 void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     Fotograma* r;
-    u8 u;
     s32 w;
     SpritePlano* p;
     s8 u_fin;
@@ -74,6 +73,7 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     s32 clut;
     s32 alto_menos_uno;
     u32 modo_o_pagina;
+    u8 coord_textura;
 
     if (o->flags08 & 0x20) {
         /* La copia del modo y la pagina de textura comparten una sola local: con dos locales distintas el
@@ -91,23 +91,26 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
         r = c->fotogramas + c->duraciones[(u16)c->cuadro].indice;
     }
     p = (SpritePlano*)((u8*)o->u78.p + 0xC);
-    v = r->v;
-    u = r->u;
+    /* Las dos coordenadas de textura en bytes (v y despues u) pasan por una sola local: con una local propia
+     * para cada una el reparto de los registros de las lecturas del fotograma cambia (115). */
+    coord_textura = r->v;
+    v = coord_textura;
+    coord_textura = r->u;
     w = r->w0C;
     /* La altura menos uno pasa por una variable de 32 bits: en la expresion `h - 1 + v` el compilador estrecha la resta a un byte (addiu 0xff) y el original suma -1. */
     alto_menos_uno = r->w0E - 1;
     modo_o_pagina = r->pagina;
     /* La anchura menos uno pasa por una variable de 32 bits: con la suma en una sola expresion el compilador estrecha la carga de w a un byte (lbu) y el original carga media palabra (lhu). */
     ancho = w - 1;
-    u_fin = u + ancho;
+    u_fin = coord_textura + ancho;
     p->tpage = modo_o_pagina;
     clut = r->h0A;
     p->v0 = v;
     p->v1 = v;
     v_fin = alto_menos_uno + v;
-    p->u0 = u;
+    p->u0 = coord_textura;
     p->u1 = u_fin;
-    p->u2 = u;
+    p->u2 = coord_textura;
     p->v2 = v_fin;
     p->u3 = u_fin;
     p->v3 = v_fin;
