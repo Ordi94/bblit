@@ -261,10 +261,21 @@ void func_80040430(s8* contador, u16 mascara)
 /*
  * Pendiente: puntuacion 6644 con la configuracion versionada (g = 8 del archivo). El marco de pila del original
  * es 8 bytes mayor (0x28 frente a 0x20; el original no usa 0x10(sp) ni 0x14(sp) y el volcado
- * del reparto no deja ningun pseudo sin registro: causa sin identificar) y la base 0x80010000
+ * del reparto no deja ningun pseudo sin registro). Causa medida en una copia de diagnostico fuera de la
+ * rama: una llamada eliminada con seis palabras de argumentos (`if (0) { f(0, 0, 0, 0, 0, 0); }`) sube el
+ * area de argumentos de salida a 0x18 bytes y el marco pasa a 0x28 sin emitir ninguna instruccion; con ella
+ * los guardados de ra, s0, s1 y s2 caen en 0x24, 0x18, 0x1c y 0x20 como en el original. No se aplica en
+ * el fuente: no es ninguna de las formas admitidas y se desconoce que llamada del original desaparecio
+ * (se supone, sin verificar, que era una llamada de depuracion o una rama muerta con mas de cuatro argumentos).
+ * La base 0x80010000
  * del almacen del banco de vibracion (0xe7) se recalcula tras la union de los dos casos,
  * cuando el original reutiliza la base cargada antes de ellos (el puntero propio `est` para
  * esa zona baja la cifra solo de 6664 a 6644: la base sigue sin compartirse como en el original).
+ * Al entrar en `normal` el original lee el byte 0xc del banco (`lbu v0,0xc(s1)`, 0x800404A0 en adelante) ANTES
+ * del almacen a D_800695EA y conserva en s2 el `lui` de D_8006AA70; aqui el almacen sale antes de la carga y
+ * el `lui` va a un temporal, lo que anade un `nop` y desplaza cuatro bytes lo que sigue. Probado sin efecto en
+ * la copia de diagnostico: leer el byte en una local antes del almacen, y usar un puntero local al banco para
+ * esa lectura (el compilador las funde con la lectura original).
  *
  * El xor del byte invertido se hace sobre una local de 32 bits (cf2, cf3, cfd): con el byte
  * leido directamente el analizador de tipos del front end estrecha el xor a un byte (sale
