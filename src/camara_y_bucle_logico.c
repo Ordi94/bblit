@@ -1267,11 +1267,21 @@ void func_80035244(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 7961 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales
- * y las constantes coinciden; difieren el reparto de registros (el original conserva el scratchpad, &sx, &z6C y la
- * mascara -3 en s1..s4 y no hoistea &v80 ni &c104), el relleno de los huecos de retardo de la macro de distancia
- * (maspsx anade un nop extra tras dos de sus saltos) y la forma de la busqueda en la tabla D_8006A940 (el original
- * relee el puntero guardado en el scratchpad en cada vuelta). Reescribir en C la suma de vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W y GEO_DISTANCIA_APROX).
+ * Pendiente: puntuacion 4388 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales
+ * y las constantes coinciden. Quedan el relleno de los huecos de retardo de la macro de distancia (maspsx anade un
+ * nop extra tras dos de sus saltos, 0x2e90 y 0x2eb0 del actual), la forma de la busqueda en la tabla D_8006A940
+ * (el original conserva en a1 y a2 el limite y el objeto y relee de memoria el indice y el puntero a cada vuelta)
+ * y la llamada a func_800351B4 tras la atenuacion, donde el original carga el objeto una vez. Reescribir en C la
+ * suma de vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W y GEO_DISTANCIA_APROX).
+ *
+ * Los dos recorridos de la rama de volumen (los nodos de coordenadas y la busqueda del modelo) se escriben con
+ * salto hacia atras en lugar de `do { } while`: con el bucle natural el optimizador de bucles saca de ambos la
+ * direccion de v80 y la de c104 (en el volcado de bucles, regno 367 y 368 "moved", y despues otra vez fuera del
+ * recorrido principal con vida de 51 y 52 instrucciones), ocupan s5 y s6 y el marco sube de 0x28 a 0x30; el
+ * original calcula esas direcciones en el sitio. El volcado confirma el efecto; se supone, sin verificar, que el
+ * original tampoco tenia notas de bucle en esos dos recorridos. El resultado de la ultima comprobacion de
+ * proyeccion se lee de los campos (sc->sx, sc->sy) donde el original los relee, no de locales (7961 a 4388 con
+ * las tres formas juntas).
  */
 /*
  * Lista de comprobaciones del cuadro: recorre los objetos de escena, los clasifica en cuatro listas
@@ -1285,17 +1295,18 @@ void func_800353B0(Objeto* a0)
     Objeto* s0;
     Objeto* t;
     GsCOORDINATE2* n;
-    s32 sx;
-    s32 sy;
     s32 r;
     s16* psx;
     s32* pz;
     s32 m3;
+    s32 nmod;
+    Objeto* busca;
+    EstadoCamara* cam;
 
-    sc = (Scratch*)0x1F800000;
+    sc =(Scratch*)0x1F800000;
     D_80069652 = 0;
     D_800694D4 = D_800694B8;
-    if (D_8006AA70[0xC] == 0) {
+    if (D_8006AA7C == 0) {
         if (D_80069560 != 0) {
             ActualizarCamaraSeguimiento(D_80069560, D_80069698->reiniciar_camara);
         }
@@ -1362,14 +1373,17 @@ void func_800353B0(Objeto* a0)
                 if ((sc->cur->w3C & 1) != 0 && (sc->cur->flags04 & 2) != 0) {
                     sc->i40 = 0;
                     sc->tp3C = D_8006A940;
-                    if (sc->i40 < D_80069588) {
-                        do {
-                            if ((s16)sc->cur->w26 == sc->tp3C->modelo) {
-                                break;
-                            }
+                    nmod = D_80069588;
+                    if (sc->i40 < nmod) {
+                        busca = sc->cur;
+                    buscar_modelo:
+                        if ((s16)busca->w26 != sc->tp3C->modelo) {
                             sc->i40++;
                             sc->tp3C++;
-                        } while (sc->i40 < D_80069588);
+                            if (sc->i40 < nmod) {
+                                goto buscar_modelo;
+                            }
+                        }
                     }
                     if (sc->i40 < D_80069588) {
                         if ((sc->tp3C->bandera & 1) != 0 && (sc->cur->flags08 & 0x10000) != 0) {
@@ -1395,10 +1409,8 @@ sigue2:
                         gte_rtps();
                         gte_stsxy(psx);
                         GUARDAR_MAC3(pz);
-                        sx = sc->sx;
-                        sy = sc->sy;
-                        if (sc->z6C < 0 || sx + sc->cur->w2E < -0x100 || sx - sc->cur->w2E > 0x100 || sy < -0x78
-                            || sy + sc->cur->max.vy >= 0x79) {
+                        if (sc->z6C < 0 || sc->sx + sc->cur->w2E < -0x100 || sc->sx - sc->cur->w2E > 0x100
+                            || sc->sy < -0x78 || sc->sy + sc->cur->max.vy >= 0x79) {
                             sc->cur->flags04 &= m3;
                             sc->cur->flags18 |= 0x100;
                         }
@@ -1417,7 +1429,8 @@ sigue2:
                         sc->c104[2].vz = sc->c104[3].vz = sc->c104[6].vz = sc->c104[7].vz = sc->cur->min.vz;
                         sc->n78 = &sc->cur->coord;
                         if (sc->n78 != NULL) {
-                            do {
+                        otro_nodo:
+                            {
                                 n = sc->n78;
                                 gte_SetRotMatrix(&n->coord);
                                 sc->d0 = n->coord.t[0];
@@ -1440,7 +1453,10 @@ sigue2:
                                     sc->p144++;
                                 }
                                 sc->n78 = sc->n78->super;
-                            } while (sc->n78 != NULL);
+                            }
+                            if (sc->n78 != NULL) {
+                                goto otro_nodo;
+                            }
                         }
                         gte_SetRotMatrix(&D_80076130);
                         sc->i40 = 0;
@@ -1450,8 +1466,7 @@ sigue2:
                             gte_rtps();
                             gte_stsxy(psx);
                             GUARDAR_MAC3(pz);
-                            sy = sc->sy;
-                            if (sc->z6C >= 0 && (u16)(sc->sx + 0x100) < 0x201 && sy >= -0x78 && sy < 0x79) {
+                            if (sc->z6C >= 0 && (u16)(sc->sx + 0x100) < 0x201 && sc->sy >= -0x78 && sc->sy < 0x79) {
                                 break;
                             }
                             sc->i40++;
@@ -1524,6 +1539,7 @@ fin:
     D_800695D0 = 0;
     D_800695EC = 0;
     D_80069560 = D_80069698;
+    cam = &D_8006D928;
     if (s0 != NULL) {
         do {
             o = s0;
@@ -1531,7 +1547,7 @@ fin:
                 if ((s0->flags14 & 0x100) == 0) {
                     D_8005E35C[s0->clase](s0);
                 }
-                if ((*(u32*)&D_8006D928.flags80 & 0x300) != 0x100 || s0->clase == 0x20 || (s0->flags18 & 0x1000) != 0) {
+                if ((*(u32*)&cam->flags80 & 0x300) != 0x100 || s0->clase == 0x20 || (s0->flags18 & 0x1000) != 0) {
                     s0->w22++;
                     o = s0;
                 }
