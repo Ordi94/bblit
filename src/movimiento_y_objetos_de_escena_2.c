@@ -389,9 +389,17 @@ void func_8001D414(s16 accion)
  * 0x100 si es del tipo 0x22), y si se da una posicion coloca al objeto y a la camara en ella
  * mirando hacia delante. Termina refrescando las banderas de situacion y anulando el
  * seguimiento.
+ *
+ * Formas que fijan el orden del original (cada una medida contra el ensamblador):
+ *  - El enlace +0x70 del objeto controlado se lee dos veces como miembro: la segunda lectura, tras los almacenes al
+ *    objeto, es una carga propia que el compilador sustituye por una copia del registro de la primera
+ *    (`move v1,v0` en el hueco del salto) y el cuerpo usa el objeto controlado sin alias. Una copia en una local la
+ *    funde el CSE con el pseudo de la carga.
+ *  - Las banderas, la coordenada z que se escribe en el objeto (+0xEC) y las seis lecturas de la posicion se acceden
+ *    por su desplazamiento en bytes y no como miembros: como miembros el planificador sube las cargas por encima del
+ *    almacen de cero a D_80069402 (un escalar suelto, que no es miembro de estructura) y baja el almacen de z tras el.
+ * Coincide en bytes (1 referencia en forma numerica; el diff puntua 5 por la forma simbolica).
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 110 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 20 insertadas o borradas). Difiere en: copia del objeto enlazado, alias del objeto controlado y orden de un almacen. Mismas operaciones y almacenes; el original carga el objeto enlazado en +0x70 en v0 y lo copia a v1 en el hueco de retardo del salto (aqui se carga directo en v1), usa el objeto controlado en a2 sin copiarlo (aqui el alias de la variable `e` lo copia a a0) y ejecuta el almacen de la coordenada z del objeto (sw 0xec) antes del de cero a D_80069402 (el planificador lo hunde tras el). Leer p->vz por su desplazamiento (+8) antes de los almacenes al objeto, y las banderas y el enlace por su desplazamiento en bytes, mantiene las cargas tras los almacenes de bytes a D_8006965A y D_80069659 como en el original; la copia aparte del acompanante baja 5. Quitar el alias `e` deja el cuerpo igual al original (objeto controlado en a2) pero sube a 175 porque falta la copia `move v1,v0`: ninguna forma la conserva (conversion a entero, copia dentro de la rama o antes de los almacenes, variable de dos asignaciones, asignacion anidada en la condicion), porque el CSE sustituye el uso de la copia por el pseudo de la carga y el combinador borra las copias de un solo uso. */
 void func_8001D588(s32 modo, VECTOR* p)
 {
     Objeto* e;
@@ -407,24 +415,21 @@ void func_8001D588(s32 modo, VECTOR* p)
     j = D_80069698;
     j->w17E = 0;
     j->w17C = modo;
-    /* Las banderas y el enlace +0x70 se leen por su desplazamiento en bytes y no como miembros: asi el
-     * planificador no sube la carga sobre los almacenes de bytes anteriores (ver la nota de pendiente). */
+    /* Las banderas se leen por su desplazamiento en bytes y no como miembro: asi el planificador no sube la carga
+     * sobre los almacenes de bytes a D_8006965A y D_80069659. */
     j->flags14 = (*(u32*)((u8*)j + 0x14) | 0x1000004) & 0xFFFEFFFF;
     c = &D_8006D928;
     c->s88 = 0;
     c->h8C = 0;
     c->h8E = 0;
-    t = *(Objeto**)((u8*)j + 0x70);
+    t = j->p70;
     D_80069690 = 0;
     D_800693F6 = 0;
     if (t != NULL) {
         j->coord.super = NULL;
-        /* Alias del objeto controlado en la misma variable que luego recibe el acompanante:
-         * separarlas sube la puntuacion de 110 a 175. */
-        e = j;
         j->coord.param = PARAMETROS_SDK(j);
-        t->p6C = NULL;
-        e->p70 = NULL;
+        j->p70->p6C = NULL;
+        j->p70 = NULL;
         j->flags14 &= ~0x14;
     }
     e = D_80069698->p6C;
@@ -443,17 +448,17 @@ void func_8001D588(s32 modo, VECTOR* p)
     if (p != NULL) {
         D_80069698->param.trans.vx = p->vx;
         D_80069698->param.trans.vy = p->vy;
-        /* La coordenada z de la posicion se lee por su desplazamiento en bytes (+8), como en el original. */
+        /* Posicion y almacen de z por desplazamiento en bytes (ver la cabecera). */
         pos_z = *(s32*)((u8*)p + 8);
         D_80069698->param.giro.u.y = 0;
-        D_80069698->param.trans.vz = pos_z;
+        *(s32*)((u8*)D_80069698 + 0xEC) = pos_z;
         D_80069402 = 0;
-        D_8006D928.vpx = p->vx;
-        D_8006D928.vpy = p->vy;
+        D_8006D928.vpx = *(s32*)((u8*)p + 0);
+        D_8006D928.vpy = *(s32*)((u8*)p + 4);
         D_8006D928.vpz = *(s32*)((u8*)p + 8);
-        D_8006D928.x = p->vx;
-        D_8006D928.y = p->vy;
-        D_8006D928.z = p->vz;
+        D_8006D928.x = *(s32*)((u8*)p + 0);
+        D_8006D928.y = *(s32*)((u8*)p + 4);
+        D_8006D928.z = *(s32*)((u8*)p + 8);
         ang = D_80069698->param.giro.u.y + 0x800;
         D_80069416 = ang;
         D_80069402 = ang;
@@ -461,9 +466,6 @@ void func_8001D588(s32 modo, VECTOR* p)
     func_8001D414(0);
     D_800693B8 = -1;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D588);
-#endif
 
 /*
  * El objeto `otro` golpea al controlado. Devuelve 1 si el golpe se aplica (resta salud a
