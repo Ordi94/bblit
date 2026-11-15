@@ -567,42 +567,18 @@ siguiente:
 INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
 #endif
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo; ejes 22 de operando, 0
- * reordenadas, 22 insertadas o borradas; el diff no muestra ninguna linea de un solo lado, todas son
- * diferencias de registro). Mismo flujo, mismas cadenas compartidas, misma cola de salida y mismas
- * instrucciones que el ensamblador; difiere solo en el reparto de registros de tres puntos del bucle
- * de puntos: (1) el resultado de la ultima comparacion (`excluido`) queda en a0 y el original lo deja en v0
- * entre el `slt` y el `bnez` (0x478 y 0x480, 0x5a0 y 0x5a4). Medido en -dS y -dg: el compilador usa la propia
- * variable como destino de la suma y de la carga del punto antes del `slt` (insns 629, 638, 772 y 783 de -dS),
- * de modo que su vida cruza las cargas de los otros operandos y choca con v0 y v1; es el pseudo de mayor
- * prioridad (88: 26 usos sobre 11, 9,455), se asigna el primero y toma el primer registro libre, a0.
- * (2) En el camino de 0x4b4 el original carga el radio en a0 y el punto en a1, y aqui salen al reves; el
- * punto local `punto_der` (pseudo 86, 6 usos sobre 9, 1,333) se asigna antes que el radio y toma a0.
- * (3) La escritura de la ultima comparacion con el punto delante (`punto > limite`) hace que los caminos de
- * 0x44c y 0x4b4 no se fundan; con la suma delante, el orden de las cargas y de los registros de los dos
- * caminos coincide y el compilador los funde por completo, que el original no hace. Las causas (1) y (2) se
- * deben a esa forma: se supone, sin verificar, que el original no funde esos dos caminos por otra razon que
- * deja sus registros iguales; no se ha encontrado la forma del fuente que lo produzca.
- *
- * Estructura medida del original en los seis caminos de clasificacion del bucle (0x44c, 0x498, 0x4b4, 0x500,
- * 0x558 y 0x5b4, en el orden del fuente): los caminos de 0x498 y 0x558 comparten desde su primera comparacion
- * la cadena de 0x570 a 0x5a0 (el primero entra por `j 0x570`); los de 0x500 y 0x5b4 comparten la de 0x518 a
- * 0x540 (el segundo entra por `j 0x518`, hacia atras); los de 0x44c y 0x4b4 no comparten nada de sus
- * comparaciones, que son iguales tras la primera, y cada uno termina con `j 0x5a4` y su propio `slt` en el
- * hueco; 0x5a4 (`bnez v0,0x5d0 ; li v0,1 ; j 0x5f0`) es la cola comun de esos dos y de la cadena de 0x570.
- * Este C reproduce esa estructura: la ultima comparacion de los caminos de 0x44c, 0x498 y 0x4b4 se guarda en
- * `excluido` y la prueba de `excluido` (`continue` o `return 1`) esta una sola vez, al final del camino de 0x558,
- * como la cola de 0x5a4; el camino de 0x500 y el de 0x5b4 terminan cada uno con su `return 1`.
+ * Estructura del original en los seis caminos de clasificacion del bucle (0x44c, 0x498, 0x4b4, 0x500,
+ * 0x558 y 0x5b4, en el orden del fuente): cada camino termina con su propia prueba `if (cmp) continue; return 1;`
+ * escrita con las lecturas del area de trabajo, sin variables intermedias. Las colas identicas las funde el
+ * compilador, como el original: los caminos de 0x498 y 0x558 comparten la cadena de 0x570 a 0x5a0 (el primero
+ * entra por `j 0x570`), los de 0x500 y 0x5b4 la de 0x518 a 0x540 (el segundo entra por `j 0x518`), y los de
+ * 0x44c y 0x4b4 entran por `j 0x5a4` en la cola comun `bnez v0,0x5d0 ; li v0,1 ; j 0x5f0`, cada uno con su
+ * `slt` en el hueco del salto. Con las pruebas escritas directas todos los resultados de comparacion son
+ * temporales de su bloque y caen en v0.
  *
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
  * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
- *
- * En la rama final de esquina positiva en x el punto y el objeto b se leen del area de trabajo en locales: el
- * original conserva esos punteros en registros y sin las copias, o con la comparacion escrita con la suma
- * delante, el compilador funde por completo los caminos de 0x44c y 0x4b4. En la rama final de esquina
- * negativa no hace falta copia.
  */
 s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
 {
@@ -611,9 +587,6 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
     MATRIX* m2;
     /* El marco del original reserva 8 bytes de locales que ninguna sentencia toca. */
     SVECTOR reserva;
-    SVECTOR* punto_der;
-    Objeto* objeto_der;
-    s32 excluido;
     GEO_CARGAR_WH(&b->min);
     GEO_OR_WH(&b->max);
     GEO_GUARDAR_1W_T1(&w->caja);
@@ -676,8 +649,10 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
                 if (w->b->max.vz + w->radio < w->pt->vz) {
                     continue;
                 }
-                excluido = w->b->max.vx + w->radio < w->pt->vx;
-                goto cierre;
+                if (w->b->max.vx + w->radio < w->pt->vx) {
+                    continue;
+                }
+                return 1;
             } else if (w->ang < w->angs[1]) {
                 if (w->b->max.vx + w->radio < w->pt->vx) {
                     continue;
@@ -685,16 +660,18 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
                 if (w->b->max.vz + w->radio < w->pt->vz) {
                     continue;
                 }
-                excluido = w->pt->vz < w->b->min.vz - w->radio;
-                goto cierre;
-            } else {
-                punto_der = w->pt;
-                objeto_der = w->b;
-                if (punto_der->vz < objeto_der->min.vz - w->radio) {
+                if (w->pt->vz < w->b->min.vz - w->radio) {
                     continue;
                 }
-                excluido = punto_der->vx > objeto_der->max.vx + w->radio;
-                goto cierre;
+                return 1;
+            } else {
+                if (w->pt->vz < w->b->min.vz - w->radio) {
+                    continue;
+                }
+                if (w->b->max.vx + w->radio < w->pt->vx) {
+                    continue;
+                }
+                return 1;
             }
         } else if (w->angs[2] < w->ang) {
             if (w->b->max.vz + w->radio < w->pt->vz) {
@@ -711,9 +688,7 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
             if (w->b->max.vz + w->radio < w->pt->vz) {
                 continue;
             }
-            excluido = w->pt->vz < w->b->min.vz - w->radio;
-cierre:
-            if (excluido) {
+            if (w->pt->vz < w->b->min.vz - w->radio) {
                 continue;
             }
             return 1;
@@ -729,9 +704,6 @@ cierre:
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80018664);
-#endif
 
 /*
  * Clasifica el punto del jugador respecto de la caja del objeto a en el eje z de su sistema
