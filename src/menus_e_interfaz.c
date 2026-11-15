@@ -272,18 +272,19 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 795 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
- * 70 insertadas o borradas). Difiere en el reparto de registros y en la posicion de dos instrucciones: el original
- * deja el color en a3, el desplazamiento de la textura en a2, la direccion de las palabras del sprite en a0 y el
- * nivel de la lista en v0, y aqui caen en a2, a0, v1 y a3; el almacen del nivel (`sh` de `estado.s4`) queda en el
- * original antes de leer la lista y aqui despues, y el almacen de la palabra de ordenacion sale antes del salto de
- * la bandera de transparencia en el original y aqui tras el de la bandera.
+ * Pendiente: puntuacion 580 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
+ * 62 insertadas o borradas). Las dos ramas que recortan el nivel de la lista coinciden: el nivel se guarda dentro de
+ * cada rama, antes de leer la lista, y el original las funde en una cola comun que empieza por ese almacen (con una
+ * variable y un solo almacen tras la union eran 795). Difiere el reparto de registros de la copia de palabras: el
+ * original deja la direccion de las palabras del sprite, la base de la lista y la ranura en a0, el desplazamiento de
+ * la textura en a2 y la bandera de transparencia en v1, y aqui caen en v1, v1, a2, a0 y a0; ademas el original
+ * guarda la palabra de ordenacion despues del salto de la bandera de transparencia, junto al color, y aqui sale antes.
  *
- * Medido en tres formas: con la constante fundida en `color` la secuencia del brillo ya coincide en estructura pero
- * el reparto rota (820); con el ternario de constantes los dos `or` se pliegan en uno (1265); con una variable `tipo`
- * y los almacenes tras la union la cola `or ; lui 0x2c00 ; or` coincide exactamente (1675 por lo demas). En el orden
- * de asignacion observado `tipo` se asigna despues de `palabra` y el original los asigna al reves (tipo en v0,
- * palabra en a2).
+ * Medido: con una variable `tipo` y los almacenes tras la union la cola `or ; lui 0x2c00 ; or` coincide exactamente
+ * pero el reparto rota (1460 con las ramas del nivel como aqui); el desplazamiento de la textura (global) toma a0
+ * porque la direccion de las palabras (local de bloque) toma v1, y el original da a0 a la direccion y a2 al
+ * desplazamiento. Se supone, sin verificar, que el original da a0 a la direccion porque v1 esta ocupado durante su
+ * vida por otra local de bloque; no se midio.
  */
 /*
  * Encola un sprite de ocho palabras en la lista de ordenacion segun la profundidad del objeto: calcula el color y
@@ -301,7 +302,6 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     u32* q;
     u32* orden;
     u32* ranura;
-    s32 n;
     u32 semitransparente;
     VistaDibujo* vista_dibujo;
 
@@ -346,13 +346,12 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
             orden = (u32*)D_8006AE20[D_8006967C].org;
         } else {
             if (ctx->estado.s4 < 0x400) {
-                n = (s16)((u16)ctx->estado.s4 - 0x200) >> 1;
+                ctx->estado.s4 = (s16)((u16)ctx->estado.s4 - 0x200) >> 1;
                 orden = (u32*)D_8006AE60[D_8006967C].org;
             } else {
+                ctx->estado.s4 = (s16)((u16)ctx->estado.s4 - 0x400) >> 5;
                 orden = (u32*)D_8006AEA0[D_8006967C].org;
-                n = (s16)((u16)ctx->estado.s4 - 0x400) >> 5;
             }
-            ctx->estado.s4 = n;
         }
         ranura = orden + ctx->estado.s4;
         /* La bandera de transparencia se lee despues de calcular la ranura: leida antes de elegir la lista de
