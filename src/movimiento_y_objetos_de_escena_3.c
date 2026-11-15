@@ -54,20 +54,18 @@ typedef struct SpritePlano {
  * func_8001E600. `modo` con el bit 0 activo toma el cuadro tal cual; si no, pasa por la tabla
  * de indices del conjunto.
  */
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 55 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 18
- * insertadas o borradas). Mismos accesos, almacenes y orden de instrucciones; solo difiere el reparto de los
- * registros de las lecturas del fotograma: el original deja la coordenada u en a3 y la pagina de textura en v0, y
- * aqui caen en v0 y a3 (la paleta en a3 en lugar de v0 es consecuencia del mismo intercambio).
+ * La coordenada u del cuadro comparte la variable `coord_textura` con la copia del modo de la rama que delega:
+ * en el original u es un pseudo que vive en mas de un bloque y se asigna despues de los locales (a3), mientras que
+ * la pagina de textura, local del bloque de lectura del fotograma, toma v0.
  *
- * Causa medida (local-alloc del bloque unico de la lectura del fotograma): u (6 usos sobre 14 instrucciones, 0,86) se
- * asigna antes que la pagina (2 sobre 10, 0,20) y la paleta (2 sobre 14, 0,14), y toma v0, el primer registro libre.
- * u vive durante todas las demas lecturas, de modo que en el original solo puede quedar en a3 si se asigna la ultima.
- * Tambien medido: una pareja `x--; x++` no suma usos sobre un entero (el CSE la pliega antes del recuento), y segun la
- * formula la pagina (0,20) no cruza a u (0,857) sin una vida de 2 instrucciones; no se midio ninguna forma que deje
- * el almacen de la pagina contiguo a su carga. Se supone, sin verificar, que en el original u es un pseudo global
- * (asignado despues de los locales) o que su prioridad queda por debajo de la de la pagina.
+ * El decremento-incremento de la rama de la llamada no genera codigo. Causa medida: sin el, el pseudo de la
+ * variable compartida (93) tiene 6 usos sobre 15 instrucciones (prioridad 2 * 6 / 15 = 0,80) y el puntero al
+ * fotograma (83) 9 sobre 26 (3 * 9 / 26 = 1,04), de modo que el puntero se asigna primero, toma a3 y u cae en t0
+ * (60). Con la pareja la variable pasa a 10 usos (3 * 10 / 15 = 2,0), se asigna antes que el puntero, toma a3 y el
+ * puntero queda en t0, como el original. La pareja en la rama de la llamada, y no junto a la carga de u, deja el
+ * orden de las lecturas intacto: junto a la carga alarga la cadena de u y el planificador la sube por encima de la
+ * lectura del puntero del sprite (60). La forma del fuente original que producia este reparto se desconoce.
  */
 void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
@@ -80,14 +78,14 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     s32 ancho;
     s32 clut;
     s32 alto_menos_uno;
-    u32 modo_o_pagina;
-    u8 coord_textura;
+    u32 pagina;
+    u32 coord_textura;
 
     if (o->flags08 & 0x20) {
-        /* La copia del modo y la pagina de textura comparten una sola local: con dos locales distintas el
-         * reparto de registros de toda la funcion cambia. */
-        modo_o_pagina = modo;
-        func_8001E600(o, c, modo_o_pagina);
+        coord_textura = modo;
+        coord_textura--;
+        coord_textura++;
+        func_8001E600(o, c, coord_textura);
         return;
     }
     /* El fotograma se calcula en cada rama y no tras la union: con el indice calculado antes y las banderas
@@ -99,19 +97,18 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
         r = c->fotogramas + c->duraciones[(u16)c->cuadro].indice;
     }
     p = (SpritePlano*)((u8*)o->u78.p + 0xC);
-    /* Las dos coordenadas de textura en bytes (v y despues u) pasan por una sola local: con una local propia
-     * para cada una el reparto de los registros de las lecturas del fotograma cambia (115). */
-    coord_textura = r->v;
-    v = coord_textura;
+    /* La coordenada u se lee antes que v y vive en la variable que ya guarda la copia del modo: con una local
+     * propia para u, o con v leida primero, el reparto de los registros de las lecturas del fotograma cambia. */
     coord_textura = r->u;
+    v = r->v;
     w = r->w0C;
     /* La altura menos uno pasa por una variable de 32 bits: en la expresion `h - 1 + v` el compilador estrecha la resta a un byte (addiu 0xff) y el original suma -1. */
     alto_menos_uno = r->w0E - 1;
-    modo_o_pagina = r->pagina;
+    pagina = r->pagina;
     /* La anchura menos uno pasa por una variable de 32 bits: con la suma en una sola expresion el compilador estrecha la carga de w a un byte (lbu) y el original carga media palabra (lhu). */
     ancho = w - 1;
     u_fin = coord_textura + ancho;
-    p->tpage = modo_o_pagina;
+    p->tpage = pagina;
     clut = r->h0A;
     p->v0 = v;
     p->v1 = v;
@@ -125,9 +122,6 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
     p->clut = clut;
     p->bandera = r->flags & 8;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E528);
-#endif
 
 /*
  * Igual que func_8001E528 para el formato escalado: la profundidad de color del cuadro (bits
