@@ -962,21 +962,7 @@ ZonaColision* func_8001BF9C(s32* a0, s16 a1)
     return 0;
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 270 con la configuracion versionada (g = 0, no carga globales; ejes 7 de operando, 0
- * reordenadas, 18 insertadas o borradas). Coinciden el orden de las cargas de x y z, el reparto de registros de las
- * divisiones, el `andi 0xffff` tras guardar la baldosa enmascarada y la posicion de `mfhi`, `lhu` y las
- * multiplicaciones; difiere la asociacion de la suma del indice de subcelda: el original suma primero la base de las
- * subceldas y `baldosa << 6` y despues la fila y la columna, `(base + (baldosa << 6)) + (fila + col)`, y aqui sale
- * `((col + (baldosa << 6)) + fila) + base`.
- *
- * Medido con esta forma como base: el indice como puntero a la fila, `(z->subceldas + (baldosa << 6))[col + fila]`,
- * da 690 y con `[fila + col]` 955; `(baldosa << 6) + fila + col` da 670; el mismo puntero en una local, 690 a 955; el
- * resto de ordenes de los tres sumandos y una local para la suma de fila y columna, 1095 a 1520. En todas el reparto
- * de registros de las divisiones se corre. Se supone, sin verificar, que el original suma la base primero porque la
- * carga de `z->subceldas` se planifica antes del cociente de x, y que esas formas la sacan de su posicion.
- *
  * Consulta la baldosa bajo el punto pos: busca la zona del punto (con el grupo recordado en
  * res), lee el valor de la baldosa de 320 unidades y la subcelda de 40 unidades, y rellena res
  * con la clase de terreno. 0x7E y 0x7F de la subcelda son transiciones de zona; cualquier otro
@@ -988,10 +974,7 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
     ZonaColision* zona_cuesta;
     TrabajoBaldosa* trabajo;
     TrabajoBaldosa* trabajo_baldosa;
-    s32 xl;
-    s32 zl;
     s32 col;
-    s32 fila;
     u16 baldosa;
 
     /* Tres nombres para el area de trabajo y dos para la zona: el original reparte el area en s0 y el
@@ -1017,21 +1000,20 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
     trabajo->baldosa = z->baldosas[(trabajo->x - z->x) / 320 + (trabajo->z - z->z) / 320 * z->columnas];
     r->tipo = trabajo->baldosa & 0xF000;
     /* La mascara de la baldosa se guarda antes de los almacenes de las coordenadas locales y la baldosa se relee
-     * despues de ellos: con la relectura pegada al almacen de la mascara (550), o con la mascara guardada despues de
-     * las coordenadas (550), el valor se reenvia sin pasar por memoria y no sale el `andi 0xffff` del original. Las
-     * coordenadas se cargan en locales propias y el cociente de x y la fila de z tambien: sin esas dos locales 545; con
-     * la fila como unica local y las coordenadas almacenadas directamente la planificacion carga z antes que x (475). */
+     * despues de ellos, como en el original: con la relectura pegada al almacen de la mascara la puntuacion es 385 y
+     * con la mascara guardada despues de las coordenadas 1500. Se supone, sin verificar, que sin un almacen
+     * intermedio el valor se reenvia sin pasar por memoria y por eso no sale el `andi 0xffff` del original. */
     trabajo_baldosa->baldosa &= 0xFFF;
-    xl = trabajo->x;
-    zl = trabajo->z;
-    xl = xl % 320;
-    trabajo->x_local = xl;
-    zl = zl % 320;
-    trabajo->z_local = zl;
+    trabajo->x_local = trabajo->x % 320;
+    trabajo->z_local = trabajo->z % 320;
     baldosa = trabajo->baldosa;
-    col = xl / 40;
-    fila = zl / 40 * 8;
-    trabajo->celda = (s8)z->subceldas[col + (baldosa << 6) + fila];
+    /* El cociente de x va en una local propia: con el cociente dentro del indice la planificacion carga z antes que x
+     * (715). */
+    col = trabajo->x_local / 40;
+    /* La tabla de subceldas son filas de 64 bytes por baldosa: el original suma la base y `baldosa << 6` antes que
+     * la fila y la columna, y eso solo sale indexando por fila (con el indice plano
+     * `col + (baldosa << 6) + trabajo->z_local / 40 * 8` la puntuacion es 755). */
+    trabajo->celda = (s8)((u8 (*)[64])z->subceldas)[baldosa][trabajo->z_local / 40 * 8 + col];
     if (trabajo->celda == 0x7E) {
         pos[1] = z->y_max;
         r->clase = 0;
@@ -1065,6 +1047,3 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
     r->grupo = zona_cuesta->grupo;
     r->suelo = zona_cuesta->y_max + trabajo->celda;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/colision_y_terreno", func_8001C134);
-#endif
