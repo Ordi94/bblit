@@ -1349,6 +1349,7 @@ void func_800353B0(Objeto* a0)
     s32 m3;
     s32 nmod;
     s32 idx;
+    s32 lim;
     Objeto* busca;
     EstadoCamara* cam;
 
@@ -1426,13 +1427,14 @@ void func_800353B0(Objeto* a0)
                     nmod = D_80069588;
                     idx = sc->i40;
                     if (idx < nmod) {
+                        lim = nmod;
                         busca = sc->cur;
 buscar_modelo:
                         if ((s16)busca->w26 != sc->tp3C->modelo) {
                             sc->i40 = idx + 1;
                             sc->tp3C++;
                             idx = sc->i40;
-                            if (idx < nmod) {
+                            if (idx < lim) {
                                 goto buscar_modelo;
                             }
                         }
