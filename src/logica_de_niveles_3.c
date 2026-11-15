@@ -2524,20 +2524,8 @@ siguiente:
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 365 con la configuracion versionada (g = 8 del archivo). Prologo y salida de la busqueda por id.
- *
- * (1) El original deriva la matriz del scratchpad de la base (`move s3,s1 ; ori s3,s3,0x50`, con el lui compartido con
- * la base) despues del par que el optimizador de bucles iza para D_8006D928 (`lui s5 ; addiu s2`), y aqui sale antes.
- * Medido en el volcado del optimizador de bucles: el par se iza como las instrucciones 1639 y 1641 (candidatos de las
- * insns 78 y 79 del bucle); la matriz escrita como primera sentencia del bucle se iza como 1637 y sale antes del par;
- * escrita despues de cualquier salto condicional del bucle (tras la primera prueba, tras la llamada de la accion, al
- * empezar el bloque de la bandera 1 o tras calcular la condicion) NO es candidata y queda dentro del bucle (`lui` y `ori`
- * en cada vuelta); escrita en cada uno de sus ocho usos tampoco se iza, y un puntero real a la camara asignado antes de
- * la matriz empeora el reparto (copias del puntero). `&t->m`, `(u32)t | 0x50` y `(u32)t + 0x50` dan el mismo codigo
- * que la constante. Se supone, sin verificar, que el optimizador de bucles solo iza una constante o una suma de bits
- * si la instruccion precede al primer salto condicional del bucle, y que el par de D_8006D928 se iza despues porque su
- * primera referencia esta mas abajo. Los ocho usos de la matriz comparten un unico registro (s3), de modo que en el
- * original es una variable asignada una vez.
+ * Pendiente: puntuacion 245 con la configuracion versionada (g = 8 del archivo). Queda la salida de la busqueda por id
+ * (el orden de la matriz en el preludio ya coincide, ver la cabecera de la funcion).
  *
  * (2) El original sale de la busqueda por id con `beqz v0` directo al caso sin origen y vuelve con `j` al cursor; aqui
  * sale con `bnez` hacia atras y un `j`. Medido sobre el volcado de la salida: el bucle con `while` (igual que `for`),
@@ -2553,6 +2541,21 @@ siguiente:
  * y las banderas de seguimiento (flags80), o corta la camara de golpe copiando la vista actual a
  * todas sus copias. El origen del destino puede ser el jugador, otro objeto buscado por
  * identificador, este mismo objeto o constantes del disparador.
+ *
+ * La condicion vacia `if (D_8006D928.flags80) { }` del principio del bucle no genera codigo: el optimizador de saltos
+ * la elimina y no queda ninguna instruccion. Su efecto es el orden en que el optimizador de bucles iza las
+ * instrucciones invariantes al preludio. El original emite el par `lui s5 ; addiu s2,s5,%lo(D_8006D928)` antes de la
+ * matriz del scratchpad (`move s3,s1 ; ori s3,s3,0x50`). Medido en el volcado del bucle: sin la condicion el par se
+ * iza como las instrucciones 1639 y 1641 (candidatos 78 y 79, vidas 176 y 192, ahorros 35 y 19) y la matriz, asignada
+ * como primera sentencia del bucle, como la 1637, de modo que sale delante del par (y asignada tras cualquier salto
+ * condicional del bucle no se iza y se queda dentro, con su `lui` y su `ori` en cada vuelta); con la condicion la
+ * referencia a D_8006D928 precede a la matriz, el par pasa a ser los candidatos 40 y 41 (vidas 193 y 209) izados como
+ * 1648 y 1650 y la matriz el 50 izado como 1652, con lo que sale detras, como en el original (365 a 245). La matriz se
+ * asigna dentro del bucle, antes de la primera prueba condicional, porque solo asi se iza; los ocho usos comparten un
+ * unico registro (s3), de modo que en el original es una variable asignada una vez. Se supone, sin verificar, que el
+ * optimizador de bucles iza solo las instrucciones que preceden al primer salto condicional del bucle y que numera los
+ * izados en el orden de aparicion. Esta condicion vacia fuera del bucle, antes o despues de la matriz, no cambia el
+ * orden. La forma del fuente original que producia este reparto se desconoce.
  */
 void LogicaDirectorCamara(Objeto* o)
 {
@@ -2573,9 +2576,11 @@ void LogicaDirectorCamara(Objeto* o)
     if (t->nodo == 0) {
         return;
     }
-    m = (MATRIX*)0x1F800050;
     do {
         t->flags = t->nodo->flags;
+        if (D_8006D928.flags80) {
+        }
+        m = (MATRIX*)0x1F800050;
         if (t->nodo->cond != 0 && TestLogicCond(o, &t->nodo->cond) == 0) {
             goto siguiente;
         }
