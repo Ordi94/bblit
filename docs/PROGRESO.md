@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 408 | 92400 |
+| Código del juego | 450 | 201416 | 409 | 93152 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 92400 de 201416 (45.88 %).
-Funciones marcadas `NON_MATCHING`: 25.
-Coherencia con el ensamblador: correcta (694 `glabel` en `asm/` + 408 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 93152 de 201416 (46.25 %).
+Funciones marcadas `NON_MATCHING`: 24.
+Coherencia con el ensamblador: correcta (693 `glabel` en `asm/` + 409 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -24,7 +24,7 @@ Coherencia con el ensamblador: correcta (694 `glabel` en `asm/` + 408 en C = 110
 | audio_xa_y_spu | 1 | 37 | 0 | 0 | 8220 | 8220 |
 | camara_y_bucle_logico | 1 | 8 | 3 | 0 | 2712 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 7 | 2 | 2 | 1096 | 14264 |
-| colision_y_terreno | 1 | 2 | 2 | 0 | 680 | 12480 |
+| colision_y_terreno | 1 | 3 | 1 | 0 | 1432 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
 | gestion_y_dibujo_de_objetos | 4 | 31 | 3 | 8 | 11516 | 18624 |
 | graficos_y_gte | 3 | 18 | 1 | 0 | 7224 | 11812 |
@@ -45,7 +45,7 @@ Coherencia con el ensamblador: correcta (694 `glabel` en `asm/` + 408 en C = 110
 | `src/camara_y_bucle_logico.c` | 8 | 3 | 0 | 2712 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 7 | 2 | 0 | 1096 | 13592 |
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 0 | 2 | 0 | 672 |
-| `src/colision_y_terreno.c` | 2 | 2 | 0 | 680 | 12480 |
+| `src/colision_y_terreno.c` | 3 | 1 | 0 | 1432 | 12480 |
 | `src/entrada_de_mando.c` | 5 | 1 | 0 | 1260 | 2784 |
 | `src/gestion_y_dibujo_de_objetos.c` | 15 | 0 | 0 | 3812 | 3812 |
 | `src/gestion_y_dibujo_de_objetos_2.c` | 10 | 2 | 8 | 4632 | 10604 |
@@ -79,7 +79,6 @@ Coherencia con el ensamblador: correcta (694 `glabel` en `asm/` + 408 en C = 110
 - `SondearTarjeta`: Pendiente: puntuacion 2835 con la configuracion versionada (g = 8 del archivo; ejes 71 de operando, 0 reordenadas, 235 insertadas o borradas). Flujo y distribucion de bloques iguales al original; quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante. Medido en el volcado del optimizad
 - `func_800151FC`: Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). No se reprodujo la disposicion de los bloques locales de la pila ni las copias de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento. Da formato al archivo de partida: arma en la pila un bloque de 0x200 bytes con la cabecera de la tarjeta ("SC", bandera de icono, un bloque, titulo, paleta e imagenes), lo copia con la cabecera de D_8006D060 y su suma de control al buffer D_80069520 + 0x2000 y escribe 0x400 bytes con open/write (hasta cinco intentos), comprobando despues la lectura.
 - `func_80017478`: Pendiente: puntuacion 19849 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las comparaciones de las regiones no se han ajustado al original. La lista de registros destruidos de GEO_NORMA2_XZ la mueve 100 puntos (antes 19749). Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la pared que cruzan y, si ninguno la cruza, usa la arista mas cercana. D
-- `func_8001C134`: Pendiente: puntuacion 455 con la configuracion versionada (g = 0, no carga globales; ejes 7 de operando, 0 reordenadas, 29 insertadas o borradas). Los registros guardados y la copia de la zona coinciden; difiere el orden de las dos divisiones por 320 del resto de la baldosa (el original calcula x antes que z, esta forma al reves), la suma del indice de subcelda (el original suma primero base + (baldosa << 6) y despues z / 40 * 8 + x / 40) y un `andi 0xffff` que el original emite tras guardar la baldosa enmascarada. Medido en el volcado de la planificacion (-dS): con la local `fila_subceldas` l
 - `func_8001D75C`: Pendiente: puntuacion 8935 con la configuracion versionada (g = 8 del archivo). Misma logica de condiciones y mismos almacenes, primer borrador sin igualar el orden de bloques: el original reparte el dano por defecto (1) y el de la rama con atacante en bloques compartidos con saltos distintos y dos formas de cerrar el llamador.
 - `func_8001E528`: Pendiente: puntuacion 55 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 18 insertadas o borradas). Mismos accesos, almacenes y orden de instrucciones; solo difiere el reparto de los registros de las lecturas del fotograma: el original deja la coordenada u en a3 y la pagina de textura en v0, y aqui caen en v0 y a3 (la paleta en a3 en lugar de v0 es consecuencia del mismo intercambio). Causa medida (local-alloc del bloque unico de la lectura del fotograma): u (6 usos sobre 14 instrucciones, 0,86) se asigna antes que la pagina (2 sobre 10, 0,20) y la paleta
 - `func_8001E600`: Pendiente: puntuacion 905 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 55 insertadas o borradas). Difiere en: momento de dos lecturas y reparto de registros. Medido en los volcados de `cc1`: los seis pseudos globales (objeto, bloque, puntero al sprite, desplazamiento de color, indice y puntero al fotograma) se reparten como el original salvo el puntero al sprite (pseudo de 16 usos y vida 32, prioridad 2,0), que toma `a3` y en el original `v1`. Causa: el puntero crudo leido de +0x78 (pseudo local de 3 usos y vida 9) recibe `a3` de la asignacion local y 
