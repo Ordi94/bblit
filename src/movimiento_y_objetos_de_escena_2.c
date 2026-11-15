@@ -482,9 +482,9 @@ void func_8001D588(s32 modo, VECTOR* p)
  * de `otro` cambia y la puntuacion sube.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 110 con la configuracion versionada (g = 8 del archivo). El orden de bloques, los saltos y el reparto de registros de las dos ramas con atacante coinciden; las 20 diferencias de operando que quedan son de forma simbolica: el original lee y resta la salud con el simbolo D_80010041 (`lui a1,%hi(D_80010041)`, `lbu`/`sb %lo(...)(a1)` con una sola base) y la prueba inicial con D_8006AA73, y aqui el acceso por el banco de registros del estado da `lui 0x8001` y el desplazamiento 0x41 y la prueba sale como D_8006AA70+3. Con el simbolo directo (`D_80010041 -= x`) el almacen usa `lui at` propio y la lectura de la salud sale antes del almacen a `flags18` (2120; se supone, sin verificar, que el planificador no ordena un acceso a un simbolo respecto de un acceso a un campo); con una vista de un solo campo sobre el simbolo da 1900.
+/* Pendiente: puntuacion 110 con la configuracion versionada (g = 8 del archivo). El orden de bloques y los saltos coinciden; quedan 16 instrucciones distintas, diez de forma simbolica y seis de registros. Las diez simbolicas (0x38, 0x3c, 0x108, 0x110, 0x12c, 0x1d0, 0x1d8, 0x1ec, 0x210 y 0x214): el original lee y resta la salud con el simbolo D_80010041 (`lui a1,%hi(D_80010041)`, `lbu`/`sb %lo(...)(a1)` con una sola base) y la prueba inicial con D_8006AA73, y aqui el acceso por el banco de registros del estado da `lui 0x8001` y el desplazamiento 0x41 y la prueba sale como D_8006AA70+3. Las seis de registros (0x18c, 0x198, 0x19c, 0x1a4, 0x1a8 y 0x1ac) son la rama que recorta el dano a 2 y resta la salud: el original usa a0 como base de la salud, v0 como valor leido y restado y v1 como constante 0x1e, y el C usa v0 como base, v1 como valor y a0 como constante. Con el simbolo directo (`D_80010041 -= x`) el almacen usa `lui at` propio y la lectura de la salud sale antes del almacen a `flags18` (2120; se supone, sin verificar, que el planificador no ordena un acceso a un simbolo respecto de un acceso a un campo); con una vista de un solo campo sobre el simbolo da 1900.
  *
- * Que dio cada cambio (cifras del diff, 8935 de partida): el campo de indicadores del objeto controlado se declara sin signo y la prueba de signo del original (`bgez`) desaparecia con `< 0`; con el molde a s32 la prueba vuelve (7705). Las dos comprobaciones sobre el registro de animacion (`registro184` nulo y bit 0x4000) se escriben como un solo `if` que envuelve el resto, de modo que el `return 0` de esas dos sale al final tras el `return 1`, como en el original, y no se funde con el de las comprobaciones iniciales (7165 a 3200). La salud (0x80010041) se lee y se resta por el banco de registros del estado (`ESTADO_PRINCIPAL->r[1]`): es un acceso de miembro y la lectura queda tras el almacen a `flags18` y comparte base con su escritura (3200 a 1670). El dano bruto va en su propia local antes de la copia que se recorta a 2 (1670 a 1560): el original conserva dos pseudos (`lh v0` y `move a1,v0`). En la rama del tipo 0x1F la resta de la salud va antes del almacen de D_80069690 (1560 a 945). El dano por defecto recarga D_80069698 en lugar de usar `j`: con la misma local en las dos colas el salto cruzado fusionaba la suma de la bandera 0x2000000 de la rama por defecto con la de las ramas con atacante, y el original las deja separadas (945 a 110). */
+ * Que dio cada cambio (cifras del diff, 8935 de partida): el campo de indicadores del objeto controlado se declara sin signo y la prueba de signo del original (`bgez`) desaparecia con `< 0`; con el molde a s32 la prueba vuelve (7705). Las dos comprobaciones sobre el registro de animacion (`registro184` nulo y bit 0x4000) se escriben como un solo `if` que envuelve el resto, de modo que el `return 0` de esas dos sale al final tras el `return 1`, como en el original, y no se funde con el de las comprobaciones iniciales (7165 a 3200). La salud (0x80010041) se lee y se resta por el banco de registros del estado (`ESTADO_PRINCIPAL->r[1]`): es un acceso de miembro y la lectura queda tras el almacen a `flags18` y comparte base con su escritura (3200 a 1670). El dano bruto va en su propia local antes de la copia que se recorta a 2 (1670 a 1560): el original conserva dos pseudos (`lh v0` y `move a1,v0`). En la rama del tipo 0x1F la resta de la salud va antes del almacen de D_80069690 (1560 a 945). El dano por defecto lee D_80069698 de nuevo en lugar de usar `j`: el original deja separada la suma de la bandera 0x2000000 de esa rama de la de las ramas con atacante, y con la misma local en las dos colas el salto cruzado las fusiona. */
 s32 func_8001D75C(Objeto* otro, RegistroAnim* a1)
 {
     u32 estado;
@@ -515,43 +515,43 @@ s32 func_8001D75C(Objeto* otro, RegistroAnim* a1)
     }
     otro->flags14 |= 0x8000;
     if (j->registro184 != NULL && (j->registro184->w0C & 0x4000)) {
-    j->id_atacante = otro->w1C;
-    otro->id_atacante = 1;
-    if (otro->clase == 0x1F) {
-        /* 0x8001D860: lhu 0x1E(a3) y 0x8001D870: lbu 0x1E(a3); el campo es s16 para el interprete de eventos (lh), asi que el dano se lee sin signo con la conversion. */
-        j->w38 = (u16)otro->s1E;
-        ESTADO_PRINCIPAL->r[1] -= (u8)otro->s1E;
-        D_80069690 = 0x1E;
-        goto marcar;
-    }
-    if (a1 != NULL) {
-        if (!((otro->flags08 & 0x10000000) && (otro->flags14 & 1)) && !(a1->w0C & 0x200000)) {
-            bruto = (s16)a1->w16;
-            if (bruto != 0) {
-                danio = bruto;
-                if (danio >= 3) {
-                    danio = 2;
-                }
-                j->w38 = danio;
-                D_80069690 = 0x1E;
-                ESTADO_PRINCIPAL->r[1] -= danio;
-marcar:
-                j->flags14 |= 0x2000000;
-            }
-            goto fin;
+        j->id_atacante = otro->w1C;
+        otro->id_atacante = 1;
+        if (otro->clase == 0x1F) {
+            /* 0x8001D860: lhu 0x1E(a3) y 0x8001D870: lbu 0x1E(a3); el campo es s16 para el interprete de eventos (lh), asi que el dano se lee sin signo con la conversion. */
+            j->w38 = (u16)otro->s1E;
+            ESTADO_PRINCIPAL->r[1] -= (u8)otro->s1E;
+            D_80069690 = 0x1E;
+            goto marcar;
         }
-    }
-    D_80069698->w38 = 1;
-    D_80069690 = 0x1E;
-    ESTADO_PRINCIPAL->r[1] -= 1;
-    D_80069698->flags14 |= 0x2000000;
+        if (a1 != NULL) {
+            if (!((otro->flags08 & 0x10000000) && (otro->flags14 & 1)) && !(a1->w0C & 0x200000)) {
+                bruto = (s16)a1->w16;
+                if (bruto != 0) {
+                    danio = bruto;
+                    if (danio >= 3) {
+                        danio = 2;
+                    }
+                    j->w38 = danio;
+                    D_80069690 = 0x1E;
+                    ESTADO_PRINCIPAL->r[1] -= danio;
+marcar:
+                    j->flags14 |= 0x2000000;
+                }
+                goto fin;
+            }
+        }
+        D_80069698->w38 = 1;
+        D_80069690 = 0x1E;
+        ESTADO_PRINCIPAL->r[1] -= 1;
+        D_80069698->flags14 |= 0x2000000;
 fin:
-    v1 = otro->flags18;
-    otro->flags18 = v1 | 0x4000;
-    if ((s8)ESTADO_PRINCIPAL->r[1] <= 0) {
-        otro->flags18 = v1 | 0x6000;
-    }
-    return 1;
+        v1 = otro->flags18;
+        otro->flags18 = v1 | 0x4000;
+        if ((s8)ESTADO_PRINCIPAL->r[1] <= 0) {
+            otro->flags18 = v1 | 0x6000;
+        }
+        return 1;
     }
     return 0;
 }
