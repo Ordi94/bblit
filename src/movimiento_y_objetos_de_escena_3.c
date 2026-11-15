@@ -211,7 +211,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E600);
  * evento puede crear un hijo acoplado, un objeto suelto, agarrar o soltar al protagonista.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 80 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5: la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera; sin declararlo el C da $t4 y la puntuacion baja en 50) y el reparto de $v0/$v1 en la lectura de los dos contadores de 8 bits. La cuenta de eventos (3 usos sobre 7 instrucciones, 0,43) queda por debajo de los ticks (3 sobre 4, 0,75) y toma $v1; subirla a 1,75 con una variable propia y un par `x--; x++` no cambia el reparto, de modo que la prioridad no es la causa; tampoco cambia con la prueba del salto dentro de un do/while (5 usos sobre 6 instrucciones, 1,67), con la que el contador de eventos se asigna antes que los ticks en la lista de global-alloc y sigue en $v1. Ambos son pseudos globales sin conflictos con registros fisicos salvo los 28 y 29 (segun el volcado). Se supone, sin verificar, que el reparto lo da la preferencia de registros entre pseudos globales y no la prioridad. */
+/* Pendiente: puntuacion 50 con la configuracion versionada (g = 8 del archivo; ejes 72 de operando, 0 reordenadas, 20 insertadas o borradas). Instrucciones y flujo identicos al original; solo difiere el temporal del cociente de las cinco multiplicaciones (desplazamientos 0x210, 0x230, 0x250, 0x29C y 0x2C4): el original usa $t4 y el C $t5, porque la macro de escala 0x1000 escribe $t4 y lo declara destruido (su cuerpo lo escribe) y esa lista no se altera; sin declararlo el C da $t4. El reparto de $v0/$v1 de los dos contadores de 8 bits (cuenta de eventos y ticks) ya coincide: el bucle de eventos se escribe con `for (i = 0; i < c->n_eventos; i++)` y no con una guarda `ticks < n_eventos` delante de un do/while. Medido en el volcado: con la guarda de ticks, los ticks (3 usos sobre 4 instrucciones) son el primer operando de la comparacion sltu, mueren en ella y heredan la preferencia por $v0 de su destino (`.greg`: "preferences: 2"), de modo que la cuenta de eventos queda en $v1 aunque se asigne antes; con el `for` la cuenta se lee en su propio bloque (pseudo local, 2 usos sobre 3 instrucciones) y los ticks ya no tienen preferencia. */
 u32 AvanzarAnimacionSprite(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
 {
     NodoAnimacion* n;
@@ -347,9 +347,8 @@ sigue:
     r = 1;
     if (c->n_eventos != 0) {
         if (c->ticks == 0) {
-            i = 0;
-            if (c->ticks < c->n_eventos) {
-                do {
+            for (i = 0; i < c->n_eventos; i++) {
+                {
                     if ((u16)c->cuadro == c->eventos[i].cuadro && o->raiz_ayudantes != 0) {
                         r = TestLogicCond(o, c->eventos[i].cond);
                         if (r == 0) {
@@ -482,8 +481,8 @@ sigue:
                         break;
                     }
 siguiente:
-                    i++;
-                } while (i < c->n_eventos);
+                    ;
+                }
             }
         }
     }
