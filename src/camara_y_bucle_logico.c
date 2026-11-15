@@ -1301,9 +1301,9 @@ void func_80035244(void)
  * medir). Reescribir en C la suma de vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W).
  *
  * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
- * asigna el reparto global a `a0` y la recarga lo mueve a `t7` porque la macro lo pide en un registro distinto
- * de los que declara destruidos; el original lo tiene en `a3` (medido en el volcado; por que `a3` queda
- * ocupado en el C actual no se leyo). La busqueda del modelo copia el limite (`lim`) en una local propia dentro
+ * asigna el reparto global a `a0` y la recarga lo mueve despues a `t7` ("Spilling reg 15" para esa insn en el
+ * volcado de la recarga); el original lo tiene en `a3`. Por que la recarga no elige `a3` en el C actual no se
+ * leyo (se supone, sin verificar, que otro pseudo vivo lo ocupa). La busqueda del modelo copia el limite (`lim`) en una local propia dentro
  * del bloque, como el original (`addu a1,v1,zero`): con la copia el limite sale en `a1` y el puntero al objeto en
  * `a2` (940 a 820); la copia hecha antes de la comparacion se vuelve a fundir con `nmod` (940). El original
  * rellena el hueco de la primera comparacion con esa copia; aqui el hueco queda con un `nop` (se supone, sin
