@@ -444,6 +444,15 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0
  * en lugar de t7), el ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi
  * 0xffff aqui) y el orden de un sw adicional a 0x14(s3).
+ * Medido con `diff` (51 tramos que no son solo de forma simbolica; el reparto de t7 y t4 para la constante 0x1000
+ * se repite en tres bloques): (1) el contador 0x17c(s3) del final: el original lo incrementa, lo guarda y deja el
+ * valor en un registro para el indice de la secuencia (`andi 0xffff` en el hueco del salto de cada camino), y solo
+ * relee la memoria para la comparacion con 5 (`lhu` y `sltiu`); una local de 32 bits asignada en los dos caminos
+ * antes de la etiqueta reproduce esa estructura, pero su pseudo cae en a0 y no en v0 o v1 (2590 a 2720, con una
+ * local compartida o propia). (2) el contador de andadura (0x194(s3)): una local con `(u16)` para la suma y el
+ * almacen despues del producto deja la secuencia `lhu`, `addiu`, `sll`, `sra`, `mult` igual que el original, pero el
+ * `sh` queda tras el salto condicional y no en el hueco del `mult` (2995; con el producto en una local 3045; sin
+ * `(u16)` la carga sale con `lh`, 3190). (3) `temp_a` antes que `temp_b` en la banda de vuelo: 2595.
  */
 /*
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
