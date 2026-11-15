@@ -467,8 +467,8 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2225 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 4 reordenadas,
- * 279 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
+ * Pendiente: puntuacion 2185 con la configuracion versionada (g = 8 del archivo; ejes 497 de operando, 4 reordenadas,
+ * 267 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
  * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
  * reproduce la carga del original del hijo y baja de 2625 a 2605; leer la X del portador en una local antes de
  * restarla (`x_portador`) baja a 2590 (sin ella el tramo coincide pero la cifra sube de 2235 a 2250). Los registros
@@ -479,7 +479,8 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * (2590 a 2505; la banda de la rama final con `suelo_bajo` y los almacenes en el orden alta y baja, 2505 a 2290), el
  * giro en reposo con `giro_reposo` (2290 a 2280), el giro directo con `giro_directo` y `pr_directo` (2280 a 2250), la
  * prueba del barrido con `f14_barrido` (2250 a 2235) y el vaciado de los giros del portado como asignacion encadenada
- * `u.x = u.z = 0` (2235 a 2225, el original almacena 0xe0 antes que 0xdc). Medido sin bajada: sumar primero la altura
+ * `u.x = u.z = 0` (2235 a 2225, el original almacena 0xe0 antes que 0xdc) y la prueba de desfase `d.vx | d.vy` con
+ * `desfase_xy` (2225 a 2185). Medido sin bajada: una local propia para el giro en Z del portador al soltarlo (2325); sumar primero la altura
  * y despues la maxima en `p30.vy` carga las dos en otro orden (2455); una macro con la constante en t7 para los tres
  * bloques de escala no coincide porque el original reutiliza t7 como valor en 0x4280 (`move v0,t7`) (2260; se supone,
  * sin verificar, que ese reparto lo hace el compilador y la macro de la cabecera, que fija t4, no lo reproduce); una
@@ -536,6 +537,7 @@ void func_80026FEC(Objeto* o)
     s32 rflags;
     s32 giro;
     s32 giro_reposo;
+    s32 desfase_xy;
     s32 giro_directo;
     GsCOORD2PARAM* pr_directo;
     s32 suelo;
@@ -1689,9 +1691,9 @@ fin_de_busqueda_de_portador:
 
 barrido_de_colision:
     /* Sin desplazamiento pedido no hay barrido de colision. */
-    giro = t->d.vx | t->d.vy;
+    desfase_xy = t->d.vx | t->d.vy;
     if (t->d.vz == 0) {
-        if (giro == 0) goto aplicar_movimiento;
+        if (desfase_xy == 0) goto aplicar_movimiento;
     }
     if (t->banderas >= 0) {
         if (!(t->fot->w10 & 0x20002) && o->p70 == 0) {
