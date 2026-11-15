@@ -272,17 +272,17 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 370 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
- * 58 insertadas o borradas). Las dos ramas que recortan el nivel de la lista coinciden: el nivel se guarda dentro de
+ * Pendiente: puntuacion 360 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
+ * 56 insertadas o borradas). Las dos ramas que recortan el nivel de la lista coinciden: el nivel se guarda dentro de
  * cada rama, antes de leer la lista, y el original las funde en una cola comun que empieza por ese almacen (con una
- * variable `n` y un solo almacen tras la union la puntuacion sube de 370 a 585). La cola del color coincide en forma
+ * variable `n` y un solo almacen tras la union la puntuacion sube de 360 a 575). La cola del color coincide en forma
  * (`or ; lui 0x2c00 ; or`) y el color cae en a3 como en el original. Difiere el reparto de registros del resto: el
  * original deja el desplazamiento de la textura en a2, la direccion de las palabras del sprite, la base de la lista y
- * la ranura en a0 y la bandera de transparencia en v1, y aqui caen en a0, v1, v1, a2 y a0; el acumulador del color
- * toma v1 en lugar de a3, y el original guarda la palabra de ordenacion despues del salto de la bandera de
- * transparencia, junto al color, y aqui sale antes.
+ * la ranura en a0 y la bandera de transparencia en v1, y aqui caen en a0, v1, v1, a2 y a0; el brillo y el color
+ * acumulado de la cola caen en a0 y v1 en lugar de a3, y el original guarda la palabra de ordenacion despues del salto
+ * de la bandera de transparencia, junto al color, y aqui sale antes.
  *
- * Medido: con la palabra en una variable y su almacen tras la union la puntuacion es 420 (la forma coincide en todas
+ * Medido: con la palabra en una variable y su almacen tras la union la puntuacion es 435 (la forma coincide en todas
  * las instrucciones salvo el orden de dos: el `lui` de 0x09000000 se planifica antes de la carga de la bandera). La
  * direccion de las palabras (local de bloque) toma v1 aunque a0 esta libre en su vida y el desplazamiento de la
  * textura (global, prioridad 0,136) toma a0; se supone, sin verificar, que el original deja v1 ocupado durante esa vida
@@ -299,7 +299,6 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     AcumuladorNodos pila;
     u32* p;
     ColorYDesplazamiento* par;
-    s32 k;
     s32 desplazamiento;
     u32* q;
     u32* orden;
@@ -313,9 +312,10 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     func_80039CD0(D_80076188);
     if (sprite->banderas & 0x10) {
         if (D_8006966A != 0) {
-            k = 0x80 - ((s16)D_800694E2 >> 5);
+            /* El brillo comparte variable con el color acumulado de la cola (360; con una variable propia 370). */
+            tinte = 0x80 - ((s16)D_800694E2 >> 5);
             /* La suma agrupa primero los dos desplazamientos y luego el componente bajo: con otro orden de sumandos el compilador cambia el reparto de a2 y a3. */
-            color = k + ((k << 16) + (k << 8));
+            color = tinte + ((tinte << 16) + (tinte << 8));
         } else {
             color = 0x808080;
         }
@@ -358,16 +358,16 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         }
         ranura = orden + ctx->estado.s4;
         /* La bandera de transparencia se lee despues de calcular la ranura: leida antes de elegir la lista de
-         * ordenacion la puntuacion sube de 370 a 685. */
+         * ordenacion la puntuacion sube de 360 a 655. */
         semitransparente = sprite->semitransparente;
         /* La palabra de ordenacion se guarda antes del salto de la bandera: con la palabra en una variable y su
-         * almacen tras la union de las ramas la puntuacion sube de 370 a 420. */
+         * almacen tras la union de las ramas la puntuacion sube de 360 a 435. */
         *p = *ranura | 0x09000000;
         /* Cada rama acumula la constante en una variable propia y la union repite el `or` con 0x2C000000 (0x8003B208 y
          * 0x8003B20C del original, tras `or a3,a3,v0` en 0x8003B204): la segunda mascara no cambia el valor porque
-         * 0x2E000000 ya la contiene, pero el original la emite y sin ella la puntuacion sube a 560. Acumulando sobre el
+         * 0x2E000000 ya la contiene, pero el original la emite y sin ella la puntuacion sube a 550. Acumulando sobre el
          * propio color sube a 405 (el color gana prioridad frente al desplazamiento y toma a2), con la expresion del
-         * color escrita en cada rama a 560 y con una variable para la constante a 925. */
+         * color escrita en cada rama a 560 y con una variable para la constante a 905. */
         if (semitransparente != 0) {
             tinte = color | 0x2E000000;
         } else {
@@ -376,8 +376,8 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         tinte |= 0x2C000000;
         p[1] = tinte;
         /* Los dos desplazamientos que recortan la direccion del primitivo operan sobre la propia variable, como en el
-         * original (sll y sra sobre a1): escritos en una sola expresion que no la reasigna la puntuacion sube de 370
-         * a 585. */
+         * original (sll y sra sobre a1): escritos en una sola expresion que no la reasigna la puntuacion sube de 360
+         * a 575. */
         p = (u32*)((s32)p << 8);
         p = (u32*)((s32)p >> 8);
         *ranura = (u32)p;
