@@ -1303,10 +1303,10 @@ void func_800353B0(Objeto* a0)
     Objeto* busca;
     EstadoCamara* cam;
 
-    sc =(Scratch*)0x1F800000;
+    sc = (Scratch*)0x1F800000;
     D_80069652 = 0;
     D_800694D4 = D_800694B8;
-    if (D_8006AA7C == 0) {
+    if (D_8006AA70[0xC] == 0) {
         if (D_80069560 != 0) {
             ActualizarCamaraSeguimiento(D_80069560, D_80069698->reiniciar_camara);
         }
@@ -1376,7 +1376,7 @@ void func_800353B0(Objeto* a0)
                     nmod = D_80069588;
                     if (sc->i40 < nmod) {
                         busca = sc->cur;
-                    buscar_modelo:
+buscar_modelo:
                         if ((s16)busca->w26 != sc->tp3C->modelo) {
                             sc->i40++;
                             sc->tp3C++;
@@ -1429,31 +1429,29 @@ sigue2:
                         sc->c104[2].vz = sc->c104[3].vz = sc->c104[6].vz = sc->c104[7].vz = sc->cur->min.vz;
                         sc->n78 = &sc->cur->coord;
                         if (sc->n78 != NULL) {
-                        otro_nodo:
-                            {
-                                n = sc->n78;
-                                gte_SetRotMatrix(&n->coord);
-                                sc->d0 = n->coord.t[0];
-                                sc->d4 = n->coord.t[1];
-                                r = n->coord.t[2];
-                                sc->i40 = 0;
-                                sc->p100 = sc->v80;
-                                sc->p144 = sc->c104;
-                                sc->d8 = r;
-                                while (sc->i40 < 8) {
-                                    gte_ldv0(sc->p144);
-                                    gte_rtv0();
-                                    gte_stlvnl(sc->p100);
-                                    GEO_CARGAR_W(sc);
-                                    GEO_SUMAR_W(sc->p100);
-                                    GEO_CARGAR_W(sc->p100);
-                                    GEO_GUARDAR_H_T1(sc->p144);
-                                    sc->i40++;
-                                    sc->p100++;
-                                    sc->p144++;
-                                }
-                                sc->n78 = sc->n78->super;
+otro_nodo:
+                            n = sc->n78;
+                            gte_SetRotMatrix(&n->coord);
+                            sc->d0 = n->coord.t[0];
+                            sc->d4 = n->coord.t[1];
+                            r = n->coord.t[2];
+                            sc->i40 = 0;
+                            sc->p100 = sc->v80;
+                            sc->p144 = sc->c104;
+                            sc->d8 = r;
+                            while (sc->i40 < 8) {
+                                gte_ldv0(sc->p144);
+                                gte_rtv0();
+                                gte_stlvnl(sc->p100);
+                                GEO_CARGAR_W(sc);
+                                GEO_SUMAR_W(sc->p100);
+                                GEO_CARGAR_W(sc->p100);
+                                GEO_GUARDAR_H_T1(sc->p144);
+                                sc->i40++;
+                                sc->p100++;
+                                sc->p144++;
                             }
+                            sc->n78 = sc->n78->super;
                             if (sc->n78 != NULL) {
                                 goto otro_nodo;
                             }
