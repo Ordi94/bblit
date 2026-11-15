@@ -63,10 +63,11 @@ typedef struct SpritePlano {
  *
  * Causa medida (local-alloc del bloque unico de la lectura del fotograma): u (6 usos sobre 14 instrucciones, 0,86) se
  * asigna antes que la pagina (2 sobre 10, 0,20) y la paleta (2 sobre 14, 0,14), y toma v0, el primer registro libre.
- * u vive durante todas las demas lecturas, de modo que en el original solo puede quedar en a3 si se asigna la ultima:
- * habria que bajarla por debajo de la pagina o convertirla en un pseudo global (asignado despues de los locales). Una
- * pareja `x--; x++` no suma usos sobre un entero (el CSE la pliega antes del recuento) y subir la pagina por encima de
- * u exigiria que su almacen quedara contiguo a su carga, cosa que la planificacion previa no hace.
+ * u vive durante todas las demas lecturas, de modo que en el original solo puede quedar en a3 si se asigna la ultima.
+ * Tambien medido: una pareja `x--; x++` no suma usos sobre un entero (el CSE la pliega antes del recuento), y segun la
+ * formula la pagina (0,20) no cruza a u (0,857) sin una vida de 2 instrucciones; no se midio ninguna forma que deje
+ * el almacen de la pagina contiguo a su carga. Se supone, sin verificar, que en el original u es un pseudo global
+ * (asignado despues de los locales) o que su prioridad queda por debajo de la de la pagina.
  */
 void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
@@ -216,7 +217,7 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E600);
  * evento puede crear un hijo acoplado, un objeto suelto, agarrar o soltar al protagonista.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 80 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5: la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera; sin declararlo el C da $t4 y la puntuacion baja en 50) y el reparto de $v0/$v1 en la lectura de los dos contadores de 8 bits. La cuenta de eventos (3 usos sobre 7 instrucciones, 0,43) queda por debajo de los ticks (3 sobre 4, 0,75) y toma $v1; subirla a 1,75 con una variable propia y un par `x--; x++` no cambia el reparto, de modo que la prioridad no es la causa; tampoco cambia con la prueba del salto dentro de un do/while (5 usos sobre 6 instrucciones, 1,67), con la que el contador de eventos se asigna antes que los ticks en la lista de global-alloc y sigue en $v1. Ambos son pseudos globales sin conflictos con registros fijos, salvo entre si. */
+/* Pendiente: puntuacion 80 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difieren el temporal del cociente de las multiplicaciones (el original usa $t4, el C $t5: la macro de escala 0x1000 escribe $t4 y lo declara destruido porque su cuerpo lo escribe, y esa lista no se altera; sin declararlo el C da $t4 y la puntuacion baja en 50) y el reparto de $v0/$v1 en la lectura de los dos contadores de 8 bits. La cuenta de eventos (3 usos sobre 7 instrucciones, 0,43) queda por debajo de los ticks (3 sobre 4, 0,75) y toma $v1; subirla a 1,75 con una variable propia y un par `x--; x++` no cambia el reparto, de modo que la prioridad no es la causa; tampoco cambia con la prueba del salto dentro de un do/while (5 usos sobre 6 instrucciones, 1,67), con la que el contador de eventos se asigna antes que los ticks en la lista de global-alloc y sigue en $v1. Ambos son pseudos globales sin conflictos con registros fisicos salvo los 28 y 29 (segun el volcado). Se supone, sin verificar, que el reparto lo da la preferencia de registros entre pseudos globales y no la prioridad. */
 u32 AvanzarAnimacionSprite(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
 {
     NodoAnimacion* n;

@@ -201,6 +201,11 @@ NodoLista* AppendListNode(NodoLista* cab, NodoLista* nodo)
  * el nodo ($a0) y despues el inducido ($a1), como en el original; con un solo par o dentro del
  * bucle el puntero inducido sube con el nodo y el reparto no cambia. La forma del fuente original
  * que producia este reparto se desconoce.
+ *
+ * Reconfirmado sin formas nuevas: el optimizador de bucles reduce la direccion de la subestructura al giv del nodo
+ * (el volcado del bucle muestra `giv reg 84 src reg 82 add 28` y la direccion destino sobre el registro 82 con
+ * desplazamiento 100). Se supone, sin verificar, que un giv solo se reduce al puntero del nodo si su registro se
+ * asigna una sola vez dentro del bucle.
  */
 Ayuda* func_800363D4(void)
 {

@@ -278,6 +278,12 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
  * nivel de la lista en v0, y aqui caen en a2, a0, v1 y a3; el almacen del nivel (`sh` de `estado.s4`) queda en el
  * original antes de leer la lista y aqui despues, y el almacen de la palabra de ordenacion sale antes del salto de
  * la bandera de transparencia en el original y aqui tras el de la bandera.
+ *
+ * Medido en tres formas: con la constante fundida en `color` la secuencia del brillo ya coincide en estructura pero
+ * el reparto rota (820); con el ternario de constantes los dos `or` se pliegan en uno (1265); con una variable `tipo`
+ * y los almacenes tras la union la cola `or ; lui 0x2c00 ; or` coincide exactamente (1675 por lo demas). En el orden
+ * de asignacion observado `tipo` se asigna despues de `palabra` y el original los asigna al reves (tipo en v0,
+ * palabra en a2).
  */
 /*
  * Encola un sprite de ocho palabras en la lista de ordenacion segun la profundidad del objeto: calcula el color y

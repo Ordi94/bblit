@@ -939,7 +939,9 @@ ZonaColision* func_8001BF9C(s32* a0, s16 a1)
  * suma primero base + (baldosa << 6) y despues z / 40 * 8 + x / 40). El original emite ademas un `andi 0xffff` tras
  * guardar la baldosa enmascarada. Los dos restos en locales y el indice como puntero a la fila
  * (`(subceldas + (baldosa << 6))[fila + x / 40]`) no cambian el orden de las cargas y rotan el reparto de a2, a3, t0 y
- * t1 de toda la funcion: el desplazamiento de la cadena de z, mas larga por `/ 40 * 8`, se planifica antes que la de x.
+ * t1 de toda la funcion (1380 con los restos en locales, 1355 con el puntero a la fila). Se supone, sin verificar, que
+ * GCC carga z primero porque su cadena, mas larga por `/ 40 * 8`, gana prioridad en la planificacion: no se contrasto
+ * con el volcado de la planificacion.
  *
  * Consulta la baldosa bajo el punto pos: busca la zona del punto (con el grupo recordado en
  * res), lee el valor de la baldosa de 320 unidades y la subcelda de 40 unidades, y rellena res
