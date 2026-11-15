@@ -464,18 +464,31 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  */
 #define GIRO_Y(p) (((ParametrosObjeto*)(p))->giro.u.y)
 
+
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2590 con la configuracion versionada (g = 8 del archivo; ejes 497 de operando, 3 reordenadas,
- * 325 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
+ * Pendiente: puntuacion 2225 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 4 reordenadas,
+ * 279 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
  * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
  * reproduce la carga del original del hijo y baja de 2625 a 2605; leer la X del portador en una local antes de
- * restarla (`x_portador`) baja a 2590. El residuo que queda es de operandos (497) y de orden (3 lineas reordenadas,
- * 325 insertadas o borradas). Los registros guardados ya coinciden con el original; quedan unos 25 tramos de 1 a 6
- * instrucciones: orden de las cargas del contador de andadura y de las alturas del vuelo, el hueco de retardo de la
- * llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del objetivo y el temporal de mflo (a0
- * en lugar de t7), el ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi
- * 0xffff aqui) y el orden de un sw adicional a 0x14(s3).
+ * restarla (`x_portador`) baja a 2590 (sin ella el tramo coincide pero la cifra sube de 2235 a 2250). Los registros
+ * guardados ya coinciden con el original. Se supone, sin verificar con el volcado de esta funcion, que los
+ * temporales de 32 bits compartidos entre bloques son pseudos globales que el reparto global asigna a a0 y a1,
+ * mientras que el original deja en v0 y v1 los valores de un solo bloque; medido en `diff`: una local propia para
+ * cada bloque reproduce el reparto del original en estos tramos: las dos bandas de altura del vuelo con locales `altura_jugador`, `banda_alta` y `banda_baja`
+ * (2590 a 2505; la banda de la rama final con `suelo_bajo` y los almacenes en el orden alta y baja, 2505 a 2290), el
+ * giro en reposo con `giro_reposo` (2290 a 2280), el giro directo con `giro_directo` y `pr_directo` (2280 a 2250), la
+ * prueba del barrido con `f14_barrido` (2250 a 2235) y el vaciado de los giros del portado como asignacion encadenada
+ * `u.x = u.z = 0` (2235 a 2225, el original almacena 0xe0 antes que 0xdc). Medido sin bajada: sumar primero la altura
+ * y despues la maxima en `p30.vy` carga las dos en otro orden (2455); una macro con la constante en t7 para los tres
+ * bloques de escala no coincide porque el original reutiliza t7 como valor en 0x4280 (`move v0,t7`) (2260; se supone,
+ * sin verificar, que ese reparto lo hace el compilador y la macro de la cabecera, que fija t4, no lo reproduce); una
+ * local de bloque para el jugador en el bloque del hijo no cambia el codigo (el CSE funde la copia).
+ * Residuo en tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura (0x194(s3)) y de las
+ * alturas, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del
+ * objetivo (0x1c18) y el temporal de mflo (a1 en lugar de t7), la suma de `p30.vy` (v0 y v1 permutados, 0x1ca4), el
+ * ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi 0xffff aqui, 0x47e4), el
+ * orden de un sw a 0x14(s3) y 0xec(s3) (0x36a8) y la constante 0x1000 en t7 frente a t4 en los tres bloques de escala.
  * Medido con `diff` (51 tramos que no son solo de forma simbolica; el reparto de t7 y t4 para la constante 0x1000
  * se repite en tres bloques): (1) el contador 0x17c(s3) del final: el original lo incrementa, lo guarda y deja el
  * valor en un registro para el indice de la secuencia (`andi 0xffff` en el hueco del salto de cada camino), y solo
@@ -522,12 +535,16 @@ void func_80026FEC(Objeto* o)
     s32 x_portador;
     s32 rflags;
     s32 giro;
+    s32 giro_reposo;
+    s32 giro_directo;
+    GsCOORD2PARAM* pr_directo;
     s32 suelo;
     s32 factor_a;
     s32 factor_b;
     s32 arg_giro;
     s32 azar;
     u32 f14;
+    u32 f14_barrido;
     RegistroAnim* registro_actual;
     s32 altura_objeto;
     Objeto* hijo_soltado;
@@ -891,11 +908,15 @@ flotador_de_ave:
             t->res.grupo = o->w26;
             func_8001C134((s32*)&t->p30, &t->res, area);
             if (t->res.flags & 8) {
-                jy = D_80069698->param.trans.vy;
-                temp_b = jy - 0x190;
-                temp_a = jy - 0xC8;
-                t->w114 = temp_a;
-                t->w118 = temp_b;
+                s32 altura_jugador;
+                s32 banda_alta;
+                s32 banda_baja;
+
+                altura_jugador = D_80069698->param.trans.vy;
+                banda_alta = altura_jugador - 0xC8;
+                banda_baja = altura_jugador - 0x190;
+                t->w114 = banda_alta;
+                t->w118 = banda_baja;
             } else if ((t->banderas & 0x810000) && ((s16)o->w26 == (s16)D_80069698->w26)) {
                 /* Acompana al jugador: el techo del vuelo es la menor altura entre el suelo y el jugador. */
                 suelo = t->p30.vy + (s16)t->res.pendiente;
@@ -908,9 +929,15 @@ flotador_de_ave:
                     t->w118 = jy - 0x12C;
                 }
             } else {
-                suelo = t->p30.vy + (s16)t->res.pendiente;
-                t->w118 = suelo - 0x258;
-                t->w114 = suelo - 0x190;
+                s32 suelo_bajo;
+                s32 banda_alta;
+                s32 banda_baja;
+
+                suelo_bajo = t->p30.vy + (s16)t->res.pendiente;
+                banda_alta = suelo_bajo - 0x190;
+                banda_baja = suelo_bajo - 0x258;
+                t->w114 = banda_alta;
+                t->w118 = banda_baja;
             }
             /* Histeresis: el sentido solo cambia al salir de la banda [w118, w114]. */
             /* La altura se lee una vez en una local de 32 bits para la comparacion de la banda superior. */
@@ -1142,10 +1169,10 @@ mando_en_reposo:
     if (!(t->banderas & 0x100000)) {
         goto incrementos_de_giro;
     }
-    giro = (s16)GIRO_Y(o->u78.ayudas->pcoord->param);
-    t->w114 = giro;
-    if ((giro >> 3) != 0) {
-        t->w114 = giro >> 3;
+    giro_reposo = (s16)GIRO_Y(o->u78.ayudas->pcoord->param);
+    t->w114 = giro_reposo;
+    if ((giro_reposo >> 3) != 0) {
+        t->w114 = giro_reposo >> 3;
     }
     GIRO_Y(o->u78.ayudas->pcoord->param) -= (u16)t->w114;
     func_8001CFCC(o->u78.ayudas->pcoord);
@@ -1242,12 +1269,12 @@ avance_por_banderas:
     t->w114 = temp_a;
     if (t->banderas & 0x1000) {
         /* giro directo hacia el objetivo, relativo al ayudante si lo hay */
-        giro = t->w114;
-        pr = o->coord.param;
+        pr_directo = o->coord.param;
+        giro_directo = t->w114;
         if (o->coord.super != 0) {
-            giro = giro - o->coord.super->param->rotate.vy;
+            giro_directo = giro_directo - o->coord.super->param->rotate.vy;
         }
-        pr->rotate.vy = giro;
+        pr_directo->rotate.vy = giro_directo;
         goto mover_con_colision;
     }
     if (t->w114 < 0) {
@@ -1535,8 +1562,8 @@ barrido_de_terreno:
     if (!(t->banderas & 0x10) || choco != 0) {
         goto barrido_de_colision;
     }
-    f14 = o->flags14;
-    if ((t->fot->w10 & 0x800) ? (f14 & 0x9) : (f14 & 0x209)) {
+    f14_barrido = o->flags14;
+    if ((t->fot->w10 & 0x800) ? (f14_barrido & 0x9) : (f14_barrido & 0x209)) {
         goto fin_de_busqueda_de_portador;
     }
     if (!(o->flags14 & 0x10)) {
@@ -2193,7 +2220,7 @@ efectos_tras_disparadores:
             o->p6C->coord.super = 0;
             o->p6C->coord.param = PARAMETROS_SDK(o->p6C);
             o->p6C->w26 = o->w26;
-            o->p6C->param.giro.u.z = o->p6C->param.giro.u.x = 0;
+            o->p6C->param.giro.u.x = o->p6C->param.giro.u.z = 0;
             o->p6C->p70 = 0;
             func_8001CFCC(&o->p6C->coord);
             o->p6C = 0;
