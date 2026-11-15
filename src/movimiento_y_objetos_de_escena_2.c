@@ -750,8 +750,6 @@ void func_8001DA14(Objeto* o, Movimiento* mov, u32 a2, u32 a3, PasoBusqueda* w)
  * profundidad y reparte el recorte entre las dos mitades cuando la bandera 0x8000000 pide
  * centrar. Guarda la profundidad en el objeto (no negativa) y enciende la bandera 2.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 585 con la configuracion versionada (g = 8 del archivo). Mismo codigo GTE y mismas operaciones; solo difiere el bloque de la bandera 0x8000000: el original calcula h52 antes que h94, repite el desplazamiento `(s16)alto >> 1` en dos expresiones sin fundirlas y resta el valor de 32 bits de h94 de h4E sin releerlo, mientras que GCC funde el desplazamiento, calcula primero h94 y relee la mitad con signo de 16 bits. Leer la segunda mitad del campo ya guardado (`(s16)b->h94 >> 1`) es, de las cuatro formas medidas, la que conserva las dos parejas de desplazamiento y restar el valor de 32 bits sin releerlo, pero sube a 685: ambas parejas suben sobre el almacen de h52, el temporal de la primera cae en a0 y la altura pasa de a0 a a3 (la causa de ese reparto no esta medida); con la misma expresion repetida o con locales de 16 bits el CSE funde las parejas igual y `b` y el objeto pasan de a1 y a2 a a2 y a3 (1645). */
 void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
 {
     Objeto* objeto;
@@ -761,6 +759,7 @@ void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
     s32 medida_doble;
     s32 mitad_inferior;
     s32 z;
+    u16 releida;
 
     /* Copia local del objeto: sin ella el reparto de a2 y a3 empeora; el segundo argumento no se copia. */
     objeto = o;
@@ -792,12 +791,18 @@ void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
     b->h94 = alto;
     if (objeto->flags0C & 0x8000000) {
         b->h52 = b->h4E + ((s16)alto >> 1);
-        b->h94 = alto - ((s16)alto >> 1);
-        /* La altura ya guardada se relee con signo de 16 bits antes de restarla de h4E. */
-        mitad_inferior = (s16)b->h94;
+        /* La altura se relee del campo tras el almacen de h52 como valor sin signo de 16 bits (lhu) y de esa
+         * copia salen la mitad con signo y la resta: escribir la mitad de `alto` dos veces la funde el CSE en una
+         * sola (1640 con el resto en esta forma), y releer el campo sin la copia local conserva la copia `move` del
+         * enlace (680). */
+        releida = b->h94;
+        mitad_inferior = releida - ((s16)releida >> 1);
+        b->h94 = mitad_inferior;
         b->h4E -= mitad_inferior;
     } else {
-        b->h52 = alto + b->h4E;
+        /* La mascara de 16 bits deja la carga del campo como valor de 32 bits sin signo y pone la altura como
+         * primer sumando del `addu` (sin ella los operandos salen al reves: 10). */
+        b->h52 = alto + (b->h4E & 0xFFFF);
     }
     p = b->coordenadas;
     /* Las coordenadas se copian por una variable sin signo de 16 bits (lhu) y no por una de 32 bits (lh). */
@@ -824,9 +829,6 @@ void* func_8001DF28(Objeto* o, ProyeccionSprite* b)
     objeto->flags04 |= 2;
     return &b->w58;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001DF28);
-#endif
 
 /*
  * Evento de zona: registro de la lista que cuelga de cada nodo de plano (+0x30). Siguiente en
