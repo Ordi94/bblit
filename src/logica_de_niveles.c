@@ -59,9 +59,15 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 14290 con la configuracion versionada (g = 8 del archivo). Las diferencias son de reparto de
-   registros (v0/v1/a0 y punteros s0-s2) y del orden en que el compilador planifica los
-   almacenamientos de las transiciones de cada contacto; la logica coincide. */
+/* Pendiente: puntuacion 6455 con la configuracion versionada (g = 8 del archivo; ejes 476 de operando, 2 reordenadas,
+   541 insertadas o borradas). La logica coincide. Residuo medido por tramos: (1) reparto de registros de los temporales
+   v0/v1/a0 y de los punteros s0-s2 en las consultas de terreno (el original deja &sc->tmp_v en s0, &sc->res en s1 y
+   &sc->punto en s2; este C los reparte en otro orden; los volcados de cc1 asignan 263 pseudos y no se cerro cual decide
+   el orden); (2) el bloque de la base de la caja (0x80025544) emite el producto 0x46 * 0x46 como multiplicacion de un
+   registro en el original y aqui se pliega a una constante; escribir max.vx * max.vx lo empeora (6630); (3) la mascara
+   0x10000000 de la prueba del registro de estado se carga en v1 y la bandera en v0 en el original, y aqui al reves; el
+   orden de operandos no lo cambia. Los accesos que el original no ordena con los almacenes a globales se escriben por
+   desplazamiento en bytes. */
 void func_80020B90(Objeto* o)
 {
     ScratchJugador* sc;
@@ -1482,9 +1488,10 @@ sin_rebote:
                         }
                     }
                 }
-                if (sc->tocado != NULL) {
-                    if (sc->tocado->p70 != NULL && sc->tocado->p70->p6C == sc->tocado) {
-                        sc->tocado->p70->p6C = NULL;
+                t1 = sc->tocado;
+                if (t1 != NULL) {
+                    if (t1->p70 != NULL && t1->p70->p6C == t1) {
+                        t1->p70->p6C = NULL;
                         sc->tocado->p70 = NULL;
                     }
                     o->p6C = sc->tocado;
