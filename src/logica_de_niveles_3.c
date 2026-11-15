@@ -466,11 +466,13 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2185 con la configuracion versionada (g = 8 del archivo; ejes 497 de operando, 4 reordenadas,
- * 267 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
+ * Pendiente: puntuacion 2040 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 5 reordenadas,
+ * 268 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
  * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
- * reproduce la carga del original del hijo y baja de 2625 a 2605; leer la X del portador en una local antes de
- * restarla (`x_portador`) baja a 2590 (sin ella el tramo coincide pero la cifra sube de 2235 a 2250). Los registros
+ * reproduce la carga del original del hijo y baja de 2625 a 2605. La resta de la X del portador en el barrido se
+ * escribe directa (`o->param.trans.vx - o->p70->param.trans.vx`): con la llamada replicada de la composicion (mas
+ * abajo) da 2040 y con una local previa (`x_portador`) 2165; sin la llamada replicada la forma directa da 2200 frente
+ * a 2185 de la local. Los registros
  * guardados ya coinciden con el original. Los temporales de 32 bits compartidos entre bloques son pseudos globales
  * que el reparto global asigna a a0 y a1, mientras que el original deja en v0 y v1 los valores de un solo bloque:
  * medido en el volcado de reparto para las dos bandas de altura del vuelo (ver la cabecera de la funcion); para el
@@ -517,6 +519,19 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * `move v0,a1` antes de la prueba de histeresis (4065). La forma del fuente original que producia este reparto se
  * desconoce.
  *
+ * Las dos sentencias replicadas `func_8001CFCC(&o->coord);` son la llamada de cierre de la composicion con el portador,
+ * escrita al final de la rama que copia el giro del portador y al final de la rama de la comprobacion de apoyo. El
+ * original deja una sola llamada compartida (0x8002A6A0, a la que salta la primera rama en 0x8002A5B0; el ensamblador original tiene 20 llamadas a
+ * `func_8001CFCC` y aqui tambien 20 tras la fusion) con el argumento `addiu a0,s3,0x7c` preparado dentro de cada camino
+ * (0x8002A5A8 y 0x8002A668) y `nop` en el hueco de retardo de la llamada. Medido en los volcados de saltos de `cc1` (`-dj` y `-dJ`): con la llamada en cada rama hay 21
+ * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
+ * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
+ * bloque de union y el planificador la deja en el hueco de retardo de la llamada (2185; en el original ese hueco es un
+ * `nop`). Con las dos llamadas la cifra es 2165 (2040 con la resta directa del barrido, ver arriba). Se supone, sin
+ * verificar, que en la rama de la comprobacion de apoyo el original reparte `a0` al puntero del portador y despues al
+ * argumento, y que aqui la preparacion del argumento sube tras la llamada a BarrerTerreno y empuja ese puntero a `a1`.
+ * La forma del fuente original que producia este reparto se desconoce.
+ *
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
  * muerte si lo hirieron, la del paso siguiente si no), interpreta las banderas del fotograma
@@ -547,7 +562,6 @@ void func_80026FEC(Objeto* o)
     s32 temp_b;
     s32 jy;
     s32 portador;
-    s32 x_portador;
     s32 rflags;
     s32 giro;
     s32 giro_reposo;
@@ -1590,8 +1604,7 @@ barrido_de_terreno:
         goto andadura_del_portado;
     }
     /* enganchado a un portador: el punto de barrido es la posicion del portador y el desplazamiento es el desfase relativo */
-    x_portador = o->p70->param.trans.vx;
-    t->p30.vx = o->param.trans.vx - x_portador;
+    t->p30.vx = o->param.trans.vx - o->p70->param.trans.vx;
     t->p30.vy = 0;
     t->p30.vz = o->param.trans.vz - o->p70->param.trans.vz;
     t->pF0.vx = o->p70->param.trans.vx;
@@ -1842,7 +1855,8 @@ componer_con_portador:
             arg_giro = o->p70->param.giro.u.z;
             o->p70 = 0;
             o->param.giro.u.z = arg_giro;
-            goto fin_de_composicion;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
+            func_8001CFCC(&o->coord);
         } else {
             if (func_80018664(o, o->p70, area) != 0) goto sin_portador;
             t->p30.vx = o->param.trans.vx - o->p70->param.trans.vx;
@@ -1862,7 +1876,7 @@ componer_con_portador:
             o->p70 = 0;
             o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x200;
             o->param.trans.vz = arg_giro + giro;
-fin_de_composicion:
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             func_8001CFCC(&o->coord);
         }
     }
