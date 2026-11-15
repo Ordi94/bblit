@@ -417,8 +417,8 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2835 con la configuracion versionada (g = 8 del archivo; ejes 71 de operando, 0 reordenadas,
- * 235 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
+ * Pendiente: puntuacion 2350 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
+ * 237 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
  * original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante.
@@ -427,8 +427,15 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  * de los bucles interiores de 17 y 20 instrucciones de vida), que el original deja dentro del cuerpo (tres cadenas
  * `sll 4 ; subu ; sll 3` por vuelta, en 0x80015CC0, 0x80015D10 y 0x80015D40); los bucles interiores de 12 y 16 instrucciones
  * no izan un incremento inducido (`giv of insn ... not worth while, 0 vs 12` y `0 vs 16`). Con `desplazamiento_grupo` en una
- * sola local usada en el relleno y en la entrada da 2835; con el producto escrito en cada uso 3125. Queda sin causa medida
- * por que el original no iza esas cadenas. El `move a1,v0 ; bnez a1` de la llamada de sondeo (el original comprueba una copia
+ * sola local calculada entre los dos bucles interiores da 2835; con el producto escrito en cada uso 3125; asignando la misma
+ * local (`desplazamiento_grupo = grupo * 120;`) antes de cada uno de los tres usos, baja a 2350 (se supone, sin verificar, que el
+ * pseudo final de la cadena no se iza porque se asigna varias veces). Con esa forma el volcado `-dL` sigue izando las dos primeras instrucciones
+ * de la cadena (`sll 4` y `subu`: pseudos 502 y 503, vida 31, ahorro 5 y 4, bucle de 69 instrucciones reales) y deja en el
+ * cuerpo solo el `sll 3`. Medido sin bajada: un par `grupo++; grupo--;` en el cuerpo no evita el izado (2395: el combinador lo
+ * anula); escribir la cadena entera con asignaciones compuestas sobre la misma local, `d = g << 4; d -= g; d <<= 3;`, antes
+ * de cada uso, la deja en el cuerpo en cada uso como el original pero el planificador reparte sus tres instrucciones a los dos
+ * lados del salto del bucle interior y la cifra sube a 2485 (269 insertadas o borradas). Queda sin causa medida por que el
+ * original no iza esas cadenas. El `move a1,v0 ; bnez a1` de la llamada de sondeo (el original comprueba una copia
  * del resultado que despues compara con -1) tampoco se reproduce: aqui se comprueba `v0` directamente.
  *
  * Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de registros (D_8006AA70[0xA]: 1 aceptar,
@@ -639,22 +646,20 @@ void SondearTarjeta(void)
                 i = 0;
                 grupo = i;
                 for (; i < D_80069358[0]; i++) {
-                    for (j = 0; D_800697B0[j + i * 0x28 + grupo * 120] != 0; j++) {
+                    desplazamiento_grupo = grupo * 120;
+                    for (j = 0; D_800697B0[j + i * 0x28 + desplazamiento_grupo] != 0; j++) {
                     }
-                    /* El desplazamiento del grupo se calcula entre los dos bucles interiores y se usa en el de
-                     * relleno y en la direccion de la entrada: asi el reparto de registros del recorrido se acerca
-                     * al original (3125 con el producto escrito en cada uso y tambien 3125 con el calculo solo en la entrada). */
                     desplazamiento_grupo = grupo * 120;
                     for (; j < 0x14; j++) {
                         D_800697B0[j + i * 0x28 + desplazamiento_grupo] = 0;
                     }
+                    desplazamiento_grupo = grupo * 120;
                     entrada = (EntradaDirectorio*)(D_800697B0 + i * 0x28 + desplazamiento_grupo);
                     entrada->attr = 0;
                     entrada->tam = 0;
                     entrada->sig = 0;
                     entrada->cabeza = 0;
-                    *(s32*)(D_800697B0 + 0x24 + i * 0x28 + grupo * 120) = 0;
-                }
+                    *(s32*)(D_800697B0 + 0x24 + i * 0x28 + desplazamiento_grupo) = 0;                }
                 D_8006936C = func_80014AC4(ranura);
                 if (D_8006936C >= 0) {
                     if (ESTADO_PRINCIPAL->nivel == 0) {
