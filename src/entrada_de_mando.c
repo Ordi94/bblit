@@ -278,7 +278,7 @@ void func_80040430(s8* contador, u16 mascara)
  * Puntuacion 6644 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
  * saltos y casi todo el cuerpo coinciden; difieren el marco de pila, el reparto de registros
  * de la rama de grabacion y la copia s1 = s2 del valor de los botones de direccion (en el
- * original va antes del `or`, 0x2c0). Probadas: if/else en lugar de switch (12794), orden de
+ * original va antes del `or`, 0x2c0). Sin bajada: if/else en lugar de switch (12794), orden de
  * declaracion de las copias, copia con la expresion repetida.
  */
 void func_8004048C(void)
@@ -351,6 +351,7 @@ normal:
         D_800695B0 = grab + 4;
         id = D_8006CFF1 & 0x7F;
         ESTADO_PRINCIPAL->mando.botones = c;
+        /* La lectura de D_8006CFF2 va dentro de la condicion: sacarla antes del `if` la carga siempre y sube la cifra (6644 a 6964). */
         if ((id == 0x41 || id == 0x73) && ((cfd = D_8006CFF2, ((cfd ^ 0xFF) << 8) & 0x800)) && ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
             ESTADO_PRINCIPAL->mando.botones_a = a | 0x100;
             ESTADO_PRINCIPAL->mando.botones_c = b | 0x100;
