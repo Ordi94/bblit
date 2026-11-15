@@ -195,6 +195,9 @@ void func_8001C6CC(Objeto* o, Movimiento* d, ResultadoBaldosa* r, TrabajoMov* w)
  * salto. Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a
  * la altura nueva, s2 al suelo anterior y s4 al tope, y con la envoltura el C los reparte igual; queda
  * el orden de los bloques de salto del final. El area + 0x28 se precalcula como el original.
+ * Medido en el ensamblador: el original conserva dos copias de la prueba `cur < tope` (una al final de
+ * la rama de altura baja, otra en la de altura alta) y aqui el compilador las funde en una; escribir
+ * una de ellas como `tope > cur` no cambia la cifra.
  *
  * La envoltura do/while (0) de la consulta de la baldosa no genera codigo: pondera por un nivel mas
  * las referencias del area de trabajo `w`, de 9 a 15 usos ponderados sobre una vida de 78 (prioridad

@@ -569,7 +569,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1555 con la configuracion versionada (g = 8 del archivo). Reparto de registros del tramo final del bucle de puntos (el original carga el area de trabajo en a2 y el objeto b en a1, y aqui caen al reves) y cadena de comparaciones de las esquinas que el original comparte entre regiones.
+ * Pendiente: puntuacion 1555 con la configuracion versionada (g = 8 del archivo). Reparto de registros del tramo final del bucle de puntos (el original carga el area de trabajo en a2 y el objeto b en a1, y aqui caen al reves) y cadena de comparaciones de las esquinas que el original comparte entre regiones. Medido: el residuo son dos puntos, el reparto a1/a2 en las dos ramas finales (el original carga b en a2 y el punto en a1; la rama anterior coincide) y la cola `slt ; bnez ; li v0,1` que el original comparte (`j` con el `slt` en el hueco) y aqui se duplica; usar la copia local del objeto en las dos comparaciones o una copia local del punto no cambia la cifra.
  *
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
  * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.

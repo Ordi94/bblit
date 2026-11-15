@@ -355,7 +355,7 @@ extern void func_8003753C(void* m);
 extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 930 con la configuracion versionada (g = 8 del archivo). Difiere el reparto de registros del prologo, el cierre del bucle de nodos (el original conserva el salto condicional hacia atras) y la direccion de la caja de relleno, que el original deriva de la base del scratchpad. */
+/* Pendiente: puntuacion 930 con la configuracion versionada (g = 8 del archivo). Difiere el reparto de registros del prologo, el cierre del bucle de nodos (el original conserva el salto condicional hacia atras) y la direccion de la caja de relleno, que el original deriva de la base del scratchpad. Medido: el original deja el almacen del indice de la cola 2 como ultimo del prologo (en el hueco del salto) y escribirlo en el C tras el de la bandera sube a 2270 porque el planificador reordena las cargas; el bucle de nodos como `if` mas `do`/`while` da la misma cifra (930): el original conserva `bnez` hacia atras y un `j` de salida, aqui el compilador enhebra la salida directamente. */
 void DibujarSombras(Objeto** objetos)
 {
     ContextoSombras* c;
