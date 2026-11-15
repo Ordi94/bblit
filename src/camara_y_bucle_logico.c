@@ -451,32 +451,43 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 10175 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
- * las constantes coinciden; difieren el reparto de registros temporales y la planificacion de las cargas y los
- * almacenes en las sondas de apuntado (0x80033700-0x80033888), la direccion normalizada del modo guiado
- * (0x80033CB4-0x80033D64), el giro lateral (0x80033F00-0x80034160), los barridos contra el terreno
- * (0x80034348-0x80034720), las ocho sondas de empuje (0x800348C8-0x80034A9C) y el bloque de alturas
- * (0x80034B00-0x80034E34).
+ * Pendiente: puntuacion 6025 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * las constantes coinciden. Por tramos (la puntuacion cuenta cada diferencia de operando entre un acceso por
+ * `$gp` del original y el simbolo del actual, unas 97 lineas que no son diferencia de bytes): el bucle de las ocho
+ * sondas del modo de apuntado emite los incrementos del contador y del puntero antes de preparar los argumentos de
+ * la llamada y el original los emite despues (0x80033358 + 0x494); la prueba de los dos bits de la direccion del
+ * ajuste de altura (0x80033358 + 0xba0..0xbb8) y el par de modificaciones de banderas (0xcc4..0xd30) salen con
+ * un registro temporal distinto; el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el
+ * original lo guarda en `s1`; en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y el original en `a3`/`a2`.
  */
 /*
  * Acerca la altura del punto de vista a la banda [base - 0x64, base + 0x64] desplazada por p4: si queda por encima
  * del limite inferior de la banda se mueve un octavo hacia el, y si queda por debajo del superior, hacia el otro.
  * El original repite el bloque entero en cada rama de la eleccion de `base`; llaves simples para que cada copia
- * sea un unico bloque basico.
+ * sea un unico bloque basico. La direccion de la camara (`ec`) y la copia de la altura (`vp`) son variables de la
+ * funcion compartidas por las tres copias, no locales de cada una: el original conserva `a3` y `v1` vivos hasta la
+ * cola comun (`sra`, `addu`, `sw` en 0x80034CDC) y salta a ella desde las tres ramas, y la segunda mitad de la
+ * comprobacion (desde `subu` en 0x80034CCC) tambien se comparte. Con locales de cada copia los registros salen
+ * distintos por rama y el compilador no puede fundir las colas (10040 frente a 7520 en la funcion). El reparto
+ * del par `ec`/`vp` y de la base de la banda con `a2`/`a3` permutados queda sin explicar.
  */
 #define ALTURA_CAMARA(base) \
     { \
         s32 t1; \
         s32 t2; \
-        t1 = (base) + 0x64; \
-        t1 = t1 - w->p4; \
-        if (t1 < D_8006D928.vpy) { \
-            D_8006D928.vpy = D_8006D928.vpy + ((t1 - D_8006D928.vpy) >> 3); \
+        s32 techo; \
+        s32 piso; \
+        ec = &D_8006D928; \
+        vp = ec->vpy; \
+        techo = (base) + 0x64; \
+        t1 = techo - w->p4; \
+        if (t1 < vp) { \
+            ec->vpy = vp + ((t1 - vp) >> 3); \
         } else { \
-            t2 = (base) - 0x64; \
-            t2 = t2 - w->p4; \
-            if (D_8006D928.vpy < t2) { \
-                D_8006D928.vpy = D_8006D928.vpy + ((t2 - D_8006D928.vpy) >> 3); \
+            piso = (base) - 0x64; \
+            t2 = piso - w->p4; \
+            if (vp < t2) { \
+                ec->vpy = vp + ((t2 - vp) >> 3); \
             } \
         } \
     }
@@ -512,13 +523,15 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
     u16 f2;
     s32 g;
     u16 pulsado;
+    EstadoCamara* ec;
+    s32 vp;
 
     if (o == NULL) {
         return;
     }
     area = (void*)0x1F8000F8;
-    zona = func_8001BF9C((s32*)&o->param.trans.vx, (s16)o->w26);
     w = (TrabajoCamara*)0x1F800000;
+    zona = func_8001BF9C((s32*)&o->param.trans.vx, (s16)o->w26);
     w->zona_ant = zona;
     if (zona != NULL) {
         D_80069698->w26 = zona->grupo;
@@ -620,9 +633,9 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
                 w->v70.vz = w->v70.vz + ((s16)D_8005E728[i].z >> 1);
                 func_80032B2C((Vec3*)&w->v30, (Vec3*)&w->v70, area, 0x24000);
             }
-            i++;
             w->res.grupo = -1;
             w->v30.vy = o->param.trans.vy + w->p8;
+            i++;
             BarrerTerreno(&w->v30, &w->v70, &w->res, area);
             w->v90.vx = w->v90.vx + w->v70.vx;
             w->v90.vz = w->v90.vz + w->v70.vz;
@@ -708,9 +721,9 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
             w->v18.vy = (w->local.vy << 12) / w->dist;
             w->v18.vz = (w->local.vz << 12) / w->dist;
             w->dist = D_8006D928.distancia_acercamiento;
-            D_8006D928.destino_vista_x = D_8006D928.x + ((w->v18.vx * D_8006D928.distancia_acercamiento) >> 12);
-            D_8006D928.destino_vista_y = D_8006D928.y + ((w->v18.vy * D_8006D928.distancia_acercamiento) >> 12);
-            D_8006D928.destino_vista_z = D_8006D928.z + ((w->v18.vz * D_8006D928.distancia_acercamiento) >> 12);
+            D_8006D928.destino_vista_x = D_8006D928.x + ((w->v18.vx * w->dist) >> 12);
+            D_8006D928.destino_vista_y = D_8006D928.y + ((w->v18.vy * w->dist) >> 12);
+            D_8006D928.destino_vista_z = D_8006D928.z + ((w->v18.vz * w->dist) >> 12);
         }
         f1 = D_8006D928.flags80;
         if ((f1 & 0x400) != 0) {
@@ -1023,10 +1036,10 @@ aplicar_giro:
     D_8006D928.z = D_8006D928.z + ((o->param.trans.vz - D_8006D928.z) >> 2);
     D_8006D928.vpx = D_8006D928.vpx + ((o->param.trans.vx + w->v18.vx - D_8006D928.vpx) >> 2);
     w->v30.vy = w->alt;
-    w->res.grupo = -1;
     w->v30.vx = D_8006D928.vista_68_x;
     w->v30.vz = D_8006D928.vista_68_z;
     D_8006D928.vpz = D_8006D928.vpz + ((o->param.trans.vz + w->v18.vz - D_8006D928.vpz) >> 2);
+    w->res.grupo = -1;
     func_8001C134((s32*)&w->v30.vx, &w->res, area);
     if ((w->res.flags & 8) != 0 && w->res.suelo < o->param.trans.vy) {
         w->res.grupo = -1;
