@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 405 | 89124 |
+| Código del juego | 450 | 201416 | 407 | 91764 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 89124 de 201416 (44.25 %).
-Funciones marcadas `NON_MATCHING`: 28.
-Coherencia con el ensamblador: correcta (697 `glabel` en `asm/` + 405 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 91764 de 201416 (45.56 %).
+Funciones marcadas `NON_MATCHING`: 26.
+Coherencia con el ensamblador: correcta (695 `glabel` en `asm/` + 407 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -26,11 +26,11 @@ Coherencia con el ensamblador: correcta (697 `glabel` en `asm/` + 405 en C = 110
 | cargador_de_niveles_y_cd | 2 | 7 | 2 | 2 | 1096 | 14264 |
 | colision_y_terreno | 1 | 2 | 2 | 0 | 680 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
-| gestion_y_dibujo_de_objetos | 4 | 30 | 4 | 8 | 11356 | 18624 |
+| gestion_y_dibujo_de_objetos | 4 | 31 | 3 | 8 | 11516 | 18624 |
 | graficos_y_gte | 3 | 18 | 1 | 0 | 7224 | 11812 |
 | inicializacion_de_motor | 1 | 11 | 1 | 4 | 4484 | 5276 |
 | interprete_de_eventos | 1 | 195 | 0 | 2 | 11788 | 11900 |
-| logica_de_niveles | 3 | 16 | 5 | 0 | 10648 | 60648 |
+| logica_de_niveles | 3 | 17 | 4 | 0 | 13128 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 25 | 1 | 1 | 12328 | 13644 |
 | movimiento_y_objetos_de_escena | 3 | 22 | 5 | 0 | 13688 | 18284 |
@@ -47,7 +47,7 @@ Coherencia con el ensamblador: correcta (697 `glabel` en `asm/` + 405 en C = 110
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 0 | 2 | 0 | 672 |
 | `src/colision_y_terreno.c` | 2 | 2 | 0 | 680 | 12480 |
 | `src/entrada_de_mando.c` | 5 | 1 | 0 | 1260 | 2784 |
-| `src/gestion_y_dibujo_de_objetos.c` | 14 | 1 | 0 | 3652 | 3812 |
+| `src/gestion_y_dibujo_de_objetos.c` | 15 | 0 | 0 | 3812 | 3812 |
 | `src/gestion_y_dibujo_de_objetos_2.c` | 10 | 2 | 8 | 4632 | 10604 |
 | `src/gestion_y_dibujo_de_objetos_3.c` | 1 | 0 | 0 | 564 | 564 |
 | `src/gestion_y_dibujo_de_objetos_4.c` | 5 | 1 | 0 | 2508 | 3644 |
@@ -58,7 +58,7 @@ Coherencia con el ensamblador: correcta (697 `glabel` en `asm/` + 405 en C = 110
 | `src/interprete_de_eventos.c` | 195 | 0 | 2 | 11788 | 11900 |
 | `src/logica_de_niveles.c` | 0 | 1 | 0 | 0 | 19880 |
 | `src/logica_de_niveles_2.c` | 3 | 0 | 0 | 2016 | 2016 |
-| `src/logica_de_niveles_3.c` | 13 | 4 | 0 | 8632 | 38752 |
+| `src/logica_de_niveles_3.c` | 14 | 3 | 0 | 11112 | 38752 |
 | `src/manejadores_por_tabla.c` | 12 | 0 | 0 | 384 | 384 |
 | `src/menus_e_interfaz.c` | 25 | 1 | 1 | 12328 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 4 | 0 | 0 | 2116 | 2116 |
@@ -74,7 +74,6 @@ Coherencia con el ensamblador: correcta (697 `glabel` en `asm/` + 405 en C = 110
 - `CargarContenedor`: Pendiente: puntuacion 259843 con la configuracion versionada (g = 8 del archivo). La cifra depende de la composicion del objeto: la comparacion incluye palabras con direcciones absolutas dentro del archivo, y cualquier funcion cerrada en este mismo archivo las desplaza sin que cambie el codigo de esta (no comprobado comparando los objetos). Tambien depende del tamano de la funcion anterior, aun pendiente: al cambiar su tamano la cifra pasa de 259563 a 259843 sin tocar el codigo de esta. La estructura (bloques, bucles, llamadas, las cinco tablas de saltos) sigue el ensamblador completo y el mar
 - `DibujarSombras`: Pendiente: puntuacion 825 con la configuracion versionada (g = 8 del archivo; ejes 20 de operando, 0 reordenadas, 43 insertadas o borradas). Difiere el reparto de registros y el orden del prologo y el cierre del bucle de nodos (el original conserva el salto condicional hacia atras). La direccion de la caja de relleno, que el original deriva de la base del scratchpad (`ori a0,s0,0x38`), se reproduce tomandola del propio contexto, `&c->caja`: baja de 930 a 825 (con la constante `(GsBOXF*)0x1F800038` salian `move a0,s0` y `ori a0,a0,0x38`). Causa medida del prologo (volcados de `cc1`): las dos le
 - `LogicaBloqueEmpujable`: Pendiente: puntuacion 14728 con la configuracion versionada (g = 8 del archivo). Reparto de registros: el original guarda el objeto en s4, el scratchpad en s3, el area en s5 y el margen de la caja en s6 y deja s0 a s2 para los punteros de la preparacion; el compilador los reparte un registro mas abajo. La estructura de las ocho esquinas y de los dos modos coincide.
-- `LogicaDirectorCamara`: Pendiente: puntuacion 365 con la configuracion versionada (g = 8 del archivo). Prologo y salida de la busqueda por id: el original deriva la matriz del scratchpad de la base despues de calcular la parte alta de la camara, y sale de la busqueda con un salto directo al caso sin origen en lugar de volver a probar el cursor. La constante de la matriz (lui compartido con la base, ori) la emite el original despues del par que el optimizador de bucles iza para D_8006D928, y aqui sale antes: es la posicion de una constante fuera del bucle frente a una izada, y las colocaciones dentro del bucle la deja
 - `LogicaObjetoMovil`: Pendiente: puntuacion 165 con la configuracion versionada (g = 8 del archivo; ejes 112 de operando, 4 reordenadas, 23 insertadas o borradas). Residuo medido en tres trozos: (1) bloque de limites del movil: el original deja el paso en a0, el limite alto en v0 y el bajo en v1 y conserva la copia `move v1,v0` tambien en la rama del paso negativo (0x1c4), mientras aqui el paso cae en v0, el limite alto en a0 y la suma de la rama negativa se pliega sin copia (la escritura directa de cada limite con su propia lectura del campo da el reparto del original en la rama positiva pero invierte v0 y v1 en l
 - `ResolverReferenciasContenedor`: Pendiente: puntuacion 335 con la configuracion versionada (g = 8 del archivo; ejes 17 de operando, 0 reordenadas, 108 insertadas o borradas; el diff no muestra ninguna linea de un solo lado, todas son diferencias de registro). Mismas instrucciones, mismo flujo y mismos huecos de retardo que el ensamblador; difiere solo en el reparto de registros. El original deja en las cinco variables del primer bucle (lista A, puntero a los campos, busqueda en B, fin de los campos e identificador) v1, a0, a1, a2 y a3, y el identificador en a3 en todos los bucles de busqueda; aqui salen v1 (busqueda), a0, a1 
 - `SondearTarjeta`: Pendiente: puntuacion 2835 con la configuracion versionada (g = 8 del archivo; ejes 71 de operando, 0 reordenadas, 235 insertadas o borradas). Flujo y distribucion de bloques iguales al original; quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante. Medido en el volcado del optimizad
@@ -89,7 +88,6 @@ Coherencia con el ensamblador: correcta (697 `glabel` en `asm/` + 405 en C = 110
 - `func_80026FEC`: Pendiente: puntuacion 2590 con la configuracion versionada (g = 8 del archivo; ejes 497 de operando, 3 reordenadas, 325 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`) reproduce la carga del original del hijo y baja de 2625 a 2605; leer la X del portador en una local antes de restarla (`x_portador`) baja a 2590. El residuo que queda es de operandos (497) y de orden (3 lineas reordenadas, 325 insertadas o borradas). Los regist
 - `func_80032B2C`: Pendiente: puntuacion 60 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y el reparto de los registros salvados coinciden; difiere la posicion de una sola instruccion: el original coloca el almacen de i58 (sw v0,0x58) tras la copia del objeto en curso (move v1,a1) y GCC lo deja antes, porque el do/while que abre las escrituras de a48 impide subir la copia por encima del almacen. Meter el almacen en ese do/while lo coloca bien pero intercambia a1 y a2 en la cadena de pruebas (60 tambien): el temporal del objeto en curso (14 usos ponderados sobre 25 instrucc
 - `func_800353B0`: Pendiente: puntuacion 7961 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y las constantes coinciden; difieren el reparto de registros (el original conserva el scratchpad, &sx, &z6C y la mascara -3 en s1..s4 y no hoistea &v80 ni &c104), el relleno de los huecos de retardo de la macro de distancia (maspsx anade un nop extra tras dos de sus saltos) y la forma de la busqueda en la tabla D_8006A940 (el original relee el puntero guardado en el scratchpad en cada vuelta). Reescribir en C la suma de vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W y GEO_
-- `func_800363D4`: Pendiente: puntuacion 110 con la configuracion versionada (g = 8 del archivo). Coincide el reparto del nodo en $a0 y del puntero inducido en $a1; difiere solo la base de la ultima escritura (el original escribe sw $zero,0x48($a0) tras copiar la direccion de la subestructura a $a0, y GCC la plega a 0x50($a1) sobre el puntero inducido). Las 0x2E escrituras de sw $zero,0($a2) del original son un bucle real de 0x2E vueltas (contador en $v1, sltiu/bnez, la escritura en el hueco de retardo), no una secuencia desenrollada; escritas como 0x2E sentencias explicitas el resultado empeora (895), porque GC
 - `func_80037FE8`: Pendiente: puntuacion 2287 con la configuracion versionada (g = 8 del archivo; ejes 16 de operando, 0 reordenadas, 174 insertadas o borradas). Difiere en: reparto de registros y orden de cargas de las tablas. Una sola local de 32 bits para el byte alto y el byte extra del contador baja de 2297 a 2287. La estructura de los seis grupos coincide, pero el original rematerializa el puntero a 0x80010000 en cada grupo salvo en los tres ultimos, donde lo conserva en un registro salvado a traves de la llamada a la conversion BCD; GCC lo trata como una sola constante y reparte los registros de otra form
 - `func_80039094`: Pendiente: puntuacion 1525 con la configuracion versionada (g = 8 del archivo; ejes 69 de operando, 0 reordenadas, 185 insertadas o borradas). Coinciden la estructura, los desplazamientos y los simbolos; difiere en el reparto de registros (la base de 0x80010000, el indice y el valor de las barras 3 y 7 caen en registros distintos de los del original, que usa a1, v0 y a0 segun el bloque), en el orden de dos copias y tres huecos de retardo de la barra 0 y de las barras 3 y 7, y en una recarga de la parte alta de D_8006AA7C que el compilador anade en los tres ultimos temporizadores. Leer el estad
 - `func_8003AF8C`: Pendiente: puntuacion 795 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas, 70 insertadas o borradas). Difiere en el reparto de registros y en la posicion de dos instrucciones: el original deja el color en a3, el desplazamiento de la textura en a2, la direccion de las palabras del sprite en a0 y el nivel de la lista en v0, y aqui caen en a2, a0, v1 y a3; el almacen del nivel (`sh` de `estado.s4`) queda en el original antes de leer la lista y aqui despues, y el almacen de la palabra de ordenacion sale antes del salto de la bandera de transparencia en el ori
