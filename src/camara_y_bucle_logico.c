@@ -451,7 +451,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 5370 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * Pendiente: puntuacion 3340 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
  * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
  * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
  * los bucles de las ocho sondas (modo de apuntado y seguimiento libre) coinciden con `i++` escrito DESPUES de la
@@ -1042,10 +1042,10 @@ aplicar_giro:
     D_8006D928.y = D_8006D928.y + ((o->param.trans.vy + w->p8 - D_8006D928.y) >> 2);
     D_8006D928.z = D_8006D928.z + ((o->param.trans.vz - D_8006D928.z) >> 2);
     D_8006D928.vpx = D_8006D928.vpx + ((o->param.trans.vx + w->v18.vx - D_8006D928.vpx) >> 2);
-    w->v30.vy = w->alt;
-    w->v30.vx = D_8006D928.vista_68_x;
-    w->v30.vz = D_8006D928.vista_68_z;
     D_8006D928.vpz = D_8006D928.vpz + ((o->param.trans.vz + w->v18.vz - D_8006D928.vpz) >> 2);
+    w->v30.vx = D_8006D928.vista_68_x;
+    w->v30.vy = w->alt;
+    w->v30.vz = D_8006D928.vista_68_z;
     w->res.grupo = -1;
     func_8001C134((s32*)&w->v30.vx, &w->res, area);
     if ((w->res.flags & 8) != 0 && w->res.suelo < o->param.trans.vy) {
