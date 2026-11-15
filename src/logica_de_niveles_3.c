@@ -3320,9 +3320,9 @@ void LogicaBloqueEmpujable(Objeto* o)
     t->mxz += cuarto;
     ApplyMatrixSV(m2, (SVECTOR*)&t->mnx, (SVECTOR*)&t->mnx);
     ApplyMatrixSV(m2, (SVECTOR*)&t->mxx, (SVECTOR*)&t->mxx);
-    t->dz = o->empuje.vz;
-    t->dy = 0;
     t->dx = o->empuje.vx;
+    t->dy = 0;
+    t->dz = o->empuje.vz;
     if (o->w17C & 4) {
         t->px = o->param.trans.vx;
         t->py = o->param.trans.vy;
