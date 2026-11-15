@@ -795,42 +795,58 @@ u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
     return mascara;
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 115 con la configuracion versionada (g = 8 del archivo). Mismo flujo, mismas escrituras y mismo orden; el estado del lector se lee como D_8006AA70[0xC] (arreglo) para que el lui de la base pueda separarse de la carga, como en el original. Solo difiere la primera comparacion: el original la hace sobre una copia de a2 en v0 (move v0,a2 ; beqz v0) y GCC compara a2 directamente, porque el CSE sustituye cualquier copia local del parametro por el primer pseudo de su clase (copia previa, bandera entera y copia dentro de un do/while dan 115; a diferencia de un retorno estrechado a 16 bits, aqui no se crea un temporal canonico). El parametro entra con una copia propia (pseudo 82) y la prueba la lee directamente; una copia local no sobrevive al CSE, y un par `a2--; a2++` sobre el parametro tampoco: el CSE y el combinador lo pliegan y la prueba sigue sobre a2. */
+/*
+ * Prepara un objeto de escena para dibujar un cuadro de animacion y devuelve la mascara de
+ * ordenes que produce func_80045498 (bits 0x10, 0x20 y 0x40 llevados a 1, 2 y 4, y el bit 0x80
+ * a 8). Si `a2` trae un objeto lo reutiliza y recupera el flujo de animacion pendiente de su
+ * campo +0x180; si no, crea uno nuevo (tipo 0x44), localiza su nodo de animacion de tipo 8,
+ * le asigna la tabla de fotogramas del indice `a0` y copia el campo w26 del objeto controlado. Con
+ * el estado del lector en 1 marca ademas la bandera 0x40000000. Retorna 0 sin objeto.
+ *
+ * El parametro `a2` no se reasigna: el objeto de trabajo vive en la variable `o`, que recibe
+ * `a2` en la rama existente y el objeto nuevo en la otra. Con `a2` reasignado el compilador
+ * compara el propio registro del parametro; con `o` aparte la prueba se hace sobre una copia
+ * (move v0,a2 ; beqz v0), como el original. El estado del lector se lee como D_8006AA70[0xC]
+ * y no como D_8006AA7C: con el simbolo suelto el lui de la base no se separa de la carga.
+ * Coincide en bytes (2 referencias en forma numerica; el diff puntua 10 por la forma
+ * simbolica).
+ */
 u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
 {
     BloqueTrabajo* bloque;
     NodoAnimacion* nodo;
     TablaFotogramas* tabla;
+    Objeto* o;
     u32 r;
     u32 v;
 
     if (a2 != NULL) {
-        a1 = a2->p180;
-        bloque = &a2->trabajo;
-        a2->p180 = NULL;
+        o = a2;
+        a1 = o->p180;
+        bloque = &o->trabajo;
+        o->p180 = NULL;
     } else {
-        a2 = func_80036734(0x44, NULL, NULL);
-        if (a2 == NULL) {
+        o = func_80036734(0x44, NULL, NULL);
+        if (o == NULL) {
             return 0;
         }
-        nodo = a2->lista;
-        bloque = &a2->trabajo;
+        nodo = o->lista;
+        bloque = &o->trabajo;
         while (nodo != NULL && nodo->def->tipo != 8) {
             nodo = nodo->sig;
         }
         tabla = nodo->def->tabla;
-        a2->trabajo.tabla = tabla;
+        o->trabajo.tabla = tabla;
         bloque->fotogramas = tabla->fotogramas;
-        a2->w17E = a0 + 0x8000;
-        a2->p180 = NULL;
+        o->w17E = a0 + 0x8000;
+        o->p180 = NULL;
         a1 = (u8*)D_80069590 + D_80069590[a0];
-        a2->w26 = D_80069698->w26;
+        o->w26 = D_80069698->w26;
         if (D_8006AA70[0xC] == 1) {
-            a2->flags0C |= 0x40000000;
+            o->flags0C |= 0x40000000;
         }
     }
-    r = func_80045498(a2, a1, bloque);
+    r = func_80045498(o, a1, bloque);
     v = (r >> 4) & 8;
     if (r & 0x20) {
         v |= 2;
@@ -843,9 +859,6 @@ u32 func_80045C4C(u32 a0, void* a1, Objeto* a2)
     }
     return v;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045C4C);
-#endif
 
 /*
  * Rutina vacia del original: func_80045498 la llama con la mascara de opciones en a0 y recoge v0 como
