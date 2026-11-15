@@ -464,7 +464,6 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  */
 #define GIRO_Y(p) (((ParametrosObjeto*)(p))->giro.u.y)
 
-
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 2185 con la configuracion versionada (g = 8 del archivo; ejes 497 de operando, 4 reordenadas,
@@ -472,16 +471,17 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
  * reproduce la carga del original del hijo y baja de 2625 a 2605; leer la X del portador en una local antes de
  * restarla (`x_portador`) baja a 2590 (sin ella el tramo coincide pero la cifra sube de 2235 a 2250). Los registros
- * guardados ya coinciden con el original. Se supone, sin verificar con el volcado de esta funcion, que los
- * temporales de 32 bits compartidos entre bloques son pseudos globales que el reparto global asigna a a0 y a1,
- * mientras que el original deja en v0 y v1 los valores de un solo bloque; medido en `diff`: una local propia para
- * cada bloque reproduce el reparto del original en estos tramos: las dos bandas de altura del vuelo con locales `altura_jugador`, `banda_alta` y `banda_baja`
- * (2590 a 2505; la banda de la rama final con `suelo_bajo` y los almacenes en el orden alta y baja, 2505 a 2290), el
+ * guardados ya coinciden con el original. Los temporales de 32 bits compartidos entre bloques son pseudos globales
+ * que el reparto global asigna a a0 y a1, mientras que el original deja en v0 y v1 los valores de un solo bloque:
+ * medido en el volcado de reparto para las dos bandas de altura del vuelo (ver la cabecera de la funcion); para el
+ * resto de tramos se supone, sin verificar con el volcado. Medido en `diff`, una local propia para cada bloque
+ * reproduce el reparto del original en estos tramos: las dos bandas de altura del vuelo con locales `altura_jugador`,
+ * `banda_alta` y `banda_baja` (2590 a 2505; la banda de la rama final con `suelo_bajo` y los almacenes en el orden alta y baja, 2505 a 2290), el
  * giro en reposo con `giro_reposo` (2290 a 2280), el giro directo con `giro_directo` y `pr_directo` (2280 a 2250), la
  * prueba del barrido con `f14_barrido` (2250 a 2235) y el vaciado de los giros del portado como asignacion encadenada
  * `u.x = u.z = 0` (2235 a 2225, el original almacena 0xe0 antes que 0xdc) y la prueba de desfase `d.vx | d.vy` con
- * `desfase_xy` (2225 a 2185). Medido sin bajada: una local propia para el giro en Z del portador al soltarlo (2325); sumar primero la altura
- * y despues la maxima en `p30.vy` carga las dos en otro orden (2455); una macro con la constante en t7 para los tres
+ * `desfase_xy` (2225 a 2185). Sin bajada: una local propia para el giro en Z del portador al soltarlo (2325); sumar
+ * primero la altura y despues la maxima en `p30.vy` carga las dos en otro orden (2455); una macro con la constante en t7 para los tres
  * bloques de escala no coincide porque el original reutiliza t7 como valor en 0x4280 (`move v0,t7`) (2260; se supone,
  * sin verificar, que ese reparto lo hace el compilador y la macro de la cabecera, que fija t4, no lo reproduce); una
  * local de bloque para el jugador en el bloque del hijo no cambia el codigo (el CSE funde la copia).
@@ -503,6 +503,20 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * 2595: 5 puntos peor que 2590, con los mismos ejes de operando (497) y 331 lineas insertadas o borradas frente a 325.
  */
 /*
+ * Las cuatro sentencias replicadas son `t->w114 = banda_alta;` y `t->w118 = banda_baja;` escritas en la rama del
+ * jugador y en la rama final de la cadena de las bandas del vuelo (la rama intermedia escribe sus propias
+ * expresiones y no las usa); no generan codigo propio. El original escribe los dos limites dentro de cada camino, con
+ * los valores como temporales de ese camino (0x80027E40 y 0x80027E48 en la banda del jugador, 0x80027EA0 a 0x80027EC0
+ * en la intermedia y 0x80027EE0 y 0x80027EE4 en la final) y todos los caminos saltan a la prueba de histeresis
+ * (0x80027EE8). Causa medida en los volcados de `cc1` (`.lreg`, `.greg` y el ensamblador de salida) y con `diff`: con
+ * la pareja en cada rama los valores son pseudos locales del bloque (603 y 604 en el bloque 127, 627 y 628 en el 133,
+ * 2 usos sobre 2 insns cada uno) que toman v0 y v1 y se almacenan al final de su camino, igual que el original (la
+ * puntuacion es 2185); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
+ * los valores pasan a ser pseudos globales (la banda alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6
+ * usos sobre 14 insns, 0,86) que reciben a1 y v1, los dos almacenes suben tras la etiqueta de union y aparece un
+ * `move v0,a1` antes de la prueba de histeresis (4065). La forma del fuente original que producia este reparto se
+ * desconoce.
+ *
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
  * muerte si lo hirieron, la del paso siguiente si no), interpreta las banderas del fotograma
@@ -917,7 +931,9 @@ flotador_de_ave:
                 altura_jugador = D_80069698->param.trans.vy;
                 banda_alta = altura_jugador - 0xC8;
                 banda_baja = altura_jugador - 0x190;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 t->w114 = banda_alta;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 t->w118 = banda_baja;
             } else if ((t->banderas & 0x810000) && ((s16)o->w26 == (s16)D_80069698->w26)) {
                 /* Acompana al jugador: el techo del vuelo es la menor altura entre el suelo y el jugador. */
@@ -938,7 +954,9 @@ flotador_de_ave:
                 suelo_bajo = t->p30.vy + (s16)t->res.pendiente;
                 banda_alta = suelo_bajo - 0x190;
                 banda_baja = suelo_bajo - 0x258;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 t->w114 = banda_alta;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 t->w118 = banda_baja;
             }
             /* Histeresis: el sentido solo cambia al salir de la banda [w118, w114]. */
