@@ -3182,8 +3182,6 @@ siguiente:
     }
 }
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 3165 con la configuracion versionada (g = 8 del archivo; ejes 100 de operando, 0 reordenadas, 105 insertadas o borradas). Las ocho esquinas coinciden: la preparacion de cada una escribe la posicion en z antes de los tres campos de velocidad (con la velocidad antes, el planificador subia el calculo de &t->vx al inicio del bloque y el original lo deja tras las cargas; 9080 a 3165). Residuo: prueba de 0x300 del segundo recorrido, bloque de sondeo en z (desplazamientos 0xf38 a 0xf54 de la funcion: el calculo de pz sube en este C), orden de las dos lecturas de limites (desplazamiento 0x2b8) y bloque de disparadores. Medido antes de este cambio: el segundo recorrido de limites comprueba primero (w17C & 0x300) con un salto propio y este C lo pliega a las pruebas de 0x100 y 0x200 (escribirlo explicito empeora: el compilador elimina la prueba redundante). El objeto ya queda en s4 y el scratchpad en s3 como en el original (la matriz de cada bloque vive solo en su bloque: con una sola variable para las dos matrices el compilador la dejaba en s4 y desplazaba el objeto a s3). La guarda de empuje sigue el ensamblador (0x8002D848 a 0x8002D88C): con la bandera 0x8000 del objeto y la 0x4000 del jugador a la vez el empuje sigue sin consultar func_80016C0C; si falta alguna de las dos, solo se empuja cuando esa consulta devuelve distinto de cero. Residuo medido: en el segundo recorrido de limites el original comprueba primero (w17C & 0x300) con un salto propio y este C lo pliega a las pruebas de 0x100 y 0x200 (escribirlo explicito empeora a 9155: el compilador elimina la prueba redundante); el bloque de la prueba de suelo carga la constante 0x58 en a1 antes de la etiqueta de union (0x7bf4 en este C) y el original no. */
 /*
  * Prueba de suelo bajo la posicion de prueba (t->py): si el bloque se despegaria mas de 0xC8
  * unidades del terreno, se anula el desplazamiento pedido. Solo se aplica con el modo 0x80.
@@ -3203,7 +3201,13 @@ siguiente:
         } \
     }
 
-/* Prueba una esquina de la caja girada moviendo en X: avance t->dx contra el terreno. */
+/*
+ * Prueba una esquina de la caja girada moviendo en X: avance t->dx contra el terreno. La posicion en z
+ * se escribe antes de los tres campos de velocidad: con la velocidad antes, el planificador subia el
+ * calculo de &t->vx al inicio del bloque (medido en el volcado de planificacion) y el original lo deja
+ * tras las cargas de los campos del objeto (cifra de la funcion 9080 con la velocidad antes, 3165 con
+ * la posicion en z antes).
+ */
 #define BLOQUE_ESQUINA_X(ex, ez) \
     { \
         t->px = o->param.trans.vx + (s16)t->ex; \
@@ -3235,7 +3239,14 @@ siguiente:
         BLOQUE_SIN_SUELO(); \
     }
 
-/* Filtra el desplazamiento pedido d segun el eje (bit eje) y el sentido permitido (0x100, 0x200). */
+/*
+ * Filtra el desplazamiento pedido d segun el eje (bit eje) y el sentido permitido (0x100, 0x200). La
+ * pertenencia a los dos sentidos (w17C & 0x300) se prueba primero, con un salto propio, como en el
+ * original, y por eso va en una sola condicion compuesta: con las pruebas de 0x100 y 0x200
+ * encadenadas la funcion da 3165, con un if anidado 2495, con las dos pruebas en if separados 2895 y
+ * con una sola condicion 1880. Se supone, sin verificar, que en las otras formas el compilador
+ * elimina la prueba redundante de 0x300.
+ */
 #define BLOQUE_FILTRAR(d, eje) \
     { \
         if (!(o->w17C & (eje))) { \
@@ -3252,6 +3263,25 @@ siguiente:
  * 0x80 no cae). El avance se prueba contra otros objetos y contra el terreno desde las cuatro
  * esquinas de la caja girada, se aplica al bloque, la parte que no pudo absorber vuelve al jugador y
  * se controla el sonido de arrastre. Termina con la gravedad del bloque.
+ *
+ * Formas del C que fijan el codigo del original, todas con codigo propio y medidas con la funcion
+ * completa:
+ * - La matriz de cada bloque vive solo en su bloque (m y m2): con una sola variable el compilador la
+ *   dejaba en s4 y desplazaba el objeto a s3.
+ * - La guarda de empuje sigue el ensamblador (0x8002D848 a 0x8002D88C): con la bandera 0x8000 del
+ *   objeto y la 0x4000 del jugador a la vez el empuje sigue sin consultar func_80016C0C; si falta
+ *   alguna de las dos, solo se empuja cuando esa consulta devuelve distinto de cero.
+ * - Los desplazamientos pedidos se cargan en el orden x, y, z (1880 a 1245 frente al orden z, y, x).
+ * - Al elegir el borde de sondeo en x, la posicion en z se calcula antes de la comparacion del signo
+ *   (1245 a 685): el original calcula pz antes del salto que elige px.
+ * - El recorrido de disparadores relee o->apoyos al entrar (el original copia el puntero a otro
+ *   registro tras comprobarlo; 685 a 475) y sale del bucle con break para compartir la cola que
+ *   anula p70 y salta al reposo con el resto de las salidas (475 a 90).
+ * - La rama sin empuje lee D_800694F2 dos veces (comprobacion y almacen) y no la guarda en una local:
+ *   con la local la funcion da 40 puntos mas (475 frente a 435 antes del cambio del recorrido).
+ * - reserva[2] ocupa 8 bytes de pila que ninguna sentencia usa: el marco del original es de 0x38 bytes
+ *   y sin esa local la funcion sube a 188 (se supone, sin verificar, que el original tenia ahi una
+ *   local que el compilador elimino).
  */
 void LogicaBloqueEmpujable(Objeto* o)
 {
@@ -3522,8 +3552,7 @@ disparadores:
             if (n->req14 == 0 || (o->flags14 & n->req14)) {
                 if (TestLogicCond(o, &n->cond) != 0) {
                     RunLogicAction(o, &n->cond);
-                    o->p70 = 0;
-                    goto reposo;
+                    break;
                 }
             }
             n = n->sig;
@@ -3534,9 +3563,8 @@ disparadores:
 sin_empuje:
     if (o->flags18 & 0x8000) {
         o->flags18 &= 0xFFFF7FFF;
-        flags = D_800694F2;
-        if (flags & 1) {
-            D_800694F2 = flags & 0xFE;
+        if (D_800694F2 & 1) {
+            D_800694F2 = D_800694F2 & 0xFE;
             func_8003F06C(o, D_800695DE, 2, D_8006967C);
         }
     }
@@ -3552,9 +3580,6 @@ reposo:
         func_8001E1A4(o, area);
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaBloqueEmpujable);
-#endif
 
 /*
  * Manejador vacio de la clase 21 de D_8005E35C: el objeto no tiene logica propia. Conserva el prototipo
