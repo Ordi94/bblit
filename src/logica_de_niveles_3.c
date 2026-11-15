@@ -578,6 +578,8 @@ void func_80026FEC(Objeto* o)
     RegistroAnim* registro_actual;
     s32 altura_objeto;
     Objeto* hijo_soltado;
+    s32 vz_portador;
+    s32 vz_barrido;
 
     t = (TrabajoPersonaje*)0x1F800000;
     area = (void*)0x1F800128;
@@ -1868,14 +1870,14 @@ componer_con_portador:
             t->res.grupo = o->w26;
             BarrerTerreno(&t->pF0, &t->p30, &t->res, area);
             o->param.trans.vx = o->p70->param.trans.vx + t->p30.vx;
-            arg_giro = o->p70->param.trans.vz;
-            giro = t->p30.vz;
+            vz_portador = o->p70->param.trans.vz;
+            vz_barrido = t->p30.vz;
             o->coord.param = PARAMETROS_SDK(o);
             o->param.giro.u.z = 0;
             o->coord.super = 0;
             o->p70 = 0;
             o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x200;
-            o->param.trans.vz = arg_giro + giro;
+            o->param.trans.vz = vz_barrido + vz_portador;
             /* Sentencia replicada: es la misma que la de las otras ramas. */
             func_8001CFCC(&o->coord);
         }
