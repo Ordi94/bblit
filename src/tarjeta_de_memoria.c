@@ -417,8 +417,8 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1960 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
- * 237 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
+ * Pendiente: puntuacion 1765 con la configuracion versionada (g = 8 del archivo; ejes 71 de operando, 0 reordenadas,
+ * 247 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
  * original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante.
@@ -429,19 +429,24 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  * no izan un incremento inducido (`giv of insn ... not worth while, 0 vs 12` y `0 vs 16`). El original recalcula la cadena
  * en cada uno de los tres usos del desplazamiento: la busqueda del final del nombre (0x80015CC0 a 0x80015CC8), el relleno
  * con ceros (0x80015D10 a 0x80015D1C, con el primer `sll` en el hueco del salto del bucle) y la entrada de directorio
- * (0x80015D40 a 0x80015D48). Por eso el fuente asigna la misma local (`desplazamiento_grupo = grupo * 120;`) antes de cada
- * uno de esos tres usos; cada asignacion se consume en el bucle siguiente y emite codigo, de modo que no es una referencia
- * sin codigo. Con las tres la cifra es 1960; sin la asignacion del relleno 2260; sin la de la entrada 2045; con una sola,
- * calculada antes del primer bucle interior, 2440 (con el producto en una sola local calculada entre los dos bucles
- * interiores 2835, medido en un estado anterior de la funcion); con el producto escrito en cada uso 3125. Se supone, sin
- * verificar, que el pseudo final de la cadena no se iza porque se asigna varias veces, y que el autor del original escribio
- * el producto en cada uso por la misma razon. Con esa forma el volcado `-dL` sigue izando las dos primeras instrucciones
- * de la cadena (`sll 4` y `subu`: pseudos 502 y 503, vida 31, ahorro 5 y 4, bucle de 69 instrucciones reales) y deja en el
- * cuerpo solo el `sll 3`. Sin bajada: un par `grupo++; grupo--;` en el cuerpo no evita el izado (2395: el combinador lo
- * anula); escribir la cadena entera con asignaciones compuestas sobre la misma local, `d = g << 4; d -= g; d <<= 3;`, antes
- * de cada uso, la deja en el cuerpo en cada uso como el original pero el planificador reparte sus tres instrucciones a los dos
- * lados del salto del bucle interior y la cifra sube a 2485 (269 insertadas o borradas). Queda sin causa medida por que el
- * original no iza esas cadenas. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
+ * (0x80015D40 a 0x80015D48). Causa del izado, medida en `-dL`: el optimizador detecta como movibles las dos primeras
+ * instrucciones de la cadena (`sll 4`, pseudo 374, ahorro 6, y `subu`, pseudo 375, ahorro 3), empareja con ellas las de
+ * los otros dos usos (las marca como hechas "matches") y las iza una sola vez al preludio del bucle del directorio; con
+ * `desplazamiento_grupo = grupo * 120;` repetido en cada uso solo se queda en el cuerpo el `sll 3` (la local se asigna
+ * varias veces). Por eso el fuente escribe la cadena en dos locales que se asignan en cada uso: `quince = grupo << 4;
+ * quince -= grupo;` y `desplazamiento_grupo = quince << 3;`. Ninguno de los tres pseudos de la cadena se asigna una sola
+ * vez en el bucle, no es movible y las tres instrucciones quedan en el cuerpo, la primera y la segunda en v0 y la ultima
+ * en a0 como en el original. Cada asignacion se consume en el bucle siguiente y emite codigo, de modo que no es una
+ * referencia sin codigo. La segunda cadena se escribe dentro del cuerpo del bucle de relleno: el optimizador de bucles la
+ * saca al preludio del propio bucle interior, tras la guardia de entrada, que es donde la tiene el original (0x80015D10
+ * a 0x80015D1C); escrita antes del bucle, queda antes de la guardia (1935). Cifras: cadena con una sola local y asignaciones
+ * compuestas `d = g << 4; d -= g; d <<= 3;` en cada uso 2095 (el pseudo unico cae en v1 y no en v0 y a0); con la local
+ * intermedia 1935; con la segunda cadena dentro del bucle de relleno 1765. Antes de este cambio: con la asignacion
+ * `grupo * 120` en los tres usos 1960; sin la del relleno 2260; sin la de la entrada 2045; con una sola, calculada antes
+ * del primer bucle interior, 2440; con el producto escrito en cada uso 3125; un par `grupo++; grupo--;` en el cuerpo no
+ * evita el izado (2395: el combinador lo anula). Queda el reparto de registros: `i` cae en t0 y `grupo` en t1 (el original
+ * los tiene en a1 y t0), la copia de la base de la fila cae en a1 y no en a3, y el original no recalcula en los bucles
+ * interiores la direccion del simbolo de la tabla. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
  * del resultado que despues compara con 1) se reproduce guardando el resultado en la local `rc`, compartida con la del
  * sondeo: con una local propia (`fmt` o `tam`) el CSE funde la copia y se comprueba `v0` directamente (2350); con `rc` o
  * `estado` baja a 1960, pero la copia cae en v1 y no en a1 como en el original, y con `partida` cae en s1 (2635). Sin
@@ -464,6 +469,7 @@ void SondearTarjeta(void)
     s16* bloques;
     s32 grupo;
     s32 desplazamiento_grupo;
+    s32 quince;
     s32 salvado;
     u8 valor_salvado_a6;
     s32 partida;
@@ -654,15 +660,21 @@ void SondearTarjeta(void)
                 i = 0;
                 grupo = i;
                 for (; i < D_80069358[0]; i++) {
-                    desplazamiento_grupo = grupo * 120;
+                    quince = grupo << 4;
+                    quince -= grupo;
+                    desplazamiento_grupo = quince << 3;
                     for (j = 0; D_800697B0[j + i * 0x28 + desplazamiento_grupo] != 0; j++) {
                     }
-                    desplazamiento_grupo = grupo * 120;
                     for (; j < 0x14; j++) {
+                        quince = grupo << 4;
+                        quince -= grupo;
+                        desplazamiento_grupo = quince << 3;
                         D_800697B0[j + i * 0x28 + desplazamiento_grupo] = 0;
                     }
-                    desplazamiento_grupo = grupo * 120;
-                    entrada = (EntradaDirectorio*)(D_800697B0 + i * 0x28 + desplazamiento_grupo);
+                    quince = grupo << 4;
+                    quince -= grupo;
+                    desplazamiento_grupo = quince << 3;
+                    entrada =(EntradaDirectorio*)(D_800697B0 + i * 0x28 + desplazamiento_grupo);
                     entrada->attr = 0;
                     entrada->tam = 0;
                     entrada->sig = 0;
