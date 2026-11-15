@@ -38,7 +38,7 @@ _CIERRE_SOLO = re.compile(r"^\s*\}\s*$")
 _DECLARACION_CON_VALOR = re.compile(r"^\s+((?:[A-Za-z_]\w*[\s\*]+)+?)(\w+)\s*=\s*[^=].*;\s*$")
 _PALABRAS_QUE_NO_DECLARAN = {"return", "else", "goto", "case", "sizeof", "do", "while", "if", "for", "switch"}
 _COMENTARIO_REPLICADA = re.compile(rf"^\s*/\*\s*{re.escape(COMENTARIO_REPLICADA)}\s*\*/\s*$")
-_IDENTIFICADOR = re.compile(r"[A-Za-z_]\w*")
+_TOKEN_NUMERICO_O_NOMBRE = re.compile(r"(?P<literal>\d\w*)|[A-Za-z_]\w*")
 
 
 def _lineas_de_codigo(texto: str) -> list[str]:
@@ -172,9 +172,64 @@ def _sentencias_replicadas(lineas: list[str], cuentas: dict[tuple[str, str], int
             _cuenta(cuentas, _funcion_que_contiene(lineas, indice), SENTENCIA_DUPLICADA)
 
 
+def _valor_del_literal(texto: str) -> str:
+    """Devuelve el literal entero de C como ``#valor`` en decimal, para compararlo por su valor.
+
+    Contexto:
+        Lo usa ``_esqueleto``. El sufijo (``u``, ``U``, ``l``, ``L``) no cuenta: ``0x10u`` y ``16`` son el
+        mismo valor y la misma instruccion. Un literal que no se pueda interpretar se conserva por su texto
+        para que dos literales ilegibles solo coincidan si se escriben igual.
+
+    Args:
+        texto (str): Literal tal como aparece en el fuente, con su sufijo.
+
+    Returns:
+        str: ``#`` seguido del valor en decimal, o del texto original si no es un entero valido.
+
+    Ejemplo:
+        _valor_del_literal("0x10u") == _valor_del_literal("16")
+    """
+    digitos = texto.rstrip("uUlL")
+    try:
+        if digitos[:2] in ("0x", "0X"):
+            valor = int(digitos, 16)
+        elif len(digitos) > 1 and digitos.startswith("0"):
+            valor = int(digitos, 8)
+        else:
+            valor = int(digitos)
+    except ValueError:
+        return f"#{texto}"
+    return f"#{valor}"
+
+
 def _esqueleto(sentencia: str) -> str:
-    """Devuelve la sentencia con cada identificador sustituido por ``I`` (la forma sin los nombres)."""
-    return _IDENTIFICADOR.sub("I", " ".join(sentencia.split()))
+    """Devuelve la sentencia sin los nombres y con los literales normalizados a su valor.
+
+    Cada identificador se sustituye por ``I``: la variable propia de cada rama es lo unico que puede cambiar
+    entre ramas. Los literales numericos NO son nombres: una constante distinta es otra sentencia, de modo que
+    se conservan y se comparan por su valor (``0x10`` y ``16`` coinciden; el sufijo no cuenta). El patron
+    consume cada palabra entera, de modo que las cifras de ``p1`` pertenecen al identificador y los digitos
+    de ``0x2E`` al literal.
+
+    Contexto:
+        Lo usa ``_incumplimientos_de_replicadas`` para decidir si las sentencias marcadas como replicadas son
+        la misma en todas las ramas.
+
+    Args:
+        sentencia (str): Sentencia en una linea, con sus espacios originales.
+
+    Returns:
+        str: Sentencia con espacios normalizados, identificadores como ``I`` y literales como ``#valor``.
+
+    Ejemplo:
+        _esqueleto("b = p | 0x10;") == _esqueleto("b = q | 16u;")
+    """
+
+    def _sustituir(coincidencia: re.Match[str]) -> str:
+        literal = coincidencia.group("literal")
+        return "I" if literal is None else _valor_del_literal(literal)
+
+    return _TOKEN_NUMERICO_O_NOMBRE.sub(_sustituir, " ".join(sentencia.split()))
 
 
 def _incumplimientos_de_replicadas(texto: str) -> list[str]:
@@ -341,6 +396,63 @@ def test_las_sentencias_replicadas_con_la_misma_forma_y_otra_variable_se_aceptan
         "    if (a) {\n" + _rama_replicada("p") + "    } else {\n" + _rama_replicada("q") + "    }\n"
     )
     assert _incumplimientos_de_replicadas(texto) == []
+
+
+def _rama_con_constante(variable: str, constante: str) -> str:
+    return f"        /* {COMENTARIO_REPLICADA} */\n        b = {variable} | {constante};\n"
+
+
+def _texto_de_dos_ramas(constante_a: str, constante_b: str) -> str:
+    return _texto_con(
+        "    if (a) {\n"
+        + _rama_con_constante("p", constante_a)
+        + "    } else {\n"
+        + _rama_con_constante("q", constante_b)
+        + "    }\n"
+    )
+
+
+def test_sentencias_replicadas_con_literales_hexadecimales_distintos_se_rechazan() -> None:
+    texto = _texto_de_dos_ramas("0x2E000000", "0x4C000000")
+    esperado = ["func_800000A0: las sentencias replicadas no son la misma sentencia"]
+    assert _incumplimientos_de_replicadas(texto) == esperado
+
+
+def test_sentencias_replicadas_con_literales_decimales_distintos_se_rechazan() -> None:
+    texto = _texto_de_dos_ramas("12", "13")
+    esperado = ["func_800000A0: las sentencias replicadas no son la misma sentencia"]
+    assert _incumplimientos_de_replicadas(texto) == esperado
+
+
+def test_sentencias_replicadas_con_el_mismo_literal_hexadecimal_se_aceptan() -> None:
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas("0x2E000000", "0x2E000000")) == []
+
+
+def test_sentencias_replicadas_con_el_mismo_valor_en_hexadecimal_y_en_decimal_se_aceptan() -> None:
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas("0x10", "16")) == []
+
+
+def test_el_sufijo_del_literal_no_cuenta_para_comparar_sentencias_replicadas() -> None:
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas("0x2E000000u", "0x2E000000")) == []
+
+
+def test_un_literal_octal_se_compara_por_su_valor() -> None:
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas("010", "8")) == []
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas("010", "10")) != []
+
+
+def test_un_identificador_con_digitos_sigue_siendo_un_identificador_y_no_un_literal() -> None:
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas("x2E", "y17")) == []
+    assert _esqueleto("b = p1 | 0x2E;") == "I = I | #46;"
+
+
+def test_el_esqueleto_normaliza_los_literales_a_su_valor_y_los_identificadores_a_uno_solo() -> None:
+    assert _esqueleto("b = p | 0x2E000000;") != _esqueleto("b = p | 0x4C000000;")
+    assert _esqueleto("b = p | 0x10;") == _esqueleto("b  =  q | 16u;")
+
+
+def test_un_literal_que_no_se_puede_interpretar_se_compara_por_su_texto() -> None:
+    assert _esqueleto("b = 0xZZ;") == "I = #0xZZ;"
 
 
 def test_una_sola_marca_de_sentencia_replicada_se_rechaza() -> None:
