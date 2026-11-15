@@ -272,23 +272,22 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 560 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
- * 58 insertadas o borradas). Las dos ramas que recortan el nivel de la lista coinciden: el nivel se guarda dentro de
+ * Pendiente: puntuacion 405 con la configuracion versionada (g = 8 del archivo; ejes 12 de operando, 0 reordenadas,
+ * 66 insertadas o borradas). Las dos ramas que recortan el nivel de la lista coinciden: el nivel se guarda dentro de
  * cada rama, antes de leer la lista, y el original las funde en una cola comun que empieza por ese almacen (con una
- * variable `n` y un solo almacen tras la union la puntuacion sube de 560 a 775). Difiere el reparto de registros de la
- * copia de palabras: el original deja la direccion de las palabras del sprite, la base de la lista y la ranura en a0,
- * el desplazamiento de la textura en a2 y la bandera de transparencia en v1, y aqui caen en v1, v1, a2, a0 y a0;
- * ademas el original guarda la palabra de ordenacion despues del salto de la bandera de transparencia, junto al
- * color, y aqui sale antes.
+ * variable `n` y un solo almacen tras la union la puntuacion sube de 405 a 620). La cola del color coincide en forma
+ * (`or ; lui 0x2c00 ; or`). Difiere el reparto de registros: el original deja el color en a3, el desplazamiento de la
+ * textura en a2, la direccion de las palabras del sprite, la base de la lista y la ranura en a0 y la bandera de
+ * transparencia en v1, y aqui caen en a2, a0, v1, v1, a3 y a0; ademas el original guarda la palabra de ordenacion
+ * despues del salto de la bandera de transparencia, junto al color, y aqui sale antes.
  *
- * Medido: con una variable `tipo` para la constante, el color acumulado en dos `or` y los almacenes tras la union la
- * cola `or ; lui 0x2c00 ; or` coincide con el original pero la puntuacion es 1055: la planificacion deja el `lui` de
- * la constante al principio del bloque (el original lo deja junto al salto) y la palabra y la constante cambian de
- * registro. El desplazamiento de la textura (global) toma a0 porque la direccion de las palabras (local de bloque)
- * toma v1, y el original da a0 a la direccion y a2 al desplazamiento. En el volcado de la asignacion local las
- * copias temporales de las palabras toman v0 y la direccion toma v1 aunque a0 esta libre en su vida. Se supone, sin
- * verificar, que el original da a0 a la direccion porque v1 esta ocupado durante su vida por otra local de bloque; no
- * se midio.
+ * Medido: con la palabra en una variable y su almacen tras la union la forma coincide en todas las instrucciones
+ * salvo el orden de dos (el `lui` de 0x09000000 se planifica antes de la carga de la bandera) y el reparto: 455, con la
+ * bandera en v1 como el original. El color (global, 11 referencias, vida 99, prioridad 0,33) se asigna antes que el
+ * desplazamiento de la textura (0,136) y toma a2; el original deja a2 al desplazamiento y a3 al color. Se supone, sin
+ * verificar, que en el original algo ocupa a2 durante la vida del color antes de asignarlo. La direccion de las
+ * palabras (local de bloque) toma v1 aunque a0 esta libre en su vida; se supone, sin verificar, que el original deja
+ * v1 ocupado durante esa vida por otra local de bloque.
  */
 /*
  * Encola un sprite de ocho palabras en la lista de ordenacion segun la profundidad del objeto: calcula el color y
@@ -365,7 +364,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
          * almacen tras la union de las ramas la puntuacion sube de 405 a 455. */
         *p = *ranura | 0x09000000;
         /* Cada rama acumula su constante en el propio color y la union repite el `or` con 0x2C000000 (0x8003B208 y
-         * 0x8003B20C del original: `or a3,a3,v0 ; lui v0,0x2c00 ; or a3,a3,v0`): la segunda mascara no cambia el valor
+         * 0x8003B20C del original, tras `or a3,a3,v0` en 0x8003B204): la segunda mascara no cambia el valor
          * porque 0x2E000000 ya la contiene, pero el original la emite y sin ella la puntuacion sube a 595. Con la
          * expresion del color escrita en cada rama sube a 560 y con una variable para la constante, a 915. */
         if (semitransparente != 0) {
