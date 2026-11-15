@@ -1290,8 +1290,8 @@ void func_80035244(void)
  * y las constantes coinciden. Quedan el reparto de registros guardados y temporales (la constante -3 en s2 y el
  * original en s3 con el puntero a la proyeccion al reves; un puntero del contexto GTE en t7 y el original en a3;
  * el puntero al objeto actual en v1 en varios bloques y el original en a0), el orden de las dos primeras cargas del
- * prologo (el original lee el byte D_8006AA7C antes que el contexto; leerlo en una local antes de los almacenes da
- * 2945 en el estado anterior a los dos ultimos cambios) y la llamada a func_800351B4 tras la atenuacion: el original
+ * prologo (el original lee el byte D_8006AA7C antes que el contexto; leerlo en una local antes de los almacenes
+ * da 1950) y la llamada a func_800351B4 tras la atenuacion: el original
  * salta a la `jal` de la busqueda del modelo (0x800358A4, una sola llamada en la funcion) y aqui salen dos.
  * Escribir la atenuacion como salto a esa llamada deja una sola `jal` y la estructura del original, pero la
  * puntuacion sube a 1645 porque el puntero al objeto sale en `v1` donde el original lo tiene en `a0` (causa sin
@@ -1310,7 +1310,9 @@ void func_80035244(void)
  * maspsx sigue en modo de reordenacion y anade otro `nop` tras esas dos saltos (medido sobre una copia del bloque:
  * 2 `nop` anadidos con el espacio, 0 con el tabulador, y quitando los dos `nop` explicitos sale `bgez; nop; sub`
  * como el original). Con la forma sin sufijo la funcion puntua 4388 frente a 4188 con la de sufijo. Arreglar
- * `GEO_DISTANCIA_APROX` exigiria cambiar la macro compartida, que no se toca aqui.
+ * `GEO_DISTANCIA_APROX` exigiria cambiar la macro compartida, que no se toca aqui. La forma con sufijo depende del
+ * espaciado de la directiva de la macro: si `maspsx` llegara a reconocer `.set noreorder` con espacio, se supone, sin
+ * verificar, que el `sub` pasaria al hueco de la `bgez` y se invertiria el signo del valor absoluto.
  *
  * La busqueda del modelo guarda el indice leido en la condicion (`idx`) y lo reutiliza en el incremento, como el
  * original (`lw a0,0x40(s1)` en 0x800357B8 y `addiu v0,a0,1` en 0x800357F0 del original), en lugar de leer el
@@ -1350,6 +1352,7 @@ void func_800353B0(Objeto* a0)
 
     D_80069652 = 0;
     D_800694D4 = D_800694B8;
+    /* Mismo byte que D_8006AA70[0xC] del bucle final: con ese simbolo en los dos sitios la funcion mide 1250 y con este en el prologo y D_8006AA70[0xC] en el bucle, 1470. */
     if (D_8006AA7C == 0) {
         if (D_80069560 != 0) {
             ActualizarCamaraSeguimiento(D_80069560, D_80069698->reiniciar_camara);
@@ -1586,6 +1589,7 @@ fin:
     D_80069560 = D_80069698;
     if (s0 != NULL) {
         do {
+            /* Mismo byte que D_8006AA7C del prologo: con D_8006AA7C en el bucle la funcion mide 1620. */
             if (D_8006AA70[0xC] == 0) {
                 if ((s0->flags14 & 0x100) == 0) {
                     D_8005E35C[s0->clase](s0);
