@@ -608,7 +608,7 @@ de izado que el original. Hay cinco formas:
 | decremento-incremento | El par `x--; x++;` (o `x++; x--;`) sobre una variable que ya existe en la función | El combinador anula el par y no queda instrucción, pero cada sentencia suma una referencia de lectura y otra de escritura a la variable (cuatro por par, ponderadas por la profundidad del bucle donde esté) |
 | condición vacía | `if (x) {}` o `if (p->campo) {}` sobre una variable o un campo real | El optimizador de saltos elimina la condición sin rama antes del análisis de flujo; medido sobre un campo cargado de memoria (`w->cur`), la lectura desaparece con ella y los usos ponderados no cambian (solo se desplaza la numeración de los pseudos): puede servir para mover un empate por número de pseudo, no para sumar referencias |
 | local sin uso | Una local con inicializador que ninguna sentencia lee | La asignación no deja instrucción y el efecto sobre el asignador solo existe si el volcado lo muestra para esa función. Medido en `func_8003B354` (`src/menus_e_interfaz.c`, 270 a 0): una asignación muerta de la base de la tabla en una local da el mismo 0 que su uso real, y quitarla da 915, de modo que la forma actúa en este binario; la función conserva el uso real (la local se lee) y no queda ninguna referencia de esta forma en `src/` |
-| sentencia duplicada en ambas ramas | La misma sentencia escrita en las dos (o tres) ramas de un `if`/`else`, con una variable propia por rama si hace falta | Cada variable por rama es un pseudo local de su bloque y el asignador local lo reparte antes que los pseudos globales, como en el original, que tiene ese valor como local de cada rama. Las colas de las ramas quedan idénticas y el salto cruzado (cross-jumping) del compilador las vuelve a fusionar en una sola, así que la sentencia replicada no deja instrucciones propias |
+| sentencia duplicada en ambas ramas | La misma sentencia escrita en dos o más caminos que terminan en una misma cola (las ramas de un `if`/`else` o varios saltos a una etiqueta común), con una variable propia por camino si hace falta | Cada variable por rama es un pseudo local de su bloque y el asignador local lo reparte antes que los pseudos globales, como en el original, que tiene ese valor como local de cada rama. Las colas de los caminos quedan idénticas y el salto cruzado (cross-jumping) del compilador las vuelve a fusionar en una sola, así que la sentencia replicada no deja instrucciones propias |
 
 **Cuándo se admite.** Solo si se cumplen las tres condiciones a la vez, para las cinco formas:
 
@@ -621,7 +621,7 @@ de izado que el original. Hay cinco formas:
    número y con él la decisión (`func_8001E1A4`: dos pares `x--; x++` llevan el bucle de 172 a 176 instrucciones, y
    con 174 se iza la dirección y con 175 o más no). Además se comprueba en el volcado que la referencia no genera
    ninguna instrucción. En la sentencia duplicada en ambas ramas el volcado puede ser el de planificación posterior
-   al reparto (`-dR`): muestra la sentencia replicada en el bloque de cada rama y, con una sola copia tras la unión,
+   al reparto (`-dR`): muestra la sentencia replicada en el bloque de cada camino y, con una sola copia tras la unión,
    el planificador moviendo otra instrucción por encima de ella.
 2. El comentario de cabecera de la función dice que la referencia (o la envoltura) no genera código, da la causa
    medida y termina el párrafo con la oración fija «La forma del fuente original que producia este reparto se
@@ -632,10 +632,10 @@ de izado que el original. Hay cinco formas:
    cambia: en una envoltura el cuerpo es código real de la función, sin `break` ni `continue` que cambien de
    destino y sin sentencias añadidas solo para que haya algo dentro.
 
-**Sentencia duplicada en ambas ramas.** Se admite cuando el original tiene un valor como local de cada rama y las
-colas de las ramas son idénticas, de modo que el volcado muestra el valor como pseudo local de cada bloque y el
+**Sentencia duplicada en ambas ramas.** Se admite con dos o más caminos que acaban en la misma cola (las ramas de un `if`/`else` o varios saltos a una etiqueta común) cuando el original tiene un valor como local de cada camino y las
+colas de los caminos son idénticas, de modo que el volcado muestra el valor como pseudo local de cada bloque y el
 ensamblador original una sola cola compartida. Además de las tres condiciones: (a) la sentencia replicada es código
-real de la función, escrito tal cual en cada rama, con una variable propia por rama solo si el reparto la exige y sin
+real de la función, escrito tal cual en cada camino, con una variable propia por camino solo si el reparto la exige y sin
 valores ni almacenes nuevos; (b) cada sentencia replicada lleva en su línea anterior el comentario de una línea
 `/* Sentencia replicada: es la misma que la de las otras ramas. */`, que es el que localiza la prueba; (c) la
 cabecera dice qué colas fusiona el original, qué pseudos cambian de bloque o de orden por la variable de cada rama y
