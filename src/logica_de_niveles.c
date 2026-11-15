@@ -59,8 +59,9 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 6455 con la configuracion versionada (g = 8 del archivo; ejes 476 de operando, 2 reordenadas,
-   541 insertadas o borradas). La logica coincide. Residuo medido por tramos: (1) reparto de registros de los temporales
+/* Pendiente: puntuacion 4685 con la configuracion versionada (g = 8 del archivo; ejes 477 de operando, 2 reordenadas, 515
+   insertadas o borradas). La logica coincide. La prueba de la espera (0x800255D0..) coincide en el orden de las operaciones con el producto calculado
+   antes de la prueba de `D_8006966A`; solo difiere el registro del producto (`s0` en el original). Residuo medido por tramos: (1) reparto de registros de los temporales
    v0/v1/a0 y de los punteros s0-s2 en las consultas de terreno (el original deja &sc->tmp_v en s0, &sc->res en s1 y
    &sc->punto en s2; este C los reparte en otro orden; los volcados de cc1 asignan 263 pseudos y no se cerro cual decide
    el orden); (2) el bloque de la base de la caja (0x80025544) emite el producto 0x46 * 0x46 como multiplicacion de un
@@ -1597,12 +1598,15 @@ caja_defecto:
         }
     }
     pos = &o->param.trans;
-    if ((o->flags14 & 0x01000000) && !((u8)D_8006966A & 2) && (s16)((u16)o->trabajo.ultimo - (u16)o->trabajo.cuadro) * o->trabajo.espera < 9) {
-        D_800694E0 = 0;
-        D_800694E1 = 0;
-        D_800694E8 = 0;
-        func_8003AA7C(2, 0x200);
-        pos = &o->param.trans;
+    if (o->flags14 & 0x01000000) {
+        vs = (s16)((u16)o->trabajo.ultimo - (u16)o->trabajo.cuadro) * o->trabajo.espera;
+        if (!((u8)D_8006966A & 2) && (s16)vs < 9) {
+            D_800694E0 = 0;
+            D_800694E1 = 0;
+            D_800694E8 = 0;
+            func_8003AA7C(2, 0x200);
+            pos = &o->param.trans;
+        }
     }
     GEO_CARGAR_W(pos);
     GEO_GUARDAR_W_T1(&sc->punto);
