@@ -930,19 +930,22 @@ void func_80038E84(s32 idx, s32 paso)
  * de estado se crean o se apagan segun sus banderas. Cierra siempre limpiando D_80069554.
  *
  * La envoltura do/while (0) del medidor del grupo 0xB y del contador de golpes no genera codigo:
- * pondera por un nivel mas las referencias que contiene, y el volcado de cc1 (.lreg y .greg) lo
- * muestra. `valor` (la lectura de un byte de la barra) pasa de 11 a 14 usos ponderados sobre 22
- * instrucciones, la base 0x80010000 de 7 a 12 sobre 18, y la lectura de D_80069514 con su extension
- * de 3 a 6. Las prioridades floor_log2(R) * R / L quedan en 3 * 14 / 22 = 1,909 para `valor` frente
- * a 3 * 12 / 18 = 2,0 de la base, de modo que `valor` se asigna despues y toma a0, como en el original
- * (lbu a0 sobre D_80010040 mas el indice). El margen de prioridad de `valor` frente al otro pseudo en
- * disputa (20 usos sobre 42 instrucciones: 4 * 20 / 42 = 1,905) es de solo 0,004 (1,909 frente a
- * 1,905), asi que el reparto es fragil: un uso mas o menos de `valor`, o dos instrucciones de vida,
- * invierten el orden entre ambos. Sin la envoltura `valor` pasa por delante (3 * 11 / 22 = 1,5
- * frente a 2 * 7 / 18 = 0,78) y cae en v1; lo mismo ocurre si la actualizacion del valor mostrado va
- * antes de preparar `nuevo` (la vida de `valor` baja de 22 a 20 instrucciones: 3 * 14 / 20 = 2,1). El
- * resto de pseudos de la region tambien cambia de orden en el volcado; solo se comprobo en el
- * ensamblador el registro de `valor`. La forma del fuente original que producia este reparto se
+ * pondera por un nivel mas las referencias que contiene, y el volcado de cc1 del estado final (.lreg
+ * y .greg), con y sin la envoltura, lo muestra. Las prioridades son floor_log2(R) * R / L. `valor` (la
+ * lectura de un byte de la barra, pseudo 83) pasa de 11 a 14 usos sobre 22 instrucciones de vida: de
+ * 3 * 11 / 22 = 1,5 a 3 * 14 / 22 = 1,909. Su contendiente por el registro es el pseudo 181, el byte
+ * extendido que se compara con `beq` contra el pseudo 180 (insn 381 de .cse; se supone, sin verificar,
+ * que es la comparacion de la relectura de la barra 7 o la del contador de golpes), que pasa de 3 a 6
+ * usos sobre 6 instrucciones: de 1 * 3 / 6 = 0,5 a 2 * 6 / 6 = 2,0. Con la envoltura el pseudo 181 va
+ * delante (2,0 frente a 1,909) y toma v1, de modo que `valor` se asigna despues y toma a0, como en el
+ * original (lbu a0 sobre D_80010040 mas el indice). Sin la envoltura `valor` va delante (1,5 frente a
+ * 0,5), toma v1 y el pseudo 181 cae en a0: la cifra sube de 1300 a 1520. Las prioridades de la base
+ * 0x80010000 y del otro pseudo que se citaban antes (12 sobre 18 y 20 sobre 42) ya no aparecen en el
+ * volcado final: el puntero propio por barra las cambio. El margen de 0,09 entre ambos pseudos (2,0
+ * frente a 1,909) es corto: un uso mas de `valor` (3 * 15 / 22 = 2,05) o dos instrucciones menos de
+ * vida (3 * 14 / 20 = 2,1) lo invierten (por calculo, sin remedir: con la actualizacion del valor
+ * mostrado antes de preparar `nuevo` la vida baja de 22 a 20 instrucciones). El resto de pseudos de la region tambien cambia de orden en el volcado; solo se comprobo en
+ * el ensamblador el registro de `valor`. La forma del fuente original que producia este reparto se
  * desconoce.
  *
  * Los campos del estado principal se leen por la vista EstadoPrincipal (arranque.h) con un
