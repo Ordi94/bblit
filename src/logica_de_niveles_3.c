@@ -3256,6 +3256,7 @@ void LogicaBloqueEmpujable(Objeto* o)
     TrabajoBloque* t;
     NodoDisparador* n;
     MATRIX* m;
+    MATRIX* m2;
     void* area;
     s32 margen;
     s32 cuarto;
@@ -3302,9 +3303,9 @@ void LogicaBloqueEmpujable(Objeto* o)
             goto sin_empuje;
         }
     }
-    m = &t->m;
+    m2 = &t->m;
     margen = (s16)o->radio >> 1;
-    RotMatrix(&o->param.giro.rotate, m);
+    RotMatrix(&o->param.giro.rotate, m2);
     cuarto = margen >> 1;
     GEO_CARGAR_WH(&o->min);
     GEO_GUARDAR_WH(&t->mnx);
@@ -3314,8 +3315,8 @@ void LogicaBloqueEmpujable(Objeto* o)
     t->mnz -= cuarto;
     t->mxx += cuarto;
     t->mxz += cuarto;
-    ApplyMatrixSV(m, (SVECTOR*)&t->mnx, (SVECTOR*)&t->mnx);
-    ApplyMatrixSV(m, (SVECTOR*)&t->mxx, (SVECTOR*)&t->mxx);
+    ApplyMatrixSV(m2, (SVECTOR*)&t->mnx, (SVECTOR*)&t->mnx);
+    ApplyMatrixSV(m2, (SVECTOR*)&t->mxx, (SVECTOR*)&t->mxx);
     t->dz = o->empuje.vz;
     t->dy = 0;
     t->dx = o->empuje.vx;
