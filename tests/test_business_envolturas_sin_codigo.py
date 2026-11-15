@@ -39,6 +39,10 @@ _CIERRE_SOLO = re.compile(r"^\s*\}\s*$")
 _DECLARACION_CON_VALOR = re.compile(r"^\s+((?:[A-Za-z_]\w*[\s\*]+)+?)(\w+)\s*=\s*[^=].*;\s*$")
 _PALABRAS_QUE_NO_DECLARAN = {"return", "else", "goto", "case", "sizeof", "do", "while", "if", "for", "switch"}
 _COMENTARIO_REPLICADA = re.compile(rf"^\s*/\*\s*{re.escape(COMENTARIO_REPLICADA)}\s*\*/\s*$")
+_CABEZA_CON_TIPO = re.compile(
+    r"^(?:[A-Za-z_]\w*[ \t]*\*+[ \t]*|[A-Za-z_]\w*[ \t]+)+([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$"
+)
+_CABEZA_SIN_TIPO = re.compile(r"^\**\s*([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$")
 _TOKEN_DE_SENTENCIA = re.compile(
     r"(?P<acceso>->|\.)\s*(?P<campo>[A-Za-z_]\w*)"
     r"|(?P<literal>\d\w*)"
@@ -207,31 +211,105 @@ def _valor_del_literal(texto: str) -> str:
     return f"#{valor}"
 
 
-def _esqueleto(sentencia: str) -> str:
-    """Devuelve la sentencia con las variables como ``I`` y todo lo demas por su valor o su nombre.
+def _dividir_en_comas(texto: str) -> list[str]:
+    """Parte el texto por las comas que no estan dentro de parentesis, corchetes ni llaves."""
+    partes: list[str] = []
+    profundidad = 0
+    inicio = 0
+    for indice, caracter in enumerate(texto):
+        if caracter in "([{":
+            profundidad += 1
+        elif caracter in ")]}":
+            profundidad -= 1
+        elif caracter == "," and profundidad == 0:
+            partes.append(texto[inicio:indice])
+            inicio = indice + 1
+    partes.append(texto[inicio:])
+    return partes
 
-    Solo la variable propia de cada rama puede cambiar entre ramas, de modo que unicamente se neutralizan los
-    identificadores que son variables (``I``). Se conservan literalmente el nombre invocado (identificador
-    seguido de ``(``: una macro o una funcion) y el nombre de campo (identificador tras ``.`` o ``->``): una
-    macro o un campo distinto es otra sentencia aunque tenga la misma forma. Los literales numericos tampoco
-    son nombres: se comparan por su valor (``0x10`` y ``16`` coinciden; el sufijo no cuenta). El patron
-    consume cada palabra entera, de modo que las cifras de ``p1`` pertenecen al identificador y los digitos
-    de ``0x2E`` al literal.
+
+def _nombre_de_declarador(fragmento: str, con_tipo: bool) -> str | None:
+    """Devuelve el nombre declarado en un fragmento ``tipo nombre`` o ``nombre``, sin inicializador.
+
+    ``con_tipo`` exige el tipo delante (primer declarador de una linea o un parametro); sin el, se admiten
+    los declaradores siguientes de ``s32 a, *b, c[3];``.
+    """
+    cabeza = fragmento.split("=", 1)[0].strip()
+    patron = _CABEZA_CON_TIPO if con_tipo else _CABEZA_SIN_TIPO
+    coincidencia = patron.match(cabeza)
+    return coincidencia.group(1) if coincidencia is not None else None
+
+
+def _locales_de_funcion(lineas: list[str], inicio: int, cierre: int) -> frozenset[str]:
+    """Devuelve los nombres de los parametros y de las variables declaradas en la funcion.
+
+    Contexto:
+        Lo usa ``_incumplimientos_de_replicadas``: la regla solo deja variar entre las sentencias replicadas
+        el nombre de la variable propia de cada camino, y esa variable es un parametro o una local de la
+        funcion que contiene la sentencia. Cualquier otro identificador (un simbolo global ``D_XXXXXXXX``, una
+        constante simbolica, un tipo) es parte de la sentencia y no puede cambiar.
+
+    Se reconocen las declaraciones de varios nombres en una linea (``s32 a, b;``), los punteros
+    (``u8 *p;``), los arreglos (``s16 v[3];``), las que llevan inicializador y las de los bloques internos:
+    una declaracion en un bloque anidado se trata como de toda la funcion, que es lo conservador porque solo
+    amplia el conjunto de nombres que pueden variar a los que la funcion declara de verdad.
+
+    Args:
+        lineas (list[str]): Lineas del archivo, con las macros vaciadas.
+        inicio (int): Indice de la linea de la definicion (sus parametros cuentan).
+        cierre (int): Indice de la llave que cierra la funcion.
+
+    Returns:
+        frozenset[str]: Nombres de parametros y locales; vacio si la funcion no declara ninguno.
+
+    Ejemplo:
+        _locales_de_funcion(["s32 f(s32 a)", "{", "    s32 b, *c;", "}"], 0, 3) == {"a", "b", "c"}
+    """
+    definicion = lineas[inicio]
+    parametros = definicion[definicion.index("(") + 1 : definicion.rindex(")")]
+    nombres = [_nombre_de_declarador(parametro, con_tipo=True) for parametro in _dividir_en_comas(parametros)]
+    for linea in lineas[inicio + 1 : cierre]:
+        texto = linea.strip()
+        if not texto.endswith(";") or texto.split(None, 1)[0] in _PALABRAS_QUE_NO_DECLARAN:
+            continue
+        declaradores = _dividir_en_comas(texto[:-1])
+        primero = _nombre_de_declarador(declaradores[0], con_tipo=True)
+        if primero is None:
+            continue
+        nombres.append(primero)
+        nombres.extend(_nombre_de_declarador(declarador, con_tipo=False) for declarador in declaradores[1:])
+    return frozenset(nombre for nombre in nombres if nombre is not None)
+
+
+def _esqueleto(sentencia: str, locales: frozenset[str]) -> str:
+    """Devuelve la sentencia con las locales como ``I`` y todo lo demas por su valor o su nombre.
+
+    Solo la variable propia de cada rama puede cambiar entre ramas (condicion (c) de la sentencia duplicada),
+    de modo que unicamente se neutralizan los identificadores que son parametros o locales de la funcion
+    (``I``). Se conserva literalmente todo lo demas: los simbolos globales (``D_80069668``), las constantes
+    simbolicas sin parentesis, los tipos de una conversion (``(s16)x``), el nombre invocado (identificador
+    seguido de ``(``: una macro o una funcion) y el nombre de campo (identificador tras ``.`` o ``->``, aunque
+    una local se llame igual): un global, una constante, un tipo, una macro o un campo distinto es otra
+    sentencia aunque tenga la misma forma. Los literales numericos tampoco son nombres: se comparan por su
+    valor (``0x10`` y ``16`` coinciden; el sufijo no cuenta). El patron consume cada palabra entera, de modo
+    que las cifras de ``p1`` pertenecen al identificador y los digitos de ``0x2E`` al literal.
 
     Contexto:
         Lo usa ``_incumplimientos_de_replicadas`` para decidir que sentencias marcadas como replicadas son la
-        misma.
+        misma; las locales las calcula ``_locales_de_funcion``.
 
     Args:
         sentencia (str): Sentencia en una linea, con sus espacios originales.
+        locales (frozenset[str]): Parametros y locales de la funcion que contiene la sentencia.
 
     Returns:
-        str: Sentencia con espacios normalizados, variables como ``I``, nombres invocados y de campo tal cual
-        y literales como ``#valor``.
+        str: Sentencia con espacios normalizados, locales como ``I``, nombres invocados, de campo, globales y
+        constantes tal cual y literales como ``#valor``.
 
     Ejemplo:
-        _esqueleto("o->x = p | 0x10;") == _esqueleto("o->x = q | 16u;")
-        _esqueleto("ALTO(o) = n;") != _esqueleto("BAJO(o) = n;")
+        locales = frozenset({"p", "q"})
+        _esqueleto("o->x = p | 0x10;", locales) == _esqueleto("o->x = q | 16u;", locales)
+        _esqueleto("o->x = D_80069668;", locales) != _esqueleto("o->x = D_80069680;", locales)
     """
 
     def _sustituir(coincidencia: re.Match[str]) -> str:
@@ -240,9 +318,10 @@ def _esqueleto(sentencia: str) -> str:
         literal = coincidencia.group("literal")
         if literal is not None:
             return _valor_del_literal(literal)
+        nombre = coincidencia.group("nombre")
         if coincidencia.group("llamada") is not None:
-            return coincidencia.group("nombre") + "("
-        return "I"
+            return nombre + "("
+        return "I" if nombre in locales else nombre
 
     return _TOKEN_DE_SENTENCIA.sub(_sustituir, " ".join(sentencia.split()))
 
@@ -251,7 +330,8 @@ def _incumplimientos_de_replicadas(texto: str) -> list[str]:
     """Lista las marcas de sentencia replicada que no tienen pareja con su misma sentencia.
 
     Cada marca debe preceder a una sentencia, y esa sentencia debe tener en la misma funcion al menos otra
-    marcada con el mismo esqueleto (variables neutralizadas; macro invocada, campos y literales por su valor).
+    marcada con el mismo esqueleto (locales y parametros de la funcion neutralizados; globales, constantes,
+    tipos, macro invocada, campos y literales por su valor).
     Las marcas se agrupan por esqueleto y no todas contra todas: una funcion puede tener varias parejas
     distintas (un almacen en cada rama de un ``if``/``else`` y otro en cada rama de otro), pero un grupo de
     una sola sentencia es una marca huerfana y se rechaza. Limite aceptado: una funcion cuyas parejas se
@@ -272,6 +352,9 @@ def _incumplimientos_de_replicadas(texto: str) -> list[str]:
         _incumplimientos_de_replicadas(Path("src/logica_de_niveles_3.c").read_text(encoding="utf-8")) == []
     """
     lineas = _lineas_de_codigo(texto)
+    locales_por_funcion = {
+        funcion: _locales_de_funcion(lineas, inicio, cierre) for funcion, inicio, cierre in _cuerpos(lineas)
+    }
     sentencias: dict[str, list[str]] = {}
     for indice, linea in enumerate(lineas):
         if not _COMENTARIO_REPLICADA.match(linea):
@@ -281,12 +364,13 @@ def _incumplimientos_de_replicadas(texto: str) -> list[str]:
         sentencias.setdefault(funcion, []).append(siguiente.strip())
     fallos: list[str] = []
     for funcion, marcadas in sorted(sentencias.items()):
+        locales = locales_por_funcion.get(funcion, frozenset())
         validas = [sentencia for sentencia in marcadas if sentencia.endswith(";")]
         if len(validas) != len(marcadas):
             fallos.append(f"{funcion}: la marca de sentencia replicada no precede a una sentencia")
-        grupos = Counter(_esqueleto(sentencia) for sentencia in validas)
+        grupos = Counter(_esqueleto(sentencia, locales) for sentencia in validas)
         for sentencia in validas:
-            if grupos[_esqueleto(sentencia)] < 2:
+            if grupos[_esqueleto(sentencia, locales)] < 2:
                 huerfana = f"la sentencia replicada `{sentencia}` no tiene pareja de igual forma"
                 fallos.append(f"{funcion}: {huerfana}")
     return fallos
@@ -358,8 +442,12 @@ def _tabla_del_documento() -> dict[tuple[str, str], tuple[str, int]]:
     return filas
 
 
-def _texto_con(cuerpo: str) -> str:
-    return f"/* cabecera */\ns32 func_800000A0(s32 a)\n{{\n{cuerpo}    return a;\n}}\n"
+DECLARACIONES_BASE = "    s32 b, c, d, p, q, x2E, y17, mascara, m, num, sentido;\n    Obj *o;\n"
+LOCALES_BASE = frozenset({"a", "b", "c", "d", "p", "q", "x2E", "y17", "mascara", "m", "num", "sentido", "o"})
+
+
+def _texto_con(cuerpo: str, declaraciones: str = DECLARACIONES_BASE) -> str:
+    return f"/* cabecera */\ns32 func_800000A0(s32 a)\n{{\n{declaraciones}{cuerpo}    return a;\n}}\n"
 
 
 def test_el_recuento_encuentra_las_envolturas_del_codigo_y_no_las_de_macros() -> None:
@@ -476,16 +564,16 @@ def test_un_literal_octal_se_compara_por_su_valor() -> None:
 
 def test_un_identificador_con_digitos_sigue_siendo_un_identificador_y_no_un_literal() -> None:
     assert _incumplimientos_de_replicadas(_texto_de_dos_ramas("x2E", "y17")) == []
-    assert _esqueleto("b = p1 | 0x2E;") == "I = I | #46;"
+    assert _esqueleto("b = p1 | 0x2E;", LOCALES_BASE | {"p1"}) == "I = I | #46;"
 
 
-def test_el_esqueleto_normaliza_los_literales_a_su_valor_y_los_identificadores_a_uno_solo() -> None:
-    assert _esqueleto("b = p | 0x2E000000;") != _esqueleto("b = p | 0x4C000000;")
-    assert _esqueleto("b = p | 0x10;") == _esqueleto("b  =  q | 16u;")
+def test_el_esqueleto_normaliza_los_literales_a_su_valor_y_las_locales_a_una_sola() -> None:
+    assert _esqueleto("b = p | 0x2E000000;", LOCALES_BASE) != _esqueleto("b = p | 0x4C000000;", LOCALES_BASE)
+    assert _esqueleto("b = p | 0x10;", LOCALES_BASE) == _esqueleto("b  =  q | 16u;", LOCALES_BASE)
 
 
 def test_un_literal_que_no_se_puede_interpretar_se_compara_por_su_texto() -> None:
-    assert _esqueleto("b = 0xZZ;") == "I = #0xZZ;"
+    assert _esqueleto("b = 0xZZ;", LOCALES_BASE) == "I = #0xZZ;"
 
 
 def test_una_sola_marca_de_sentencia_replicada_se_rechaza() -> None:
@@ -573,8 +661,9 @@ def test_nombres_de_campo_distintos_tras_la_flecha_se_rechazan() -> None:
 
 
 def test_nombres_de_campo_distintos_tras_el_punto_se_rechazan() -> None:
-    assert _esqueleto("v.vx = p;") != _esqueleto("v.vy = p;")
-    assert _esqueleto("v.vx = p;") == _esqueleto("w.vx = q;")
+    locales = LOCALES_BASE | {"v", "w"}
+    assert _esqueleto("v.vx = p;", locales) != _esqueleto("v.vy = p;", locales)
+    assert _esqueleto("v.vx = p;", locales) == _esqueleto("w.vx = q;", locales)
 
 
 def test_la_variable_propia_de_cada_rama_puede_cambiar_aunque_haya_campos_y_llamadas() -> None:
@@ -583,12 +672,13 @@ def test_la_variable_propia_de_cada_rama_puede_cambiar_aunque_haya_campos_y_llam
 
 
 def test_una_funcion_o_macro_invocada_distinta_se_rechaza() -> None:
-    assert _esqueleto("f(a);") != _esqueleto("g(a);")
-    assert _esqueleto("f(a);") == _esqueleto("f(b);")
+    assert _esqueleto("f(a);", LOCALES_BASE) != _esqueleto("g(a);", LOCALES_BASE)
+    assert _esqueleto("f(a);", LOCALES_BASE) == _esqueleto("f(b);", LOCALES_BASE)
 
 
-def _texto_de_dos_ramas_con(primera: str, segunda: str) -> str:
-    return _texto_con("    if (a) {\n" + _marcada(primera) + "    } else {\n" + _marcada(segunda) + "    }\n")
+def _texto_de_dos_ramas_con(primera: str, segunda: str, declaraciones: str = DECLARACIONES_BASE) -> str:
+    cuerpo = "    if (a) {\n" + _marcada(primera) + "    } else {\n" + _marcada(segunda) + "    }\n"
+    return _texto_con(cuerpo, declaraciones)
 
 
 def _texto_de_tres_caminos(primero: list[str], segundo: list[str], tercero: list[str]) -> str:
@@ -654,6 +744,207 @@ def test_dos_sentencias_por_camino_en_tres_caminos_cuentan_seis_y_se_aceptan() -
     texto = _texto_de_tres_caminos(pareja, pareja, pareja)
     assert _incumplimientos_de_replicadas(texto) == []
     assert _buscar_referencias(texto) == {("func_800000A0", SENTENCIA_DUPLICADA): 6}
+
+
+GLOBAL_A = "D_80069668"
+GLOBAL_B = "D_80069680"
+
+
+def test_dos_globales_distintas_en_el_lugar_que_varia_se_rechazan() -> None:
+    """Dos caminos que leen globales distintas no son la misma sentencia y ninguno tiene pareja.
+
+    Regla:
+        Condicion (c): solo cambia entre caminos el nombre de la variable propia de cada uno. Un simbolo
+        global es otro dato de la memoria, no una variable del camino: leer ``D_80069668`` en uno y
+        ``D_80069680`` en otro es una divergencia semantica y las dos marcas quedan huerfanas.
+
+    Ejemplo:
+        ``o->x = D_80069668;`` y ``o->x = D_80069680;`` dan dos incumplimientos.
+    """
+    primera = f"o->x = {GLOBAL_A};"
+    segunda = f"o->x = {GLOBAL_B};"
+    texto = _texto_de_dos_ramas_con(primera, segunda)
+    assert _incumplimientos_de_replicadas(texto) == [_sin_pareja(primera), _sin_pareja(segunda)]
+
+
+def test_la_misma_global_en_los_dos_caminos_se_acepta() -> None:
+    """La misma global escrita igual en cada camino es la misma sentencia y forma pareja.
+
+    Regla:
+        Lo que no es una variable propia del camino se conserva literal en el esqueleto: si coincide, la
+        sentencia es identica en los dos caminos y la condicion (c) se cumple.
+
+    Ejemplo:
+        ``o->x = D_80069668;`` en ambas ramas no produce incumplimientos.
+    """
+    sentencia = f"o->x = {GLOBAL_A};"
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas_con(sentencia, sentencia)) == []
+
+
+def test_dos_locales_distintas_declaradas_en_la_funcion_se_aceptan() -> None:
+    """Dos locales declaradas en la funcion son la variable propia de cada camino y pueden cambiar.
+
+    Regla:
+        Es el caso que regula la condicion (c): el mismo almacen con la variable de cada camino.
+
+    Ejemplo:
+        ``o->x = desplaza;`` y ``o->x = desplaza2;`` con ambas declaradas no producen incumplimientos.
+    """
+    declaraciones = "    s32 desplaza, desplaza2;\n    Obj *o;\n"
+    texto = _texto_de_dos_ramas_con("o->x = desplaza;", "o->x = desplaza2;", declaraciones)
+    assert _incumplimientos_de_replicadas(texto) == []
+
+
+def test_un_parametro_frente_a_una_local_se_acepta_porque_ambos_son_variables_de_la_funcion() -> None:
+    """Un parametro y una local son variables propias de la funcion: cada camino puede usar la suya.
+
+    Regla:
+        Condicion (c): lo que se prohibe es que cambie un dato ajeno a la funcion. Un parametro es una
+        variable de la funcion igual que una local y el compilador lo reparte en un registro como a ella, de
+        modo que un camino puede leer el parametro y otro la copia local sin cambiar de sentencia.
+
+    Ejemplo:
+        ``o->x = a;`` (``a`` es parametro) y ``o->x = p;`` (``p`` es local) no producen incumplimientos.
+    """
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas_con("o->x = a;", "o->x = p;")) == []
+
+
+def test_una_local_frente_a_una_global_se_rechaza() -> None:
+    """Una local en un camino y una global en el otro no son la misma sentencia.
+
+    Regla:
+        Solo el nombre de una variable de la funcion puede variar: sustituirla por un simbolo global cambia
+        de donde sale el valor, y las dos marcas quedan huerfanas.
+
+    Ejemplo:
+        ``o->x = p;`` y ``o->x = D_80069668;`` dan dos incumplimientos.
+    """
+    local = "o->x = p;"
+    global_ = f"o->x = {GLOBAL_A};"
+    texto = _texto_de_dos_ramas_con(local, global_)
+    assert _incumplimientos_de_replicadas(texto) == [_sin_pareja(local), _sin_pareja(global_)]
+
+
+def test_dos_constantes_simbolicas_distintas_sin_parentesis_se_rechazan() -> None:
+    """Una macro en mayusculas sin parentesis es una constante: dos distintas son valores distintos.
+
+    Regla:
+        Las constantes simbolicas son invariantes entre caminos (condicion (c)); solo la misma constante en
+        los dos caminos forma pareja.
+
+    Ejemplo:
+        ``o->x = LIMITE_ALTO;`` frente a ``o->x = LIMITE_BAJO;`` da dos incumplimientos; con la misma
+        constante en ambas, ninguno.
+    """
+    alta = "o->x = LIMITE_ALTO;"
+    baja = "o->x = LIMITE_BAJO;"
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas_con(alta, baja)) == [
+        _sin_pareja(alta),
+        _sin_pareja(baja),
+    ]
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas_con(alta, alta)) == []
+
+
+def test_el_tipo_de_una_conversion_es_invariante_entre_caminos() -> None:
+    """El tipo de una conversion forma parte de la sentencia: ``(s16)p`` y ``(u16)q`` son otra sentencia.
+
+    Regla:
+        Un tipo no es una variable de la funcion; cambiarlo cambia la extension del valor y por tanto la
+        instruccion. Con el mismo tipo y otra local, la pareja se acepta.
+
+    Ejemplo:
+        ``o->x = (s16)p;`` y ``o->x = (u16)q;`` dan dos incumplimientos; ``(s16)p`` y ``(s16)q``, ninguno.
+    """
+    con_signo = "o->x = (s16)p;"
+    sin_signo = "o->x = (u16)q;"
+    assert len(_incumplimientos_de_replicadas(_texto_de_dos_ramas_con(con_signo, sin_signo))) == 2
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas_con(con_signo, "o->x = (s16)q;")) == []
+
+
+def test_una_local_que_se_llama_como_un_campo_no_neutraliza_el_campo() -> None:
+    """El nombre tras ``->`` es un campo aunque una local se llame igual: sigue siendo invariante.
+
+    Regla:
+        Condicion (c): un campo distinto es otra sentencia. Que la funcion declare una local ``x`` no hace
+        variable al campo ``x``; solo la lectura suelta de ``x`` es la variable.
+
+    Ejemplo:
+        ``o->x = x;`` es pareja de ``o->x = y;`` pero no de ``o->y = x;``.
+    """
+    declaraciones = "    s32 x, y;\n    Obj *o;\n"
+    assert _esqueleto("o->x = x;", frozenset({"o", "x", "y"})) == "I->x = I;"
+    misma_forma = _texto_de_dos_ramas_con("o->x = x;", "o->x = y;", declaraciones)
+    assert _incumplimientos_de_replicadas(misma_forma) == []
+    texto = _texto_de_dos_ramas_con("o->x = x;", "o->y = x;", declaraciones)
+    assert _incumplimientos_de_replicadas(texto) == [_sin_pareja("o->x = x;"), _sin_pareja("o->y = x;")]
+
+
+def test_las_locales_declaradas_en_el_texto_de_otra_funcion_no_cuentan() -> None:
+    """Una variable declarada en otra funcion es un simbolo ajeno para la funcion que la nombra.
+
+    Regla:
+        Las locales se leen de la funcion que contiene la sentencia: un nombre que otra funcion declara no
+        es variable de esta, y dos de ellos distintos son globales distintas.
+
+    Ejemplo:
+        ``g1`` y ``g2`` locales de la primera funcion no pueden variar en la segunda: dos incumplimientos.
+    """
+    primera = "s32 func_800000B0(s32 a)\n{\n    s32 g1, g2;\n    return a;\n}\n"
+    segunda = _texto_de_dos_ramas_con("o->x = g1;", "o->x = g2;")
+    texto = primera + segunda
+    assert _incumplimientos_de_replicadas(texto) == [_sin_pareja("o->x = g1;"), _sin_pareja("o->x = g2;")]
+
+
+def test_las_locales_se_reconocen_en_declaraciones_multiples_punteros_arreglos_y_bloques_internos() -> None:
+    """Parametros y locales se reconocen en todas las formas de declaracion de C89 de este codigo.
+
+    Regla:
+        Entre las sentencias replicadas puede variar cualquier variable de la funcion: la declaracion de
+        varios nombres en una linea, los punteros, los arreglos, los inicializadores, las de un bloque
+        interno y los parametros. Lo que no es una declaracion (``return n;``, una asignacion, una llamada) no
+        aporta nombres.
+
+    Ejemplo:
+        ``s32 u, v2;`` aporta ``u`` y ``v2``; ``u8 *w;``, ``w``; ``s16 arr[3];``, ``arr``.
+    """
+    lineas = [
+        "s32 f(Obj *o, u8 v[4], s32 n)",
+        "{",
+        "    s32 u, v2;",
+        "    u8 *w;",
+        "    s16 arr[3];",
+        "    s32 *pp, qq = g(1, 2), zz[2];",
+        "    unsigned char **ptr;",
+        "    if (n) {",
+        "        s32 interna;",
+        "        o->x = u;",
+        "        g(n);",
+        "        interna = w[0];",
+        "    }",
+        "    return n;",
+        "}",
+    ]
+    esperadas = {"o", "v", "n", "u", "v2", "w", "arr", "pp", "qq", "zz", "ptr", "interna"}
+    assert _locales_de_funcion(lineas, 0, len(lineas) - 1) == esperadas
+    assert _locales_de_funcion(["s32 g(void)", "{", "    return 0;", "}"], 0, 3) == frozenset()
+
+
+def test_las_locales_de_declaracion_multiple_y_puntero_pueden_variar_entre_caminos() -> None:
+    """Las variables de ``s32 u, v;`` y de ``u8 *w;`` son las de cada camino y se aceptan como tales.
+
+    Regla:
+        Condicion (c) con las formas de declaracion habituales: la segunda variable de una declaracion
+        multiple y un puntero son locales de la funcion como cualquier otra.
+
+    Ejemplo:
+        ``o->x = v;`` frente a ``o->x = u;`` y ``w[0] = 1;`` frente a ``p[0] = 1;`` no producen
+        incumplimientos.
+    """
+    declaraciones = "    s32 u, v;\n    u8 *w, *z;\n    Obj *o;\n"
+    de_enteros = _texto_de_dos_ramas_con("o->x = u;", "o->x = v;", declaraciones)
+    de_punteros = _texto_de_dos_ramas_con("w[0] = 1;", "z[0] = 1;", declaraciones)
+    assert _incumplimientos_de_replicadas(de_enteros) == []
+    assert _incumplimientos_de_replicadas(de_punteros) == []
 
 
 def test_una_marca_que_no_precede_a_una_sentencia_se_rechaza() -> None:
