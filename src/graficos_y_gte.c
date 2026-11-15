@@ -569,18 +569,21 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 195 con la configuracion versionada (g = 8 del archivo; ejes 22 de operando, 0
- * reordenadas, 17 insertadas o borradas). Mismo flujo, mismas cadenas compartidas y misma cola de salida
- * que el ensamblador salvo dos puntos del camino de la esquina positiva en x (0x4b4 a 0x4e8): (1) el
- * original carga `lw a2,0x94(s1)` y `lw a1,0xc0(s1)` (objeto en a2, punto en a1) y aqui salen
- * intercambiados. Medido en -dl y -dg: la local `objeto_der` (pseudo 86) y el punto (pseudo 345) tienen la
- * misma prioridad, 6 usos ponderados sobre 9 (floor_log2(6) * 6 / 9 = 1,333), y a igual prioridad toma el
- * primer registro el de menor numero, que es la local. Sin la local el reparto sale como el original, pero
- * los caminos de 0x44c y 0x4b4 se funden por completo y el original no los funde. (2) Por la fusion
- * parcial que queda, el camino de 0x44c entra en el de 0x4b4 por `j 0x1f14` con el `addu` en el hueco; el
- * original termina cada uno con su propio `addu ; j 0x5a4` y el `slt` en el hueco. Se supone, sin
- * verificar, que el original no funde esos dos caminos porque en el momento de fusionar colas no son
- * identicos; no se ha encontrado la forma del fuente que lo produzca.
+ * Pendiente: puntuacion 70 con la configuracion versionada (g = 8 del archivo; ejes 22 de operando, 0
+ * reordenadas, 22 insertadas o borradas). Mismo flujo, mismas cadenas compartidas, misma cola de salida y
+ * mismas instrucciones que el ensamblador; difiere solo en el reparto de registros de tres puntos del bucle
+ * de puntos: (1) el resultado de la ultima comparacion (`toca`) queda en a0 y el original lo deja en v0
+ * entre el `slt` y el `bnez` (0x478 y 0x480, 0x5a0 y 0x5a4). Medido en -dS y -dg: el compilador usa la propia
+ * variable como destino de la suma y de la carga del punto antes del `slt` (insns 629, 638, 772 y 783 de -dS),
+ * de modo que su vida cruza las cargas de los otros operandos y choca con v0 y v1; es el pseudo de mayor
+ * prioridad (88: 26 usos sobre 11, 9,455), se asigna el primero y toma el primer registro libre, a0.
+ * (2) En el camino de 0x4b4 el original carga el radio en a0 y el punto en a1, y aqui salen al reves; el
+ * punto local `punto_der` (pseudo 86, 6 usos sobre 9, 1,333) se asigna antes que el radio y toma a0.
+ * (3) La escritura de la ultima comparacion con el punto delante (`punto > limite`) hace que los caminos de
+ * 0x44c y 0x4b4 no se fundan; con la suma delante, el orden de las cargas y de los registros de los dos
+ * caminos coincide y el compilador los funde por completo, que el original no hace. Las causas (1) y (2) se
+ * deben a esa forma: se supone, sin verificar, que el original no funde esos dos caminos por otra razon que
+ * deja sus registros iguales; no se ha encontrado la forma del fuente que lo produzca.
  *
  * Estructura medida del original en los seis caminos de clasificacion del bucle (0x44c, 0x498, 0x4b4, 0x500,
  * 0x558 y 0x5b4, en el orden del fuente): los caminos de 0x498 y 0x558 comparten desde su primera comparacion
@@ -595,9 +598,10 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
  * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
  *
- * En la rama final de esquina positiva en x el objeto b se lee del area de trabajo en una local: el original
- * conserva ese puntero en un registro y sin la copia el compilador funde por completo los caminos de 0x44c y
- * 0x4b4. En la rama final de esquina negativa no hace falta copia.
+ * En la rama final de esquina positiva en x el punto y el objeto b se leen del area de trabajo en locales: el
+ * original conserva esos punteros en registros y sin las copias, o con la comparacion escrita con la suma
+ * delante, el compilador funde por completo los caminos de 0x44c y 0x4b4. En la rama final de esquina
+ * negativa no hace falta copia.
  */
 s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
 {
@@ -606,6 +610,7 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
     MATRIX* m2;
     /* El marco del original reserva 8 bytes de locales que ninguna sentencia toca. */
     SVECTOR reserva;
+    SVECTOR* punto_der;
     Objeto* objeto_der;
     s32 toca;
     GEO_CARGAR_WH(&b->min);
@@ -682,11 +687,12 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
                 toca = w->pt->vz < w->b->min.vz - w->radio;
                 goto cierre;
             } else {
+                punto_der = w->pt;
                 objeto_der = w->b;
-                if (w->pt->vz < w->b->min.vz - w->radio) {
+                if (punto_der->vz < objeto_der->min.vz - w->radio) {
                     continue;
                 }
-                toca = objeto_der->max.vx + w->radio < w->pt->vx;
+                toca = punto_der->vx > objeto_der->max.vx + w->radio;
                 goto cierre;
             }
         } else if (w->angs[2] < w->ang) {
