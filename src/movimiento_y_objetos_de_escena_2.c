@@ -482,9 +482,9 @@ void func_8001D588(s32 modo, VECTOR* p)
  * de `otro` cambia y la puntuacion sube.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1560 con la configuracion versionada (g = 8 del archivo). El orden de bloques y los saltos coinciden; quedan el reparto de v0 y v1 en la rama del tipo 0x1F (el relleno del hueco de retardo de la comparacion con 0x1F lleva `li 0x1E` y el original deja `nop`) y la forma simbolica de D_80010041 (con el acceso por el banco de registros del estado el ensamblador usa 0x8001 y el desplazamiento 0x41, y el original el simbolo).
+/* Pendiente: puntuacion 110 con la configuracion versionada (g = 8 del archivo). El orden de bloques, los saltos y el reparto de registros de las dos ramas con atacante coinciden; las 20 diferencias de operando que quedan son de forma simbolica: el original lee y resta la salud con el simbolo D_80010041 (`lui a1,%hi(D_80010041)`, `lbu`/`sb %lo(...)(a1)` con una sola base) y la prueba inicial con D_8006AA73, y aqui el acceso por el banco de registros del estado da `lui 0x8001` y el desplazamiento 0x41 y la prueba sale como D_8006AA70+3. Con el simbolo directo (`D_80010041 -= x`) el almacen usa `lui at` propio y el planificador reordena la lectura de la salud respecto del almacen a `flags18` (2120); con una vista de un solo campo sobre el simbolo da 1900.
  *
- * Que dio cada cambio (cifras del diff): el campo de indicadores del objeto controlado se declara sin signo y la prueba de signo del original (`bgez`) desaparecia con `< 0`; con el molde a s32 la prueba vuelve (8935 a 7705). Las dos comprobaciones finales sobre el registro de animacion (`registro184` nulo y bit 0x4000) se escriben como un solo `if` que envuelve el resto, de modo que el `return 0` de esas dos sale al final tras el `return 1`, como en el original, y no se funde con el de las comprobaciones iniciales (7165 a 3200). La salud (0x80010041) se lee y se resta por el banco de registros del estado (`ESTADO_PRINCIPAL->r[1]`): es un acceso de miembro y el planificador no lo reordena respecto del almacen al campo `flags18` ni respecto de los demas miembros, y la lectura y el almacen comparten la base (3200 a 1670). El dano bruto va en su propia local antes de la copia que se recorta a 2 (1670 a 1560): el original conserva dos pseudos (`lh v0` y `move a1,v0`). */
+ * Que dio cada cambio (cifras del diff, 8935 de partida): el campo de indicadores del objeto controlado se declara sin signo y la prueba de signo del original (`bgez`) desaparecia con `< 0`; con el molde a s32 la prueba vuelve (7705). Las dos comprobaciones sobre el registro de animacion (`registro184` nulo y bit 0x4000) se escriben como un solo `if` que envuelve el resto, de modo que el `return 0` de esas dos sale al final tras el `return 1`, como en el original, y no se funde con el de las comprobaciones iniciales (7165 a 3200). La salud (0x80010041) se lee y se resta por el banco de registros del estado (`ESTADO_PRINCIPAL->r[1]`): es un acceso de miembro y la lectura queda tras el almacen a `flags18` y comparte base con su escritura (3200 a 1670). El dano bruto va en su propia local antes de la copia que se recorta a 2 (1670 a 1560): el original conserva dos pseudos (`lh v0` y `move a1,v0`). En la rama del tipo 0x1F la resta de la salud va antes del almacen de D_80069690 (1560 a 945). El dano por defecto recarga D_80069698 en lugar de usar `j`: con la misma local en las dos colas el salto cruzado fusionaba la suma de la bandera 0x2000000 de la rama por defecto con la de las ramas con atacante, y el original las deja separadas (945 a 110). */
 s32 func_8001D75C(Objeto* otro, RegistroAnim* a1)
 {
     u32 estado;
@@ -520,8 +520,8 @@ s32 func_8001D75C(Objeto* otro, RegistroAnim* a1)
     if (otro->clase == 0x1F) {
         /* 0x8001D860: lhu 0x1E(a3) y 0x8001D870: lbu 0x1E(a3); el campo es s16 para el interprete de eventos (lh), asi que el dano se lee sin signo con la conversion. */
         j->w38 = (u16)otro->s1E;
-        D_80069690 = 0x1E;
         ESTADO_PRINCIPAL->r[1] -= (u8)otro->s1E;
+        D_80069690 = 0x1E;
         goto marcar;
     }
     if (a1 != NULL) {
@@ -541,10 +541,10 @@ marcar:
             goto fin;
         }
     }
-    j->w38 = 1;
+    D_80069698->w38 = 1;
     D_80069690 = 0x1E;
     ESTADO_PRINCIPAL->r[1] -= 1;
-    j->flags14 |= 0x2000000;
+    D_80069698->flags14 |= 0x2000000;
 fin:
     v1 = otro->flags18;
     otro->flags18 = v1 | 0x4000;
