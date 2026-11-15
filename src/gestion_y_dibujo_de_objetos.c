@@ -427,9 +427,10 @@ void func_800368E8(void)
  * envoltura de la tabla `a` suma 6 usos mas y con la de la diagonal 2 mas (64 usos, la parte entera del
  * logaritmo pasa de 5 a 6: 6 * 64 / 116 = 3,31 frente a 7 * 141 / 340 = 2,90), la ayuda se asigna primero y
  * toma `$s0` y el area `$s1`, como en el original. Con una sola de las dos la ayuda queda en 58 usos
- * (5 * 58 / 116 = 2,50) y el reparto no cambia: la prioridad solo cruza con las dos. Lo medido es la
- * prioridad y el reparto resultante; que el original tenga mas usos de `a` por otra via es una inferencia
- * sin verificar.
+ * (solo la diagonal: 5 * 58 / 116 = 2,50 frente a 7 * 138 / 340 = 2,84) o en 62 (solo la tabla:
+ * 5 * 62 / 116 = 2,67 frente a 7 * 140 / 340 = 2,88) y el reparto no cambia: la prioridad solo cruza con
+ * las dos. Lo medido es la prioridad y el reparto resultante; que el original tenga mas usos de `a` por
+ * otra via es una inferencia sin verificar.
  * La forma del fuente original que producia este reparto se desconoce.
  */
 void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
