@@ -451,14 +451,18 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 6025 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
- * las constantes coinciden. Por tramos (la puntuacion cuenta cada diferencia de operando entre un acceso por
- * `$gp` del original y el simbolo del actual, unas 97 lineas que no son diferencia de bytes): el bucle de las ocho
- * sondas del modo de apuntado emite los incrementos del contador y del puntero antes de preparar los argumentos de
- * la llamada y el original los emite despues (0x80033358 + 0x494); la prueba de los dos bits de la direccion del
- * ajuste de altura (0x80033358 + 0xba0..0xbb8) y el par de modificaciones de banderas (0xcc4..0xd30) salen con
- * un registro temporal distinto; el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el
- * original lo guarda en `s1`; en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y el original en `a3`/`a2`.
+ * Pendiente: puntuacion 5830 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
+ * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
+ * el bucle de las ocho sondas del modo de apuntado emite el incremento del contador y del puntero antes de preparar
+ * los argumentos de la llamada y el original despues (0x494); la prueba de los dos bits de la direccion del ajuste
+ * de altura (0xba0..0xbb8) y el par de modificaciones de banderas (0xcc4..0xd30) salen con un registro temporal
+ * distinto y el original deja la lectura del contador despues del almacen de las banderas (se supone, sin
+ * verificar, que porque lo almacena por un puntero y no por el simbolo: escribirlo por `cam->` dio 6185 frente a
+ * 6025); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el original lo guarda en
+ * `s1`; el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx` tras el salto y el original tambien, pero aqui
+ * el compilador reutiliza el registro; en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y el original en
+ * `a3`/`a2`. La direccion de acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos.
  */
 /*
  * Acerca la altura del punto de vista a la banda [base - 0x64, base + 0x64] desplazada por p4: si queda por encima
@@ -468,8 +472,9 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * funcion compartidas por las tres copias, no locales de cada una: el original conserva `a3` y `v1` vivos hasta la
  * cola comun (`sra`, `addu`, `sw` en 0x80034CDC) y salta a ella desde las tres ramas, y la segunda mitad de la
  * comprobacion (desde `subu` en 0x80034CCC) tambien se comparte. Con locales de cada copia los registros salen
- * distintos por rama y el compilador no puede fundir las colas (10040 frente a 7520 en la funcion). El reparto
- * del par `ec`/`vp` y de la base de la banda con `a2`/`a3` permutados queda sin explicar.
+ * distintos por rama, el compilador no puede fundir las colas y emite una copia completa de la segunda mitad de
+ * la comprobacion y de la cola `sra`/`addu` en cada rama. Queda sin explicar por que la direccion de la
+ * camara (`ec`) y la base de la banda (`w->p4`) salen en `a2`/`a3` y el original las tiene en `a3`/`a2`.
  */
 #define ALTURA_CAMARA(base) \
     { \
@@ -763,7 +768,7 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
     D_8006D928.flags80 = g;
     D_80069408 = 0;
     pulsado = D_8001000A;
-    if ((pulsado & 4) == 0 && ((o->flags14 & 0x1000000) | D_8006AA7C) == 0) {
+    if ((pulsado & 4) == 0 && (D_8006AA7C | (o->flags14 & 0x1000000)) == 0) {
         if (D_8006D928.i90 != 0) {
             w->v70.vx = o->param.trans.vx - D_8006D928.i90->param.trans.vx;
             w->v70.vz = o->param.trans.vz - D_8006D928.i90->param.trans.vz;
@@ -884,8 +889,8 @@ aplicar_giro:
     w->v70.vy = o->param.trans.vy - 0x1F4;
     w->v70.vz = o->param.trans.vz;
     if ((o->flags14 & 0x16) == 0) {
-        w->res.grupo = -1;
         w->v70.vy = o->param.trans.vy;
+        w->res.grupo = -1;
         func_8001C134((s32*)&w->v70.vx, &w->res, area);
         w->zona_ant = w->res.zona;
         w->v70.vy = o->param.trans.vy - 0x1F4;
