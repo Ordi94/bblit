@@ -414,13 +414,13 @@ void func_80037FB8(NodoLista* n)
  * sustituye el puntero constante por su valor en cada lectura cuando ninguna lectura lo usa como
  * base de un indice, que es lo que lo mantiene en un registro salvado en los grupos de los
  * contadores 0xB6 y 0xB8 (`e->r[e->r[0xB6]]`); no se encontro la forma que lo mantenga en el ultimo.
- * Formas que bajaron la cifra: leer los tres bytes del contador de porcentaje con ESTADO_PRINCIPAL
- * directo (sin la local `e`, que abarcaba el grupo) en una sola expresion y sumar `r[7] + r[5]`
- * antes de sumarlo al byte alto desplazado (2287 a 2137: el lui compartido y la suma coinciden con
- * 0x1b8..0x1d0); escribir los ids del porcentaje en orden de indices 2 y 3 (2137 a 1325: el valor
- * BCD pasa a a1 como en el original); dejar la prueba `i == 1` como `if` independiente y no como
- * `else if`, porque el original cae del bloque `i == 0` a esa prueba (1325 a 925). Formas medidas
- * sin bajada: una variable BCD distinta por conversion da 13847 (cambia la planificacion del
+ * Con los tres bytes del contador de porcentaje leidos con ESTADO_PRINCIPAL directo (sin la local
+ * `e`, que abarcaba el grupo) en una sola expresion y con `r[7] + r[5]` sumado antes de sumarlo al
+ * byte alto desplazado, la cifra baja de 2287 a 2137 (el lui compartido y la suma coinciden con
+ * 0x1b8..0x1d0); con los ids del porcentaje escritos en orden de indices 2 y 3 baja de 2137 a 1325
+ * (el valor BCD pasa a a1 como en el original); con la prueba `i == 1` como `if` independiente y no
+ * como `else if` baja de 1325 a 925, porque el original cae del bloque `i == 0` a esa prueba. Sin
+ * bajada: una variable BCD distinta por conversion da 13847 (cambia la planificacion del
  * primer grupo); un puntero propio para el ultimo grupo da 950 y para los dos ultimos 2508 (se
  * redistribuyen los registros salvados de todos los grupos); escribir `tpos` antes que `pos` en el grupo del contador
  * 0xB8 da 2558.
