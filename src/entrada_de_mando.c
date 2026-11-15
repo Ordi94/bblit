@@ -259,20 +259,26 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 7254 con la configuracion versionada (g = 8 del archivo). El marco de pila del original
- * es 8 bytes mayor, el reparto de registros de la rama de grabacion es otro y GCC fusiona el xor de
- * (D_8006CFF2 ^ 0xFF) << 8 con el desplazamiento.
+ * Pendiente: puntuacion 6664 con la configuracion versionada (g = 8 del archivo). El marco de pila del original
+ * es 8 bytes mayor (0x28 frente a 0x20; el original no usa 0x10(sp) ni 0x14(sp) y el volcado
+ * del reparto no deja ningun pseudo sin registro: causa sin identificar) y la base 0x80010000
+ * del almacen del banco de vibracion (0xe7) se recalcula tras la union de los dos casos,
+ * cuando el original reutiliza la base cargada antes de ellos.
+ *
+ * El xor del byte invertido se hace sobre una local de 32 bits (cf2, cf3, cfd): con el byte
+ * leido directamente el analizador de tipos del front end estrecha el xor a un byte (sale
+ * `nor` + `andi 0xff`, y el combinador lo funde con el desplazamiento: `sll` y `xori 0xff00`),
+ * mientras que el original hace `xori 0xff` sin mascara y luego `sll 8`.
  *
  * Lectura del mando por cuadro. Con la entrada bloqueada (maquina de estados no nula o
  * entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma
  * los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS
  * (D_8006CFF1..7: id, botones invertidos y ejes) en botones logicos y ejes de +/-0x7F.
- * Puntuacion 7254 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
- * saltos y casi todo el cuerpo coinciden; difieren el marco de pila (el original reserva 8
- * bytes mas, 0x28), el reparto de registros de la rama de grabacion, el orden de
- * (D_8006CFF2 ^ 0xFF) << 8 (el original no fusiona el xor con el desplazamiento) y la copia
- * s1 = s2 del valor de los botones de direccion. Probadas: if/else en lugar de switch
- * (12794), orden de declaracion de las copias, copia con la expresion repetida.
+ * Puntuacion 6664 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
+ * saltos y casi todo el cuerpo coinciden; difieren el marco de pila, el reparto de registros
+ * de la rama de grabacion y la copia s1 = s2 del valor de los botones de direccion (en el
+ * original va antes del `or`, 0x2c0). Probadas: if/else en lugar de switch (12794), orden de
+ * declaracion de las copias, copia con la expresion repetida.
  */
 void func_8004048C(void)
 {
@@ -289,6 +295,10 @@ void func_8004048C(void)
     s32 hi;
     s32 centro;
     s32 eje;
+    s32 lo;
+    u32 cf2;
+    u32 cf3;
+    u32 cfd;
 
     if (D_80069662 == 0 && (D_80069698 == 0 || (D_80069698->flags14 & 0x01000000) == 0)) {
         goto normal;
@@ -338,7 +348,7 @@ normal:
         D_800695B0 = grab + 4;
         id = D_8006CFF1 & 0x7F;
         ESTADO_PRINCIPAL->mando.botones = c;
-        if ((id == 0x41 || id == 0x73) && (((D_8006CFF2 ^ 0xFF) << 8) & 0x800) && ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
+        if ((id == 0x41 || id == 0x73) && ((cfd = D_8006CFF2, ((cfd ^ 0xFF) << 8) & 0x800)) && ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
             ESTADO_PRINCIPAL->mando.botones_a = a | 0x100;
             ESTADO_PRINCIPAL->mando.botones_c = b | 0x100;
             ESTADO_PRINCIPAL->mando.botones = c | 0x100;
@@ -371,12 +381,14 @@ normal:
     aplicar:
         ESTADO_PRINCIPAL->r[BANCO_VIBRACION] = v;
         D_80069672 = 0;
-        hi = (D_8006CFF2 ^ 0xFF) << 8;
+        cf2 = D_8006CFF2;
+        hi = (cf2 ^ 0xFF) << 8;
         bits2 = hi;
-        a = D_8006CFF3 ^ 0xFF;
-        b = a | hi;
-        ESTADO_PRINCIPAL->mando.botones_c = a;
-        ESTADO_PRINCIPAL->mando.botones = a;
+        cf3 = D_8006CFF3;
+        lo = cf3 ^ 0xFF;
+        b = lo | hi;
+        ESTADO_PRINCIPAL->mando.botones_c = lo;
+        ESTADO_PRINCIPAL->mando.botones = lo;
         ESTADO_PRINCIPAL->mando.botones = b;
         if ((hi & 0xF000) != 0 || (D_8006CFF1 & 0x7F) == 0x41) {
             ESTADO_PRINCIPAL->mando.botones_c = b;
@@ -400,7 +412,7 @@ normal:
             }
             return;
         }
-        ESTADO_PRINCIPAL->mando.botones_c = a | (hi & 0xFFF);
+        ESTADO_PRINCIPAL->mando.botones_c = lo | (hi & 0xFFF);
         func_80040158(&ESTADO_PRINCIPAL->mando);
         centro = ESTADO_PRINCIPAL->mando.centro_x;
         mascara = ESTADO_PRINCIPAL->mando.botones_c;
