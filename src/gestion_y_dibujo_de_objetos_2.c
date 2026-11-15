@@ -889,8 +889,8 @@ void func_80038E84(s32 idx, s32 paso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1525 con la configuracion versionada (g = 8 del archivo; ejes 69 de
- * operando, 0 reordenadas, 185 insertadas o borradas). Coinciden la
+ * Pendiente: puntuacion 1465 con la configuracion versionada (g = 8 del archivo; ejes 69 de
+ * operando, 0 reordenadas, 161 insertadas o borradas). Coinciden la
  * estructura, los desplazamientos y los simbolos; difiere en el reparto de registros (la base de
  * 0x80010000, el indice y el valor de las barras 3 y 7 caen en registros distintos de los del
  * original, que usa a1, v0 y a0 segun el bloque), en el orden de dos copias y tres huecos de
@@ -900,12 +900,12 @@ void func_80038E84(s32 idx, s32 paso)
  * la envoltura del medidor y del contador de golpes junto con el orden de la actualizacion del valor
  * mostrado en las barras 3 y 7 lo bajan de 1745 a 1525 (ver la cabecera de abajo).
  * En cada uno de los cuatro temporizadores de poderes el original deja el resultado `n` en v0 (`li v0,1` en el
- * hueco de retardo del `beq` de la comparacion con -1 y `sll v0,v0,1` al final del producto por 30) y aqui cae
- * en a1 (0x2478 y 0x248c del diff). Una variable propia por temporizador (cuatro locales en lugar de una) y la
- * comparacion invertida (`== -1` con la asignacion de 1 en la rama) dan el mismo ensamblador y la misma cifra
- * (1525): el compilador normaliza ambas formas. Se supone, sin verificar, que `n` entra en conflicto con v0
- * por el temporal de la comparacion, que ocupa v0 hasta el salto, y que en el original `n` empieza a vivir tras
- * ese temporal.
+ * hueco de retardo del `beq` de la comparacion con -1 y `sll v0,v0,1` al final del producto por 30). Con
+ * `n = 1;` antes de la comparacion el pseudo de `n` vive durante el temporal de la comparacion (ocupa v0 hasta
+ * el salto) y el volcado de `global-alloc` lo da en conflicto con v0 y v1, de modo que cae en a1 (1525); con
+ * la forma `if (== -1) { n = 1; } else { n = producto; }` en los cuatro temporizadores `n` no vive durante la
+ * comparacion y toma v0 como el original (1465). Con la nueva forma en un solo temporizador la cifra no cambia
+ * (1525): `n` es un solo pseudo compartido y los otros tres siguen en conflicto.
  */
 /*
  * Una vez por cuadro de juego, con el estado principal distinto de 3, sin pantalla pedida
@@ -1082,8 +1082,9 @@ void func_80039094(void)
 
         g = ESTADO_PRINCIPAL;
         if (g->r[0x09] != 0) {
-            n = 1;
-            if ((s8)g->r[0x09] != -1) {
+            if ((s8)g->r[0x09] == -1) {
+                n = 1;
+            } else {
                 n = g->r[0x09] * 30;
             }
             D_800695C0 = n;
@@ -1105,8 +1106,9 @@ void func_80039094(void)
 
         g = ESTADO_PRINCIPAL;
         if (g->r[0x0B] != 0) {
-            n = 1;
-            if ((s8)g->r[0x0B] != -1) {
+            if ((s8)g->r[0x0B] == -1) {
+                n = 1;
+            } else {
                 n = g->r[0x0B] * 30;
             }
             D_8006968A = n;
@@ -1128,8 +1130,9 @@ void func_80039094(void)
 
         g = ESTADO_PRINCIPAL;
         if (g->r[0x30] != 0) {
-            n = 1;
-            if ((s8)g->r[0x30] != -1) {
+            if ((s8)g->r[0x30] == -1) {
+                n = 1;
+            } else {
                 n = g->r[0x30] * 30;
             }
             D_8006969E = n;
@@ -1151,8 +1154,9 @@ void func_80039094(void)
 
         g = ESTADO_PRINCIPAL;
         if (g->r[0x32] != 0) {
-            n = 1;
-            if ((s8)g->r[0x32] != -1) {
+            if ((s8)g->r[0x32] == -1) {
+                n = 1;
+            } else {
                 n = g->r[0x32] * 30;
             }
             D_80069526 = n;
