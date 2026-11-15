@@ -1289,8 +1289,11 @@ void func_80035244(void)
  * y las constantes coinciden. Quedan el reparto de registros guardados y temporales (la constante -3 en s2 y el
  * original en s3; un puntero del contexto GTE en t7 y el original en a3), el orden de las instrucciones del
  * prologo (el original lee el byte D_8006AA7C y el contexto antes de los almacenes y deja `move s3,a0` en el hueco
- * de retardo del primer salto) y la llamada a func_800351B4 tras la atenuacion, donde el original carga el objeto
- * una vez. Reescribir en C la suma de vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W).
+ * de retardo del primer salto) y la llamada a func_800351B4 tras la atenuacion: el original salta a la `jal` de la
+ * busqueda del modelo (0x800358A4, una sola llamada en la funcion) y aqui salen dos. Escribir la atenuacion como
+ * salto a esa llamada deja una sola `jal` y la estructura del original, pero la puntuacion sube a 3783 porque el
+ * puntero al objeto sale en `v1` donde el original lo tiene en `a0` (causa sin medir). Reescribir en C la suma de
+ * vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W).
  *
  * La distancia aproximada usa GEO_DISTANCIA_APROX_A con la base y el destino del propio vector (desplazamiento
  * 0x44): es la misma rutina manuscrita. La forma sin sufijo escribe un `nop` explicito en el hueco de la primera y
