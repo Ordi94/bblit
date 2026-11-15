@@ -903,10 +903,13 @@ void func_80038E84(s32 idx, s32 paso)
  * en v0 como el original: 1465 a 1435 con g3 y g7 y a 1415 con f3 y f7 (se supone, sin verificar, que un
  * pseudo compartido une las vidas de todas las barras y toma el mismo registro en todas). La segunda
  * lectura de D_80010043 en el brillo de la barra 0 (`lui a0` y `lbu v0,0x43(a0)` en 0x800391F0) no
- * reutiliza la de la comparacion: el original la lee por el puntero a 0x80010000 y no por el simbolo, de
- * modo que el CSE no las une; escrita como `ESTADO_PRINCIPAL->r[0x03]` baja de 1415 a 1300 (el
- * original toma a0 para esa base y el C toma v0, con un `li a1,0xc8` adelantado al hueco de retardo del
- * `beqz`). Leer el estado principal en una
+ * reutiliza la de la comparacion. Medido: el original relee el octeto (dos cargas, la segunda en
+ * 0x800391F0) y, escrita por el puntero al estado (`ESTADO_PRINCIPAL->r[0x03]`), la segunda lectura no
+ * se une con la primera y la cifra baja de 1415 a 1300 (el original toma a0 para esa base y el C toma
+ * v0, con un `li a1,0xc8` adelantado al hueco de retardo del `beqz`). En el ensamblador original las
+ * dos lecturas tienen la misma forma (`lui` mas `lbu` con el desplazamiento del simbolo); se supone,
+ * sin verificar, que el autor del original escribio la segunda por un puntero distinto de la primera.
+ * Leer el estado principal en una
  * copia propia de la rama de la barra 0 (en lugar de reutilizar la local del cuerpo) baja de 1950 a 1745;
  * la envoltura del medidor y del contador de golpes junto con el orden de la actualizacion del valor
  * mostrado en las barras 3 y 7 lo bajan de 1745 a 1525 (ver la cabecera de abajo).
