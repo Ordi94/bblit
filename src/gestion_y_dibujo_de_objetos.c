@@ -416,9 +416,22 @@ void func_800368E8(void)
  *
  * El ayudante de la pista (s0) y su vista desde +0xC (s5) y los parametros del nodo (s4) se
  * conservan entre pistas: una pista cuyo nodo no existe reutiliza los de la anterior.
+ *
+ * La direccion de la tabla de ayudas (`tabla_base`) se calcula antes de la guarda de la lista: es un
+ * valor vivo a traves de la comparacion, de modo que no puede compartir registro con la lectura de la
+ * lista (en el original `$v1` y `$v0`); calculada dentro de la guarda toma `$v0` (10 puntos).
+ * Los dos do/while (0) (el relleno de la tabla y el borrado de la diagonal de la matriz del nodo) no
+ * generan codigo: ponderan por un nivel mas las referencias de su cuerpo. Medido en el volcado de
+ * global-alloc: la ayuda `a` suma 56 usos sobre 116 instrucciones de vida (prioridad 5 * 56 / 116 = 2,41) y
+ * el area `w` 137 sobre 340 (7 * 137 / 340 = 2,82), de modo que `w` se asigna primero y toma `$s0`; con la
+ * envoltura de la tabla `a` suma 6 usos mas y con la de la diagonal 2 mas (64 usos, la parte entera del
+ * logaritmo pasa de 5 a 6: 6 * 64 / 116 = 3,31 frente a 7 * 141 / 340 = 2,90), la ayuda se asigna primero y
+ * toma `$s0` y el area `$s1`, como en el original. Con una sola de las dos la ayuda queda en 58 usos
+ * (5 * 58 / 116 = 2,50) y el reparto no cambia: la prioridad solo cruza con las dos. Lo medido es la
+ * prioridad y el reparto resultante; que el original tenga mas usos de `a` por otra via es una inferencia
+ * sin verificar.
+ * La forma del fuente original que producia este reparto se desconoce.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 465 con la configuracion versionada (g = 8 del archivo). Instrucciones y flujo identicos al original; difiere el reparto de registros callee-saved: el original deja el area de trabajo en $s1 y la ayuda en $s0 y GCC los intercambia (prioridad de global-alloc por referencias y longitud de vida); el radio de la caja y las banderas de la pista de ayudante en variables propias (distintas de las banderas de pose) bajan de 510. */
 void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
 {
     AreaCuadro* w;
@@ -432,20 +445,24 @@ void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
     u16* h;
     u32 radio_base;
     u32 banderas_ayudante;
+    Ayuda** tabla_base;
     w = a2;
     w->cab.w = *FLUJO_PISTAS(c)++;
     w->npistas = w->cab.h.alto;
     w->palabra2 = *FLUJO_PISTAS(c)++;
     o->raiz_ayudantes = 0;
     w->modo = 1;
+    tabla_base = &w->ayudas[0];
     if (o->u78.ayudas != 0) {
-        w->tabla = &w->ayudas[0];
-        p = (u32*)&w->ayudas[1];
-        for (a = o->u78.ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
-            *(Ayuda**)p = a;
-            p++;
-        }
-        w->modo = 0;
+        do {
+            w->tabla = tabla_base;
+            p = (u32*)&w->ayudas[1];
+            for (a = o->u78.ayudas; a != 0; a = (Ayuda*)a->cab.siguiente) {
+                *(Ayuda**)p = a;
+                p++;
+            }
+            w->modo = 0;
+        } while (0);
     }
     w->idx = 0;
     if (w->npistas != 0) {
@@ -596,10 +613,12 @@ void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
                 case 1:
                     if (((banderas_ayudante >> 21) & 7) == 5) {
                         param->scale.vz = 0;
-                        param->scale.vy = 0;
-                        param->scale.vx = 0;
-                        MOTOR_DIAGONAL_CERO(w->m);
-                        a->flags8 |= 0x8000;
+                        do {
+                            param->scale.vy = 0;
+                            param->scale.vx = 0;
+                            MOTOR_DIAGONAL_CERO(w->m);
+                            a->flags8 |= 0x8000;
+                        } while (0);
                     } else {
                         func_800364E0(o, nodo);
                     }
@@ -618,6 +637,3 @@ void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
         } while (w->idx < w->npistas);
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", AplicarCuadro);
-#endif
