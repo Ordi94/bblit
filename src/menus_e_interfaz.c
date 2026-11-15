@@ -359,7 +359,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
          * despues del par `sll`/`sra` que recorta la direccion del primitivo y la puntuacion sube de 795 a 1040
          * (con la misma sentencia en cada rama, a 845). */
         if (semitransparente != 0) {
-            p[1] = color | 0x2E000000 | 0x2C000000;
+            p[1] = color | 0x2E000000;
         } else {
             p[1] = color | 0x2C000000;
         }
