@@ -457,11 +457,13 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * se repite en tres bloques): (1) el contador 0x17c(s3) del final: el original lo incrementa, lo guarda y deja el
  * valor en un registro para el indice de la secuencia (`andi 0xffff` en el hueco del salto de cada camino), y solo
  * relee la memoria para la comparacion con 5 (`lhu` y `sltiu`); una local de 32 bits asignada en los dos caminos
- * antes de la etiqueta reproduce esa estructura, pero su pseudo cae en a0 y no en v0 o v1 (2590 a 2720, con una
- * local compartida o propia). (2) el contador de andadura (0x194(s3)): una local con `(u16)` para la suma y el
+ * antes de la etiqueta reproduce esa estructura, pero su pseudo cae en a0 y no en v0 o v1 (2590 a 2720 con una
+ * local nueva `siguiente = o->w17C += 1;` en los dos caminos y usada en el indice de la secuencia, y tambien 2720
+ * reutilizando la local `giro` para el mismo valor). (2) el contador de andadura (0x194(s3)): una local con `(u16)` para la suma y el
  * almacen despues del producto deja la secuencia `lhu`, `addiu`, `sll`, `sra`, `mult` igual que el original, pero el
  * `sh` queda tras el salto condicional y no en el hueco del `mult` (2995; con el producto en una local 3045; sin
- * `(u16)` la carga sale con `lh`, 3190). (3) `temp_a` antes que `temp_b` en la banda de vuelo: 2595.
+ * `(u16)` la carga sale con `lh`, 3190). (3) `temp_a` antes que `temp_b` en la banda de vuelo (`temp_a = jy - 0xC8;` antes de `temp_b = jy - 0x190;`):
+ * 2595: 5 puntos peor que 2590, con los mismos ejes de operando (497) y 331 lineas insertadas o borradas frente a 325.
  */
 /*
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
