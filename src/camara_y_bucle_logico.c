@@ -455,16 +455,25 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
  * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
  * los bucles de las ocho sondas (modo de apuntado y seguimiento libre) coinciden con `i++` escrito DESPUES de la
- * llamada a BarrerTerreno (medido: 5620 a 5495 con el primer bucle y a 5370 con los dos; con `i++` justo tras la
- * llamada de colision, o tras la asignacion de `v30.vy`, el incremento del contador y del puntero sale antes de
- * preparar los argumentos de la llamada y el original lo emite despues, 0x498 y 0x49c); la prueba de los dos bits de la direccion del ajuste
- * de altura (0xba0..0xbb8) y el par de modificaciones de banderas (0xcc4..0xd30) salen con un registro temporal
- * distinto y el original deja la lectura del contador despues del almacen de las banderas (se supone, sin
- * verificar, que porque lo almacena por un puntero y no por el simbolo: escribirlo por `cam->` dio 6185 frente a
- * 6025); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el original lo guarda en
- * `s1`; el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx` tras el salto y el original tambien, pero aqui
- * el compilador reutiliza el registro; en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y el original en
- * `a3`/`a2`. La direccion de acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos.
+ * llamada a BarrerTerreno (con `i++` justo tras la llamada de colision, o tras la asignacion de `v30.vy`, el
+ * incremento del contador y del puntero sale antes de preparar los argumentos de la llamada y el original lo emite
+ * despues, 0x498 y 0x49c), y el bloque de las posiciones de la camara (0x17b0..0x1868) coincide en el orden de las
+ * lecturas y almacenes con los tres almacenes de `v30` escritos tras el de `vpz`, en el orden `vx`, `vy`, `vz`;
+ * queda: la prueba de los dos bits de la direccion del ajuste de altura (0xba0..0xbb8), que carga la mascara antes
+ * que la bandera (con el orden de operandos del `or` invertido no cambia); el par de modificaciones de banderas
+ * (0xcc4..0xd30), donde el original carga el contador tras el almacen de las banderas y aqui el planificador lo
+ * adelanta (se supone, sin verificar, que el original almacena las banderas por un puntero que el planificador no
+ * puede separar del acceso por `$gp`; escribir el almacen por `cam->` empeora, en una o en las dos ramas); la carga
+ * de `D_8006D928.vpy` del modo de transicion (0x11d0..0x11ec), adelantada aqui sobre tres almacenes de `v30`
+ * (escribirla por `cam->` empeora); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el
+ * original lo guarda en `s1`, el registro del puntero `&w->dir` que muere en la preparacion de los argumentos de la
+ * llamada siguiente (el volcado `.sched` muestra la copia del resultado antes de los movimientos de argumentos, de
+ * modo que el pseudo del resultado vive a la vez que el del puntero; se supone, sin verificar, que la causa es la
+ * prioridad que le da su cadena posterior, el cociente `d / 200`; escribir los almacenes de `dir` antes de la
+ * llamada lo empeora); el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx` tras el salto y el original
+ * tambien, pero aqui el compilador reutiliza el registro; en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y
+ * el original en `a3`/`a2` (sin efecto: cargar `w->p4` antes de `ec`, o en una local propia). La direccion de
+ * acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos.
  */
 /*
  * Acerca la altura del punto de vista a la banda [base - 0x64, base + 0x64] desplazada por p4: si queda por encima
