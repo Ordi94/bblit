@@ -441,14 +441,13 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  * saca al preludio del propio bucle interior, tras la guardia de entrada, que es donde la tiene el original (0x80015D10
  * a 0x80015D1C); escrita antes del bucle, queda antes de la guardia (1935). Cifras: cadena con una sola local y asignaciones
  * compuestas `d = g << 4; d -= g; d <<= 3;` en cada uso 2095 (el pseudo unico cae en v1 y no en v0 y a0); con la local
- * intermedia 1935; con la segunda cadena dentro del bucle de relleno 1765. Antes de este cambio: con la asignacion
- * `grupo * 120` en los tres usos 1960; sin la del relleno 2260; sin la de la entrada 2045; con una sola, calculada antes
- * del primer bucle interior, 2440; con el producto escrito en cada uso 3125; un par `grupo++; grupo--;` en el cuerpo no
- * evita el izado (2395: el combinador lo anula). Queda el reparto de registros: `i` cae en t0 y `grupo` en t1 (el original
+ * intermedia 1935; con la segunda cadena dentro del bucle de relleno 1765; con la tercera cadena tambien escrita en
+ * linea en las dos expresiones del almacen 2075 (se iza de nuevo) y con la tercera en `quince` y el desplazamiento en
+ * linea 1905. Con la asignacion `grupo * 120` en los tres usos, que era la forma anterior, 1960. Queda el reparto de registros: `i` cae en t0 y `grupo` en t1 (el original
  * los tiene en a1 y t0), la copia de la base de la fila cae en a1 y no en a3, y el original no recalcula en los bucles
  * interiores la direccion del simbolo de la tabla. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
  * del resultado que despues compara con 1) se reproduce guardando el resultado en la local `rc`, compartida con la del
- * sondeo: con una local propia (`fmt` o `tam`) el CSE funde la copia y se comprueba `v0` directamente (2350); con `rc` o
+ * sondeo (cifras de este parrafo medidas sobre la forma anterior, de 1960): con una local propia (`fmt` o `tam`) el CSE funde la copia y se comprueba `v0` directamente (2350); con `rc` o
  * `estado` baja a 1960, pero la copia cae en v1 y no en a1 como en el original, y con `partida` cae en s1 (2635). Sin
  * bajada: calcular la mascara de ranuras en una local antes del almacen de 0xE da 2190.
  *
