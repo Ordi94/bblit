@@ -513,10 +513,10 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * (0x80027EE8). Causa medida en los volcados de `cc1` (`.lreg`, `.greg` y el ensamblador de salida) y con `diff`: con
  * la pareja en cada rama los valores son pseudos locales del bloque (603 y 604 en el bloque 127, 627 y 628 en el 133,
  * 2 usos sobre 2 insns cada uno) que toman v0 y v1 y se almacenan al final de su camino, igual que el original (la
- * puntuacion es 2185); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
+ * puntuacion es 1790); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
  * los valores pasan a ser pseudos globales (la banda alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6
  * usos sobre 14 insns, 0,86) que reciben a1 y v1, los dos almacenes suben tras la etiqueta de union y aparece un
- * `move v0,a1` antes de la prueba de histeresis (4065). La forma del fuente original que producia este reparto se
+ * `move v0,a1` antes de la prueba de histeresis (3670 con una sola pareja). La forma del fuente original que producia este reparto se
  * desconoce.
  *
  * Las dos sentencias replicadas `func_8001CFCC(&o->coord);` son la llamada de cierre de la composicion con el portador,
@@ -531,6 +531,12 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * verificar, que en la rama de la comprobacion de apoyo el original reparte `a0` al puntero del portador y despues al
  * argumento, y que aqui la preparacion del argumento sube tras la llamada a BarrerTerreno y empuja ese puntero a `a1`.
  * La forma del fuente original que producia este reparto se desconoce.
+ *
+ * La tercera llamada `func_8001CFCC(&o->coord);` de la cadena, la de la rama que suelta al portador inactivo y que
+ * va seguida de `o->flags14 |= 0x200;`, es flujo corriente y no lleva marca: el original la compila con su propio
+ * `jal` en 0x8002A4B0, lee `flags14` y escribe el 0x200 a continuacion y salta a 0x8002A6A8, de modo que no pasa por la
+ * llamada compartida de 0x8002A6A0 y una sola copia tras la reunion de los caminos colocaria la llamada detras de ese
+ * almacen.
  *
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
@@ -3177,7 +3183,7 @@ siguiente:
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 9080 con la configuracion versionada (g = 8 del archivo; ejes 92 de operando, 1 reordenada, 343 insertadas o borradas). El objeto ya queda en s4 y el scratchpad en s3 como en el original (la matriz de cada bloque vive solo en su bloque: con una sola variable para las dos matrices el compilador la dejaba en s4 y desplazaba el objeto a s3). La guarda de empuje sigue el ensamblador: se empuja salvo que esten a la vez la bandera 0x8000 del objeto y la 0x4000 del jugador. Residuo medido: en el segundo recorrido de limites el original comprueba primero (w17C & 0x300) con un salto propio y este C lo pliega a las pruebas de 0x100 y 0x200 (escribirlo explicito empeora a 9155: el compilador elimina la prueba redundante); el bloque de la prueba de suelo carga la constante 0x58 en a1 antes de la etiqueta de union (0x7bf4 en este C) y el original no. */
+/* Pendiente: puntuacion 9080 con la configuracion versionada (g = 8 del archivo; ejes 92 de operando, 1 reordenada, 343 insertadas o borradas). El objeto ya queda en s4 y el scratchpad en s3 como en el original (la matriz de cada bloque vive solo en su bloque: con una sola variable para las dos matrices el compilador la dejaba en s4 y desplazaba el objeto a s3). La guarda de empuje sigue el ensamblador (0x8002D848 a 0x8002D88C): con la bandera 0x8000 del objeto y la 0x4000 del jugador a la vez el empuje sigue sin consultar func_80016C0C; si falta alguna de las dos, solo se empuja cuando esa consulta devuelve distinto de cero. Residuo medido: en el segundo recorrido de limites el original comprueba primero (w17C & 0x300) con un salto propio y este C lo pliega a las pruebas de 0x100 y 0x200 (escribirlo explicito empeora a 9155: el compilador elimina la prueba redundante); el bloque de la prueba de suelo carga la constante 0x58 en a1 antes de la etiqueta de union (0x7bf4 en este C) y el original no. */
 /*
  * Prueba de suelo bajo la posicion de prueba (t->py): si el bloque se despegaria mas de 0xC8
  * unidades del terreno, se anula el desplazamiento pedido. Solo se aplica con el modo 0x80.
