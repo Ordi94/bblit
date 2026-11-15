@@ -259,11 +259,12 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 6664 con la configuracion versionada (g = 8 del archivo). El marco de pila del original
+ * Pendiente: puntuacion 6644 con la configuracion versionada (g = 8 del archivo). El marco de pila del original
  * es 8 bytes mayor (0x28 frente a 0x20; el original no usa 0x10(sp) ni 0x14(sp) y el volcado
  * del reparto no deja ningun pseudo sin registro: causa sin identificar) y la base 0x80010000
  * del almacen del banco de vibracion (0xe7) se recalcula tras la union de los dos casos,
- * cuando el original reutiliza la base cargada antes de ellos.
+ * cuando el original reutiliza la base cargada antes de ellos (el puntero propio `est` para
+ * esa zona baja la cifra solo de 6664 a 6644: la base sigue sin compartirse como en el original).
  *
  * El xor del byte invertido se hace sobre una local de 32 bits (cf2, cf3, cfd): con el byte
  * leido directamente el analizador de tipos del front end estrecha el xor a un byte (sale
@@ -274,7 +275,7 @@ void func_80040430(s8* contador, u16 mascara)
  * entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma
  * los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS
  * (D_8006CFF1..7: id, botones invertidos y ejes) en botones logicos y ejes de +/-0x7F.
- * Puntuacion 6664 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
+ * Puntuacion 6644 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
  * saltos y casi todo el cuerpo coinciden; difieren el marco de pila, el reparto de registros
  * de la rama de grabacion y la copia s1 = s2 del valor de los botones de direccion (en el
  * original va antes del `or`, 0x2c0). Probadas: if/else en lugar de switch (12794), orden de
@@ -299,6 +300,7 @@ void func_8004048C(void)
     u32 cf2;
     u32 cf3;
     u32 cfd;
+    EstadoPrincipal* est;
 
     if (D_80069662 == 0 && (D_80069698 == 0 || (D_80069698->flags14 & 0x01000000) == 0)) {
         goto normal;
@@ -319,6 +321,7 @@ void func_8004048C(void)
         return;
     }
 normal:
+    est = ESTADO_PRINCIPAL;
     D_800695EA = 0;
     if (D_8006AA70[0xC] == 0) {
         func_80040430(&D_800695A0, 0x40);
@@ -374,12 +377,12 @@ normal:
     func_80040240();
     switch (D_8006CFF1 & 0x7F) {
     case 0x41:
-        v = ESTADO_PRINCIPAL->r[BANCO_VIBRACION] & 0x7F;
+        v = est->r[BANCO_VIBRACION] & 0x7F;
         goto aplicar;
     case 0x73:
-        v = ESTADO_PRINCIPAL->r[BANCO_VIBRACION] | 0x80;
+        v = est->r[BANCO_VIBRACION] | 0x80;
     aplicar:
-        ESTADO_PRINCIPAL->r[BANCO_VIBRACION] = v;
+        est->r[BANCO_VIBRACION] = v;
         D_80069672 = 0;
         cf2 = D_8006CFF2;
         hi = (cf2 ^ 0xFF) << 8;
