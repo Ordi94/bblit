@@ -267,7 +267,10 @@ void func_80019364(s32* a0)
  * tiene `move v0,v1` tras los almacenes) baja de 2020 a 1565; con una sola lectura local da 2020 (la
  * cifra anterior, sin cambio) y con las dos lecturas como campo sube a 2500; con las dos lecturas como
  * campo y los almacenes en el orden del original, solo en el avance de subcelda del eje z, 2155 (la
- * lectura del punto previo se carga la primera y su almacen sube antes de la suma). Los planos 0x7E y
+ * lectura del punto previo se carga la primera y su almacen sube antes de la suma); mover la lectura
+ * del punto previo (`tx = w->sz_x`) tras la de la altura (`w->aux = w->sz_y`) deja 775: el orden de las
+ * cargas lo decide el planificador y no el orden de las sentencias (el original carga la altura antes
+ * que el punto previo y carga este tras la segunda lectura de la celda). Los planos 0x7E y
  * 0x7F del caso estatico (0x8001BCD4-0x8001BF6B) dejaron de diferir (1565 a 775): ver la cabecera
  * de la funcion.
  */
