@@ -387,10 +387,12 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 259563 con la configuracion versionada (g = 8 del archivo). La cifra
+ * Pendiente: puntuacion 259843 con la configuracion versionada (g = 8 del archivo). La cifra
  * depende de la composicion del objeto: la comparacion incluye palabras con direcciones absolutas
  * dentro del archivo, y cualquier funcion cerrada en este mismo archivo las desplaza sin que cambie
- * el codigo de esta (no comprobado comparando los objetos). La estructura
+ * el codigo de esta (no comprobado comparando los objetos). Tambien depende del tamano de la
+ * funcion anterior, aun pendiente: al cambiar su tamano la cifra pasa de 259563 a 259843 sin tocar
+ * el codigo de esta. La estructura
  * (bloques, bucles, llamadas, las cinco tablas de saltos) sigue el ensamblador completo y el marco
  * de pila mide lo mismo (0x210 bytes); difieren el reparto de registros (s1 y s8 intercambiados
  * desde el prologo), el orden de las cargas de la cabecera de secciones y el codigo de cada
