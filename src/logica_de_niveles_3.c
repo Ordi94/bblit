@@ -46,17 +46,26 @@ extern void func_80039094(void);
  * original; con la pareja tras la union el planificador sube el `andi` por encima del almacen del limite alto
  * (puntuacion 2450 frente a 2195 en la medida de esa pareja). (b) La llamada `ApplyMatrixLV(&o->coord.coord, &v, &v)`
  * en la rama de la oscilacion (0x10) y en la del recorrido por tramos (0x400): el original prepara los tres argumentos
- * en cada camino (0x874 a 0x884 y 0x940 a 0x958) y comparte un solo `jal` (0x95c). Medido con `diff`: con la llamada
- * escrita una vez tras una etiqueta comun 2530, con la llamada en cada rama 1228, y el recuento de `jal ApplyMatrixLV`
- * del ensamblador generado coincide con el del original (3); que la causa sea el salto cruzado de la cola y no otra
- * decision del planificador se supone, sin verificar. (c) La suma del desplazamiento del balancin al jugador,
- * `D_80069698->coord.param->trans.vx += desplaza;`, en las dos ramas del signo del empuje, cada una con la variable
- * propia de su desplazamiento (`desplaza` y `desplaza2`): el original calcula el cociente con `mflo v1` y suma en v1
- * en una cola comun (0x3d8 a 0x3f0) con el puntero al jugador en a0. Con una sola suma tras la union y una variable
- * compartida el desplazamiento cae en a0 y el puntero en v1 (823), con la suma en cada rama 763; en el volcado
- * `.greg` el desplazamiento compartido (antes de separarlo del paso de los limites) tiene conflictos con v0 y v1; se
- * supone, sin verificar, que es porque el puntero del bloque ocupa v1 por asignacion local, y que el original tiene
- * cada desplazamiento como pseudo local de su rama. La forma del fuente original que producia este reparto se desconoce.
+ * en cada camino (0x874 a 0x884 y 0x940 a 0x958) y comparte un solo `jal` (0x95c): el camino de la oscilacion carga
+ * a0, a1 y a2 y salta con `j` (0x880) al `jal` del camino del recorrido por tramos. Causa medida con los
+ * volcados de saltos de `cc1` (`-dj`, antes de la fusion de colas, y `-dJ`, despues) y con `diff`: con la llamada en
+ * cada rama cada camino carga a0, a1 y a2 por su cuenta y termina en una llamada identica; el pase de saltos con
+ * fusion de colas borra la primera de las dos llamadas, pone una etiqueta delante de la segunda y deja un salto del
+ * camino 0x10 a ella (el ensamblador generado tiene tres `jal ApplyMatrixLV`, como el original, y los argumentos se
+ * preparan por camino) y la puntuacion es 753. Con la llamada escrita una vez tras una etiqueta comun los dos caminos
+ * se unen antes de preparar los argumentos: no hay cola identica que fundir (tres llamadas antes y despues del pase),
+ * los tres argumentos se calculan una sola vez tras la union, el reparto y el orden de las instrucciones cambian y
+ * la puntuacion es 2195 (ejes 109 de operando, 3 reordenadas, 99 insertadas o borradas). (c) La suma del
+ * desplazamiento del balancin al jugador, `D_80069698->coord.param->trans.vx += desplaza;`, en las dos ramas del
+ * signo del empuje, cada una con la variable propia de su desplazamiento (`desplaza` y `desplaza2`): el original
+ * calcula el cociente con `mflo v1` y suma en v1 en una cola comun (0x3d8 a 0x3f0) con el puntero al jugador en a0.
+ * Causa medida en el volcado de reparto (`.lreg` y `.greg`): con una sola suma tras la union y una variable
+ * compartida el desplazamiento es un pseudo global (3 usos sobre 7 insns de vida, prioridad 0,429) que tiene
+ * conflicto con v0 y v1 y recibe a0, de modo que el puntero al jugador, pseudo local del bloque, queda en v1 (833);
+ * con la suma en cada rama y una variable propia por rama, el desplazamiento de cada rama es un pseudo local del
+ * bloque (3 usos sobre 2 insns, registro v1) y el puntero otro (3 usos sobre 4 insns, registro a0), como en el
+ * original, y el salto cruzado deja una sola copia de la suma (753). La forma del fuente original que producia este
+ * reparto se desconoce.
  *
  * Variables aparte para cada uso (medido con `diff` y en el volcado `.greg`): la altura del recorrido por tramos
  * (`altura`), el empuje del balancin (`empuje`) y el paso de los limites (`ritmo`) son variables propias. Con una sola
