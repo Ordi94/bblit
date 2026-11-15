@@ -13,6 +13,7 @@ leen archivos.
 """
 
 import re
+from collections import Counter
 from pathlib import Path
 
 from tools.proyecto import RAIZ_REPOSITORIO
@@ -38,7 +39,11 @@ _CIERRE_SOLO = re.compile(r"^\s*\}\s*$")
 _DECLARACION_CON_VALOR = re.compile(r"^\s+((?:[A-Za-z_]\w*[\s\*]+)+?)(\w+)\s*=\s*[^=].*;\s*$")
 _PALABRAS_QUE_NO_DECLARAN = {"return", "else", "goto", "case", "sizeof", "do", "while", "if", "for", "switch"}
 _COMENTARIO_REPLICADA = re.compile(rf"^\s*/\*\s*{re.escape(COMENTARIO_REPLICADA)}\s*\*/\s*$")
-_TOKEN_NUMERICO_O_NOMBRE = re.compile(r"(?P<literal>\d\w*)|[A-Za-z_]\w*")
+_TOKEN_DE_SENTENCIA = re.compile(
+    r"(?P<acceso>->|\.)\s*(?P<campo>[A-Za-z_]\w*)"
+    r"|(?P<literal>\d\w*)"
+    r"|(?P<nombre>[A-Za-z_]\w*)(?P<llamada>\s*\()?"
+)
 
 
 def _lineas_de_codigo(texto: str) -> list[str]:
@@ -203,41 +208,68 @@ def _valor_del_literal(texto: str) -> str:
 
 
 def _esqueleto(sentencia: str) -> str:
-    """Devuelve la sentencia sin los nombres y con los literales normalizados a su valor.
+    """Devuelve la sentencia con las variables como ``I`` y todo lo demas por su valor o su nombre.
 
-    Cada identificador se sustituye por ``I``: la variable propia de cada rama es lo unico que puede cambiar
-    entre ramas. Los literales numericos NO son nombres: una constante distinta es otra sentencia, de modo que
-    se conservan y se comparan por su valor (``0x10`` y ``16`` coinciden; el sufijo no cuenta). El patron
+    Solo la variable propia de cada rama puede cambiar entre ramas, de modo que unicamente se neutralizan los
+    identificadores que son variables (``I``). Se conservan literalmente el nombre invocado (identificador
+    seguido de ``(``: una macro o una funcion) y el nombre de campo (identificador tras ``.`` o ``->``): una
+    macro o un campo distinto es otra sentencia aunque tenga la misma forma. Los literales numericos tampoco
+    son nombres: se comparan por su valor (``0x10`` y ``16`` coinciden; el sufijo no cuenta). El patron
     consume cada palabra entera, de modo que las cifras de ``p1`` pertenecen al identificador y los digitos
     de ``0x2E`` al literal.
 
     Contexto:
-        Lo usa ``_incumplimientos_de_replicadas`` para decidir si las sentencias marcadas como replicadas son
-        la misma en todas las ramas.
+        Lo usa ``_incumplimientos_de_replicadas`` para decidir que sentencias marcadas como replicadas son la
+        misma.
 
     Args:
         sentencia (str): Sentencia en una linea, con sus espacios originales.
 
     Returns:
-        str: Sentencia con espacios normalizados, identificadores como ``I`` y literales como ``#valor``.
+        str: Sentencia con espacios normalizados, variables como ``I``, nombres invocados y de campo tal cual
+        y literales como ``#valor``.
 
     Ejemplo:
-        _esqueleto("b = p | 0x10;") == _esqueleto("b = q | 16u;")
+        _esqueleto("o->x = p | 0x10;") == _esqueleto("o->x = q | 16u;")
+        _esqueleto("ALTO(o) = n;") != _esqueleto("BAJO(o) = n;")
     """
 
     def _sustituir(coincidencia: re.Match[str]) -> str:
+        if coincidencia.group("campo") is not None:
+            return coincidencia.group("acceso") + coincidencia.group("campo")
         literal = coincidencia.group("literal")
-        return "I" if literal is None else _valor_del_literal(literal)
+        if literal is not None:
+            return _valor_del_literal(literal)
+        if coincidencia.group("llamada") is not None:
+            return coincidencia.group("nombre") + "("
+        return "I"
 
-    return _TOKEN_NUMERICO_O_NOMBRE.sub(_sustituir, " ".join(sentencia.split()))
+    return _TOKEN_DE_SENTENCIA.sub(_sustituir, " ".join(sentencia.split()))
 
 
 def _incumplimientos_de_replicadas(texto: str) -> list[str]:
-    """Lista las funciones cuyas sentencias replicadas no son realmente la misma sentencia.
+    """Lista las marcas de sentencia replicada que no tienen pareja con su misma sentencia.
 
-    Una sentencia replicada necesita al menos dos marcas en la funcion, cada una seguida de una sentencia, y
-    todas las sentencias marcadas deben tener la misma forma una vez quitados los nombres de variable (la
-    variable propia de cada rama es lo unico que puede cambiar).
+    Cada marca debe preceder a una sentencia, y esa sentencia debe tener en la misma funcion al menos otra
+    marcada con el mismo esqueleto (variables neutralizadas; macro invocada, campos y literales por su valor).
+    Las marcas se agrupan por esqueleto y no todas contra todas: una funcion puede tener varias parejas
+    distintas (un almacen en cada rama de un ``if``/``else`` y otro en cada rama de otro), pero un grupo de
+    una sola sentencia es una marca huerfana y se rechaza. Limite aceptado: una funcion cuyas parejas se
+    equivocan las dos a la vez, de forma que cada grupo sigue teniendo al menos dos, no se distingue de una
+    con parejas distintas legitimas.
+
+    Contexto:
+        Lo ejerce la prueba que recorre ``src/``; el esqueleto lo calcula ``_esqueleto``.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+
+    Returns:
+        list[str]: Un mensaje por cada marca que no precede a una sentencia o que queda huerfana; vacia si
+        todas cumplen.
+
+    Ejemplo:
+        _incumplimientos_de_replicadas(Path("src/logica_de_niveles_3.c").read_text(encoding="utf-8")) == []
     """
     lineas = _lineas_de_codigo(texto)
     sentencias: dict[str, list[str]] = {}
@@ -249,12 +281,14 @@ def _incumplimientos_de_replicadas(texto: str) -> list[str]:
         sentencias.setdefault(funcion, []).append(siguiente.strip())
     fallos: list[str] = []
     for funcion, marcadas in sorted(sentencias.items()):
-        if len(marcadas) < 2:
-            fallos.append(f"{funcion}: una sentencia replicada necesita al menos dos ramas")
-        if any(not sentencia.endswith(";") for sentencia in marcadas):
+        validas = [sentencia for sentencia in marcadas if sentencia.endswith(";")]
+        if len(validas) != len(marcadas):
             fallos.append(f"{funcion}: la marca de sentencia replicada no precede a una sentencia")
-        elif len({_esqueleto(sentencia) for sentencia in marcadas}) > 1:
-            fallos.append(f"{funcion}: las sentencias replicadas no son la misma sentencia")
+        grupos = Counter(_esqueleto(sentencia) for sentencia in validas)
+        for sentencia in validas:
+            if grupos[_esqueleto(sentencia)] < 2:
+                huerfana = f"la sentencia replicada `{sentencia}` no tiene pareja de igual forma"
+                fallos.append(f"{funcion}: {huerfana}")
     return fallos
 
 
@@ -414,14 +448,13 @@ def _texto_de_dos_ramas(constante_a: str, constante_b: str) -> str:
 
 def test_sentencias_replicadas_con_literales_hexadecimales_distintos_se_rechazan() -> None:
     texto = _texto_de_dos_ramas("0x2E000000", "0x4C000000")
-    esperado = ["func_800000A0: las sentencias replicadas no son la misma sentencia"]
+    esperado = [_sin_pareja("b = p | 0x2E000000;"), _sin_pareja("b = q | 0x4C000000;")]
     assert _incumplimientos_de_replicadas(texto) == esperado
 
 
 def test_sentencias_replicadas_con_literales_decimales_distintos_se_rechazan() -> None:
     texto = _texto_de_dos_ramas("12", "13")
-    esperado = ["func_800000A0: las sentencias replicadas no son la misma sentencia"]
-    assert _incumplimientos_de_replicadas(texto) == esperado
+    assert len(_incumplimientos_de_replicadas(texto)) == 2
 
 
 def test_sentencias_replicadas_con_el_mismo_literal_hexadecimal_se_aceptan() -> None:
@@ -457,20 +490,112 @@ def test_un_literal_que_no_se_puede_interpretar_se_compara_por_su_texto() -> Non
 
 def test_una_sola_marca_de_sentencia_replicada_se_rechaza() -> None:
     texto = _texto_con("    if (a) {\n" + _rama_replicada("p") + "    }\n")
-    esperado = ["func_800000A0: una sentencia replicada necesita al menos dos ramas"]
+    esperado = [_sin_pareja("b = p + (p << 8);")]
     assert _incumplimientos_de_replicadas(texto) == esperado
 
 
 def test_sentencias_marcadas_que_no_son_la_misma_sentencia_se_rechazan() -> None:
     otra = f"        /* {COMENTARIO_REPLICADA} */\n        b = q * 3;\n"
     texto = _texto_con("    if (a) {\n" + _rama_replicada("p") + "    } else {\n" + otra + "    }\n")
-    esperado = ["func_800000A0: las sentencias replicadas no son la misma sentencia"]
-    assert _incumplimientos_de_replicadas(texto) == esperado
+    assert len(_incumplimientos_de_replicadas(texto)) == 2
+
+
+def _sin_pareja(sentencia: str) -> str:
+    return f"func_800000A0: la sentencia replicada `{sentencia}` no tiene pareja de igual forma"
+
+
+def _marcada(sentencia: str) -> str:
+    return f"        /* {COMENTARIO_REPLICADA} */\n        {sentencia}\n"
+
+
+def _texto_de_dos_parejas(primera: tuple[str, str], segunda: tuple[str, str]) -> str:
+    """Una pareja de sentencias marcadas en un if/else y otra pareja en un segundo if/else."""
+    return _texto_con(
+        "    if (a) {\n"
+        + _marcada(primera[0])
+        + "    } else {\n"
+        + _marcada(primera[1])
+        + "    }\n    if (b) {\n"
+        + _marcada(segunda[0])
+        + "    } else {\n"
+        + _marcada(segunda[1])
+        + "    }\n"
+    )
+
+
+def test_dos_parejas_de_macros_distintas_con_la_misma_forma_se_aceptan() -> None:
+    alto = "MOVIL_LIMITE_ALTO(o) = num;"
+    bajo = "MOVIL_LIMITE_BAJO(o) = sentido;"
+    assert _incumplimientos_de_replicadas(_texto_de_dos_parejas((alto, alto), (bajo, bajo))) == []
+
+
+def test_cuatro_marcas_donde_una_usa_la_macro_equivocada_se_rechazan() -> None:
+    # Quedan tres marcas con la macro del limite alto y una con la del bajo: esa ultima no tiene pareja.
+    alto = "MOVIL_LIMITE_ALTO(o) = num;"
+    bajo = "MOVIL_LIMITE_BAJO(o) = sentido;"
+    esperado = [_sin_pareja(bajo)]
+    assert _incumplimientos_de_replicadas(_texto_de_dos_parejas((alto, alto), (alto, bajo))) == esperado
+
+
+def test_un_trio_que_no_casa_deja_huerfanas_a_las_marcas_sin_pareja() -> None:
+    # Alto una vez, bajo dos veces y una tercera macro una vez: se rechazan las dos que quedan solas.
+    alto = "MOVIL_LIMITE_ALTO(o) = num;"
+    bajo = "MOVIL_LIMITE_BAJO(o) = num;"
+    otra = "MOVIL_OTRO(o) = num;"
+    fallos = _incumplimientos_de_replicadas(_texto_de_dos_parejas((alto, bajo), (bajo, otra)))
+    assert len(fallos) == 2
+    assert "MOVIL_LIMITE_ALTO" in fallos[0]
+    assert "MOVIL_OTRO" in fallos[1]
+
+
+def test_las_marcas_de_dos_parejas_se_agrupan_por_forma_sin_importar_el_orden() -> None:
+    alto = "MOVIL_LIMITE_ALTO(o) = num;"
+    bajo = "MOVIL_LIMITE_BAJO(o) = num;"
+    assert _incumplimientos_de_replicadas(_texto_de_dos_parejas((alto, bajo), (alto, bajo))) == []
+
+
+def test_una_marca_huerfana_junto_a_una_pareja_valida_se_rechaza() -> None:
+    texto = _texto_con(
+        "    if (a) {\n"
+        + _rama_replicada("p")
+        + "    } else {\n"
+        + _rama_replicada("q")
+        + "    }\n    if (b) {\n"
+        + _marcada("c = a * 3;")
+        + "    }\n"
+    )
+    assert _incumplimientos_de_replicadas(texto) == [_sin_pareja("c = a * 3;")]
+
+
+def test_nombres_de_campo_distintos_tras_la_flecha_se_rechazan() -> None:
+    texto = _texto_de_dos_parejas(("o->vx = p;", "o->vy = q;"), ("o->vz = p;", "o->vz = q;"))
+    assert _incumplimientos_de_replicadas(texto) == [_sin_pareja("o->vx = p;"), _sin_pareja("o->vy = q;")]
+
+
+def test_nombres_de_campo_distintos_tras_el_punto_se_rechazan() -> None:
+    assert _esqueleto("v.vx = p;") != _esqueleto("v.vy = p;")
+    assert _esqueleto("v.vx = p;") == _esqueleto("w.vx = q;")
+
+
+def test_la_variable_propia_de_cada_rama_puede_cambiar_aunque_haya_campos_y_llamadas() -> None:
+    texto = _texto_de_dos_ramas_con("o->vx = LEE(p);", "o->vx = LEE(q);")
+    assert _incumplimientos_de_replicadas(texto) == []
+
+
+def test_una_funcion_o_macro_invocada_distinta_se_rechaza() -> None:
+    assert _esqueleto("f(a);") != _esqueleto("g(a);")
+    assert _esqueleto("f(a);") == _esqueleto("f(b);")
+
+
+def _texto_de_dos_ramas_con(primera: str, segunda: str) -> str:
+    return _texto_con("    if (a) {\n" + _marcada(primera) + "    } else {\n" + _marcada(segunda) + "    }\n")
 
 
 def test_una_marca_que_no_precede_a_una_sentencia_se_rechaza() -> None:
     sola = f"        /* {COMENTARIO_REPLICADA} */\n    }}\n"
-    texto = _texto_con("    if (a) {\n" + _rama_replicada("p") + "    } else {\n" + sola)
+    texto = _texto_con(
+        "    if (a) {\n" + _rama_replicada("p") + _rama_replicada("q") + "    } else {\n" + sola
+    )
     assert _incumplimientos_de_replicadas(texto) == [
         "func_800000A0: la marca de sentencia replicada no precede a una sentencia"
     ]
