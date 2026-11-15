@@ -360,7 +360,8 @@ typedef struct Fragmento {
 /*
  * El titulo ocupa 0x2F bytes de origen (dos vueltas de 16 y una cola de 15); el campo destino es de 0x40.
  * La alineacion 4 declarada es la que el original da por supuesta: copia por palabras, con cola de
- * tres palabras, un corto y un byte, sin comprobar la alineacion (0x80015210 a 0x800152A0); una
+ * tres palabras, un corto y un byte, sin comprobar la alineacion (desplazamientos 0x50 a 0xb0 de la
+ * funcion); una
  * estructura de 0x2F bytes sin ese atributo genera la comprobacion en ejecucion.
  */
 typedef struct TituloTarjeta {
