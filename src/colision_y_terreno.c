@@ -964,22 +964,26 @@ ZonaColision* func_8001BF9C(s32* a0, s16 a1)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 455 con la configuracion versionada (g = 0, no carga globales). Los registros guardados y
- * la copia de la zona coinciden; difiere el orden de las dos divisiones por 320 del resto de la baldosa (el original
- * calcula x antes que z, GCC al reves con cualquier orden del fuente) y la suma del indice de subcelda (el original
- * suma primero base + (baldosa << 6) y despues z / 40 * 8 + x / 40). El original emite ademas un `andi 0xffff` tras
- * guardar la baldosa enmascarada. Los dos restos en locales y el indice como puntero a la fila
- * (`(subceldas + (baldosa << 6))[fila + x / 40]`) no cambian el orden de las cargas y rotan el reparto de a2, a3, t0 y
- * t1 de toda la funcion (1380 con los restos en locales, 1355 con el puntero a la fila). Medido en el volcado de la
- * planificacion (-dS): con la local `fila_subceldas` el orden de las dos cargas es z, x; escribiendo el indice sin esa
- * local (`z->subceldas[x_local / 40 + (z_local / 40 * 8 + (baldosa << 6))]`) la planificacion emite x primero, como el
- * original, pero el reparto de registros rota (1295 con las coordenadas cargadas en dos locales: la constante de la
- * division en a3 en lugar de a2, la zona en t0 en lugar de a3 y la coordenada z en a2 en lugar de a1). Con el
- * indice `(baldosa << 6) + z_local / 40 * 8 + x_local / 40` el reparto de registros del original sale completo (690) pero
- * la planificacion vuelve a cargar z primero: orden y reparto van acoplados. Se supone, sin verificar, que el
- * cociente `x_local / 40` (vida corta) se asigna antes que la local de z cuando x va primero y toma a1; no se midio su
- * prioridad. Dos formas de truncar la baldosa a 16 bits (asignacion encadenada y local `u16` asignada antes del
- * almacen) no generan el `andi 0xffff` del original: dan 455 igual.
+ * Pendiente: puntuacion 455 con la configuracion versionada (g = 0, no carga globales; ejes 7 de operando, 0
+ * reordenadas, 29 insertadas o borradas). Los registros guardados y la copia de la zona coinciden; difiere el orden de
+ * las dos divisiones por 320 del resto de la baldosa (el original calcula x antes que z, esta forma al reves), la suma
+ * del indice de subcelda (el original suma primero base + (baldosa << 6) y despues z / 40 * 8 + x / 40) y un `andi
+ * 0xffff` que el original emite tras guardar la baldosa enmascarada.
+ *
+ * Medido en el volcado de la planificacion (-dS): con la local `fila_subceldas` la planificacion carga z antes que x.
+ * Con las coordenadas cargadas en dos locales (resto asignado a la propia local y almacenado), el cociente de x y la
+ * fila de z en locales propias y el indice `col + (baldosa << 6) + fila` carga x primero y el reparto de la division
+ * coincide (x en a0, z en a1, la constante en a2, la zona en a3), pero la puntuacion es 550: quedan el `andi 0xffff`,
+ * la posicion de `mfhi`, `lhu` y la multiplicacion de z, y la asociacion de la suma del indice. Se supone, sin
+ * verificar, que el `andi` alarga la cadena de la baldosa y por eso el original adelanta su carga `lhu` a la
+ * multiplicacion de z. Con el mismo indice sin las locales `col` y `fila` carga x primero pero el reparto se corre un
+ * registro (1100: x en a1, z en a2, la constante en a3, la zona en t0); con el indice `(baldosa << 6) + z / 40 * 8 +
+ * x / 40` el reparto del original sale con los papeles de x y z cambiados (690) y la planificacion vuelve a cargar z
+ * primero. El indice como puntero a la fila (`(subceldas + (baldosa << 6))[fila + col]`) da entre 1765 y 2025, con o
+ * sin local para el puntero. Seis formas de truncar la baldosa a 16 bits (asignacion encadenada, local `u16` asignada
+ * antes del almacen, compuesta sobre la local, con `(u16)`, con el resultado de la mascara y con la mascara aplicada
+ * dos veces) no generan el `andi 0xffff`. Se supone, sin verificar, que ese `andi` nace de una local de 16 bits que
+ * el original guarda y relee sin que el CSE la sustituya por la expresion.
  *
  * Consulta la baldosa bajo el punto pos: busca la zona del punto (con el grupo recordado en
  * res), lee el valor de la baldosa de 320 unidades y la subcelda de 40 unidades, y rellena res
