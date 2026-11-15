@@ -130,12 +130,25 @@ extern void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, Trabajo
 /*
  * Macros vectoriales de la animacion de objetos: reproducen rutinas manuscritas del original con
  * los temporales fijos $8..$12, como las de geometria.h, y su lista de registros destruidos
- * contiene exactamente los que el cuerpo escribe.
+ * contiene exactamente los que el cuerpo escribe, con la unica excepcion de MOTOR_UNOS_W (abajo).
  *
  * MOTOR_UNOS_W(p): vector de tres palabras de p = 0x1000. El original (0x8001ECE8 a 0x8001ED00,
  * AvanzarAnimacionSprite) copia la direccion a $t0, carga 0x1000 en $t4 una sola vez, lo copia a $t1..$t3
  * con addu y almacena las tres palabras; el cuerpo escribe $8 a $12, y todos los almacenes
  * pasan por $9..$11.
+ *
+ * Excepcion deliberada: la lista de destruidos omite "$12" aunque el cuerpo lo escribe. El ejecutable
+ * original usa $t4 ($12) como temporal del cociente de las cinco multiplicaciones de
+ * AvanzarAnimacionSprite (mflo $t4 en 0x8001E930, 0x8001E950, 0x8001E970, 0x8001E9BC y 0x8001E9E4) y
+ * a la vez la rutina manuscrita escribe $t4 en 0x8001ECE8: el compilador solo elige $t4 para ese
+ * temporal si la macro no lo declara destruido (con $12 declarado elige $t5 y la funcion difiere en 50
+ * puntos). La lista es, pues, incompleta a proposito: no debe completarse ni tomarse como modelo para
+ * otras macros, cuyas listas deben contener todo lo que escriben.
+ *
+ * Condicion de uso: el compilador no protege $t4 a traves de esta macro, asi que quien la invoque no
+ * puede tener un valor vivo en $t4 en ella (que no se lea despues sin haberse reescrito antes). En
+ * AvanzarAnimacionSprite ($t4 solo se lee tras su propio mflo, todos anteriores a la macro) y en
+ * func_8001F268 ($t4 solo se escribe, en 0x8001F898) se cumple, y el resultado es identico byte a byte.
  */
 #define MOTOR_UNOS_W(p) \
     __asm__ volatile ("move $8, %0\n\t" \
@@ -146,7 +159,7 @@ extern void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, Trabajo
                       "sw $9, 0($8)\n\t" \
                       "sw $10, 4($8)\n\t" \
                       "sw $11, 8($8)" \
-                      : : "r"(p) : "$8", "$9", "$10", "$11", "$12", "memory")
+                      : : "r"(p) : "$8", "$9", "$10", "$11", "memory")
 
 /*
  * MOTOR_DIAGONAL_CERO(p): pone a cero los elementos de la diagonal de la matriz de p (sw en +0,

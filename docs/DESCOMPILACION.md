@@ -583,7 +583,13 @@ el compilador no puede generar desde C, cada uno con comentario técnico en el c
 - Instrucciones GTE sueltas sin macro de `INLINE_C.H` y las macros de `include/gte.h`.
 - Macros vectoriales de `include/geometria.h` y `include/motor.h`: emiten exactamente las instrucciones de rutinas
   manuscritas del juego (temporales `$8..$12` fijos) en una sola sentencia, y su lista de registros destruidos
-  contiene solo los que el cuerpo escribe.
+  contiene solo los que el cuerpo escribe. Excepción única: `MOTOR_UNOS_W` (`include/motor.h`) escribe `$8..$12` y
+  omite `$12` de su lista. Evidencia: en el original (`AvanzarAnimacionSprite`) el temporal del cociente de las
+  cinco multiplicaciones es `$t4` (`mflo $t4` en `0x8001E930`, `0x8001E950`, `0x8001E970`, `0x8001E9BC` y
+  `0x8001E9E4`) y la rutina manuscrita de `0x8001ECE8..0x8001ED00` también escribe `$t4`; con `$12` declarado el
+  compilador elige `$t5` y la función da 50, sin declararlo da 0. Condición de uso: quien la invoque no puede tener
+  un valor vivo en `$t4` a través de la macro (el compilador no lo protege), y el resultado debe ser idéntico byte a
+  byte al original. Ninguna otra macro omite registros de su lista.
 - `register u8* base_gp __asm__("$28")` en `include/globales.h`: acceso por desplazamiento a los datos pequeños
   de `$gp`, vigente mientras `-G8` por archivo no lo sustituya del todo.
 - Cambio de pila de `func_80016218` (`src/arranque_y_bucle_principal_2.c`, líneas 204 y 226): al entrar guarda `$sp`

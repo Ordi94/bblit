@@ -210,8 +210,6 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E600);
  * el pozo esta agotado. En cada cuadro dispara los sonidos y los eventos del cuadro actual: un
  * evento puede crear un hijo acoplado, un objeto suelto, agarrar o soltar al protagonista.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 50 con la configuracion versionada (g = 8 del archivo; ejes 72 de operando, 0 reordenadas, 20 insertadas o borradas). Instrucciones y flujo identicos al original; solo difiere el temporal del cociente de las cinco multiplicaciones (desplazamientos 0x210, 0x230, 0x250, 0x29C y 0x2C4): el original usa $t4 y el C $t5, porque la macro de escala 0x1000 escribe $t4 y lo declara destruido (su cuerpo lo escribe) y esa lista no se altera; sin declararlo el C da $t4. Medido con un cambio temporal de la macro (no aplicado): si se anade tambien $13 a su lista el temporal pasa a $t6, de modo que el temporal de las multiplicaciones es el primer registro cuyo numero no figura en una lista de destruidos de la funcion (se supone, sin verificar, que lo elige el reparto de registros de recarga, que evita los registros nombrados en el ensamblador en linea). El reparto de $v0/$v1 de los dos contadores de 8 bits (cuenta de eventos y ticks) ya coincide: el bucle de eventos se escribe con `for (i = 0; i < c->n_eventos; i++)` y no con una guarda `ticks < n_eventos` delante de un do/while. Medido en el volcado: con la guarda de ticks, los ticks (3 usos sobre 4 instrucciones) son el primer operando de la comparacion sltu, mueren en ella y heredan la preferencia por $v0 de su destino (`.greg`: "preferences: 2"), de modo que la cuenta de eventos queda en $v1 aunque se asigne antes; con el `for` la cuenta se lee en su propio bloque (pseudo local, 2 usos sobre 3 instrucciones) y los ticks ya no tienen preferencia. */
 u32 AvanzarAnimacionSprite(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
 {
     NodoAnimacion* n;
@@ -496,9 +494,6 @@ siguiente:
     }
     return 0x200;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", AvanzarAnimacionSprite);
-#endif
 
 /*
  * Avanza un cuadro la animacion de un objeto con jerarquia de matrices (todo objeto cuyo dibujo no
