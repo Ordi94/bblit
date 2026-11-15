@@ -1286,16 +1286,23 @@ void func_80035244(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2465 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales
+ * Pendiente: puntuacion 1470 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales
  * y las constantes coinciden. Quedan el reparto de registros guardados y temporales (la constante -3 en s2 y el
  * original en s3 con el puntero a la proyeccion al reves; un puntero del contexto GTE en t7 y el original en a3;
  * el puntero al objeto actual en v1 en varios bloques y el original en a0), el orden de las dos primeras cargas del
  * prologo (el original lee el byte D_8006AA7C antes que el contexto; leerlo en una local antes de los almacenes da
- * 2945) y la llamada a func_800351B4 tras la atenuacion: el original salta a la `jal` de la
- * busqueda del modelo (0x800358A4, una sola llamada en la funcion) y aqui salen dos. Escribir la atenuacion como
- * salto a esa llamada deja una sola `jal` y la estructura del original, pero la puntuacion sube a 3783 porque el
- * puntero al objeto sale en `v1` donde el original lo tiene en `a0` (causa sin medir). Reescribir en C la suma de
- * vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W).
+ * 2945 en el estado anterior a los dos ultimos cambios) y la llamada a func_800351B4 tras la atenuacion: el original
+ * salta a la `jal` de la busqueda del modelo (0x800358A4, una sola llamada en la funcion) y aqui salen dos.
+ * Escribir la atenuacion como salto a esa llamada deja una sola `jal` y la estructura del original, pero la
+ * puntuacion sube a 1645 porque el puntero al objeto sale en `v1` donde el original lo tiene en `a0` (causa sin
+ * medir). Reescribir en C la suma de vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W).
+ *
+ * El bucle final copia el objeto en curso a `o` una sola vez, tras las rutinas de logica y antes de avanzar a la
+ * lista siguiente: el original tiene `move a0,s0` en los huecos de retardo de los saltos al final del cuerpo
+ * (0x800360B8 y 0x800360D4), no una copia viva durante las llamadas (2465 a 1715); y la direccion de la camara se
+ * asigna dentro del cuerpo, despues de la llamada, para que el optimizador de bucles saque las tres direcciones en
+ * el orden del original (D_8006AA70, D_8005E35C, D_8006D928; 1715 a 1470). Con la asignacion antes del bucle la
+ * direccion de la camara se calcula antes de las otras dos; sin variable (el simbolo en el cuerpo) no se iza.
  *
  * La distancia aproximada usa GEO_DISTANCIA_APROX_A con la base y el destino del propio vector (desplazamiento
  * 0x44): es la misma rutina manuscrita. La forma sin sufijo escribe un `nop` explicito en el hueco de la primera y
