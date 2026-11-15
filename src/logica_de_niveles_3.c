@@ -3183,7 +3183,7 @@ siguiente:
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 9080 con la configuracion versionada (g = 8 del archivo; ejes 92 de operando, 1 reordenada, 343 insertadas o borradas). El objeto ya queda en s4 y el scratchpad en s3 como en el original (la matriz de cada bloque vive solo en su bloque: con una sola variable para las dos matrices el compilador la dejaba en s4 y desplazaba el objeto a s3). La guarda de empuje sigue el ensamblador (0x8002D848 a 0x8002D88C): con la bandera 0x8000 del objeto y la 0x4000 del jugador a la vez el empuje sigue sin consultar func_80016C0C; si falta alguna de las dos, solo se empuja cuando esa consulta devuelve distinto de cero. Residuo medido: en el segundo recorrido de limites el original comprueba primero (w17C & 0x300) con un salto propio y este C lo pliega a las pruebas de 0x100 y 0x200 (escribirlo explicito empeora a 9155: el compilador elimina la prueba redundante); el bloque de la prueba de suelo carga la constante 0x58 en a1 antes de la etiqueta de union (0x7bf4 en este C) y el original no. */
+/* Pendiente: puntuacion 3165 con la configuracion versionada (g = 8 del archivo; ejes 100 de operando, 0 reordenadas, 105 insertadas o borradas). Las ocho esquinas coinciden: la preparacion de cada una escribe la posicion en z antes de los tres campos de velocidad (con la velocidad antes, el planificador subia el calculo de &t->vx al inicio del bloque y el original lo deja tras las cargas; 9080 a 3165). Residuo: prueba de 0x300 del segundo recorrido, bloque de sondeo en z (desplazamientos 0xf38 a 0xf54 de la funcion: el calculo de pz sube en este C), orden de las dos lecturas de limites (desplazamiento 0x2b8) y bloque de disparadores. Medido antes de este cambio: el segundo recorrido de limites comprueba primero (w17C & 0x300) con un salto propio y este C lo pliega a las pruebas de 0x100 y 0x200 (escribirlo explicito empeora: el compilador elimina la prueba redundante). El objeto ya queda en s4 y el scratchpad en s3 como en el original (la matriz de cada bloque vive solo en su bloque: con una sola variable para las dos matrices el compilador la dejaba en s4 y desplazaba el objeto a s3). La guarda de empuje sigue el ensamblador (0x8002D848 a 0x8002D88C): con la bandera 0x8000 del objeto y la 0x4000 del jugador a la vez el empuje sigue sin consultar func_80016C0C; si falta alguna de las dos, solo se empuja cuando esa consulta devuelve distinto de cero. Residuo medido: en el segundo recorrido de limites el original comprueba primero (w17C & 0x300) con un salto propio y este C lo pliega a las pruebas de 0x100 y 0x200 (escribirlo explicito empeora a 9155: el compilador elimina la prueba redundante); el bloque de la prueba de suelo carga la constante 0x58 en a1 antes de la etiqueta de union (0x7bf4 en este C) y el original no. */
 /*
  * Prueba de suelo bajo la posicion de prueba (t->py): si el bloque se despegaria mas de 0xC8
  * unidades del terreno, se anula el desplazamiento pedido. Solo se aplica con el modo 0x80.
@@ -3208,10 +3208,10 @@ siguiente:
     { \
         t->px = o->param.trans.vx + (s16)t->ex; \
         t->py = o->param.trans.vy; \
+        t->pz = o->param.trans.vz + (s16)t->ez; \
         t->vx = t->dx; \
         t->vz = 0; \
         t->vy = 0; \
-        t->pz = o->param.trans.vz + (s16)t->ez; \
         *(s32*)area = 0; \
         t->zona = o->w26; \
         BarrerTerreno(&t->px, &t->vx, t, area); \
@@ -3224,10 +3224,10 @@ siguiente:
     { \
         t->px = o->param.trans.vx + (s16)t->ex; \
         t->py = o->param.trans.vy; \
+        t->pz = o->param.trans.vz + (s16)t->ez; \
         t->vz = t->dz; \
         t->vx = 0; \
         t->vy = 0; \
-        t->pz = o->param.trans.vz + (s16)t->ez; \
         *(s32*)area = 0; \
         t->zona = o->w26; \
         BarrerTerreno(&t->px, &t->vx, t, area); \
