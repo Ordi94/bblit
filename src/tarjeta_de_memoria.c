@@ -422,6 +422,14 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
  * original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante.
+ * Medido en el volcado del optimizador de bucles (`-dL`): el bucle del directorio tiene 72 instrucciones reales y el
+ * optimizador iza tres cadenas de desplazamiento (pseudos 502 y 503 con ahorro 5 y 4, 510 a 512 con ahorro 6, 5 y 2, y las
+ * de los bucles interiores de 17 y 20 instrucciones de vida), que el original deja dentro del cuerpo (tres cadenas
+ * `sll 4 ; subu ; sll 3` por vuelta, en 0x80015CC0, 0x80015D10 y 0x80015D40); los bucles interiores de 12 y 16 instrucciones
+ * no izan un incremento inducido (`giv of insn ... not worth while, 0 vs 12` y `0 vs 16`). Con `desplazamiento_grupo` en una
+ * sola local usada en el relleno y en la entrada da 2835; con el producto escrito en cada uso 3160. Queda sin causa medida
+ * por que el original no iza esas cadenas. El `move a1,v0 ; bnez a1` de la llamada de sondeo (el original comprueba una copia
+ * del resultado que despues compara con -1) tampoco se reproduce: aqui se comprueba `v0` directamente.
  *
  * Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de registros (D_8006AA70[0xA]: 1 aceptar,
  * 2 formatear, 3 crear el archivo, 4 grabar con sonido, 5 cargar, 6 grabar) y la limpia; despues sondea con MemCardSync(1) la ultima
