@@ -1438,12 +1438,17 @@ buscar_modelo:
                         }
                     }
                     if (sc->i40 < D_80069588) {
-                        if ((sc->tp3C->bandera & 1) != 0 && (sc->cur->flags08 & 0x10000) != 0) {
-                            goto sigue2;
+                        if ((sc->tp3C->bandera & 1) != 0) {
+                            if ((sc->cur->flags08 & 0x10000) != 0) {
+                                goto sigue2;
+                            }
+                            goto modelo_hallado;
                         }
-                    } else if (D_80069588 != sc->i40) {
+                    }
+                    if (D_80069588 != sc->i40) {
                         goto sigue2;
                     }
+modelo_hallado:
                     if ((sc->cur->w3C & 0x40) == 0) {
                         func_800351B4(sc->cur);
                         goto siguiente;
