@@ -1145,7 +1145,7 @@ ApoyoHallado* func_80020354(Objeto* o, VECTOR* punto, SondaApoyo* w, u32 mascara
  * alcanzado (+0x13C). Si el apoyo es plano (bandera 0x400000) solo compara con su altura.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2290 con la configuracion versionada (g = 8 del archivo; ejes 2 de operando, 0 reordenadas, 45 insertadas o borradas). Difiere en: orden de bloques de salto (la suma del paso en dos sentencias baja de 2350 a 2290). Misma logica y mismos accesos; el original deja los retornos 2 y 1 como bloques separados con el delay slot relleno y la lista recorrida con el indice en el hueco de salto, el C los reunifica. */
+/* Pendiente: puntuacion 1785 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 38 insertadas o borradas). Difiere en: orden de bloques de salto (la suma del paso en dos sentencias baja de 2350 a 2290; escribir el ultimo retorno como `if (altura <= 0) return 2; return 1;` baja a 1785). Misma logica y mismos accesos; queda la forma del bucle de peldanos: el original lo coloca con la prueba de salida hacia delante (`bnez v0,b4`), la lectura del siguiente nodo y el salto atras con la suma en el hueco, y el C lo deja rotado, con un salto de entrada al medio (`j` con `move v0,a0` en su hueco) y la lectura del siguiente nodo antes del cuerpo; reescribirlo como `for (;;)` con la salida por nodo nulo da la misma cifra. */
 u8 func_80020A90(Objeto* o, Movimiento* d, Objeto** apoyo)
 {
     Objeto* t;
