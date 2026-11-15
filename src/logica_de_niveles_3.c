@@ -2523,7 +2523,30 @@ siguiente:
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 365 con la configuracion versionada (g = 8 del archivo). Prologo y salida de la busqueda por id: el original deriva la matriz del scratchpad de la base despues de calcular la parte alta de la camara, y sale de la busqueda con un salto directo al caso sin origen en lugar de volver a probar el cursor. La constante de la matriz (lui compartido con la base, ori) la emite el original despues del par que el optimizador de bucles iza para D_8006D928, y aqui sale antes: es la posicion de una constante fuera del bucle frente a una izada, y las colocaciones dentro del bucle la dejan en el bucle o antes del par: como primera sentencia del bucle se iza pero antes del par (misma puntuacion), despues del primer uso de D_8006D928 no se iza (queda en el bucle, 605), escrita en cada uno de sus ocho usos tampoco (3684) y un puntero real a la camara asignado antes de la matriz empeora el reparto (813). Los ocho usos de la matriz comparten un unico registro (s3), de modo que en el original es una variable asignada una vez. */
+/*
+ * Pendiente: puntuacion 365 con la configuracion versionada (g = 8 del archivo). Prologo y salida de la busqueda por id.
+ *
+ * (1) El original deriva la matriz del scratchpad de la base (`move s3,s1 ; ori s3,s3,0x50`, con el lui compartido con
+ * la base) despues del par que el optimizador de bucles iza para D_8006D928 (`lui s5 ; addiu s2`), y aqui sale antes.
+ * Medido en el volcado del optimizador de bucles: el par se iza como las instrucciones 1639 y 1641 (candidatos de las
+ * insns 78 y 79 del bucle); la matriz escrita como primera sentencia del bucle se iza como 1637 y sale antes del par;
+ * escrita despues de cualquier salto condicional del bucle (tras la primera prueba, tras la llamada de la accion, al
+ * empezar el bloque de la bandera 1 o tras calcular la condicion) NO es candidata y queda dentro del bucle (`lui` y `ori`
+ * en cada vuelta); escrita en cada uno de sus ocho usos tampoco se iza, y un puntero real a la camara asignado antes de
+ * la matriz empeora el reparto (copias del puntero). `&t->m`, `(u32)t | 0x50` y `(u32)t + 0x50` dan el mismo codigo
+ * que la constante. Se supone, sin verificar, que el optimizador de bucles solo iza una constante o una suma de bits
+ * si la instruccion precede al primer salto condicional del bucle, y que el par de D_8006D928 se iza despues porque su
+ * primera referencia esta mas abajo. Los ocho usos de la matriz comparten un unico registro (s3), de modo que en el
+ * original es una variable asignada una vez.
+ *
+ * (2) El original sale de la busqueda por id con `beqz v0` directo al caso sin origen y vuelve con `j` al cursor; aqui
+ * sale con `bnez` hacia atras y un `j`. Medido sobre el volcado de la salida: el bucle con `while` (igual que `for`),
+ * con guarda y `do/while` (duplica el cuerpo), con `goto` al caso sin origen tras el bucle (sale directo pero con la
+ * misma polaridad que ahora), con `for (;;)` y la prueba de nulo al final (la polaridad del original, pero el optimizador
+ * de saltos copia la primera vuelta y el cuerpo sale duplicado) y con la prueba de nulo al principio (una sola prueba
+ * compartida y `t->nodo` ya no se iza). Las nueve marcas simbolicas (`%lo(D_1F8000..)` frente al desplazamiento) no se
+ * pueden quitar con el acceso por direccion constante.
+ */
 /*
  * Manejador del director de camara (clase 36): por cada disparador cuya condicion y distancia se
  * cumplen reescribe el destino de vista y de mira de la camara global, la distancia de acercamiento
