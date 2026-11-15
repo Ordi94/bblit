@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 410 | 93368 |
+| Código del juego | 450 | 201416 | 411 | 96256 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 93368 de 201416 (46.36 %).
-Funciones marcadas `NON_MATCHING`: 23.
-Coherencia con el ensamblador: correcta (692 `glabel` en `asm/` + 410 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 96256 de 201416 (47.79 %).
+Funciones marcadas `NON_MATCHING`: 22.
+Coherencia con el ensamblador: correcta (691 `glabel` en `asm/` + 411 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -33,7 +33,7 @@ Coherencia con el ensamblador: correcta (692 `glabel` en `asm/` + 410 en C = 110
 | logica_de_niveles | 3 | 17 | 4 | 0 | 13128 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 25 | 1 | 1 | 12328 | 13644 |
-| movimiento_y_objetos_de_escena | 3 | 24 | 3 | 0 | 14540 | 18284 |
+| movimiento_y_objetos_de_escena | 3 | 25 | 2 | 0 | 17428 | 18284 |
 | tarjeta_de_memoria | 1 | 8 | 2 | 0 | 1892 | 5116 |
 
 ## Por archivo
@@ -63,13 +63,12 @@ Coherencia con el ensamblador: correcta (692 `glabel` en `asm/` + 410 en C = 110
 | `src/menus_e_interfaz.c` | 25 | 1 | 1 | 12328 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 4 | 0 | 0 | 2116 | 2116 |
 | `src/movimiento_y_objetos_de_escena_2.c` | 14 | 1 | 0 | 5768 | 6336 |
-| `src/movimiento_y_objetos_de_escena_3.c` | 6 | 2 | 0 | 6656 | 9832 |
+| `src/movimiento_y_objetos_de_escena_3.c` | 7 | 1 | 0 | 9544 | 9832 |
 | `src/tarjeta_de_memoria.c` | 8 | 2 | 0 | 1892 | 5116 |
 
 ## Funciones `NON_MATCHING`
 
 - `ActualizarCamaraSeguimiento`: Pendiente: puntuacion 10175 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y las constantes coinciden; difieren el reparto de registros temporales y la planificacion de las cargas y los almacenes en las sondas de apuntado (0x80033700-0x80033888), la direccion normalizada del modo guiado (0x80033CB4-0x80033D64), el giro lateral (0x80033F00-0x80034160), los barridos contra el terreno (0x80034348-0x80034720), las ocho sondas de empuje (0x800348C8-0x80034A9C) y el bloque de alturas (0x80034B00-0x80034E34).
-- `AvanzarAnimacionSprite`: Pendiente: puntuacion 50 con la configuracion versionada (g = 8 del archivo; ejes 72 de operando, 0 reordenadas, 20 insertadas o borradas). Instrucciones y flujo identicos al original; solo difiere el temporal del cociente de las cinco multiplicaciones (desplazamientos 0x210, 0x230, 0x250, 0x29C y 0x2C4): el original usa $t4 y el C $t5, porque la macro de escala 0x1000 escribe $t4 y lo declara destruido (su cuerpo lo escribe) y esa lista no se altera; sin declararlo el C da $t4. Medido con un cambio temporal de la macro (no aplicado): si se anade tambien $13 a su lista el temporal pasa a $t6, 
 - `BarrerTerreno`: Pendiente: puntuacion 800 con la configuracion versionada (g = 0 del archivo; ejes 213 de operando, 3 reordenadas, 85 insertadas o borradas). Difiere en: orden de escrituras y reparto de registros, a saber, en los cuatro avances del recorrido general (subcelda y baldosa) el original almacena la copia del punto previo en rx o bx (rz/bz antes) despues de la copia `move` de la segunda lectura y con el punto previo en v1 y la altura en a1/a2, mientras que aqui ese almacen sube justo tras las lecturas y los registros salen permutados; y la posicion de dos instrucciones del prologo (el original colo
 - `CargarContenedor`: Pendiente: puntuacion 259843 con la configuracion versionada (g = 8 del archivo). La cifra depende de la composicion del objeto: la comparacion incluye palabras con direcciones absolutas dentro del archivo, y cualquier funcion cerrada en este mismo archivo las desplaza sin que cambie el codigo de esta (no comprobado comparando los objetos). Tambien depende del tamano de la funcion anterior, aun pendiente: al cambiar su tamano la cifra pasa de 259563 a 259843 sin tocar el codigo de esta. La estructura (bloques, bucles, llamadas, las cinco tablas de saltos) sigue el ensamblador completo y el mar
 - `DibujarSombras`: Pendiente: puntuacion 825 con la configuracion versionada (g = 8 del archivo; ejes 20 de operando, 0 reordenadas, 43 insertadas o borradas). Difiere el reparto de registros y el orden del prologo y el cierre del bucle de nodos (el original conserva el salto condicional hacia atras). La direccion de la caja de relleno, que el original deriva de la base del scratchpad (`ori a0,s0,0x38`), se reproduce tomandola del propio contexto, `&c->caja`: baja de 930 a 825 (con la constante `(GsBOXF*)0x1F800038` salian `move a0,s0` y `ori a0,a0,0x38`). Causa medida del prologo (volcados de `cc1`): las dos le
