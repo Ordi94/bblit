@@ -3306,11 +3306,11 @@ void LogicaBloqueEmpujable(Objeto* o)
     m2 = &t->m;
     margen = (s16)o->radio >> 1;
     RotMatrix(&o->param.giro.rotate, m2);
-    cuarto = margen >> 1;
     GEO_CARGAR_WH(&o->min);
     GEO_GUARDAR_WH(&t->mnx);
     GEO_CARGAR_WH(&o->max);
     GEO_GUARDAR_WH(&t->mxx);
+    cuarto = margen >> 1;
     t->mnx -= cuarto;
     t->mnz -= cuarto;
     t->mxx += cuarto;
