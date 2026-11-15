@@ -482,13 +482,16 @@ void func_8001D588(s32 modo, VECTOR* p)
  * de `otro` cambia y la puntuacion sube.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 8935 con la configuracion versionada (g = 8 del archivo). Misma logica de condiciones y mismos almacenes, primer borrador sin igualar el orden de bloques: el original reparte el dano por defecto (1) y el de la rama con atacante en bloques compartidos con saltos distintos y dos formas de cerrar el llamador. */
+/* Pendiente: puntuacion 1560 con la configuracion versionada (g = 8 del archivo). El orden de bloques y los saltos coinciden; quedan el reparto de v0 y v1 en la rama del tipo 0x1F (el relleno del hueco de retardo de la comparacion con 0x1F lleva `li 0x1E` y el original deja `nop`) y la forma simbolica de D_80010041 (con el acceso por el banco de registros del estado el ensamblador usa 0x8001 y el desplazamiento 0x41, y el original el simbolo).
+ *
+ * Que dio cada cambio (cifras del diff): el campo de indicadores del objeto controlado se declara sin signo y la prueba de signo del original (`bgez`) desaparecia con `< 0`; con el molde a s32 la prueba vuelve (8935 a 7705). Las dos comprobaciones finales sobre el registro de animacion (`registro184` nulo y bit 0x4000) se escriben como un solo `if` que envuelve el resto, de modo que el `return 0` de esas dos sale al final tras el `return 1`, como en el original, y no se funde con el de las comprobaciones iniciales (7165 a 3200). La salud (0x80010041) se lee y se resta por el banco de registros del estado (`ESTADO_PRINCIPAL->r[1]`): es un acceso de miembro y el planificador no lo reordena respecto del almacen al campo `flags18` ni respecto de los demas miembros, y la lectura y el almacen comparten la base (3200 a 1670). El dano bruto va en su propia local antes de la copia que se recorta a 2 (1670 a 1560): el original conserva dos pseudos (`lh v0` y `move a1,v0`). */
 s32 func_8001D75C(Objeto* otro, RegistroAnim* a1)
 {
-    Objeto* j;
     u32 estado;
     s32 danio;
+    s32 bruto;
     u32 v1;
+    Objeto* j;
 
     if (D_80069690 > 0) {
         return 0;
@@ -503,7 +506,7 @@ s32 func_8001D75C(Objeto* otro, RegistroAnim* a1)
         return 0;
     }
     estado = D_8006D9A8[0];
-    if (((estado & 0x100) || D_80069698->flags14 < 0) && (estado & 0x200) == 0) {
+    if (((estado & 0x100) || (s32)D_80069698->flags14 < 0) && (estado & 0x200) == 0) {
         return 0;
     }
     j = D_80069698;
@@ -511,48 +514,46 @@ s32 func_8001D75C(Objeto* otro, RegistroAnim* a1)
         return 0;
     }
     otro->flags14 |= 0x8000;
-    if (j->registro184 == NULL) {
-        return 0;
-    }
-    if (!(j->registro184->w0C & 0x4000)) {
-        return 0;
-    }
+    if (j->registro184 != NULL && (j->registro184->w0C & 0x4000)) {
     j->id_atacante = otro->w1C;
     otro->id_atacante = 1;
     if (otro->clase == 0x1F) {
         /* 0x8001D860: lhu 0x1E(a3) y 0x8001D870: lbu 0x1E(a3); el campo es s16 para el interprete de eventos (lh), asi que el dano se lee sin signo con la conversion. */
         j->w38 = (u16)otro->s1E;
         D_80069690 = 0x1E;
-        D_80010041 -= (u8)otro->s1E;
+        ESTADO_PRINCIPAL->r[1] -= (u8)otro->s1E;
         goto marcar;
     }
     if (a1 != NULL) {
         if (!((otro->flags08 & 0x10000000) && (otro->flags14 & 1)) && !(a1->w0C & 0x200000)) {
-            danio = (s16)a1->w16;
-            if (danio != 0) {
+            bruto = (s16)a1->w16;
+            if (bruto != 0) {
+                danio = bruto;
                 if (danio >= 3) {
                     danio = 2;
                 }
                 j->w38 = danio;
                 D_80069690 = 0x1E;
-                D_80010041 -= danio;
+                ESTADO_PRINCIPAL->r[1] -= danio;
 marcar:
                 j->flags14 |= 0x2000000;
             }
             goto fin;
         }
     }
-    D_80069698->w38 = 1;
+    j->w38 = 1;
     D_80069690 = 0x1E;
-    D_80010041 -= 1;
-    D_80069698->flags14 |= 0x2000000;
+    ESTADO_PRINCIPAL->r[1] -= 1;
+    j->flags14 |= 0x2000000;
 fin:
     v1 = otro->flags18;
     otro->flags18 = v1 | 0x4000;
-    if ((s8)D_80010041 <= 0) {
+    if ((s8)ESTADO_PRINCIPAL->r[1] <= 0) {
         otro->flags18 = v1 | 0x6000;
     }
     return 1;
+    }
+    return 0;
 }
 #else
 INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D75C);
