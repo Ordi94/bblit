@@ -466,13 +466,13 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2040 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 5 reordenadas,
- * 268 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
+ * Pendiente: puntuacion 1790 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 5 reordenadas,
+ * 252 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
  * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
  * reproduce la carga del original del hijo y baja de 2625 a 2605. La resta de la X del portador en el barrido se
- * escribe directa (`o->param.trans.vx - o->p70->param.trans.vx`): con la llamada replicada de la composicion (mas
- * abajo) da 2040 y con una local previa (`x_portador`) 2165; sin la llamada replicada la forma directa da 2200 frente
- * a 2185 de la local. Los registros
+ * escribe directa (`o->param.trans.vx - o->p70->param.trans.vx`): con una local previa (`x_portador`) la cifra es 1915.
+ * La traslacion en Z de la rama de la comprobacion de apoyo usa dos locales propias (`vz_portador` y `vz_barrido`) en
+ * lugar de las temporales compartidas `arg_giro` y `giro`, con la suma conmutada: sin ellas 2030. Los registros
  * guardados ya coinciden con el original. Los temporales de 32 bits compartidos entre bloques son pseudos globales
  * que el reparto global asigna a a0 y a1, mientras que el original deja en v0 y v1 los valores de un solo bloque:
  * medido en el volcado de reparto para las dos bandas de altura del vuelo (ver la cabecera de la funcion); para el
@@ -526,8 +526,8 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * (0x8002A5A8 y 0x8002A668) y `nop` en el hueco de retardo de la llamada. Medido en los volcados de saltos de `cc1` (`-dj` y `-dJ`): con la llamada en cada rama hay 21
  * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
  * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
- * bloque de union y el planificador la deja en el hueco de retardo de la llamada (2185; en el original ese hueco es un
- * `nop`). Con las dos llamadas la cifra es 2165 (2040 con la resta directa del barrido, ver arriba). Se supone, sin
+ * bloque de union y el planificador la deja en el hueco de retardo de la llamada (en el original ese hueco es un
+ * `nop`). Con las dos llamadas la cifra es 1790 y con una sola llamada tras la etiqueta 1995. Se supone, sin
  * verificar, que en la rama de la comprobacion de apoyo el original reparte `a0` al puntero del portador y despues al
  * argumento, y que aqui la preparacion del argumento sube tras la llamada a BarrerTerreno y empuja ese puntero a `a1`.
  * La forma del fuente original que producia este reparto se desconoce.
