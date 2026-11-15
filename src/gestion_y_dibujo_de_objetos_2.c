@@ -889,8 +889,8 @@ void func_80038E84(s32 idx, s32 paso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1415 con la configuracion versionada (g = 8 del archivo; ejes 69 de
- * operando, 0 reordenadas, 153 insertadas o borradas). Coinciden la
+ * Pendiente: puntuacion 1300 con la configuracion versionada (g = 8 del archivo; ejes 67 de
+ * operando, 0 reordenadas, 159 insertadas o borradas). Coinciden la
  * estructura, los desplazamientos y los simbolos; difiere en el reparto de registros de la barra 0
  * (el original deja la base de 0x80010000 en a1 y copia el valor mostrado a a0 con `move a0,v1` en el
  * hueco de retardo de 0x5c; el C copia la base a a1 en esa posicion y compara con v1, de modo que el
@@ -901,7 +901,12 @@ void func_80038E84(s32 idx, s32 paso)
  * un `lui` por temporizador. Un puntero propio por barra (g3 y g7 para el indice y el valor, f3 y f7 para
  * la relectura tras la llamada) en lugar de los compartidos `g` y `f` deja las bases de las barras 3 y 7
  * en v0 como el original: 1465 a 1435 con g3 y g7 y a 1415 con f3 y f7 (se supone, sin verificar, que un
- * pseudo compartido une las vidas de todas las barras y toma el mismo registro en todas). Leer el estado principal en una
+ * pseudo compartido une las vidas de todas las barras y toma el mismo registro en todas). La segunda
+ * lectura de D_80010043 en el brillo de la barra 0 (`lui a0` y `lbu v0,0x43(a0)` en 0x800391F0) no
+ * reutiliza la de la comparacion: el original la lee por el puntero a 0x80010000 y no por el simbolo, de
+ * modo que el CSE no las une; escrita como `ESTADO_PRINCIPAL->r[0x03]` baja de 1415 a 1300 (el
+ * original toma a0 para esa base y el C toma v0, con un `li a1,0xc8` adelantado al hueco de retardo del
+ * `beqz`). Leer el estado principal en una
  * copia propia de la rama de la barra 0 (en lugar de reutilizar la local del cuerpo) baja de 1950 a 1745;
  * la envoltura del medidor y del contador de golpes junto con el orden de la actualizacion del valor
  * mostrado en las barras 3 y 7 lo bajan de 1745 a 1525 (ver la cabecera de abajo).
@@ -1008,7 +1013,7 @@ void func_80039094(void)
                 }
             }
         }
-        func_80038E84(0, D_80069525 < D_80010043 ? (D_80010043 - D_80069525) * 0xC8 : 0xC8);
+        func_80038E84(0, D_80069525 < D_80010043 ? (ESTADO_PRINCIPAL->r[0x03] - D_80069525) * 0xC8 : 0xC8);
 
         g3 = ESTADO_PRINCIPAL;
         idx = g3->r[0xB6];
