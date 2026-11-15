@@ -671,7 +671,6 @@ se actualiza la tabla en el mismo cambio.
 | `func_8001C998` | `src/movimiento_y_objetos_de_escena.c` | envoltura | 1 | NON_MATCHING 1055 | Área de trabajo en `$s0` frente a la altura nueva (0,577 frente a 0,577, empate; sin la envoltura 0,346) |
 | `AplicarCuadro` | `src/gestion_y_dibujo_de_objetos.c` | envoltura | 2 | coincide | Orden de la ayuda y del área de trabajo: la ayuda sube de 56 a 64 usos (prioridad 2,41 a 3,31) y pasa por delante del área (2,82 a 2,90), que toma `$s1` y deja `$s0` a la ayuda; con una sola envoltura la ayuda queda en 58 usos (2,50) o en 62 (2,67) y el reparto no cambia |
 | `func_80039094` | `src/gestion_y_dibujo_de_objetos_2.c` | envoltura | 1 | NON_MATCHING 1525 | Valor leído de la barra en `$a0` por detrás de la base 0x80010000 (1,909 frente a 2,0; sin la envoltura 1,5 frente a 0,78); margen de 0,004 frente al otro pseudo en disputa (1,909 frente a 1,905), reparto fragil |
-| `BarrerTerreno` | `src/colision_y_terreno.c` | sentencia duplicada en ambas ramas | 20 | NON_MATCHING 775 | Cola de los planos 0x7E y 0x7F del caso estático (diez sentencias por rama; las banderas llevan su propia constante). Con la cola común y las locales `cl` y `f` el pseudo de la clase (3 usos, vida 7, 0,4286, prefiere `$v0`) se asigna antes que el de las banderas (3 usos, vida 8, 0,375) y el original los deja al revés; con la cola en cada rama son pseudos locales del bloque y el salto cruzado fusiona las colas (1565 a 775; con etiqueta común y solo clase y banderas por rama, 800) |
 
 ## Medir el progreso
 

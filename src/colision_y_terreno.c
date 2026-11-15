@@ -254,8 +254,8 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 775 con la configuracion versionada (g = 0 del archivo; ejes 213 de operando,
- * 3 reordenadas, 79 insertadas o borradas). Difiere en: orden de escrituras y reparto de registros,
+ * Pendiente: puntuacion 800 con la configuracion versionada (g = 0 del archivo; ejes 213 de operando,
+ * 3 reordenadas, 85 insertadas o borradas). Difiere en: orden de escrituras y reparto de registros,
  * a saber, en los cuatro avances del recorrido general (subcelda y baldosa) el original almacena la
  * copia del punto previo en rx o bx (rz/bz antes) despues de la copia `move` de la segunda lectura y
  * con el punto previo en v1 y la altura en a1/a2, mientras que aqui ese almacen sube justo tras las
@@ -268,12 +268,15 @@ void func_80019364(s32* a0)
  * cifra anterior, sin cambio) y con las dos lecturas como campo sube a 2500; con las dos lecturas como
  * campo y los almacenes en el orden del original, solo en el avance de subcelda del eje z, 2155 (la
  * lectura del punto previo se carga la primera y su almacen sube antes de la suma); mover la lectura
- * del punto previo (`tx = w->sz_x`) tras la de la altura (`w->aux = w->sz_y`) deja 775: el orden de las
+ * del punto previo (`tx = w->sz_x`) tras la de la altura (`w->aux = w->sz_y`) deja 775 con la cola entera de
+ * los planos por rama (800 con la cola comun): el orden de las
  * cargas lo decide el planificador y no el orden de las sentencias (el original carga la altura antes
  * que el punto previo y carga este tras la segunda lectura de la celda); leer el punto previo como
- * acceso que no es de miembro (`*(s32*)((u8*)w + 0x20)`) tampoco lo mueve (775). Los planos 0x7E y
- * 0x7F del caso estatico (0x8001BCD4-0x8001BF6B) dejaron de diferir (1565 a 775): ver la cabecera
- * de la funcion.
+ * acceso que no es de miembro (`*(s32*)((u8*)w + 0x20)`) tampoco lo mueve (775 con esa misma forma).
+ * Los planos 0x7E y 0x7F del caso estatico (0x8001BCD4-0x8001BF6B) dejaron de diferir en su reparto de
+ * registros (1565 a 800): ver la cabecera de la funcion. Medido: escribir la cola entera de esos planos
+ * (diez sentencias) en cada rama da 775, 25 puntos menos; no se adopta porque no acerca el cierre y
+ * exigiria veinte sentencias duplicadas.
  */
 /*
  * Barrido de un desplazamiento (desp) del punto pos contra el terreno por baldosas: avanza baldosa a
@@ -294,18 +297,16 @@ void func_80019364(s32* a0)
  * segunda queda como copia del registro de la primera (con una variable local para las dos la copia
  * desaparece).
  *
- * Las colas de los planos 0x7E y 0x7F del caso estatico estan replicadas en cada rama y no generan
- * codigo: el salto cruzado las fusiona en una sola, igual que en el original (una cola compartida
- * desde `sh v0,2(s3)`, con `li v0,8` en el hueco del salto y `li v0,6` al final de la otra rama).
- * Causa medida en el volcado de la version anterior, que llevaba la clase y las banderas en dos
- * locales (`cl` y `f`) y una etiqueta comun: el pseudo de la clase (91: 3 usos, vida 7, prioridad
- * 0,4286, con preferencia por v0) se asignaba antes que el de las banderas (92: 3 usos, vida 8,
- * prioridad 0,375) y tomaba v0, mientras que el original deja las banderas en v0 y la clase en v1;
- * con la cola en cada rama ambos valores son pseudos locales de su bloque y se reparten como en el
- * original. Con la etiqueta comun y solo la clase y las banderas en cada rama da 800 (el almacen de
- * la clase queda antes de los dos almacenes de ceros), y con la cola completa en cada rama 775. Las
- * diez sentencias de la cola son iguales en las dos ramas, salvo la constante de las banderas, que es
- * propia de cada una. La forma del fuente original que producia este reparto se desconoce.
+ * La cola de los planos 0x7E y 0x7F del caso estatico va tras una etiqueta comun (`plano`) y por rama
+ * quedan solo las sentencias que el original tambien emite una vez por rama (`pos[1]`, la carga de
+ * `res->clase` y las banderas con su constante): el original comparte una sola cola desde `sh v0,2(s3)`,
+ * con `li v0,8` en el hueco del salto y `li v0,6` al final de la otra rama. Medido en el volcado de
+ * reparto de la version que llevaba la clase y las banderas en dos locales (`cl` y `f`): el pseudo de la
+ * clase (91: 3 usos, vida 7, prioridad 0,4286, con preferencia por v0) se asignaba antes que el de las
+ * banderas (92: 3 usos, vida 8, prioridad 0,375) y tomaba v0, mientras que el original deja las banderas
+ * en v0 y la clase en v1; con la clase y las banderas escritas en cada rama ambos valores son pseudos
+ * locales de su bloque y se reparten como en el original (los ejes de operando de `diff` no cambian: 213).
+ * Esa forma da 800 (el almacen de la clase queda antes de los dos almacenes de ceros).
  */
 s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* w)
 {
@@ -869,49 +870,23 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
         c = -c;
     }
     if (c == 0x7E) {
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
         pos[1] = cur->y_max;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
         res->clase = w->celdas[0];
         res->flags = 8;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
-        res->pendiente = 0;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
-        res->pendiente_abs = 0;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
-        res->grupo = cur->grupo;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
-        techo = cur->y_min;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
-        ret = 1;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
-        res->zona = zona;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
-        res->techo = techo;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
-        return ret;
+        goto plano;
     }
     if (c == 0x7F) {
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
         pos[1] = cur->y_max;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
         res->clase = w->celdas[0];
         res->flags = 6;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
+plano:
         res->pendiente = 0;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
         res->pendiente_abs = 0;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
         res->grupo = cur->grupo;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
         techo = cur->y_min;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
         ret = 1;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
         res->zona = zona;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
         res->techo = techo;
-        /* Sentencia replicada: es la misma que la de las otras ramas. */
         return ret;
     }
     pos[1] = cur->y_max;
