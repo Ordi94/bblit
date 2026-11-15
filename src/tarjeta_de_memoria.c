@@ -426,19 +426,25 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  * optimizador iza tres cadenas de desplazamiento (pseudos 502 y 503 con ahorro 5 y 4, 510 a 512 con ahorro 6, 5 y 2, y las
  * de los bucles interiores de 17 y 20 instrucciones de vida), que el original deja dentro del cuerpo (tres cadenas
  * `sll 4 ; subu ; sll 3` por vuelta, en 0x80015CC0, 0x80015D10 y 0x80015D40); los bucles interiores de 12 y 16 instrucciones
- * no izan un incremento inducido (`giv of insn ... not worth while, 0 vs 12` y `0 vs 16`). Con `desplazamiento_grupo` en una
- * sola local calculada entre los dos bucles interiores da 2835; con el producto escrito en cada uso 3125; asignando la misma
- * local (`desplazamiento_grupo = grupo * 120;`) antes de cada uno de los tres usos, baja a 2350 (se supone, sin verificar, que el
- * pseudo final de la cadena no se iza porque se asigna varias veces). Con esa forma el volcado `-dL` sigue izando las dos primeras instrucciones
+ * no izan un incremento inducido (`giv of insn ... not worth while, 0 vs 12` y `0 vs 16`). El original recalcula la cadena
+ * en cada uno de los tres usos del desplazamiento: la busqueda del final del nombre (0x80015CC0 a 0x80015CC8), el relleno
+ * con ceros (0x80015D10 a 0x80015D1C, con el primer `sll` en el hueco del salto del bucle) y la entrada de directorio
+ * (0x80015D40 a 0x80015D48). Por eso el fuente asigna la misma local (`desplazamiento_grupo = grupo * 120;`) antes de cada
+ * uno de esos tres usos; cada asignacion se consume en el bucle siguiente y emite codigo, de modo que no es una referencia
+ * sin codigo. Con las tres la cifra es 1960; sin la asignacion del relleno 2260; sin la de la entrada 2045; con una sola,
+ * calculada antes del primer bucle interior, 2440 (con el producto en una sola local calculada entre los dos bucles
+ * interiores 2835, medido en un estado anterior de la funcion); con el producto escrito en cada uso 3125. Se supone, sin
+ * verificar, que el pseudo final de la cadena no se iza porque se asigna varias veces, y que el autor del original escribio
+ * el producto en cada uso por la misma razon. Con esa forma el volcado `-dL` sigue izando las dos primeras instrucciones
  * de la cadena (`sll 4` y `subu`: pseudos 502 y 503, vida 31, ahorro 5 y 4, bucle de 69 instrucciones reales) y deja en el
- * cuerpo solo el `sll 3`. Medido sin bajada: un par `grupo++; grupo--;` en el cuerpo no evita el izado (2395: el combinador lo
+ * cuerpo solo el `sll 3`. Sin bajada: un par `grupo++; grupo--;` en el cuerpo no evita el izado (2395: el combinador lo
  * anula); escribir la cadena entera con asignaciones compuestas sobre la misma local, `d = g << 4; d -= g; d <<= 3;`, antes
  * de cada uso, la deja en el cuerpo en cada uso como el original pero el planificador reparte sus tres instrucciones a los dos
  * lados del salto del bucle interior y la cifra sube a 2485 (269 insertadas o borradas). Queda sin causa medida por que el
  * original no iza esas cadenas. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
  * del resultado que despues compara con 1) se reproduce guardando el resultado en la local `rc`, compartida con la del
  * sondeo: con una local propia (`fmt` o `tam`) el CSE funde la copia y se comprueba `v0` directamente (2350); con `rc` o
- * `estado` baja a 1960, pero la copia cae en v1 y no en a1 como en el original, y con `partida` cae en s1 (2635). Medido sin
+ * `estado` baja a 1960, pero la copia cae en v1 y no en a1 como en el original, y con `partida` cae en s1 (2635). Sin
  * bajada: calcular la mascara de ranuras en una local antes del almacen de 0xE da 2190.
  *
  * Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de registros (D_8006AA70[0xA]: 1 aceptar,
@@ -661,7 +667,8 @@ void SondearTarjeta(void)
                     entrada->tam = 0;
                     entrada->sig = 0;
                     entrada->cabeza = 0;
-                    *(s32*)(D_800697B0 + 0x24 + i * 0x28 + desplazamiento_grupo) = 0;                }
+                    *(s32*)(D_800697B0 + 0x24 + i * 0x28 + desplazamiento_grupo) = 0;
+                }
                 D_8006936C = func_80014AC4(ranura);
                 if (D_8006936C >= 0) {
                     if (ESTADO_PRINCIPAL->nivel == 0) {
