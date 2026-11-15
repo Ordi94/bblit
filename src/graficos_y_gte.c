@@ -573,7 +573,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
  * reordenadas, 22 insertadas o borradas; el diff no muestra ninguna linea de un solo lado, todas son
  * diferencias de registro). Mismo flujo, mismas cadenas compartidas, misma cola de salida y mismas
  * instrucciones que el ensamblador; difiere solo en el reparto de registros de tres puntos del bucle
- * de puntos: (1) el resultado de la ultima comparacion (`toca`) queda en a0 y el original lo deja en v0
+ * de puntos: (1) el resultado de la ultima comparacion (`excluido`) queda en a0 y el original lo deja en v0
  * entre el `slt` y el `bnez` (0x478 y 0x480, 0x5a0 y 0x5a4). Medido en -dS y -dg: el compilador usa la propia
  * variable como destino de la suma y de la carga del punto antes del `slt` (insns 629, 638, 772 y 783 de -dS),
  * de modo que su vida cruza las cargas de los otros operandos y choca con v0 y v1; es el pseudo de mayor
@@ -593,7 +593,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
  * comparaciones, que son iguales tras la primera, y cada uno termina con `j 0x5a4` y su propio `slt` en el
  * hueco; 0x5a4 (`bnez v0,0x5d0 ; li v0,1 ; j 0x5f0`) es la cola comun de esos dos y de la cadena de 0x570.
  * Este C reproduce esa estructura: la ultima comparacion de los caminos de 0x44c, 0x498 y 0x4b4 se guarda en
- * `toca` y la prueba de `toca` (`continue` o `return 1`) esta una sola vez, al final del camino de 0x558,
+ * `excluido` y la prueba de `excluido` (`continue` o `return 1`) esta una sola vez, al final del camino de 0x558,
  * como la cola de 0x5a4; el camino de 0x500 y el de 0x5b4 terminan cada uno con su `return 1`.
  *
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
@@ -613,7 +613,7 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
     SVECTOR reserva;
     SVECTOR* punto_der;
     Objeto* objeto_der;
-    s32 toca;
+    s32 excluido;
     GEO_CARGAR_WH(&b->min);
     GEO_OR_WH(&b->max);
     GEO_GUARDAR_1W_T1(&w->caja);
@@ -676,7 +676,7 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
                 if (w->b->max.vz + w->radio < w->pt->vz) {
                     continue;
                 }
-                toca = w->b->max.vx + w->radio < w->pt->vx;
+                excluido = w->b->max.vx + w->radio < w->pt->vx;
                 goto cierre;
             } else if (w->ang < w->angs[1]) {
                 if (w->b->max.vx + w->radio < w->pt->vx) {
@@ -685,7 +685,7 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
                 if (w->b->max.vz + w->radio < w->pt->vz) {
                     continue;
                 }
-                toca = w->pt->vz < w->b->min.vz - w->radio;
+                excluido = w->pt->vz < w->b->min.vz - w->radio;
                 goto cierre;
             } else {
                 punto_der = w->pt;
@@ -693,7 +693,7 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
                 if (punto_der->vz < objeto_der->min.vz - w->radio) {
                     continue;
                 }
-                toca = punto_der->vx > objeto_der->max.vx + w->radio;
+                excluido = punto_der->vx > objeto_der->max.vx + w->radio;
                 goto cierre;
             }
         } else if (w->angs[2] < w->ang) {
@@ -711,9 +711,9 @@ s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
             if (w->b->max.vz + w->radio < w->pt->vz) {
                 continue;
             }
-            toca = w->pt->vz < w->b->min.vz - w->radio;
+            excluido = w->pt->vz < w->b->min.vz - w->radio;
 cierre:
-            if (toca) {
+            if (excluido) {
                 continue;
             }
             return 1;
