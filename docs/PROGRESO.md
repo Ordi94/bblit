@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 411 | 96256 |
+| Código del juego | 450 | 201416 | 412 | 96824 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 96256 de 201416 (47.79 %).
-Funciones marcadas `NON_MATCHING`: 22.
-Coherencia con el ensamblador: correcta (691 `glabel` en `asm/` + 411 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 96824 de 201416 (48.07 %).
+Funciones marcadas `NON_MATCHING`: 21.
+Coherencia con el ensamblador: correcta (690 `glabel` en `asm/` + 412 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -33,7 +33,7 @@ Coherencia con el ensamblador: correcta (691 `glabel` en `asm/` + 411 en C = 110
 | logica_de_niveles | 3 | 17 | 4 | 0 | 13128 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 25 | 1 | 1 | 12328 | 13644 |
-| movimiento_y_objetos_de_escena | 3 | 25 | 2 | 0 | 17428 | 18284 |
+| movimiento_y_objetos_de_escena | 3 | 26 | 1 | 0 | 17996 | 18284 |
 | tarjeta_de_memoria | 1 | 8 | 2 | 0 | 1892 | 5116 |
 
 ## Por archivo
@@ -62,7 +62,7 @@ Coherencia con el ensamblador: correcta (691 `glabel` en `asm/` + 411 en C = 110
 | `src/manejadores_por_tabla.c` | 12 | 0 | 0 | 384 | 384 |
 | `src/menus_e_interfaz.c` | 25 | 1 | 1 | 12328 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 4 | 0 | 0 | 2116 | 2116 |
-| `src/movimiento_y_objetos_de_escena_2.c` | 14 | 1 | 0 | 5768 | 6336 |
+| `src/movimiento_y_objetos_de_escena_2.c` | 15 | 0 | 0 | 6336 | 6336 |
 | `src/movimiento_y_objetos_de_escena_3.c` | 7 | 1 | 0 | 9544 | 9832 |
 | `src/tarjeta_de_memoria.c` | 8 | 2 | 0 | 1892 | 5116 |
 
@@ -78,7 +78,6 @@ Coherencia con el ensamblador: correcta (691 `glabel` en `asm/` + 411 en C = 110
 - `SondearTarjeta`: Pendiente: puntuacion 1960 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas, 237 insertadas o borradas). Flujo y distribucion de bloques iguales al original; quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante. Medido en el volcado del optimizad
 - `func_800151FC`: Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). No se reprodujo la disposicion de los bloques locales de la pila ni las copias de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento. Da formato al archivo de partida: arma en la pila un bloque de 0x200 bytes con la cabecera de la tarjeta ("SC", bandera de icono, un bloque, titulo, paleta e imagenes), lo copia con la cabecera de D_8006D060 y su suma de control al buffer D_80069520 + 0x2000 y escribe 0x400 bytes con open/write (hasta cinco intentos), comprobando despues la lectura.
 - `func_80017478`: Pendiente: puntuacion 19849 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin afinar: el reparto de registros y el orden de las comparaciones de las regiones no se han ajustado al original. La lista de registros destruidos de GEO_NORMA2_XZ la mueve 100 puntos (antes 19749). Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la pared que cruzan y, si ninguno la cruza, usa la arista mas cercana. D
-- `func_8001D75C`: Pendiente: puntuacion 110 con la configuracion versionada (g = 8 del archivo). El orden de bloques y los saltos coinciden; quedan 16 instrucciones distintas, diez de forma simbolica y seis de registros. Las diez simbolicas (0x38, 0x3c, 0x108, 0x110, 0x12c, 0x1d0, 0x1d8, 0x1ec, 0x210 y 0x214): el original lee y resta la salud con el simbolo D_80010041 (`lui a1,%hi(D_80010041)`, `lbu`/`sb %lo(...)(a1)` con una sola base) y la prueba inicial con D_8006AA73, y aqui el acceso por el banco de registros del estado da `lui 0x8001` y el desplazamiento 0x41 y la prueba sale como D_8006AA70+3. Las seis d
 - `func_8001E600`: Pendiente: puntuacion 905 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 55 insertadas o borradas). Difiere en: momento de dos lecturas y reparto de registros. Medido en los volcados de `cc1`: los seis pseudos globales (objeto, bloque, puntero al sprite, desplazamiento de color, indice y puntero al fotograma) se reparten como el original salvo el puntero al sprite (pseudo de 16 usos y vida 32, prioridad 2,0), que toma `a3` y en el original `v1`. Causa: el puntero crudo leido de +0x78 (pseudo local de 3 usos y vida 9) recibe `a3` de la asignacion local y 
 - `func_80020B90`: Pendiente: puntuacion 14290 con la configuracion versionada (g = 8 del archivo). Las diferencias son de reparto de registros (v0/v1/a0 y punteros s0-s2) y del orden en que el compilador planifica los almacenamientos de las transiciones de cada contacto; la logica coincide.
 - `func_80026FEC`: Pendiente: puntuacion 2185 con la configuracion versionada (g = 8 del archivo; ejes 497 de operando, 4 reordenadas, 267 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`) reproduce la carga del original del hijo y baja de 2625 a 2605; leer la X del portador en una local antes de restarla (`x_portador`) baja a 2590 (sin ella el tramo coincide pero la cifra sube de 2235 a 2250). Los registros guardados ya coinciden con el original
