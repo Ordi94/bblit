@@ -2532,12 +2532,14 @@ siguiente:
  * La condicion vacia `if (D_8006D928.flags80) { }` del principio del bucle no genera codigo: el optimizador de saltos
  * la elimina y no queda ninguna instruccion. Su efecto es el orden en que el optimizador de bucles iza las
  * instrucciones invariantes al preludio. El original emite el par `lui s5 ; addiu s2,s5,%lo(D_8006D928)` antes de la
- * matriz del scratchpad (`move s3,s1 ; ori s3,s3,0x50`). Medido en el volcado del bucle: sin la condicion el par se
- * iza como las instrucciones 1639 y 1641 (las instrucciones 78 y 79 del bucle, vidas 176 y 192, ahorros 35 y 19) y la matriz, asignada
- * como primera sentencia del bucle, como la 1637, de modo que sale delante del par (y asignada tras cualquier salto
- * condicional del bucle no se iza y se queda dentro, con su `lui` y su `ori` en cada vuelta); con la condicion la
- * referencia a D_8006D928 precede a la matriz, el par pasa a ser las instrucciones 40 y 41 (vidas 193 y 209) izados como
- * 1648 y 1650 y la matriz el 50 izado como 1652, con lo que sale detras, como en el original (365 a 245). La matriz se
+ * matriz del scratchpad (`move s3,s1 ; ori s3,s3,0x50`). Medido en el volcado del bucle (`-dL`) del fuente tal como esta:
+ * sin la condicion la matriz, asignada como primera sentencia del bucle (instruccion 41, vida 284), se iza antes que el
+ * par (como la 1632, y el par como la 1634 y la 1636: instrucciones 78 y 79, vidas 176 y 192, ahorros 35 y 19), de modo
+ * que sale delante (y asignada tras cualquier salto condicional del bucle no se iza y se queda dentro, con su `lui` y
+ * su `ori` en cada vuelta); con la condicion la referencia a D_8006D928 precede a la matriz, el par pasa a ser las
+ * instrucciones 40 y 41 (vidas 193 y 209, ahorros 35 y 19) izadas como la 1641 y la 1643, y la matriz la 50 (vida 282)
+ * izada como la 1645, con lo que sale detras, como en el original. Sin la condicion `diff` da 160. Los numeros de
+ * instruccion izada cambian con cualquier edicion del bucle; lo estable es el orden relativo. La matriz se
  * asigna dentro del bucle, antes de la primera prueba condicional, porque solo asi se iza; los ocho usos comparten un
  * unico registro (s3), de modo que en el original es una variable asignada una vez. Se supone, sin verificar, que el
  * optimizador de bucles iza solo las instrucciones que preceden al primer salto condicional del bucle y que numera los
