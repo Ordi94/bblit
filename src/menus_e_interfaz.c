@@ -275,16 +275,20 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
  * Pendiente: puntuacion 560 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
  * 58 insertadas o borradas). Las dos ramas que recortan el nivel de la lista coinciden: el nivel se guarda dentro de
  * cada rama, antes de leer la lista, y el original las funde en una cola comun que empieza por ese almacen (con una
- * variable y un solo almacen tras la union eran 795). Difiere el reparto de registros de la copia de palabras: el
- * original deja la direccion de las palabras del sprite, la base de la lista y la ranura en a0, el desplazamiento de
- * la textura en a2 y la bandera de transparencia en v1, y aqui caen en v1, v1, a2, a0 y a0; ademas el original
- * guarda la palabra de ordenacion despues del salto de la bandera de transparencia, junto al color, y aqui sale antes.
+ * variable `n` y un solo almacen tras la union la puntuacion sube de 560 a 775). Difiere el reparto de registros de la
+ * copia de palabras: el original deja la direccion de las palabras del sprite, la base de la lista y la ranura en a0,
+ * el desplazamiento de la textura en a2 y la bandera de transparencia en v1, y aqui caen en v1, v1, a2, a0 y a0;
+ * ademas el original guarda la palabra de ordenacion despues del salto de la bandera de transparencia, junto al
+ * color, y aqui sale antes.
  *
- * Medido: con una variable `tipo` y los almacenes tras la union la cola `or ; lui 0x2c00 ; or` coincide exactamente
- * pero el reparto rota (1460 con las ramas del nivel como aqui); el desplazamiento de la textura (global) toma a0
- * porque la direccion de las palabras (local de bloque) toma v1, y el original da a0 a la direccion y a2 al
- * desplazamiento. Se supone, sin verificar, que el original da a0 a la direccion porque v1 esta ocupado durante su
- * vida por otra local de bloque; no se midio.
+ * Medido: con una variable `tipo` para la constante, el color acumulado en dos `or` y los almacenes tras la union la
+ * cola `or ; lui 0x2c00 ; or` coincide con el original pero la puntuacion es 1055: la planificacion deja el `lui` de
+ * la constante al principio del bloque (el original lo deja junto al salto) y la palabra y la constante cambian de
+ * registro. El desplazamiento de la textura (global) toma a0 porque la direccion de las palabras (local de bloque)
+ * toma v1, y el original da a0 a la direccion y a2 al desplazamiento. En el volcado de la asignacion local las
+ * copias temporales de las palabras toman v0 y la direccion toma v1 aunque a0 esta libre en su vida. Se supone, sin
+ * verificar, que el original da a0 a la direccion porque v1 esta ocupado durante su vida por otra local de bloque; no
+ * se midio.
  */
 /*
  * Encola un sprite de ocho palabras en la lista de ordenacion segun la profundidad del objeto: calcula el color y
@@ -355,14 +359,13 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         }
         ranura = orden + ctx->estado.s4;
         /* La bandera de transparencia se lee despues de calcular la ranura: leida antes de elegir la lista de
-         * ordenacion la puntuacion sube de 795 a 1075. La suma de la base de la lista y el nivel va en una sola
-         * expresion: en dos sentencias sube a 860. */
+         * ordenacion la puntuacion sube de 560 a 875. */
         semitransparente = sprite->semitransparente;
-        /* La palabra de ordenacion se guarda antes de elegir la constante del color, como en el original. */
+        /* La palabra de ordenacion se guarda antes del salto de la bandera: con la palabra en una variable y los dos
+         * almacenes tras la union de las ramas (cada rama calcula su color en otra variable) la puntuacion sube de 560
+         * a 620. */
         *p = *ranura | 0x09000000;
-        /* Cada rama guarda su propia expresion del color: con el almacen tras la union el `sw` del color queda
-         * despues del par `sll`/`sra` que recorta la direccion del primitivo y la puntuacion sube de 795 a 1040
-         * (con la misma sentencia en cada rama, a 845). */
+        /* Cada rama guarda su propia expresion del color. */
         if (semitransparente != 0) {
             p[1] = color | 0x2E000000;
         } else {
