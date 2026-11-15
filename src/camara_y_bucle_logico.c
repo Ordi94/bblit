@@ -451,11 +451,12 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 5830 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * Pendiente: puntuacion 5620 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
  * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
  * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
  * el bucle de las ocho sondas del modo de apuntado emite el incremento del contador y del puntero antes de preparar
- * los argumentos de la llamada y el original despues (0x494); la prueba de los dos bits de la direccion del ajuste
+ * los argumentos de la llamada y el original despues (0x498 y 0x49c; mover `i++` dentro del cuerpo no los cambia:
+ * son los incrementos de la variable de induccion que coloca el optimizador de bucles); la prueba de los dos bits de la direccion del ajuste
  * de altura (0xba0..0xbb8) y el par de modificaciones de banderas (0xcc4..0xd30) salen con un registro temporal
  * distinto y el original deja la lectura del contador despues del almacen de las banderas (se supone, sin
  * verificar, que porque lo almacena por un puntero y no por el simbolo: escribirlo por `cam->` dio 6185 frente a
@@ -638,9 +639,9 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
                 w->v70.vz = w->v70.vz + ((s16)D_8005E728[i].z >> 1);
                 func_80032B2C((Vec3*)&w->v30, (Vec3*)&w->v70, area, 0x24000);
             }
-            w->res.grupo = -1;
-            w->v30.vy = o->param.trans.vy + w->p8;
             i++;
+            w->v30.vy = o->param.trans.vy + w->p8;
+            w->res.grupo = -1;
             BarrerTerreno(&w->v30, &w->v70, &w->res, area);
             w->v90.vx = w->v90.vx + w->v70.vx;
             w->v90.vz = w->v90.vz + w->v70.vz;
