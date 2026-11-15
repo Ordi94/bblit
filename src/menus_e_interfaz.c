@@ -272,8 +272,8 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 580 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
- * 62 insertadas o borradas). Las dos ramas que recortan el nivel de la lista coinciden: el nivel se guarda dentro de
+ * Pendiente: puntuacion 560 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
+ * 58 insertadas o borradas). Las dos ramas que recortan el nivel de la lista coinciden: el nivel se guarda dentro de
  * cada rama, antes de leer la lista, y el original las funde en una cola comun que empieza por ese almacen (con una
  * variable y un solo almacen tras la union eran 795). Difiere el reparto de registros de la copia de palabras: el
  * original deja la direccion de las palabras del sprite, la base de la lista y la ranura en a0, el desplazamiento de
@@ -368,7 +368,12 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         } else {
             p[1] = color | 0x2C000000;
         }
-        *ranura = (s32)((s32)p << 8) >> 8;
+        /* Los dos desplazamientos que recortan la direccion del primitivo operan sobre la propia variable, como en el
+         * original (sll y sra sobre a1): escritos en una sola expresion que no la reasigna la puntuacion sube de 560
+         * a 580. */
+        p = (u32*)((s32)p << 8);
+        p = (u32*)((s32)p >> 8);
+        *ranura = (u32)p;
         D_80076188 += 0x28;
         if (ctx->limite < D_80076188) {
             D_80076188 = ctx->inicio;
