@@ -3263,6 +3263,7 @@ void LogicaBloqueEmpujable(Objeto* o)
     Objeto* jugador;
     u8 flags;
     s16 id;
+    u32 est;
     s32 reserva[2];
 
     t = TRABAJO_BLOQUE;
@@ -3328,9 +3329,10 @@ void LogicaBloqueEmpujable(Objeto* o)
             t->dx = 0;
         } else {
             t->px += (s16)t->mnx;
-            if ((o->w17C & 0x100) && t->dx < 0) {
+            est = o->w17C;
+            if ((est & 0x100) && t->dx < 0) {
                 t->dx = 0;
-            } else if ((o->w17C & 0x200) && t->dx > 0) {
+            } else if ((est & 0x200) && t->dx > 0) {
                 t->dx = 0;
             }
         }
@@ -3338,9 +3340,10 @@ void LogicaBloqueEmpujable(Objeto* o)
             t->dz = 0;
         } else {
             t->pz += (s16)t->mnz;
-            if ((o->w17C & 0x100) && t->dz < 0) {
+            est = o->w17C;
+            if ((est & 0x100) && t->dz < 0) {
                 t->dz = 0;
-            } else if ((o->w17C & 0x200) && t->dz > 0) {
+            } else if ((est & 0x200) && t->dz > 0) {
                 t->dz = 0;
             }
         }
