@@ -219,7 +219,11 @@ void CopiarBytes(u8* origen, u8* destino, s16 n)
  * proporcion que pide (la lista A necesitaria una prioridad mayor que 11,2). Tambien difiere la
  * secuencia de la division por el tamano del nodo: el original deja el cociente en v0 y el producto
  * en v1, aqui al reves (el cociente es la local `idx`; sin ella, con la expresion directa, la
- * puntuacion sube a 2480).
+ * puntuacion sube a 2480). Medido ademas: el recorrido de la lista B (pseudo de 28 usos sobre 10) y el de la lista A
+ * de los bucles de C (60 sobre 30, 10,0) se asignan antes que el puntero (4,21), de modo que la lista A (12 sobre 24,
+ * 1,5) solo podria pasar delante con unos 56 usos ponderados (floor_log2(56) * 56 / 24 = 11,7); un identificador por
+ * bucle (`id`, `id2`, `id3`) deja 335, y escribir el bucle de campos con un puntero `p = (u16*)a` y un fin `p + 5`
+ * explicitos da 970 (el optimizador de bucles deja de reducir la direccion y anade tres instrucciones).
  *
  * El identificador se lee del campo dos veces: una en la prueba de la guarda y otra al guardarlo en
  * la variable. Medido en el ensamblador: el original carga el campo en v0, lo compara y despues lo
