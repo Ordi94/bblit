@@ -889,13 +889,19 @@ void func_80038E84(s32 idx, s32 paso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1465 con la configuracion versionada (g = 8 del archivo; ejes 69 de
- * operando, 0 reordenadas, 161 insertadas o borradas). Coinciden la
- * estructura, los desplazamientos y los simbolos; difiere en el reparto de registros (la base de
- * 0x80010000, el indice y el valor de las barras 3 y 7 caen en registros distintos de los del
- * original, que usa a1, v0 y a0 segun el bloque), en el orden de dos copias y tres huecos de
- * retardo de la barra 0 y de las barras 3 y 7, y en una recarga de la parte alta de D_8006AA7C
- * que el compilador anade en los tres ultimos temporizadores. Leer el estado principal en una
+ * Pendiente: puntuacion 1415 con la configuracion versionada (g = 8 del archivo; ejes 69 de
+ * operando, 0 reordenadas, 153 insertadas o borradas). Coinciden la
+ * estructura, los desplazamientos y los simbolos; difiere en el reparto de registros de la barra 0
+ * (el original deja la base de 0x80010000 en a1 y copia el valor mostrado a a0 con `move a0,v1` en el
+ * hueco de retardo de 0x5c; el C copia la base a a1 en esa posicion y compara con v1, de modo que el
+ * valor mostrado no tiene copia propia), en el orden de dos copias y tres huecos de retardo de la barra 0
+ * y de la barra 3, y en el hueco de retardo del `beqz` del contador de cuadros de los tres ultimos
+ * temporizadores: el original lo rellena con el `lui` de D_8006AA7C y el compilador lo rellena con la
+ * carga de la base del temporizador siguiente (`li $4,0x80010000` en la salida de `cc1`), lo que anade
+ * un `lui` por temporizador. Un puntero propio por barra (g3 y g7 para el indice y el valor, f3 y f7 para
+ * la relectura tras la llamada) en lugar de los compartidos `g` y `f` deja las bases de las barras 3 y 7
+ * en v0 como el original: 1465 a 1435 con g3 y g7 y a 1415 con f3 y f7 (se supone, sin verificar, que un
+ * pseudo compartido une las vidas de todas las barras y toma el mismo registro en todas). Leer el estado principal en una
  * copia propia de la rama de la barra 0 (en lugar de reutilizar la local del cuerpo) baja de 1950 a 1745;
  * la envoltura del medidor y del contador de golpes junto con el orden de la actualizacion del valor
  * mostrado en las barras 3 y 7 lo bajan de 1745 a 1525 (ver la cabecera de abajo).
@@ -953,11 +959,15 @@ void func_80039094(void)
     s32 ant;
     s32 pantalla;
     EstadoPrincipal* g;
+    EstadoPrincipal* g3;
+    EstadoPrincipal* g7;
     s16 n;
     Objeto* ob;
     u16 cuadros;
     EstadoPrincipal* e;
     EstadoPrincipal* f;
+    EstadoPrincipal* f3;
+    EstadoPrincipal* f7;
     EstadoPrincipal* e_rama;
 
     e = ESTADO_PRINCIPAL;
@@ -1000,9 +1010,9 @@ void func_80039094(void)
         }
         func_80038E84(0, D_80069525 < D_80010043 ? (D_80010043 - D_80069525) * 0xC8 : 0xC8);
 
-        g = ESTADO_PRINCIPAL;
-        idx = g->r[0xB6];
-        valor = g->r[idx];
+        g3 = ESTADO_PRINCIPAL;
+        idx = g3->r[0xB6];
+        valor = g3->r[idx];
         if (valor != D_80069574) {
             modo = 0;
             if (D_80069574 == 0xFF) {
@@ -1018,8 +1028,8 @@ void func_80039094(void)
             }
             if (func_80038C2C(3, nuevo, modo) != 0) {
                 mostrado = D_80069574;
-                f = ESTADO_PRINCIPAL;
-                valor = f->r[idx];
+                f3 = ESTADO_PRINCIPAL;
+                valor = f3->r[idx];
                 if (mostrado < valor) {
                     D_80069574 = mostrado + 1;
                 } else if (valor < mostrado) {
@@ -1029,10 +1039,10 @@ void func_80039094(void)
         }
         func_80038E84(3, 0xC8);
 
-        g = ESTADO_PRINCIPAL;
+        g7 = ESTADO_PRINCIPAL;
         do {
-            idx = g->r[0xB8];
-            valor = g->r[idx];
+            idx = g7->r[0xB8];
+            valor = g7->r[idx];
             if (valor != D_80069514) {
                 modo = 0;
                 if (D_80069514 == 0xFF) {
@@ -1045,8 +1055,8 @@ void func_80039094(void)
                     nuevo = D_80069514 + 1;
                 }
                 if (func_80038C2C(7, nuevo, modo) != 0) {
-                    f = ESTADO_PRINCIPAL;
-                    if (D_80069514 != f->r[idx]) {
+                    f7 = ESTADO_PRINCIPAL;
+                    if (D_80069514 != f7->r[idx]) {
                         D_80069514 = D_80069514 + 1;
                     }
                 }
