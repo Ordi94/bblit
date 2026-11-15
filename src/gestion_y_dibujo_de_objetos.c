@@ -185,27 +185,21 @@ NodoLista* AppendListNode(NodoLista* cab, NodoLista* nodo)
     return cab;
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 110 con la configuracion versionada (g = 8 del archivo). Coincide el reparto
- * del nodo en $a0 y del puntero inducido en $a1; difiere solo la base de la ultima escritura (el
- * original escribe sw $zero,0x48($a0) tras copiar la direccion de la subestructura a $a0, y GCC
- * la plega a 0x50($a1) sobre el puntero inducido). Las 0x2E escrituras de sw $zero,0($a2) del
- * original son un bucle real de 0x2E vueltas (contador en $v1, sltiu/bnez, la escritura en el
- * hueco de retardo), no una secuencia desenrollada; escritas como 0x2E sentencias explicitas el
- * resultado empeora (895), porque GCC no las pliega a ese bucle.
+ * Reserva el primer ayudante libre del pozo D_8006964C (D_80069660 entradas de 0xB8 bytes), lo inicializa y lo
+ * devuelve; devuelve NULL si no queda ninguno.
  *
- * Los dos pares `e--; e++` antes del bucle no generan codigo: suman cuatro referencias cada uno al
- * puntero del nodo, de 12 a 20 usos ponderados sobre una vida de 23 (prioridad 3,478), por encima
- * del puntero inducido (23 usos sobre 27, prioridad 3,407), de modo que global-alloc asigna primero
- * el nodo ($a0) y despues el inducido ($a1), como en el original; con un solo par o dentro del
- * bucle el puntero inducido sube con el nodo y el reparto no cambia. La forma del fuente original
- * que producia este reparto se desconoce.
+ * El bucle de 0x2E vueltas que pone a cero el enlace es un bucle real en el original (contador en $v1,
+ * sltiu/bnez y la escritura en el hueco de retardo), no una secuencia desenrollada: escritas como 0x2E
+ * sentencias el resultado empeora a 895, porque el compilador no las pliega a ese bucle.
  *
- * Reconfirmado sin formas nuevas: el optimizador de bucles reduce la direccion de la subestructura al giv del nodo
- * (el volcado del bucle muestra `giv reg 84 src reg 82 add 28` y la direccion destino sobre el registro 82 con
- * desplazamiento 100). Se supone, sin verificar, que un giv solo se reduce al puntero del nodo si su registro se
- * asigna una sola vez dentro del bucle.
+ * La ultima escritura del subobjeto (sw $zero,0x48($a0), en 0x7C del original) se escribe por el puntero que
+ * acaba de guardarse en el campo (`e->pcoord->super`); el compilador conserva ese puntero en un registro
+ * propio ($a0, copiado de $v1 tras el almacen). Medido: escrita por una variable local con la direccion de la
+ * subestructura, la funcion da 110 (`sw $zero,0x50($a1)`, el acceso reducido al puntero inducido del nodo, el
+ * volcado del bucle da `giv reg 84 src reg 82 add 28`). Se supone, sin verificar, que la lectura del campo
+ * recien almacenado hace que el CSE reutilice el pseudo de la suma y que ese pseudo no se reduzca al giv.
+ * Sin referencias sin codigo: los dos pares `e--; e++` que la funcion llevaba antes ya no cambian nada.
  */
 Ayuda* func_800363D4(void)
 {
@@ -213,14 +207,9 @@ Ayuda* func_800363D4(void)
     u32 j;
     Ayuda* e;
     Ayuda* p;
-    GsCOORDINATE2* sub;
     s32 n;
 
     e = D_8006964C;
-    e--;
-    e++;
-    e--;
-    e++;
     n = D_80069660;
     for (i = 0; i < n; i++, e++) {
         if (e->cab.libre & 1) {
@@ -231,21 +220,17 @@ Ayuda* func_800363D4(void)
             for (j = 0; j < 0x2E; j++) {
                 p->cab.siguiente = 0;
             }
-            sub = &e->coord;
-            e->pcoord = sub;
+            e->pcoord = &e->coord;
             e->wC = 0x80000000;
             e->clave = -1;
             e->coord.param = &e->param;
-            sub->super = 0;
+            e->pcoord->super = 0;
             e->w14 = 0;
             return e;
         }
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos", func_800363D4);
-#endif
 
 /*
  * Crea un ayudante para el objeto 'o', lo anade a su lista y lo identifica con 'clave'. Detiene el
