@@ -25,16 +25,19 @@ extern void func_80039094(void);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 838 con la configuracion versionada (g = 8 del archivo; ejes 112 de operando, 3 reordenadas,
- * 90 insertadas o borradas). Residuo medido en tres trozos: (1) bloque de limites del movil: el original deja el paso
+ * Pendiente: puntuacion 753 con la configuracion versionada (g = 8 del archivo; ejes 112 de operando, 3 reordenadas,
+ * 68 insertadas o borradas). Residuo medido en tres trozos: (1) bloque de limites del movil: el original deja el paso
  * en a0, el limite alto en v0 y el bajo en v1 y conserva la copia `move v1,v0` tambien en la rama del paso negativo,
- * mientras aqui caen en v0, a0 y a1 y la suma de la rama negativa se pliega sin copia; (2) divisor del balancin: el
- * original carga el radio (0x20) antes que el limite del eje (0x48) y resta en ese orden; (3) el desplazamiento del
- * jugador (`sentido`) queda en a1 y el puntero al padre en v1, al reves que en el original. El resto del balancin
- * (paso en a0, empuje en v1, productos) coincide.
+ * mientras aqui caen en v0, a0 y a1 y la suma de la rama negativa se pliega sin copia; (2) modo del recorrido por
+ * tramos (0x40): el original deja las banderas en v1 y la altura en a1, aqui al reves (la altura tiene variable
+ * propia para que el paso del balancin conserve a0; con `paso` compartido la cifra es la misma, 753, y el paso del
+ * balancin cae en a1); (3) orden de las instrucciones de preparacion de la llamada: en el camino 0x400 el original
+ * escribe `sw zero,0x18(sp)` entre los `addiu` de los argumentos y aqui sale despues, y la llamada de la rama 0x20
+ * lleva el `move a2,a1` en otro hueco. El balancin (paso en a0, empuje en v1, desplazamiento en v1, productos y
+ * divisores) coincide.
  */
 /*
- * Las sentencias replicadas son tres parejas que no generan codigo propio. (a) Los dos almacenes de los limites,
+ * Las sentencias replicadas son cuatro parejas que no generan codigo propio. (a) Los dos almacenes de los limites,
  * `MOVIL_LIMITE_ALTO(o) = num;` y `MOVIL_LIMITE_BAJO(o) = sentido;`, en cada rama del signo del paso: el original
  * escribe los dos limites en una sola cola tras el signo del paso y el salto cruzado del compilador funde las dos
  * copias en una (en el ensamblador generado queda un solo `sw` de cada limite junto al `andi` de la mascara). Causa
@@ -46,8 +49,14 @@ extern void func_80039094(void);
  * en cada camino (0x874 a 0x884 y 0x940 a 0x958) y comparte un solo `jal` (0x95c). Medido con `diff`: con la llamada
  * escrita una vez tras una etiqueta comun 2530, con la llamada en cada rama 1228, y el recuento de `jal ApplyMatrixLV`
  * del ensamblador generado coincide con el del original (3); que la causa sea el salto cruzado de la cola y no otra
- * decision del planificador se supone, sin verificar. La forma del fuente original que producia este reparto se
- * desconoce.
+ * decision del planificador se supone, sin verificar. (c) La suma del desplazamiento del balancin al jugador,
+ * `D_80069698->coord.param->trans.vx += desplaza;`, en las dos ramas del signo del empuje, cada una con la variable
+ * propia de su desplazamiento (`desplaza` y `desplaza2`): el original calcula el cociente con `mflo v1` y suma en v1
+ * en una cola comun (0x3d8 a 0x3f0) con el puntero al jugador en a0. Con una sola suma tras la union y una variable
+ * compartida el desplazamiento cae en a0 y el puntero en v1 (823), con la suma en cada rama 763; en el volcado
+ * `.greg` el desplazamiento compartido (antes de separarlo del paso de los limites) tiene conflictos con v0 y v1; se
+ * supone, sin verificar, que es porque el puntero del bloque ocupa v1 por asignacion local, y que el original tiene
+ * cada desplazamiento como pseudo local de su rama. La forma del fuente original que producia este reparto se desconoce.
  *
  * Variables aparte para cada uso (medido con `diff` y en el volcado `.greg`): la altura del recorrido por tramos
  * (`altura`), el empuje del balancin (`empuje`) y el paso de los limites (`ritmo`) son variables propias. Con una sola
@@ -71,6 +80,8 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
     s32 altura;
     s32 ritmo;
     s32 sentido;
+    s32 desplaza;
+    s32 desplaza2;
     void* area;
 
     t = TRABAJO_MOVIL;
@@ -167,10 +178,10 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
         }
         if (o->p6C == D_80069698 && o->p6C->p70 == o) {
             empuje = o->p6C->u18C.agarre.trans.vx;
-            /* Los productos `paso * empuje` se escriben con el paso como primer factor: el orden de
+            /* Los productos `empuje * paso` se escriben con el empuje como primer factor: el orden de
              * los factores decide en que registros caen los dos operandos del `mult` y con este
-             * se acerca al reparto del original (`mult v1, a0` en el hueco de salto de la
-             * comparacion del giro; aqui queda `mult a1, a0`). */
+             * reproduce el reparto del original (`mult v1, a0` en el hueco de salto de la
+             * comparacion del giro). */
             if (empuje < 0) {
                 if (o->w17C & 1) {
                     goto decae;
@@ -178,7 +189,9 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
                 if (o->param.giro.rotate.vz >= -0x163) {
                     o->param.giro.u.z += (empuje * paso) / (o->radio - o->min.vx);
                 }
-                sentido = (o->param.giro.rotate.vz * paso) / (o->radio - o->min.vx);
+                desplaza = (o->param.giro.rotate.vz * paso) / (o->radio - o->min.vx);
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
+                D_80069698->coord.param->trans.vx += desplaza;
             } else {
                 if (o->w17C & 2) {
                     goto decae;
@@ -186,9 +199,10 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
                 if (o->param.giro.rotate.vz < 0x164) {
                     o->param.giro.u.z += (empuje * paso) / (o->max.vx + o->radio);
                 }
-                sentido = (o->param.giro.rotate.vz * paso) / (o->radio + o->max.vx);
+                desplaza2 = (o->param.giro.rotate.vz * paso) / (o->max.vx + o->radio);
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
+                D_80069698->coord.param->trans.vx += desplaza2;
             }
-            D_80069698->coord.param->trans.vx += sentido;
         } else {
 decae:
             o->param.giro.u.z -= (s16)o->param.giro.u.z >> 4;
