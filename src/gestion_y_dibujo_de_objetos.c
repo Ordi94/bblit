@@ -430,7 +430,8 @@ void func_800368E8(void)
  * (solo la diagonal: 5 * 58 / 116 = 2,50 frente a 7 * 138 / 340 = 2,84) o en 62 (solo la tabla:
  * 5 * 62 / 116 = 2,67 frente a 7 * 140 / 340 = 2,88) y el reparto no cambia: la prioridad solo cruza con
  * las dos. Lo medido es la prioridad y el reparto resultante; que el original tenga mas usos de `a` por
- * otra via es una inferencia sin verificar.
+ * otra via es una inferencia sin verificar. El margen es estrecho: con 62 usos de la ayuda no pasa por
+ * delante del area de trabajo y con 64 si.
  * La forma del fuente original que producia este reparto se desconoce.
  */
 void AplicarCuadro(Objeto* o, BloqueTrabajo* c, AreaCuadro* a2)
