@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 401 | 86536 |
+| Código del juego | 450 | 201416 | 402 | 86784 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 86536 de 201416 (42.96 %).
-Funciones marcadas `NON_MATCHING`: 32.
-Coherencia con el ensamblador: correcta (701 `glabel` en `asm/` + 401 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 86784 de 201416 (43.09 %).
+Funciones marcadas `NON_MATCHING`: 31.
+Coherencia con el ensamblador: correcta (700 `glabel` en `asm/` + 402 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -33,7 +33,7 @@ Coherencia con el ensamblador: correcta (701 `glabel` en `asm/` + 401 en C = 110
 | logica_de_niveles | 3 | 16 | 5 | 0 | 10648 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
 | menus_e_interfaz | 1 | 25 | 1 | 1 | 12328 | 13644 |
-| movimiento_y_objetos_de_escena | 3 | 19 | 8 | 0 | 12640 | 18284 |
+| movimiento_y_objetos_de_escena | 3 | 20 | 7 | 0 | 12888 | 18284 |
 | tarjeta_de_memoria | 1 | 8 | 2 | 0 | 1892 | 5116 |
 
 ## Por archivo
@@ -62,7 +62,7 @@ Coherencia con el ensamblador: correcta (701 `glabel` en `asm/` + 401 en C = 110
 | `src/manejadores_por_tabla.c` | 12 | 0 | 0 | 384 | 384 |
 | `src/menus_e_interfaz.c` | 25 | 1 | 1 | 12328 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 3 | 1 | 0 | 1572 | 2116 |
-| `src/movimiento_y_objetos_de_escena_2.c` | 12 | 3 | 0 | 4884 | 6336 |
+| `src/movimiento_y_objetos_de_escena_2.c` | 13 | 2 | 0 | 5132 | 6336 |
 | `src/movimiento_y_objetos_de_escena_3.c` | 4 | 4 | 0 | 6184 | 9832 |
 | `src/tarjeta_de_memoria.c` | 8 | 2 | 0 | 1892 | 5116 |
 
@@ -83,7 +83,6 @@ Coherencia con el ensamblador: correcta (701 `glabel` en `asm/` + 401 en C = 110
 - `func_80018664`: Pendiente: puntuacion 1555 con la configuracion versionada (g = 8 del archivo). Reparto de registros del tramo final del bucle de puntos (el original carga el area de trabajo en a2 y el objeto b en a1, y aqui caen al reves) y cadena de comparaciones de las esquinas que el original comparte entre regiones. Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca. En las dos ramas de cierre (la de esquina positiva y la de esquina negativa en
 - `func_8001C134`: Pendiente: puntuacion 455 con la configuracion versionada (g = 0, no carga globales). Los registros guardados y la copia de la zona coinciden; difiere el orden de las dos divisiones por 320 del resto de la baldosa (el original calcula x antes que z, GCC al reves con cualquier orden del fuente) y la suma del indice de subcelda (el original suma primero base + (baldosa << 6) y despues z / 40 * 8 + x / 40). El original emite ademas un `andi 0xffff` tras guardar la baldosa enmascarada. Los dos restos en locales y el indice como puntero a la fila (`(subceldas + (baldosa << 6))[fila + x / 40]`) no c
 - `func_8001C998`: Pendiente: puntuacion 1055 con la configuracion versionada (g = 8 del archivo; ejes 15 de operando, 1 reordenada, 43 insertadas o borradas). Difiere en: reparto de registros y orden de bloques de salto. Mismas ramas y almacenes que el ensamblador; el original reparte s0 al area de trabajo, s1 a la altura nueva, s2 al suelo anterior y s4 al tope, y con la envoltura el C los reparte igual; queda el orden de los bloques de salto del final. El area + 0x28 se precalcula como el original. La envoltura do/while (0) de la consulta de la baldosa no genera codigo: pondera por un nivel mas las referencia
-- `func_8001D31C`: Pendiente: puntuacion 190 con la configuracion versionada (g = 8 del archivo; ejes 2 de operando, 0 reordenadas, 29 insertadas o borradas). Difiere en: reparto de registros del prologo. El original copia el primer argumento a a3 antes de cargar D_80069698 (puntero en a0, objeto llevado en v0 con su copia en v1); aqui el puntero queda en v1, el objeto llevado en a3 y la copia de x en t0, que ocupa el hueco de retardo del salto que en el original ocupa la copia del objeto llevado. La copia del original es una SEGUNDA LECTURA de p70 tras los almacenes al objeto (el CSE no comparte dos lecturas se
 - `func_8001D75C`: Pendiente: puntuacion 8935 con la configuracion versionada (g = 8 del archivo). Misma logica de condiciones y mismos almacenes, primer borrador sin igualar el orden de bloques: el original reparte el dano por defecto (1) y el de la rama con atacante en bloques compartidos con saltos distintos y dos formas de cerrar el llamador.
 - `func_8001DF28`: Pendiente: puntuacion 585 con la configuracion versionada (g = 8 del archivo). Mismo codigo GTE y mismas operaciones; solo difiere el bloque de la bandera 0x8000000: el original calcula h52 antes que h94, repite el desplazamiento `(s16)alto >> 1` en dos expresiones sin fundirlas y resta el valor de 32 bits de h94 de h4E sin releerlo, mientras que GCC funde el desplazamiento, calcula primero h94 y relee la mitad con signo de 16 bits. Leer la segunda mitad del campo ya guardado (`(s16)b->h94 >> 1`) es la unica forma que conserva las dos parejas de desplazamiento y restar el valor de 32 bits sin 
 - `func_8001E528`: Pendiente: puntuacion 55 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 18 insertadas o borradas). Mismos accesos, almacenes y orden de instrucciones; solo difiere el reparto de los registros de las lecturas del fotograma: el original deja la coordenada u en a3 y la pagina de textura en v0, y aqui caen en v0 y a3 (la paleta en a3 en lugar de v0 es consecuencia del mismo intercambio). Causa medida (local-alloc del bloque unico de la lectura del fotograma): u (6 usos sobre 14 instrucciones, 0,86) se asigna antes que la pagina (2 sobre 10, 0,20) y la paleta
