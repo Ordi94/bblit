@@ -359,21 +359,25 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         }
         ranura = orden + ctx->estado.s4;
         /* La bandera de transparencia se lee despues de calcular la ranura: leida antes de elegir la lista de
-         * ordenacion la puntuacion sube de 560 a 875. */
+         * ordenacion la puntuacion sube de 405 a 685. */
         semitransparente = sprite->semitransparente;
-        /* La palabra de ordenacion se guarda antes del salto de la bandera: con la palabra en una variable y los dos
-         * almacenes tras la union de las ramas (cada rama calcula su color en otra variable) la puntuacion sube de 560
-         * a 620. */
+        /* La palabra de ordenacion se guarda antes del salto de la bandera: con la palabra en una variable y su
+         * almacen tras la union de las ramas la puntuacion sube de 405 a 455. */
         *p = *ranura | 0x09000000;
-        /* Cada rama guarda su propia expresion del color. */
+        /* Cada rama acumula su constante en el propio color y la union repite el `or` con 0x2C000000 (0x8003B208 y
+         * 0x8003B20C del original: `or a3,a3,v0 ; lui v0,0x2c00 ; or a3,a3,v0`): la segunda mascara no cambia el valor
+         * porque 0x2E000000 ya la contiene, pero el original la emite y sin ella la puntuacion sube a 595. Con la
+         * expresion del color escrita en cada rama sube a 560 y con una variable para la constante, a 915. */
         if (semitransparente != 0) {
-            p[1] = color | 0x2E000000;
+            color |= 0x2E000000;
         } else {
-            p[1] = color | 0x2C000000;
+            color |= 0x2C000000;
         }
+        color |= 0x2C000000;
+        p[1] = color;
         /* Los dos desplazamientos que recortan la direccion del primitivo operan sobre la propia variable, como en el
-         * original (sll y sra sobre a1): escritos en una sola expresion que no la reasigna la puntuacion sube de 560
-         * a 580. */
+         * original (sll y sra sobre a1): escritos en una sola expresion que no la reasigna la puntuacion sube de 405
+         * a 620. */
         p = (u32*)((s32)p << 8);
         p = (u32*)((s32)p >> 8);
         *ranura = (u32)p;
