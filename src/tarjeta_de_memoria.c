@@ -417,7 +417,7 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2350 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
+ * Pendiente: puntuacion 1960 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
  * 237 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
@@ -435,8 +435,11 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
  * anula); escribir la cadena entera con asignaciones compuestas sobre la misma local, `d = g << 4; d -= g; d <<= 3;`, antes
  * de cada uso, la deja en el cuerpo en cada uso como el original pero el planificador reparte sus tres instrucciones a los dos
  * lados del salto del bucle interior y la cifra sube a 2485 (269 insertadas o borradas). Queda sin causa medida por que el
- * original no iza esas cadenas. El `move a1,v0 ; bnez a1` de la llamada de sondeo (el original comprueba una copia
- * del resultado que despues compara con -1) tampoco se reproduce: aqui se comprueba `v0` directamente.
+ * original no iza esas cadenas. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
+ * del resultado que despues compara con 1) se reproduce guardando el resultado en la local `rc`, compartida con la del
+ * sondeo: con una local propia (`fmt` o `tam`) el CSE funde la copia y se comprueba `v0` directamente (2350); con `rc` o
+ * `estado` baja a 1960, pero la copia cae en v1 y no en a1 como en el original, y con `partida` cae en s1 (2635). Medido sin
+ * bajada: calcular la mascara de ranuras en una local antes del almacen de 0xE da 2190.
  *
  * Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de registros (D_8006AA70[0xA]: 1 aceptar,
  * 2 formatear, 3 crear el archivo, 4 grabar con sonido, 5 cargar, 6 grabar) y la limpia; despues sondea con MemCardSync(1) la ultima
@@ -465,7 +468,6 @@ void SondearTarjeta(void)
     s32 estado;
     s32 cmds;
     s32 orden;
-    s32 fmt;
     s32 rc;
     s16 ranura;
     u8 reserva[16];
@@ -485,10 +487,10 @@ void SondearTarjeta(void)
             MemCardAccept(0);
         } else if (orden == 2) {
             MemCardSync(0, &D_80069360, &D_80069368);
-            fmt = MemCardFormat(0);
-            if (fmt == 0) {
+            rc = MemCardFormat(0);
+            if (rc == 0) {
                 D_8006AA70[0x1B] = 0xB;
-            } else if (fmt == 1) {
+            } else if (rc == 1) {
                 D_8006AA70[0x1B] = 0xC;
             }
         } else if (orden == 3) {
