@@ -30,8 +30,15 @@ extern void func_80039094(void);
  * en a0, el limite alto en v0 y el bajo en v1 y conserva la copia `move v1,v0` tambien en la rama del paso negativo
  * (0x1c4), mientras aqui el paso cae en v0, el limite alto en a0 y la suma de la rama negativa se pliega sin copia
  * (la escritura directa de cada limite con su propia lectura del campo da el reparto del original en la rama
- * positiva pero invierte v0 y v1 en la negativa, y entonces el salto cruzado no funde los almacenes; se supone, sin
- * verificar, que la causa es la prioridad de las cantidades locales del bloque); (2) producto del seno de la
+ * positiva pero invierte v0 y v1 en la negativa, y entonces el salto cruzado no funde los almacenes: 480 con la
+ * lectura propia en las dos ramas y el limite alto primero, 465 con el bajo primero. Medido en el volcado de reparto
+ * de la rama negativa con lectura propia: el pseudo de la suma (2 usos sobre 2 instrucciones, 1,0) se asigna antes
+ * que las dos lecturas (2 usos sobre 6, 0,333) y toma v0, de modo que la primera lectura, que el original deja en v0
+ * y guarda en el limite alto, cae en v1; el original deja el limite alto vivo hasta despues de la suma (cola comun
+ * `sw` en 0x1cc), mientras que en el volcado de planificacion el almacen queda aqui por encima de la suma. La
+ * copia `move v1,v0` no se conserva con una variable copiada (`sentido = num; sentido += ritmo` da 170 y 485 con
+ * `sentido` declarado antes que `num`: en las dos la suma sale sin copia; se supone, sin verificar, que el CSE la
+ * pliega); (2) producto del seno de la
  * oscilacion (0x648): el original lo deja en t0 y aqui cae en a0, que es el registro de `num`; quitar `num` de esa
  * rama invierte el reparto del modo 0x40 y sube la puntuacion a 770; (3) en el camino 0x400 el `sw zero,0x1c(sp)`
  * sale una instruccion antes que en el original (0x954). El balancin (paso en a0, empuje en v1, desplazamiento en v1,
