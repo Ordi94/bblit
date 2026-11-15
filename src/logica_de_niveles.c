@@ -66,8 +66,10 @@ s16* D_800693DC;
    el orden); (2) el bloque de la base de la caja (0x80025544) emite el producto 0x46 * 0x46 como multiplicacion de un
    registro en el original y aqui se pliega a una constante; escribir max.vx * max.vx lo empeora (6630); (3) la mascara
    0x10000000 de la prueba del registro de estado se carga en v1 y la bandera en v0 en el original, y aqui al reves; el
-   orden de operandos no lo cambia. Los accesos que el original no ordena con los almacenes a globales se escriben por
-   desplazamiento en bytes. */
+   orden de operandos no lo cambia. Los accesos que el original no ordena con los almacenes a globales (los cuatro
+   `vy` de D_80069D60 y dos de `flags14`) se escriben por desplazamiento en bytes; con los seis accesos por nombre la cifra
+   es 7570 (se supone, sin verificar con el volcado, que el planificador los reordena con los almacenes a D_8006965A,
+   D_8006965B y D_8006965E). */
 void func_80020B90(Objeto* o)
 {
     ScratchJugador* sc;
@@ -93,7 +95,7 @@ void func_80020B90(Objeto* o)
     Objeto* t2;
     RegistroEstado* rg;
     s32 mz;
-    SVECTOR* ptr16;
+    SVECTOR* vec_ref;
     s32 vs;
     u16 hw;
     s32 sum;
@@ -882,6 +884,7 @@ llamar_salto:
                     D_80069D60[0].vx = D_80069D60[2].vx = o->min.vx;
                     D_80069D60[1].vx = D_80069D60[3].vx = o->max.vx;
                     D_80069D60[0].vz = D_80069D60[1].vz = o->max.vz;
+                    /* Equivale a D_80069D60[3].vy, [2].vy, [1].vy y [0].vy = 0 (SVECTOR de 8 bytes, vy en +2). */
                     *(s16*)((u8*)D_80069D60 + 0x1A) = 0;
                     *(s16*)((u8*)D_80069D60 + 0x12) = 0;
                     *(s16*)((u8*)D_80069D60 + 0xA) = 0;
@@ -938,12 +941,12 @@ llamar_salto:
                         sc->punto.vy = o->param.trans.vy - 0x64;
                         BarrerTerreno(&sc->punto, &sc->tmp_v, &sc->res, w);
                         a++;
-                        ptr16 = (SVECTOR*)D_800693DC;
+                        vec_ref = (SVECTOR*)D_800693DC;
                         D_800693DC += 4;
-                        sc->desp.x += sc->tmp_v.vx - ptr16->vx;
-                        sc->desp.z += sc->tmp_v.vz - ptr16->vz;
-                        sc->resp.x += sc->tmp_v.vx - ptr16->vx;
-                        sc->resp.z += sc->tmp_v.vz - ptr16->vz;
+                        sc->desp.x += sc->tmp_v.vx - vec_ref->vx;
+                        sc->desp.z += sc->tmp_v.vz - vec_ref->vz;
+                        sc->resp.x += sc->tmp_v.vx - vec_ref->vx;
+                        sc->resp.z += sc->tmp_v.vz - vec_ref->vz;
                     } while (a < 4);
                 }
             }
@@ -1178,10 +1181,12 @@ fin_choque:
             }
             if (o->flags14 & 8) {
 rebotar:
+                /* Equivale a sc->tocado->flags14 |= 0x8000 (flags14 en +0x14 de Objeto). */
                 *(u32*)((u8*)sc->tocado + 0x14) |= 0x8000;
                 D_8006965A = 5;
                 D_8006965B = 0x50;
                 D_8006965E = 0;
+                /* Equivale a o->flags14 & 0x10 (flags14 en +0x14 de Objeto). */
                 if (*(u32*)((u8*)o + 0x14) & 0x10) {
                     o->param.giro.u.z = 0;
                     o->coord.super = NULL;
