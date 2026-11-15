@@ -328,18 +328,23 @@ s32 func_8001515C(void)
     return i != 5;
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 17285 con la configuracion versionada (g = 8 del archivo). No se reprodujo la disposicion de los bloques locales de la pila ni las copias
- * de estructura con comprobacion de alineacion en tiempo de ejecucion; un solo intento.
- *
  * Da formato al archivo de partida: arma en la pila un bloque de 0x200 bytes con la cabecera de la
  * tarjeta ("SC", bandera de icono, un bloque, titulo, paleta e imagenes), lo copia con la cabecera de
  * D_8006D060 y su suma de control al buffer D_80069520 + 0x2000 y escribe 0x400 bytes con open/write
  * (hasta cinco intentos), comprobando despues la lectura.
+ *
+ * Los tipos de las copias fijan el codigo que emite el compilador para cada asignacion de estructura:
+ * una estructura de bytes de alineacion 1 genera la comprobacion de alineacion en ejecucion (el
+ * original la tiene en la copia del bloque de 0x200 bytes y en las dos de la cabecera de 0x168 bytes);
+ * las de palabras (Imagen32, Bloque80) y el titulo con alineacion 4 generan la copia por palabras sin
+ * comprobacion, como las del bloque local. Medido sobre la funcion completa: las cuatro copias de
+ * datos que faltaban (17285 a 11788), la alineacion 4 del titulo (11788 a 8175), el tipo de bytes de la
+ * cabecera de 0x168 bytes (8175 a 745) y la direccion dest + 0x200 escrita en cada uso en lugar de una
+ * local (745 a 0 con el byte de cabecera con signo, que el original carga con lb).
  */
 typedef struct BloqueTarjeta {
-    u8 cab[4];
+    s8 cab[4];
     u8 titulo[0x40];
     u8 reservado[0x1C];
     u8 imagen[0x20];
@@ -352,10 +357,28 @@ typedef struct Fragmento {
     u8 b[0x200];
 } Fragmento;
 
-/* El titulo ocupa 0x2F bytes de origen (dos vueltas de 16 y una cola de 15); el campo destino es de 0x40. */
+/*
+ * El titulo ocupa 0x2F bytes de origen (dos vueltas de 16 y una cola de 15); el campo destino es de 0x40.
+ * La alineacion 4 declarada es la que el original da por supuesta: copia por palabras, con cola de
+ * tres palabras, un corto y un byte, sin comprobar la alineacion (0x80015210 a 0x800152A0); una
+ * estructura de 0x2F bytes sin ese atributo genera la comprobacion en ejecucion.
+ */
 typedef struct TituloTarjeta {
     u8 b[0x2F];
-} TituloTarjeta;
+} TituloTarjeta __attribute__((aligned(4)));
+
+/* Copia de la cabecera de guardado (0x168 bytes) con alineacion de un byte: el original comprueba la alineacion en ejecucion. */
+typedef struct Copia168 {
+    u8 b[0x168];
+} Copia168;
+
+typedef struct Imagen32 {
+    u32 w[8];
+} Imagen32;
+
+typedef struct Bloque80 {
+    u32 w[0x20];
+} Bloque80;
 
 extern u8 D_80067E34[];
 extern u8 D_8005DFA0[];
@@ -367,7 +390,6 @@ s32 func_800151FC(void)
     BloqueTarjeta blq;
     u8* base;
     u8* dest;
-    u8* sumada;
     s32 i;
     s32 fd;
     u32 suma;
@@ -378,15 +400,18 @@ s32 func_800151FC(void)
     blq.cab[3] = 1;
     *(TituloTarjeta*)blq.titulo = *(TituloTarjeta*)D_80067E34;
     memset(blq.reservado, 0, 0x1C);
+    *(Imagen32*)blq.imagen = *(Imagen32*)D_8005DFA0;
+    *(Bloque80*)blq.paleta = *(Bloque80*)(D_8005DFA0 + 0x2C);
+    *(Bloque80*)blq.cuadro_a = *(Bloque80*)D_8005DFCC;
+    *(Bloque80*)blq.cuadro_b = *(Bloque80*)D_8005DFCC;
     base = D_80069520;
     memset(&D_8006D060, 0, 0x168);
     dest = base + 0x2000;
     memset(dest, 0, 0x2000);
     *(Fragmento*)dest = *(Fragmento*)&blq;
-    sumada = dest + 0x200;
-    *(CabeceraGuardado*)sumada = D_8006D060;
-    D_8006D060.suma = SumaControl(sumada, 0x200);
-    *(CabeceraGuardado*)sumada = D_8006D060;
+    *(Copia168*)(dest + 0x200) = *(Copia168*)&D_8006D060;
+    D_8006D060.suma = SumaControl(dest + 0x200, 0x200);
+    *(Copia168*)(dest + 0x200) = *(Copia168*)&D_8006D060;
     for (i = 0; i < 5; i++) {
         fd = open(D_8005E04C, (blq.cab[3] << 16) | 0x200);
         if (fd != -1) {
@@ -411,9 +436,6 @@ s32 func_800151FC(void)
     }
     return i != 5;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
-#endif
 
 #ifdef NON_MATCHING
 /*
