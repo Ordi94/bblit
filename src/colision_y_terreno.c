@@ -964,26 +964,18 @@ ZonaColision* func_8001BF9C(s32* a0, s16 a1)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 455 con la configuracion versionada (g = 0, no carga globales; ejes 7 de operando, 0
- * reordenadas, 29 insertadas o borradas). Los registros guardados y la copia de la zona coinciden; difiere el orden de
- * las dos divisiones por 320 del resto de la baldosa (el original calcula x antes que z, esta forma al reves), la suma
- * del indice de subcelda (el original suma primero base + (baldosa << 6) y despues z / 40 * 8 + x / 40) y un `andi
- * 0xffff` que el original emite tras guardar la baldosa enmascarada.
+ * Pendiente: puntuacion 270 con la configuracion versionada (g = 0, no carga globales; ejes 7 de operando, 0
+ * reordenadas, 18 insertadas o borradas). Coinciden el orden de las cargas de x y z, el reparto de registros de las
+ * divisiones, el `andi 0xffff` tras guardar la baldosa enmascarada y la posicion de `mfhi`, `lhu` y las
+ * multiplicaciones; difiere la asociacion de la suma del indice de subcelda: el original suma primero la base de las
+ * subceldas y `baldosa << 6` y despues la fila y la columna, `(base + (baldosa << 6)) + (fila + col)`, y aqui sale
+ * `((col + (baldosa << 6)) + fila) + base`.
  *
- * Medido en el volcado de la planificacion (-dS): con la local `fila_subceldas` la planificacion carga z antes que x.
- * Con las coordenadas cargadas en dos locales (resto asignado a la propia local y almacenado), el cociente de x y la
- * fila de z en locales propias y el indice `col + (baldosa << 6) + fila` carga x primero y el reparto de la division
- * coincide (x en a0, z en a1, la constante en a2, la zona en a3), pero la puntuacion es 550: quedan el `andi 0xffff`,
- * la posicion de `mfhi`, `lhu` y la multiplicacion de z, y la asociacion de la suma del indice. Se supone, sin
- * verificar, que el `andi` alarga la cadena de la baldosa y por eso el original adelanta su carga `lhu` a la
- * multiplicacion de z. Con el mismo indice sin las locales `col` y `fila` carga x primero pero el reparto se corre un
- * registro (1100: x en a1, z en a2, la constante en a3, la zona en t0); con el indice `(baldosa << 6) + z / 40 * 8 +
- * x / 40` el reparto del original sale con los papeles de x y z cambiados (690) y la planificacion vuelve a cargar z
- * primero. El indice como puntero a la fila (`(subceldas + (baldosa << 6))[fila + col]`) da entre 1765 y 2025, con o
- * sin local para el puntero. Seis formas de truncar la baldosa a 16 bits (asignacion encadenada, local `u16` asignada
- * antes del almacen, compuesta sobre la local, con `(u16)`, con el resultado de la mascara y con la mascara aplicada
- * dos veces) no generan el `andi 0xffff`. Se supone, sin verificar, que ese `andi` nace de una local de 16 bits que
- * el original guarda y relee sin que el CSE la sustituya por la expresion.
+ * Medido con esta forma como base: el indice como puntero a la fila, `(z->subceldas + (baldosa << 6))[col + fila]`,
+ * da 690 y con `[fila + col]` 955; `(baldosa << 6) + fila + col` da 670; el mismo puntero en una local, 690 a 955; el
+ * resto de ordenes de los tres sumandos y una local para la suma de fila y columna, 1095 a 1520. En todas el reparto
+ * de registros de las divisiones se corre. Se supone, sin verificar, que el original suma la base primero porque la
+ * carga de `z->subceldas` se planifica antes del cociente de x, y que esas formas la sacan de su posicion.
  *
  * Consulta la baldosa bajo el punto pos: busca la zona del punto (con el grupo recordado en
  * res), lee el valor de la baldosa de 320 unidades y la subcelda de 40 unidades, y rellena res
@@ -996,7 +988,10 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
     ZonaColision* zona_cuesta;
     TrabajoBaldosa* trabajo;
     TrabajoBaldosa* trabajo_baldosa;
-    s32 fila_subceldas;
+    s32 xl;
+    s32 zl;
+    s32 col;
+    s32 fila;
     u16 baldosa;
 
     /* Tres nombres para el area de trabajo y dos para la zona: el original reparte el area en s0 y el
@@ -1021,14 +1016,22 @@ void func_8001C134(s32* pos, ResultadoBaldosa* r, TrabajoBaldosa* w)
     trabajo_baldosa = trabajo;
     trabajo->baldosa = z->baldosas[(trabajo->x - z->x) / 320 + (trabajo->z - z->z) / 320 * z->columnas];
     r->tipo = trabajo->baldosa & 0xF000;
-    trabajo->x_local = trabajo->x % 320;
-    trabajo->z_local = trabajo->z % 320;
-    fila_subceldas = trabajo->z_local / 40 * 8;
+    /* La mascara de la baldosa se guarda antes de los almacenes de las coordenadas locales y la baldosa se relee
+     * despues de ellos: con la relectura pegada al almacen de la mascara (550), o con la mascara guardada despues de
+     * las coordenadas (550), el valor se reenvia sin pasar por memoria y no sale el `andi 0xffff` del original. Las
+     * coordenadas se cargan en locales propias y el cociente de x y la fila de z tambien: sin esas dos locales 545; con
+     * la fila como unica local y las coordenadas almacenadas directamente la planificacion carga z antes que x (475). */
     trabajo_baldosa->baldosa &= 0xFFF;
-    /* La baldosa enmascarada se relee en una local de 16 bits para el indice de subcelda: leerla
-     * del area de trabajo da 475. */
+    xl = trabajo->x;
+    zl = trabajo->z;
+    xl = xl % 320;
+    trabajo->x_local = xl;
+    zl = zl % 320;
+    trabajo->z_local = zl;
     baldosa = trabajo->baldosa;
-    trabajo->celda = (s8)z->subceldas[trabajo->x_local / 40 + (fila_subceldas + (baldosa << 6))];
+    col = xl / 40;
+    fila = zl / 40 * 8;
+    trabajo->celda = (s8)z->subceldas[col + (baldosa << 6) + fila];
     if (trabajo->celda == 0x7E) {
         pos[1] = z->y_max;
         r->clase = 0;
