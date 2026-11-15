@@ -303,38 +303,39 @@ void func_8001D0FC(Objeto* otro, u32 id, BusquedaAnim* b)
  * posicion y, salvo que el estado del nivel lo impida (mascara 0x304) o el contador de
  * guardado este activo, recoloca la camara detras de la nueva posicion. Termina apagando la
  * bandera 4 de la camara, anulando la bandera de seguimiento y encendiendo la de reinicio.
+ *
+ * Formas que fijan el orden y el reparto del original (cada una medida contra el ensamblador):
+ *  - El enlace +0x70 se lee de nuevo para `p6C = D_80069698`: la segunda lectura, tras los almacenes al objeto, es
+ *    una carga propia que el compilador sustituye por `move v1,v0` (el CSE no comparte dos lecturas separadas por
+ *    almacenes). Con una local el CSE la funde con la primera.
+ *  - El argumento x se usa sin copia local: el parametro conserva su pseudo (copia de a0 al principio, que toma a3),
+ *    deja libre a0 para el puntero al objeto controlado y el hueco de retardo del salto queda para la copia del enlace.
+ *  - La posicion se escribe como tres palabras sueltas y no como campos de la estructura: un acceso a miembro de
+ *    estructura no se ordena frente a una lectura que no lo es, y con campos el planificador sube la lectura de
+ *    D_8006D9A8 por encima de los almacenes (el original la deja despues).
+ * Coincide en bytes (1 referencia en forma numerica; el diff puntua 5 por la forma simbolica).
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 190 con la configuracion versionada (g = 8 del archivo; ejes 2 de operando, 0 reordenadas, 29 insertadas o borradas). Difiere en: reparto de registros del prologo. El original copia el primer argumento a a3 antes de cargar D_80069698 (puntero en a0, objeto llevado en v0 con su copia en v1); aqui el puntero queda en v1, el objeto llevado en a3 y la copia de x en t0, que ocupa el hueco de retardo del salto que en el original ocupa la copia del objeto llevado. La copia del original es una SEGUNDA LECTURA de p70 tras los almacenes al objeto (el CSE no comparte dos lecturas separadas por almacenes y el compilador la sustituye despues por `move v1,v0`): escribir `D_80069698->p70->p6C = D_80069698;` en lugar de usar la local la produce, en su sitio, pero el puntero al objeto controlado (9 usos ponderados sobre 11 instrucciones, 2,45) se asigna antes que la copia de x (3 sobre 27, 0,11), evita a0, a1 y a2 (preferidos por x, y y z) y cae en a3, de modo que la puntuacion sube a 265; en el original x se asigna antes que el puntero y toma a3. */
 void func_8001D31C(s32 x, s32 y, s32 z)
 {
     VECTOR destino;
-    Objeto* llevado;
-    s32 x_copia;
 
-    x_copia = x;
-    llevado = D_80069698->p70;
-    if (llevado != NULL) {
+    if (D_80069698->p70 != NULL) {
         D_80069698->coord.super = NULL;
         D_80069698->coord.param = PARAMETROS_SDK(D_80069698);
-        llevado->p6C = D_80069698;
+        D_80069698->p70->p6C = D_80069698;
         if (D_80069698 != NULL) {
             D_80069698->p70->p6C = NULL;
         }
         D_80069698->p70 = NULL;
         D_80069698->flags14 &= ~0x14;
     }
-    /* La posicion se escribe como tres palabras sueltas y no como campos de la estructura: con campos,
-     * el planificador sube la lectura de D_8006D9A8 por encima de los almacenes (el original la deja
-     * despues); medido, basta dejar uno solo como campo para que la puntuacion pase de 190 a 745 o mas.
-     * Se supone, sin verificar en el volcado, que un acceso a miembro de estructura no se ordena frente
-     * a una lectura que no lo es. */
-    *(s32*)&D_80069698->param.trans.vx = x_copia;
+    /* Posicion como tres palabras sueltas (ver la cabecera). */
+    *(s32*)&D_80069698->param.trans.vx = x;
     *(s32*)&D_80069698->param.trans.vy = y;
     *(s32*)&D_80069698->param.trans.vz = z;
     if (!(*(u32*)D_8006D9A8 & 0x304)) {
         if ((s8)D_80010076 <= 0) {
-            destino.vx = x_copia;
+            destino.vx = x;
             destino.vy = y;
             destino.vz = z;
             func_8001CC68(&destino);
@@ -344,9 +345,6 @@ void func_8001D31C(s32 x, s32 y, s32 z)
     D_80069608 |= 1;
     D_8006D928.flags80 &= 0xFFFB;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_2", func_8001D31C);
-#endif
 
 /*
  * Sincroniza dos banderas de estado del objeto controlado (bits 8 y 0x10 de D_800694F2) con su
