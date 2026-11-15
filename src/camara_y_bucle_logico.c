@@ -1280,12 +1280,24 @@ void func_80035244(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 4388 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales
- * y las constantes coinciden. Quedan el relleno de los huecos de retardo de la macro de distancia (maspsx anade un
- * nop extra tras dos de sus saltos, 0x2e90 y 0x2eb0 del actual), la forma de la busqueda en la tabla D_8006A940
- * (el original conserva en a1 y a2 el limite y el objeto y relee de memoria el indice y el puntero a cada vuelta)
- * y la llamada a func_800351B4 tras la atenuacion, donde el original carga el objeto una vez. Reescribir en C la
- * suma de vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W y GEO_DISTANCIA_APROX).
+ * Pendiente: puntuacion 3608 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales
+ * y las constantes coinciden. Quedan el reparto de registros guardados y temporales (la constante -3 en s2 y el
+ * original en s3; un puntero del contexto GTE en t7 y el original en a3), el orden de las instrucciones del
+ * prologo (el original lee el byte D_8006AA7C y el contexto antes de los almacenes y deja `move s3,a0` en el hueco
+ * de retardo del primer salto) y la llamada a func_800351B4 tras la atenuacion, donde el original carga el objeto
+ * una vez. Reescribir en C la suma de vectores y la distancia da 9641 y 11566 (ver GEO_SUMAR_W).
+ *
+ * La distancia aproximada usa GEO_DISTANCIA_APROX_A con la base y el destino del propio vector (desplazamiento
+ * 0x44): es la misma rutina manuscrita. La forma sin sufijo escribe un `nop` explicito en el hueco de la primera y
+ * la tercera `bgez` y su `.set noreorder` va con un espacio, que maspsx no reconoce (solo `.set<tab>noreorder`):
+ * maspsx sigue en modo de reordenacion y anade otro `nop` tras esas dos saltos (medido sobre una copia del bloque:
+ * 2 `nop` anadidos con el espacio, 0 con el tabulador, y quitando los dos `nop` explicitos sale `bgez; nop; sub`
+ * como el original). Con la forma sin sufijo la funcion puntua 4388 frente a 4188 con la de sufijo. Arreglar
+ * `GEO_DISTANCIA_APROX` exigiria cambiar la macro compartida, que no se toca aqui.
+ *
+ * La busqueda del modelo guarda el indice leido en la condicion (`idx`) y lo reutiliza en el incremento, como el
+ * original (`lw a0,0x40(s1)` en 0x800357B8 y `addiu v0,a0,1` en 0x800357F0 del original), en lugar de leer el
+ * campo otra vez (4188 a 3608).
  *
  * Los dos recorridos de la rama de volumen (los nodos de coordenadas y la busqueda del modelo) se escriben con
  * salto hacia atras en lugar de `do { } while`: con el bucle natural el optimizador de bucles saca de ambos la
@@ -1313,13 +1325,14 @@ void func_800353B0(Objeto* a0)
     s32* pz;
     s32 m3;
     s32 nmod;
+    s32 idx;
     Objeto* busca;
     EstadoCamara* cam;
 
     sc = (Scratch*)0x1F800000;
-    D_80069652 = 0;
     D_800694D4 = D_800694B8;
-    if (D_8006AA70[0xC] == 0) {
+    D_80069652 = 0;
+    if (D_8006AA7C == 0) {
         if (D_80069560 != 0) {
             ActualizarCamaraSeguimiento(D_80069560, D_80069698->reiniciar_camara);
         }
@@ -1372,7 +1385,7 @@ void func_800353B0(Objeto* a0)
                     sc->d0 = sc->m18 - sc->cur->param.trans.vx;
                     sc->d4 = sc->m1C - sc->cur->param.trans.vy;
                     sc->d8 = sc->m20 - sc->cur->param.trans.vz;
-                    GEO_DISTANCIA_APROX(sc);
+                    GEO_DISTANCIA_APROX_A(sc, sc, 0x44);
                     if (sc->cur->w3E < sc->i44) {
                         if ((sc->cur->w3C & 0x40) == 0) {
                             sc->cur->w24 = (sc->i44 - sc->cur->w3E) >> 7;
@@ -1387,13 +1400,15 @@ void func_800353B0(Objeto* a0)
                     sc->i40 = 0;
                     sc->tp3C = D_8006A940;
                     nmod = D_80069588;
-                    if (sc->i40 < nmod) {
+                    idx = sc->i40;
+                    if (idx < nmod) {
                         busca = sc->cur;
 buscar_modelo:
                         if ((s16)busca->w26 != sc->tp3C->modelo) {
-                            sc->i40++;
+                            sc->i40 = idx + 1;
                             sc->tp3C++;
-                            if (sc->i40 < nmod) {
+                            idx = sc->i40;
+                            if (idx < nmod) {
                                 goto buscar_modelo;
                             }
                         }
