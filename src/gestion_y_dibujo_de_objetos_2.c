@@ -422,7 +422,8 @@ void func_80037FB8(NodoLista* n)
  * `else if`, porque el original cae del bloque `i == 0` a esa prueba (1325 a 925). Formas medidas
  * sin bajada: una variable BCD distinta por conversion da 13847 (cambia la planificacion del
  * primer grupo); un puntero propio para el ultimo grupo da 950 y para los dos ultimos 2508 (se
- * redistribuyen los registros salvados de todos los grupos).
+ * redistribuyen los registros salvados de todos los grupos); escribir `tpos` antes que `pos` en el grupo del contador
+ * 0xB8 da 2558.
  */
 /*
  * Crea los objetos de los indicadores de la interfaz al entrar en un nivel: reinicia los

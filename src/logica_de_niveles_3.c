@@ -487,7 +487,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * local de bloque para el jugador en el bloque del hijo no cambia el codigo (el CSE funde la copia).
  * Residuo en tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura (0x194(s3)) y de las
  * alturas, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del
- * objetivo (0x1c18) y el temporal de mflo (a1 en lugar de t7), la suma de `p30.vy` (v0 y v1 permutados, 0x1ca4), el
+ * objetivo (0x1c18) y el temporal de mflo (a1 en lugar de t7), la suma de `p30.vy` (v0 y v1 intercambiados, 0x1ca4), el
  * ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi 0xffff aqui, 0x47e4), el
  * orden de un sw a 0x14(s3) y 0xec(s3) (0x36a8) y la constante 0x1000 en t7 frente a t4 en los tres bloques de escala.
  * Medido con `diff` (51 tramos que no son solo de forma simbolica; el reparto de t7 y t4 para la constante 0x1000
