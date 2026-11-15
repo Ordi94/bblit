@@ -1239,7 +1239,7 @@ rebotar:
                         } else {
                             a = d + (D_800693C4 * rsin(D_8006938C) >> 12);
                         }
-                        if (sc->tocado->max.vy + 0xA < (s16)(u16)sc->tmp_sv.vy + a) {
+                        if ((s16)(u16)sc->tmp_sv.vy + a > sc->tocado->max.vy + 0xA) {
                             sc->desp.y += a;
                         }
                         D_8006938C += 0x64;
