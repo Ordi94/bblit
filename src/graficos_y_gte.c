@@ -569,7 +569,20 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1555 con la configuracion versionada (g = 8 del archivo). Reparto de registros del tramo final del bucle de puntos (en las dos ramas finales el original carga `lw a2,0x94(s1)` y `lw a1,0xc0(s1)`, ambos campos de la estructura de trabajo, y el C actual carga `lw a1,0x94(s1)` y `lw a2,0xc0(s1)`, es decir, intercambiados) y cadena de comparaciones de las esquinas que el original comparte entre regiones. Medido: el residuo son dos puntos, el reparto a1/a2 de esas dos cargas en las dos ramas finales (la rama anterior coincide con el original: +0x94 en a1 y +0xC0 en a2) y la cola `slt ; bnez ; li v0,1` que el original comparte (`j` con el `slt` en el hueco) y aqui se duplica; usar la copia local del objeto en las dos comparaciones o una copia local del punto no cambia la cifra.
+ * Pendiente: puntuacion 1555 con la configuracion versionada (g = 8 del archivo). Reparto de registros del tramo final del bucle de puntos (en las dos ramas finales el original carga `lw a2,0x94(s1)` y `lw a1,0xc0(s1)`, ambos campos de la estructura de trabajo, y el C actual carga `lw a1,0x94(s1)` y `lw a2,0xc0(s1)`, es decir, intercambiados) y cola de salida que el original comparte entre mas caminos que este C. Medido: el residuo son dos puntos, el reparto a1/a2 de esas dos cargas en las dos ramas finales (la rama anterior coincide con el original: +0x94 en a1 y +0xC0 en a2) y la forma en que se unen las colas; usar la copia local del objeto en las dos comparaciones o una copia local del punto no cambia la cifra.
+ *
+ * Estructura medida del original en los seis caminos de clasificacion del bucle (0x44c, 0x498, 0x4b4, 0x500,
+ * 0x558 y 0x5b4, en el orden del fuente): los caminos de 0x498 y 0x558 comparten desde su primera comparacion
+ * la cadena de 0x570 a 0x5a0 (el primero entra por `j 0x570`); los de 0x500 y 0x5b4 comparten la de 0x518 a
+ * 0x540 (el segundo entra por `j 0x518`, hacia atras); los de 0x44c y 0x4b4 no comparten nada de sus
+ * comparaciones, que son iguales tras la primera, y cada uno termina con `j 0x5a4` y su propio `slt` en el
+ * hueco; 0x5a4 (`bnez v0,0x5d0 ; li v0,1 ; j 0x5f0`) es la cola comun de esos dos y de la cadena de 0x570.
+ * El C actual produce otra union: el camino de 0x44c entra en el de 0x4b4 desde su `slt` (en el codigo
+ * generado, la cola de ambos queda en 0x1f14 a 0x1f24), la cadena de 0x558 conserva su propia cola
+ * `bnez ; li v0,1 ; j` en lugar de compartir la de los otros caminos, y los caminos de 0x500 y 0x5b4
+ * cierran con `beqz` y la salida en el hueco en vez de `bnez`, `li` y `j`. Se supone, sin verificar, que
+ * el original no fusiona los caminos de 0x44c y 0x4b4 porque en el momento de fusionar colas no son
+ * identicos; no se ha encontrado la forma del fuente que lo produzca.
  *
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
  * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
