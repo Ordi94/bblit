@@ -1286,12 +1286,14 @@ void func_80035244(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1470 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales
+ * Pendiente: puntuacion 1250 con la configuracion versionada (g = 8 del archivo): 82 diferencias de operando, 1 linea
+ * reordenada y 183 insertadas o borradas (el desplazamiento de un `nop` y de la busqueda del modelo arrastra el
+ * resto). El flujo, las macros vectoriales
  * y las constantes coinciden. Quedan el reparto de registros guardados y temporales (la constante -3 en s2 y el
  * original en s3 con el puntero a la proyeccion al reves; un puntero del contexto GTE en t7 y el original en a3;
- * el puntero al objeto actual en v1 en varios bloques y el original en a0), el orden de las dos primeras cargas del
- * prologo (el original lee el byte D_8006AA7C antes que el contexto; leerlo en una local antes de los almacenes
- * da 1950) y la llamada a func_800351B4 tras la atenuacion: el original
+ * el puntero al objeto actual en v1 en varios bloques y el original en a0), el byte D_8006AA7C que el original
+ * lee por el simbolo y aqui sale como `D_8006AA70+0xc` (diferencia de forma simbolica de los mismos bytes; con
+ * el simbolo escalar en los dos sitios la funcion mide 1470) y la llamada a func_800351B4 tras la atenuacion: el original
  * salta a la `jal` de la busqueda del modelo (0x800358A4, una sola llamada en la funcion) y aqui salen dos.
  * Escribir la atenuacion como salto a esa llamada deja una sola `jal` y la estructura del original, pero la
  * puntuacion sube a 1645 porque el puntero al objeto sale en `v1` donde el original lo tiene en `a0` (causa sin
@@ -1352,8 +1354,8 @@ void func_800353B0(Objeto* a0)
 
     D_80069652 = 0;
     D_800694D4 = D_800694B8;
-    /* Mismo byte que D_8006AA70[0xC] del bucle final: con ese simbolo en los dos sitios la funcion mide 1250 y con este en el prologo y D_8006AA70[0xC] en el bucle, 1470. */
-    if (D_8006AA7C == 0) {
+    /* Mismo byte que D_8006AA7C, leido como miembro del banco D_8006AA70 en el prologo y en el bucle final. */
+    if (D_8006AA70[0xC] == 0) {
         if (D_80069560 != 0) {
             ActualizarCamaraSeguimiento(D_80069560, D_80069698->reiniciar_camara);
         }
@@ -1589,7 +1591,7 @@ fin:
     D_80069560 = D_80069698;
     if (s0 != NULL) {
         do {
-            /* Mismo byte que D_8006AA7C del prologo: con D_8006AA7C en el bucle la funcion mide 1620. */
+            /* Mismo byte que D_8006AA7C, leido como miembro del banco D_8006AA70 igual que en el prologo. */
             if (D_8006AA70[0xC] == 0) {
                 if ((s0->flags14 & 0x100) == 0) {
                     D_8005E35C[s0->clase](s0);
