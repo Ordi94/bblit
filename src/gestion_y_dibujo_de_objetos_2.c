@@ -899,6 +899,13 @@ void func_80038E84(s32 idx, s32 paso)
  * copia propia de la rama de la barra 0 (en lugar de reutilizar la local del cuerpo) baja de 1950 a 1745;
  * la envoltura del medidor y del contador de golpes junto con el orden de la actualizacion del valor
  * mostrado en las barras 3 y 7 lo bajan de 1745 a 1525 (ver la cabecera de abajo).
+ * En cada uno de los cuatro temporizadores de poderes el original deja el resultado `n` en v0 (`li v0,1` en el
+ * hueco de retardo del `beq` de la comparacion con -1 y `sll v0,v0,1` al final del producto por 30) y aqui cae
+ * en a1 (0x2478 y 0x248c del diff). Una variable propia por temporizador (cuatro locales en lugar de una) y la
+ * comparacion invertida (`== -1` con la asignacion de 1 en la rama) dan el mismo ensamblador y la misma cifra
+ * (1525): el compilador normaliza ambas formas. Se supone, sin verificar, que `n` entra en conflicto con v0
+ * por el temporal de la comparacion, que ocupa v0 hasta el salto, y que en el original `n` empieza a vivir tras
+ * ese temporal.
  */
 /*
  * Una vez por cuadro de juego, con el estado principal distinto de 3, sin pantalla pedida

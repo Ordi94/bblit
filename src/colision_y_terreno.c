@@ -272,7 +272,10 @@ void func_80019364(s32* a0)
  * los planos por rama (800 con la cola comun): el orden de las
  * cargas lo decide el planificador y no el orden de las sentencias (el original carga la altura antes
  * que el punto previo y carga este tras la segunda lectura de la celda); leer el punto previo como
- * acceso que no es de miembro (`*(s32*)((u8*)w + 0x20)`) tampoco lo mueve (775 con esa misma forma).
+ * acceso que no es de miembro (`*(s32*)((u8*)w + 0x20)`) tampoco lo mueve (775 con esa misma forma);
+ * escribir `tx = w->sz_x` despues de los almacenes de `w->sz_z` y `w->lim_z` del avance del eje z deja 800
+ * con el mismo ensamblador (diff identico fila a fila), de modo que el orden de las sentencias no mueve las
+ * cargas de ese avance.
  * Los planos 0x7E y 0x7F del caso estatico (0x8001BCD4-0x8001BF6B) dejaron de diferir en su reparto de
  * registros (1565 a 800): ver la cabecera de la funcion. Medido: escribir la cola entera de esos planos
  * (diez sentencias) en cada rama da 775, 25 puntos menos; no se adopta porque no acerca el cierre y
