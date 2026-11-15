@@ -2522,19 +2522,6 @@ siguiente:
     } while (t->nodo != 0);
 }
 
-#ifdef NON_MATCHING
-/*
- * Pendiente: puntuacion 245 con la configuracion versionada (g = 8 del archivo). Queda la salida de la busqueda por id
- * (el orden de la matriz en el preludio ya coincide, ver la cabecera de la funcion).
- *
- * (2) El original sale de la busqueda por id con `beqz v0` directo al caso sin origen y vuelve con `j` al cursor; aqui
- * sale con `bnez` hacia atras y un `j`. Medido sobre el volcado de la salida: el bucle con `while` (igual que `for`),
- * con guarda y `do/while` (duplica el cuerpo), con `goto` al caso sin origen tras el bucle (sale directo pero con la
- * misma polaridad que ahora), con `for (;;)` y la prueba de nulo al final (la polaridad del original, pero el optimizador
- * de saltos copia la primera vuelta y el cuerpo sale duplicado) y con la prueba de nulo al principio (una sola prueba
- * compartida y `t->nodo` ya no se iza). Las nueve marcas simbolicas (`%lo(D_1F8000..)` frente al desplazamiento) no se
- * pueden quitar con el acceso por direccion constante.
- */
 /*
  * Manejador del director de camara (clase 36): por cada disparador cuya condicion y distancia se
  * cumplen reescribe el destino de vista y de mira de la camara global, la distancia de acercamiento
@@ -2556,6 +2543,11 @@ siguiente:
  * optimizador de bucles iza solo las instrucciones que preceden al primer salto condicional del bucle y que numera los
  * izados en el orden de aparicion. Esta condicion vacia fuera del bucle, antes o despues de la matriz, no cambia el
  * orden. La forma del fuente original que producia este reparto se desconoce.
+ *
+ * La busqueda del objeto por identificador de la bandera 1 lleva la prueba de la coincidencia dentro de la condicion del
+ * `for` y el cuerpo vacio: asi la salida por cursor nulo es un salto condicional directo al caso sin origen y la vuelta
+ * un `j` (245 a 0, coincide en bytes), como en el original. Con la prueba dentro del cuerpo con `break` sale un `bnez`
+ * hacia atras y un `j`, y con `for (;;)` el optimizador de saltos copia la primera vuelta y el cuerpo sale duplicado.
  */
 void LogicaDirectorCamara(Objeto* o)
 {
@@ -2628,10 +2620,7 @@ void LogicaDirectorCamara(Objeto* o)
             cond = (t->flags & 0x42);
             t->origen = 0;
             if (cond == 0x40) {
-                for (t->origen = D_80069518; t->origen != 0; t->origen = t->origen->siguiente) {
-                    if (t->origen->w1C == t->nodo->p20 && !(t->origen->flags14 & 0x100)) {
-                        break;
-                    }
+                for (t->origen = D_80069518; t->origen != 0 && !(t->origen->w1C == t->nodo->p20 && !(t->origen->flags14 & 0x100)); t->origen = t->origen->siguiente) {
                 }
             } else if (t->flags & 0x80) {
                 t->origen = o;
@@ -2781,9 +2770,6 @@ siguiente:
         t->nodo = t->nodo->sig;
     } while (t->nodo != 0);
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaDirectorCamara);
-#endif
 
 /*
  * Manejador del sprite animado con caja de colision y disparadores (clase 4 de D_8005E35C). En el
