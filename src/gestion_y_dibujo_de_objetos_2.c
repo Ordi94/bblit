@@ -417,8 +417,8 @@ void func_80037FB8(NodoLista* n)
  * sustituye `e` por su valor constante en las dos lecturas (`lui` + `lbu`) y el pseudo muere sin
  * usos. Se supone, sin verificar, que la lectura con un indice en registro es lo que impide esa
  * sustitucion; el original lee el ultimo grupo con dos desplazamientos constantes sobre un solo
- * `lui` en s3 (0x520 y 0x578) y no se encontro la forma que lo mantenga. Sin bajada, ademas:
- * escribir `pos` despues de `ids[5]` y `tpos = pos - 6` en lugar de `D_8005E8F8 - 6` dejan 925.
+ * `lui` en s3 (0x520 y 0x578), y el C actual no lo mantiene en ninguna de las formas escritas. Con `pos` escrito
+ * despues de `ids[5]` y `tpos = pos - 6` en lugar de `D_8005E8F8 - 6` la cifra es 925, la misma que la actual.
  * Con los tres bytes del contador de porcentaje leidos con ESTADO_PRINCIPAL directo (sin la local
  * `e`, que abarcaba el grupo) en una sola expresion y con `r[7] + r[5]` sumado antes de sumarlo al
  * byte alto desplazado, la cifra baja de 2287 a 2137 (el lui compartido y la suma coinciden con
