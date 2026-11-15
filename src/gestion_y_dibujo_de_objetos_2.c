@@ -410,10 +410,15 @@ void func_80037FB8(NodoLista* n)
  * D_8005E8F8 cae en a2 en vez de v1 (0x48c, 0x494, 0x4ac); (2) grupo del contador 0xBA (el
  * ultimo): el original conserva el puntero a 0x80010000 en s3 a traves de la primera conversion
  * BCD (lui en 0x520, lbu 0x44 y, tras la llamada, lbu 0xFA en 0x578) y aqui el compilador lo
- * rematerializa con un lui propio en cada lectura (a0). Se supone, sin verificar, que el CSE
- * sustituye el puntero constante por su valor en cada lectura cuando ninguna lectura lo usa como
- * base de un indice, que es lo que lo mantiene en un registro salvado en los grupos de los
- * contadores 0xB6 y 0xB8 (`e->r[e->r[0xB6]]`); no se encontro la forma que lo mantenga en el ultimo.
+ * rematerializa con un lui propio en cada lectura (a0). Medido en el volcado
+ * de asignacion (`-dl`): los grupos de los contadores 0xB6 y 0xB8, que leen `e->r[e->r[..]]`, tienen
+ * cada uno un pseudo para el puntero (3 usos, 42 instrucciones de vida, cruza 1 llamada) que el
+ * asignador global manda a un registro salvado; el ultimo grupo no tiene ninguno, porque el CSE
+ * sustituye `e` por su valor constante en las dos lecturas (`lui` + `lbu`) y el pseudo muere sin
+ * usos. Se supone, sin verificar, que la lectura con un indice en registro es lo que impide esa
+ * sustitucion; el original lee el ultimo grupo con dos desplazamientos constantes sobre un solo
+ * `lui` en s3 (0x520 y 0x578) y no se encontro la forma que lo mantenga. Sin bajada, ademas:
+ * escribir `pos` despues de `ids[5]` y `tpos = pos - 6` en lugar de `D_8005E8F8 - 6` dejan 925.
  * Con los tres bytes del contador de porcentaje leidos con ESTADO_PRINCIPAL directo (sin la local
  * `e`, que abarcaba el grupo) en una sola expresion y con `r[7] + r[5]` sumado antes de sumarlo al
  * byte alto desplazado, la cifra baja de 2287 a 2137 (el lui compartido y la suma coinciden con
