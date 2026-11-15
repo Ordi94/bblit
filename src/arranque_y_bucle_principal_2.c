@@ -258,6 +258,16 @@ void func_800163E4(void)
  * predice el cambio de registro, y envolver solo las cuatro lecturas da 945 porque los limites de bucle son barrera de
  * planificacion.
  *
+ * Medido en los volcados de local-alloc (bloque 60 del ciclo de demostracion): el puntero de la pila de botones
+ * (pseudo 326) tiene 22 usos sobre 16 instrucciones, cada uno de los tres temporales del decremento 4 usos sobre 2
+ * y los valores leidos 4 sobre 4 (el ultimo 4 sobre 5); el reparto es el del original con v0 y v1 intercambiados en
+ * toda la cadena (base en v1 y primer valor en v0, frente a base en v0 y primer valor en v1). Las formas con codigo
+ * no lo mueven: una variable propia por lectura con su almacen inmediato deja el mismo reparto, y leer las cuatro y
+ * guardar despues reordena las lecturas y los almacenes. Del cero de `ocioso`, las cuatro ordenes de las
+ * inicializaciones de `pausa`, `demo` y `ocioso` dejan la copia entre registros (`move s4,s5`): el segundo cero se
+ * sustituye por una copia del primero despues del reparto en todas ellas. Los 37 operandos simbolicos
+ * (`%lo(D_800100xx)` frente al desplazamiento) no se pueden quitar con el acceso por direccion constante.
+ *
  * Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta
  * del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la
  * pausa y la maquina de estados D_80069662 (el estado 0x16 en adelante recarga el contenido).
