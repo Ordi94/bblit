@@ -674,7 +674,7 @@ void SondearTarjeta(void)
                     quince = grupo << 4;
                     quince -= grupo;
                     desplazamiento_grupo = quince << 3;
-                    entrada =(EntradaDirectorio*)(D_800697B0 + i * 0x28 + desplazamiento_grupo);
+                    entrada = (EntradaDirectorio*)(D_800697B0 + i * 0x28 + desplazamiento_grupo);
                     entrada->attr = 0;
                     entrada->tam = 0;
                     entrada->sig = 0;
