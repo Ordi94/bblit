@@ -3516,8 +3516,8 @@ void LogicaBloqueEmpujable(Objeto* o)
     D_80069698->param.trans.vx += t->vx;
     D_80069698->param.trans.vz += t->vz;
 disparadores:
-    n = (NodoDisparador*)o->apoyos;
-    if (n != 0) {
+    if (o->apoyos != 0) {
+        n = (NodoDisparador*)o->apoyos;
         do {
             if (n->req14 == 0 || (o->flags14 & n->req14)) {
                 if (TestLogicCond(o, &n->cond) != 0) {
