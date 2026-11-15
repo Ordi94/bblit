@@ -417,8 +417,8 @@ INCLUDE_ASM("asm/nonmatchings/tarjeta_de_memoria", func_800151FC);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2870 con la configuracion versionada (g = 8 del archivo; ejes 71 de operando, 0 reordenadas,
- * 239 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
+ * Pendiente: puntuacion 2835 con la configuracion versionada (g = 8 del archivo; ejes 71 de operando, 0 reordenadas,
+ * 235 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
  * original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante.
@@ -441,6 +441,7 @@ void SondearTarjeta(void)
     s32 grupo;
     s32 desplazamiento_grupo;
     s32 salvado;
+    u8 valor_salvado_a6;
     s32 partida;
     s32 tam;
     s32 j;
@@ -535,7 +536,10 @@ void SondearTarjeta(void)
             if (*(s8*)&D_8006935C != 1) {
                 goto sin_bandera;
             }
-            salvado = ESTADO_PRINCIPAL->r[0xA6];
+            /* El valor del banco que se restaura tras la llamada vive en una local propia de esta orden: con la
+             * local `salvado` de las otras dos ordenes, que guardan otro registro del banco, el reparto de
+             * registros del recorrido del directorio empeora (de 2835 a 2870). */
+            valor_salvado_a6 = ESTADO_PRINCIPAL->r[0xA6];
             ESTADO_PRINCIPAL->r[0xA6] = D_80069594;
             if (func_8001515C() != 0) {
                 D_8006AA70[8] = 0xA;
@@ -543,7 +547,7 @@ void SondearTarjeta(void)
                 D_8006AA70[8] = 1;
                 D_8006AA70[0x12] = 1;
             }
-            ESTADO_PRINCIPAL->r[0xA6] = salvado;
+            ESTADO_PRINCIPAL->r[0xA6] = valor_salvado_a6;
             goto fin_ordenes;
         tarjeta_nueva:
             D_8006935C = 0;
