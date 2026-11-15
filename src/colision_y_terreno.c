@@ -254,11 +254,16 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2020 con la configuracion versionada (g = 0 del archivo; ejes 213 de operando,
- * 3 reordenadas, 118 insertadas o borradas). Difiere en: orden de escrituras y reparto de registros,
- * a saber, el orden de las escrituras del avance por subcelda y por baldosa del recorrido general
- * (rangos 0x8001A050-0x8001A563), el reparto de v0/v1 en las banderas de los planos 0x7E y 0x7F del
- * caso estatico (0x8001BCD4-0x8001BF6B) y la posicion de dos instrucciones del prologo.
+ * Pendiente: puntuacion 1565 con la configuracion versionada (g = 0 del archivo; ejes 212 de operando,
+ * 4 reordenadas, 100 insertadas o borradas). Difiere en: orden de escrituras y reparto de registros,
+ * a saber, en los cuatro avances del recorrido general (subcelda y baldosa) el original almacena la
+ * copia del punto previo en rx o bx (rz/bz antes) despues de la copia `move` de la segunda lectura y
+ * con el punto previo en v1 y la altura en a1/a2, mientras que aqui ese almacen sube justo tras las
+ * lecturas y los registros salen permutados; el reparto de v0/v1 en las banderas de los planos 0x7E y
+ * 0x7F del caso estatico (0x8001BCD4-0x8001BF6B) y la posicion de dos instrucciones del prologo.
+ * Medido: escribir la suma que actualiza el punto de cruce como segunda lectura del campo (el original
+ * tiene `move v0,v1` tras los almacenes) baja de 2020 a 1565; con una sola lectura local o con las dos
+ * lecturas como campo sube (2500).
  */
 /*
  * Barrido de un desplazamiento (desp) del punto pos contra el terreno por baldosas: avanza baldosa a
@@ -274,7 +279,11 @@ void func_80019364(s32* a0)
  * (el desfase de partida del historial en el cierre): el compilador la deja como equivalente a 0 y
  * no la pliega en las comparaciones del cierre. cl y f llevan el valor de la clase y de las banderas
  * a la escritura comun de los planos 0x7E y 0x7F; tx y tz conservan el valor previo de un punto de
- * cruce antes de sobrescribirlo.
+ * cruce antes de sobrescribirlo, y solo se usan para la copia a rx/bx (y rz/bz); la suma que actualiza el
+ * propio punto de cruce vuelve a leer el campo tras los almacenes, porque el original la obtiene con un
+ * `move` de la primera lectura: el compilador no comparte dos lecturas separadas por un almacen y la
+ * segunda queda como copia del registro de la primera (con una variable local para las dos la copia
+ * desaparece).
  */
 s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* w)
 {
@@ -500,14 +509,14 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             w->d_sx = SquareRoot0(w->dsx_x * w->dsx_x + w->dsx_z * w->dsx_z);
                             if (w->d_sz < w->d_sx) {
                                 if (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z) {
-                                    tx = w->sz_x;
                                     w->rz = w->sz_z;
+                                    tx = w->sz_x;
                                     /* Copiar sz_y despues de sz_z es el orden que menos difiere del original
                                      * (con sz_y antes la puntuacion sube de 2030 a 2040). */
                                     w->aux = w->sz_y;
                                     w->sz_z = w->lim_z = w->lim_z + w->celda_z;
                                     w->rx = tx;
-                                    w->sz_x = ((w->pend_z * w->celda_z) >> 12) + tx;
+                                    w->sz_x = ((w->pend_z * w->celda_z) >> 12) + w->sz_x;
                                 } else {
                                     w->acc_x = w->dx;
                                 }
@@ -519,7 +528,7 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                                     w->rz = tz;
                                     w->sx_x = w->lim_x = w->lim_x + w->celda_x;
                                     w->rx = tx;
-                                    w->sx_z = ((w->pend_x * w->celda_x) >> 12) + tz;
+                                    w->sx_z = ((w->pend_x * w->celda_x) >> 12) + w->sx_z;
                                 } else {
                                     w->acc_z = w->dz;
                                 }
@@ -565,14 +574,14 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             w->bz = w->cbz_z;
                             w->cbz_z = w->lin_z = w->lin_z + w->paso_z;
                             w->bx = tx;
-                            w->cbz_x = tx + ((w->pend_z * w->paso_z) >> 12);
+                            w->cbz_x = w->cbz_x + ((w->pend_z * w->paso_z) >> 12);
                         } else {
                             tz = w->cbx_z;
                             tx = w->cbx_x;
                             w->bz = tz;
                             w->cbx_x = w->lin_x = w->lin_x + w->paso_x;
                             w->bx = tx;
-                            w->cbx_z = tz + ((w->pend_x * w->paso_x) >> 12);
+                            w->cbx_z = w->cbx_z + ((w->pend_x * w->paso_x) >> 12);
                         }
                     } while ((w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x)
                              || (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z));
