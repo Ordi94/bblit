@@ -591,6 +591,71 @@ def _texto_de_dos_ramas_con(primera: str, segunda: str) -> str:
     return _texto_con("    if (a) {\n" + _marcada(primera) + "    } else {\n" + _marcada(segunda) + "    }\n")
 
 
+def _texto_de_tres_caminos(primero: list[str], segundo: list[str], tercero: list[str]) -> str:
+    """Tres caminos a distinta profundidad que acaban en una misma cola, con sus sentencias marcadas."""
+    return _texto_con(
+        "    if (a) {\n"
+        + "".join(_marcada(sentencia) for sentencia in primero)
+        + "        goto cola;\n    }\n    if (b) {\n"
+        + "".join(_marcada(sentencia) for sentencia in segundo)
+        + "        goto cola;\n    }\n    if (c) {\n        if (d) {\n"
+        + "".join(_marcada(sentencia) for sentencia in tercero)
+        + "            goto cola;\n        }\n    }\n    cola:\n"
+    )
+
+
+def test_un_grupo_de_tres_caminos_con_la_misma_sentencia_se_acepta_y_cuenta_tres() -> None:
+    """Tres caminos hacia una cola comun con la misma sentencia marcada son un grupo valido de tres.
+
+    Regla:
+        La sentencia replicada puede repetirse en mas de dos caminos: el recuento de la funcion es el de
+        marcas y ningun camino queda huerfano.
+
+    Ejemplo:
+        Una mascara escrita en tres saltos a la misma etiqueta cuenta 3 y no produce incumplimientos.
+    """
+    sentencia = "o->flags = a & ~9;"
+    texto = _texto_de_tres_caminos([sentencia], [sentencia], [sentencia])
+    assert _incumplimientos_de_replicadas(texto) == []
+    assert _buscar_referencias(texto) == {("func_800000A0", SENTENCIA_DUPLICADA): 3}
+
+
+def test_un_grupo_de_tres_caminos_donde_uno_cambia_de_campo_deja_huerfana_solo_esa_marca() -> None:
+    """Si uno de los tres caminos escribe otro campo, su marca no tiene pareja y las otras dos si.
+
+    Regla:
+        Cada marca se agrupa por su esqueleto: el camino que difiere en el campo o en el nombre invocado es
+        otra sentencia y se rechaza, sin arrastrar a las dos que si coinciden.
+
+    Ejemplo:
+        Dos caminos con ``o->flags`` y uno con ``o->param`` dejan huerfana la sentencia de ``o->param``.
+    """
+    igual = "o->flags = a & ~9;"
+    otro_campo = "o->param = a & ~9;"
+    assert _incumplimientos_de_replicadas(_texto_de_tres_caminos([igual], [igual], [otro_campo])) == [
+        _sin_pareja(otro_campo)
+    ]
+    otra_llamada = "LIMPIA(o) = a & ~9;"
+    assert _incumplimientos_de_replicadas(_texto_de_tres_caminos([otra_llamada], [igual], [igual])) == [
+        _sin_pareja(otra_llamada)
+    ]
+
+
+def test_dos_sentencias_por_camino_en_tres_caminos_cuentan_seis_y_se_aceptan() -> None:
+    """Dos sentencias marcadas en cada uno de tres caminos son seis marcas en dos grupos de tres.
+
+    Regla:
+        Cada sentencia forma su propio grupo y el recuento es el de marcas (caminos por sentencias): seis.
+
+    Ejemplo:
+        ``mascara = ~9;`` y ``m = o->flags & mascara;`` en tres caminos cuentan 6 sin incumplimientos.
+    """
+    pareja = ["mascara = ~9;", "m = o->flags & mascara;"]
+    texto = _texto_de_tres_caminos(pareja, pareja, pareja)
+    assert _incumplimientos_de_replicadas(texto) == []
+    assert _buscar_referencias(texto) == {("func_800000A0", SENTENCIA_DUPLICADA): 6}
+
+
 def test_una_marca_que_no_precede_a_una_sentencia_se_rechaza() -> None:
     sola = f"        /* {COMENTARIO_REPLICADA} */\n    }}\n"
     texto = _texto_con(
