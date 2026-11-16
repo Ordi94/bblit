@@ -219,41 +219,37 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 18547 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin
- * afinar: el reparto de registros y el orden de las comparaciones de las regiones no se han ajustado al
- * original. La lista de registros destruidos de GEO_NORMA2_XZ la mueve 100 puntos.
- * Ejes medidos con `diff`: 64 de operando, 39 reordenadas y 1135 insertadas o borradas; el original ocupa 0x11EC
- * bytes (1147 instrucciones), de modo que casi todo el residuo es desalineacion encadenada de
- * unas pocas inserciones (la primera, el reparto del prologo). El marco del C es de 0x58 bytes (vars = 32) y el
- * del original de 0x50.
- * El primer resultado de SquareRoot0 se guarda en `k`, la local cuya direccion se pasa a gte_NormalClip (vive en
- * memoria); sin ella el resultado ocupa s0 en el tramo de la norma y la cifra es 19849. En el original ese resultado va a 0x18(sp), la misma ranura que recibe los resultados
- * de NormalClip (13 accesos a 0x18(sp) en el original); se supone, sin verificar, que ambos usos son la misma
- * variable. Con `k` el marco sigue en 0x58: `mejor_d` y `dif` siguen en la pila. El segundo resultado (`len2`) no
- * se guarda en una local aparte para que tome `t2`, el registro que el original usa para ese valor (`addu t2,v0,zero`
- * en 0x80018384): esa local cruza una llamada y toma un registro salvado. Medido en el volcado de `cc1`: los dos pseudos que direccionan D_80069D08 (la parte alta y
- * la direccion completa) se reparten en s1 y s2 por `local-alloc` porque sus usos antes y despues de la segunda
- * llamada se comparten; el original recalcula el `lui` tras la llamada (0x800183A4), es decir, no los conserva
- * en registro salvado. Queda sin resolver que forma del fuente lo produce. Reparto medido en los volcados de `cc1` (`.lreg` y
- * `.greg`): el original deja `mejor_d` en s7 y la direccion `w + 0x50` (`dif`) en fp, con `a` en s5, `v` en s4,
- * `w` en s1, `mejor` en s3, la constante 0x2000000 en s6 y la direccion de D_80069D18 en s2, y reserva en pila
- * solo `salida_x` y `salida_z` (0x10 y 0x14), `salida_y` (0x1c) y `lista` (0x20); aqui `mejor_d` (9 usos sobre
- * 832 insns) y `dif` caen a la pila (0x14 y 0x24), `w` toma s3, `a` s6, `v` s7, `mejor` s5, la constante
- * 0x2000000 toma fp y el temporal `t2` (radio de alcance e indice de arista, una sola variable) ocupa s1,
- * mientras que el original lo deja en t2 (0x80017B1C `move t2,zero`, sin cruzar llamadas). Referencias medidas del
- * resto: `a` 27 usos sobre 1670 insns, `v` 25 sobre 1678, `w` 524 sobre 1670 y `mejor` 29 sobre 840. Dos
- * formas ensayadas sobre esa causa que no se conservan: una local propia para el radio de alcance (20852) y una
- * variable propia para el resultado tras las llamadas a SquareRoot0 en lugar de reutilizar el contador de
- * golpes (20069); ninguna cambia las variables que van a la pila. Medido en `.greg` y `.lreg`: `w` (524 usos, la
- * mas prioritaria, 2,82) toma s3 porque los pseudos de bloque que cruzan una llamada dentro del tramo de la
- * norma (copia del primer resultado de SquareRoot0 en s0 y dos punteros a D_80069D08 y D_80069C08 en s1 y s2)
- * ocupan s0 a s2 en ese bloque y `w`, viva en toda la funcion, hereda el conflicto; en el original ese primer
- * resultado no tiene registro (`sw v0,0x18(sp)` en 0x80018344 y `lw a1,0x18(sp)` en 0x80018358, despues de la segunda llamada, la
- * misma ranura que usa `hits`) y solo `mflo s0` ocupa s0. Dos mediciones sobre esa causa: leer los dos
- * componentes de D_80069D08 en locales antes de la segunda llamada (20169, `w` sigue en s3) y guardar el primer
- * resultado en `hits` (19882: `w` baja a s2, pero el marco crece de 0x50 a 0x58 y el resto empeora). Se supone, sin verificar, que el original
- * carga `lista` en una temporal y la copia (`lhu t8,0x20(sp)` y `move v0,t8`, 0x80017518 y 0x80017520) por la
- * forma de su prueba, y que eso explica los dos `move v0,t8` que faltan (0x80017520 y 0x80017588).
+ * Pendiente: puntuacion 17782 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 77 de
+ * operando, 38 reordenadas y 1103 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
+ * que casi todo el residuo es desalineacion encadenada de unas pocas inserciones (la primera, el reparto del
+ * prologo). El marco del C es de 0x58 bytes (vars = 32) y el del original de 0x50.
+ * `k` es una sola variable que vive en memoria (se pasa su direccion a gte_NormalClip): en el original el contador
+ * de impactos del bucle de puntos (`sw zero,0x18(sp)` en 0x80017B28, `lw`/`sw` 0x18(sp) en 0x80017ED4), los resultados de
+ * NormalClip, el primer resultado de SquareRoot0 (`sw v0,0x18(sp)` en 0x80018344) y la bandera de impacto
+ * (`sw zero,0x18(sp)` en 0x80018404) comparten la ranura 0x18(sp); unirlas baja de 18547 a 17782. El indice de
+ * arista usa `i` (su valor y el del contador de los bucles de puntos tienen vida disjunta) y no `t2`: la cifra no
+ * cambia (17782), pero el pseudo del radio de alcance deja de vivir 534 instrucciones a traves de 9 llamadas y de
+ * tomar s1 (30 referencias sobre 534 insns), y las lineas insertadas o borradas bajan de 1117 a 1103.
+ * Reparto medido en los volcados de `cc1` (`.lreg` y `.greg`). Original: `w` en s1 (524 usos sobre 1682 insns,
+ * prioridad 2,80), direccion de D_80069D18 en s2, `mejor` en s3, `v` en s4, `a` en s5, constante 0x2000000 en s6,
+ * `mejor_d` en s7 y `dif` (`w + 0x50`) en fp, con s0 solo para el segundo producto de cada norma (`mflo s0`) y en
+ * pila solo `salida_x`/`salida_z` (0x10, 0x14), `k` (0x18), `salida_y` (0x1c) y `lista` (0x20). Aqui `w` toma s2,
+ * D_80069D18 s3, `mejor` s4, `a` s5, `v` s6, la constante s7 y `mejor_d` fp, y `dif` cae a la pila: el reparto
+ * es el del original desplazado un registro porque s0 y s1 ya estan tomados antes de la asignacion global por dos
+ * pseudos de bloque que cruzan la segunda llamada a SquareRoot0: la parte alta de D_80069D08 (8 usos sobre 62 insns,
+ * prioridad 0,39, s0) y su direccion completa (6 usos sobre 68 insns, 0,18, s1). El original recalcula el `lui` tras
+ * esa llamada (0x800183A4) y usa temporales (t7 y t8), de modo que no los conserva. Con ellos en s0 y s1 el segundo
+ * producto de la norma y el de la longitud no encuentran registro y se derraman a 0x28(sp), lo que explica el
+ * resto de la diferencia de marco. Una copia reducida de la norma fuera del repositorio (dos llamadas y lecturas de
+ * una misma estructura antes y despues) comparte la parte alta y la direccion entre llamadas igual que este C,
+ * de modo que la forma que da el recalculo no es la lectura repetida del global. Formas ensayadas que no se
+ * conservan: leer los dos componentes de D_80069D08 en locales antes de la llamada (17894), una local con la
+ * direccion `&D_80069D08` para las lecturas posteriores (17782, el CSE la pliega a la forma anterior), una local
+ * propia para el radio de alcance (20852) y una para el resultado tras SquareRoot0 en lugar del contador (20069);
+ * con el primer resultado de SquareRoot0 en el contador de golpes baja a s2 pero el marco crece (19882). Se supone,
+ * sin verificar, que el original carga `lista` en una temporal y la copia (`lhu t8,0x20(sp)` y `move v0,t8`,
+ * 0x80017518 y 0x80017520) por la forma de su prueba, y que eso explica los dos `move v0,t8` que faltan (0x80017520
+ * y 0x80017588).
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con
  * mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la
@@ -266,7 +262,6 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
     u32 mejor_d;
     s32 i;
     s32 t2;
-    s32 hits;
     s32 k;
     s32 len2;
     s16 salida_x;
@@ -374,7 +369,7 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
         }
         gte_SetRotMatrix(&w->m);
         w->pt = w->p;
-        hits = 0;
+        k = 0;
         for (i = 0; i < 5; i++, w->pt++) {
             w->pt->vx += w->dif.vx;
             w->pt->vz += w->dif.vz;
@@ -450,9 +445,9 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
                     w->sal.vz = w->b->min.vz - w->radio - w->pt->vz;
                 }
             }
-            hits++;
+            k++;
         }
-        if (hits == 0) {
+        if (k == 0) {
             D_80069D18[0].z = w->p[0].vz;
             D_80069D18[0].x = w->p[0].vx;
             D_80069D18[1].z = w->p[1].vz;
@@ -481,22 +476,22 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
                 gte_NormalClip(*(u32*)&D_80069D18[0], *(u32*)&D_80069D18[1], *(u32*)&D_80069D18[4], &k);
                 if (k < D_80069380) {
                     D_80069380 = k;
-                    t2 = 0;
+                    i = 0;
                 }
                 gte_NormalClip(*(u32*)&D_80069D18[1], *(u32*)&D_80069D18[3], *(u32*)&D_80069D18[4], &k);
                 if (k < D_80069380) {
                     D_80069380 = k;
-                    t2 = 1;
+                    i = 1;
                 }
                 gte_NormalClip(*(u32*)&D_80069D18[3], *(u32*)&D_80069D18[2], *(u32*)&D_80069D18[4], &k);
                 if (k < D_80069380) {
                     D_80069380 = k;
-                    t2 = 2;
+                    i = 2;
                 }
                 gte_NormalClip(*(u32*)&D_80069D18[2], *(u32*)&D_80069D18[0], *(u32*)&D_80069D18[4], &k);
                 if (k < D_80069380) {
                     D_80069380 = k;
-                    t2 = 3;
+                    i = 3;
                 }
                 w->angs[0]++;
                 if (D_80069380 >= 0) {
@@ -504,22 +499,22 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
                 }
             }
             if (D_80069380 > 0) {
-                if (t2 == 0) {
+                if (i == 0) {
                     w->e_x = D_80069D18[1].x - D_80069D18[0].x;
                     w->e_z = D_80069D18[1].z - D_80069D18[0].z;
                     D_80069D08.vx = D_80069D18[4].x - D_80069D18[0].x;
                     D_80069D08.vz = D_80069D18[4].z - D_80069D18[0].z;
-                } else if (t2 == 1) {
+                } else if (i == 1) {
                     w->e_x = D_80069D18[3].x - D_80069D18[1].x;
                     w->e_z = D_80069D18[3].z - D_80069D18[1].z;
                     D_80069D08.vx = D_80069D18[4].x - D_80069D18[1].x;
                     D_80069D08.vz = D_80069D18[4].z - D_80069D18[1].z;
-                } else if (t2 == 2) {
+                } else if (i == 2) {
                     w->e_x = D_80069D18[2].x - D_80069D18[3].x;
                     w->e_z = D_80069D18[2].z - D_80069D18[3].z;
                     D_80069D08.vx = D_80069D18[4].x - D_80069D18[3].x;
                     D_80069D08.vz = D_80069D18[4].z - D_80069D18[3].z;
-                } else if (t2 == 3) {
+                } else if (i == 3) {
                     w->e_x = D_80069D18[0].x - D_80069D18[2].x;
                     w->e_z = D_80069D18[0].z - D_80069D18[2].z;
                     D_80069D08.vx = D_80069D18[4].x - D_80069D18[2].x;
@@ -531,14 +526,14 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
                 D_80069C08.vz = (w->e_z << 12) / k;
                 D_80069C08.vx = (D_80069C08.vx * len2) >> 12;
                 D_80069C08.vz = (D_80069C08.vz * len2) >> 12;
-                hits = 1;
+                k = 1;
                 w->sal.vx = w->sal.vx - (D_80069C08.vx - D_80069D08.vx);
                 w->sal.vz = w->sal.vz - (D_80069C08.vz - D_80069D08.vz);
             } else {
-                hits = 0;
+                k = 0;
             }
         }
-        if (hits == 0) {
+        if (k == 0) {
             goto siguiente;
         }
         RotMatrix(&w->b->param.giro.rotate, &w->m);
