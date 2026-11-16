@@ -58,30 +58,29 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1980 con la configuracion versionada (g = 8 del archivo; ejes 478 de operando, 3 reordenadas, 437
-   insertadas o borradas). La logica coincide. Cinco formas del C que bajaron de 3750: (e) el almacen de la altura
+/* Pendiente: puntuacion 2310 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
+   escritura del C, cada una con la cifra que da la escritura contraria: (e) el almacen de la altura
    tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo
    arreglo que usa la rama contraria, y no como un simbolo aparte (`D_8006AD74`): el original calcula la base con
-   `lui v1` y el simbolo suelto da `lui at` (2285 a 1980); (d) en el bloque del apoyo
+   `lui v1` y el simbolo suelto da `lui at` (2615); (d) en el bloque del apoyo
    por contacto (0x80023828..0x80023878 del original) el calculo de `giro.u.y` del apoyo, que lee `o->p70`, va ANTES del
    almacen de `o->coord.param` y de los tres de la escala: el original lee los dos giros antes de esos almacenes
-   (`lhu v1,0xde(v1)` antes de `addiu v0,s4,0x18c`) y con el calculo al final el compilador no podia adelantar las
-   lecturas por `o->p70` sobre los almacenes de `o` (2880 a 2285; se supone, sin verificar con el volcado, que un
+   (`lhu v1,0xde(v1)` antes de `addiu v0,s4,0x18c`) y con el calculo al final el compilador no puede adelantar las
+   lecturas por `o->p70` sobre los almacenes de `o` (2905; se supone, sin verificar con el volcado, que un
    almacen por la base de `o` se ordena ante una carga por un puntero leido de `o`); (c) en el bloque del apoyo
    hallado (0x80022C90..0x80022CC4 del original, tras `func_80020354`) la lectura de `h0A` va antes del almacen
    de `trans.vz`: el original emite `sw zero,0x1ac(s4)` despues de `lw v0,0xa8(s3)` y de `lh v0,0xa(v0)` y detras del
-   almacen de `o->p70`; con el almacen a cero escrito antes de la lectura el compilador lo adelantaba sobre el de
-   `o->p70` (3185 a 2880; se supone, sin verificar con el volcado, que el almacen a cero se ordena ante la carga por
-   el posible solape con el scratchpad); (a) la relectura de `sc->desp.x` y
-   `sc->desp.z` tras sus almacenes (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414 del original) solo sale
-   cuando el almacen de `desp.z` usa otra base que `sc` (`w - 0x128`, la direccion de `sc->desp.z`, con comentario en el
-   codigo): con la base de `sc` el compilador reutiliza el registro y no relee. Con `pos = &sc->desp` la relectura sale
-   tambien (3550) pero la base se materializa en `s0` (`addiu s0,s3,0x18`), que el original no tiene. Queda que el
-   original almacena `desp.z` con `sw v1,0x20(s3)`, es decir con la base de `sc` (se supone, sin verificar, que su
-   segunda base es otro pseudo que el asignador funde con `s3`); (b) el almacen de `o->p180` va antes del de
+   almacen de `o->p70`; con el almacen a cero escrito antes de la lectura el compilador lo adelanta sobre el de
+   `o->p70` (2615; se supone, sin verificar con el volcado, que el almacen a cero se ordena ante la carga por
+   el posible solape con el scratchpad); (a) `sc->desp.x` y `sc->desp.z` se almacenan por el campo y por la misma base
+   `sc`, como hace el original (`sw v0,0x18(s3)` y `sw v1,0x20(s3)`, 0x800223FC y 0x80022400). El original relee los dos
+   campos tras almacenarlos (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414) y aqui el compilador reutiliza
+   el registro del valor almacenado y no relee: ese es el residuo de esta zona (se supone, sin verificar, que la
+   relectura del original proviene de una segunda base que el asignador funde con `s3`). Con `pos = &sc->desp` la
+   base se materializa en `s0` (`addiu s0,s3,0x18`), que el original no tiene; (b) el almacen de `o->p180` va antes del de
    `o->trabajo.i14` en el bloque de entrada de la espera (0x80021020..0x80021050): el original lee `i14`, carga
    `sc->sec`, almacena a cero y escribe D_80069584 antes de la guarda de `o->p70`, con el almacen de `p180` en el hueco
-   de retardo del salto, y asi el bloque coincide entero. Diferencia de estructura que queda: en las dos ramas que
+   de retardo del salto, y asi el bloque coincide entero (2685 con el orden contrario). Diferencia de estructura que queda: en las dos ramas que
    acaban en `sc->vel.z = sc->vel.z + (lo >> 11)` (0x80021560 y 0x80021690) el original lee `lhu v0,0xc(s3)` en cada camino
    y comparte desde `mflo t7`; aqui el `lhu` sale tras el `mflo` de la cola comun (una local por rama con la lectura de
    `vel.z` iguala las colas y solo baja 5 puntos, por eso no se instala). El tramo en Z de la guarda de D_80069D30 (0x800222B8..0x80022308) se
@@ -105,16 +104,16 @@ s16* D_800693DC;
    0x10000000 de la prueba del registro de estado se carga en v1 y la bandera en v0 en el original, y aqui al reves; el
    orden de operandos no lo cambia. Los accesos que el original no ordena con los almacenes a globales (los cuatro
    `vy` de D_80069D60 y dos de `flags14`) se escriben por desplazamiento en bytes; con los seis accesos por nombre la cifra
-   es 7570 (se supone, sin verificar con el volcado, que el planificador los reordena con los almacenes a D_8006965A,
+   sube mucho (se supone, sin verificar con el volcado, que el planificador los reordena con los almacenes a D_8006965A,
    D_8006965B y D_8006965E).
-   Residuo medido sin resolver (cifra de cada prueba con el C vigente): (4) la base del almacen de `desp.z` (ver
-   (a)); (5) el reparto de v0/v1/a0 en las pruebas de mascara (`lw v0,8(v0) ; lui v1,0x200 ; and v0,v0,v1` en el
+   Residuo sin resolver: (4) la relectura de `desp.x` y `desp.z` descrita en (a); (5) el reparto de v0/v1/a0 en las
+   pruebas de mascara (`lw v0,8(v0) ; lui v1,0x200 ; and v0,v0,v1` en el
    original frente a la carga en v1 y la mascara en v0 aqui; 0x8002400C y 0x80024B84 del original) que ni el
    orden de los operandos ni una local para la mascara cambian; (6) en el prologo el original copia el valor de `flags14` (`move
    v0,v1`, 0x80020BF4) antes de aplicar la mascara; con una variable distinta para el resultado de la mascara la cifra
-   sube a 4000.
+   sube.
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 2134 y con ella 1980. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 2464 y con ella 2310. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {
@@ -668,8 +667,7 @@ void func_80020B90(Objeto* o)
                 }
             }
             sc->desp.x = D_80069D30[0];
-            /* Equivale a sc->desp.z (0x1F800148 - 0x128 = 0x1F800020): con otra base el compilador relee los dos campos. */
-            *(s32*)((u8*)w - 0x128) = D_80069D30[2];
+            sc->desp.z = D_80069D30[2];
             sc->desp.x += D_80069D40[0];
             sc->desp.z += D_80069D40[2];
         } else {
