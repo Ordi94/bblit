@@ -506,6 +506,7 @@ void SondearTarjeta(void)
     s32 j;
     s32 i;
     s32 n;
+    s32 fila;
     u32 rslt;
     s32 estado;
     s32 cmds;
@@ -691,26 +692,27 @@ void SondearTarjeta(void)
                 n = 0;
                 grupo = n;
                 for (; n < D_80069358[0]; n++) {
+                    fila = n * 0x28;
                     quince = grupo << 4;
                     quince -= grupo;
                     desplazamiento_grupo = quince << 3;
-                    for (j = 0; D_800697B0[j + n * 0x28 + desplazamiento_grupo] != 0; j++) {
+                    for (j = 0; D_800697B0[j + fila + desplazamiento_grupo] != 0; j++) {
                     }
                     for (; j < 0x14; j++) {
                         quince = grupo << 4;
                         quince -= grupo;
                         desplazamiento_grupo = quince << 3;
-                        D_800697B0[j + n * 0x28 + desplazamiento_grupo] = 0;
+                        D_800697B0[j + fila + desplazamiento_grupo] = 0;
                     }
                     quince = grupo << 4;
                     quince -= grupo;
                     desplazamiento_grupo = quince << 3;
-                    entrada = (EntradaDirectorio*)(D_800697B0 + n * 0x28 + desplazamiento_grupo);
+                    entrada = (EntradaDirectorio*)(D_800697B0 + fila + desplazamiento_grupo);
                     entrada->attr = 0;
                     entrada->tam = 0;
                     entrada->sig = 0;
                     entrada->cabeza = 0;
-                    *(s32*)(D_800697B0 + 0x24 + n * 0x28 + desplazamiento_grupo) = 0;
+                    *(s32*)(D_800697B0 + 0x24 + fila + desplazamiento_grupo) = 0;
                 }
                 D_8006936C = func_80014AC4(ranura);
                 if (D_8006936C >= 0) {
