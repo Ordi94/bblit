@@ -420,11 +420,11 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 12183 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 11218 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2954 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2874 coinciden en el mnemonico (97,3 %). Los cuerpos de los
+ * original, y alineando el texto de ambos 2880 coinciden en el mnemonico (97,5 %). Los cuerpos de los
  * casos de los cinco `switch` y del despacho de primer nivel van en el orden de direcciones de las
  * tablas de saltos del original: el orden del fuente decide el orden de emision, por eso los casos
  * no van en orden numerico.
@@ -485,10 +485,17 @@ typedef struct {
  * de las etiquetas (no lo reutiliza). En el chunk 0x1C el cuadrado se calcula con una segunda
  * lectura de `campos + 6`; en el 0x12 las tres lecturas de `campos` (por puntero) se repiten, y en el
  * 0x13 el valor se guarda en una variable de 32 bits (`modo`; con 8 bits el compilador anade un
- * `andi 0xff` que el original no tiene) para compararlo sin releerlo tras el almacen. El caso 0x24
- * de los chunks de modelos usa un puntero propio (`modelo_gs`) para no cruzar llamadas con `aux`.
+ * `andi 0xff` que el original no tiene) para compararlo sin releerlo tras el almacen. Los casos que
+ * en el original usan un temporal y en el C tomaban el registro guardado de `aux` llevan un puntero
+ * propio que no cruza llamadas (`modelo_gs` en el 0x24 de modelos, `enlace` en el 0x0F, `sonido` en
+ * el 0x4C).
  *
- * Lectura de etiquetas por miembro: en los chunks 0x02, 0x21, 0x3D y 0x3E el original lee los campos del
+ * Orden de las sentencias: el planificador emite las cargas en el orden del fuente y puede cruzar
+ * los almacenes entre si; el orden de las cargas del original decide el del fuente (en el chunk que
+ * lee los bytes 2 y 3 y el entero con signo de la base, `campos[2]`, `campos[3]` y despues el entero;
+ * en el 0x24 de modelos las dos lecturas antes de la escritura del modo).
+ *
+ * Lectura de etiquetas por miembro: en los chunks 0x02, 0x3D y 0x3E el original lee los campos del
  * bufer sin releerlos tras un almacen a un global y agrupa las cargas antes de los almacenes; con un
  * puntero y un desplazamiento el compilador las intercala y relee. `Etiquetas` (union de arreglos de
  * cada ancho) y `EtiquetasListas` dan acceso por miembro; en los chunks probados cuyo destino es un
@@ -511,7 +518,7 @@ typedef struct {
  * asignacion previa); con la variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 13956 y con ella 12183. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 12999 y con ella 11218. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -1101,9 +1108,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
 
                             CopiarBytes(cursor, campos, 8);
                             desp_campo = *(s32*)campos_mem;
+                            D_800694A0 = *(s32*)(campos + 4);
                             EN(u16, nodo, 0xA) = 2;
                             modelo_gs = datos + desp_campo + 4;
-                            D_800694A0 = *(s32*)(campos + 4);
                             EN(u8*, nodo, 0x54) = modelo_gs;
                             GsMapModelingData((unsigned long*)modelo_gs);
                             cursor += 8;
@@ -1113,8 +1120,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         case 0x21:
                             CopiarBytes(cursor, campos, 4);
                             cursor += 4;
+                            EN(s32, nodo, 0xC) = *(u16*)campos_mem;
                             EN(u16, nodo, 0x4E) = 0;
-                            EN(s32, nodo, 0xC) = ETQ(h, campos_mem, 0);
                             break;
                         case 0x10:
                             CopiarBytes(cursor, campos, 0xC);
@@ -1152,8 +1159,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(s32, EN(u8*, hijo_matriz, 4), 0x4C) = 0;
                             EN(s32, EN(u8*, hijo_matriz, 4), 0x48) = 0;
                             EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x10) = *(u16*)aux;
-                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x12) = *(u16*)(aux +2);
-                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x14) = *(u16*)(aux +4);
+                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x12) = *(u16*)(aux + 2);
+                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x14) = *(u16*)(aux + 4);
                             EN(s32, EN(u8*, hijo_matriz, 4), 0) = 0;
                             cursor += 6;
                             RotMatrix((SVECTOR*)(EN(u8*, EN(u8*, hijo_matriz, 4), 0x44) + 0x10),
@@ -1258,13 +1265,17 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 desp_texturas = *(s32*)(campos + 40);
                                 D_800694A0 = *(s32*)(campos + 44);
                             }
-                            aux = datos + desp_texturas;
-                            D_800694EC = aux;
-                            D_80069598 = (u32*)aux;
-                            D_800695FC = (s16*)(aux + 8);
-                            cursor += 0x30;
-                            D_800694EC = aux + *(s32*)aux;
-                            D_80069598 = (u32*)(aux + *(s32*)(aux + 4));
+                            {
+                                u8* sonido;
+
+                                sonido = datos + desp_texturas;
+                                D_800694EC = sonido;
+                                D_80069598 = (u32*)sonido;
+                                D_800695FC = (s16*)(sonido + 8);
+                                cursor += 0x30;
+                                D_800694EC = sonido + *(s32*)sonido;
+                                D_80069598 = (u32*)(sonido + *(s32*)(sonido + 4));
+                            }
                             libre += D_800694A0;
                             break;
                         case 0x4D:
@@ -1368,8 +1379,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         case 0x3C:
                             CopiarBytes(cursor, campos, 4);
                             D_800695B4 = campos[2];
-                            D_8006960C = *(s16*)campos_mem;
                             D_80069530 = campos[3];
+                            D_8006960C = *(s16*)campos_mem;
                             cursor += 4;
                             break;
                         case 0x3E:
@@ -1514,17 +1525,17 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 }
                             }
                             EN(s32, elemento, 4) = *(s32*)aux;
-                            EN(s32, elemento, 8) = *(s32*)(aux +4);
+                            EN(s32, elemento, 8) = *(s32*)(aux + 4);
                             EN(u8, elemento, 0xC) = aux[8];
                             EN(u8, elemento, 0xF) = aux[0xB];
                             EN(u8, elemento, 0xD) = aux[9];
                             EN(u8, elemento, 0xE) = aux[0xA];
-                            EN(u16, elemento, 0x10) = *(u16*)(aux +0xC);
-                            EN(u16, elemento, 0x12) = *(u16*)(aux +0xE);
-                            EN(s32, elemento, 0x14) = *(s32*)(aux +0x10);
-                            EN(s32, elemento, 0x18) = *(s32*)(aux +0x14);
-                            EN(s32, elemento, 0x1C) = *(s32*)(aux +0x18);
-                            EN(s32, elemento, 0x20) = *(s32*)(aux +0x1C);
+                            EN(u16, elemento, 0x10) = *(u16*)(aux + 0xC);
+                            EN(u16, elemento, 0x12) = *(u16*)(aux + 0xE);
+                            EN(s32, elemento, 0x14) = *(s32*)(aux + 0x10);
+                            EN(s32, elemento, 0x18) = *(s32*)(aux + 0x14);
+                            EN(s32, elemento, 0x1C) = *(s32*)(aux + 0x18);
+                            EN(s32, elemento, 0x20) = *(s32*)(aux + 0x1C);
                             cursor += 0x20;
                             break;
                         }
@@ -1678,22 +1689,25 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(s32, entidad, 0xD4) = *(s32*)(campos + 8);
                             cursor += 0xC;
                             break;
-                        case 0x0F:
+                        case 0x0F: {
+                            u8* enlace;
+
                             CopiarBytes(cursor, campos, 2);
                             modelo = func_80036164(*(u16*)campos_mem);
                             if (modelo == NULL) {
                                 for (;;) {
                                 }
                             }
-                            aux = (u8*)AllocListNode((u8*)D_80069644, 0xC, D_8006967E * 0xC);
-                            if (aux == NULL) {
+                            enlace = (u8*)AllocListNode((u8*)D_80069644, 0xC, D_8006967E * 0xC);
+                            if (enlace == NULL) {
                                 for (;;) {
                                 }
                             }
-                            EN(u8*, aux, 8) = modelo;
-                            EN(u8*, entidad, 0x74) = (u8*)AppendListNode((NodoLista*)EN(u8*, entidad, 0x74), (NodoLista*)aux);
+                            EN(u8*, enlace, 8) = modelo;
+                            EN(u8*, entidad, 0x74) = (u8*)AppendListNode((NodoLista*)EN(u8*, entidad, 0x74), (NodoLista*)enlace);
                             cursor += 2;
                             break;
+                        }
                         case 0x13: {
                             u32 modo;
 
@@ -1740,16 +1754,16 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 }
                             }
                             EN(u16, elemento, 4) = *(u16*)aux;
-                            EN(u16, elemento, 6) = *(u16*)(aux +2);
-                            EN(u16, elemento, 8) = *(u16*)(aux +4);
-                            EN(u16, elemento, 0xA) = *(u16*)(aux +8);
-                            EN(s32, elemento, 0xC) = *(s32*)(aux +0xC);
-                            EN(s32, elemento, 0x10) = *(s32*)(aux +0x10);
-                            EN(u16, elemento, 0x14) = *(u16*)(aux +0x14);
-                            EN(u16, elemento, 0x16) = *(u16*)(aux +0x16);
-                            EN(u16, elemento, 0x18) = *(u16*)(aux +0x18);
-                            EN(u16, elemento, 0x1A) = *(u16*)(aux +0x1A);
-                            EN(u16, elemento, 0x1C) = *(u16*)(aux +0x1C);
+                            EN(u16, elemento, 6) = *(u16*)(aux + 2);
+                            EN(u16, elemento, 8) = *(u16*)(aux + 4);
+                            EN(u16, elemento, 0xA) = *(u16*)(aux + 8);
+                            EN(s32, elemento, 0xC) = *(s32*)(aux + 0xC);
+                            EN(s32, elemento, 0x10) = *(s32*)(aux + 0x10);
+                            EN(u16, elemento, 0x14) = *(u16*)(aux + 0x14);
+                            EN(u16, elemento, 0x16) = *(u16*)(aux + 0x16);
+                            EN(u16, elemento, 0x18) = *(u16*)(aux + 0x18);
+                            EN(u16, elemento, 0x1A) = *(u16*)(aux + 0x1A);
+                            EN(u16, elemento, 0x1C) = *(u16*)(aux + 0x1C);
                             cursor += 0x20;
                             break;
                         }
@@ -1779,14 +1793,14 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 }
                             }
                             EN(u16, elemento, 4) = *(u16*)aux;
-                            EN(u16, elemento, 6) = *(u16*)(aux +2);
-                            EN(u16, elemento, 8) = *(u16*)(aux +4);
-                            EN(s32, elemento, 0xC) = *(s32*)(aux +8);
-                            EN(s32, elemento, 0x10) = *(s32*)(aux +0xC);
-                            EN(u16, elemento, 0xA) = *(u16*)(aux +0x10);
-                            EN(u16, elemento, 0x14) = *(u16*)(aux +0x12);
-                            EN(u16, elemento, 0x16) = *(u16*)(aux +0x14);
-                            EN(u16, elemento, 0x18) = *(u16*)(aux +0x16);
+                            EN(u16, elemento, 6) = *(u16*)(aux + 2);
+                            EN(u16, elemento, 8) = *(u16*)(aux + 4);
+                            EN(s32, elemento, 0xC) = *(s32*)(aux + 8);
+                            EN(s32, elemento, 0x10) = *(s32*)(aux + 0xC);
+                            EN(u16, elemento, 0xA) = *(u16*)(aux + 0x10);
+                            EN(u16, elemento, 0x14) = *(u16*)(aux + 0x12);
+                            EN(u16, elemento, 0x16) = *(u16*)(aux + 0x14);
+                            EN(u16, elemento, 0x18) = *(u16*)(aux + 0x16);
                             cursor += 0x18;
                             break;
                         }
@@ -1816,18 +1830,18 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 }
                             }
                             EN(u16, elemento, 4) = *(u16*)aux;
-                            EN(u16, elemento, 6) = *(u16*)(aux +2);
-                            EN(s32, elemento, 8) = *(s32*)(aux +4);
-                            EN(s32, elemento, 0xC) = *(s32*)(aux +8);
+                            EN(u16, elemento, 6) = *(u16*)(aux + 2);
+                            EN(s32, elemento, 8) = *(s32*)(aux + 4);
+                            EN(s32, elemento, 0xC) = *(s32*)(aux + 8);
                             EN(u8, elemento, 0x10) = aux[0xC];
                             EN(u8, elemento, 0x13) = aux[0xF];
                             EN(u8, elemento, 0x11) = aux[0xD];
                             EN(u8, elemento, 0x12) = aux[0xE];
-                            EN(u16, elemento, 0x14) = *(u16*)(aux +0x10);
-                            EN(u16, elemento, 0x16) = *(u16*)(aux +0x12);
-                            EN(s32, elemento, 0x18) = *(s32*)(aux +0x14);
-                            EN(s32, elemento, 0x1C) = *(s32*)(aux +0x18);
-                            EN(s32, elemento, 0x20) = *(s32*)(aux +0x1C);
+                            EN(u16, elemento, 0x14) = *(u16*)(aux + 0x10);
+                            EN(u16, elemento, 0x16) = *(u16*)(aux + 0x12);
+                            EN(s32, elemento, 0x18) = *(s32*)(aux + 0x14);
+                            EN(s32, elemento, 0x1C) = *(s32*)(aux + 0x18);
+                            EN(s32, elemento, 0x20) = *(s32*)(aux + 0x1C);
                             cursor += 0x20;
                             break;
                         }
@@ -1857,22 +1871,22 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 }
                             }
                             EN(u16, elemento, 4) = *(u16*)aux;
-                            EN(u16, elemento, 6) = *(u16*)(aux +2);
-                            EN(u16, elemento, 8) = *(u16*)(aux +4);
-                            EN(u16, elemento, 0xA) = *(u16*)(aux +8);
-                            EN(u16, elemento, 0xC) = *(u16*)(aux +6);
+                            EN(u16, elemento, 6) = *(u16*)(aux + 2);
+                            EN(u16, elemento, 8) = *(u16*)(aux + 4);
+                            EN(u16, elemento, 0xA) = *(u16*)(aux + 8);
+                            EN(u16, elemento, 0xC) = *(u16*)(aux + 6);
                             EN(u8, elemento, 0xE) = aux[0xA];
                             EN(u8, elemento, 0x11) = aux[0xD];
                             EN(u8, elemento, 0xF) = aux[0xB];
                             EN(u8, elemento, 0x10) = aux[0xC];
-                            EN(u16, elemento, 0x12) = *(u16*)(aux +0xE);
-                            EN(u16, elemento, 0x14) = *(u16*)(aux +0x10);
-                            EN(s32, elemento, 0x28) = *(s32*)(aux +0x24);
-                            EN(u16, elemento, 0x16) = *(u16*)(aux +0x12);
-                            EN(u16, elemento, 0x18) = *(u16*)(aux +0x14);
-                            EN(s32, elemento, 0x1C) = *(s32*)(aux +0x18);
-                            EN(s32, elemento, 0x20) = *(s32*)(aux +0x1C);
-                            EN(s32, elemento, 0x24) = *(s32*)(aux +0x20);
+                            EN(u16, elemento, 0x12) = *(u16*)(aux + 0xE);
+                            EN(u16, elemento, 0x14) = *(u16*)(aux + 0x10);
+                            EN(s32, elemento, 0x28) = *(s32*)(aux + 0x24);
+                            EN(u16, elemento, 0x16) = *(u16*)(aux + 0x12);
+                            EN(u16, elemento, 0x18) = *(u16*)(aux + 0x14);
+                            EN(s32, elemento, 0x1C) = *(s32*)(aux + 0x18);
+                            EN(s32, elemento, 0x20) = *(s32*)(aux + 0x1C);
+                            EN(s32, elemento, 0x24) = *(s32*)(aux + 0x20);
                             cursor += 0x28;
                             break;
                         }
@@ -1904,7 +1918,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             }
                             EN(u16, elemento, 4) = *(u16*)aux;
                             for (j = 0; j < 5; j++) {
-                                EN(u16, elemento, 6 + j * 2) = *(u16*)(aux +2 + j * 2);
+                                EN(u16, elemento, 6 + j * 2) = *(u16*)(aux + 2 + j * 2);
                             }
                             cursor += 0xC;
                             break;
