@@ -3280,14 +3280,15 @@ siguiente:
  * - La guarda de empuje sigue el ensamblador (0x8002D848 a 0x8002D88C): con la bandera 0x8000 del
  *   objeto y la 0x4000 del jugador a la vez el empuje sigue sin consultar func_80016C0C; si falta
  *   alguna de las dos, solo se empuja cuando esa consulta devuelve distinto de cero.
- * - Los desplazamientos pedidos se cargan en el orden x, y, z (1880 a 1245 frente al orden z, y, x).
- * - Al elegir el borde de sondeo en x, la posicion en z se calcula antes de la comparacion del signo
- *   (1245 a 685): el original calcula pz antes del salto que elige px.
+ * - Los desplazamientos pedidos se cargan en el orden x, y, z, que es el del original; en el orden
+ *   z, y, x las cargas salen en un orden distinto al del original.
+ * - Al elegir el borde de sondeo en x, la posicion en z se calcula antes de la comparacion del signo:
+ *   el original calcula pz antes del salto que elige px.
  * - El recorrido de disparadores relee o->apoyos al entrar (el original copia el puntero a otro
- *   registro tras comprobarlo; 685 a 475) y sale del bucle con break para compartir la cola que
- *   anula p70 y salta al reposo con el resto de las salidas (475 a 90).
+ *   registro tras comprobarlo) y sale del bucle con break para compartir la cola que anula p70 y
+ *   salta al reposo con el resto de las salidas.
  * - La rama sin empuje lee D_800694F2 dos veces (comprobacion y almacen) y no la guarda en una local:
- *   con la local la funcion da 40 puntos mas (475 frente a 435 antes del cambio del recorrido).
+ *   con la local la funcion da 40 puntos mas.
  * - reserva[2] ocupa 8 bytes de pila que ninguna sentencia usa: el marco del original es de 0x38 bytes
  *   y sin esa local la funcion sube a 188 (se supone, sin verificar, que el original tenia ahi una
  *   local que el compilador elimino).
