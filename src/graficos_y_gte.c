@@ -219,8 +219,8 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 7041 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 93 de
- * operando, 17 reordenadas y 332 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
+ * Pendiente: puntuacion 6941 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 93 de
+ * operando, 19 reordenadas y 324 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
  * que casi todo el residuo es desalineacion encadenada de pocas inserciones. El marco del C es el del original, de
  * 0x50 bytes: la salida es una estructura SVECTOR local (`vx` en 0x10 y `vz` en 0x14, con el hueco de `vy`), y le
  * siguen `k` (0x18), `salida_y` (0x1c) y `lista` (0x20); con dos variables `s16` sueltas el marco era de 0x48 y la
@@ -263,7 +263,12 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * 0x8001798C y 0x800179BC), no lo suman: 7984 a 7584. Orden de los almacenes: las cuatro esquinas de D_80069D18
  * guardan `x` antes que `z` (0x80017F0C a 0x80017F64 en el original, 7584 a 7494) y la salida final almacena `vx`,
  * `vz` y `vy` en ese orden (7494 a 7041). Una lectura de las parejas de D_80069D18 como `((u32*)D_80069D18)[n]` en
- * vez de `*(u32*)&D_80069D18[n]` no cambia la cifra (7494).
+ * vez de `*(u32*)&D_80069D18[n]` no cambia la cifra (7494). Las pruebas de la arista mas cercana se escriben
+ * `D_80069380 > k` (el original carga `D_80069380` antes que `k`, 0x80018088 y 0x8001808C): 7041 a 6941.
+ * Residuo de esa zona: el compilador calcula como valores las direcciones `D_80069D18 + 4`, `+ 0xC` y `+ 0x10` (tres
+ * `addiu` en la cabeza del bucle de aristas) y las usa como base; el original las lee con desplazamiento fijo desde
+ * la direccion de D_80069D18, sin esos valores. Se supone, sin verificar, que el original lee cada pareja como un
+ * elemento de un arreglo de palabras y no como dereferencia de la direccion de una esquina.
  * Residuo conocido: `a` y `v` estan intercambiados (a en s4 y v en s5, 25 usos cada una sobre 1680 y 1688 insns;
  * prioridades 0,0595 y 0,0592: el original da a `v` mayor prioridad); la cola de la ultima rama de la comparacion con
  * la mascara 0x2000000 esta fuera de linea en el original (0x80017EAC) y en linea aqui; y se supone, sin
@@ -494,22 +499,22 @@ ciclo_aristas:
                 }
                 D_80069380 = 0x7FFFFFFF;
                 gte_NormalClip(*(u32*)&D_80069D18[0], *(u32*)&D_80069D18[1], *(u32*)&D_80069D18[4], &k);
-                if (k < D_80069380) {
+                if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 0;
                 }
                 gte_NormalClip(*(u32*)&D_80069D18[1], *(u32*)&D_80069D18[3], *(u32*)&D_80069D18[4], &k);
-                if (k < D_80069380) {
+                if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 1;
                 }
                 gte_NormalClip(*(u32*)&D_80069D18[3], *(u32*)&D_80069D18[2], *(u32*)&D_80069D18[4], &k);
-                if (k < D_80069380) {
+                if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 2;
                 }
                 gte_NormalClip(*(u32*)&D_80069D18[2], *(u32*)&D_80069D18[0], *(u32*)&D_80069D18[4], &k);
-                if (k < D_80069380) {
+                if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 3;
                 }
