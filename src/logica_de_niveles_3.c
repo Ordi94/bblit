@@ -508,16 +508,17 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * secuencia, reproduce esa estructura: el recorte a 16 bits (`andi 0xffff`) queda en el hueco del salto del primer
  * camino y al final del segundo, y la prueba contra 5 relee la memoria; sin la local la cifra sube. Con la local
  * declarada `u16` el recorte se aplica en la reunion (`move a0,v0` en cada camino y `andi` tras la etiqueta). La
- * direccion se suma como `t->sec + 6 + (sig_w17c << 1)`: con el 6 al final los registros temporales de la suma
- * salen intercambiados (v0 y v1) y la cifra sube. Queda el orden de los operandos de esa suma (`addu v0,v0,v1`
- * frente a `addu v1,v1,v0` del original, 0x8002B870). (2) el contador de andadura (0x194(s3), 0x80029B94 a 0x80029BB0): el original deja
- * la suma en a0 mientras el desplazamiento del producto escribe v0, de modo que el `sh` se planifica tras el `mult`.
- * Las locales `paso_andadura` (la suma, leida con `(u16)` para que la carga sea `lhu`) y `producto_andadura` (el
- * producto, calculado antes del almacen del contador y escrito despues de el en `t->w118`) reproducen ese bloque
- * entero; sin la local del producto la cifra es 1445, porque la suma y el desplazamiento comparten v0 y
- * el `sh` debe ir antes del desplazamiento (se supone, sin verificar con el volcado, que el pseudo de la suma recibe
- * a0 solo si su vida se alarga hasta el almacen posterior al producto). (3) la perdida de la lectura repetida de `t->w114` tras el almacen a
- * D_800693C0 (0x8002B928): el original relee la memoria antes del almacen a D_800693B4; con el almacen en cada rama
+ * direccion se escribe como `((u16*)((u8*)t->sec + 6))[sig_w17c]`: el indice entra como desplazamiento en bytes
+ * del compilador, sin la suma explicita de `sig_w17c << 1`. Queda el orden de los operandos de esa suma
+ * (`addu v0,v0,v1` frente a `addu v1,v1,v0` del original, 0x8002B870). (2) el contador de andadura (0x194(s3),
+ * 0x80029B94 a 0x80029BB0): el original deja la suma en a0 mientras el desplazamiento del producto escribe v0, de
+ * modo que el `sh` se planifica tras el `mult`. La local `producto_andadura` (el producto, calculado con la suma
+ * leida con `(u16)` para que la carga sea `lhu`, antes del almacen del contador, y escrito despues de el en
+ * `t->w118`) reproduce ese bloque entero; sin la local, con el producto escrito directo en `t->w118` tras el
+ * almacen del contador, la cifra es 1395, porque la suma y el desplazamiento comparten v0 y el `sh` debe ir
+ * antes del desplazamiento (se supone, sin verificar con el volcado, que el pseudo de la suma recibe a0 solo si su
+ * vida se alarga hasta el almacen posterior al producto). (3) la perdida de la lectura repetida de `t->w114` tras
+ * el almacen a D_800693C0 (0x8002B928): el original relee la memoria antes del almacen a D_800693B4; con el almacen en cada rama
  * (`D_800693B4 = t->w114;` en una y `D_800693B4 = giro;` en la otra) el compilador reutiliza el registro, no funde
  * las colas y la cifra sube a 1745; se supone, sin verificar, que el original trata el almacen a D_800693C0 como
  * posible alias de la memoria del scratchpad. (4) La altura de la sonda sobre el apoyo se calcula con la local
@@ -585,7 +586,6 @@ void func_80026FEC(Objeto* o)
     NodoDisparador* nd_azar;
     s32 choco;
     s32 sig_w17c;
-    s32 paso_andadura;
     s32 producto_andadura;
     s32 altura_apoyo;
     Objeto* aux_previo;
@@ -1664,9 +1664,8 @@ andadura_del_portado:
     /* El registro de animacion se toma antes de incrementar el contador de andadura: asi su carga queda
      * delante de la del contador, como en el original. */
     registro_actual = t->fot;
-    paso_andadura = (u16)o->u18C.estado.h194 + 1;
-    producto_andadura = (s16)registro_actual->w18 * (s16)paso_andadura;
-    o->u18C.estado.h194 = paso_andadura;
+    producto_andadura = (s16)registro_actual->w18 * (s16)((u16)o->u18C.estado.h194 + 1);
+    o->u18C.estado.h194 = o->u18C.estado.h194 + 1;
     t->w118 = producto_andadura;
     if (t->w118 >= 0x400) {
         o->flags14 = (o->flags14 | 0x800000) & 0xFFF7EFFF;
@@ -2376,6 +2375,8 @@ fin_de_disparadores:
         o->w17C += 1;
         sig_w17c = o->w17C;
 siguiente_paso_de_secuencia:
+        /* Equivale a indexar como u16 desde `t->sec->desplazamiento` (+6 del nodo): el nodo no declara ese
+         * campo como matriz, de modo que se direcciona por bytes desde el nodo, como el original. */
         t->w_bc = ((u16*)((u8*)t->sec + 6))[sig_w17c];
         if (t->w_bc != 0xFFF0 && o->w17C < 5) {
             o->registro184 = t->fot = (RegistroAnim*)(o->bloque + t->w_bc);
