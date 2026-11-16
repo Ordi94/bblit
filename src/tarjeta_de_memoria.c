@@ -487,7 +487,9 @@ s32 func_800151FC(void)
  * no existe. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
  * del resultado que despues compara con 1) se reproduce guardando el resultado en la local `rc`, compartida con la del
  * sondeo. Con `rc` o `estado` la cifra es 1765, con `tam` 2155 y con `partida` 2440; calcular la mascara de ranuras
- * (`1 << (partida - 1)`) en una local antes del almacen de 0xE da 3090.
+ * (`1 << (partida - 1)`) en una local antes del almacen de 0xE da 3090. El orden de los sumandos del indice de los dos
+ * bucles interiores: `fila + desplazamiento_grupo + j` da 1535 (empeora 110) y `j + desplazamiento_grupo + fila` da
+ * 1425 (sin cambio), de modo que el orden de las sumas no mueve el reparto de `j` ni de la cadena.
  *
  * Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de registros (D_8006AA70[0xA]: 1 aceptar,
  * 2 formatear, 3 crear el archivo, 4 grabar con sonido, 5 cargar, 6 grabar) y la limpia; despues sondea con MemCardSync(1) la ultima
