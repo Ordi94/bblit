@@ -259,9 +259,9 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1835 con la configuracion versionada (g = 8 del archivo): 51 diferencias de operando, 1
- * linea reordenada y 281 insertadas o borradas. Reserva de pila: el marco del original es de 0x28 bytes (`addiu
- * sp` en 0x80040494) y el del C sin la local, de 0x20; la cifra medida sin la local es 1909 y con ella 1835. El
+ * Pendiente: puntuacion 1655 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
+ * lineas reordenadas y 270 insertadas o borradas. Reserva de pila: el marco del original es de 0x28 bytes (`addiu
+ * sp` en 0x80040494) y el del C sin la local, de 0x20; la cifra medida sin la local es 1729 y con ella 1655. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
@@ -276,8 +276,13 @@ void func_80040430(s8* contador, u16 mascara)
  *
  * Una sola variable (`bits`) guarda los botones de direccion en la rama de grabacion y en la de lectura de la BIOS:
  * el original usa el mismo registro (s1) en las dos (`lhu s1` en 0x800401DC y `move s1,s2` en 0x800402C0), y con dos
- * variables la de la rama de grabacion cae en un temporal y la otra intercambia s1 y s2 con `hi` (2715 con dos
- * variables y 1835 con una).
+ * variables la de la rama de grabacion cae en un temporal y la otra intercambia s1 y s2 con `hi`.
+ *
+ * El byte de vibracion se modifica con `&= 0x7F` y `|= 0x80` en cada caso, sin variable intermedia: el original
+ * hace `lbu`, `andi`/`ori` y un `sb` unico (0x80040298) al que salta el primer caso (`j` en 0x80040284), y la
+ * fusion de colas lo reproduce al encontrar el mismo `sb` al final de cada camino; con una variable que guardaba el
+ * valor y un almacen tras la etiqueta, el compilador sacaba las lecturas de D_8006CFF2/D_8006CFF3 por encima del
+ * `sb` y el valor caia en `v1`.
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
  * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0); la lectura del identificador D_8006CFF1 en
@@ -407,12 +412,11 @@ normal:
     func_80040240();
     switch (D_8006CFF1 & 0x7F) {
     case 0x41:
-        v = est->r[BANCO_VIBRACION] & 0x7F;
+        est->r[BANCO_VIBRACION] &= 0x7F;
         goto aplicar;
     case 0x73:
-        v = est->r[BANCO_VIBRACION] | 0x80;
+        est->r[BANCO_VIBRACION] |= 0x80;
     aplicar:
-        est->r[BANCO_VIBRACION] = v;
         D_80069672 = 0;
         cf2 = D_8006CFF2;
         hi = (cf2 ^ 0xFF) << 8;
