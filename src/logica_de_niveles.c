@@ -74,9 +74,15 @@ s16* D_800693DC;
    `o->p70` (2615; se supone, sin verificar con el volcado, que el almacen a cero se ordena ante la carga por
    el posible solape con el scratchpad); (a) `sc->desp.x` y `sc->desp.z` se almacenan por el campo y por la misma base
    `sc`, como hace el original (`sw v0,0x18(s3)` y `sw v1,0x20(s3)`, 0x800223FC y 0x80022400). El original relee los dos
-   campos tras almacenarlos (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414) y aqui el compilador reutiliza
-   el registro del valor almacenado y no relee: ese es el residuo de esta zona (se supone, sin verificar, que la
-   relectura del original proviene de una segunda base que el asignador funde con `s3`). Con `pos = &sc->desp` la
+   campos tras almacenarlos (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414). Medido en los volcados de
+   `cc1` (CSE y segundo CSE): el compilador NO reutiliza el valor en el RTL, las dos relecturas sobreviven a ambas
+   pasadas; en el ensamblador final la de `desp.x` ha desaparecido y la de `desp.z` sigue (se supone, sin verificar,
+   que la elimina la limpieza posterior al reparto de registros cuando el registro del valor sigue intacto). Ademas aqui el
+   planificador emite los dos almacenes en orden inverso al del original (`sw 0x20` antes de `sw 0x18`, con las dos
+   cargas de `D_80069D30` tambien invertidas). Escribir los almacenes en el orden contrario da 2380, sumar en el orden
+   contrario 2580, y pasar los valores por locales propias no cambia la cifra (2310). Se supone, sin verificar, que el
+   original conserva la relectura de `desp.x` porque su reparto de registros no deja el valor almacenado en el
+   registro de la relectura. Con `pos = &sc->desp` la
    base se materializa en `s0` (`addiu s0,s3,0x18`), que el original no tiene; (b) el almacen de `o->p180` va antes del de
    `o->trabajo.i14` en el bloque de entrada de la espera (0x80021020..0x80021050): el original lee `i14`, carga
    `sc->sec`, almacena a cero y escribe D_80069584 antes de la guarda de `o->p70`, con el almacen de `p180` en el hueco
