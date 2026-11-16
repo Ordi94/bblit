@@ -807,7 +807,10 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             }
             D_80069488 += compensacion + D_80069478;
             D_800694AC = CdPosToInt((CdlLOC*)D_8006A928);
-            /* Division con signo (`bgez`, `addiu 0x7FF` y `sra 11` en 0x800422B4..0x800422C0). */
+            /*
+             * El original divide con signo (`bgez`, `addiu 0x7FF` y `sra 11` en 0x800422B4..0x800422C0,
+             * sin `srl`): D_80069478 se declara u32 y el molde a s32 reproduce esa instruccion.
+             */
             D_800694AC = D_800694AC + (s32)D_80069478 / 2048;
             CdIntToPos(D_800694AC, (CdlLOC*)D_8006A928);
             break;
@@ -1088,6 +1091,12 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x4C:
                             CopiarBytes(cursor, campos, 0x30);
+                            /*
+                             * D_800694A0 se escribe solo dentro de cada coincidencia: el almacen del
+                             * original (0x80042D8C) lo alcanzan las seis ramas y, con un idioma fuera
+                             * de 0..5 (que 0x800416DC ya reinicia a 0), el salto de 0x80042D70 pasa a
+                             * 0x80042D90 sin escribirlo.
+                             */
                             if (D_80010050 == 0) {
                                 desp_texturas = *(s32*)campos_mem;
                                 D_800694A0 = *(s32*)(campos + 4);
@@ -1118,6 +1127,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x4D:
                             CopiarBytes(cursor, campos, 0x30);
+                            /* Igual que en 0x4C: el almacen del original (0x80042E8C) solo sigue a una coincidencia. */
                             if (D_80010050 == 0) {
                                 desp_bancos = *(s32*)campos_mem;
                                 D_800694A0 = *(s32*)(campos + 4);
