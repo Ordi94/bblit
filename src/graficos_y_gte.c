@@ -219,8 +219,8 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 6941 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 93 de
- * operando, 19 reordenadas y 324 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
+ * Pendiente: puntuacion 6896 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 93 de
+ * operando, 19 reordenadas y 318 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
  * que casi todo el residuo es desalineacion encadenada de pocas inserciones. El marco del C es el del original, de
  * 0x50 bytes: la salida es una estructura SVECTOR local (`vx` en 0x10 y `vz` en 0x14, con el hueco de `vy`), y le
  * siguen `k` (0x18), `salida_y` (0x1c) y `lista` (0x20); con dos variables `s16` sueltas el marco era de 0x48 y la
@@ -265,6 +265,11 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * `vz` y `vy` en ese orden (7494 a 7041). Una lectura de las parejas de D_80069D18 como `((u32*)D_80069D18)[n]` en
  * vez de `*(u32*)&D_80069D18[n]` no cambia la cifra (7494). Las pruebas de la arista mas cercana se escriben
  * `D_80069380 > k` (el original carga `D_80069380` antes que `k`, 0x80018088 y 0x8001808C): 7041 a 6941.
+ * Cada rama de la arista elegida lleva su propia pareja de locales para la diferencia con el punto de prueba
+ * (`ax`/`az`, `bx`/`bz`, `cx`/`cz`, `dx`/`dz`): con una sola pareja compartida el compilador fusiona las colas de
+ * las cuatro ramas (6941 con la pareja compartida, 6896 con una por rama); el original conserva los almacenes
+ * dentro de cada rama, con registros distintos en cada una (0x80017C54 a 0x80017D00), y el residuo de esa zona es
+ * que aqui siguen fusionadas.
  * Residuo de esa zona: el compilador calcula como valores las direcciones `D_80069D18 + 4`, `+ 0xC` y `+ 0x10` (tres
  * `addiu` en la cabeza del bucle de aristas) y las usa como base; el original las lee con desplazamiento fijo desde
  * la direccion de D_80069D18, sin esos valores. Se supone, sin verificar, que el original lee cada pareja como un
@@ -290,6 +295,12 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
     s32 k;
     s32 ax;
     s32 az;
+    s32 bx;
+    s32 bz;
+    s32 cx;
+    s32 cz;
+    s32 dx;
+    s32 dz;
     SVECTOR salida;
     s32 salida_y;
     u16 lista;
@@ -534,24 +545,24 @@ ciclo_aristas:
                 } else if (i == 1) {
                     w->e_x = D_80069D18[3].x - D_80069D18[1].x;
                     w->e_z = D_80069D18[3].z - D_80069D18[1].z;
-                    ax = D_80069D18[4].x - D_80069D18[1].x;
-                    az = D_80069D18[4].z - D_80069D18[1].z;
-                    D_80069D08.vx = ax;
-                    D_80069D08.vz = az;
+                    bx = D_80069D18[4].x - D_80069D18[1].x;
+                    bz = D_80069D18[4].z - D_80069D18[1].z;
+                    D_80069D08.vx = bx;
+                    D_80069D08.vz = bz;
                 } else if (i == 2) {
                     w->e_x = D_80069D18[2].x - D_80069D18[3].x;
                     w->e_z = D_80069D18[2].z - D_80069D18[3].z;
-                    ax = D_80069D18[4].x - D_80069D18[3].x;
-                    az = D_80069D18[4].z - D_80069D18[3].z;
-                    D_80069D08.vx = ax;
-                    D_80069D08.vz = az;
+                    cx = D_80069D18[4].x - D_80069D18[3].x;
+                    cz = D_80069D18[4].z - D_80069D18[3].z;
+                    D_80069D08.vx = cx;
+                    D_80069D08.vz = cz;
                 } else if (i == 3) {
                     w->e_x = D_80069D18[0].x - D_80069D18[2].x;
                     w->e_z = D_80069D18[0].z - D_80069D18[2].z;
-                    ax = D_80069D18[4].x - D_80069D18[2].x;
-                    az = D_80069D18[4].z - D_80069D18[2].z;
-                    D_80069D08.vx = ax;
-                    D_80069D08.vz = az;
+                    dx = D_80069D18[4].x - D_80069D18[2].x;
+                    dz = D_80069D18[4].z - D_80069D18[2].z;
+                    D_80069D08.vx = dx;
+                    D_80069D08.vz = dz;
                 }
                 k = SquareRoot0(w->e_x * w->e_x + w->e_z * w->e_z);
                 i = SquareRoot0(D_80069D08.vx * D_80069D08.vx + D_80069D08.vz * D_80069D08.vz);
