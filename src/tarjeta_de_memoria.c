@@ -442,8 +442,8 @@ s32 func_800151FC(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1765 con la configuracion versionada (g = 8 del archivo; ejes 71 de operando, 0 reordenadas,
- * 247 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
+ * Pendiente: puntuacion 1425 con la configuracion versionada (g = 8 del archivo; ejes 72 de operando, 0 reordenadas,
+ * 235 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
  * original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante.
@@ -466,13 +466,25 @@ s32 func_800151FC(void)
  * saca al preludio del propio bucle interior, tras la guardia de entrada, que es donde la tiene el original (0x80015D10
  * a 0x80015D1C); escrita antes del bucle, queda antes de la guardia (1935). Las tres cadenas son el recalculo que hace el
  * original en 0x80015CC0, 0x80015D10 y 0x80015D40, no una sentencia duplicada regulada: cada copia se consume y emite
- * codigo, y los tres usos van en secuencia y no en caminos que se reunan. Cifras: con la cadena en dos locales en los
- * tres usos, escrita la segunda dentro del bucle de relleno, 1765; con la segunda cadena antes del bucle de relleno
- * 1935; con una sola local y asignaciones compuestas `d = g << 4; d -= g; d <<= 3;` en cada uso 1905; con
+ * codigo, y los tres usos van en secuencia y no en caminos que se reunan. Cifras medidas con el contador `i` compartido
+ * por los tres bucles, antes de las dos formas de abajo (no se remiden en el estado final): con la cadena en dos locales
+ * en los tres usos, escrita la segunda dentro del bucle de relleno, 1765; con la segunda cadena antes del bucle de
+ * relleno 1935; con una sola local y asignaciones compuestas `d = g << 4; d -= g; d <<= 3;` en cada uso 1905; con
  * `desplazamiento_grupo = grupo * 120;` en los tres usos 1960; con una sola asignacion de la cadena por vuelta,
- * reutilizada en los tres usos, 2440. Queda el reparto de registros: `i` cae en t0 y `grupo` en t1 (el original
- * los tiene en a1 y t0), la copia de la base de la fila cae en a1 y no en a3, y el original no recalcula en los bucles
- * interiores la direccion del simbolo de la tabla. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
+ * reutilizada en los tres usos, 2440.
+ * Contador propio del bucle del directorio (`n`, 1765 a 1580): el contador `i` vive desde el bucle de relleno de
+ * 0x96 palabras hasta el del directorio y cruza la llamada de MemCardGetDirentry, que usa a1 como argumento, de modo que
+ * no puede tomar a1 (volcado `-dg`: el pseudo de `i`, 23 usos sobre 88 instrucciones, cae en t0); el original tiene a1
+ * como contador de cada bucle, con vidas cortas separadas por la llamada, y con `n` el del directorio sale de ese
+ * reparto. Usar `n` tambien en el bucle de entradas (el que calcula los bloques) da 1765 otra vez y se descarta.
+ * Desplazamiento de la fila (`fila = n * 0x28;` al inicio de cada vuelta del directorio y usada en los cuatro accesos,
+ * 1580 a 1425): el original conserva un solo valor de la fila en toda la vuelta (`move a3,a2` en 0x80015CE0 y
+ * 0x80015D14 copia la misma base) en lugar de recalcular `n * 0x28` en cada acceso.
+ * Queda el reparto de registros del directorio: `n` cae en a3 (en a1 en el original), `fila` en a1 (a2), el contador de
+ * los bucles interiores en a0 (v1) y la cadena de desplazamientos en v1 (a0), y el bucle de busqueda del final del nombre
+ * calcula la direccion del simbolo de la tabla en su preludio (`lui` y `addiu a2`) mientras el original usa t1 ya
+ * cargado; se supone, sin verificar, que ambas cosas salen de la copia de la fila a3 del original, que aqui
+ * no existe. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
  * del resultado que despues compara con 1) se reproduce guardando el resultado en la local `rc`, compartida con la del
  * sondeo. Con `rc` o `estado` la cifra es 1765, con `tam` 2155 y con `partida` 2440; calcular la mascara de ranuras
  * (`1 << (partida - 1)`) en una local antes del almacen de 0xE da 3090.
