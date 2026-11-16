@@ -483,10 +483,19 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * prueba del barrido con `f14_barrido` (2250 a 2235) y el vaciado de los giros del portado como asignacion encadenada
  * `u.x = u.z = 0` (2235 a 2225, el original almacena 0xe0 antes que 0xdc) y la prueba de desfase `d.vx | d.vy` con
  * `desfase_xy` (2225 a 2185). Sin bajada: una local propia para el giro en Z del portador al soltarlo (2325); sumar
- * primero la altura y despues la maxima en `p30.vy` carga las dos en otro orden (2455); una macro con la constante en t7 para los tres
- * bloques de escala no coincide porque el original reutiliza t7 como valor en 0x4280 (`move v0,t7`) (2260; se supone,
- * sin verificar, que ese reparto lo hace el compilador y la macro de la cabecera, que fija t4, no lo reproduce); una
- * local de bloque para el jugador en el bloque del hijo no cambia el codigo (el CSE funde la copia).
+ * primero la altura y despues la maxima en `p30.vy` carga las dos en otro orden (2455); el temporal t4 de la constante
+ * 0x1000 de los bloques de escala no sale del reparto de registros: el cuerpo de la macro GEO_RELLENAR_1000
+ * (include/geometria.h) escribe `$12` (t4) por nombre y lo declara destruido, de modo que el asignador nunca elige
+ * ese registro y el volcado de salida de `cc1` lo trae literal (`addiu $12,$0,0x1000` dentro del bloque de
+ * ensamblador). Medido en una redefinicion temporal de la macro que no se conserva (la constante pasada como
+ * operando de entrada `"r"(0x1000)` en lugar de escrita en `$12`): el asignador elige por su cuenta t7 en los tres
+ * bloques, como el original, y la constante queda conocida por el compilador, de modo que el almacen posterior de
+ * las tres escalas la reutiliza como en 0x4280 (`move v0,t7`) en lugar de recargarla (`li v0,0x1000`); en el tercer
+ * bloque solo difiere el orden de `li t7` y `move t0,a1`: el compilador carga la constante ANTES del bloque de
+ * ensamblador, mientras que el original la carga entre el `move t0` y los tres `move`, y la cifra empeora (2070 en
+ * lugar de 1790). Se supone, sin verificar, que el original genera esa
+ * secuencia con una forma de la macro (operandos y orden de sus instrucciones) que aqui se desconoce; la causa esta
+ * en include/ y no se aplica. Una local de bloque para el jugador en el bloque del hijo no cambia el codigo (el CSE funde la copia).
  * Residuo en tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura (0x194(s3)) y de las
  * alturas, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del
  * objetivo (0x1c18) y el temporal de mflo (a1 en lugar de t7), la suma de `p30.vy` (v0 y v1 intercambiados, 0x1ca4), el
