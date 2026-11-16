@@ -140,6 +140,7 @@ def test_los_datos_y_el_rodata_por_archivo_siguen_el_orden_de_direcciones_y_nomb
         "menus_e_interfaz",
         "audio_xa_y_spu",
         "cargador_de_niveles_y_cd",
+        "tarjeta_de_memoria",
     }
     assert [(s[1], s[2]) for s in con_punto if s[1] == ".data"] == [(".data", "tarjeta_de_memoria")]
     assert {s[2] for s in con_punto} <= nombres_c
@@ -208,7 +209,7 @@ def test_la_configuracion_declara_las_secciones_de_cada_archivo(configuracion: A
     declaradas = dominio.secciones_declaradas(configuracion)
     assert len(declaradas) == 25
     assert declaradas["camara_y_bucle_logico"] == frozenset({".text", ".rodata"})
-    assert declaradas["tarjeta_de_memoria"] == frozenset({".text", ".data"})
+    assert declaradas["tarjeta_de_memoria"] == frozenset({".text", ".data", ".rodata"})
     assert declaradas["audio_xa_y_spu"] == frozenset({".text", ".rodata"})
 
 
