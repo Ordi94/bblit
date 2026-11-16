@@ -466,8 +466,8 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1790 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 5 reordenadas,
- * 252 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
+ * Pendiente: puntuacion 1445 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 5 reordenadas,
+ * 249 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
  * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
  * reproduce la carga del original del hijo y baja de 2625 a 2605. La resta de la X del portador en el barrido se
  * escribe directa (`o->param.trans.vx - o->p70->param.trans.vx`): con una local previa (`x_portador`) la cifra es 1915.
@@ -492,8 +492,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * bloques, como el original, y la constante queda conocida por el compilador, de modo que el almacen posterior de
  * las tres escalas la reutiliza como en 0x4280 (`move v0,t7`) en lugar de recargarla (`li v0,0x1000`); en el tercer
  * bloque solo difiere el orden de `li t7` y `move t0,a1`: el compilador carga la constante ANTES del bloque de
- * ensamblador, mientras que el original la carga entre el `move t0` y los tres `move`, y la cifra empeora (2070 en
- * lugar de 1790). Se supone, sin verificar, que el original genera esa
+ * ensamblador, mientras que el original la carga entre el `move t0` y los tres `move`, y la cifra empeora. Se supone, sin verificar, que el original genera esa
  * secuencia con una forma de la macro (operandos y orden de sus instrucciones) que aqui se desconoce; la causa esta
  * en include/ y no se aplica. Una local de bloque para el jugador en el bloque del hijo no cambia el codigo (el CSE funde la copia).
  * Residuo en tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura (0x194(s3)) y de las
@@ -504,14 +503,25 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * Medido con `diff` (51 tramos que no son solo de forma simbolica; el reparto de t7 y t4 para la constante 0x1000
  * se repite en tres bloques): (1) el contador 0x17c(s3) del final: el original lo incrementa, lo guarda y deja el
  * valor en un registro para el indice de la secuencia (`andi 0xffff` en el hueco del salto de cada camino), y solo
- * relee la memoria para la comparacion con 5 (`lhu` y `sltiu`); una local de 32 bits asignada en los dos caminos
- * antes de la etiqueta reproduce esa estructura, pero su pseudo cae en a0 y no en v0 o v1 (2590 a 2720 con una
- * local nueva `siguiente = o->w17C += 1;` en los dos caminos y usada en el indice de la secuencia, y tambien 2720
- * reutilizando la local `giro` para el mismo valor). (2) el contador de andadura (0x194(s3)): una local con `(u16)` para la suma y el
+ * relee la memoria para la comparacion con 5 (`lhu` y `sltiu`); la local de 32 bits `sig_w17c`, asignada tras el
+ * incremento en cada uno de los dos caminos (`o->w17C += 1; sig_w17c = o->w17C;`) y usada en el indice de la
+ * secuencia, reproduce esa estructura: el recorte a 16 bits (`andi 0xffff`) queda en el hueco del salto del primer
+ * camino y al final del segundo, y la prueba contra 5 relee la memoria; sin la local la cifra es 1790. Con la local
+ * declarada `u16` el recorte se aplica en la reunion (`move a0,v0` en cada camino y `andi` tras la etiqueta). La
+ * direccion se suma como `t->sec + 6 + (sig_w17c << 1)`: con el 6 al final los registros temporales de la suma
+ * salen intercambiados (v0 y v1) y la cifra es 1470. Queda el orden de los operandos de esa suma (`addu v0,v0,v1`
+ * frente a `addu v1,v1,v0` del original, 0x8002B870). (2) el contador de andadura (0x194(s3)): una local con `(u16)` para la suma y el
  * almacen despues del producto deja la secuencia `lhu`, `addiu`, `sll`, `sra`, `mult` igual que el original, pero el
- * `sh` queda tras el salto condicional y no en el hueco del `mult` (2995; con el producto en una local 3045; sin
- * `(u16)` la carga sale con `lh`, 3190). (3) `temp_a` antes que `temp_b` en la banda de vuelo (`temp_a = jy - 0xC8;` antes de `temp_b = jy - 0x190;`):
- * 2595: 5 puntos peor que 2590, con los mismos ejes de operando (497) y 331 lineas insertadas o borradas frente a 325.
+ * `sh` queda tras el salto condicional y no en el hueco del `mult`; con el producto en una local empeora, y sin
+ * `(u16)` la carga sale con `lh` (medidas de un estado anterior del C, no repetidas con el actual). En el original
+ * (0x80029B94 a 0x80029BB0) la suma vive en a0 mientras el desplazamiento del producto escribe v0, de modo que el
+ * `sh` puede planificarse tras el `mult`; en el C la suma y el desplazamiento comparten v0 y el `sh` debe ir antes
+ * (se supone, sin verificar con el volcado, que el pseudo de la suma recibe a0 solo si su vida se alarga hasta el
+ * almacen posterior al producto). (3) la perdida de la lectura repetida de `t->w114` tras el almacen a
+ * D_800693C0 (0x8002B928): el original relee la memoria antes del almacen a D_800693B4; con el almacen en cada rama
+ * (`D_800693B4 = t->w114;` en una y `D_800693B4 = giro;` en la otra) el compilador reutiliza el registro, no funde
+ * las colas y la cifra sube a 1745; se supone, sin verificar, que el original trata el almacen a D_800693C0 como
+ * posible alias de la memoria del scratchpad.
  */
 /*
  * Las cuatro sentencias replicadas son `t->w114 = banda_alta;` y `t->w118 = banda_baja;` escritas en la rama del
@@ -522,10 +532,10 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * (0x80027EE8). Causa medida en los volcados de `cc1` (`.lreg`, `.greg` y el ensamblador de salida) y con `diff`: con
  * la pareja en cada rama los valores son pseudos locales del bloque (603 y 604 en el bloque 127, 627 y 628 en el 133,
  * 2 usos sobre 2 insns cada uno) que toman v0 y v1 y se almacenan al final de su camino, igual que el original (la
- * puntuacion es 1790); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
+ * puntuacion es 1445); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
  * los valores pasan a ser pseudos globales (la banda alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6
  * usos sobre 14 insns, 0,86) que reciben a1 y v1, los dos almacenes suben tras la etiqueta de union y aparece un
- * `move v0,a1` antes de la prueba de histeresis (3670 con una sola pareja). La forma del fuente original que producia este reparto se
+ * `move v0,a1` antes de la prueba de histeresis (la cifra empeora). La forma del fuente original que producia este reparto se
  * desconoce.
  *
  * Las dos sentencias replicadas `func_8001CFCC(&o->coord);` son la llamada de cierre de la composicion con el portador,
@@ -536,7 +546,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
  * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
  * bloque de union y el planificador la deja en el hueco de retardo de la llamada (en el original ese hueco es un
- * `nop`). Con las dos llamadas la cifra es 1790 y con una sola llamada tras la etiqueta 1995. Se supone, sin
+ * `nop`). Con las dos llamadas la cifra es 1445; con una sola llamada tras la etiqueta empeora. Se supone, sin
  * verificar, que en la rama de la comprobacion de apoyo el original reparte `a0` al puntero del portador y despues al
  * argumento, y que aqui la preparacion del argumento sube tras la llamada a BarrerTerreno y empuja ese puntero a `a1`.
  * La forma del fuente original que producia este reparto se desconoce.
@@ -569,6 +579,7 @@ void func_80026FEC(Objeto* o)
     AcumuladorNodos pila_nodo;
     NodoDisparador* nd_azar;
     s32 choco;
+    s32 sig_w17c;
     /*
      * Temporales de 32 bits que varios bloques reutilizan: el original conserva en el mismo
      * registro el valor de los distintos calculos, y una variable por uso cambia el reparto.
@@ -2337,6 +2348,7 @@ fin_de_disparadores:
             goto marcar_portador_inactivo;
         }
         o->w17C += 1;
+        sig_w17c = o->w17C;
         goto siguiente_paso_de_secuencia;
     }
     if (t->w118 != 0 && (t->fot->w0C & 0x80) && (o->flags14 & 0x12)) {
@@ -2349,8 +2361,9 @@ fin_de_disparadores:
         }
         o->flags14 = f14 & ~0x1000;
         o->w17C += 1;
+        sig_w17c = o->w17C;
 siguiente_paso_de_secuencia:
-        t->w_bc = *(u16*)((u8*)t->sec + (o->w17C << 1) + 6);
+        t->w_bc = ((u16*)((u8*)t->sec + 6))[sig_w17c];
         if (t->w_bc != 0xFFF0 && o->w17C < 5) {
             o->registro184 = t->fot = (RegistroAnim*)(o->bloque + t->w_bc);
             o->trabajo.i14 = 0;
