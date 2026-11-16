@@ -260,8 +260,8 @@ void func_80040430(s8* contador, u16 mascara)
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 1655 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
- * lineas reordenadas y 270 insertadas o borradas. Reserva de pila: el marco del original es de 0x28 bytes (`addiu
- * sp` en 0x80040494) y el del C sin la local, de 0x20; la cifra medida sin la local es 1729 y con ella 1655. El
+ * lineas reordenadas y 270 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1729 y con ella 1655. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el

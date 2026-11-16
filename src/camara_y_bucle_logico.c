@@ -380,8 +380,8 @@ INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80032B2C);
  * tabla D_8005E6F8 y guarda la distancia de cada uno en D_80069D90. Devuelve 0 si el giro
  * inicial sirve, 1 si sirve otro y 2 si ninguno (entonces elige el de mayor distancia).
  *
- * Reserva de pila: el marco del original es de 0x48 bytes (addiu sp en 0x800330AC) y el del C sin la
- * local, de 0x38; la cifra medida sin la local es 490 y con ella 0.
+ * Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x800330AC) y sin la local el marco es
+ * 0x38; la cifra medida sin la local es 490 y con ella 0.
  */
 s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 {
@@ -479,10 +479,10 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * instante y por eso el resultado no puede tomar `s1`; el original emite `move s1,v0` tras los argumentos; se
  * supone, sin verificar, que la causa es la prioridad de planificacion que le da su cadena posterior, el cociente
  * `d / 200`; escribir los almacenes de `dir` antes de la llamada lo empeora y reutilizar `r` en lugar de `d`
- * lo deja en 2980 sobre la cifra anterior de 2930); el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx`
- * como el original al escribir el almacen de `flags80` ANTES de calcular el cuadrado (2930 a 2590; la relectura la
+ * lo deja por encima de 2590); el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx`
+ * como el original al escribir el almacen de `flags80` ANTES de calcular el cuadrado (la relectura la
  * provoca el almacen intermedio a un global que el CSE no distingue de `w->v90`; con el orden de los operandos
- * del `or` invertido sube a 2935); en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y
+ * del `or` invertido la cifra sube sobre 2590); en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y
  * el original en `a3`/`a2` (sin efecto: cargar `w->p4` antes de `ec`, o en una local propia). La direccion de
  * acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos. La prueba del giro tras el
  * bloque de la cuenta de espera (0xed4..0xfd8) coincide con una sola cola `w->rot.vy = D_80069402` y dos

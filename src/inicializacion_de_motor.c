@@ -544,8 +544,8 @@ s32 func_800453D0(u8** p)
  * original. Con 7 usos (0,036) el objeto roba $fp.
  * La forma del fuente original que producia este reparto se desconoce.
  *
- * Reserva de pila: el marco del original es de 0x58 bytes (addiu sp en 0x800454A0) y el del C sin la
- * local, de 0x50; la cifra medida sin la local es 569 y con ella 0.
+ * Reserva de pila: el original reserva 0x58 (`addiu sp` en 0x800454A0) y sin la local el marco es
+ * 0x50; la cifra medida sin la local es 569 y con ella 0.
  */
 u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
 {

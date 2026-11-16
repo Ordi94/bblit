@@ -65,7 +65,7 @@ s16* D_800693DC;
    (`z_nueva`) que recoge las tres ramas y se almacena una sola vez: el original carga la base en a0 (`lui v0 ;
    addiu a0,v0,%lo(D_80069D30)` en 0x800222B8) y lee y escribe el campo con desplazamiento 8 sobre ese registro,
    con el valor en v0; con el acceso por nombre la base se vuelve a cargar con `lui` en la cola comun, con
-   `&D_80069D30[2]` como puntero la base cae en a1, y con la variable `lo` (que la funcion usa mas adelante) el
+   `&D_80069D30[2]` como puntero la base cae en a1, y con la variable `lo` (que la funcion solo lee antes de este bloque) el
    valor cae en a0. La prueba de la espera (0x800255D0..) coincide en el orden de las operaciones con el producto calculado
    antes de la prueba de `D_8006966A`; solo difiere el registro del producto (`s0` en el original). Residuo medido por tramos: (1) reparto de registros de los temporales
    v0/v1/a0 y de los punteros s0-s2 en las consultas de terreno (el original deja &sc->tmp_v en s0, &sc->res en s1 y
@@ -91,8 +91,8 @@ s16* D_800693DC;
    `*(Objeto**)&o->p70` no cambia la cifra; (6) en el prologo el original copia el valor de `flags14` (`move
    v0,v1`, 0x80020BF4) antes de aplicar la mascara; con una variable distinta para el resultado de la mascara la cifra
    sube a 4000.
-   Reserva de pila: el marco del original es de 0x48 bytes (`addiu sp` en 0x80020B90) y el del C sin la local, de
-   0x40 (8 bytes); la cifra medida sin la local es 3904 y con ella 3750. La funcion es pendiente: con la local la
+   Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
+   0x40; la cifra medida sin la local es 3904 y con ella 3750. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {

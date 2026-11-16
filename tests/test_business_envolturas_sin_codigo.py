@@ -61,6 +61,11 @@ _CONDICIONAL_ABRE = re.compile(r"^\s*#\s*(?:if|ifdef|ifndef)\b")
 _CONDICIONAL_ELSE = re.compile(r"^\s*#\s*else\b")
 _CONDICIONAL_CIERRA = re.compile(r"^\s*#\s*endif\b")
 _CIFRAS_DE_RESERVA = re.compile(r"la cifra medida sin la local es (\d+) y con ella (\d+)")
+_MARCOS_DE_RESERVA = re.compile(
+    r"el original reserva 0x([0-9A-Fa-f]+) \(`addiu sp` en 0x[0-9A-Fa-f]{8}\) "
+    r"y sin la local el marco es 0x([0-9A-Fa-f]+)"
+)
+BYTES_POR_ELEMENTO_DE_RESERVA = 4
 _INCREMENTO = re.compile(r"^\s*(?:(\w+)(\+\+|--)|(\+\+|--)(\w+))\s*;\s*$")
 _IF_VACIO_EN_UNA_LINEA = re.compile(r"^\s*(?:\}\s*else\s+)?if\s*\(.*\)\s*\{\s*\}\s*$")
 _IF_ABRE = re.compile(r"^\s*(?:\}\s*else\s+)?if\s*\(.*\)\s*\{\s*$")
@@ -69,7 +74,7 @@ _DECLARACION_CON_VALOR = re.compile(r"^\s+((?:[A-Za-z_]\w*[\s\*]+)+?)(\w+)\s*=\s
 _PALABRAS_QUE_NO_DECLARAN = {"return", "else", "goto", "case", "sizeof", "do", "while", "if", "for", "switch"}
 _COMENTARIO_REPLICADA = re.compile(rf"^\s*/\*\s*{re.escape(COMENTARIO_REPLICADA)}\s*\*/\s*$")
 _COMENTARIO_RESERVA = re.compile(rf"^\s*/\*\s*{re.escape(COMENTARIO_RESERVA)}\s*\*/\s*$")
-_DECLARACION_RESERVA = re.compile(r"^\s+s32\s+(reserva\w*)\[\d+\]\s*;\s*$")
+_DECLARACION_RESERVA = re.compile(r"^\s+s32\s+(reserva\w*)\[(\d+)\]\s*;\s*$")
 _LOCAL_RESERVA_DE_CUALQUIER_TIPO = re.compile(
     r"^\s+(?!return\b)[A-Za-z_][\w \t\*]*?[\s\*](reserva\w*)\s*(?:\[[^\]]*\])?\s*;\s*$"
 )
@@ -552,6 +557,73 @@ def _incumplimientos_de_reservas(texto: str) -> list[str]:
         for marcador in MARCADORES_DE_CABECERA_RESERVA:
             if marcador not in cabecera:
                 fallos.append(f"{funcion}: la cabecera de la reserva de pila no lleva `{marcador}`")
+    return fallos
+
+
+def _elementos_de_reserva_por_funcion(texto: str) -> dict[str, int]:
+    """Suma los elementos de los arreglos de reserva de pila marcados de cada funcion.
+
+    Contexto:
+        Alimenta ``_incumplimientos_de_marcos_de_reserva``: la diferencia entre el marco del original y el
+        marco sin la local debe ser el tamano en bytes de todas las reservas de la funcion.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+
+    Returns:
+        dict[str, int]: funcion -> suma de los ``N`` de sus declaraciones ``s32 reserva...[N];`` precedidas
+        del comentario fijo; las funciones sin reserva no aparecen.
+
+    Ejemplo:
+        _elementos_de_reserva_por_funcion(texto_con_dos_reservas_de_2) == {"func_800000A0": 4}
+    """
+    lineas = _lineas_de_codigo(texto)
+    elementos: dict[str, int] = {}
+    for funcion, inicio, cierre in _cuerpos(lineas):
+        cuerpo = lineas[inicio : cierre + 1]
+        for indice, linea in enumerate(cuerpo):
+            declaracion = _DECLARACION_RESERVA.match(linea)
+            marcada = indice > 0 and _COMENTARIO_RESERVA.match(cuerpo[indice - 1]) is not None
+            if marcada and declaracion is not None:
+                elementos[funcion] = elementos.get(funcion, 0) + int(declaracion.group(2))
+    return elementos
+
+
+def _incumplimientos_de_marcos_de_reserva(texto: str) -> list[str]:
+    """Comprueba que la cabecera de cada reserva cita los marcos y que su diferencia es el tamano de esta.
+
+    Contexto:
+        Complementa a ``_incumplimientos_de_reservas``. La cabecera dice
+        ``el original reserva 0xNNN (`addiu sp` en 0xDDDDDDDD) y sin la local el marco es 0xMMM`` y NNN menos
+        MMM debe ser igual a 4 por el numero de elementos de los arreglos ``reserva`` de la funcion: una
+        reserva que no cierra el marco del original rellena otra cosa y no es la forma regulada.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+
+    Returns:
+        list[str]: Un mensaje por cada incumplimiento; vacia si todas las reservas del texto cumplen.
+
+    Ejemplo:
+        _incumplimientos_de_marcos_de_reserva(texto_con_reserva) == []
+    """
+    fallos: list[str] = []
+    for funcion, elementos in sorted(_elementos_de_reserva_por_funcion(texto).items()):
+        cabecera = " ".join(_cabecera(texto, funcion).replace("*", " ").split())
+        marcos = _MARCOS_DE_RESERVA.search(cabecera)
+        if marcos is None:
+            fallos.append(
+                f"{funcion}: la cabecera no lleva `el original reserva 0xNNN (`addiu sp` en 0xDDDDDDDD) "
+                "y sin la local el marco es 0xMMM`"
+            )
+            continue
+        original, sin_local = int(marcos.group(1), 16), int(marcos.group(2), 16)
+        esperada = BYTES_POR_ELEMENTO_DE_RESERVA * elementos
+        if original - sin_local != esperada:
+            fallos.append(
+                f"{funcion}: el marco del original (0x{original:X}) menos el marco sin la local "
+                f"(0x{sin_local:X}) es {original - sin_local} y la reserva ocupa {esperada} bytes"
+            )
     return fallos
 
 
@@ -2003,5 +2075,126 @@ def test_las_cifras_de_las_reservas_de_pila_de_src_son_coherentes_con_la_tabla()
         f"{archivo.name}: {fallo}"
         for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c"))
         for fallo in _incumplimientos_de_cifras_de_reserva(archivo.read_text(encoding="utf-8"), estados)
+    ]
+    assert fallos == []
+
+
+def _funcion_con_marcos(original: str, sin_local: str, declaraciones: str = DECLARACION_RESERVA) -> str:
+    cabecera = (
+        "/*\n"
+        f" * Reserva de pila: el original reserva {original} (`addiu sp` en 0x80000000) y sin la local\n"
+        f" * el marco es {sin_local}; la cifra medida sin la local es 100 y con ella 0.\n"
+        " */\n"
+    )
+    return _funcion_con_reserva(declaraciones, cabecera=cabecera)
+
+
+def test_la_reserva_cuya_diferencia_de_marcos_es_su_tamano_se_acepta() -> None:
+    """Caso valido: 0x30 menos 0x28 son 8 bytes y la reserva es un arreglo de dos palabras.
+
+    Regla:
+        La diferencia entre el marco del original y el marco sin la local es exactamente el tamano de la
+        reserva.
+
+    Ejemplo:
+        ``s32 reserva[2];`` con el original en 0x30 y el marco sin la local en 0x28 cumple.
+    """
+    texto = _funcion_con_marcos("0x30", "0x28", MARCA_RESERVA + DECLARACION_RESERVA)
+    assert _incumplimientos_de_marcos_de_reserva(texto) == []
+
+
+def test_las_reservas_separadas_suman_su_tamano_para_la_diferencia_de_marcos() -> None:
+    """Caso valido: dos arreglos de dos palabras cierran una diferencia de 16 bytes.
+
+    Regla:
+        La diferencia de marcos se compara con la suma de todos los arreglos ``reserva`` de la funcion.
+
+    Ejemplo:
+        Dos ``s32 reserva[2];`` con el original en 0x210 y el marco sin las locales en 0x200 cumplen.
+    """
+    locales = MARCA_RESERVA + DECLARACION_RESERVA + MARCA_RESERVA + "    s32 reserva_cima[2];\n"
+    assert _elementos_de_reserva_por_funcion(_funcion_con_marcos("0x210", "0x200", locales)) == {
+        "func_800000A0": 4
+    }
+    assert _incumplimientos_de_marcos_de_reserva(_funcion_con_marcos("0x210", "0x200", locales)) == []
+
+
+def test_la_reserva_mas_pequena_que_la_diferencia_de_marcos_se_rechaza() -> None:
+    """Caso con error esperado: el original reserva 0x210, sin la local son 0x200 y la reserva ocupa 8 bytes.
+
+    Regla:
+        Una reserva que no cierra la diferencia de marcos no completa el marco del original.
+
+    Ejemplo:
+        ``s32 reserva[2];`` con 0x210 y 0x200 produce un mensaje con la diferencia y el tamano de la reserva.
+    """
+    texto = _funcion_con_marcos("0x210", "0x200", MARCA_RESERVA + DECLARACION_RESERVA)
+    assert _incumplimientos_de_marcos_de_reserva(texto) == [
+        "func_800000A0: el marco del original (0x210) menos el marco sin la local (0x200) es 16 "
+        "y la reserva ocupa 8 bytes"
+    ]
+
+
+def test_la_reserva_mayor_que_la_diferencia_de_marcos_se_rechaza() -> None:
+    """Caso con error esperado: una reserva de 16 bytes no cabe en una diferencia de 8.
+
+    Regla:
+        La igualdad es exacta: tampoco se admite una reserva de mas.
+
+    Ejemplo:
+        ``s32 reserva[4];`` con 0x30 y 0x28 produce un solo incumplimiento.
+    """
+    locales = MARCA_RESERVA + "    s32 reserva[4];\n"
+    assert len(_incumplimientos_de_marcos_de_reserva(_funcion_con_marcos("0x30", "0x28", locales))) == 1
+
+
+def test_la_cabecera_de_reserva_sin_la_frase_de_los_marcos_se_rechaza() -> None:
+    """Caso con error esperado: la redaccion anterior no cita el marco del original ni el marco sin la local.
+
+    Regla:
+        La cabecera lleva la frase fija ``el original reserva 0xNNN (`addiu sp` en 0xDDDDDDDD) y sin la local
+        el marco es 0xMMM``.
+
+    Ejemplo:
+        La cabecera de ``CABECERA_RESERVA`` (redaccion antigua) produce un incumplimiento.
+    """
+    texto = _funcion_con_reserva(MARCA_RESERVA + DECLARACION_RESERVA)
+    fallos = _incumplimientos_de_marcos_de_reserva(texto)
+    assert len(fallos) == 1
+    assert "la cabecera no lleva" in fallos[0]
+
+
+def test_la_frase_de_los_marcos_sin_direccion_de_ocho_digitos_se_rechaza() -> None:
+    """Caso limite: la direccion del ``addiu sp`` debe llevar ocho digitos hexadecimales.
+
+    Regla:
+        La frase fija cita la direccion completa del original.
+
+    Ejemplo:
+        ``0x8000`` en lugar de ``0x80000000`` no cumple la frase.
+    """
+    valida = _funcion_con_marcos("0x30", "0x28", MARCA_RESERVA + DECLARACION_RESERVA)
+    texto = valida.replace("0x80000000", "0x8000")
+    assert len(_incumplimientos_de_marcos_de_reserva(texto)) == 1
+
+
+def test_una_funcion_sin_reserva_no_produce_incumplimientos_de_marcos() -> None:
+    """Caso limite: sin reserva marcada no hay marcos que comprobar.
+
+    Regla:
+        Solo las funciones con reserva de pila citan los marcos.
+
+    Ejemplo:
+        Una funcion sin locales de reserva devuelve una lista vacia.
+    """
+    assert _incumplimientos_de_marcos_de_reserva(_funcion_con_reserva("")) == []
+
+
+def test_toda_reserva_de_pila_de_src_cierra_la_diferencia_de_marcos_del_original() -> None:
+    """Toda reserva de ``src/`` cita los marcos y la diferencia es el tamano de sus arreglos ``reserva``."""
+    fallos = [
+        f"{archivo.name}: {fallo}"
+        for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c"))
+        for fallo in _incumplimientos_de_marcos_de_reserva(archivo.read_text(encoding="utf-8"))
     ]
     assert fallos == []

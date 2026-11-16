@@ -584,7 +584,7 @@ fin:
  * banderas, copia posicion y orientacion, coloca la camara detras, fija 30 cuadros de
  * invulnerabilidad y la salud a 6, y lanza el efecto de fundido 1 de 0x200 cuadros.
  *
- * Reserva de pila: el marco del original es de 0x50 bytes (`addiu sp` en 0x8001D994) y el del C sin la local, de
+ * Reserva de pila: el original reserva 0x50 (`addiu sp` en 0x8001D994) y sin la local el marco es
  * 0x18; la cifra medida sin la local es 122 y con ella 0.
  */
 void func_8001D994(Objeto* o)

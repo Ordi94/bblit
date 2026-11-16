@@ -3289,8 +3289,8 @@ siguiente:
  *   salta al reposo con el resto de las salidas.
  * - La rama sin empuje lee D_800694F2 dos veces (comprobacion y almacen) y no la guarda en una local:
  *   con la local la funcion da 40 puntos mas.
- * - Reserva de pila: el marco del original es de 0x38 bytes (addiu sp en 0x8002D68C) y el del C sin la
- *   local, de 0x30; la cifra medida sin la local es 188 y con ella 0. Se supone, sin verificar, que el
+ * - Reserva de pila: el original reserva 0x38 (`addiu sp` en 0x8002D68C) y sin la local el marco es
+ *   0x30; la cifra medida sin la local es 188 y con ella 0. Se supone, sin verificar, que el
  *   original tenia ahi una local que el compilador elimino.
  */
 void LogicaBloqueEmpujable(Objeto* o)
@@ -3607,7 +3607,7 @@ void func_8002EA9C(Objeto* o)
  * la cadena de matrices con el GTE. Se destruye al terminar la animacion si el fotograma lo pide y
  * cuando pierde a su portador.
  *
- * Reserva de pila: el marco del original es de 0x48 bytes (`addiu sp` en 0x8002EAA4) y el del C sin la local, de
+ * Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x8002EAA4) y sin la local el marco es
  * 0x28; la cifra medida sin la local es 286 y con ella 0.
  */
 void LogicaEfectoAnclado(Objeto* o)

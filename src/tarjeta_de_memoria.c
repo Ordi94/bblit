@@ -198,8 +198,8 @@ s32 func_80014C54(void)
  * buffer D_80069520, comprueba la suma de control de los primeros 0x140 bytes (palabra en +4 a cero
  * durante el calculo) y los copia al estado principal; hasta cinco intentos.
  *
- * Reserva de pila: el marco del original es de 0x220 bytes (`addiu sp` en 0x80014E24) y el del C sin la local, de
- * 0x20 (0x200 bytes); la cifra medida sin la local es 4131 y con ella 0.
+ * Reserva de pila: el original reserva 0x220 (`addiu sp` en 0x80014E24) y sin la local el marco es
+ * 0x20; la cifra medida sin la local es 4131 y con ella 0.
  */
 s32 func_80014E24(void)
 {
@@ -483,13 +483,10 @@ s32 func_800151FC(void)
  * Suma de la entrada del directorio (1425 a 1255): el original suma primero la fila y el desplazamiento del grupo y
  * despues las dos bases (`addu v0,a2,v0` en 0x80015D4C y `addu v1,v0,t1` y `addu v0,v0,t2` tras ella), de modo que
  * la entrada y la palabra de 0x24 se escriben como `base + (fila + desplazamiento_grupo)`; con la suma escrita de
- * izquierda a derecha el compilador suma la base al desplazamiento y despues la fila. Escribir el tercer
- * desplazamiento en una local propia (`desplazamiento_entrada`) sube a 1395 y copiar la fila en una local antes de
- * los bucles interiores (una local de relleno, una local de busqueda o ambas) da 1980, 1425 y 1660 (el CSE funde la
- * copia cuando solo la usa el bucle de relleno); `n * 0x28` escrito en el bucle de busqueda 1560; el tercer
- * desplazamiento como expresion `(quince << 3)` sin local, 1395; un puntero local a `D_800697B0` asignado antes del
- * bucle del directorio y usado en el bucle de busqueda, 1335 (el original usa t1 ya cargado en la busqueda y aqui
- * el compilador calcula la direccion del simbolo en el preludio).
+ * izquierda a derecha el compilador suma la base al desplazamiento y despues la fila. El tercer desplazamiento no
+ * lleva local propia y la fila no se copia en una local: el CSE funde la copia cuando solo la usa el bucle de
+ * relleno, y ni la copia ni un puntero local a `D_800697B0` dejan la cifra por debajo de 1255 (el original usa t1
+ * ya cargado en la busqueda y aqui el compilador calcula la direccion del simbolo en el preludio).
  * Queda el reparto de registros del directorio: `n` cae en a3 (en a1 en el original), `fila` en a1 (a2), el contador de
  * los bucles interiores en a0 (v1) y la cadena de desplazamientos en v1 (a0), y el bucle de busqueda del final del nombre
  * calcula la direccion del simbolo de la tabla en su preludio (`lui` y `addiu a2`) mientras el original usa t1 ya
@@ -507,8 +504,8 @@ s32 func_800151FC(void)
  * las ramas de la orden 6 y se alcanzan con goto desde el sondeo: el original los coloca ahi y el compilador no reordena bloques.
  * El argumento que pasa main se ignora.
  *
- * Reserva de pila: el marco del original es de 0x40 bytes (`addiu sp` en 0x800156F4) y el del C sin la local, de
- * 0x30 (16 bytes); la cifra medida sin la local es 1457 y con ella 1255. La funcion es pendiente: con la local la
+ * Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es
+ * 0x30; la cifra medida sin la local es 1457 y con ella 1255. La funcion es pendiente: con la local la
  * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)

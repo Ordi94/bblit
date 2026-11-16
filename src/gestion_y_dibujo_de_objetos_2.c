@@ -651,8 +651,8 @@ void func_8003861C(s32 idx)
  * llena el hueco de la carga, como en el original.
  * La forma del fuente original que producia este reparto se desconoce.
  *
- * Reserva de pila: el marco del original es de 0x50 bytes (addiu sp en 0x80038884) y el del C sin la
- * local, de 0x48; la cifra medida sin la local es 154 y con ella 0.
+ * Reserva de pila: el original reserva 0x50 (`addiu sp` en 0x80038884) y sin la local el marco es
+ * 0x48; la cifra medida sin la local es 154 y con ella 0.
  */
 void func_80038884(s32 idx, s32 modo)
 {

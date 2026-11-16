@@ -210,8 +210,8 @@ INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E600);
  * el pozo esta agotado. En cada cuadro dispara los sonidos y los eventos del cuadro actual: un
  * evento puede crear un hijo acoplado, un objeto suelto, agarrar o soltar al protagonista.
  *
- * Reserva de pila: el marco del original es de 0x78 bytes (addiu sp en 0x8001E720) y el del C sin la
- * local, de 0x68; la cifra medida sin la local es 361 y con ella 0. La reserva queda antes del giro,
+ * Reserva de pila: el original reserva 0x78 (`addiu sp` en 0x8001E720) y sin la local el marco es
+ * 0x68; la cifra medida sin la local es 361 y con ella 0. La reserva queda antes del giro,
  * como en el original.
  */
 u32 AvanzarAnimacionSprite(Objeto* o, BloqueTrabajo* c, u32 anim, u32 modo, u8* area)
@@ -512,8 +512,8 @@ siguiente:
  * sonidos y los eventos del cuadro actual: un evento puede crear un hijo acoplado o suelto, soltar
  * o reorientar el hijo, y agarrar, soltar o colocar al protagonista.
  *
- * Reserva de pila: el marco del original es de 0xB8 bytes (addiu sp en 0x8001F268) y el del C sin la
- * local (las tres reservas juntas), de 0x70; la cifra medida sin la local es 1280 y con ella 0. Las
+ * Reserva de pila: el original reserva 0xB8 (`addiu sp` en 0x8001F268) y sin la local el marco es
+ * 0x70 (sin las tres reservas juntas); la cifra medida sin la local es 1280 y con ella 0. Las
  * tres reservas (16, 24 y 32 bytes) dejan el vector de aparicion (giro y pos) en +0x28 y +0x30 y el acumulador de nodos
  * en +0x58, como el original.
  */

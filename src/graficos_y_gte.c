@@ -622,7 +622,7 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
  * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
  *
- * Reserva de pila: el marco del original es de 0x28 bytes (`addiu sp` en 0x80018664) y el del C sin la local, de
+ * Reserva de pila: el original reserva 0x28 (`addiu sp` en 0x80018664) y sin la local el marco es
  * 0x20; la cifra medida sin la local es 58 y con ella 0.
  */
 s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
