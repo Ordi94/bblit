@@ -259,9 +259,9 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 6160 con la configuracion versionada (g = 8 del archivo): 43 diferencias de operando, 7
- * lineas reordenadas y 363 insertadas o borradas. Reserva de pila: el marco del original es de 0x28 bytes (`addiu
- * sp` en 0x80040494) y el del C sin la local, de 0x20; la cifra medida sin la local es 6234 y con ella 6160. El
+ * Pendiente: puntuacion 4000 con la configuracion versionada (g = 8 del archivo): 44 diferencias de operando, 7
+ * lineas reordenadas y 359 insertadas o borradas. Reserva de pila: el marco del original es de 0x28 bytes (`addiu
+ * sp` en 0x80040494) y el del C sin la local, de 0x20; la cifra medida sin la local es 4074 y con ella 4000. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
@@ -315,6 +315,8 @@ void func_8004048C(void)
     u32 cf2;
     u32 cf3;
     u32 cfd;
+    u32 y6;
+    u32 y7;
     EstadoPrincipal* est;
     u8* banco;
     /* Reserva de pila: local sin uso que completa el marco del original. */
@@ -442,7 +444,9 @@ normal:
         func_80040158(&ESTADO_PRINCIPAL->mando);
         centro = ESTADO_PRINCIPAL->mando.centro_x;
         mascara = ESTADO_PRINCIPAL->mando.botones_c;
-        eje = D_8006CFF6 & 0xFF;
+        /* Cada eje se lee una sola vez (0x80040830 y 0x800408E4) y las ramas reutilizan el valor tras los almacenes. */
+        y6 = D_8006CFF6;
+        eje = y6 & 0xFF;
         prev = mascara & ~ESTADO_PRINCIPAL->mando.botones_e;
         ESTADO_PRINCIPAL->mando.w3E = prev;
         ESTADO_PRINCIPAL->mando.botones_a = prev;
@@ -450,27 +454,28 @@ normal:
             ESTADO_PRINCIPAL->mando.botones_a = prev | 0x8000;
             ESTADO_PRINCIPAL->mando.w3E = prev | 0x8000;
             ESTADO_PRINCIPAL->mando.botones_c = mascara | 0x8000;
-            ESTADO_PRINCIPAL->mando.eje_x = (D_8006CFF6 & 0xFF) - centro;
+            ESTADO_PRINCIPAL->mando.eje_x = (y6 & 0xFF) - centro;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x8000;
         } else if (centro + D_8006952C < eje) {
             ESTADO_PRINCIPAL->mando.botones_a = prev | 0x2000;
             ESTADO_PRINCIPAL->mando.w3E = prev | 0x2000;
             ESTADO_PRINCIPAL->mando.botones_c = mascara | 0x2000;
-            ESTADO_PRINCIPAL->mando.eje_x = D_8006CFF6 - centro;
+            ESTADO_PRINCIPAL->mando.eje_x = y6 - centro;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x2000;
         } else {
             ESTADO_PRINCIPAL->mando.eje_x = 0;
         }
         centro = ESTADO_PRINCIPAL->mando.centro_y;
-        eje = D_8006CFF7 & 0xFF;
+        y7 = D_8006CFF7;
+        eje = y7 & 0xFF;
         if (eje < centro - D_8006952C) {
-            ESTADO_PRINCIPAL->mando.eje_y = centro - ((D_8006CFF7 & 0xFF) + 1);
+            ESTADO_PRINCIPAL->mando.eje_y = centro - ((y7 & 0xFF) + 1);
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x1000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x1000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x1000;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x1000;
         } else if (centro + D_8006952C < eje) {
-            ESTADO_PRINCIPAL->mando.eje_y = centro - (D_8006CFF7 + 1);
+            ESTADO_PRINCIPAL->mando.eje_y = centro - (y7 + 1);
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x4000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x4000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x4000;
