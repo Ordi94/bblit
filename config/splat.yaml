@@ -100,6 +100,7 @@ segments:
       # (jumptables) aparecen a partir de 0x80067E64. La frontera es provisional y se
       # afinara cuando se identifiquen los archivos objeto originales.
       - [0x53A70, rodata, rodata]  # 0x80067C70
+      - [0x53C34, .rodata, tarjeta_de_memoria]  # 0x80067E34
       - [0x53C64, .rodata, camara_y_bucle_logico]  # 0x80067E64
       - [0x53C80, .rodata, gestion_y_dibujo_de_objetos]  # 0x80067E80
       - [0x53C98, rodata, rodata_constante]  # 0x80067E98

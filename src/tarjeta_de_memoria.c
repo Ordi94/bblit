@@ -336,12 +336,18 @@ s32 func_8001515C(void)
  *
  * Los tipos de las copias fijan el codigo que emite el compilador para cada asignacion de estructura:
  * una estructura de bytes de alineacion 1 genera la comprobacion de alineacion en ejecucion (el
- * original la tiene en la copia del bloque de 0x200 bytes y en las dos de la cabecera de 0x168 bytes);
- * las de palabras (Imagen32, Bloque80) y el titulo con alineacion 4 generan la copia por palabras sin
- * comprobacion, como las del bloque local. Medido sobre la funcion completa: las cuatro copias de
- * datos que faltaban (17285 a 11788), la alineacion 4 del titulo (11788 a 8175), el tipo de bytes de la
- * cabecera de 0x168 bytes (8175 a 745) y la direccion dest + 0x200 escrita en cada uso en lugar de una
- * local (745 a 0 con el byte de cabecera con signo, que el original carga con lb).
+ * original la tiene en la copia del bloque de 0x200 bytes, Fragmento, y en las dos de la cabecera de
+ * 0x168 bytes, Copia168); las de palabras (Imagen32 de 0x20 bytes y Bloque80 de 0x80 bytes) generan la
+ * copia por palabras sin comprobacion, como las del bloque local, porque el original las hace asi. La
+ * direccion dest + 0x200 se escribe en cada uso en lugar de guardarla en una local, y el byte de
+ * cabecera es con signo porque el original lo carga con lb.
+ *
+ * El titulo es una cadena literal del original: sus 46 bytes en Shift-JIS mas el terminador ocupan 0x2F
+ * bytes en el .rodata de este archivo (0x80067E34, rellenado hasta 0x30). Se copia con strcpy porque el
+ * ensamblador copia exactamente 0x2F bytes, la longitud de la cadena con su terminador, desde una
+ * direccion de palabra conocida por el compilador, sin comprobar la alineacion; desde un simbolo externo
+ * esa copia pide la comprobacion. Los bytes se escriben con escapes octales para no depender de la
+ * codificacion del fuente.
  */
 typedef struct BloqueTarjeta {
     s8 cab[4];
@@ -357,17 +363,6 @@ typedef struct Fragmento {
     u8 b[0x200];
 } Fragmento;
 
-/*
- * El titulo ocupa 0x2F bytes de origen (dos vueltas de 16 y una cola de 15); el campo destino es de 0x40.
- * La alineacion 4 declarada es la que el original da por supuesta: copia por palabras, con cola de
- * tres palabras, un corto y un byte, sin comprobar la alineacion (desplazamientos 0x50 a 0xb0 de la
- * funcion); una
- * estructura de 0x2F bytes sin ese atributo genera la comprobacion en ejecucion.
- */
-typedef struct TituloTarjeta {
-    u8 b[0x2F];
-} TituloTarjeta __attribute__((aligned(4)));
-
 /* Copia de la cabecera de guardado (0x168 bytes) con alineacion de un byte: el original comprueba la alineacion en ejecucion. */
 typedef struct Copia168 {
     u8 b[0x168];
@@ -381,10 +376,10 @@ typedef struct Bloque80 {
     u32 w[0x20];
 } Bloque80;
 
-extern u8 D_80067E34[];
 extern u8 D_8005DFA0[];
 extern u8 D_8005DFCC[];
 extern void* memset(void* destino, s32 valor, u32 cantidad);
+extern char* strcpy(char* destino, const char* origen);
 
 s32 func_800151FC(void)
 {
@@ -399,7 +394,9 @@ s32 func_800151FC(void)
     blq.cab[1] = 0x43;
     blq.cab[2] = 0x13;
     blq.cab[3] = 1;
-    *(TituloTarjeta*)blq.titulo = *(TituloTarjeta*)D_80067E34;
+    strcpy((char*)blq.titulo,
+           "\202\141\202\225\202\207\202\223\201\100\202\141\202\225\202\216\202\216\202\231\201\100\202\153"
+           "\202\217\202\223\202\224\201\100\202\211\202\216\201\100\202\163\202\211\202\215\202\205");
     memset(blq.reservado, 0, 0x1C);
     *(Imagen32*)blq.imagen = *(Imagen32*)D_8005DFA0;
     *(Bloque80*)blq.paleta = *(Bloque80*)(D_8005DFA0 + 0x2C);

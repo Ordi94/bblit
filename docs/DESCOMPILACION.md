@@ -140,7 +140,7 @@ subsegmento. Por eso un archivo posee sus datos declarando subsegmentos **con su
   `char D_8005E04C[] = "bu00:BASLUS-00838 BBLIT";`. El símbolo interior `D_8005E051` (otras
   funciones leen la cadena desde su sexto byte) queda como símbolo absoluto del enlazador.
 - **`.rodata` con punto (rodata migrado).** Para las tablas de salto de un `switch` y las
-  cadenas del tramo `0x80067E64..0x800683B8`, un subsegmento `[desplazamiento, .rodata, <archivo>]`
+  cadenas del tramo `0x80067E34..0x800683B8`, un subsegmento `[desplazamiento, .rodata, <archivo>]`
   hace que el particionador *migre* cada símbolo de solo lectura al `.s` de la función que lo usa
   (sección `.rodata` dentro del propio `asm/nonmatchings/<archivo>/<función>.s`) y que el
   enlazador recoja `build/src/<archivo>.c.o(.rodata)` en la posición correcta. Sin el punto
@@ -148,7 +148,8 @@ subsegmento. Por eso un archivo posee sus datos declarando subsegmentos **con su
   Archivos con rodata migrado: `camara_y_bucle_logico` (`0x80067E64`, tabla de `func_80035244`),
   `gestion_y_dibujo_de_objetos` (`0x80067E80`, tabla de `AplicarCuadro`) y `menus_e_interfaz`
   (`0x80067E9C`, tabla de `func_8003C1C8`), `audio_xa_y_spu` (`0x80067EF0`) y
-  `cargador_de_niveles_y_cd` (`0x80067F18`). El resto del rodata sigue en trozos de
+  `cargador_de_niveles_y_cd` (`0x80067F18`) y `tarjeta_de_memoria` (`0x80067E34`, la cadena del título que
+  copia `func_800151FC`, escrita como literal en el C). El resto del rodata sigue en trozos de
   ensamblador (`rodata`, `rodata_constante`, `rodata_resto`).
 - **Símbolos de solo lectura sin función propia (`INCLUDE_RODATA`).** Un símbolo que ninguna
   función del archivo referencia directamente (la ruta `\LEVEL5\MERLIN.BZZ;1` y su puntero, las
