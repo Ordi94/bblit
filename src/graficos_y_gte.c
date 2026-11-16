@@ -238,7 +238,7 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * - La suma de radios y su cuadrado se calculan en `i`, la misma variable que despues recibe el indice de arista: el
  *   original deja suma y producto en `t2` y el segundo resultado de SquareRoot0 tambien va a `t2` (0x80017754 a
  *   0x80017774 y 0x80018384). Los sumandos van con el objeto actual primero.
- * - La rama de dos candidatos marcados con 8 (`mejor` y el actual) escribe su propia cola con `mejor`, `mejor_d` y
+ * - La rama de dos objetos marcados con 8 (`mejor` y el actual) escribe su propia cola con `mejor`, `mejor_d` y
  *   `salida_y` (`move s3,a1`, `lw t8,0x78(s1)` y `move s7,v1`, 0x8001858C a 0x80018598): reutiliza los registros de
  *   `w->actual` y de la distancia ya cargados, mientras que la cola de las demas ramas (0x8001859C) los relee de
  *   memoria. Cada camino emite codigo propio, tambien en el original, de modo que la sentencia repetida no es una
