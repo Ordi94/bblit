@@ -219,11 +219,12 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 12354 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 83 de
- * operando, 27 reordenadas y 630 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
- * que casi todo el residuo es desalineacion encadenada de pocas inserciones. El marco del C es de 0x48 bytes
- * (vars = 16) y el del original de 0x50 (cinco ranuras de palabra: `salida_x` 0x10, `salida_z` 0x14, `k` 0x18,
- * `salida_y` 0x1c, `lista` 0x20); aqui `salida_x` y `salida_z` comparten una palabra (0x14 y 0x16).
+ * Pendiente: puntuacion 10909 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 85 de
+ * operando, 42 reordenadas y 546 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
+ * que casi todo el residuo es desalineacion encadenada de pocas inserciones. El marco del C es el del original, de
+ * 0x50 bytes: la salida es una estructura SVECTOR local (`vx` en 0x10 y `vz` en 0x14, con el hueco de `vy`), y le
+ * siguen `k` (0x18), `salida_y` (0x1c) y `lista` (0x20); con dos variables `s16` sueltas el marco era de 0x48 y la
+ * cifra 11694 frente a 10909.
  * `k` es una sola variable que vive en memoria (se pasa su direccion a gte_NormalClip): en el original el contador
  * de impactos del bucle de puntos (`sw zero,0x18(sp)` en 0x80017B28, `lw`/`sw` 0x18(sp) en 0x80017ED4), los resultados de
  * NormalClip, el primer resultado de SquareRoot0 (`sw v0,0x18(sp)` en 0x80018344) y la bandera de impacto
@@ -251,6 +252,11 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * se almacenan juntos en cada rama (15249 a 13864); la busqueda en la cadena de padres usa `while` y no `do`
  * (13864 a 13209; el compilador rotaba el bucle y duplicaba la comparacion con `a`, 0x80017640 a 0x80017668 en el original); y
  * `p[4].vy` recibe `a->min.vy` (`lhu 0x4A` en 0x80017A60 y `sh 0xBA` en 0x80017A6C) en vez de cero (13209 a 12354).
+ * El bucle de las aristas se escribe con etiqueta y salto hacia atras (`if (angs < 4) { ...; if (D_80069380 < 0)
+ * goto ciclo_aristas; }`) porque el original comprueba `< 4` en la cabeza en cada vuelta y cierra con `bltz` a la
+ * cabeza (0x80018194 y 0x80017F78), sin rotar el bucle: con `while` el compilador lo rotaba y duplicaba la prueba
+ * (12354 a 11964). El segundo resultado de SquareRoot0 se guarda en `i` (el original lo copia a t2, `move t2,v0` en
+ * 0x80018384, el registro del indice de arista que ya esta muerto): 11964 a 11694.
  * Residuo conocido: `a` y `v` estan intercambiados (a en s4 y v en s5, 25 usos cada una sobre 1680 y 1688 insns;
  * prioridades 0,0595 y 0,0592: el original da a `v` mayor prioridad); la cola de la ultima rama de la comparacion con
  * la mascara 0x2000000 esta fuera de linea en el original (0x80017EAC) y en linea aqui; y se supone, sin
@@ -270,11 +276,9 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
     s32 i;
     s32 t2;
     s32 k;
-    s32 len2;
     s32 ax;
     s32 az;
-    s16 salida_x;
-    s16 salida_z;
+    SVECTOR salida;
     s32 salida_y;
     u16 lista;
     SVECTOR* dif;
@@ -466,7 +470,8 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
             D_80069D18[3].x = w->p[3].vx;
             D_80069380 = -1;
             w->angs[0] = 0;
-            while (w->angs[0] < 4) {
+ciclo_aristas:
+            if (w->angs[0] < 4) {
                 if (w->angs[0] == 0) {
                     D_80069D18[4].x = w->b->max.vx + w->radio;
                     D_80069D18[4].z = w->b->max.vz + w->radio;
@@ -502,8 +507,8 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
                     i = 3;
                 }
                 w->angs[0]++;
-                if (D_80069380 >= 0) {
-                    break;
+                if (D_80069380 < 0) {
+                    goto ciclo_aristas;
                 }
             }
             if (D_80069380 > 0) {
@@ -537,11 +542,11 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
                     D_80069D08.vz = az;
                 }
                 k = SquareRoot0(w->e_x * w->e_x + w->e_z * w->e_z);
-                len2 = SquareRoot0(D_80069D08.vx * D_80069D08.vx + D_80069D08.vz * D_80069D08.vz);
+                i = SquareRoot0(D_80069D08.vx * D_80069D08.vx + D_80069D08.vz * D_80069D08.vz);
                 D_80069C08.vx = (w->e_x << 12) / k;
                 D_80069C08.vz = (w->e_z << 12) / k;
-                D_80069C08.vx = (D_80069C08.vx * len2) >> 12;
-                D_80069C08.vz = (D_80069C08.vz * len2) >> 12;
+                D_80069C08.vx = (D_80069C08.vx * i) >> 12;
+                D_80069C08.vz = (D_80069C08.vz * i) >> 12;
                 k = 1;
                 /* Desplazamiento de 0x100 bytes desde D_80069C08: equivale a D_80069D08.vx y D_80069D08.vz. */
                 w->sal.vx = w->sal.vx - (D_80069C08.vx - ((VECTOR*)((u8*)&D_80069C08 + 0x100))->vx);
@@ -556,15 +561,15 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
         RotMatrix(&w->b->param.giro.rotate, &w->m);
         ApplyMatrixSV(&w->m, &w->sal, &w->res);
         if (mejor != 0 && (w->b->flags08 & 0x20000) == 0) {
-            salida_x = (w->res.vx + v->vx) >> 1;
-            salida_z = (w->res.vz + v->vz) >> 1;
-            v->vx = salida_x;
-            v->vz = salida_z;
+            salida.vx = (w->res.vx + v->vx) >> 1;
+            salida.vz = (w->res.vz + v->vz) >> 1;
+            v->vx = salida.vx;
+            v->vz = salida.vz;
         } else {
-            salida_x = w->res.vx;
-            v->vx = salida_x;
-            salida_z = w->res.vz;
-            v->vz = salida_z;
+            salida.vx = w->res.vx;
+            v->vx = salida.vx;
+            salida.vz = w->res.vz;
+            v->vz = salida.vz;
         }
         if (w->dist2 < mejor_d || (w->actual->flags08 & 8) != 0) {
             /* sigue a la seleccion */
@@ -600,9 +605,9 @@ siguiente:
         w->actual = w->actual->sig10;
     }
     if (mejor != 0) {
-        v->vx = salida_x;
+        v->vx = salida.vx;
         v->vy = salida_y;
-        v->vz = salida_z;
+        v->vz = salida.vz;
     }
     return mejor;
 }
