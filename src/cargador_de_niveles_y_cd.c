@@ -420,11 +420,11 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 14598 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 12183 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
- * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2859 coinciden en el mnemonico (96,7 %). Los cuerpos de los
+ * caso del de su tabla. Medido: el codigo generado tiene 2954 instrucciones frente a 2955 del
+ * original, y alineando el texto de ambos 2874 coinciden en el mnemonico (97,3 %). Los cuerpos de los
  * casos de los cinco `switch` y del despacho de primer nivel van en el orden de direcciones de las
  * tablas de saltos del original: el orden del fuente decide el orden de emision, por eso los casos
  * no van en orden numerico.
@@ -468,6 +468,19 @@ typedef struct {
  * ramas. `cabeza` guarda la cabeza leida y `elemento` es el recorrido, una local de cada caso para
  * que no cruce llamadas.
  *
+ * Formas del original antes de los chunks (direcciones del original): la lectura de la seccion de
+ * cada etiqueta 0x45 es `secciones[posicion++]` en la propia expresion (`addu v1,sp,s3` y `addiu
+ * s3,s3,0xc` consecutivos en 0x80041BA8; con el incremento en otra sentencia el planificador separa
+ * la direccion del elemento y el bloque no coincide); el bucle del anillo, el de lectura directa y el
+ * despacho de chunks usan cada uno su propio puntero al bufer de etiquetas (el del anillo en s3,
+ * `addiu s3,sp,0x128` en 0x80041960; los otros dos en s4, 0x80041B7C y 0x800422F4), por eso `campos` se
+ * asigna al abrir cada fase y `bufer_anillo` es otro pseudo; la comprobacion `pools_listos != 1` salta
+ * con una sola prueba (`bne t4,t1` en 0x80041CCC) al bucle infinito que queda tras `func_800365D0`
+ * (0x80042088), escrito con una etiqueta; el chunk 0x41 copia con `dst[i] = src[i]` (dos
+ * inducciones, a0 y a1, en 0x8004390C) y no con un puntero que avanza; las dos escrituras de `tamano`
+ * van encadenadas (`D_800694A0 = D_800694A4 = x`: una sola carga en 0x800417EC); y la suma de las
+ * alineaciones se agrupa como `a + (b + 0x800)` (`addu` en 0x80041914).
+ *
  * Relecturas del original: tras un almacen a un miembro de un nodo el original vuelve a leer el campo
  * de las etiquetas (no lo reutiliza). En el chunk 0x1C el cuadrado se calcula con una segunda
  * lectura de `campos + 6`; en el 0x12 las tres lecturas de `campos` (por puntero) se repiten, y en el
@@ -498,7 +511,7 @@ typedef struct {
  * asignacion previa); con la variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 16369 y con ella 14598. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 13956 y con ella 12183. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -535,6 +548,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     /* Reserva de pila: local sin uso que completa el marco del original. */
     s32 reserva_cima[2];
     u8* campos;
+    u8* bufer_anillo;
     RegistroArchivo* registro;
     u8* cursor;
     /* Puntero de la lectura de la cabecera de secciones: el original lo guarda aparte del cursor del script. */
@@ -574,7 +588,6 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     EstadoPrincipal* estado;
 
     /* Memoria de trabajo del cargador: el destino recibe primero el contenido y luego la memoria libre. */
-    campos = campos_mem;
     libre = datos;
     D_800695B4 = 1;
     memset(D_8006AA70, 0, 0x100);
@@ -637,8 +650,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         D_80069484 = 0;
         D_80069488 = 0;
         D_80069480 = 0;
-        D_800694A4 = registro->tamano;
-        D_800694A0 = registro->tamano;
+        D_800694A0 = D_800694A4 = registro->tamano;
         IniciarLecturaContinua((CdlLOC*)D_8006A928);
         posicion = 0;
         if (D_80069480 == 0) {
@@ -665,7 +677,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         }
         datos += 0xA000;
         D_80069498 = (u32)datos;
-        D_800694A0 = secciones[posicion].alineado + secciones[posicion + 1].alineado + 0x800;
+        D_800694A0 = secciones[posicion].alineado + (secciones[posicion + 1].alineado + 0x800);
         D_8006949C = D_80069490 + 0x800;
         posicion += 2;
         if (func_80044664((u8*)D_8006949C, datos, (void*)0x1F800000) == 0) {
@@ -675,10 +687,11 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         if (cursor[1] == 0x45) {
             if (*cursor++ == 0x2D) {
                 if (*cursor != 0x2E) {
+                    bufer_anillo = campos_mem;
                     do {
                         tipo = *cursor++;
                         if (tipo == 0x45) {
-                            CopiarBytes(cursor, campos, 1);
+                            CopiarBytes(cursor, bufer_anillo, 1);
                             cursor++;
                             destino_seccion = (u8*)D_80067E98[campos_mem[0]];
                             D_800694A0 += secciones[posicion].alineado;
@@ -734,16 +747,16 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         if (cursor[1] == 0x45) {
             if (*cursor++ == 0x2D) {
                 if (*cursor != 0x2E) {
+                    campos = campos_mem;
                     do {
                         tipo = *cursor++;
                         if (tipo == 0x45) {
                             CopiarBytes(cursor, campos, 1);
                             destino_seccion = (u8*)D_80067E98[campos_mem[0]];
-                            D_800694A0 = secciones[posicion].alineado;
-                            D_80069484 = 0;
+                            D_800694A0 = secciones[posicion++].alineado;
                             D_80069498 = (u32)destino_seccion;
+                            D_80069484 = 0;
                             IniciarLecturaContinua((CdlLOC*)D_8006A928);
-                            posicion++;
                             while (D_8006955E != 0) {
                             }
                             *(u32*)destino_seccion = (u32)D_8006B2F8;
@@ -770,6 +783,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
      * fija) hasta el cierre 0x2E.
      */
     cursor = datos;
+    campos = campos_mem;
     for (;;) {
         orden = *cursor;
         if (orden == 0x2F) {
@@ -787,8 +801,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             libre--;
             libre++;
             if (pools_listos != 1) {
-                for (;;) {
-                }
+                goto sin_listas;
             }
             if (banco_cargado == 0) {
                 D_8006959C = (u32)libre;
@@ -856,6 +869,11 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             }
             func_8003652C();
             func_800365D0();
+            goto con_listas;
+        sin_listas:
+            for (;;) {
+            }
+        con_listas:
             D_80069484 = 0;
             D_80069498 = (u32)datos;
             D_8006948C = D_80069490;
@@ -1609,12 +1627,10 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(u8*, entidad, 0x178) = monton;
                             i = 0;
                             if (*(u16*)campos_mem != 0) {
-                                aux = campos;
                                 do {
-                                    *(u16*)(EN(u8*, entidad, 0x178) + i * 2) = *(u16*)aux;
-                                    aux += 2;
+                                    ((u16*)EN(u8*, entidad, 0x178))[i] = ((u16*)campos)[i];
                                     i++;
-                                } while (*(u16*)aux != 0);
+                                } while (((u16*)campos)[i] != 0);
                             }
                             monton += ((i + 1) & 0xFFFE) * 2;
                             EN(u8, entidad, 0x14A) = i;
