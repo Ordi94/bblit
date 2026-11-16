@@ -392,12 +392,12 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 29032 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 25501 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
- * caso del de su tabla. Medido: el codigo generado tiene 2956 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2816 coinciden en el mnemonico (95,3 %) y 1930 son
- * identicas (65,3 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
+ * caso del de su tabla. Medido: el codigo generado tiene 2944 instrucciones frente a 2955 del
+ * original, y alineando el texto de ambos 2834 coinciden en el mnemonico (95,9 %) y 1918 son
+ * identicas (64,9 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
  * van en el orden de direcciones de las tablas de saltos del original: el orden del fuente decide
  * el orden de emision, por eso los casos no van en orden numerico.
  *
@@ -407,18 +407,31 @@ extern u8* D_80069538;
  * cursor en s2. Se supone, sin verificar, que basta acortar la vida del nodo en unas 5 instrucciones
  * (hay 5 instrucciones de mas en los chunks 0x22 y 0x20) para que su prioridad supere la del
  * cursor, porque con 5,29 frente a 5,27 el reparto coincidia con el original en una medicion
- * intermedia. Siete variables de toda la funcion (compensacion, desp_bancos, tam_audio,
- * desp_texturas, hijo, hijo_matriz y monton) estan vivas desde la entrada de la funcion en el
- * volcado de `cc1` (se leen en algun camino sin asignacion previa), de modo que su longitud de vida
- * es de unas 2270 instrucciones y quedan en la pila; el original las guarda tambien en la pila (sw
- * a 0x1B0, 0x1D8 y 0x1DC del marco). La constante 0x2E de las pruebas de fin de chunk se iza a un
- * registro guardado (pseudo de R 68, L 2281, prioridad 0,18) y ocupa s8; el original no la iza y
- * conserva 39 `li ...,46` sueltos, aqui hay menos. Se supone, sin verificar, que el original guarda
- * en s7 una de esas variables de toda la funcion y el parametro `datos` en fp, y que por eso la
- * constante no llega a registro.
+ * intermedia.
+ *
+ * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
+ * recibe, en vez de una variable por uso, el desplazamiento de los chunks (`lw s7,0x128($sp)` y
+ * `lw s7,4($s4)`), el del banco de idioma (`lw s7,8($s4)` ... `lw s7,0x28($s4)`) y el resultado de
+ * `func_80040F78` (`addu s7,v0,zero` en 0x80042030 y 0x800421F0); el desplazamiento de texturas y
+ * el tamano de audio van en la pila (sw a 0x1DC y lw a 0x1D8) y la compensacion del chunk 0x3F en
+ * un temporal. Por eso `desp_campo` hace de las tres variables. Con una variable por uso ese valor
+ * no cruza llamadas, `global-alloc` le da un temporal (v1) y cada uso carga y suma por separado
+ * (29032); compartida cruza llamadas, toma un registro guardado y baja a 25501.
+ *
+ * Lo que queda de ese reparto (volcado de `cc1`): la variable compartida (R 118, L 2057,
+ * prioridad 0,34) toma s6, la zona libre `libre` (R 124, L 2279, 0,33) s7 y `datos` (R 106, L 2112,
+ * 0,30) s8; el original da s6 a `libre`, s7 a la variable y fp a `datos`. Se supone, sin
+ * verificar, que en el original la prioridad de la variable queda entre 0,30 y 0,33 y que la de
+ * `libre` supera a la de ella (el original conserva `libre += x` y `monton = libre` en dos
+ * instrucciones en 0x80041E44 y 0x80041E58, y aqui el compilador las funde en una).
+ *
+ * La constante 0x2E de las pruebas de fin de chunk no se iza: hay 34 `li ...,46` en el codigo
+ * generado y 35 en el original. El pseudo de R 68 y L 2279 que ocupaba s8 en versiones anteriores
+ * es `hijo_matriz` (vivo desde la entrada de la funcion porque se lee en algun camino sin
+ * asignacion previa); con la variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el marco del original es de 0x210 bytes (`addiu sp` en 0x800415A0) y el del C sin
- * la local, de 0x208; la cifra medida sin la local es 30147 y con ella 29032.
+ * la local, de 0x208; la cifra medida sin la local es 26382 y con ella 25501.
  *
  * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `datos`.
  * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
@@ -463,10 +476,14 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     u8* modelo;
     u8* destino_seccion;
     s32 posicion;
-    /* Desplazamiento leido de los campos de un chunk: el original lo guarda aparte del indice de seccion. */
+    /*
+     * Desplazamiento leido de los campos de un chunk, desplazamiento del banco de idioma y resultado
+     * de la busqueda de seccion de datos: un solo valor, como en el original (s7). Cada uso lo
+     * asigna antes, salvo la lectura del banco con un idioma fuera de 0..5, que 0x800416DC ya
+     * reinicia a 0 y que por tanto no se alcanza.
+     */
     s32 desp_campo;
     s32 compensacion;
-    s32 desp_bancos;
     s32 tam_audio;
     s32 desp_texturas;
     u32 n_secciones;
@@ -753,7 +770,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             InitListPool(D_80069644, 0xC, D_8006967E * 0xC);
             InitListPool(D_80069528, 0x3C, D_800695C2 * 0x3C);
             memset(D_80069538, 0, D_80069548);
-            compensacion = func_80040F78(secciones, n_secciones, 4);
+            desp_campo = func_80040F78(secciones, n_secciones, 4);
             datos = libre;
             if (audio_cargado == 1) {
                 audio_cargado = 2;
@@ -790,23 +807,23 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             }
             datos = libre;
             if (D_80010050 == 0) {
-                compensacion = func_80040F78(secciones, n_secciones, 6);
+                desp_campo = func_80040F78(secciones, n_secciones, 6);
             } else if (D_80010050 == 1) {
-                compensacion = func_80040F78(secciones, n_secciones, 5);
+                desp_campo = func_80040F78(secciones, n_secciones, 5);
             } else if (D_80010050 == 2) {
-                compensacion = func_80040F78(secciones, n_secciones, 7);
+                desp_campo = func_80040F78(secciones, n_secciones, 7);
             } else if (D_80010050 == 3) {
-                compensacion = func_80040F78(secciones, n_secciones, 8);
+                desp_campo = func_80040F78(secciones, n_secciones, 8);
             } else if (D_80010050 == 4) {
-                compensacion = func_80040F78(secciones, n_secciones, 9);
+                desp_campo = func_80040F78(secciones, n_secciones, 9);
             } else if (D_80010050 == 5) {
-                compensacion = func_80040F78(secciones, n_secciones, 0xA);
+                desp_campo = func_80040F78(secciones, n_secciones, 0xA);
             }
             D_80069484 = 0;
             D_80069498 = (u32)datos;
             D_8006948C = D_80069490;
             D_8006949C = D_80069490;
-            D_800694AC = CdPosToInt((CdlLOC*)D_8006A928) + ((u32)compensacion >> 11);
+            D_800694AC = CdPosToInt((CdlLOC*)D_8006A928) + ((u32)desp_campo >> 11);
             CdIntToPos(D_800694AC, (CdlLOC*)D_8006A928);
             IniciarLecturaContinua((CdlLOC*)D_8006A928);
             if (D_80069494 != 0) {
@@ -817,7 +834,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                 while (D_8006955E != 0) {
                 }
             }
-            D_80069488 += compensacion + D_80069478;
+            D_80069488 += desp_campo + D_80069478;
             D_800694AC = CdPosToInt((CdlLOC*)D_8006A928);
             /*
              * El original divide con signo (`bgez`, `addiu 0x7FF` y `sra 11` en 0x800422B4..0x800422C0,
@@ -1154,26 +1171,26 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             CopiarBytes(cursor, campos, 0x30);
                             /* Igual que en 0x4C: el almacen del original (0x80042E8C) solo sigue a una coincidencia. */
                             if (D_80010050 == 0) {
-                                desp_bancos = *(s32*)campos_mem;
+                                desp_campo =*(s32*)campos_mem;
                                 D_800694A0 = *(s32*)(campos + 4);
                             } else if (D_80010050 == 1) {
-                                desp_bancos = *(s32*)(campos + 8);
+                                desp_campo =*(s32*)(campos + 8);
                                 D_800694A0 = *(s32*)(campos + 12);
                             } else if (D_80010050 == 2) {
-                                desp_bancos = *(s32*)(campos + 16);
+                                desp_campo =*(s32*)(campos + 16);
                                 D_800694A0 = *(s32*)(campos + 20);
                             } else if (D_80010050 == 3) {
-                                desp_bancos = *(s32*)(campos + 24);
+                                desp_campo =*(s32*)(campos + 24);
                                 D_800694A0 = *(s32*)(campos + 28);
                             } else if (D_80010050 == 4) {
-                                desp_bancos = *(s32*)(campos + 32);
+                                desp_campo =*(s32*)(campos + 32);
                                 D_800694A0 = *(s32*)(campos + 36);
                             } else if (D_80010050 == 5) {
-                                desp_bancos = *(s32*)(campos + 40);
+                                desp_campo =*(s32*)(campos + 40);
                                 D_800694A0 = *(s32*)(campos + 44);
                             }
                             D_800695E4 = D_8006951C;
-                            func_8003ECD4(datos + desp_bancos, D_800694A0);
+                            func_8003ECD4(datos + desp_campo, D_800694A0);
                             cursor += 0x30;
                             break;
                         case 0x04:
