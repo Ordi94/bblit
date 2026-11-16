@@ -59,7 +59,7 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 3885 con la configuracion versionada (g = 8 del archivo; ejes 477 de operando, 2 reordenadas, 500
+/* Pendiente: puntuacion 3870 con la configuracion versionada (g = 8 del archivo; ejes 477 de operando, 2 reordenadas, 494
    insertadas o borradas). La logica coincide. La prueba de la espera (0x800255D0..) coincide en el orden de las operaciones con el producto calculado
    antes de la prueba de `D_8006966A`; solo difiere el registro del producto (`s0` en el original). Residuo medido por tramos: (1) reparto de registros de los temporales
    v0/v1/a0 y de los punteros s0-s2 en las consultas de terreno (el original deja &sc->tmp_v en s0, &sc->res en s1 y
@@ -67,18 +67,18 @@ s16* D_800693DC;
    el orden); (2) el bloque de la base de la caja (0x80025544..0x800255E4) coincide en el orden de las multiplicaciones: el
    original emite `li v0,0x46 ; mult v0,v0` antes del almacen de max.vx, de modo que el producto sale del registro
    recien almacenado y no de una constante; se reproduce con `a = o->max.vx * o->max.vx + sum * sum;` escrito
-   antes del calculo de `c` (con `0x46 * 0x46` el compilador lo pliega a una constante y la cifra es 4650).
+   antes del calculo de `c` (con `0x46 * 0x46` el compilador lo pliega a una constante y la cifra es 4635).
+   La extension de 16 bits de `a` coincide (`sll s0,s5,0x10` antes y despues de la union) al pasar `a` directamente
+   a `SquareRoot0` y a `alcance2`, sin la local `d` (con `d = a` el temporal de la extension salia en `v0`).
    Queda: el original carga el radio (0x20) antes de max.vz (0x54) en la suma de `sum` y aqui sale al reves (con
-   los sumandos en el otro orden o en dos sentencias la cifra no baja de 3885), y el temporal de la extension de
-   16 bits de `a` es `s0` en el original (`sll s0,s5,0x10` antes y despues de la union) y `v0` aqui; se supone, sin
-   verificar, que el original lo une con `d` en una sola cantidad local; (3) la mascara
+   los sumandos en el otro orden o en dos sentencias la cifra no baja); (3) la mascara
    0x10000000 de la prueba del registro de estado se carga en v1 y la bandera en v0 en el original, y aqui al reves; el
    orden de operandos no lo cambia. Los accesos que el original no ordena con los almacenes a globales (los cuatro
    `vy` de D_80069D60 y dos de `flags14`) se escriben por desplazamiento en bytes; con los seis accesos por nombre la cifra
    es 7570 (se supone, sin verificar con el volcado, que el planificador los reordena con los almacenes a D_8006965A,
    D_8006965B y D_8006965E).
    Reserva de pila: el marco del original es de 0x48 bytes (`addiu sp` en 0x80020B90) y el del C sin la local, de
-   0x40 (8 bytes); la cifra medida sin la local es 4039 y con ella 3885. La funcion es pendiente: con la local la
+   0x40 (8 bytes); la cifra medida sin la local es 4024 y con ella 3870. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {
@@ -1591,9 +1591,8 @@ sin_rebote:
                 if (a < c) {
                     a = c;
                 }
-                d = a;
-                o->w2E = SquareRoot0(d);
-                o->alcance2 = d;
+                o->w2E = SquareRoot0(a);
+                o->alcance2 = a;
             } else {
                 goto caja_defecto;
             }
