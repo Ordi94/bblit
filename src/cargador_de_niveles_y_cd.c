@@ -428,8 +428,7 @@ typedef struct {
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2954 instrucciones frente a 2955 del
- * original, y alineando el mnemonico de cada instruccion de ambos (SequenceMatcher de difflib sin
- * descarte automatico) 2448 coinciden (82,8 %). Los cuerpos de los
+ * original. Los cuerpos de los
  * casos de los cinco `switch` y del despacho de primer nivel van en el orden de direcciones de las
  * tablas de saltos del original: el orden del fuente decide el orden de emision, por eso los casos
  * no van en orden numerico.
