@@ -291,7 +291,6 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
     Objeto* mejor;
     u32 mejor_d;
     s32 i;
-    s32 t2;
     s32 k;
     s32* kp;
     SVECTOR salida;
@@ -345,14 +344,14 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
         GEO_RESTAR_W(&w->actual->param.trans);
         GEO_GUARDAR_H_T4(dif);
         GEO_NORMA2_XZ(dif, &w->dist2);
-        t2 = U16_2E(a) + U16_2E(w->actual) + w->actual->radio + a->radio;
-        t2 = t2 * t2;
-        if ((u32)t2 < w->dist2) {
+        i = U16_2E(w->actual) + U16_2E(a) + w->actual->radio + a->radio;
+        i = i * i;
+        if ((u32)i < w->dist2) {
             goto siguiente;
         }
         w->a = a;
         w->b = w->actual;
-        GEO_CARGAR_W(&a->param.trans);
+        GEO_CARGAR_W(&w->a->param.trans);
         GEO_RESTAR_W(&w->b->param.trans);
         GEO_GUARDAR_H_T4(dif);
         w->dif.vy = w->dif.vy + v->vy;
