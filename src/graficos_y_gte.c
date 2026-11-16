@@ -571,6 +571,10 @@ ciclo_aristas:
                 if (!(w->dist2 < mejor_d)) {
                     goto siguiente;
                 }
+                mejor = w->actual;
+                mejor_d = w->dist2;
+                salida_y = w->caja;
+                goto siguiente;
             }
             mejor = w->actual;
             mejor_d = w->dist2;
