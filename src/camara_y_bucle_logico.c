@@ -454,7 +454,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3340 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * Pendiente: puntuacion 2930 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
  * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
  * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
  * los bucles de las ocho sondas (modo de apuntado y seguimiento libre) coinciden con `i++` escrito DESPUES de la
@@ -480,7 +480,17 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * llamada lo empeora); el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx` tras el salto y el original
  * tambien, pero aqui el compilador reutiliza el registro; en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y
  * el original en `a3`/`a2` (sin efecto: cargar `w->p4` antes de `ec`, o en una local propia). La direccion de
- * acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos.
+ * acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos. La prueba del giro tras el
+ * bloque de la cuenta de espera (0xed4..0xfd8) coincide con una sola cola `w->rot.vy = D_80069402` y dos
+ * `goto` (la forma anterior, `if (f2 & 2 || byte)` tras el bloque, daba 410 puntos mas: el
+ * compilador conservaba una prueba de mas por cada camino del bloque; con el bit guardado en una local la
+ * prueba se reutilizaba pero no se enhebraba, y con la prueba del byte repetida en cada rama y la cola
+ * replicada la cola sobrevivia en el otro extremo). Medido sobre el almacen de banderas del giro
+ * (0xcc4..0xd30): con el almacen por un puntero `u16*` la marca de campo de estructura (`/s` en el volcado
+ * `.sched`) desaparece del almacen y la carga de `D_80069402` sigue delante de el; se supone, sin verificar,
+ * que es porque la base del almacen es un pseudo que el planificador resuelve al simbolo `D_8006D928`, de
+ * modo que los dos accesos no se solapan. Con la mascara de la prueba de bits en una local propia
+ * (0xba0..0xbb8) y con la raiz de la distancia en otra local (0x1324..0x13a8) la cifra empeora.
  */
 /*
  * Acerca la altura del punto de vista a la banda [base - 0x64, base + 0x64] desplazada por p4: si queda por encima
@@ -892,12 +902,22 @@ aplicar_giro:
                 D_8006D928.flags80 = f2 | 2;
             }
         }
+        if ((D_8006D9A8[0] & 2) == 0) {
+            goto guardar_giro;
+        }
     }
-    if ((f2 & 2) != 0 || (D_8006D9A8[0] & 2) != 0) {
-        w->rot.vy = D_80069402;
-    } else {
-        D_80069402 = w->rot.vy;
-    }
+    /*
+     * Una sola copia de la lectura del giro, alcanzada por dos caminos: la prueba de f2 antes del bloque
+     * (el original salta a ella con `bnez` en 0x8003422C hacia 0x80034318, sin recalcular el bit) y el final
+     * del bloque cuando el byte D_8006D9A8 lo tiene (`beqz` en 0x80034310 hacia la escritura contraria, que
+     * queda tras la lectura). Escrito como `if ((f2 & 2) != 0 || byte) {...} else {...}`
+     * el compilador vuelve a calcular `f2 & 2` en la union y emite una prueba de mas por cada camino del bloque.
+     */
+    w->rot.vy = D_80069402;
+    goto fin_giro;
+guardar_giro:
+    D_80069402 = w->rot.vy;
+fin_giro:
     w->dir.vy = 0;
     w->dir.vx = 0;
     w->dir.vz = w->dist;
