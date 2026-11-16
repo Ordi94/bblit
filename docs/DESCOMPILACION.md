@@ -676,7 +676,9 @@ tiene un marco mayor que el que genera el C sin él. Se cumplen las cinco condic
    `/* Reserva de pila: local sin uso que completa el marco del original. */`, que es el que localiza la prueba. La
    cabecera de la función dice el marco del original con su `addiu sp` y la cifra sin la local, con la forma
    «Reserva de pila: el marco del original es de 0xNN bytes (`addiu sp` en 0xDIRECCION) y el del C sin la local, de
-   0xMM; la cifra medida sin la local es X y con ella 0.»
+   0xMM; la cifra medida sin la local es X y con ella Y.» La frase de las dos cifras va con esa redacción exacta
+   (`la cifra medida sin la local es X y con ella Y`, en una o varias líneas del comentario): Y es menor que X; si la
+   función coincide, Y es 0; si es pendiente, Y es la cifra de la columna Estado de su fila.
 5. La función tiene su fila en la tabla de abajo con la forma «reserva de pila» y el número de arreglos de reserva
    que declara (una función con tres reservas separadas por otras locales cuenta tres).
 
@@ -702,8 +704,13 @@ con la misma forma y el mismo número, y cada fila debe tener su declaración. L
 «no genera código» (o «no generan código») y la oración fija; la de una reserva de pila, «Reserva de pila:»,
 `addiu sp` y «sin la local». Una local cuyo nombre empieza por `reserva`, de cualquier tipo (`u8 reserva[8];`,
 `SVECTOR reserva;`, `s32 reserva[N];`), que ninguna sentencia nombra y no lleva el comentario fijo hace fallar la
-prueba, igual que la que lo lleva pero no es un arreglo de `s32`; las locales con otro nombre no se detectan. Al
-añadir o quitar una referencia se actualiza la tabla en el mismo cambio.
+prueba, igual que la que lo lleva pero no es un arreglo de `s32`; las locales con otro nombre no se detectan.
+La columna Estado también se cruza con `src/`: `coincide` si la función no tiene su `INCLUDE_ASM` en el `#else` de
+un bloque `#ifdef NON_MATCHING`, y `NON_MATCHING <cifra>` si lo tiene; una fila que dice lo contrario, un estado con
+otra forma o dos filas de una misma función con estados distintos hacen fallar la prueba. En las reservas de pila la
+prueba lee de la cabecera las dos cifras de la frase fija y exige que la cifra con la local sea menor que la cifra
+sin ella, que sea 0 si la función coincide y que, si es pendiente, sea la cifra de la fila. Al añadir o quitar una
+referencia se actualiza la tabla en el mismo cambio.
 
 | Función | Archivo | Forma | Referencias | Estado | Qué decide |
 |---|---|---|---:|---|---|

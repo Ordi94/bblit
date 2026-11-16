@@ -11,8 +11,9 @@ la funcion dice que la referencia no genera codigo y cierra el parrafo con una o
 que se desconoce la forma del fuente original (la reserva de pila lleva en su cabecera el marco del
 original y la cifra sin la local), y ``docs/DESCOMPILACION.md`` lista cada funcion con su forma y su
 numero de referencias. Estas pruebas cruzan ``src/`` con esa tabla para que una referencia nueva no
-entre sin su comentario ni sin su fila, y para que una fila no sobreviva a la referencia que describia. Solo
-leen archivos.
+entre sin su comentario ni sin su fila, y para que una fila no sobreviva a la referencia que describia.
+Tambien cruzan la columna Estado con el estado real de cada funcion en ``src/`` y, en las reservas de pila,
+las dos cifras de la cabecera con la fila. Solo leen archivos.
 
 La deteccion de la reserva de pila alcanza a toda local cuyo nombre empieza por ``reserva``, sea cual sea su
 tipo (``u8 reserva[8];``, ``SVECTOR reserva;``, ``s32 reserva[N];``), que ninguna sentencia de su funcion
@@ -48,10 +49,18 @@ COMENTARIO_REPLICADA = "Sentencia replicada: es la misma que la de las otras ram
 COMENTARIO_RESERVA = "Reserva de pila: local sin uso que completa el marco del original."
 MENSAJE_MARCA_SIN_DECLARACION = "el comentario de reserva de pila no precede a una local `reserva`"
 MARCADORES_DE_CABECERA_RESERVA = ("Reserva de pila:", "addiu sp", "sin la local")
+ESTADO_COINCIDE = "coincide"
 
 _CIERRE_ENVOLTURA = re.compile(r"^\s*\}\s*while\s*\(0\)\s*;")
 _DEFINICION = re.compile(r"^[A-Za-z_][\w \t\*]*?[\s\*](\w+)\([^;]*\)\s*\{?\s*$")
-_FILA_TABLA = re.compile(r"^\|\s*`(\w+)`\s*\|\s*`([^`]+)`\s*\|\s*([^|]+?)\s*\|\s*(\d+)\s*\|")
+_FILA_TABLA = re.compile(r"^\|\s*`(\w+)`\s*\|\s*`([^`]+)`\s*\|\s*([^|]+?)\s*\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|")
+_ESTADO_PENDIENTE = re.compile(r"^NON_MATCHING (\d+)$")
+_INCLUDE_ASM = re.compile(r'^\s*INCLUDE_ASM\(\s*"[^"]*"\s*,\s*(\w+)\s*\)\s*;')
+_BLOQUE_PENDIENTE_ABRE = re.compile(r"^\s*#\s*ifdef\s+NON_MATCHING\b")
+_CONDICIONAL_ABRE = re.compile(r"^\s*#\s*(?:if|ifdef|ifndef)\b")
+_CONDICIONAL_ELSE = re.compile(r"^\s*#\s*else\b")
+_CONDICIONAL_CIERRA = re.compile(r"^\s*#\s*endif\b")
+_CIFRAS_DE_RESERVA = re.compile(r"la cifra medida sin la local es (\d+) y con ella (\d+)")
 _INCREMENTO = re.compile(r"^\s*(?:(\w+)(\+\+|--)|(\+\+|--)(\w+))\s*;\s*$")
 _IF_VACIO_EN_UNA_LINEA = re.compile(r"^\s*(?:\}\s*else\s+)?if\s*\(.*\)\s*\{\s*\}\s*$")
 _IF_ABRE = re.compile(r"^\s*(?:\}\s*else\s+)?if\s*\(.*\)\s*\{\s*$")
@@ -546,6 +555,158 @@ def _incumplimientos_de_reservas(texto: str) -> list[str]:
     return fallos
 
 
+def _funciones_pendientes(texto: str) -> frozenset[str]:
+    """Devuelve las funciones pendientes: las de su ``INCLUDE_ASM`` en el ``#else`` de un bloque.
+
+    Contexto:
+        Lo usa el cruce del estado de la tabla con ``src/``. Una funcion esta pendiente cuando su
+        definicion en C va bajo ``#ifdef NON_MATCHING`` y la rama ``#else`` conserva el ``INCLUDE_ASM``
+        con su ensamblador; una funcion que coincide no tiene ningun ``INCLUDE_ASM`` de su nombre. Los
+        condicionales anidados dentro del bloque (``#if``, ``#ifdef``, ``#ifndef`` con su ``#endif``) no
+        cierran ni parten el bloque.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+
+    Returns:
+        frozenset[str]: Nombres de las funciones con ``INCLUDE_ASM`` en la rama ``#else`` de un bloque
+        ``#ifdef NON_MATCHING``; vacio si no hay ninguna.
+
+    Ejemplo:
+        _funciones_pendientes(texto_de_un_archivo) == frozenset({"f"})
+    """
+    pendientes: set[str] = set()
+    en_bloque = False
+    en_else = False
+    profundidad = 0
+    for linea in texto.splitlines():
+        if not en_bloque:
+            if _BLOQUE_PENDIENTE_ABRE.match(linea):
+                en_bloque, en_else, profundidad = True, False, 0
+        elif _CONDICIONAL_ABRE.match(linea):
+            profundidad += 1
+        elif _CONDICIONAL_CIERRA.match(linea):
+            if profundidad == 0:
+                en_bloque, en_else = False, False
+            else:
+                profundidad -= 1
+        elif _CONDICIONAL_ELSE.match(linea) and profundidad == 0:
+            en_else = True
+        elif en_else:
+            coincidencia = _INCLUDE_ASM.match(linea)
+            if coincidencia is not None:
+                pendientes.add(coincidencia.group(1))
+    return frozenset(pendientes)
+
+
+def _leer_estado(texto: str) -> tuple[bool, int | None] | None:
+    """Interpreta la columna Estado de la tabla: ``coincide`` o ``NON_MATCHING <cifra>``.
+
+    Contexto:
+        Lo usan ``_diferencias_de_estado`` y ``_incumplimientos_de_cifras_de_reserva``.
+
+    Args:
+        texto (str): Contenido de la celda, sin espacios en los extremos.
+
+    Returns:
+        tuple[bool, int | None] | None: ``(False, None)`` si coincide; ``(True, cifra)`` si esta pendiente;
+        ``None`` si la celda no tiene ninguna de las dos formas.
+
+    Ejemplo:
+        _leer_estado("NON_MATCHING 410") == (True, 410)
+    """
+    if texto == ESTADO_COINCIDE:
+        return (False, None)
+    pendiente = _ESTADO_PENDIENTE.match(texto)
+    if pendiente is None:
+        return None
+    return (True, int(pendiente.group(1)))
+
+
+def _diferencias_de_estado(estados: dict[tuple[str, str], str], pendientes: frozenset[str]) -> list[str]:
+    """Compara el estado de cada fila de la tabla con el real de la funcion en ``src/``.
+
+    Contexto:
+        Lo ejerce la prueba que cruza la tabla con ``src/``: una fila ``coincide`` de una funcion pendiente,
+        una fila ``NON_MATCHING`` de una funcion que coincide, un estado ilegible o filas de una misma funcion
+        que no dicen lo mismo dejan una tabla que miente sobre el estado de la funcion.
+
+    Args:
+        estados (dict): (funcion, forma) -> texto de la columna Estado de la fila.
+        pendientes (frozenset[str]): Funciones pendientes segun ``src/`` (``_funciones_pendientes``).
+
+    Returns:
+        list[str]: Un mensaje por cada diferencia; vacia si todas las filas dicen el estado real.
+
+    Ejemplo:
+        _diferencias_de_estado({("f", "envoltura"): "coincide"}, frozenset({"f"})) != []
+    """
+    diferencias: list[str] = []
+    textos_por_funcion: dict[str, set[str]] = {}
+    for (funcion, forma), texto in sorted(estados.items()):
+        textos_por_funcion.setdefault(funcion, set()).add(texto)
+        leido = _leer_estado(texto)
+        if leido is None:
+            diferencias.append(
+                f"{funcion}: el estado `{texto}` de la fila `{forma}` no es "
+                "`coincide` ni `NON_MATCHING <cifra>`"
+            )
+        elif leido[0] and funcion not in pendientes:
+            diferencias.append(f"{funcion}: la fila `{forma}` dice `{texto}` pero la funcion coincide en src")
+        elif not leido[0] and funcion in pendientes:
+            diferencias.append(
+                f"{funcion}: la fila `{forma}` dice `coincide` pero la funcion esta pendiente en src"
+            )
+    for funcion, textos in sorted(textos_por_funcion.items()):
+        if len(textos) > 1:
+            diferencias.append(f"{funcion}: sus filas dicen estados distintos: {sorted(textos)}")
+    return diferencias
+
+
+def _incumplimientos_de_cifras_de_reserva(texto: str, estados: dict[str, str]) -> list[str]:
+    """Comprueba las dos cifras de la cabecera de cada reserva de pila contra el estado de su fila.
+
+    Contexto:
+        Complementa a ``_incumplimientos_de_reservas``. La cabecera cita la cifra medida sin la local y con
+        ella con la frase ``la cifra medida sin la local es X y con ella Y``. La local debe mejorar la medida
+        (Y menor que X); si la funcion coincide, Y es 0; si esta pendiente, Y es la cifra de su fila.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+        estados (dict[str, str]): funcion -> texto de la columna Estado de su fila de reserva de pila.
+
+    Returns:
+        list[str]: Un mensaje por cada incumplimiento; vacia si todas las reservas del texto cumplen.
+
+    Ejemplo:
+        _incumplimientos_de_cifras_de_reserva(texto_con_reserva, {"func_800000A0": "coincide"})
+    """
+    cuentas, _ = _reservas_de_pila(texto)
+    fallos: list[str] = []
+    for funcion, _forma in sorted(cuentas):
+        cabecera = " ".join(_cabecera(texto, funcion).replace("*", " ").split())
+        cifras = _CIFRAS_DE_RESERVA.search(cabecera)
+        if cifras is None:
+            fallos.append(f"{funcion}: la cabecera no lleva `la cifra medida sin la local es X y con ella Y`")
+            continue
+        sin_local, con_local = int(cifras.group(1)), int(cifras.group(2))
+        if con_local >= sin_local:
+            fallos.append(
+                f"{funcion}: la cifra con la local ({con_local}) no es menor que "
+                f"la cifra sin ella ({sin_local})"
+            )
+        leido = _leer_estado(estados.get(funcion, ""))
+        if leido is None:
+            fallos.append(f"{funcion}: la tabla no tiene un estado legible para su reserva de pila")
+        elif not leido[0] and con_local != 0:
+            fallos.append(
+                f"{funcion}: coincide pero la cabecera cita {con_local} con la local y debe citar 0"
+            )
+        elif leido[0] and con_local != leido[1]:
+            fallos.append(f"{funcion}: la fila dice {leido[1]} y la cabecera {con_local} con la local")
+    return fallos
+
+
 def _referencias_en_src() -> dict[tuple[str, str], tuple[str, int]]:
     """Devuelve (funcion, forma) -> (archivo relativo, referencias) para todo ``src/*.c``."""
     resultado: dict[tuple[str, str], tuple[str, int]] = {}
@@ -585,19 +746,40 @@ def _diferencias_con_la_tabla(
     return diferencias
 
 
-def _tabla_del_documento() -> dict[tuple[str, str], tuple[str, int]]:
-    """Lee la tabla de ``## Referencias sin código`` como (funcion, forma) -> (archivo, referencias)."""
+def _filas_del_documento() -> list[tuple[str, str, str, int, str]]:
+    """Lee las filas de ``## Referencias sin código`` como (funcion, archivo, forma, referencias, estado)."""
     texto = (RAIZ_REPOSITORIO / "docs" / "DESCOMPILACION.md").read_text(encoding="utf-8")
     inicio = texto.index("## Referencias sin código")
     siguiente = texto.find("\n## ", inicio + 1)
     seccion = texto[inicio : siguiente if siguiente != -1 else len(texto)]
-    filas: dict[tuple[str, str], tuple[str, int]] = {}
+    filas: list[tuple[str, str, str, int, str]] = []
     for linea in seccion.splitlines():
         coincidencia = _FILA_TABLA.match(linea)
         if coincidencia is not None:
-            funcion, archivo, forma, cantidad = coincidencia.groups()
-            filas[(funcion, forma)] = (archivo, int(cantidad))
+            funcion, archivo, forma, cantidad, estado = coincidencia.groups()
+            filas.append((funcion, archivo, forma, int(cantidad), estado))
     return filas
+
+
+def _tabla_del_documento() -> dict[tuple[str, str], tuple[str, int]]:
+    """Lee la tabla de ``## Referencias sin código`` como (funcion, forma) -> (archivo, referencias)."""
+    return {
+        (funcion, forma): (archivo, cantidad)
+        for funcion, archivo, forma, cantidad, _ in _filas_del_documento()
+    }
+
+
+def _estados_del_documento() -> dict[tuple[str, str], str]:
+    """Lee la columna Estado de la tabla como (funcion, forma) -> texto de la celda."""
+    return {(funcion, forma): estado for funcion, _, forma, _, estado in _filas_del_documento()}
+
+
+def _pendientes_en_src() -> frozenset[str]:
+    """Devuelve las funciones pendientes (``NON_MATCHING`` con su ``INCLUDE_ASM``) de todo ``src/*.c``."""
+    pendientes: set[str] = set()
+    for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c")):
+        pendientes |= _funciones_pendientes(archivo.read_text(encoding="utf-8"))
+    return frozenset(pendientes)
 
 
 DECLARACIONES_BASE = "    s32 b, c, d, p, q, x2E, y17, mascara, m, num, sentido;\n    Obj *o;\n"
@@ -609,11 +791,8 @@ def _texto_con(cuerpo: str, declaraciones: str = DECLARACIONES_BASE) -> str:
 
 
 def test_el_recuento_encuentra_las_envolturas_del_codigo_y_no_las_de_macros() -> None:
-    texto = (
-        "#define M(x) do { \\\n"
-        "    x; \\\n"
-        "} while (0);\n"
-        "\n" + _texto_con("    do {\n        a += 2;\n    } while (0);\n")
+    texto = "#define M(x) do { \\\n    x; \\\n} while (0);\n\n" + _texto_con(
+        "    do {\n        a += 2;\n    } while (0);\n"
     )
     assert _buscar_referencias(texto) == {("func_800000A0", ENVOLTURA): 1}
 
@@ -664,9 +843,8 @@ def test_el_recuento_encuentra_las_sentencias_replicadas_por_su_comentario_fijo(
 
 
 def test_un_comentario_distinto_o_dentro_de_una_macro_no_cuenta_como_sentencia_replicada() -> None:
-    texto = (
-        f"#define M(x) \\\n    /* {COMENTARIO_REPLICADA} */ \\\n    x\n\n"
-        + _texto_con("    /* Sentencia replicada: otra cosa. */\n    b = a;\n")
+    texto = f"#define M(x) \\\n    /* {COMENTARIO_REPLICADA} */ \\\n    x\n\n" + _texto_con(
+        "    /* Sentencia replicada: otra cosa. */\n    b = a;\n"
     )
     assert _buscar_referencias(texto) == {}
 
@@ -1536,5 +1714,294 @@ def test_toda_reserva_de_pila_de_src_cumple_la_regla() -> None:
         f"{archivo.name}: {fallo}"
         for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c"))
         for fallo in _incumplimientos_de_reservas(archivo.read_text(encoding="utf-8"))
+    ]
+    assert fallos == []
+
+
+FUNCION_PENDIENTE = "func_800000A0"
+BLOQUE_PENDIENTE = (
+    "#ifdef NON_MATCHING\n"
+    "void func_800000A0(void)\n{\n}\n"
+    "#else\n"
+    'INCLUDE_ASM("asm/nonmatchings/inventado", func_800000A0);\n'
+    "#endif\n"
+)
+
+
+def test_una_funcion_con_su_include_asm_en_el_else_de_un_bloque_non_matching_esta_pendiente() -> None:
+    """La funcion pendiente es la que conserva su ``INCLUDE_ASM`` en el ``#else`` de ``#ifdef NON_MATCHING``.
+
+    Regla:
+        El estado real de una funcion sale del codigo: pendiente si la rama normal sigue en ensamblador.
+
+    Ejemplo:
+        El bloque ``#ifdef NON_MATCHING ... #else INCLUDE_ASM(..., f); #endif`` marca a ``f`` como pendiente.
+    """
+    assert _funciones_pendientes(BLOQUE_PENDIENTE) == {FUNCION_PENDIENTE}
+
+
+def test_una_funcion_sin_include_asm_o_con_el_include_asm_fuera_de_un_bloque_non_matching_coincide() -> None:
+    """Ni la funcion definida en C sin bloque ni un ``INCLUDE_ASM`` suelto la hacen pendiente.
+
+    Regla:
+        Solo cuenta el ``INCLUDE_ASM`` de la rama ``#else`` de un bloque ``NON_MATCHING``: el de una rutina
+        manuscrita o el que queda antes del bloque no es un intento pendiente.
+
+    Ejemplo:
+        ``INCLUDE_ASM(..., g);`` antes del bloque y ``void h(void){}`` despues no dejan ninguna pendiente.
+    """
+    texto = 'INCLUDE_ASM("asm/inventado", g);\n\nvoid h(void)\n{\n}\n'
+    assert _funciones_pendientes(texto) == frozenset()
+    antes_del_bloque = 'INCLUDE_ASM("asm/inventado", g);\n#ifdef NON_MATCHING\nvoid f(void)\n{\n}\n#endif\n'
+    assert _funciones_pendientes(antes_del_bloque) == frozenset()
+
+
+def test_el_include_asm_de_la_rama_normal_del_bloque_no_marca_la_funcion_como_pendiente() -> None:
+    """Un ``INCLUDE_ASM`` antes del ``#else`` pertenece a la rama del C, no a la del ensamblador.
+
+    Regla:
+        Solo la rama ``#else`` conserva el ensamblador del intento pendiente.
+
+    Ejemplo:
+        ``#ifdef NON_MATCHING`` con un ``INCLUDE_ASM`` antes del ``#else`` no marca nada.
+    """
+    texto = '#ifdef NON_MATCHING\nINCLUDE_ASM("asm/inventado", f);\n#else\nvoid g(void)\n{\n}\n#endif\n'
+    assert _funciones_pendientes(texto) == frozenset()
+
+
+def test_los_condicionales_anidados_en_un_bloque_pendiente_no_lo_cierran_ni_lo_parten() -> None:
+    """Un ``#if`` con su ``#else`` y su ``#endif`` dentro del bloque no cambia la rama del bloque.
+
+    Regla:
+        El ``#else`` y el ``#endif`` de un condicional interno se emparejan con su ``#if``: el
+        ``INCLUDE_ASM`` de la rama ``#else`` del bloque sigue contando tras el condicional interno.
+
+    Ejemplo:
+        Un ``#ifdef OTRO ... #else ... #endif`` en el cuerpo no impide detectar el ``INCLUDE_ASM`` final.
+    """
+    texto = (
+        "#ifdef NON_MATCHING\n"
+        "void f(void)\n{\n"
+        "#ifdef OTRO\n    a();\n#else\n    b();\n#endif\n"
+        "}\n"
+        "#else\n"
+        'INCLUDE_ASM("asm/inventado", f);\n'
+        "#endif\n"
+        'INCLUDE_ASM("asm/inventado", suelta);\n'
+    )
+    assert _funciones_pendientes(texto) == {"f"}
+
+
+def test_dos_bloques_pendientes_en_el_mismo_archivo_se_detectan_los_dos() -> None:
+    """Cada bloque ``NON_MATCHING`` cierra con su ``#endif`` y el siguiente empieza de cero."""
+    segundo = BLOQUE_PENDIENTE.replace("func_800000A0", "func_800000B0")
+    assert _funciones_pendientes(BLOQUE_PENDIENTE + "\n" + segundo) == {"func_800000A0", "func_800000B0"}
+
+
+def test_el_estado_de_la_tabla_se_lee_como_coincide_o_non_matching_con_cifra() -> None:
+    """La celda Estado solo admite ``coincide`` o ``NON_MATCHING <cifra>``; cualquier otra cosa es ilegible.
+
+    Regla:
+        El estado es un dato cerrado: la cifra de una funcion pendiente es un entero y nada mas.
+
+    Ejemplo:
+        ``NON_MATCHING 410`` es pendiente con 410; ``NON_MATCHING`` sin cifra y ``coincide 0`` no se leen.
+    """
+    assert _leer_estado("coincide") == (False, None)
+    assert _leer_estado("NON_MATCHING 410") == (True, 410)
+    assert _leer_estado("NON_MATCHING") is None
+    assert _leer_estado("coincide 0") is None
+    assert _leer_estado("") is None
+
+
+def test_una_fila_que_dice_coincide_de_una_funcion_pendiente_se_rechaza() -> None:
+    """Una fila ``coincide`` de una funcion que sigue pendiente en ``src/`` hace fallar el cruce.
+
+    Regla:
+        La tabla no puede dar por cerrada una funcion cuyo C aun va bajo ``#ifdef NON_MATCHING``.
+
+    Ejemplo:
+        ``func_800000A0`` pendiente con una fila ``coincide`` da una diferencia.
+    """
+    estados = {(FUNCION_PENDIENTE, RESERVA_DE_PILA): "coincide"}
+    assert _diferencias_de_estado(estados, frozenset({FUNCION_PENDIENTE})) == [
+        f"{FUNCION_PENDIENTE}: la fila `{RESERVA_DE_PILA}` dice `coincide` "
+        "pero la funcion esta pendiente en src"
+    ]
+
+
+def test_una_fila_non_matching_de_una_funcion_que_coincide_se_rechaza() -> None:
+    """Una fila ``NON_MATCHING`` de una funcion que ya coincide en ``src/`` hace fallar el cruce.
+
+    Regla:
+        La tabla no puede seguir dando una cifra pendiente a una funcion que ya cerro en el codigo.
+
+    Ejemplo:
+        ``func_800000A0`` sin bloque pendiente con una fila ``NON_MATCHING 410`` da una diferencia.
+    """
+    estados = {(FUNCION_PENDIENTE, RESERVA_DE_PILA): "NON_MATCHING 410"}
+    assert _diferencias_de_estado(estados, frozenset()) == [
+        f"{FUNCION_PENDIENTE}: la fila `{RESERVA_DE_PILA}` dice `NON_MATCHING 410` "
+        "pero la funcion coincide en src"
+    ]
+
+
+def test_un_estado_ilegible_o_dos_filas_de_una_funcion_con_estados_distintos_se_rechazan() -> None:
+    """Un estado fuera de las dos formas y las filas contradictorias de una misma funcion son diferencias.
+
+    Regla:
+        El estado es una propiedad de la funcion, no de la forma: todas sus filas dicen lo mismo.
+
+    Ejemplo:
+        Una fila ``coincide`` y otra ``NON_MATCHING 5`` de la misma funcion dan dos diferencias.
+    """
+    ilegible = {(FUNCION_PENDIENTE, ENVOLTURA): "casi coincide"}
+    assert len(_diferencias_de_estado(ilegible, frozenset())) == 1
+    contradictorias = {
+        (FUNCION_PENDIENTE, ENVOLTURA): "coincide",
+        (FUNCION_PENDIENTE, RESERVA_DE_PILA): "NON_MATCHING 5",
+    }
+    diferencias = _diferencias_de_estado(contradictorias, frozenset())
+    assert len(diferencias) == 2
+    assert "estados distintos" in diferencias[1]
+
+
+def test_las_filas_con_el_estado_real_de_la_funcion_no_dan_diferencias() -> None:
+    """Una fila pendiente de una pendiente y una fila ``coincide`` de una que coincide son validas."""
+    estados = {("pendiente", RESERVA_DE_PILA): "NON_MATCHING 410", ("cerrada", RESERVA_DE_PILA): "coincide"}
+    assert _diferencias_de_estado(estados, frozenset({"pendiente"})) == []
+
+
+def test_el_estado_de_cada_fila_de_la_tabla_es_el_real_de_la_funcion_en_src() -> None:
+    """Cada fila de la tabla dice ``coincide`` o ``NON_MATCHING`` segun el codigo de ``src/``."""
+    estados = _estados_del_documento()
+    assert estados
+    assert _diferencias_de_estado(estados, _pendientes_en_src()) == []
+
+
+def _funcion_con_cifras(sin_local: int, con_local: int) -> str:
+    cabecera = (
+        "/*\n"
+        " * Reserva de pila: el marco del original es de 0x30 bytes (addiu sp en 0x80000000) y el del\n"
+        " * C sin la\n"
+        f" * local, de 0x28; la cifra medida sin la local es {sin_local} y con ella {con_local}.\n"
+        " */\n"
+    )
+    return _funcion_con_reserva(MARCA_RESERVA + DECLARACION_RESERVA, cabecera=cabecera)
+
+
+def test_una_reserva_pendiente_con_la_cifra_de_la_fila_igual_a_la_de_la_cabecera_se_acepta() -> None:
+    """Caso valido pendiente: la cifra con la local es menor que sin ella y es la de la fila.
+
+    Regla:
+        En una funcion pendiente la cabecera cita las dos cifras y la fila lleva la de ``con ella``.
+
+    Ejemplo:
+        Cabecera 300 y 200 con la fila ``NON_MATCHING 200`` no produce incumplimientos.
+    """
+    estados = {FUNCION_PENDIENTE: "NON_MATCHING 200"}
+    assert _incumplimientos_de_cifras_de_reserva(_funcion_con_cifras(300, 200), estados) == []
+
+
+def test_una_reserva_que_coincide_con_la_cifra_con_la_local_en_cero_se_acepta() -> None:
+    """Caso valido que coincide: la cifra sin la local es positiva y con ella es 0.
+
+    Regla:
+        Una funcion que coincide llega a 0 con la local.
+
+    Ejemplo:
+        Cabecera 154 y 0 con la fila ``coincide`` no produce incumplimientos.
+    """
+    estados = {FUNCION_PENDIENTE: "coincide"}
+    assert _incumplimientos_de_cifras_de_reserva(_funcion_con_cifras(154, 0), estados) == []
+
+
+def test_una_reserva_con_las_cifras_invertidas_en_la_cabecera_se_rechaza() -> None:
+    """La cifra con la local no puede ser igual ni mayor que la cifra sin ella.
+
+    Regla:
+        La reserva existe porque mejora la medida: si empeora o no cambia, sobra o esta mal citada.
+
+    Ejemplo:
+        Cabecera ``sin la local es 200 y con ella 300`` con la fila ``NON_MATCHING 300`` da un incumplimiento.
+    """
+    estados = {FUNCION_PENDIENTE: "NON_MATCHING 300"}
+    fallos = _incumplimientos_de_cifras_de_reserva(_funcion_con_cifras(200, 300), estados)
+    assert fallos == [
+        f"{FUNCION_PENDIENTE}: la cifra con la local (300) no es menor que la cifra sin ella (200)"
+    ]
+    assert (
+        len(
+            _incumplimientos_de_cifras_de_reserva(
+                _funcion_con_cifras(200, 200), {FUNCION_PENDIENTE: "NON_MATCHING 200"}
+            )
+        )
+        == 1
+    )
+
+
+def test_una_reserva_pendiente_cuya_fila_cita_otra_cifra_que_la_cabecera_se_rechaza() -> None:
+    """La cifra de la fila debe ser la de ``con ella`` de la cabecera.
+
+    Regla:
+        Tabla y cabecera no pueden contar dos medidas distintas de la misma funcion.
+
+    Ejemplo:
+        Cabecera 300 y 200 con la fila ``NON_MATCHING 250`` da un incumplimiento.
+    """
+    estados = {FUNCION_PENDIENTE: "NON_MATCHING 250"}
+    assert _incumplimientos_de_cifras_de_reserva(_funcion_con_cifras(300, 200), estados) == [
+        f"{FUNCION_PENDIENTE}: la fila dice 250 y la cabecera 200 con la local"
+    ]
+
+
+def test_una_reserva_que_coincide_pero_cita_una_cifra_distinta_de_cero_con_la_local_se_rechaza() -> None:
+    """Una funcion que coincide no puede citar una cifra positiva con la local.
+
+    Regla:
+        ``coincide`` significa cifra 0: una cifra mayor es una funcion pendiente mal etiquetada.
+
+    Ejemplo:
+        Cabecera 300 y 200 con la fila ``coincide`` da un incumplimiento.
+    """
+    fallos = _incumplimientos_de_cifras_de_reserva(
+        _funcion_con_cifras(300, 200), {FUNCION_PENDIENTE: "coincide"}
+    )
+    assert fallos == [f"{FUNCION_PENDIENTE}: coincide pero la cabecera cita 200 con la local y debe citar 0"]
+
+
+def test_una_cabecera_sin_las_dos_cifras_o_una_reserva_sin_estado_legible_se_rechazan() -> None:
+    """Sin la frase de las dos cifras o sin un estado legible en la tabla no hay nada que comparar.
+
+    Regla:
+        La frase ``la cifra medida sin la local es X y con ella Y`` es parte de la cabecera de la reserva.
+
+    Ejemplo:
+        Una cabecera que solo cita ``sin la local es 100`` da un incumplimiento; una fila ausente, otro.
+    """
+    sin_con = _funcion_con_reserva(
+        MARCA_RESERVA + DECLARACION_RESERVA,
+        cabecera="/* Reserva de pila: addiu sp 0x30, sin la local es 100. */\n",
+    )
+    fallos = _incumplimientos_de_cifras_de_reserva(sin_con, {FUNCION_PENDIENTE: "coincide"})
+    assert fallos == [
+        f"{FUNCION_PENDIENTE}: la cabecera no lleva `la cifra medida sin la local es X y con ella Y`"
+    ]
+    sin_fila = _incumplimientos_de_cifras_de_reserva(_funcion_con_cifras(100, 0), {})
+    assert sin_fila == [f"{FUNCION_PENDIENTE}: la tabla no tiene un estado legible para su reserva de pila"]
+
+
+def test_las_cifras_de_las_reservas_de_pila_de_src_son_coherentes_con_la_tabla() -> None:
+    """Toda reserva de ``src/`` cita dos cifras con la local menor que sin ella, y 0 o la de su fila."""
+    estados = {
+        funcion: estado
+        for (funcion, forma), estado in _estados_del_documento().items()
+        if forma == RESERVA_DE_PILA
+    }
+    assert estados
+    fallos = [
+        f"{archivo.name}: {fallo}"
+        for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c"))
+        for fallo in _incumplimientos_de_cifras_de_reserva(archivo.read_text(encoding="utf-8"), estados)
     ]
     assert fallos == []
