@@ -392,14 +392,21 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 39407 con la configuracion versionada (g = 8 del archivo). La cifra incluye
- * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
- * depende del tamano de las funciones anteriores. Medido: el codigo generado tiene 2959
- * instrucciones frente a 2955 del original y los cuerpos de los casos de los cinco `switch` y del
- * despacho de primer nivel van en el orden de direcciones de las tablas de saltos del original: el
- * orden del fuente decide el orden de emision, por eso los casos no van en orden numerico. Difiere
- * el reparto de registros (el original deja la direccion del bufer en s4, el destino en s8 y las
- * constantes de las comparaciones del sonido en s0 y s1).
+ * Pendiente: puntuacion 39407 con la configuracion versionada (g = 8 del archivo; ejes 236 de
+ * operando, 35 reordenadas, 1904 insertadas o borradas). La cifra incluye palabras con direcciones
+ * absolutas dentro del archivo (saltos y tablas de saltos), de modo que depende del tamano de las
+ * funciones anteriores. Medido: el codigo generado tiene 2959 instrucciones frente a 2955 del
+ * original, y alineando el texto de ambos 2741 coinciden en el mnemonico (92,8 %) y 1996 son
+ * identicas (67,5 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
+ * van en el orden de direcciones de las tablas de saltos del original: el orden del fuente decide
+ * el orden de emision, por eso los casos no van en orden numerico. Lo que queda es el reparto de
+ * registros: el original deja el destino en s8 y las constantes de las comparaciones de cada bucle
+ * interior en registros propios (s0, s1), mientras que aqui una sola constante 0x2E se iza fuera del
+ * bucle de chunks (s8) y el destino pasa a s7; esa constante compartida hace ademas que el
+ * compilador enlace el final de cada bucle interior con la salida del exterior, cosa que el original
+ * no hace (salta a la prueba del bucle exterior en 0x800442F4). Se supone, sin verificar, que el
+ * original compara en el bucle exterior con una constante que el compilador no reconoce como la del
+ * interior.
  *
  * Reserva de pila: el marco del original es de 0x210 bytes (`addiu sp` en 0x800415A0) y el del C sin
  * la local, de 0x208; la cifra medida sin la local es 40562 y con ella 39407.
@@ -482,6 +489,10 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     func_800368E8();
     func_8003ED6C();
     func_8003EAEC();
+    /*
+     * Los tres bytes del banco de registros (0x80010041, 0x80010050 y 0x800100E6) se acceden con una sola
+     * base (`lui` en 0x800416B8); el resto de los accesos a D_80010050 usan un `lui` propio.
+     */
     estado = ESTADO_PRINCIPAL;
     if ((s8)estado->r[0x01] <= 0) {
         estado->r[0x01] = 6;
@@ -793,6 +804,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             }
             D_80069488 += compensacion + D_80069478;
             D_800694AC = CdPosToInt((CdlLOC*)D_8006A928);
+            /* Division con signo (`bgez`, `addiu 0x7FF` y `sra 11` en 0x800422B4..0x800422C0). */
             D_800694AC = D_800694AC + (s32)D_80069478 / 2048;
             CdIntToPos(D_800694AC, (CdlLOC*)D_8006A928);
             break;
