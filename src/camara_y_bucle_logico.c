@@ -1375,9 +1375,10 @@ void func_80035244(void)
  * cuerpo de ambas escribe `$7`: `addu $7,$10,$0`, y la lista declarada es la completa): la recarga elige `a3` en
  * los tres puntos del prologo y de la rama de volumen, y la funcion pasa de 410 a 220 (91 diferencias de operando
  * y 49 lineas insertadas o borradas); en los dos archivos que usan las macros ninguna otra funcion cambia de
- * cifra. La lista sin `$7` seria una lista MENOR que el cuerpo: solo se admite por decision expresa del dueno del
- * proyecto (regla de las listas de destruidos), de modo que aqui sigue completa y la diferencia queda como causa
- * medida. Con `$7` en la lista la recarga evita `a3` (se supone, sin verificar, que porque otro punto de la funcion
+ * cifra. La lista de registros destruidos de una macro declara todo registro que su cuerpo escribe, y el cuerpo
+ * escribe `$7`; con la lista sin `$7` el compilador creeria libre un registro que la macro modifica, de modo que
+ * la lista queda completa y la diferencia (220 con la lista sin `$7`, medida en una copia de la cabecera) es la
+ * causa por la que la recarga del puntero evita `a3`. Con `$7` en la lista la recarga evita `a3` (se supone, sin verificar, que porque otro punto de la funcion
  * lo escribe por asm; no se leyo el codigo de la recarga). La busqueda del
  * modelo copia el limite (`lim`) en una local propia dentro del bloque, como el original (`addu a1,v1,zero`); la
  * copia hecha antes de la comparacion se vuelve a fundir con `nmod`. El original rellena el hueco de la primera
