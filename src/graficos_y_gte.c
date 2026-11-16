@@ -221,18 +221,17 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
 /*
  * Pendiente: puntuacion 18547 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin
  * afinar: el reparto de registros y el orden de las comparaciones de las regiones no se han ajustado al
- * original. La lista de registros destruidos de GEO_NORMA2_XZ la mueve 100 puntos (antes 19749).
+ * original. La lista de registros destruidos de GEO_NORMA2_XZ la mueve 100 puntos.
  * Ejes medidos con `diff`: 64 de operando, 39 reordenadas y 1135 insertadas o borradas; el original ocupa 0x11EC
  * bytes (1147 instrucciones), de modo que casi todo el residuo es desalineacion encadenada de
  * unas pocas inserciones (la primera, el reparto del prologo). El marco del C es de 0x58 bytes (vars = 32) y el
  * del original de 0x50.
  * El primer resultado de SquareRoot0 se guarda en `k`, la local cuya direccion se pasa a gte_NormalClip (vive en
- * memoria): 19849 a 18547. En el original ese resultado va a 0x18(sp), la misma ranura que recibe los resultados
+ * memoria); sin ella el resultado ocupa s0 en el tramo de la norma y la cifra es 19849. En el original ese resultado va a 0x18(sp), la misma ranura que recibe los resultados
  * de NormalClip (13 accesos a 0x18(sp) en el original); se supone, sin verificar, que ambos usos son la misma
- * variable. Con `k` el resultado ya no ocupa s0 en el tramo de la norma, pero el marco sigue en 0x58: `mejor_d` y
- * `dif` siguen en la pila. Segunda medicion sobre la misma idea: guardar el segundo resultado (`len2`) en `t2`, que
- * el original usa para ese valor (`addu t2,v0,zero` en 0x80018384), empeora a 19193 (cruza una llamada y toma un
- * registro salvado). Medido en el volcado de `cc1`: los dos pseudos que direccionan D_80069D08 (la parte alta y
+ * variable. Con `k` el marco sigue en 0x58: `mejor_d` y `dif` siguen en la pila. El segundo resultado (`len2`) no
+ * se guarda en una local aparte para que tome `t2`, el registro que el original usa para ese valor (`addu t2,v0,zero`
+ * en 0x80018384): esa local cruza una llamada y toma un registro salvado. Medido en el volcado de `cc1`: los dos pseudos que direccionan D_80069D08 (la parte alta y
  * la direccion completa) se reparten en s1 y s2 por `local-alloc` porque sus usos antes y despues de la segunda
  * llamada se comparten; el original recalcula el `lui` tras la llamada (0x800183A4), es decir, no los conserva
  * en registro salvado. Queda sin resolver que forma del fuente lo produce. Reparto medido en los volcados de `cc1` (`.lreg` y

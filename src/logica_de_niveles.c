@@ -67,7 +67,7 @@ s16* D_800693DC;
    el orden); (2) el bloque de la base de la caja (0x800254E8..0x80025544) coincide en el orden de las multiplicaciones: el
    original emite `li v0,0x46 ; mult v0,v0` antes del almacen de max.vx, de modo que el producto sale del registro
    recien almacenado y no de una constante; se reproduce con `a = o->max.vx * o->max.vx + sum * sum;` escrito
-   antes del calculo de `c` (con `0x46 * 0x46` el compilador lo pliega a una constante y la cifra es 4635).
+   antes del calculo de `c`: escrito como `0x46 * 0x46` el compilador lo pliega a una constante y el `mult` desaparece.
    La extension de 16 bits de `a` coincide (`sll s0,s5,0x10` antes y despues de la union) al pasar `a` directamente
    a `SquareRoot0` y a `alcance2`, sin la local `d` (con `d = a` el temporal de la extension salia en `v0`).
    Queda: el original carga el radio (0x20) antes de max.vz (0x54) en la suma de `sum` y aqui sale al reves (con

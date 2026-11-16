@@ -482,7 +482,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * el original en `a3`/`a2` (sin efecto: cargar `w->p4` antes de `ec`, o en una local propia). La direccion de
  * acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos. La prueba del giro tras el
  * bloque de la cuenta de espera (0xed4..0xfd8) coincide con una sola cola `w->rot.vy = D_80069402` y dos
- * `goto` (la forma anterior, `if (f2 & 2 || byte)` tras el bloque, daba 410 puntos mas: el
+ * `goto` (la forma `if (f2 & 2 || byte)` tras el bloque cuesta 410 puntos mas: el
  * compilador conservaba una prueba de mas por cada camino del bloque; con el bit guardado en una local la
  * prueba se reutilizaba pero no se enhebraba, y con la prueba del byte repetida en cada rama y la cola
  * replicada la cola sobrevivia en el otro extremo). Medido sobre el almacen de banderas del giro
