@@ -466,8 +466,8 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1445 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 5 reordenadas,
- * 249 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
+ * Pendiente: puntuacion 1225 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 5 reordenadas,
+ * 241 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
  * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
  * reproduce la carga del original del hijo y baja de 2625 a 2605. La resta de la X del portador en el barrido se
  * escribe directa (`o->param.trans.vx - o->p70->param.trans.vx`): con una local previa (`x_portador`) la cifra es 1915.
@@ -506,18 +506,17 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * relee la memoria para la comparacion con 5 (`lhu` y `sltiu`); la local de 32 bits `sig_w17c`, asignada tras el
  * incremento en cada uno de los dos caminos (`o->w17C += 1; sig_w17c = o->w17C;`) y usada en el indice de la
  * secuencia, reproduce esa estructura: el recorte a 16 bits (`andi 0xffff`) queda en el hueco del salto del primer
- * camino y al final del segundo, y la prueba contra 5 relee la memoria; sin la local la cifra es 1790. Con la local
+ * camino y al final del segundo, y la prueba contra 5 relee la memoria; sin la local la cifra sube. Con la local
  * declarada `u16` el recorte se aplica en la reunion (`move a0,v0` en cada camino y `andi` tras la etiqueta). La
  * direccion se suma como `t->sec + 6 + (sig_w17c << 1)`: con el 6 al final los registros temporales de la suma
- * salen intercambiados (v0 y v1) y la cifra es 1470. Queda el orden de los operandos de esa suma (`addu v0,v0,v1`
- * frente a `addu v1,v1,v0` del original, 0x8002B870). (2) el contador de andadura (0x194(s3)): una local con `(u16)` para la suma y el
- * almacen despues del producto deja la secuencia `lhu`, `addiu`, `sll`, `sra`, `mult` igual que el original, pero el
- * `sh` queda tras el salto condicional y no en el hueco del `mult`; con el producto en una local empeora, y sin
- * `(u16)` la carga sale con `lh` (medidas de un estado anterior del C, no repetidas con el actual). En el original
- * (0x80029B94 a 0x80029BB0) la suma vive en a0 mientras el desplazamiento del producto escribe v0, de modo que el
- * `sh` puede planificarse tras el `mult`; en el C la suma y el desplazamiento comparten v0 y el `sh` debe ir antes
- * (se supone, sin verificar con el volcado, que el pseudo de la suma recibe a0 solo si su vida se alarga hasta el
- * almacen posterior al producto). (3) la perdida de la lectura repetida de `t->w114` tras el almacen a
+ * salen intercambiados (v0 y v1) y la cifra sube. Queda el orden de los operandos de esa suma (`addu v0,v0,v1`
+ * frente a `addu v1,v1,v0` del original, 0x8002B870). (2) el contador de andadura (0x194(s3), 0x80029B94 a 0x80029BB0): el original deja
+ * la suma en a0 mientras el desplazamiento del producto escribe v0, de modo que el `sh` se planifica tras el `mult`.
+ * Las locales `paso_andadura` (la suma, leida con `(u16)` para que la carga sea `lhu`) y `producto_andadura` (el
+ * producto, calculado antes del almacen del contador y escrito despues de el en `t->w118`) reproducen ese bloque
+ * entero; sin la local del producto la cifra es 1445, porque la suma y el desplazamiento comparten v0 y
+ * el `sh` debe ir antes del desplazamiento (se supone, sin verificar con el volcado, que el pseudo de la suma recibe
+ * a0 solo si su vida se alarga hasta el almacen posterior al producto). (3) la perdida de la lectura repetida de `t->w114` tras el almacen a
  * D_800693C0 (0x8002B928): el original relee la memoria antes del almacen a D_800693B4; con el almacen en cada rama
  * (`D_800693B4 = t->w114;` en una y `D_800693B4 = giro;` en la otra) el compilador reutiliza el registro, no funde
  * las colas y la cifra sube a 1745; se supone, sin verificar, que el original trata el almacen a D_800693C0 como
@@ -532,7 +531,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * (0x80027EE8). Causa medida en los volcados de `cc1` (`.lreg`, `.greg` y el ensamblador de salida) y con `diff`: con
  * la pareja en cada rama los valores son pseudos locales del bloque (603 y 604 en el bloque 127, 627 y 628 en el 133,
  * 2 usos sobre 2 insns cada uno) que toman v0 y v1 y se almacenan al final de su camino, igual que el original (la
- * puntuacion es 1445); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
+ * puntuacion es 1225); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
  * los valores pasan a ser pseudos globales (la banda alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6
  * usos sobre 14 insns, 0,86) que reciben a1 y v1, los dos almacenes suben tras la etiqueta de union y aparece un
  * `move v0,a1` antes de la prueba de histeresis (la cifra empeora). La forma del fuente original que producia este reparto se
@@ -546,7 +545,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
  * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
  * bloque de union y el planificador la deja en el hueco de retardo de la llamada (en el original ese hueco es un
- * `nop`). Con las dos llamadas la cifra es 1445; con una sola llamada tras la etiqueta empeora. Se supone, sin
+ * `nop`). Con las dos llamadas la cifra es 1225; con una sola llamada tras la etiqueta empeora. Se supone, sin
  * verificar, que en la rama de la comprobacion de apoyo el original reparte `a0` al puntero del portador y despues al
  * argumento, y que aqui la preparacion del argumento sube tras la llamada a BarrerTerreno y empuja ese puntero a `a1`.
  * La forma del fuente original que producia este reparto se desconoce.
@@ -580,6 +579,8 @@ void func_80026FEC(Objeto* o)
     NodoDisparador* nd_azar;
     s32 choco;
     s32 sig_w17c;
+    s32 paso_andadura;
+    s32 producto_andadura;
     /*
      * Temporales de 32 bits que varios bloques reutilizan: el original conserva en el mismo
      * registro el valor de los distintos calculos, y una variable por uso cambia el reparto.
@@ -1653,8 +1654,10 @@ andadura_del_portado:
     /* El registro de animacion se toma antes de incrementar el contador de andadura: asi su carga queda
      * delante de la del contador, como en el original. */
     registro_actual = t->fot;
-    o->u18C.estado.h194 = o->u18C.estado.h194 + 1;
-    t->w118 = (s16)registro_actual->w18 * (s16)o->u18C.estado.h194;
+    paso_andadura = (u16)o->u18C.estado.h194 + 1;
+    producto_andadura = (s16)registro_actual->w18 * (s16)paso_andadura;
+    o->u18C.estado.h194 = paso_andadura;
+    t->w118 = producto_andadura;
     if (t->w118 >= 0x400) {
         o->flags14 = (o->flags14 | 0x800000) & 0xFFF7EFFF;
         goto fin_de_busqueda_de_portador;
