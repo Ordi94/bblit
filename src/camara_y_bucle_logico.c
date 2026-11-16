@@ -1307,7 +1307,9 @@ void func_80035244(void)
  * reordenadas y 119 insertadas o borradas. El flujo coincide salvo el `nop` del hueco de
  * retardo de 0x80035704 (la copia del limite de la busqueda del modelo, ver abajo). Quedan diferencias de registros
  * y de forma simbolica: (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las
- * diferencias); (2) la constante -3 en s2 y el original en s3, con el puntero a la proyeccion al reves; (3) el
+ * diferencias; causa medida: la lista de destruidos de la macro de distancia aproximada declara `$7`, que su
+ * cuerpo escribe, y con ella la recarga evita `a3`; sin `$7` en una copia de la cabecera la funcion mide 220);
+ * (2) la constante -3 en s2 y el original en s3, con el puntero a la proyeccion al reves; (3) el
  * limite y el puntero al objeto de la busqueda del modelo en a2 y a1 donde el original los tiene en a1 y a2; (4) el
  * byte D_8006AA7C que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc` (diferencia de forma
  * simbolica de los mismos bytes).
@@ -1348,9 +1350,15 @@ void func_80035244(void)
  *
  * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
  * asigna el reparto global a `a0` y la recarga lo mueve despues a `t7` ("Spilling reg 15" para esa insn en el
- * volcado de la recarga); el original lo tiene en `a3`. Por que la recarga no elige `a3` en el C actual no se
- * leyo (se supone, sin verificar, que lo impide la lista de registros destruidos de GEO_DISTANCIA_APROX_A, que
- * incluye `$7` aunque el original usa `a3` para ese puntero antes y despues de la macro). La busqueda del
+ * volcado de la recarga); el original lo tiene en `a3`. Medido sobre una copia de `include/geometria.h` fuera del
+ * repositorio con `$7` retirado de la lista de destruidos de `GEO_DISTANCIA_APROX` y `GEO_DISTANCIA_APROX_A` (el
+ * cuerpo de ambas escribe `$7`: `addu $7,$10,$0`, y la lista declarada es la completa): la recarga elige `a3` en
+ * los tres puntos del prologo y de la rama de volumen, y la funcion pasa de 410 a 220 (91 diferencias de operando
+ * y 49 lineas insertadas o borradas); en los dos archivos que usan las macros ninguna otra funcion cambia de
+ * cifra. La lista sin `$7` seria una lista MENOR que el cuerpo: solo se admite por decision expresa del dueno del
+ * proyecto (regla de las listas de destruidos), de modo que aqui sigue completa y la diferencia queda como causa
+ * medida. Con `$7` en la lista la recarga evita `a3` (se supone, sin verificar, que porque otro punto de la funcion
+ * lo escribe por asm; no se leyo el codigo de la recarga). La busqueda del
  * modelo copia el limite (`lim`) en una local propia dentro del bloque, como el original (`addu a1,v1,zero`); la
  * copia hecha antes de la comparacion se vuelve a fundir con `nmod`. El original rellena el hueco de la primera
  * comparacion con esa copia; aqui el hueco queda con un `nop` (se supone, sin verificar, que porque la carga del
