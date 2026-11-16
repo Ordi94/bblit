@@ -232,7 +232,7 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * 0x2000000 toma fp y el temporal `t2` (radio de alcance e indice de arista, una sola variable) ocupa s1,
  * mientras que el original lo deja en t2 (0x80017B1C `move t2,zero`, sin cruzar llamadas). Referencias medidas del
  * resto: `a` 27 usos sobre 1670 insns, `v` 25 sobre 1678, `w` 524 sobre 1670 y `mejor` 29 sobre 840. Dos
- * formas probadas sobre esa causa y no conservadas: una local propia para el radio de alcance (20852) y una
+ * formas ensayadas sobre esa causa que no se conservan: una local propia para el radio de alcance (20852) y una
  * variable propia para el resultado tras las llamadas a SquareRoot0 en lugar de reutilizar el contador de
  * golpes (20069); ninguna cambia las variables que van a la pila. Se supone, sin verificar, que el original
  * carga `lista` en una temporal y la copia (`lhu t8,0x20(sp)` y `move v0,t8`, 0x80017518 y 0x80017520) por la
