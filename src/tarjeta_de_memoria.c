@@ -486,7 +486,10 @@ s32 func_800151FC(void)
  * izquierda a derecha el compilador suma la base al desplazamiento y despues la fila. Escribir el tercer
  * desplazamiento en una local propia (`desplazamiento_entrada`) sube a 1395 y copiar la fila en una local antes de
  * los bucles interiores (una local de relleno, una local de busqueda o ambas) da 1980, 1425 y 1660 (el CSE funde la
- * copia cuando solo la usa el bucle de relleno); `n * 0x28` escrito en el bucle de busqueda 1560.
+ * copia cuando solo la usa el bucle de relleno); `n * 0x28` escrito en el bucle de busqueda 1560; el tercer
+ * desplazamiento como expresion `(quince << 3)` sin local, 1395; un puntero local a `D_800697B0` asignado antes del
+ * bucle del directorio y usado en el bucle de busqueda, 1335 (el original usa t1 ya cargado en la busqueda y aqui
+ * el compilador calcula la direccion del simbolo en el preludio).
  * Queda el reparto de registros del directorio: `n` cae en a3 (en a1 en el original), `fila` en a1 (a2), el contador de
  * los bucles interiores en a0 (v1) y la cadena de desplazamientos en v1 (a0), y el bucle de busqueda del final del nombre
  * calcula la direccion del simbolo de la tabla en su preludio (`lui` y `addiu a2`) mientras el original usa t1 ya
