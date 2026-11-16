@@ -59,8 +59,13 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2880 con la configuracion versionada (g = 8 del archivo; ejes 478 de operando, 3 reordenadas, 464
-   insertadas o borradas). La logica coincide. Tres formas del C que bajaron de 3750: (c) en el bloque del apoyo
+/* Pendiente: puntuacion 2285 con la configuracion versionada (g = 8 del archivo; ejes 478 de operando, 3 reordenadas, 440
+   insertadas o borradas). La logica coincide. Cuatro formas del C que bajaron de 3750: (d) en el bloque del apoyo
+   por contacto (0x80023828..0x80023878 del original) el calculo de `giro.u.y` del apoyo, que lee `o->p70`, va ANTES del
+   almacen de `o->coord.param` y de los tres de la escala: el original lee los dos giros antes de esos almacenes
+   (`lhu v1,0xde(v1)` antes de `addiu v0,s4,0x18c`) y con el calculo al final el compilador no podia adelantar las
+   lecturas por `o->p70` sobre los almacenes de `o` (2880 a 2285; se supone, sin verificar con el volcado, que un
+   almacen por la base de `o` se ordena ante una carga por un puntero leido de `o`); (c) en el bloque del apoyo
    hallado (0x80022C90..0x80022CC4 del original, tras `func_80020354`) la lectura de `h0A` va antes del almacen
    de `trans.vz`: el original emite `sw zero,0x1ac(s4)` despues de `lw v0,0xa8(s3)` y de `lh v0,0xa(v0)` y detras del
    almacen de `o->p70`; con el almacen a cero escrito antes de la lectura el compilador lo adelantaba sobre el de
@@ -101,13 +106,13 @@ s16* D_800693DC;
    es 7570 (se supone, sin verificar con el volcado, que el planificador los reordena con los almacenes a D_8006965A,
    D_8006965B y D_8006965E).
    Residuo medido sin resolver (cifra de cada prueba con el C vigente): (4) la base del almacen de `desp.z` (ver
-   (a)); (5) el original carga `o->p70` tres veces antes del almacen a 0xE8 (0x80023830, 0x80023840 y
-   0x80023848) y aqui las dos ultimas lecturas salen tras los almacenes del bloque; leer `p70` por
-   `*(Objeto**)&o->p70` no cambia la cifra; (6) en el prologo el original copia el valor de `flags14` (`move
+   (a)); (5) el reparto de v0/v1/a0 en las pruebas de mascara (`lw v0,8(v0) ; lui v1,0x200 ; and v0,v0,v1` en el
+   original frente a la carga en v1 y la mascara en v0 aqui; 0x8002400C y 0x80024B84 del original) que ni el
+   orden de los operandos ni una local para la mascara cambian; (6) en el prologo el original copia el valor de `flags14` (`move
    v0,v1`, 0x80020BF4) antes de aplicar la mascara; con una variable distinta para el resultado de la mascara la cifra
    sube a 4000.
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 3034 y con ella 2880. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 2439 y con ella 2285. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {
@@ -1090,11 +1095,11 @@ aterrizar:
                     APOYO(o)->trans.vy = o->p70->max.vy + 4;
                     sc->desp.y = 0;
                     o->param.trans.vy = o->p70->max.vy + o->p70->param.trans.vy + 4;
+                    APOYO(o)->giro.u.y = o->param.giro.u.y - o->p70->param.giro.u.y;
                     o->coord.param = (GsCOORD2PARAM*)APOYO(o);
                     APOYO(o)->escala.vx = 0x1000;
                     APOYO(o)->escala.vy = 0x1000;
                     APOYO(o)->escala.vz = 0x1000;
-                    APOYO(o)->giro.u.y = o->param.giro.u.y - o->p70->param.giro.u.y;
                     if ((s32)o->p70->flags08 < 0 || (o->p70->flags0C & 0x400000)) {
                         if (o->p70->flags0C & 0x400000) {
                             o->coord.super = (GsCOORDINATE2*)sc->tocado->raiz_ayudantes;
