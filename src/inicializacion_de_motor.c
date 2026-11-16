@@ -4,6 +4,7 @@
 #include "arranque.h"
 #include "psyq/LIBETC.H"
 #include "psyq/LIBCD.H"
+#include "psyq/LIBGPU.H"
 #include "psyq/LIBPRESS.H"
 #include "psyq/LIBSPU.H"
 #include "motor.h"
@@ -335,12 +336,12 @@ void func_800450E8(Glifo* a0, u16 a1, OrigenEntrada* a2)
 }
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1356 con la configuracion versionada (g = 8 del archivo; ejes 4 de operando, 0 reordenadas, 100 insertadas o borradas). Difiere en: reparto de registros guardados. Misma estructura de bucle y de escrituras de la primitiva; el original reparte s1 a la coordenada y y s3 a la v del glifo, s6 al contador y s7 y s8 a las dimensiones, el C los reparte al reves (el contador queda con la menor prioridad de los registros guardados), y carga el puntero a la primitiva (D_80076188) despues de la direccion de la cabeza de la lista, mientras GCC lo adelanta. Leer el puntero a la primitiva justo despues de la llamada y sumar el color en dos sentencias bajan de 1501 a 1356. Medido en el volcado (R usos ponderados, L vida, prioridad floor_log2(R) * R / L): x 8/46 = 0,522, y 8/54 = 0,444, u y v 8/51 = 0,471, anchura 6/45 = 0,267, altura 6/55 = 0,218, contador 7/93 = 0,151 y la entrada `e` 9/94 = 0,287; el original da s0 a x, s1 a y, s2 a u y s3 a v, de modo que y debe pasar por delante de u y v (R = 9 da 0,500: entre x y u/v, medido con una envoltura sobre un almacen de y, que iguala s0 a s3 pero sube la cifra a 1816; se supone, sin verificar, que por una barrera de planificacion que introduce la envoltura), y el contador debe ir antes que la anchura y la altura, lo que exige una prioridad entre 0,267 y 0,287 que ningun R entero da con L = 93 (R = 9 da 0,290). Leer el puntero a la primitiva tras el color y la cabeza de la lista, como el original, sube a 1446. Ademas el original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el enlace con `sll v0,v0,8` sobre el propio v0 y escribe el resto de la primitiva por v1 (el color y la palabra de enlace salen por v0), mientras que el C mantiene un solo registro (a1) y calcula el enlace en v0; se supone, sin verificar, que la copia nace de que el enlace sobrescribe el registro del puntero. */
+/* Pendiente: puntuacion 1046 con la configuracion versionada (g = 8 del archivo; ejes 4 de operando, 0 reordenadas, 93 insertadas o borradas). La primitiva se escribe por miembros de POLY_FT4: el compilador marca un acceso por miembro como acceso a estructura y no lo trata como posible alias de los globales escalares (D_80076188, D_8006958C), de modo que el planificador adelanta la lectura de los globales sobre los almacenes y deja el almacen del indice de paleta en el hueco de retardo de la guarda final, como el original; con accesos por desplazamiento sobre un `u8*` la cifra era 1356, y la lectura de D_80076188 tras la direccion de la cabeza de la lista (como el original) baja de 1106 a 1046. Difiere en: (a) reparto de registros guardados: el original da s0 a x, s1 a y, s2 a u, s3 a v, s6 al contador y s7 y s8 a las dimensiones; el C da s3 a y, s1 a v, s8 al contador y s6 y s7 a las dimensiones. Medido en el volcado (R usos ponderados, L vida, prioridad floor_log2(R) * R / L): x 8/46 = 0,522, y 8/54 = 0,444, u y v 8/51 = 0,471, anchura 6/45 = 0,267, altura 6/55 = 0,218, contador 7/93 = 0,151 y la entrada `e` 9/94 = 0,287. Con R = 9 para y (0,500, entre x y u/v) se igualan x, y, u y v, medido con una envoltura sin codigo sobre un almacen de y y u declarada antes que v (en un volcado, los pseudos de las locales se numeran por orden de declaracion y los empates de prioridad se deciden por ese numero); pero esa forma sube la cifra de 1046 a 1201 porque el planificador adelanta la suma v + h (`addu` en 0x80045290 del original frente a antes de los almacenes de u en el C) y no se deja. (b) el contador debe ir antes que la anchura y la altura, lo que exige una prioridad entre 0,267 y 0,287 que ningun R entero da con L = 93 (R = 9 da 0,290, por delante de `e`). (c) el orden de los dos desplazamientos del color (el original calcula c << 16 antes que c << 8; escribir la suma en ese orden sube a 1136) y la lectura de D_80076188, que el C adelanta tras la direccion de la tabla de cabezas mientras el original la hace despues de cargar la cabeza. (d) el original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el enlace con `sll v0,v0,8` sobre el propio v0 y escribe el resto de la primitiva por v1 (el color y la palabra de enlace salen por v0); el C mantiene un solo registro (a0). Un puntero propio para el color y el enlace da la misma cifra, de modo que el compilador lo une; se supone, sin verificar, que la copia nace de la forma en que el original obtiene la direccion de la primitiva. */
 void func_80045150(EntradaLista* e)
 {
     Glifo* g;
     s16 y;
-    u8* p;
+    POLY_FT4* p;
     u16 x;
     u8 v;
     s32 w;
@@ -351,7 +352,7 @@ void func_80045150(EntradaLista* e)
     s32 color;
     u32* cabeza;
 
-    /* El orden de las lecturas del glifo y del elemento, la anchura y la altura menos uno en 32 bits, el
+    /* El orden de las lecturas del glifo y del elemento, la anchura y la altura menos uno en 32 bits, la
      * suma del color en dos sentencias (base y luego los componentes desplazados) y D_80076188 sumado tras
      * escribir el indice de paleta son los que acercan el reparto de registros guardados al original. */
     i = 0;
@@ -365,7 +366,6 @@ void func_80045150(EntradaLista* e)
             y = (s8)e->y;
             h = g->h - 1;
             func_80039CD0(D_80076188);
-            p = (u8*)D_80076188;
             if (D_8006966A != 0) {
                 c = 0x80 - ((s16)D_800694E2 >> 5);
                 color = c;
@@ -374,27 +374,28 @@ void func_80045150(EntradaLista* e)
                 color = 0x2C808080;
             }
             cabeza = (u32*)(D_8006AE20 + D_8006967C)->org;
-            *(s32*)(p + 4) = color;
-            *(u32*)p = *cabeza | 0x09000000;
+            p = (POLY_FT4*)D_80076188;
+            *(s32*)((u8*)p + 4) = color;
+            p->tag = *cabeza | 0x09000000;
             *cabeza = ((s32)p << 8) >> 8;
-            *(s16*)(p + 0x10) = x + w;
-            *(s16*)(p + 0x20) = w + x;
-            *(s16*)(p + 0x22) = y + h;
-            *(s16*)(p + 0x1A) = y + h;
-            p[0x24] = u + w;
-            p[0x14] = u + w;
-            *(s16*)(p + 0x18) = x;
-            *(s16*)(p + 8) = x;
-            *(s16*)(p + 0x12) = y;
-            *(s16*)(p + 0xA) = y;
-            p[0x1C] = u;
-            p[0xC] = u;
-            p[0x15] = v;
-            p[0xD] = v;
-            p[0x25] = v + h;
-            p[0x1D] = v + h;
-            *(u16*)(p + 0x16) = e->glifo->tpage;
-            *(u16*)(p + 0xE) = D_8006D018[e->idx];
+            p->x1 = x + w;
+            p->x3 = w + x;
+            p->y3 = y + h;
+            p->y2 = y + h;
+            p->u3 = u + w;
+            p->u1 = u + w;
+            p->x2 = x;
+            p->x0 = x;
+            p->y1 = y;
+            p->y0 = y;
+            p->u2 = u;
+            p->u0 = u;
+            p->v1 = v;
+            p->v0 = v;
+            p->v3 = v + h;
+            p->v2 = v + h;
+            p->tpage = e->glifo->tpage;
+            p->clut = D_8006D018[e->idx];
             D_80076188 = D_80076188 + 0x28;
             if (D_8006958C < D_80076188) {
                 D_80076188 = D_80069680;
