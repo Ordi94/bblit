@@ -259,23 +259,28 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 6644 con la configuracion versionada (g = 8 del archivo). El marco de pila del original
- * es 8 bytes mayor (0x28 frente a 0x20; el original no usa 0x10(sp) ni 0x14(sp) y el volcado
- * del reparto no deja ningun pseudo sin registro). Causa medida en una copia de diagnostico fuera de la
- * rama: una llamada eliminada con seis palabras de argumentos (`if (0) { f(0, 0, 0, 0, 0, 0); }`) sube el
- * area de argumentos de salida a 0x18 bytes y el marco pasa a 0x28 sin emitir ninguna instruccion; con ella
- * los guardados de ra, s0, s1 y s2 caen en 0x24, 0x18, 0x1c y 0x20 como en el original. No se aplica en
- * el fuente: no es ninguna de las formas admitidas y se desconoce que llamada del original desaparecio
- * (se supone, sin verificar, que era una llamada de depuracion o una rama muerta con mas de cuatro argumentos).
- * La base 0x80010000
- * del almacen del banco de vibracion (0xe7) se recalcula tras la union de los dos casos,
- * cuando el original reutiliza la base cargada antes de ellos (el puntero propio `est` para
- * esa zona baja la cifra solo de 6664 a 6644: la base sigue sin compartirse como en el original).
- * Al entrar en `normal` el original lee el byte 0xc del banco (`lbu v0,0xc(s1)`, 0x80040520) ANTES
- * del almacen a D_800695EA y conserva en s2 el `lui` de D_8006AA70; aqui el almacen sale antes de la carga y
- * el `lui` va a un temporal, lo que anade un `nop` y desplaza cuatro bytes lo que sigue. Probado sin efecto en
- * la copia de diagnostico: leer el byte en una local antes del almacen, y usar un puntero local al banco para
- * esa lectura (el compilador las funde con la lectura original).
+ * Pendiente: puntuacion 6160 con la configuracion versionada (g = 8 del archivo): 43 diferencias de operando, 7
+ * lineas reordenadas y 363 insertadas o borradas. Reserva de pila: el marco del original es de 0x28 bytes (`addiu
+ * sp` en 0x80040494) y el del C sin la local, de 0x20; la cifra medida sin la local es 6234 y con ella 6160. El
+ * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
+ * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
+ * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
+ * mismo marco: se supone, sin verificar, que el compilador no reduce el area de argumentos tras eliminarla).
+ *
+ * Forma del fuente que baja el residuo: el banco D_8006AA70 se lee por un puntero local (`banco`), que el
+ * compilador mantiene en s1 hasta la rama por defecto como el original (el original usa `0xc(s1)` y `0x17(s1)` en
+ * el cuerpo y en la rama por defecto); el byte 0xc se lee en `v` ANTES del almacen a D_800695EA, como el original
+ * (`lbu v0,0xc(s1)` en 0x80040520 y el almacen en 0x80040528), y la base de `est` se calcula tras las tres
+ * llamadas de borrado, donde el original repite `lui s0` (0x80040564). Con la lectura en una local de un solo
+ * uso, o sin ella, el compilador vuelve a colocar la carga tras el almacen.
+ *
+ * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
+ * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0); la lectura del identificador D_8006CFF1 en
+ * la rama de grabacion, que sale antes del almacen del tercer registro del cuadro cuando en el original sale
+ * despues; el almacen de `lo` en el campo de botones (0x10) que el original conserva antes del almacen de
+ * `lo | hi` (0x80040760 y 0x80040768) y que aqui desaparece entre `.cse` y `.combine` (se supone, sin verificar,
+ * que lo borra el analisis de vida al ver dos almacenes seguidos a la misma direccion); y la forma simbolica de
+ * los campos de 0x80010000. Probado sin bajada: intercambiar el orden de los almacenes de `lo` (6260).
  *
  * El xor del byte invertido se hace sobre una local de 32 bits (cf2, cf3, cfd): con el byte
  * leido directamente el analizador de tipos del front end estrecha el xor a un byte (sale
@@ -286,11 +291,10 @@ void func_80040430(s8* contador, u16 mascara)
  * entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma
  * los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS
  * (D_8006CFF1..7: id, botones invertidos y ejes) en botones logicos y ejes de +/-0x7F.
- * Puntuacion 6644 con -G8 (switch con goto, la formulacion mas cercana): la estructura de
- * saltos y casi todo el cuerpo coinciden; difieren el marco de pila, el reparto de registros
- * de la rama de grabacion y la copia s1 = s2 del valor de los botones de direccion (en el
- * original va antes del `or`, 0x2c0). Sin bajada: if/else en lugar de switch (12794), orden de
- * declaracion de las copias, copia con la expresion repetida.
+ * Se usa un switch con goto (la formulacion mas cercana): la estructura de saltos y casi todo el cuerpo
+ * coinciden; difieren el reparto de registros de la rama de grabacion y la copia s1 = s2 del valor de los
+ * botones de direccion (en el original va antes del `or`, 0x2c0). Sin bajada: if/else en lugar de switch,
+ * orden de declaracion de las copias, copia con la expresion repetida.
  */
 void func_8004048C(void)
 {
@@ -312,6 +316,9 @@ void func_8004048C(void)
     u32 cf3;
     u32 cfd;
     EstadoPrincipal* est;
+    u8* banco;
+    /* Reserva de pila: local sin uso que completa el marco del original. */
+    s32 reserva[2];
 
     if (D_80069662 == 0 && (D_80069698 == 0 || (D_80069698->flags14 & 0x01000000) == 0)) {
         goto normal;
@@ -332,19 +339,21 @@ void func_8004048C(void)
         return;
     }
 normal:
-    est = ESTADO_PRINCIPAL;
+    banco = D_8006AA70;
+    v = banco[0xC];
     D_800695EA = 0;
-    if (D_8006AA70[0xC] == 0) {
+    if (v == 0) {
         func_80040430(&D_800695A0, 0x40);
         func_80040430(&D_80069595, 0x80);
         func_80040430(&D_8006963C, 4);
     }
+    est = ESTADO_PRINCIPAL;
     prev = ESTADO_PRINCIPAL->mando.botones_c;
     ESTADO_PRINCIPAL->mando.botones_c = 0;
     ESTADO_PRINCIPAL->mando.botones_e = prev;
     ESTADO_PRINCIPAL->mando.botones_e = prev & D_800695EA;
     if (ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
-        if (D_8006AA70[0x17] != 0 && D_8006AA70[0x17] != 4) {
+        if (banco[0x17] != 0 && banco[0x17] != 4) {
             ESTADO_PRINCIPAL->mando.botones = 0;
             ESTADO_PRINCIPAL->mando.botones_c = 0;
             ESTADO_PRINCIPAL->mando.botones_e = 0;
@@ -359,8 +368,8 @@ normal:
         b = grab[2];
         ESTADO_PRINCIPAL->mando.botones_c = b;
         c = grab[3];
-        D_800695B0 = grab + 4;
         id = D_8006CFF1 & 0x7F;
+        D_800695B0 = grab + 4;
         ESTADO_PRINCIPAL->mando.botones = c;
         /* La lectura de D_8006CFF2 va dentro de la condicion: sacarla antes del `if` la carga siempre y sube la cifra (6644 a 6964). */
         if ((id == 0x41 || id == 0x73) && ((cfd = D_8006CFF2, ((cfd ^ 0xFF) << 8) & 0x800)) && ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
@@ -471,12 +480,12 @@ normal:
     default:
         D_80069672 += 1;
         if (D_80069672 == 4) {
-            if (D_8006AA70[0xC] == 0) {
+            if (banco[0xC] == 0) {
                 ESTADO_PRINCIPAL->mando.botones_a = 0x800;
             }
         } else if (D_80069672 >= 5) {
             /* El original carga D_8006D9A8 entera con lw; globales.h la declara u16[5] por el resto de usos. */
-            if (D_8006AA70[0] == 0 && D_8006966A == 0 && (*(u32*)D_8006D9A8 & 0x301) == 1 && ESTADO_PRINCIPAL->r[BANCO_PAUSA] == 0) {
+            if (banco[0] == 0 && D_8006966A == 0 && (*(u32*)D_8006D9A8 & 0x301) == 1 && ESTADO_PRINCIPAL->r[BANCO_PAUSA] == 0) {
                 D_80069672 = 5;
                 ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a & 0xF7FF;
             } else if (D_8006AA7C == 0) {
