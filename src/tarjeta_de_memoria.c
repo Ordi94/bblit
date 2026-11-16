@@ -497,7 +497,7 @@ s32 func_800151FC(void)
  * El argumento que pasa main se ignora.
  *
  * Reserva de pila: el marco del original es de 0x40 bytes (`addiu sp` en 0x800156F4) y el del C sin la local, de
- * 0x30 (16 bytes); la cifra medida sin la local es 1967 y con ella 1765. La funcion es pendiente: con la local la
+ * 0x30 (16 bytes); la cifra medida sin la local es 1627 y con ella 1425. La funcion es pendiente: con la local la
  * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)
