@@ -283,12 +283,12 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  *   prueba con la copia hecha en el hueco de retardo (`move v0,t8`, 0x80017554). Una variable corta con signo se
  *   compara por una copia del registro, sin la extension a 32 bits que pide la variante sin signo (que da `lhu v0`
  *   directo); con `u16` la puntuacion de este mismo C es 610.
- * - El parametro se llama `w0` y `w` es una copia local asignada tras `mejor = 0;` y `mejor_d = 0xFFFFFFFF;` y antes
-de `dif = &w->dif;`: el original hace `move s3,zero` (0x8001748C), `li s7,-1` (0x80017498) y despues `move s1,a2`
- *   (0x800174A0) y `addiu s8,s1,0x50` (0x800174A8). Se supone, sin verificar, que la copia local sobrevive al
- *   propagado de copias y por eso la copia del parametro se planifica detras de las dos inicializaciones. Sin la copia (el parametro se llama `w`) la
- *   puntuacion es 244 con `dif` primera y 393 con `dif` tras `mejor_d`; con la copia y `w = w0; dif = &w->dif;`
- *   delante de `mejor` tambien 244.
+ * - El parametro se llama `w0` y `w` es una copia local asignada tras `mejor = 0;` y `mejor_d = 0xFFFFFFFF;` y
+ *   antes de `dif = &w->dif;`: el original hace `move s3,zero` (0x8001748C), `li s7,-1` (0x80017498) y despues
+ *   `move s1,a2` (0x800174A0) y `addiu s8,s1,0x50` (0x800174A8). Se supone, sin verificar, que la copia local
+ *   sobrevive al propagado de copias y por eso la copia del parametro se planifica detras de las dos
+ *   inicializaciones. Sin la copia (el parametro se llama `w`) la puntuacion es 244 con `dif` primera y 393 con
+ *   `dif` tras `mejor_d`; con la copia y `w = w0; dif = &w->dif;` delante de `mejor` tambien 244.
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con
  * mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la
@@ -310,6 +310,7 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w0, u32 mascara)
 
     mejor = 0;
     mejor_d = 0xFFFFFFFF;
+    /* Copia del parametro tras las inicializaciones de apertura, como el `move s1,a2` de 0x800174A0. */
     w = w0;
     dif = &w->dif;
     salida_y = 0;
