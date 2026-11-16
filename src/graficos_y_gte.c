@@ -222,11 +222,28 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3066 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 96 de
- * operando, 19 reordenadas y 268 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones). El marco
+ * Pendiente: puntuacion 1623 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 101 de
+ * operando, 0 reordenadas y 87 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones). El marco
  * del C es el del original, de 0x50 bytes, y el reparto de los registros salvados coincide con el del original
- * (`w` s1, direccion de D_80069D18 s2, `mejor` s3, constante 0x2000000 s6, `mejor_d` s7, `dif` fp) salvo `a` y `v`.
- * Formas que reproducen el original; entre parentesis, la puntuacion que da este mismo C con la forma contraria:
+ * (`a` s5, `v` s4, `w` s1, direccion de D_80069D18 s2, `mejor` s3, constante 0x2000000 s6, `mejor_d` s7, `dif` fp).
+ * El par `v++; v--;` de antes del retorno no genera codigo (la salida de cc1 tiene el mismo numero de instrucciones
+ * con y sin el par) y decide el orden de asignacion de `a` y `v`. Causa medida en el volcado de `cc1` (prioridad
+ * `floor_log2(R) * R / L` de `global-alloc`): sin el par, `a` (pseudo 80, R 25, L 1670, prioridad 0,0599) se asigna
+ * antes que `v` (pseudo 81, R 25, L 1682, 0,0595) y toma s4; con el par, `v` pasa a R 29 y L 842 (0,1378), se asigna
+ * antes que `a`, toma s4 y deja s5 a `a`, como el original. Puntuacion sin el par: 1786. La forma del fuente original
+ * que producia este reparto se desconoce.
+ * Formas que reproducen el original; entre parentesis, la puntuacion que da este mismo C sin ella:
+ * - La rama de dos candidatos marcados con 8 (`mejor` y el actual) escribe su propia cola con `mejor`, `mejor_d` y
+ *   `salida_y` (`move s3,a1`, `lw t8,0x78(s1)` y `move s7,v1`, 0x8001858C a 0x80018598): reutiliza los registros de
+ *   `w->actual` y de la distancia ya cargados, mientras que la cola de las demas ramas (0x8001859C) los relee de
+ *   memoria. Cada camino emite codigo propio, tambien en el original, de modo que la sentencia repetida no es una
+ *   referencia sin codigo (2248 sin ella).
+ * - Las esquinas de D_80069D18 son una union (`c.z` y `c.x` por separado, `w` como palabra) y gte_NormalClip lee
+ *   `D_80069D18[n].w`: el acceso por miembro lleva el desplazamiento dentro de la carga (`lw t8,4(s2)`, 0x8001805C) en
+ *   vez de calcular `s2 + 4` como valor con `*(u32*)&D_80069D18[n]` (2448 sin ella).
+ * - La direccion de `k` se guarda en `kp` antes del bucle de aristas y es la que se pasa a gte_NormalClip: el
+ *   original la calcula una vez antes de la etiqueta (`addiu a0,sp,0x18`, 0x80017F5C) y no dentro del bucle (1783 sin
+ *   `kp`).
  * - `k` es una sola variable que vive en memoria (se pasa su direccion a gte_NormalClip): el contador de impactos
  *   del bucle de puntos, los resultados de NormalClip, el primer resultado de SquareRoot0 y la bandera de impacto
  *   comparten la ranura 0x18(sp) en el original (0x80017B28, 0x80017ED4, 0x80018344 y 0x80018404).
@@ -238,32 +255,31 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  *   con `a`, y el original tiene una sola (0x80017640 a 0x80017668).
  * - El bucle de las aristas se escribe con etiqueta y salto hacia atras (`if (angs < 4) { ...; if (D_80069380 < 0)
  *   goto ciclo_aristas; }`): el original comprueba `< 4` en la cabeza en cada vuelta y cierra con `bltz` (0x8001818C)
- *   a la cabeza (0x80017F78); con `while` y `break` la puntuacion es 9803.
+ *   a la cabeza (0x80017F78); con `while` y `break` el compilador rota el bucle.
  * - Las comparaciones del barrido llevan el lado de `w->pt` primero (`pt + sal > b->max + radio`): el original carga
- *   `w->pt` antes que `w->b` (0x80017BB4 y 0x80017BB8); con el lado de `b` primero, 5991.
+ *   `w->pt` antes que `w->b` (0x80017BB4 y 0x80017BB8).
  * - Las pruebas de la arista mas cercana se escriben `D_80069380 > k`: el original carga `D_80069380` antes que `k`
- *   (0x80018088 y 0x8001808C); con `k < D_80069380`, 3166.
- * - `p[4].vy` recibe `a->min.vy` (`lhu 0x4A` en 0x80017A60 y `sh 0xBA` en 0x80017A6C); con cero, 4176.
+ *   (0x80018088 y 0x8001808C).
+ * - `p[4].vy` recibe `a->min.vy` (`lhu 0x4A` en 0x80017A60 y `sh 0xBA` en 0x80017A6C), no cero.
  * - La rama de angulo negativo resta el radio a `min.vx` en las dos primeras llamadas a ratan2 (`subu a0,a0,a2` en
  *   0x8001798C y 0x800179BC). Las esquinas de D_80069D18 guardan `x` antes que `z` (0x80017F0C a 0x80017F64), la
  *   salida final almacena `vx`, `vz` y `vy` en ese orden; la diferencia con el punto de prueba se escribe directa
  *   sobre `D_80069D08`, sin locales intermedias.
- * - `D_80069D08` se lee por su nombre: leerlo tras la segunda llamada como un desplazamiento de 0x100 bytes desde
- *   D_80069C08 da 6896. Una local con `&D_80069D08` no cambia nada (el CSE la pliega) y las esquinas se leen con
- *   `*(u32*)&D_80069D18[n]` porque `((u32*)D_80069D18)[n]` da la misma cifra.
- * Residuo medido en el volcado y el diff:
- * - `a` y `v` estan intercambiados (a en s4 y v en s5: 25 usos cada una sobre 1670 y 1682 insns, prioridades 0,0599
- *   y 0,0595, con lo que `a` se asigna antes); el original da a `v` mayor prioridad (`v` en s4, `a` en s5).
- * - El compilador calcula como valores las direcciones `D_80069D18 + 4`, `+ 0xC` y `+ 0x10` (tres `addiu` en la
- *   cabeza del bucle de aristas) y las usa como base, y `addiu a0,sp,0x18` queda dentro del bucle (el original lo
- *   calcula antes, 0x80017F5C); el original lee cada pareja con desplazamiento fijo. Se supone, sin verificar, que
- *   el original lee cada pareja como un elemento de un arreglo de palabras.
- * - El original copia `a` antes de sumar el desplazamiento de `param.trans` (`move v0,s5` y `addiu v0,v0,0xe4`,
- *   0x8001777C y 0x80017788), con un `addiu` directo aqui.
+ * - `D_80069D08` se lee por su nombre, no como un desplazamiento de 0x100 bytes desde D_80069C08.
+ * Residuo medido en el diff (los tres primeros de mayor a menor numero de lineas):
  * - El original carga `lista` en una temporal y la copia (`lhu t8,0x20(sp)` y `move v0,t8`, 0x80017518 y
- *   0x80017520); falta ese `move` en los dos sitios (0x80017520 y 0x80017588). Se supone, sin verificar, que lo
- *   produce la forma de su prueba.
+ *   0x80017520); falta ese `move` en los dos sitios (0x80017520 y 0x80017588). Ademas desde 0x80017550 salta a la
+ *   prueba de `lista` (0x8001758C) con la copia hecha en el hueco de retardo (`move v0,t8`, 0x80017554) en vez de
+ *   releerla; aqui las dos entradas pasan por la relectura (0x80017580). Se supone, sin verificar, que lo produce la
+ *   forma de su prueba.
+ * - El original copia `a` antes de sumar el desplazamiento de `param.trans` (`move v0,s5` en el hueco de retardo de
+ *   0x80017778 y `addiu v0,v0,0xe4` en 0x80017788), con un `addiu` directo aqui y un `nop` en ese hueco.
+ * - El producto de `t2` (0x80017754 a 0x80017774) usa otros temporales: el original deja la suma y el producto en
+ *   `t2` y carga la distancia en `v0` tras el `mult`; aqui los usa en `v0` y `v1`. Se supone, sin verificar, que es
+ *   el orden de asignacion de los temporales del bloque.
  * - El orden de las copias de los parametros del prologo (`move s3,zero` y `li s7,-1` antes de `move s1,a2`).
+ * - `D_80069380` figura como `%gp_rel(D_80069380)(gp)` en el C y como `0x60(gp)` en el original (13 lineas marcadas
+ *   de operando). Se supone, sin verificar, que los bytes son los mismos.
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con
  * mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la
