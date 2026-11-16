@@ -392,24 +392,23 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 32034 con la configuracion versionada (g = 8 del archivo; ejes 246 de
- * operando, 38 reordenadas, 1913 insertadas o borradas). La cifra incluye palabras con direcciones
- * absolutas dentro del archivo (saltos y tablas de saltos), de modo que depende del tamano de las
- * funciones anteriores. Medido: el codigo generado tiene 2960 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2787 coinciden en el mnemonico (94,3 %) y 1962 son
- * identicas (66,4 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
- * van en el orden de direcciones de las tablas de saltos del original: el orden del fuente decide
- * el orden de emision, por eso los casos no van en orden numerico. Lo que queda es el reparto de
- * registros guardados: usos de s0, s1, s5 y s7 en el original frente a aqui, 124 y 193, 125 y 47,
- * 53 y 81, 22 y 54 (s2, s3, s4, s6 y s8 coinciden dentro de un 30 %). El original guarda el nodo de
- * los chunks de recursos, modelos y volumenes en s1 y el de entidades en s3, el resultado de la
- * reserva de la lista de 0x14 y 0xC bytes en a1 (aqui `aux` es una variable de toda la funcion en un
- * registro guardado; una variable propia para esos dos casos da 32049, sin efecto) y la direccion
- * del bufer en s4. Se supone, sin verificar, que quedan por separar otras variables que el original
- * usa por chunk.
+ * Pendiente: puntuacion 38617 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
+ * depende del tamano de las funciones anteriores. Medido: el codigo generado tiene 2958
+ * instrucciones frente a 2955 del original, y alineando el texto de ambos 2357 coinciden en el
+ * mnemonico (79,8 %) y 1362 son identicas (46,1 %). Los cuerpos de los casos de los cinco `switch`
+ * y del despacho de primer nivel van en el orden de direcciones de las tablas de saltos del
+ * original: el orden del fuente decide el orden de emision, por eso los casos no van en orden
+ * numerico. Lo que queda es el reparto de registros guardados: usos de s0, s1, s3, s4, s7 y s8 en
+ * el original frente a aqui, 124 y 193, 125 y 47, 96 y 176, 187 y 238, 22 y 51, 50 y 27 (s2, s5 y
+ * s6 coinciden dentro de un 30 %). El original guarda el nodo de los chunks de recursos, modelos y
+ * volumenes en s1 y el de entidades en s3, el resultado de la reserva de la lista de 0x14 y 0xC
+ * bytes en a1 (aqui `aux` es una variable de toda la funcion en un registro guardado) y la
+ * direccion del bufer en s4. Se supone, sin verificar, que quedan por separar otras variables que
+ * el original usa por chunk.
  *
  * Reserva de pila: el marco del original es de 0x210 bytes (`addiu sp` en 0x800415A0) y el del C sin
- * la local, de 0x208; la cifra medida sin la local es 33057 y con ella 32034.
+ * la local, de 0x208; la cifra medida sin la local es 39632 y con ella 38617.
  *
  * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `datos`.
  * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
@@ -441,7 +440,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     u8* campos;
     RegistroArchivo* registro;
     u8* cursor;
-    u8* reserva;
+    u8* libre;
     u8* monton;
     u8* nodo;
     /* Nodo del chunk de entidades: el original lo guarda en otro registro que el de los demas chunks. */
@@ -471,9 +470,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     u8 etiqueta;
     EstadoPrincipal* estado;
 
-    /* Memoria de trabajo del cargador: el destino recibe primero el contenido y luego la reserva. */
+    /* Memoria de trabajo del cargador: el destino recibe primero el contenido y luego la memoria libre. */
     campos = campos_mem;
-    reserva = datos;
+    libre = datos;
     D_800695B4 = 1;
     memset(D_8006AA70, 0, 0x100);
     tam_extra = 0;
@@ -687,53 +686,53 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                 }
             }
             if (banco_cargado == 0) {
-                D_8006959C = (u32)reserva;
-                reserva += D_8006954C;
+                D_8006959C = (u32)libre;
+                libre += D_8006954C;
             }
             for (i = 0; i < 3; i++) {
                 D_8006AE20[i].length = 9;
-                D_8006AE20[i].org = (GsOT_TAG*)reserva;
-                reserva += tamanos[9];
+                D_8006AE20[i].org = (GsOT_TAG*)libre;
+                libre += tamanos[9];
                 D_8006AE60[i].length = 8;
-                D_8006AE60[i].org = (GsOT_TAG*)reserva;
-                reserva += tamanos[8];
+                D_8006AE60[i].org = (GsOT_TAG*)libre;
+                libre += tamanos[8];
                 D_8006AEA0[i].length = 9;
-                D_8006AEA0[i].org = (GsOT_TAG*)reserva;
-                reserva += tamanos[9];
+                D_8006AEA0[i].org = (GsOT_TAG*)libre;
+                libre += tamanos[9];
             }
-            D_8006968C = reserva;
-            reserva += (s16)D_8006955C * 0x1F4;
-            D_80069570 = reserva;
-            reserva += D_80069670 * 0x14;
-            D_8006964C = reserva;
-            reserva += (s16)D_80069660 * 0xB8;
-            D_800695D4 = reserva;
-            reserva += (s16)D_800694E6 * 0x58;
-            D_80069644 = reserva;
-            reserva += D_8006967E * 0xC;
-            D_80069528 = reserva;
-            reserva += D_800695C2 * 0x3C;
-            monton = reserva;
+            D_8006968C = libre;
+            libre += (s16)D_8006955C * 0x1F4;
+            D_80069570 = libre;
+            libre += D_80069670 * 0x14;
+            D_8006964C = libre;
+            libre += (s16)D_80069660 * 0xB8;
+            D_800695D4 = libre;
+            libre += (s16)D_800694E6 * 0x58;
+            D_80069644 = libre;
+            libre += D_8006967E * 0xC;
+            D_80069528 = libre;
+            libre += D_800695C2 * 0x3C;
+            monton = libre;
             D_80069538 = monton;
-            reserva = monton + D_80069548;
-            D_800694B8 = reserva;
-            reserva += (s16)D_8006952E * 8;
+            libre = monton + D_80069548;
+            D_800694B8 = libre;
+            libre += (s16)D_8006952E * 8;
             D_80076188 = D_8006959C;
             D_80069680 = D_8006959C;
             D_8006958C = D_8006959C - 0x400 + D_8006954C;
             D_80069610 = D_8006958C;
             D_80069614 = D_8006958C;
             if (D_80069678 != 0) {
-                D_80069520 = reserva;
-                reserva += D_80069678;
+                D_80069520 = libre;
+                libre += D_80069678;
             } else {
                 D_80069520 = NULL;
             }
             if (datos_extra != NULL && tam_extra != 0) {
-                CopiarBytesSolapados(datos_extra, tam_extra, reserva);
-                D_80069590 = (u16*)reserva;
+                CopiarBytesSolapados(datos_extra, tam_extra, libre);
+                D_80069590 = (u16*)libre;
                 datos_extra = NULL;
-                reserva += tam_extra;
+                libre += tam_extra;
             }
             InitListPool(D_8006968C, 0x1F4, (s16)D_8006955C * 0x1F4);
             InitListPool((u8*)D_8006964C, 0xB8, (s16)D_80069660 * 0xB8);
@@ -743,7 +742,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             InitListPool(D_80069528, 0x3C, D_800695C2 * 0x3C);
             memset(D_80069538, 0, D_80069548);
             compensacion = func_80040F78(secciones, n_secciones, 4);
-            datos = reserva;
+            datos = libre;
             if (audio_cargado == 1) {
                 audio_cargado = 2;
                 D_8006966C = datos + tam_audio;
@@ -769,15 +768,15 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         case 0x4B:
             /* Banco del idioma activo: busca su posicion en la cabecera y lee sus secciones. */
             banco_cargado = 1;
-            D_8006959C = (u32)reserva;
-            reserva += D_8006954C;
+            D_8006959C = (u32)libre;
+            libre += D_8006954C;
             if (datos_extra != NULL && tam_extra != 0) {
-                CopiarBytesSolapados(datos_extra, tam_extra, reserva);
-                D_80069590 = (u16*)reserva;
+                CopiarBytesSolapados(datos_extra, tam_extra, libre);
+                D_80069590 = (u16*)libre;
                 datos_extra = NULL;
-                reserva += tam_extra;
+                libre += tam_extra;
             }
-            datos = reserva;
+            datos = libre;
             if (D_80010050 == 0) {
                 compensacion = func_80040F78(secciones, n_secciones, 6);
             } else if (D_80010050 == 1) {
@@ -1075,7 +1074,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             cursor += 8;
                             audio_cargado = 1;
                             tam_audio = *(s32*)campos_mem;
-                            reserva += *(s32*)(campos + 4);
+                            libre += *(s32*)(campos + 4);
                             D_800694A0 = *(s32*)(campos + 4);
                             break;
                         case 0x02:
@@ -1115,7 +1114,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             cursor += 0x30;
                             D_800694EC = aux + *(s32*)aux;
                             D_80069598 = (u32*)(aux + *(s32*)(aux + 4));
-                            reserva += D_800694A0;
+                            libre += D_800694A0;
                             break;
                         case 0x4D:
                             CopiarBytes(cursor, campos, 0x30);
@@ -1387,7 +1386,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     /* sigue con las entidades de los tipos 7 y 10 */
                 case 0x07:
                 case 0x0A:
-                    /* Entidad de escena: un entidad de 0x1F4 bytes con sus etiquetas (posicion, giro...). */
+                    /* Entidad de escena: una entidad de 0x1F4 bytes con sus etiquetas (posicion, giro...). */
                     entidad = (u8*)AllocListNode((u8*)D_8006968C, 0x1F4, (s16)D_8006955C * 0x1F4);
                     if (entidad == NULL) {
                         for (;;) {
@@ -1789,7 +1788,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         }
                     } while (*cursor != 0x2E);
-                    ResolverReferenciasContenedor((ContenedorCarga*)nodo);
+                    ResolverReferenciasContenedor((ContenedorCarga*)entidad);
                     break;
 
                 default:
