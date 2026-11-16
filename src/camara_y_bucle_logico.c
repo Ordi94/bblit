@@ -465,8 +465,12 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * queda: la prueba de los dos bits de la direccion del ajuste de altura (0xba0..0xbb8), que carga la mascara antes
  * que la bandera (con el orden de operandos del `or` invertido no cambia); el par de modificaciones de banderas
  * (0xcc4..0xd30), donde el original carga el contador tras el almacen de las banderas y aqui el planificador lo
- * adelanta (se supone, sin verificar, que el original almacena las banderas por un puntero que el planificador no
- * puede separar del acceso por `$gp`; escribir el almacen por `cam->` empeora, en una o en las dos ramas); la carga
+ * adelanta (el volcado `.sched` de la rama del giro a la izquierda muestra el orden `li`, carga de `D_80069402`,
+ * `ori`, `sh` sin ninguna arista de dependencia entre la carga del simbolo y el almacen a `0x80(reg)`, de modo que el
+ * planificador adelanta la carga; el original la deja tras el almacen. Se supone, sin verificar, que el original
+ * almacena las banderas por un puntero que el planificador no puede separar del acceso por `$gp`; medido: escribir
+ * el almacen por `cam->` empeora, en una o en las dos ramas, y hacerlo por un puntero `u16*` local o escribir `k`
+ * antes que `c` dejan la cifra en 3340); la carga
  * de `D_8006D928.vpy` del modo de transicion (0x11d0..0x11ec), adelantada aqui sobre tres almacenes de `v30`
  * (escribirla por `cam->` empeora); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el
  * original lo guarda en `s1`, el registro del puntero `&w->dir` que muere en la preparacion de los argumentos de la

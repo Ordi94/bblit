@@ -65,7 +65,8 @@ s16* D_800693DC;
    v0/v1/a0 y de los punteros s0-s2 en las consultas de terreno (el original deja &sc->tmp_v en s0, &sc->res en s1 y
    &sc->punto en s2; este C los reparte en otro orden; los volcados de cc1 asignan 263 pseudos y no se cerro cual decide
    el orden); (2) el bloque de la base de la caja (0x80025544) emite el producto 0x46 * 0x46 como multiplicacion de un
-   registro en el original y aqui se pliega a una constante; escribir max.vx * max.vx da 4860 frente a 4685; (3) la mascara
+   registro en el original y aqui se pliega a una constante; escribir max.vx * max.vx da 4860 frente a 4685, y repartir
+   la constante en una local (`d = 0x46; o->max.vx = d; ... d * d`) da 4825 (peor; se supone, sin verificar, que el CSE la pliega igual); en el original el `mult v0,v0` va justo tras `li v0,0x46`, antes del almacen de max.vx; (3) la mascara
    0x10000000 de la prueba del registro de estado se carga en v1 y la bandera en v0 en el original, y aqui al reves; el
    orden de operandos no lo cambia. Los accesos que el original no ordena con los almacenes a globales (los cuatro
    `vy` de D_80069D60 y dos de `flags14`) se escriben por desplazamiento en bytes; con los seis accesos por nombre la cifra
