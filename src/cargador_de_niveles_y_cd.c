@@ -432,13 +432,13 @@ typedef struct {
  * Dos decremento-incremento no generan codigo (`libre--; libre++;` al abrir el caso 0x2C y
  * `nodo--; nodo++;` en el chunk 0x22; el codigo generado tiene 2947 instrucciones con y sin ellos).
  * Causa medida en el volcado de `cc1` (prioridad `floor_log2(R) * R / L` de `global-alloc`): (1) el
- * cursor del script (pseudo 90, R 1071, L 2051, prioridad 5,22) superaba al nodo de los chunks de
- * recursos y modelos (pseudo 94, R 340, L 524, 5,19) y tomaba s1; con el par el nodo pasa a R 352
- * (L 525, 5,36), toma s1 y el cursor s2, como el original. (2) la variable compartida de abajo
- * (pseudo 102, R 118, L 2069, 0,34) superaba a la zona libre `libre` (pseudo 92, R 124, L 2291,
- * 0,32) y le quitaba s6; con el par `libre` pasa a R 132 (L 2293, 0,40), toma s6, la variable s7 y
- * `datos` fp (pseudo 82, R 106, L 2125, 0,30), como el original. Puntuacion con ninguno: 18988;
- * solo el de `libre`: 18578; solo el del nodo: 16138; los dos: 15728. La forma del fuente
+ * cursor del script (pseudo 91, R 1071, L 2060, prioridad 5,20) superaba al nodo de los chunks de
+ * recursos y modelos (pseudo 95, R 340, L 528, 5,15) y tomaba s1; con el par el nodo pasa a R 352
+ * (L 529, 5,32), toma s1 y el cursor s2, como el original. (2) la variable compartida de abajo
+ * (pseudo 103, R 118, L 2075, 0,34) superaba a la zona libre `libre` (pseudo 93, R 124, L 2298,
+ * 0,32) y le quitaba s6; con el par `libre` pasa a R 132 (L 2300, 0,40), toma s6, la variable s7 y
+ * `datos` fp (pseudo 82, R 106, L 2132, 0,30), como el original. Puntuacion con ninguno: 14348;
+ * solo el de `libre`: 13938; solo el del nodo: 11628; los dos: 11218. La forma del fuente
  * original que producia este reparto se desconoce.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
@@ -461,7 +461,7 @@ typedef struct {
  * campos por esa copia, carga la cabeza de la lista en un temporal y la copia al recorrido (`move
  * a0,v0`), que vive en un temporal. La copia es `aux`, la misma variable que en otros casos recibe
  * `campos` y se usa tras una llamada (casos 0x11 y los de dos llamadas): al cruzar llamadas toma el
- * primer registro guardado (pseudo 98, R 384, L 293, prioridad 10,48, s0); una variable propia de
+ * primer registro guardado (pseudo 99, R 312, L 289, prioridad 8,64, s0); una variable propia de
  * los casos de lista, de vida corta y sin llamadas, toma otro registro guardado y desplaza a los
  * demas pseudos. La copia se hace antes de la prueba de la cabeza: el CSE
  * solo la conserva si queda fuera del bloque de las lecturas, que ocurren tras la union de las dos
@@ -504,6 +504,14 @@ typedef struct {
  * causa es que el compilador no da por afectado un miembro de un agregado por un almacen a un global
  * escalar, y que si lo hace con un puntero.
  *
+ * Residuo por causas (cada fila insertada o borrada pesa unos 100 puntos): (1) el chunk 0x3E, donde el
+ * original deja tres cargas (0x10, 0x14 y 0x18 de las etiquetas) intercaladas entre los almacenes y
+ * el C las deja al final; (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
+ * `libre += x; monton = libre` en dos instrucciones (tres filas); (4) el hueco de retardo del salto de
+ * `func_80044664` y del `bgtz` inicial, que el planificador de saltos llena distinto; (5) el orden de
+ * `cursor += 8` frente a las cargas en los chunks 0x36 y 0x47; (6) nombres de registro (unas 150
+ * filas de 5 puntos).
+ *
  * Se supone, sin verificar, que el original conserva `libre += x` y `monton = libre` en dos
  * instrucciones (0x80041E44 y 0x80041E58) y que eso le da a `libre` las referencias que aqui da el
  * par; el compilador funde las dos sentencias en una al compilar el fuente actual.
@@ -513,9 +521,9 @@ typedef struct {
  * de los bucles de etiquetas (por ejemplo el del chunk 0x36, original 0x80042F68 a 0x80042FB8): el
  * original conserva el valor de la guarda en s0 (`addu s0,t4,zero` en 0x80042F78) y la etiqueta 0x37
  * en s1, y la prueba de salida del bucle compara con s0; aqui solo la etiqueta se iza (a s0) y la
- * prueba de salida recarga 0x2E con `li` en cada vuelta. El pseudo de R 68 y L 2279 que ocupaba s8 en versiones anteriores
- * es `hijo_matriz` (vivo desde la entrada de la funcion porque se lee en algun camino sin
- * asignacion previa); con la variable compartida queda en la pila, como el original.
+ * prueba de salida recarga 0x2E con `li` en cada vuelta. `hijo_matriz` (pseudo 98, R 72, L 2297) vive
+ * desde la entrada de la funcion porque se lee en algun camino sin asignacion previa; con la
+ * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
  * 0x200; la cifra medida sin la local es 12999 y con ella 11218. Las dos reservas de 8 bytes suman los
