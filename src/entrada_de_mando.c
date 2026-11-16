@@ -259,9 +259,9 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 4000 con la configuracion versionada (g = 8 del archivo): 44 diferencias de operando, 7
- * lineas reordenadas y 359 insertadas o borradas. Reserva de pila: el marco del original es de 0x28 bytes (`addiu
- * sp` en 0x80040494) y el del C sin la local, de 0x20; la cifra medida sin la local es 4074 y con ella 4000. El
+ * Pendiente: puntuacion 3575 con la configuracion versionada (g = 8 del archivo): 44 diferencias de operando, 6
+ * lineas reordenadas y 354 insertadas o borradas. Reserva de pila: el marco del original es de 0x28 bytes (`addiu
+ * sp` en 0x80040494) y el del C sin la local, de 0x20; la cifra medida sin la local es 3649 y con ella 3575. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
@@ -485,17 +485,18 @@ normal:
         }
         return;
     default:
+        /* La base del estado se reutiliza aqui (`est`, 0x800409D8): el original no la recalcula. */
         D_80069672 += 1;
         if (D_80069672 == 4) {
             /* banco[0xC] es D_8006AA7C; banco[0] es el primer byte del banco D_8006AA70. */
             if (banco[0xC] == 0) {
-                ESTADO_PRINCIPAL->mando.botones_a = 0x800;
+                est->mando.botones_a = 0x800;
             }
         } else if (D_80069672 >= 5) {
             /* El original carga D_8006D9A8 entera con lw; globales.h la declara u16[5] por el resto de usos. */
             if (banco[0] == 0 && D_8006966A == 0 && (*(u32*)D_8006D9A8 & 0x301) == 1 && ESTADO_PRINCIPAL->r[BANCO_PAUSA] == 0) {
                 D_80069672 = 5;
-                ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a & 0xF7FF;
+                est->mando.botones_a = est->mando.botones_a & 0xF7FF;
             } else if (D_8006AA7C == 0) {
                 D_80069672 = 3;
             }
