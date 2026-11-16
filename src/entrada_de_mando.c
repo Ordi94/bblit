@@ -315,8 +315,9 @@ void func_8004048C(void)
     u32 cf2;
     u32 cf3;
     u32 cfd;
-    u32 y6;
-    u32 y7;
+    /* Lecturas sin centrar de los ejes X e Y del mando: el original lee cada una una sola vez (0x80040830 y 0x800408E4). */
+    u32 eje_x_crudo;
+    u32 eje_y_crudo;
     EstadoPrincipal* est;
     u8* banco;
     /* Reserva de pila: local sin uso que completa el marco del original. */
@@ -446,8 +447,8 @@ normal:
         mascara = ESTADO_PRINCIPAL->mando.botones_c;
         /* Cada eje se lee una sola vez (0x80040830 y 0x800408E4) y las ramas reutilizan el valor tras los almacenes;
            la conversion a u8 en las ramas conserva el `andi 0xff` del original (0x80040880 y 0x80040908). */
-        y6 = D_8006CFF6;
-        eje = y6 & 0xFF;
+        eje_x_crudo = D_8006CFF6;
+        eje = eje_x_crudo & 0xFF;
         prev = mascara & ~ESTADO_PRINCIPAL->mando.botones_e;
         ESTADO_PRINCIPAL->mando.w3E = prev;
         ESTADO_PRINCIPAL->mando.botones_a = prev;
@@ -455,28 +456,28 @@ normal:
             ESTADO_PRINCIPAL->mando.botones_a = prev | 0x8000;
             ESTADO_PRINCIPAL->mando.w3E = prev | 0x8000;
             ESTADO_PRINCIPAL->mando.botones_c = mascara | 0x8000;
-            ESTADO_PRINCIPAL->mando.eje_x = (u8)y6 - centro;
+            ESTADO_PRINCIPAL->mando.eje_x = (u8)eje_x_crudo - centro;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x8000;
         } else if (centro + D_8006952C < eje) {
             ESTADO_PRINCIPAL->mando.botones_a = prev | 0x2000;
             ESTADO_PRINCIPAL->mando.w3E = prev | 0x2000;
             ESTADO_PRINCIPAL->mando.botones_c = mascara | 0x2000;
-            ESTADO_PRINCIPAL->mando.eje_x = y6 - centro;
+            ESTADO_PRINCIPAL->mando.eje_x = eje_x_crudo - centro;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x2000;
         } else {
             ESTADO_PRINCIPAL->mando.eje_x = 0;
         }
         centro = ESTADO_PRINCIPAL->mando.centro_y;
-        y7 = D_8006CFF7;
-        eje = y7 & 0xFF;
+        eje_y_crudo = D_8006CFF7;
+        eje = eje_y_crudo & 0xFF;
         if (eje < centro - D_8006952C) {
-            ESTADO_PRINCIPAL->mando.eje_y = centro - ((u8)y7 + 1);
+            ESTADO_PRINCIPAL->mando.eje_y = centro - ((u8)eje_y_crudo + 1);
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x1000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x1000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x1000;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x1000;
         } else if (centro + D_8006952C < eje) {
-            ESTADO_PRINCIPAL->mando.eje_y = centro - (y7 + 1);
+            ESTADO_PRINCIPAL->mando.eje_y = centro - (eje_y_crudo + 1);
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x4000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x4000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x4000;
