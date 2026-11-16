@@ -466,8 +466,8 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1225 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 5 reordenadas,
- * 241 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
+ * Pendiente: puntuacion 1175 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 5 reordenadas,
+ * 229 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
  * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
  * reproduce la carga del original del hijo y baja de 2625 a 2605. La resta de la X del portador en el barrido se
  * escribe directa (`o->param.trans.vx - o->p70->param.trans.vx`): con una local previa (`x_portador`) la cifra es 1915.
@@ -520,7 +520,13 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * D_800693C0 (0x8002B928): el original relee la memoria antes del almacen a D_800693B4; con el almacen en cada rama
  * (`D_800693B4 = t->w114;` en una y `D_800693B4 = giro;` en la otra) el compilador reutiliza el registro, no funde
  * las colas y la cifra sube a 1745; se supone, sin verificar, que el original trata el almacen a D_800693C0 como
- * posible alias de la memoria del scratchpad.
+ * posible alias de la memoria del scratchpad. (4) La altura de la sonda sobre el apoyo se calcula con la local
+ * `altura_apoyo` (la altura del apoyo mas 0x32, sumada despues a la altura maxima): el original carga la altura
+ * del apoyo antes que la maxima y suma en ese orden (`addu v0,v0,v1`); escrita en una sola expresion el reparto de
+ * v0 y v1 de la suma sale intercambiado. La local `aux_previo` guarda el puntero al apoyo antes del almacen de
+ * `o->p70` y se usa en la resta de X de la rama sin bit 0x1000000: el original relee `t->aux` tras ese almacen solo
+ * para la prueba de la bandera (`lw v0,0xa8(s2)`) y conserva en a0 el puntero anterior para la resta (0x80029498);
+ * sin la local la lectura repetida ocupa a0.
  */
 /*
  * Las cuatro sentencias replicadas son `t->w114 = banda_alta;` y `t->w118 = banda_baja;` escritas en la rama del
@@ -531,7 +537,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * (0x80027EE8). Causa medida en los volcados de `cc1` (`.lreg`, `.greg` y el ensamblador de salida) y con `diff`: con
  * la pareja en cada rama los valores son pseudos locales del bloque (603 y 604 en el bloque 127, 627 y 628 en el 133,
  * 2 usos sobre 2 insns cada uno) que toman v0 y v1 y se almacenan al final de su camino, igual que el original (la
- * puntuacion es 1225); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
+ * puntuacion es 1175); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
  * los valores pasan a ser pseudos globales (la banda alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6
  * usos sobre 14 insns, 0,86) que reciben a1 y v1, los dos almacenes suben tras la etiqueta de union y aparece un
  * `move v0,a1` antes de la prueba de histeresis (la cifra empeora). La forma del fuente original que producia este reparto se
@@ -545,7 +551,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
  * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
  * bloque de union y el planificador la deja en el hueco de retardo de la llamada (en el original ese hueco es un
- * `nop`). Con las dos llamadas la cifra es 1225; con una sola llamada tras la etiqueta empeora. Se supone, sin
+ * `nop`). Con las dos llamadas la cifra es 1175; con una sola llamada tras la etiqueta empeora. Se supone, sin
  * verificar, que en la rama de la comprobacion de apoyo el original reparte `a0` al puntero del portador y despues al
  * argumento, y que aqui la preparacion del argumento sube tras la llamada a BarrerTerreno y empuja ese puntero a `a1`.
  * La forma del fuente original que producia este reparto se desconoce.
@@ -581,6 +587,8 @@ void func_80026FEC(Objeto* o)
     s32 sig_w17c;
     s32 paso_andadura;
     s32 producto_andadura;
+    s32 altura_apoyo;
+    Objeto* aux_previo;
     /*
      * Temporales de 32 bits que varios bloques reutilizan: el original conserva en el mismo
      * registro el valor de los distintos calculos, y una variable por uso cambia el reparto.
@@ -1318,7 +1326,8 @@ avance_por_banderas:
         t->p30.vz = o->param.trans.vz - t->aux->param.trans.vz;
     } else {
         t->p30.vx = t->aux->param.trans.vx - o->param.trans.vx;
-        t->p30.vy = t->aux->max.vy + 0x32 + t->aux->param.trans.vy - o->param.trans.vy;
+        altura_apoyo = t->aux->param.trans.vy + 0x32;
+        t->p30.vy = altura_apoyo + t->aux->max.vy - o->param.trans.vy;
         t->p30.vz = t->aux->param.trans.vz - o->param.trans.vz;
     }
     if ((t->banderas & 0x30000000) == 0x20000000) {
@@ -1494,12 +1503,13 @@ enlazar_portado:
         (s16)t->r.sv.b.vy >= -0x63 &&
         t->aux->u78.p != 0 &&
         o->u78.p != 0) {
-        o->p70 = t->aux;
+        aux_previo = t->aux;
+        o->p70 = aux_previo;
         if (t->aux->flags0C & 0x1000000) {
             t->r.sv.b.vz = 0;
             t->r.sv.b.vx = 0;
         } else {
-            t->r.sv.b.vx = (u16)o->param.trans.vx - (u16)t->aux->param.trans.vx;
+            t->r.sv.b.vx = (u16)o->param.trans.vx - (u16)aux_previo->param.trans.vx;
             t->r.sv.b.vz = (u16)o->param.trans.vz - (u16)o->p70->param.trans.vz;
         }
         t->r.sv.b.vy = o->p70->max.vy + 4;
