@@ -421,7 +421,13 @@ s32 CargarContenedor(s16 archivo, void* destino)
         0x10000
     };
     EntradaSeccion secciones[14];
-    u8 campos[0x80];
+    /*
+     * Bufer de las etiquetas del script. El original lo direcciona por un registro base (s4) en todos
+     * los campos salvo el primero, que lee con desplazamiento sobre el puntero de pila: `campos` es el
+     * puntero y `campos_mem` el bufer, que se usa directo solo en el primer campo de cada etiqueta.
+     */
+    u8 campos_mem[0x80];
+    u8* campos;
     GsIMAGE imagen;
     RECT rect;
     RegistroArchivo* registro;
@@ -454,6 +460,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
     EstadoPrincipal* estado;
 
     /* Memoria de trabajo del cargador: el destino recibe primero el contenido y luego la reserva. */
+    campos = campos_mem;
     datos = (u8*)destino;
     reserva = (u8*)destino;
     D_800695B4 = 1;
@@ -556,7 +563,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         if (tipo == 0x45) {
                             CopiarBytes(cursor, campos, 1);
                             cursor++;
-                            destino_seccion = (u8*)D_80067E98[campos[0]];
+                            destino_seccion = (u8*)D_80067E98[campos_mem[0]];
                             D_800694A0 += secciones[posicion].alineado;
                             posicion++;
                             func_80044664((u8*)D_8006949C, destino_seccion, (void*)0x1F800000);
@@ -613,7 +620,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         tipo = *cursor++;
                         if (tipo == 0x45) {
                             CopiarBytes(cursor, campos, 1);
-                            destino_seccion = (u8*)D_80067E98[campos[0]];
+                            destino_seccion = (u8*)D_80067E98[campos_mem[0]];
                             D_800694A0 = secciones[posicion].alineado;
                             D_80069484 = 0;
                             D_80069498 = (u32)destino_seccion;
@@ -820,13 +827,13 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         switch (etiqueta) {
                         case 0x26:
                             CopiarBytes(cursor, campos, 4);
-                            EN(u16, nodo, 8) = *(u16*)campos;
+                            EN(u16, nodo, 8) = *(u16*)campos_mem;
                             cursor += 4;
                             break;
                         case 0x24:
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
-                            posicion = *(s32*)campos;
+                            posicion = *(s32*)campos_mem;
                             D_800694A0 = *(s32*)(campos + 4);
                             aux = datos + posicion + 4;
                             EN(u8*, nodo, 0x54) = aux;
@@ -837,7 +844,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         case 0x40:
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
-                            posicion = *(s32*)campos;
+                            posicion = *(s32*)campos_mem;
                             D_800694A0 = *(s32*)(campos + 4);
                             aux = datos + posicion + 4;
                             EN(u8*, nodo, 0x54) = aux;
@@ -853,7 +860,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                                 }
                             }
                             EN(u8*, nodo, 0x54) = aux;
-                            posicion = *(s32*)campos;
+                            posicion = *(s32*)campos_mem;
                             D_800694A0 = *(s32*)(campos + 4);
                             EN(u8*, aux, 8) = datos + posicion;
                             EN(u16, nodo, 0xA) = 4;
@@ -871,19 +878,19 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             compensacion = *(s32*)(campos + 8);
                             EN(u16, nodo, 0xA) = 1;
                             EN(u8*, nodo, 0x54) = datos + posicion;
-                            EN(u16, nodo, 0x50) = *(u16*)campos;
+                            EN(u16, nodo, 0x50) = *(u16*)campos_mem;
                             cursor += 0xC;
                             D_800694A0 = compensacion;
                             break;
                         case 0x27:
                             CopiarBytes(cursor, campos, 4);
                             EN(s32, nodo, 0xC) = *(u16*)(campos + 2);
-                            EN(u16, nodo, 0x4E) = *(u16*)campos;
+                            EN(u16, nodo, 0x4E) = *(u16*)campos_mem;
                             cursor += 4;
                             break;
                         case 0x28:
                             CopiarBytes(cursor, campos, 3);
-                            EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x14) = campos[0];
+                            EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x14) = campos_mem[0];
                             EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x15) = campos[1];
                             EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x16) = campos[2];
                             EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x17) = 0;
@@ -892,7 +899,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             break;
                         case 0x0D:
                             CopiarBytes(cursor, campos, 0xC);
-                            EN(u16, nodo + EN(u16, nodo, 0x12) * 14, 0x24) = *(u16*)campos;
+                            EN(u16, nodo + EN(u16, nodo, 0x12) * 14, 0x24) = *(u16*)campos_mem;
                             EN(u16, nodo + EN(u16, nodo, 0x12) * 14, 0x26) = *(u16*)(campos + 2);
                             EN(u16, nodo + EN(u16, nodo, 0x12) * 14, 0x28) = *(u16*)(campos + 4);
                             EN(u8, nodo + EN(u16, nodo, 0x12) * 14, 0x2D) = campos[9];
@@ -930,7 +937,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         switch (etiqueta) {
                         case 0x24:
                             CopiarBytes(cursor, campos, 8);
-                            posicion = *(s32*)campos;
+                            posicion = *(s32*)campos_mem;
                             EN(u16, nodo, 0xA) = 2;
                             aux = datos + posicion + 4;
                             D_800694A0 = *(s32*)(campos + 4);
@@ -943,12 +950,12 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             CopiarBytes(cursor, campos, 4);
                             cursor += 4;
                             EN(u16, nodo, 0x4E) = 0;
-                            EN(s32, nodo, 0xC) = *(u16*)campos;
+                            EN(s32, nodo, 0xC) = *(u16*)campos_mem;
                             break;
                         case 0x10:
                             CopiarBytes(cursor, campos, 0xC);
                             aux = EN(u8*, EN(u8*, hijo_matriz, 4), 0x44);
-                            EN(s32, aux, 0x18) = *(s32*)campos;
+                            EN(s32, aux, 0x18) = *(s32*)campos_mem;
                             EN(s32, aux, 0x1C) = *(s32*)(campos + 4);
                             EN(s32, aux, 0x20) = *(s32*)(campos + 8);
                             cursor += 0xC;
@@ -960,9 +967,9 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         case 0x12:
                             CopiarBytes(cursor, campos, 0xC);
                             aux = EN(u8*, EN(u8*, hijo_matriz, 4), 0x44);
-                            EN(s32, aux, 0) = *(s32*)campos;
-                            EN(s32, aux, 4) = *(s32*)campos;
-                            EN(s32, aux, 8) = *(s32*)campos;
+                            EN(s32, aux, 0) = *(s32*)campos_mem;
+                            EN(s32, aux, 4) = *(s32*)campos_mem;
+                            EN(s32, aux, 8) = *(s32*)campos_mem;
                             cursor += 0xC;
                             ScaleMatrix((MATRIX*)(EN(u8*, hijo_matriz, 4) + 4),
                                         (VECTOR*)EN(u8*, EN(u8*, hijo_matriz, 4), 0x44));
@@ -982,7 +989,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             aux = EN(u8*, hijo_matriz, 4);
                             EN(s32, aux, 0x4C) = 0;
                             EN(s32, aux, 0x48) = 0;
-                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x10) = *(u16*)campos;
+                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x10) = *(u16*)campos_mem;
                             EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x12) = *(u16*)(campos + 2);
                             EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x14) = *(u16*)(campos + 4);
                             EN(s32, EN(u8*, hijo_matriz, 4), 0) = 0;
@@ -992,12 +999,12 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             break;
                         case 0x39:
                             CopiarBytes(cursor, campos, 2);
-                            EN(u16, hijo, 0xB6) = *(u16*)campos;
+                            EN(u16, hijo, 0xB6) = *(u16*)campos_mem;
                             cursor += 2;
                             break;
                         case 0x43:
                             CopiarBytes(cursor, campos, 1);
-                            EN(u8, hijo, 0xB5) = campos[0];
+                            EN(u8, hijo, 0xB5) = campos_mem[0];
                             cursor += 1;
                             break;
                         default:
@@ -1015,7 +1022,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         etiqueta = *cursor++;
                         if (etiqueta == 0x2A) {
                             CopiarBytes(cursor, campos, 8);
-                            posicion = *(s32*)campos;
+                            posicion = *(s32*)campos_mem;
                             D_800694A0 = *(s32*)(campos + 4);
                             GsGetTimInfo((unsigned long*)(datos + posicion + 4), &imagen);
                             rect.x = imagen.px;
@@ -1050,13 +1057,13 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             audio_cargado = 1;
-                            tam_audio = *(s32*)campos;
+                            tam_audio = *(s32*)campos_mem;
                             reserva += *(s32*)(campos + 4);
                             D_800694A0 = *(s32*)(campos + 4);
                             break;
                         case 0x02:
                             CopiarBytes(cursor, campos, 8);
-                            posicion = *(s32*)campos;
+                            posicion = *(s32*)campos_mem;
                             D_8006951C = 0x1010;
                             D_800694A0 = *(s32*)(campos + 4);
                             func_8003ECD4(datos + posicion, *(s32*)(campos + 4));
@@ -1066,7 +1073,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         case 0x4C:
                             CopiarBytes(cursor, campos, 0x30);
                             if (D_80010050 == 0) {
-                                desp_texturas = *(s32*)campos;
+                                desp_texturas = *(s32*)campos_mem;
                                 D_800694A0 = *(s32*)(campos + 4);
                             } else if (D_80010050 == 1) {
                                 desp_texturas = *(s32*)(campos + 8);
@@ -1096,7 +1103,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         case 0x4D:
                             CopiarBytes(cursor, campos, 0x30);
                             if (D_80010050 == 0) {
-                                desp_bancos = *(s32*)campos;
+                                desp_bancos = *(s32*)campos_mem;
                                 D_800694A0 = *(s32*)(campos + 4);
                             } else if (D_80010050 == 1) {
                                 desp_bancos = *(s32*)(campos + 8);
@@ -1158,7 +1165,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         if (etiqueta == 0x37) {
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
-                            posicion = *(s32*)campos;
+                            posicion = *(s32*)campos_mem;
                             D_800694A0 = *(s32*)(campos + 4);
                             D_800694FC = datos + posicion;
                         }
@@ -1175,7 +1182,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         if (etiqueta == 0x48) {
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
-                            posicion = *(s32*)campos;
+                            posicion = *(s32*)campos_mem;
                             D_800694A0 = *(s32*)(campos + 4);
                             D_8001004F = 1;
                             D_800695B0 = (u16*)(datos + posicion);
@@ -1194,7 +1201,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         case 0x3C:
                             CopiarBytes(cursor, campos, 4);
                             D_800695B4 = campos[2];
-                            D_8006960C = *(s16*)campos;
+                            D_8006960C = *(s16*)campos_mem;
                             D_80069530 = campos[3];
                             cursor += 4;
                             break;
@@ -1202,7 +1209,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             CopiarBytes(cursor, campos, 0x1C);
                             pools_listos = 1;
                             D_80069660 = *(u16*)(campos + 2);
-                            D_80069670 = *(u16*)campos;
+                            D_80069670 = *(u16*)campos_mem;
                             D_8006955C = *(u16*)(campos + 6);
                             D_800694E6 = *(u16*)(campos + 4);
                             D_8006967E = *(u16*)(campos + 8);
@@ -1218,14 +1225,14 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             break;
                         case 0x2B:
                             CopiarBytes(cursor, campos, 0xC);
-                            D_8006D928.vpx = *(s32*)campos;
+                            D_8006D928.vpx = *(s32*)campos_mem;
                             D_8006D928.vpy = *(s32*)(campos + 4);
                             D_8006D928.vpz = *(s32*)(campos + 8);
                             cursor += 0xC;
                             break;
                         case 0x3D:
                             CopiarBytes(cursor, campos, 6);
-                            D_800694B0 = *(s16*)campos / 4;
+                            D_800694B0 = *(s16*)campos_mem / 4;
                             D_800695F2 = *(s16*)(campos + 2) / 4;
                             D_800695F4 = *(s16*)(campos + 4) / 4;
                             cursor += 6;
@@ -1245,7 +1252,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         if (etiqueta == 0x4A) {
                             CopiarBytes(cursor, campos, 0x30);
                             if (D_80010050 == 0) {
-                                datos_extra = datos + *(s32*)campos;
+                                datos_extra = datos + *(s32*)campos_mem;
                                 tam_extra = *(u32*)(campos + 4);
                             } else if (D_80010050 == 1) {
                                 datos_extra = datos + *(s32*)(campos + 8);
@@ -1287,25 +1294,25 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         switch (etiqueta) {
                         case 0x16:
                             CopiarBytes(cursor, campos, 8);
-                            EN(s32, nodo, 8) = *(s32*)campos;
+                            EN(s32, nodo, 8) = *(s32*)campos_mem;
                             EN(s32, nodo, 0xC) = *(s32*)(campos + 4);
                             cursor += 8;
                             break;
                         case 0x10:
                             CopiarBytes(cursor, campos, 0xC);
-                            EN(s32, nodo, 0x10) = *(s32*)campos;
+                            EN(s32, nodo, 0x10) = *(s32*)campos_mem;
                             EN(s32, nodo, 0x14) = *(s32*)(campos + 4);
                             EN(s32, nodo, 0x18) = *(s32*)(campos + 8);
                             cursor += 0xC;
                             break;
                         case 0x1F:
                             CopiarBytes(cursor, campos, 1);
-                            EN(u16, nodo, 0x34) = campos[0];
+                            EN(u16, nodo, 0x34) = campos_mem[0];
                             cursor += 1;
                             break;
                         case 0x1C:
                             CopiarBytes(cursor, campos, 8);
-                            EN(u16, nodo, 0x28) = *(u16*)campos;
+                            EN(u16, nodo, 0x28) = *(u16*)campos_mem;
                             EN(u16, nodo, 0x2A) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0x2C) = *(u16*)(campos + 4);
                             EN(u16, nodo, 0x36) = *(u16*)(campos + 6);
@@ -1313,7 +1320,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             break;
                         case 0x11:
                             CopiarBytes(cursor, campos, 6);
-                            EN(u16, nodo, 0x20) = *(u16*)campos;
+                            EN(u16, nodo, 0x20) = *(u16*)campos_mem;
                             EN(u16, nodo, 0x22) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0x24) = *(u16*)(campos + 4);
                             cursor += 6;
@@ -1338,7 +1345,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                                 for (;;) {
                                 }
                             }
-                            EN(s32, aux, 4) = *(s32*)campos;
+                            EN(s32, aux, 4) = *(s32*)campos_mem;
                             EN(s32, aux, 8) = *(s32*)(campos + 4);
                             EN(u8, aux, 0xC) = campos[8];
                             EN(u8, aux, 0xF) = campos[0xB];
@@ -1390,62 +1397,62 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         switch (etiqueta) {
                         case 0x1F:
                             CopiarBytes(cursor, campos, 1);
-                            EN(u16, nodo, 0x26) = campos[0];
+                            EN(u16, nodo, 0x26) = campos_mem[0];
                             cursor += 1;
                             break;
                         case 0x27:
                             CopiarBytes(cursor, campos, 4);
-                            EN(u16, nodo, 0x1C) = *(u16*)campos;
+                            EN(u16, nodo, 0x1C) = *(u16*)campos_mem;
                             cursor += 4;
                             break;
                         case 0x15:
                             CopiarBytes(cursor, campos, 1);
-                            EN(u16, nodo, 0x2A) = campos[0];
+                            EN(u16, nodo, 0x2A) = campos_mem[0];
                             cursor += 1;
                             break;
                         case 0x38:
                             CopiarBytes(cursor, campos, 2);
-                            EN(u16, nodo, 0x20) = *(u16*)campos;
-                            EN(s32, nodo, 0x30) += (s16)*(u16*)campos * (s16)*(u16*)campos;
+                            EN(u16, nodo, 0x20) = *(u16*)campos_mem;
+                            EN(s32, nodo, 0x30) += (s16)*(u16*)campos_mem * (s16)*(u16*)campos_mem;
                             cursor += 2;
                             break;
                         case 0x46:
                             CopiarBytes(cursor, campos, 2);
-                            EN(u16, nodo, 0x3A) = *(u16*)campos;
+                            EN(u16, nodo, 0x3A) = *(u16*)campos_mem;
                             cursor += 2;
                             break;
                         case 0x39:
                             CopiarBytes(cursor, campos, 2);
-                            EN(u16, nodo, 0x28) = *(u16*)campos + 0x10;
+                            EN(u16, nodo, 0x28) = *(u16*)campos_mem + 0x10;
                             cursor += 2;
                             break;
                         case 0x3A:
                             CopiarBytes(cursor, campos, 4);
-                            EN(u16, nodo, 0x3C) = *(u16*)campos;
+                            EN(u16, nodo, 0x3C) = *(u16*)campos_mem;
                             EN(u16, nodo, 0x3E) = *(u16*)(campos + 2);
                             cursor += 4;
                             break;
                         case 0x1E:
                             CopiarBytes(cursor, campos, 2);
-                            EN(u16, nodo, 0x1E) = *(u16*)campos;
+                            EN(u16, nodo, 0x1E) = *(u16*)campos_mem;
                             cursor += 2;
                             break;
                         case 0x0B:
                             CopiarBytes(cursor, campos, 4);
-                            EN(u16, nodo, 0x170) = *(u16*)campos;
+                            EN(u16, nodo, 0x170) = *(u16*)campos_mem;
                             EN(u16, nodo, 0x172) = *(u16*)(campos + 2);
                             cursor += 4;
                             break;
                         case 0x42:
                             CopiarBytes(cursor, campos, 6);
-                            EN(u16, nodo, 0x50) = *(u16*)campos;
+                            EN(u16, nodo, 0x50) = *(u16*)campos_mem;
                             EN(u16, nodo, 0x52) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0x54) = *(u16*)(campos + 4);
                             cursor += 6;
                             break;
                         case 0x0C:
                             CopiarBytes(cursor, campos, 4);
-                            EN(u16, nodo, 0x174) = *(u16*)campos;
+                            EN(u16, nodo, 0x174) = *(u16*)campos_mem;
                             EN(u16, nodo, 0x176) = *(u16*)(campos + 2);
                             cursor += 4;
                             break;
@@ -1454,7 +1461,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             CopiarBytes(cursor, campos, 0x14);
                             EN(u8*, nodo, 0x178) = monton;
                             i = 0;
-                            if (*(u16*)campos != 0) {
+                            if (*(u16*)campos_mem != 0) {
                                 aux = campos;
                                 do {
                                     *(u16*)(EN(u8*, nodo, 0x178) + i * 2) = *(u16*)aux;
@@ -1472,7 +1479,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             break;
                         case 0x10:
                             CopiarBytes(cursor, campos, 0xC);
-                            EN(s32, nodo, 0xE4) = *(s32*)campos;
+                            EN(s32, nodo, 0xE4) = *(s32*)campos_mem;
                             EN(s32, nodo, 0xE8) = *(s32*)(campos + 4);
                             EN(s32, nodo, 0xEC) = *(s32*)(campos + 8);
                             EN(s32, nodo, 0x100) = *(s32*)(campos + 4);
@@ -1480,14 +1487,14 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             break;
                         case 0x1B:
                             CopiarBytes(cursor, campos, 6);
-                            EN(u16, nodo, 0x48) = *(u16*)campos;
+                            EN(u16, nodo, 0x48) = *(u16*)campos_mem;
                             EN(u16, nodo, 0x4A) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0x4C) = *(u16*)(campos + 4);
                             cursor += 6;
                             break;
                         case 0x1C:
                             CopiarBytes(cursor, campos, 8);
-                            EN(u16, nodo, 0x50) = *(u16*)campos;
+                            EN(u16, nodo, 0x50) = *(u16*)campos_mem;
                             EN(u16, nodo, 0x52) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0x54) = *(u16*)(campos + 4);
                             EN(u16, nodo, 0x2E) = *(u16*)(campos + 6);
@@ -1496,21 +1503,21 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             break;
                         case 0x11:
                             CopiarBytes(cursor, campos, 6);
-                            EN(u16, nodo, 0xDC) = *(u16*)campos;
+                            EN(u16, nodo, 0xDC) = *(u16*)campos_mem;
                             EN(u16, nodo, 0xDE) = *(u16*)(campos + 2);
                             EN(u16, nodo, 0xE0) = *(u16*)(campos + 4);
                             cursor += 6;
                             break;
                         case 0x12:
                             CopiarBytes(cursor, campos, 0xC);
-                            EN(s32, nodo, 0xCC) = *(s32*)campos;
+                            EN(s32, nodo, 0xCC) = *(s32*)campos_mem;
                             EN(s32, nodo, 0xD0) = *(s32*)(campos + 4);
                             EN(s32, nodo, 0xD4) = *(s32*)(campos + 8);
                             cursor += 0xC;
                             break;
                         case 0x0F:
                             CopiarBytes(cursor, campos, 2);
-                            modelo = func_80036164(*(u16*)campos);
+                            modelo = func_80036164(*(u16*)campos_mem);
                             if (modelo == NULL) {
                                 for (;;) {
                                 }
@@ -1526,8 +1533,8 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             break;
                         case 0x13:
                             CopiarBytes(cursor, campos, 1);
-                            EN(u16, nodo, 0x2C) = campos[0];
-                            if (campos[0] == 1) {
+                            EN(u16, nodo, 0x2C) = campos_mem[0];
+                            if (campos_mem[0] == 1) {
                                 D_80069640 = (s32*)(nodo + 0xE4);
                                 EN(u16, nodo, 0x3C) = 0x40;
                                 D_80069560 = nodo;
@@ -1560,7 +1567,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                                 for (;;) {
                                 }
                             }
-                            EN(u16, aux, 4) = *(u16*)campos;
+                            EN(u16, aux, 4) = *(u16*)campos_mem;
                             EN(u16, aux, 6) = *(u16*)(campos + 2);
                             EN(u16, aux, 8) = *(u16*)(campos + 4);
                             EN(u16, aux, 0xA) = *(u16*)(campos + 8);
@@ -1593,7 +1600,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                                 for (;;) {
                                 }
                             }
-                            EN(u16, aux, 4) = *(u16*)campos;
+                            EN(u16, aux, 4) = *(u16*)campos_mem;
                             EN(u16, aux, 6) = *(u16*)(campos + 2);
                             EN(u16, aux, 8) = *(u16*)(campos + 4);
                             EN(s32, aux, 0xC) = *(s32*)(campos + 8);
@@ -1624,7 +1631,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                                 for (;;) {
                                 }
                             }
-                            EN(u16, aux, 4) = *(u16*)campos;
+                            EN(u16, aux, 4) = *(u16*)campos_mem;
                             EN(u16, aux, 6) = *(u16*)(campos + 2);
                             EN(s32, aux, 8) = *(s32*)(campos + 4);
                             EN(s32, aux, 0xC) = *(s32*)(campos + 8);
@@ -1659,7 +1666,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                                 for (;;) {
                                 }
                             }
-                            EN(u16, aux, 4) = *(u16*)campos;
+                            EN(u16, aux, 4) = *(u16*)campos_mem;
                             EN(u16, aux, 6) = *(u16*)(campos + 2);
                             EN(u16, aux, 8) = *(u16*)(campos + 4);
                             EN(u16, aux, 0xA) = *(u16*)(campos + 8);
@@ -1698,7 +1705,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                                 for (;;) {
                                 }
                             }
-                            EN(u16, aux, 4) = *(u16*)campos;
+                            EN(u16, aux, 4) = *(u16*)campos_mem;
                             for (i = 0; i < 5; i++) {
                                 EN(u16, aux, 6 + i * 2) = *(u16*)(campos + 2 + i * 2);
                             }
@@ -1706,7 +1713,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             break;
                         case 0x16:
                             CopiarBytes(cursor, campos, 8);
-                            EN(s32, nodo, 8) = *(s32*)campos;
+                            EN(s32, nodo, 8) = *(s32*)campos_mem;
                             EN(s32, nodo, 0xC) = *(s32*)(campos + 4);
                             if (EN(u8*, nodo, 0x74) != NULL
                                 && (EN(u16, EN(u8*, EN(u8*, nodo, 0x74), 8), 0xA) & 0x180) != 0) {
@@ -1716,7 +1723,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             break;
                         case 0x1A:
                             CopiarBytes(cursor, campos, 4);
-                            EN(u16, nodo, 0x100) = *(u16*)campos;
+                            EN(u16, nodo, 0x100) = *(u16*)campos_mem;
                             cursor += 4;
                             break;
                         case 0x17:
@@ -1730,7 +1737,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
                             /* Solo se copian 4 bytes, pero se leen 16 del bufer: lo restante es lo que dejo la etiqueta anterior. */
                             CopiarBytes(cursor, campos, 4);
                             EN(u8*, nodo, 0x118) = nodo + 0x128;
-                            EN(u8, nodo, 0x128) = campos[0];
+                            EN(u8, nodo, 0x128) = campos_mem[0];
                             EN(u8, nodo, 0x129) = campos[1];
                             EN(u16, nodo, 0x12A) = *(u16*)(campos + 4);
                             EN(u16, nodo, 0x12C) = *(u16*)(campos + 6);
@@ -1753,11 +1760,11 @@ s32 CargarContenedor(s16 archivo, void* destino)
                         case 0x1D:
                             CopiarBytes(cursor, campos, 4);
                             if (EN(u16, nodo, 0x2C) == 0xE || EN(u16, nodo, 0x2C) == 0x1F) {
-                                EN(u16, nodo, 0x196) = *(u16*)campos;
+                                EN(u16, nodo, 0x196) = *(u16*)campos_mem;
                             } else if (EN(u16, nodo, 0x2C) == 8) {
-                                EN(u16, nodo, 0x160) = *(u16*)campos;
+                                EN(u16, nodo, 0x160) = *(u16*)campos_mem;
                             } else {
-                                EN(u16, nodo, 0x17C) = *(u16*)campos;
+                                EN(u16, nodo, 0x17C) = *(u16*)campos_mem;
                             }
                             cursor += 4;
                             break;
