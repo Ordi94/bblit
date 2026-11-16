@@ -392,24 +392,33 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 34389 con la configuracion versionada (g = 8 del archivo; ejes 249 de
- * operando, 54 reordenadas, 2259 insertadas o borradas). La cifra incluye palabras con direcciones
- * absolutas dentro del archivo (saltos y tablas de saltos), de modo que depende del tamano de las
- * funciones anteriores. Medido: el codigo generado tiene 2958 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2361 coinciden en el mnemonico (79,9 %) y 1248 son
- * identicas (42,2 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
+ * Pendiente: puntuacion 29937 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
+ * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
+ * caso del de su tabla. Medido: el codigo generado tiene 2958 instrucciones frente a 2955 del
+ * original, y alineando el texto de ambos 2812 coinciden en el mnemonico (95,2 %) y 1923 son
+ * identicas (65,1 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
  * van en el orden de direcciones de las tablas de saltos del original: el orden del fuente decide
- * el orden de emision, por eso los casos no van en orden numerico. Lo que queda es el reparto de
- * registros guardados: usos de s0, s1, s4, s5 y s7 en el original frente a aqui, 124 y 193, 125 y
- * 41, 187 y 92, 53 y 238, 22 y 54 (s2, s3, s6 y s8 coinciden dentro de un 30 %). El original guarda
- * el nodo de los chunks de recursos, modelos y volumenes y los modelos de la etiqueta 0x18 de las
- * entidades en s1 y el de entidades en s3, el resultado de la reserva de la lista de 0x14 y 0xC
- * bytes en a1 (aqui `aux` es una variable de toda la funcion en un registro guardado) y la
- * direccion del bufer en s4. Se supone, sin verificar, que quedan por separar otras variables que
- * el original usa por chunk.
+ * el orden de emision, por eso los casos no van en orden numerico.
+ *
+ * Reparto de registros guardados (volcado de `cc1`, prioridad `floor_log2(R) * R / L` de
+ * `global-alloc`): el cursor del script (R 1071, L 2041, prioridad 5,25) toma s1 y el nodo de los
+ * chunks de recursos y modelos (R 340, L 522, 5,21) toma s2; el original guarda el nodo en s1 y el
+ * cursor en s2. Se supone, sin verificar, que basta acortar la vida del nodo en unas 5 instrucciones
+ * (hay 5 instrucciones de mas en los chunks 0x22 y 0x20) para que su prioridad supere la del
+ * cursor, porque con 5,29 frente a 5,27 el reparto coincidia con el original en una medicion
+ * intermedia. Siete variables de toda la funcion (compensacion, desp_bancos, tam_audio,
+ * desp_texturas, hijo, hijo_matriz y monton) estan vivas desde la entrada de la funcion en el
+ * volcado de `cc1` (se leen en algun camino sin asignacion previa), de modo que su longitud de vida
+ * es de unas 2270 instrucciones y quedan en la pila; el original las guarda tambien en la pila (sw
+ * a 0x1B0, 0x1D8 y 0x1DC del marco). La constante 0x2E de las pruebas de fin de chunk se iza a un
+ * registro guardado (pseudo de R 68, L 2281, prioridad 0,18) y ocupa s8; el original no la iza y
+ * conserva 39 `li ...,46` sueltos, aqui hay menos. Se supone, sin verificar, que el original guarda
+ * en s7 una de esas variables de toda la funcion y el parametro `datos` en fp, y que por eso la
+ * constante no llega a registro.
  *
  * Reserva de pila: el marco del original es de 0x210 bytes (`addiu sp` en 0x800415A0) y el del C sin
- * la local, de 0x208; la cifra medida sin la local es 35412 y con ella 34389.
+ * la local, de 0x208; la cifra medida sin la local es 31052 y con ella 29937.
  *
  * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `datos`.
  * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
@@ -441,6 +450,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     u8* campos;
     RegistroArchivo* registro;
     u8* cursor;
+    /* Puntero de la lectura de la cabecera de secciones: el original lo guarda aparte del cursor del script. */
+    u8* cabecera;
     u8* libre;
     u8* monton;
     u8* nodo;
@@ -546,20 +557,20 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                 }
             } while (D_80069480 == 0);
         }
-        cursor = (u8*)D_80069490;
-        if (SumaControl((s8*)cursor, 0x7FC) != *(s32*)(cursor + 0x7FC)) {
+        cabecera = (u8*)D_80069490;
+        if (SumaControl((s8*)cabecera, 0x7FC) != *(s32*)(cabecera + 0x7FC)) {
             return 1;
         }
         D_80069480 = 0;
-        D_80069494 = *(u32*)cursor;
-        cursor += 4;
-        n_secciones = *(u32*)cursor;
-        cursor += 4;
+        D_80069494 = *(u32*)cabecera;
+        cabecera += 4;
+        n_secciones = *(u32*)cabecera;
+        cabecera += 4;
         for (i = 0; i < n_secciones; i++) {
-            secciones[i].tipo = *(s32*)cursor;
-            secciones[i].tamano = *(u32*)(cursor + 4);
-            secciones[i].alineado = *(u32*)(cursor + 8);
-            cursor += 12;
+            secciones[i].tipo = *(s32*)cabecera;
+            secciones[i].tamano = *(u32*)(cabecera + 4);
+            secciones[i].alineado = *(u32*)(cabecera + 8);
+            cabecera += 12;
         }
         datos += 0xA000;
         D_80069498 = (u32)datos;
@@ -606,6 +617,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         D_80069498 = (u32)datos;
         D_800694A4 = registro->tamano;
         IniciarLecturaContinua((CdlLOC*)D_8006A928);
+        posicion = 0;
         while (D_8006955E != 0) {
         }
         if (SumaControl((s8*)datos, 0x7FC) != *(s32*)(datos + 0x7FC)) {
@@ -613,14 +625,13 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         }
         D_80069494 = *(u32*)datos;
         n_secciones = *(u32*)(datos + 4);
-        cursor = datos + 8;
+        cabecera = datos + 8;
         for (i = 0; i < n_secciones; i++) {
-            secciones[i].tipo = *(s32*)cursor;
-            secciones[i].tamano = *(u32*)(cursor + 4);
-            secciones[i].alineado = *(u32*)(cursor + 8);
-            cursor += 12;
+            secciones[i].tipo = *(s32*)cabecera;
+            secciones[i].tamano = *(u32*)(cabecera + 4);
+            secciones[i].alineado = *(u32*)(cabecera + 8);
+            cabecera += 12;
         }
-        posicion = 0;
         D_800694A0 = secciones[posicion].alineado;
         D_80069484 = 0;
         D_80069498 = (u32)datos;
@@ -839,59 +850,72 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
-                    do {
-                        etiqueta = *cursor++;
-                        if (etiqueta < 0x0D || etiqueta >= 0x41) {
-                            continue;
-                        }
-                        switch (etiqueta) {
+                    /*
+                     * La etiqueta se lee una sola vez, en la prueba del bucle: el original reutiliza ese
+                     * registro para el rango de la tabla de saltos y para el avance del cursor.
+                     */
+                    while (*cursor != 0x2E) {
+                        switch (*cursor++) {
                         case 0x26:
                             CopiarBytes(cursor, campos, 4);
                             EN(u16, nodo, 8) = *(u16*)campos_mem;
                             cursor += 4;
                             break;
-                        case 0x24:
+                        case 0x24: {
+                            /* El modelo se usa solo hasta la llamada: un temporal propio, no `aux`. */
+                            u8* modelo_gs;
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             desp_campo = *(s32*)campos_mem;
                             D_800694A0 = *(s32*)(campos + 4);
-                            aux = datos + desp_campo + 4;
-                            EN(u8*, nodo, 0x54) = aux;
-                            GsMapModelingData((unsigned long*)aux);
+                            modelo_gs = datos + desp_campo + 4;
+                            EN(u8*, nodo, 0x54) = modelo_gs;
+                            GsMapModelingData((unsigned long*)modelo_gs);
                             EN(u16, nodo, 0xA) = 2;
                             EN(u8*, nodo, 0x54) += 8;
                             break;
-                        case 0x40:
+                        }
+                        case 0x40: {
+                            u8* modelo_gs;
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             desp_campo = *(s32*)campos_mem;
                             D_800694A0 = *(s32*)(campos + 4);
-                            aux = datos + desp_campo + 4;
-                            EN(u8*, nodo, 0x54) = aux;
-                            GsMapModelingData((unsigned long*)aux);
+                            modelo_gs = datos + desp_campo + 4;
+                            EN(u8*, nodo, 0x54) = modelo_gs;
+                            GsMapModelingData((unsigned long*)modelo_gs);
                             EN(u16, nodo, 0xA) = 0x100;
                             EN(u8*, nodo, 0x54) += 8;
                             break;
-                        case 0x25:
+                        }
+                        case 0x25: {
+                            /*
+                             * La lista de 0x14 bytes y la cabecera del modelo viven solo en este caso: con
+                             * locales propias cada una cae en un temporal (a1 y a0 en el original) y deja de
+                             * ocupar un registro guardado que `aux` y `modelo` comparten con otros chunks.
+                             */
+                            u8* lista;
+                            u8* cab;
                             CopiarBytes(cursor, campos, 8);
-                            aux = (u8*)AllocListNode((u8*)D_80069570, 0x14, D_80069670 * 0x14);
-                            if (aux == NULL) {
+                            lista = (u8*)AllocListNode((u8*)D_80069570, 0x14, D_80069670 * 0x14);
+                            if (lista == NULL) {
                                 for (;;) {
                                 }
                             }
-                            EN(u8*, nodo, 0x54) = aux;
+                            EN(u8*, nodo, 0x54) = lista;
                             desp_campo = *(s32*)campos_mem;
                             D_800694A0 = *(s32*)(campos + 4);
-                            EN(u8*, aux, 8) = datos + desp_campo;
+                            EN(u8*, lista, 8) = datos + desp_campo;
                             EN(u16, nodo, 0xA) = 4;
-                            modelo = EN(u8*, aux, 8);
-                            EN(u8*, aux, 8) = modelo + 4;
-                            EN(u16, aux, 0x12) = EN(u16, modelo, 2) >> 1;
-                            EN(u8*, aux, 8) = modelo + 8;
-                            EN(u16, aux, 0xE) = EN(u16, modelo, 4);
+                            cab = EN(u8*, lista, 8);
+                            EN(u8*, lista, 8) = cab + 4;
+                            EN(u16, lista, 0x12) = EN(u16, cab, 2) >> 1;
+                            EN(u8*, lista, 8) = cab + 8;
+                            EN(u16, lista, 0xE) = EN(u16, cab, 4);
                             cursor += 8;
-                            EN(u16, aux, 0x10) = EN(u16, modelo + 8, 4);
+                            EN(u16, lista, 0x10) = EN(u16, cab + 8, 4);
                             break;
+                        }
                         case 0x3F:
                             CopiarBytes(cursor, campos, 0xC);
                             desp_campo = *(s32*)(campos + 4);
@@ -934,7 +958,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         default:
                             break;
                         }
-                    } while (*cursor != 0x2E);
+                    }
                     break;
 
                 case 0x20:
@@ -951,9 +975,6 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     }
                     do {
                         etiqueta = *cursor++;
-                        if (etiqueta < 0x10 || etiqueta >= 0x44) {
-                            continue;
-                        }
                         switch (etiqueta) {
                         case 0x24:
                             CopiarBytes(cursor, campos, 8);
@@ -974,10 +995,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x10:
                             CopiarBytes(cursor, campos, 0xC);
-                            aux = EN(u8*, EN(u8*, hijo_matriz, 4), 0x44);
-                            EN(s32, aux, 0x18) = *(s32*)campos_mem;
-                            EN(s32, aux, 0x1C) = *(s32*)(campos + 4);
-                            EN(s32, aux, 0x20) = *(s32*)(campos + 8);
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x18) = *(s32*)campos_mem;
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x1C) = *(s32*)(campos + 4);
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x20) = *(s32*)(campos + 8);
                             cursor += 0xC;
                             TransMatrix((MATRIX*)(EN(u8*, hijo_matriz, 4) + 4),
                                         (VECTOR*)(EN(u8*, EN(u8*, hijo_matriz, 4), 0x44) + 0x18));
@@ -986,10 +1006,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x12:
                             CopiarBytes(cursor, campos, 0xC);
-                            aux = EN(u8*, EN(u8*, hijo_matriz, 4), 0x44);
-                            EN(s32, aux, 0) = *(s32*)campos_mem;
-                            EN(s32, aux, 4) = *(s32*)campos_mem;
-                            EN(s32, aux, 8) = *(s32*)campos_mem;
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0) = *(s32*)campos_mem;
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 4) = *(s32*)campos_mem;
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 8) = *(s32*)campos_mem;
                             cursor += 0xC;
                             ScaleMatrix((MATRIX*)(EN(u8*, hijo_matriz, 4) + 4),
                                         (VECTOR*)EN(u8*, EN(u8*, hijo_matriz, 4), 0x44));
@@ -1315,9 +1334,6 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     }
                     do {
                         etiqueta = *cursor++;
-                        if (etiqueta < 0x10 || etiqueta >= 0x34) {
-                            continue;
-                        }
                         switch (etiqueta) {
                         case 0x16:
                             CopiarBytes(cursor, campos, 8);
@@ -1418,9 +1434,6 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     }
                     do {
                         etiqueta = *cursor++;
-                        if (etiqueta < 0x0B || etiqueta >= 0x47) {
-                            continue;
-                        }
                         switch (etiqueta) {
                         case 0x1F:
                             CopiarBytes(cursor, campos, 1);
