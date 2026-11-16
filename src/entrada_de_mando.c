@@ -280,7 +280,7 @@ void func_80040430(s8* contador, u16 mascara)
  * despues; el almacen de `lo` en el campo de botones (0x10) que el original conserva antes del almacen de
  * `lo | hi` (0x80040760 y 0x80040768) y que aqui desaparece entre `.cse` y `.combine` (se supone, sin verificar,
  * que lo borra el analisis de vida al ver dos almacenes seguidos a la misma direccion); y la forma simbolica de
- * los campos de 0x80010000. Probado sin bajada: intercambiar el orden de los almacenes de `lo` (6260).
+ * los campos de 0x80010000.
  *
  * El xor del byte invertido se hace sobre una local de 32 bits (cf2, cf3, cfd): con el byte
  * leido directamente el analizador de tipos del front end estrecha el xor a un byte (sale
@@ -340,6 +340,7 @@ void func_8004048C(void)
     }
 normal:
     banco = D_8006AA70;
+    /* banco[0xC] es el mismo byte que D_8006AA7C (0x8006AA70 + 0xC). */
     v = banco[0xC];
     D_800695EA = 0;
     if (v == 0) {
@@ -353,6 +354,7 @@ normal:
     ESTADO_PRINCIPAL->mando.botones_e = prev;
     ESTADO_PRINCIPAL->mando.botones_e = prev & D_800695EA;
     if (ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
+        /* banco[0x17] es el mismo byte que D_8006AA87[0] (0x8006AA70 + 0x17). */
         if (banco[0x17] != 0 && banco[0x17] != 4) {
             ESTADO_PRINCIPAL->mando.botones = 0;
             ESTADO_PRINCIPAL->mando.botones_c = 0;
@@ -480,6 +482,7 @@ normal:
     default:
         D_80069672 += 1;
         if (D_80069672 == 4) {
+            /* banco[0xC] es D_8006AA7C; banco[0] es el primer byte del banco D_8006AA70. */
             if (banco[0xC] == 0) {
                 ESTADO_PRINCIPAL->mando.botones_a = 0x800;
             }
