@@ -990,8 +990,6 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     D_80069648 = AppendListNode((NodoLista*)D_80069648, (NodoLista*)nodo);
                     EN(u16, nodo, 0x10) = 0;
                     EN(u16, nodo, 0x12) = 0;
-                    nodo--;
-                    nodo++;
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
