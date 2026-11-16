@@ -275,11 +275,11 @@ void func_80040430(s8* contador, u16 mascara)
  * uso, o sin ella, el compilador vuelve a colocar la carga tras el almacen.
  *
  * Una sola variable (`bits`) guarda los botones de direccion en la rama de grabacion y en la de lectura de la BIOS:
- * el original usa el mismo registro (s1) en las dos (`lhu s1` en 0x800401DC y `move s1,s2` en 0x800402C0), y con dos
+ * el original usa el mismo registro (s1) en las dos (`lhu s1` en 0x80040668 y `move s1,s2` en 0x8004074C), y con dos
  * variables la de la rama de grabacion cae en un temporal y la otra intercambia s1 y s2 con `hi`.
  *
  * El byte de vibracion se modifica con `&= 0x7F` y `|= 0x80` en cada caso, sin variable intermedia: el original
- * hace `lbu`, `andi`/`ori` y un `sb` unico (0x80040298) al que salta el primer caso (`j` en 0x80040284), y la
+ * hace `lbu`, `andi`/`ori` y un `sb` unico (0x80040724) al que salta el primer caso (`j` en 0x80040710), y la
  * fusion de colas lo reproduce al encontrar el mismo `sb` al final de cada camino; con una variable que guardaba el
  * valor y un almacen tras la etiqueta, el compilador sacaba las lecturas de D_8006CFF2/D_8006CFF3 por encima del
  * `sb` y el valor caia en `v1`.

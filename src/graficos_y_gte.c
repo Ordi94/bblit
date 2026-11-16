@@ -234,8 +234,8 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * - La busqueda en la cadena de padres usa `while`: con `do` el compilador rota el bucle y duplica la comparacion
  *   con `a`, y el original tiene una sola (0x80017640 a 0x80017668).
  * - El bucle de las aristas se escribe con etiqueta y salto hacia atras (`if (angs < 4) { ...; if (D_80069380 < 0)
- *   goto ciclo_aristas; }`): el original comprueba `< 4` en la cabeza en cada vuelta y cierra con `bltz` a la
- *   cabeza (0x80018194 y 0x80017F78); con `while` y `break` la puntuacion es 9803.
+ *   goto ciclo_aristas; }`): el original comprueba `< 4` en la cabeza en cada vuelta y cierra con `bltz` (0x8001818C)
+ *   a la cabeza (0x80017F78); con `while` y `break` la puntuacion es 9803.
  * - Las comparaciones del barrido llevan el lado de `w->pt` primero (`pt + sal > b->max + radio`): el original carga
  *   `w->pt` antes que `w->b` (0x80017BB4 y 0x80017BB8); con el lado de `b` primero, 5991.
  * - Las pruebas de la arista mas cercana se escriben `D_80069380 > k`: el original carga `D_80069380` antes que `k`
@@ -243,12 +243,11 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * - `p[4].vy` recibe `a->min.vy` (`lhu 0x4A` en 0x80017A60 y `sh 0xBA` en 0x80017A6C); con cero, 4176.
  * - La rama de angulo negativo resta el radio a `min.vx` en las dos primeras llamadas a ratan2 (`subu a0,a0,a2` en
  *   0x8001798C y 0x800179BC). Las esquinas de D_80069D18 guardan `x` antes que `z` (0x80017F0C a 0x80017F64), la
- *   salida final almacena `vx`, `vz` y `vy` en ese orden y cada rama de arista lleva su pareja de locales
- *   (`ax`/`az`, `bx`/`bz`, `cx`/`cz`, `dx`/`dz`) para la diferencia con el punto de prueba.
- * Formas medidas que no se conservan: leer D_80069D08 tras la segunda llamada como un desplazamiento de 0x100 bytes
- * desde D_80069C08 (6896; con otras partes del C distintas fue la forma que bajo el reparto de s0 y s1, que ya no
- * hace falta), leer los componentes de D_80069D08 en locales antes de la llamada, una local con `&D_80069D08` (el
- * CSE la pliega) y `((u32*)D_80069D18)[n]` en vez de `*(u32*)&D_80069D18[n]` (misma cifra).
+ *   salida final almacena `vx`, `vz` y `vy` en ese orden; la diferencia con el punto de prueba se escribe directa
+ *   sobre `D_80069D08`, sin locales intermedias.
+ * - `D_80069D08` se lee por su nombre: leerlo tras la segunda llamada como un desplazamiento de 0x100 bytes desde
+ *   D_80069C08 da 6896. Una local con `&D_80069D08` no cambia nada (el CSE la pliega) y las esquinas se leen con
+ *   `*(u32*)&D_80069D18[n]` porque `((u32*)D_80069D18)[n]` da la misma cifra.
  * Residuo medido en el volcado y el diff:
  * - `a` y `v` estan intercambiados (a en s4 y v en s5: 25 usos cada una sobre 1670 y 1682 insns, prioridades 0,0599
  *   y 0,0595, con lo que `a` se asigna antes); el original da a `v` mayor prioridad (`v` en s4, `a` en s5).
@@ -275,14 +274,6 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
     s32 i;
     s32 t2;
     s32 k;
-    s32 ax;
-    s32 az;
-    s32 bx;
-    s32 bz;
-    s32 cx;
-    s32 cz;
-    s32 dx;
-    s32 dz;
     SVECTOR salida;
     s32 salida_y;
     u16 lista;
@@ -520,31 +511,23 @@ ciclo_aristas:
                 if (i == 0) {
                     w->e_x = D_80069D18[1].x - D_80069D18[0].x;
                     w->e_z = D_80069D18[1].z - D_80069D18[0].z;
-                    ax = D_80069D18[4].x - D_80069D18[0].x;
-                    az = D_80069D18[4].z - D_80069D18[0].z;
-                    D_80069D08.vx = ax;
-                    D_80069D08.vz = az;
+                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[0].x;
+                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[0].z;
                 } else if (i == 1) {
                     w->e_x = D_80069D18[3].x - D_80069D18[1].x;
                     w->e_z = D_80069D18[3].z - D_80069D18[1].z;
-                    bx = D_80069D18[4].x - D_80069D18[1].x;
-                    bz = D_80069D18[4].z - D_80069D18[1].z;
-                    D_80069D08.vx = bx;
-                    D_80069D08.vz = bz;
+                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[1].x;
+                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[1].z;
                 } else if (i == 2) {
                     w->e_x = D_80069D18[2].x - D_80069D18[3].x;
                     w->e_z = D_80069D18[2].z - D_80069D18[3].z;
-                    cx = D_80069D18[4].x - D_80069D18[3].x;
-                    cz = D_80069D18[4].z - D_80069D18[3].z;
-                    D_80069D08.vx = cx;
-                    D_80069D08.vz = cz;
+                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[3].x;
+                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[3].z;
                 } else if (i == 3) {
                     w->e_x = D_80069D18[0].x - D_80069D18[2].x;
                     w->e_z = D_80069D18[0].z - D_80069D18[2].z;
-                    dx = D_80069D18[4].x - D_80069D18[2].x;
-                    dz = D_80069D18[4].z - D_80069D18[2].z;
-                    D_80069D08.vx = dx;
-                    D_80069D08.vz = dz;
+                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[2].x;
+                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[2].z;
                 }
                 k = SquareRoot0(w->e_x * w->e_x + w->e_z * w->e_z);
                 i = SquareRoot0(D_80069D08.vx * D_80069D08.vx + D_80069D08.vz * D_80069D08.vz);
