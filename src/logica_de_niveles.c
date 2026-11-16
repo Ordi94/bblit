@@ -64,7 +64,7 @@ s16* D_800693DC;
    antes de la prueba de `D_8006966A`; solo difiere el registro del producto (`s0` en el original). Residuo medido por tramos: (1) reparto de registros de los temporales
    v0/v1/a0 y de los punteros s0-s2 en las consultas de terreno (el original deja &sc->tmp_v en s0, &sc->res en s1 y
    &sc->punto en s2; este C los reparte en otro orden; los volcados de cc1 asignan 263 pseudos y no se cerro cual decide
-   el orden); (2) el bloque de la base de la caja (0x80025544..0x800255E4) coincide en el orden de las multiplicaciones: el
+   el orden); (2) el bloque de la base de la caja (0x800254E8..0x80025544) coincide en el orden de las multiplicaciones: el
    original emite `li v0,0x46 ; mult v0,v0` antes del almacen de max.vx, de modo que el producto sale del registro
    recien almacenado y no de una constante; se reproduce con `a = o->max.vx * o->max.vx + sum * sum;` escrito
    antes del calculo de `c` (con `0x46 * 0x46` el compilador lo pliega a una constante y la cifra es 4635).
