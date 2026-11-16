@@ -601,14 +601,17 @@ INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
  *
  * Comprueba si alguno de los cinco puntos barridos por el volumen de a, llevados al sistema local de b, cae en el
  * cuadrante de b que indican los angulos de sus esquinas (ampliado por el radio); devuelve 1 si lo toca.
+ *
+ * Reserva de pila: el marco del original es de 0x28 bytes (`addiu sp` en 0x80018664) y el del C sin la local, de
+ * 0x20; la cifra medida sin la local es 58 y con ella 0.
  */
 s32 func_80018664(Objeto* a, Objeto* b, ConsultaSondeo* w)
 {
     s32 i;
     SVECTOR* dif;
     MATRIX* m2;
-    /* El marco del original reserva 8 bytes de locales que ninguna sentencia toca. */
-    SVECTOR reserva;
+    /* Reserva de pila: local sin uso que completa el marco del original. */
+    s32 reserva[2];
     GEO_CARGAR_WH(&b->min);
     GEO_OR_WH(&b->max);
     GEO_GUARDAR_1W_T1(&w->caja);

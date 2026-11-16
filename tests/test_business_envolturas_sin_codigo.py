@@ -14,10 +14,11 @@ numero de referencias. Estas pruebas cruzan ``src/`` con esa tabla para que una 
 entre sin su comentario ni sin su fila, y para que una fila no sobreviva a la referencia que describia. Solo
 leen archivos.
 
-La deteccion de la reserva de pila se limita a los arreglos ``s32 reserva...[N];`` (nombre que empieza por
-``reserva``) que ninguna sentencia de su funcion nombra: detectar cualquier local sin uso, de cualquier tipo y
-nombre, no es fiable sin un analizador completo de C y marcaria como reserva los campos y las locales que se
-leen por una macro.
+La deteccion de la reserva de pila alcanza a toda local cuyo nombre empieza por ``reserva``, sea cual sea su
+tipo (``u8 reserva[8];``, ``SVECTOR reserva;``, ``s32 reserva[N];``), que ninguna sentencia de su funcion
+nombra: sin el comentario fijo, o con el comentario pero de un tipo que no es un arreglo de ``s32``, hace
+fallar la prueba. No se intenta detectar cualquier local sin uso de cualquier nombre: eso no es fiable sin un
+analizador completo de C y marcaria como reserva los campos y las locales que se leen por una macro.
 """
 
 import re
@@ -45,7 +46,7 @@ FORMAS = (
 )
 COMENTARIO_REPLICADA = "Sentencia replicada: es la misma que la de las otras ramas."
 COMENTARIO_RESERVA = "Reserva de pila: local sin uso que completa el marco del original."
-MENSAJE_MARCA_SIN_DECLARACION = "el comentario de reserva de pila no precede a `s32 reserva[N];`"
+MENSAJE_MARCA_SIN_DECLARACION = "el comentario de reserva de pila no precede a una local `reserva`"
 MARCADORES_DE_CABECERA_RESERVA = ("Reserva de pila:", "addiu sp", "sin la local")
 
 _CIERRE_ENVOLTURA = re.compile(r"^\s*\}\s*while\s*\(0\)\s*;")
@@ -60,6 +61,9 @@ _PALABRAS_QUE_NO_DECLARAN = {"return", "else", "goto", "case", "sizeof", "do", "
 _COMENTARIO_REPLICADA = re.compile(rf"^\s*/\*\s*{re.escape(COMENTARIO_REPLICADA)}\s*\*/\s*$")
 _COMENTARIO_RESERVA = re.compile(rf"^\s*/\*\s*{re.escape(COMENTARIO_RESERVA)}\s*\*/\s*$")
 _DECLARACION_RESERVA = re.compile(r"^\s+s32\s+(reserva\w*)\[\d+\]\s*;\s*$")
+_LOCAL_RESERVA_DE_CUALQUIER_TIPO = re.compile(
+    r"^\s+(?!return\b)[A-Za-z_][\w \t\*]*?[\s\*](reserva\w*)\s*(?:\[[^\]]*\])?\s*;\s*$"
+)
 _COMENTARIO_DE_BLOQUE = re.compile(r"/\*.*?\*/", re.DOTALL)
 _CABEZA_CON_TIPO = re.compile(
     r"^(?:[A-Za-z_]\w*[ \t]*\*+[ \t]*|[A-Za-z_]\w*[ \t]+)+([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$"
@@ -445,11 +449,12 @@ def _reservas_de_una_funcion(funcion: str, cuerpo: list[str]) -> tuple[int, list
     Contexto:
         Lo usa ``_reservas_de_pila`` una vez por cada definicion del archivo.
 
-    Una declaracion ``s32 reserva...[N];`` es una reserva sin uso si, quitados los comentarios, su nombre solo
-    aparece en la propia declaracion. Si va precedida del comentario fijo se cuenta; si lo lleva pero la
-    funcion usa el nombre, o si no lo lleva y nadie lo usa, es un incumplimiento. Un arreglo ``reserva`` que
-    la funcion si usa y que no lleva comentario es un arreglo corriente y se ignora. El comentario fijo que no
-    precede a una declaracion de reserva tambien es un incumplimiento.
+    Una declaracion de una local cuyo nombre empieza por ``reserva``, de cualquier tipo, es una reserva sin
+    uso si, quitados los comentarios, su nombre solo aparece en la propia declaracion. Si va precedida del
+    comentario fijo y es un arreglo ``s32 reserva...[N];`` se cuenta; si lo lleva pero la funcion usa el
+    nombre o el tipo no es un arreglo de ``s32``, o si no lo lleva y nadie la usa, es un incumplimiento.
+    Una local ``reserva`` que la funcion si usa y que no lleva comentario es una variable corriente y se
+    ignora. El comentario fijo que no precede a una declaracion de reserva tambien es un incumplimiento.
 
     Args:
         funcion (str): Nombre de la funcion, para los mensajes.
@@ -467,17 +472,20 @@ def _reservas_de_una_funcion(funcion: str, cuerpo: list[str]) -> tuple[int, list
     for indice, linea in enumerate(cuerpo):
         if _COMENTARIO_RESERVA.match(linea):
             siguiente = cuerpo[indice + 1] if indice + 1 < len(cuerpo) else ""
-            if _DECLARACION_RESERVA.match(siguiente) is None:
+            if _LOCAL_RESERVA_DE_CUALQUIER_TIPO.match(siguiente) is None:
                 fallos.append(f"{funcion}: {MENSAJE_MARCA_SIN_DECLARACION}")
             continue
-        declaracion = _DECLARACION_RESERVA.match(linea)
+        declaracion = _LOCAL_RESERVA_DE_CUALQUIER_TIPO.match(linea)
         if declaracion is None:
             continue
         nombre = declaracion.group(1)
         sin_uso = len(re.findall(rf"\b{re.escape(nombre)}\b", sin_comentarios)) == 1
         marcada = indice > 0 and _COMENTARIO_RESERVA.match(cuerpo[indice - 1]) is not None
-        if marcada and sin_uso:
+        es_arreglo_s32 = _DECLARACION_RESERVA.match(linea) is not None
+        if marcada and sin_uso and es_arreglo_s32:
             marcadas += 1
+        elif marcada and sin_uso:
+            fallos.append(f"{funcion}: la reserva de pila `{nombre}` no es un arreglo de s32")
         elif marcada:
             fallos.append(f"{funcion}: la reserva de pila `{nombre}` se usa en la funcion")
         elif sin_uso:
@@ -1378,17 +1386,72 @@ def test_una_reserva_declarada_dentro_de_una_macro_no_cuenta() -> None:
     assert _reservas_de_pila(texto) == ({}, [])
 
 
-def test_la_deteccion_de_reservas_se_limita_a_los_arreglos_de_s32_que_empiezan_por_reserva() -> None:
-    """Un arreglo de bytes o una estructura sin uso, o con otro nombre, no entra en la deteccion.
+def test_la_deteccion_de_reservas_se_limita_a_los_nombres_que_empiezan_por_reserva() -> None:
+    """Una local sin uso con otro nombre no entra en la deteccion de esta forma.
 
     Regla:
-        Limite documentado de la prueba: solo se vigila ``s32 reserva...[N];``. Que ``u8 reserva[8];`` o
-        ``s32 relleno[2];`` pasen sin comentario no los regula: el documento tampoco los admite.
+        Limite documentado de la prueba: se vigilan las locales llamadas ``reserva...`` de cualquier tipo;
+        detectar cualquier local sin uso de cualquier nombre no es fiable sin un analizador completo de C.
 
     Ejemplo:
-        ``u8 reserva[8];`` y ``s32 relleno[2];`` sin uso no producen incumplimientos de esta forma.
+        ``s32 relleno[2];`` sin uso no produce incumplimientos de esta forma.
     """
-    texto = _funcion_con_reserva("    u8 reserva[8];\n    s32 relleno[2];\n")
+    texto = _funcion_con_reserva("    s32 relleno[2];\n")
+    assert _reservas_de_pila(texto) == ({}, [])
+
+
+def test_una_reserva_de_bytes_sin_uso_y_sin_el_comentario_fijo_se_rechaza() -> None:
+    """Un arreglo de bytes llamado ``reserva`` que nadie nombra no es una reserva regulada.
+
+    Regla:
+        La forma exige el comentario fijo; el tipo del arreglo no exime de ello.
+
+    Ejemplo:
+        ``u8 reserva[8];`` sin comentario produce un incumplimiento y no se cuenta.
+    """
+    texto = _funcion_con_reserva("    u8 reserva[8];\n")
+    esperado = ["func_800000A0: la reserva `reserva` no lleva el comentario fijo de reserva de pila"]
+    assert _reservas_de_pila(texto) == ({}, esperado)
+
+
+def test_una_reserva_de_estructura_sin_uso_y_sin_el_comentario_fijo_se_rechaza() -> None:
+    """Una estructura llamada ``reserva`` sin dimension que nadie nombra tampoco esta regulada.
+
+    Regla:
+        La deteccion no depende de los corchetes: una local ``SVECTOR reserva;`` sin uso incumple.
+
+    Ejemplo:
+        ``SVECTOR reserva;`` sin comentario produce un incumplimiento.
+    """
+    texto = _funcion_con_reserva("    SVECTOR reserva;\n")
+    esperado = ["func_800000A0: la reserva `reserva` no lleva el comentario fijo de reserva de pila"]
+    assert _reservas_de_pila(texto) == ({}, esperado)
+
+
+def test_una_reserva_marcada_que_no_es_un_arreglo_de_s32_se_rechaza() -> None:
+    """El comentario fijo solo regula un arreglo de ``s32``: con otro tipo la reserva no se cuenta.
+
+    Regla:
+        Condicion (c): la reserva es un arreglo de ``s32`` del tamano justo.
+
+    Ejemplo:
+        El comentario fijo sobre ``u8 reserva[8];`` da un incumplimiento y ninguna cuenta.
+    """
+    texto = _funcion_con_reserva(MARCA_RESERVA + "    u8 reserva[8];\n")
+    esperado = ["func_800000A0: la reserva de pila `reserva` no es un arreglo de s32"]
+    assert _reservas_de_pila(texto) == ({}, esperado)
+
+
+def test_una_local_reserva_de_otro_tipo_que_la_funcion_usa_se_ignora() -> None:
+    """Una local ``reserva`` de bytes que alguna sentencia lee es un buffer corriente.
+
+    Regla:
+        Condicion (c): solo la local que ninguna sentencia nombra es una reserva.
+
+    Ejemplo:
+        ``u8 reserva[8];`` con ``a = reserva[0];`` no produce cuentas ni incumplimientos.
+    """
+    texto = _funcion_con_reserva("    u8 reserva[8];\n", "    a = reserva[0];\n")
     assert _reservas_de_pila(texto) == ({}, [])
 
 

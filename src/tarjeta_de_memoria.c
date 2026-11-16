@@ -196,13 +196,15 @@ s32 func_80014C54(void)
 /*
  * Lee la partida del slot ESTADO_PRINCIPAL->r[BANCO_PARTIDA] (0x180 bytes a partir de 0x400 + (slot - 1) * 0x180) al
  * buffer D_80069520, comprueba la suma de control de los primeros 0x140 bytes (palabra en +4 a cero
- * durante el calculo) y los copia al estado principal; hasta cinco intentos. La reserva de 0x200
- * bytes en la pila no se usa: el marco de pila del original la conserva.
+ * durante el calculo) y los copia al estado principal; hasta cinco intentos.
  *
+ * Reserva de pila: el marco del original es de 0x220 bytes (`addiu sp` en 0x80014E24) y el del C sin la local, de
+ * 0x20 (0x200 bytes); la cifra medida sin la local es 4131 y con ella 0.
  */
 s32 func_80014E24(void)
 {
-    u8 reserva[0x200];
+    /* Reserva de pila: local sin uso que completa el marco del original. */
+    s32 reserva[128];
     u8* buf;
     u8* origen;
     u8* destino;
@@ -480,7 +482,11 @@ s32 func_800151FC(void)
  * operacion asincrona de libmcrd (cmds = D_80069360, rslt = D_80069368). Con la tarjeta lista lee el directorio de la ranura 0, cuenta
  * los bloques que ocupa cada archivo y comprueba el de la partida. Los destinos de tarjeta nueva y de partidas presentes viven entre
  * las ramas de la orden 6 y se alcanzan con goto desde el sondeo: el original los coloca ahi y el compilador no reordena bloques.
- * La reserva de 16 bytes mantiene el marco de pila del original. El argumento que pasa main se ignora.
+ * El argumento que pasa main se ignora.
+ *
+ * Reserva de pila: el marco del original es de 0x40 bytes (`addiu sp` en 0x800156F4) y el del C sin la local, de
+ * 0x30 (16 bytes); la cifra medida sin la local es 1967 y con ella 1765. La funcion es pendiente: con la local la
+ * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)
 {
@@ -505,7 +511,8 @@ void SondearTarjeta(void)
     s32 orden;
     s32 rc;
     s16 ranura;
-    u8 reserva[16];
+    /* Reserva de pila: local sin uso que completa el marco del original. */
+    s32 reserva[4];
 
     ranura = 0;
     if (D_8006AA70[3] == 1) {

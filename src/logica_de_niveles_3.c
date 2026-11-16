@@ -3606,6 +3606,9 @@ void func_8002EA9C(Objeto* o)
  * fotograma lo pide, anima y, si el objeto cuelga de un nodo, acumula la posicion global recorriendo
  * la cadena de matrices con el GTE. Se destruye al terminar la animacion si el fotograma lo pide y
  * cuando pierde a su portador.
+ *
+ * Reserva de pila: el marco del original es de 0x48 bytes (`addiu sp` en 0x8002EAA4) y el del C sin la local, de
+ * 0x28; la cifra medida sin la local es 286 y con ella 0.
  */
 void LogicaEfectoAnclado(Objeto* o)
 {
@@ -3615,7 +3618,8 @@ void LogicaEfectoAnclado(Objeto* o)
     void* area;
     s32 r;
     NodoSecuencia* n;
-    u8 reserva[0x20];
+    /* Reserva de pila: local sin uso que completa el marco del original. */
+    s32 reserva[8];
 
     t = TRABAJO_EFECTO;
     area = (void*)0x1F800044;

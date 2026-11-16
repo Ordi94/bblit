@@ -666,7 +666,9 @@ tiene un marco mayor que el que genera el C sin él. Se cumplen las cinco condic
    reserva. Se cita el `addiu sp` del original con su dirección y su tamaño, el del C sin la local y los bytes de la
    reserva (`func_80038884`: `addiu sp, sp, -0x50` en `0x80038884`; sin la local sale `-0x48`; reserva de 8 bytes).
 2. La cifra medida con `diff` sin la local es distinta de 0 y con ella es 0 o menor. Se cita (`func_80038884`: 154 sin
-   la local y 0 con ella). Si la cifra sin la local también es 0, la local sobra y se quita.
+   la local y 0 con ella). Si la cifra sin la local también es 0, la local sobra y se quita. En una función
+   pendiente (`NON_MATCHING`, cifra distinta de 0) la condición se lee como «con la local la cifra es menor que sin
+   ella»: la cabecera cita las dos cifras y la fila lleva el estado «NON_MATCHING» con la cifra vigente.
 3. La reserva es un arreglo de `s32` del tamaño justo (`s32 reserva[N];`, el nombre empieza por `reserva`), sin
    inicializador, declarado en la posición que deja los demás desplazamientos de pila como en el original, y ninguna
    sentencia de la función la nombra: ni la lee ni la escribe ni toma su dirección.
@@ -688,7 +690,9 @@ puntero a función contra la fusión de colas, los almacenes muertos, las lectur
 auto-referencia `u8 x = -x;` y la local sin inicializador y sin uso, salvo la reserva de pila regulada arriba.
 Tampoco se admiten las reservas que cambian el reparto de registros en vez del marco, ni cualquier local sin uso
 (del tipo y el tamaño que sea) que no cumpla las cinco condiciones: un arreglo de otro tipo que `s32`, un `SVECTOR`
-o un arreglo de bytes sin uso no son la forma regulada.
+o un arreglo de bytes sin uso no son la forma regulada. Los que reservaban pila se midieron con `s32` del mismo
+tamaño y la cifra no cambia, de modo que se declaran como `s32 reserva[N];` con el comentario fijo; una reserva
+que algún tipo distinto de `s32` exija para dar la cifra tendría que citar en la cabecera la cifra con `s32`.
 
 **Cómo se cuentan.** La tabla de abajo lista cada función con su forma y su número de referencias. La prueba
 `tests/test_business_envolturas_sin_codigo.py` la cruza con `src/` en los dos sentidos: cada `} while (0);`, cada
@@ -696,8 +700,9 @@ par `x--; x++;`, cada `if (...) {}`, cada local con inicializador que nadie lee,
 replicada y cada declaración de reserva de pila con su comentario fijo, fuera de una macro, debe estar en la tabla
 con la misma forma y el mismo número, y cada fila debe tener su declaración. La cabecera de su función debe llevar
 «no genera código» (o «no generan código») y la oración fija; la de una reserva de pila, «Reserva de pila:»,
-`addiu sp` y «sin la local». Un arreglo `s32 reserva...[N];` que ninguna sentencia nombra y no lleva el comentario
-fijo hace fallar la prueba (la detección se limita a arreglos de `s32` cuyo nombre empieza por `reserva`). Al
+`addiu sp` y «sin la local». Una local cuyo nombre empieza por `reserva`, de cualquier tipo (`u8 reserva[8];`,
+`SVECTOR reserva;`, `s32 reserva[N];`), que ninguna sentencia nombra y no lleva el comentario fijo hace fallar la
+prueba, igual que la que lo lleva pero no es un arreglo de `s32`; las locales con otro nombre no se detectan. Al
 añadir o quitar una referencia se actualiza la tabla en el mismo cambio.
 
 | Función | Archivo | Forma | Referencias | Estado | Qué decide |
@@ -725,6 +730,12 @@ añadir o quitar una referencia se actualiza la tabla en el mismo cambio.
 | `func_800330AC` | `src/camara_y_bucle_logico.c` | reserva de pila | 1 | coincide | Marco de 0x48 bytes (`addiu sp` en `0x800330AC`) frente a 0x38 sin la local: 16 bytes; 490 sin ella y 0 con ella |
 | `AvanzarAnimacionSprite` | `src/movimiento_y_objetos_de_escena_3.c` | reserva de pila | 1 | coincide | Marco de 0x78 bytes (`addiu sp` en `0x8001E720`) frente a 0x68 sin la local: 16 bytes; 361 sin ella y 0 con ella |
 | `func_8001F268` | `src/movimiento_y_objetos_de_escena_3.c` | reserva de pila | 3 | coincide | Marco de 0xB8 bytes (`addiu sp` en `0x8001F268`) frente a 0x70 sin las tres locales: 72 bytes (16, 24 y 32), que dejan el vector de aparición en +0x28 y +0x30 y el acumulador de nodos en +0x58; 1280 sin ellas y 0 con ellas |
+| `func_8001D994` | `src/movimiento_y_objetos_de_escena_2.c` | reserva de pila | 1 | coincide | Marco de 0x50 bytes (`addiu sp` en `0x8001D994`) frente a 0x18 sin la local: 56 bytes; 122 sin ella y 0 con ella |
+| `LogicaEfectoAnclado` | `src/logica_de_niveles_3.c` | reserva de pila | 1 | coincide | Marco de 0x48 bytes (`addiu sp` en `0x8002EAA4`) frente a 0x28 sin la local: 32 bytes; 286 sin ella y 0 con ella |
+| `func_80018664` | `src/graficos_y_gte.c` | reserva de pila | 1 | coincide | Marco de 0x28 bytes (`addiu sp` en `0x80018664`) frente a 0x20 sin la local: 8 bytes; 58 sin ella y 0 con ella |
+| `func_80014E24` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | coincide | Marco de 0x220 bytes (`addiu sp` en `0x80014E24`) frente a 0x20 sin la local: 512 bytes; 4131 sin ella y 0 con ella |
+| `SondearTarjeta` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | NON_MATCHING 1765 | Marco de 0x40 bytes (`addiu sp` en `0x800156F4`) frente a 0x30 sin la local: 16 bytes; 1967 sin ella y 1765 con ella |
+| `func_80020B90` | `src/logica_de_niveles.c` | reserva de pila | 1 | NON_MATCHING 4685 | Marco de 0x48 bytes (`addiu sp` en `0x80020B90`) frente a 0x40 sin la local: 8 bytes; 4839 sin ella y 4685 con ella |
 
 ## Medir el progreso
 

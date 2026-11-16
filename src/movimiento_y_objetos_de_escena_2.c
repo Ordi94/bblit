@@ -583,11 +583,14 @@ fin:
  * Reinicia al objeto controlado en el punto de reaparicion guardado (D_8006ACD0): borra sus
  * banderas, copia posicion y orientacion, coloca la camara detras, fija 30 cuadros de
  * invulnerabilidad y la salud a 6, y lanza el efecto de fundido 1 de 0x200 cuadros.
+ *
+ * Reserva de pila: el marco del original es de 0x50 bytes (`addiu sp` en 0x8001D994) y el del C sin la local, de
+ * 0x18; la cifra medida sin la local es 122 y con ella 0.
  */
 void func_8001D994(Objeto* o)
 {
-    /* El original reserva 0x38 bytes de pila que el codigo no llega a usar. */
-    u8 reserva[0x38];
+    /* Reserva de pila: local sin uso que completa el marco del original. */
+    s32 reserva[14];
 
     o->flags14 = 0;
     o->param.trans.vx = D_8006ACD0.x;

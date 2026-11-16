@@ -70,7 +70,10 @@ s16* D_800693DC;
    orden de operandos no lo cambia. Los accesos que el original no ordena con los almacenes a globales (los cuatro
    `vy` de D_80069D60 y dos de `flags14`) se escriben por desplazamiento en bytes; con los seis accesos por nombre la cifra
    es 7570 (se supone, sin verificar con el volcado, que el planificador los reordena con los almacenes a D_8006965A,
-   D_8006965B y D_8006965E). */
+   D_8006965B y D_8006965E).
+   Reserva de pila: el marco del original es de 0x48 bytes (`addiu sp` en 0x80020B90) y el del C sin la local, de
+   0x40 (8 bytes); la cifra medida sin la local es 4839 y con ella 4685. La funcion es pendiente: con la local la
+   cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {
     ScratchJugador* sc;
@@ -102,7 +105,8 @@ void func_80020B90(Objeto* o)
     s32 sum;
     VECTOR* pos;
     VECTOR* pt;
-    u8 reserva[8];
+    /* Reserva de pila: local sin uso que completa el marco del original. */
+    s32 reserva[2];
 
     sc = (ScratchJugador*)0x1F800000;
     w = (void*)0x1F800148;
