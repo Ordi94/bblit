@@ -528,6 +528,19 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * `o->p70` y se usa en la resta de X de la rama sin bit 0x1000000: el original relee `t->aux` tras ese almacen solo
  * para la prueba de la bandera (`lw v0,0xa8(s2)`) y conserva en a0 el puntero anterior para la resta (0x80029498);
  * sin la local la lectura repetida ocupa a0.
+ * Composicion del residuo, medida sobre el `diff` con esta cifra: 49 lineas con marca de registro y 62 con marca de
+ * operando, 61 de ellas por simbolos (`%gp_rel(D_...)`, `%lo(D_1F800030)`) frente a la direccion numerica del
+ * ensamblador original, que ninguna forma del C cambia; 42 de las 49 lineas de registro son los tres bloques de escala
+ * (macros de include/, que no se tocan). Las otras causas, con el volcado de `cc1`: (a) argumento de la llamada
+ * compartida en 0x8002A668: tras la primera planificacion el `addiu a0,s3,0x7c` ocupa la segunda posicion del bloque
+ * (el insn 7744 del volcado `.sched`, a continuacion de la primera lectura del portador) y el pseudo 2178, el puntero
+ * del portador releido para la Z, recibe a1 en `.greg`; en el original lo recibe a0 y el `addiu` va despues de
+ * `lw a1,0xec(a0)` (0x8002A664 y 0x8002A668), de modo que el rango del registro duro a0 empieza despues de la ultima
+ * lectura del portador. Es la mayor causa (una linea sobrante, una faltante y tres de registro). (b) relectura de
+ * `t->w114` en 0x8002B928: aqui el compilador reutiliza a0 en lugar de recargar; una referencia con indice
+ * constante a D_800693C0 como elemento de arreglo (referencia dentro de estructura) tampoco la recarga. (c) el destino
+ * de la suma de la secuencia en 0x8002B870 (v0 aqui, v1 en el original) y la rama invertida del bucle de busqueda
+ * (0x80028C04): sin cambio con las formas de indexacion del fuente medidas.
  */
 /*
  * Las cuatro sentencias replicadas son `t->w114 = banda_alta;` y `t->w118 = banda_baja;` escritas en la rama del
