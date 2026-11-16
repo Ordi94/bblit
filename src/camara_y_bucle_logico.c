@@ -910,8 +910,11 @@ aplicar_giro:
      * Una sola copia de la lectura del giro, alcanzada por dos caminos: la prueba de f2 antes del bloque
      * (el original salta a ella con `bnez` en 0x8003422C hacia 0x80034318, sin recalcular el bit) y el final
      * del bloque cuando el byte D_8006D9A8 lo tiene (`beqz` en 0x80034310 hacia la escritura contraria, que
-     * queda tras la lectura). Escrito como `if ((f2 & 2) != 0 || byte) {...} else {...}`
-     * el compilador vuelve a calcular `f2 & 2` en la union y emite una prueba de mas por cada camino del bloque.
+     * queda tras la lectura). `f2` es el valor de las banderas previo al bloque: el bloque escribe
+     * `D_8006D928.flags80` sin actualizarlo, de modo que la cola compartida es equivalente a la condicion
+     * compuesta en las cuatro combinaciones de `f2 & 2` y del byte (con `f2 & 2` activo se salta el bloque y se
+     * llega a la lectura igual que con el byte activo; con ambos inactivos el bloque termina en `guardar_giro`).
+     * Escrito como `if ((f2 & 2) != 0 || byte) {...} else {...}` el compilador vuelve a calcular `f2 & 2` en la union y emite una prueba de mas por cada camino del bloque.
      */
     w->rot.vy = D_80069402;
     goto fin_giro;
