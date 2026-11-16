@@ -737,6 +737,7 @@ añadir o quitar una referencia se actualiza la tabla en el mismo cambio.
 | `SondearTarjeta` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | NON_MATCHING 1765 | Marco de 0x40 bytes (`addiu sp` en `0x800156F4`) frente a 0x30 sin la local: 16 bytes; 1967 sin ella y 1765 con ella |
 | `func_80020B90` | `src/logica_de_niveles.c` | reserva de pila | 1 | NON_MATCHING 4685 | Marco de 0x48 bytes (`addiu sp` en `0x80020B90`) frente a 0x40 sin la local: 8 bytes; 4839 sin ella y 4685 con ella |
 | `func_8004048C` | `src/entrada_de_mando.c` | reserva de pila | 1 | NON_MATCHING 6160 | Marco de 0x28 bytes (`addiu sp` en `0x80040494`) frente a 0x20 sin la local: 8 bytes; 6234 sin ella y 6160 con ella |
+| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 1 | NON_MATCHING 39407 | Marco de 0x210 bytes (`addiu sp` en `0x800415A0`) frente a 0x208 sin la local: 8 bytes; 40562 sin ella y 39407 con ella |
 
 ## Medir el progreso
 

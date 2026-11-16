@@ -392,19 +392,19 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 67414 con la configuracion versionada (g = 8 del archivo; ejes 223 de
- * operando, 51 reordenadas, 2608 insertadas o borradas). La cifra incluye palabras con direcciones
- * absolutas dentro del archivo (saltos y tablas de saltos), de modo que depende del tamano de las
- * funciones anteriores. Medido: el codigo generado tiene 2925 instrucciones frente a 2955 del
- * original, el marco de pila mide lo mismo (0x210 bytes) y los cuerpos de los casos de los cinco
- * `switch` van en el mismo orden de direcciones que sus tablas de saltos (el orden en el fuente
- * decide el orden de emision, por eso los casos no van en orden numerico). Difieren el reparto de
- * registros (s1 y s8 intercambiados desde el prologo, la direccion de `campos` y las constantes de
- * las comparaciones que el original iza en s0, s1 y s4) y las posiciones de pila de la tabla de
- * tamanos y de los escalares (el original deja la imagen y el rectangulo en las direcciones mas
- * bajas del marco, despues la tabla de secciones y la de tamanos).
+ * Pendiente: puntuacion 39407 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
+ * depende del tamano de las funciones anteriores. Medido: el codigo generado tiene 2959
+ * instrucciones frente a 2955 del original y los cuerpos de los casos de los cinco `switch` y del
+ * despacho de primer nivel van en el orden de direcciones de las tablas de saltos del original: el
+ * orden del fuente decide el orden de emision, por eso los casos no van en orden numerico. Difiere
+ * el reparto de registros (el original deja la direccion del bufer en s4, el destino en s8 y las
+ * constantes de las comparaciones del sonido en s0 y s1).
  *
- * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `destino`.
+ * Reserva de pila: el marco del original es de 0x210 bytes (`addiu sp` en 0x800415A0) y el del C sin
+ * la local, de 0x208; la cifra medida sin la local es 40562 y con ella 39407.
+ *
+ * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `datos`.
  * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
  * comandos E piden, y despues interpreta el script: 0x2C reparte la memoria en listas y grupos y
  * lee las secciones de datos, 0x4B elige el banco del idioma y 0x2D abre una serie de chunks
@@ -414,13 +414,17 @@ extern u8* D_80069538;
  * demostracion (0x47) y textos (0x49). Devuelve 0 si todo salio bien y 1 si el disco falla, la
  * suma de control de la cabecera no coincide o una descompresion no termina.
  */
-s32 CargarContenedor(s16 archivo, void* destino)
+s32 CargarContenedor(s16 archivo, u8* datos)
 {
+    RECT rect;
+    GsIMAGE imagen;
+    EntradaSeccion secciones[14];
+    /* Reserva de pila: local sin uso que completa el marco del original. */
+    s32 reserva_pila[2];
     s32 tamanos[15] = {
         0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200, 0x400, 0x800, 0x1000, 0x2000, 0x4000, 0x8000,
         0x10000
     };
-    EntradaSeccion secciones[14];
     /*
      * Bufer de las etiquetas del script. El original lo direcciona por un registro base (s4) en todos
      * los campos salvo el primero, que lee con desplazamiento sobre el puntero de pila: `campos` es el
@@ -428,11 +432,8 @@ s32 CargarContenedor(s16 archivo, void* destino)
      */
     u8 campos_mem[0x80];
     u8* campos;
-    GsIMAGE imagen;
-    RECT rect;
     RegistroArchivo* registro;
     u8* cursor;
-    u8* datos;
     u8* reserva;
     u8* monton;
     u8* nodo;
@@ -461,8 +462,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
 
     /* Memoria de trabajo del cargador: el destino recibe primero el contenido y luego la reserva. */
     campos = campos_mem;
-    datos = (u8*)destino;
-    reserva = (u8*)destino;
+    reserva = datos;
     D_800695B4 = 1;
     memset(D_8006AA70, 0, 0x100);
     tam_extra = 0;
@@ -499,10 +499,9 @@ s32 CargarContenedor(s16 archivo, void* destino)
     func_80040DDC();
     *(CdlLOC*)D_8006A928 = *(CdlLOC*)registro->posicion;
     *(u32*)(D_8006A928 + 4) = registro->tamano;
-    datos = (u8*)destino + 0xA000;
-    D_8006948C = (u32)destino;
-    D_80069490 = (u32)destino;
-    D_8006947C = (u32)datos;
+    D_8006948C = (u32)datos;
+    D_80069490 = (u32)datos;
+    D_8006947C = (u32)datos + 0xA000;
     D_80069494 = registro->habilitado;
 
     if (D_80069494 != 0) {
@@ -547,6 +546,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
             secciones[i].alineado = *(u32*)(cursor + 8);
             cursor += 12;
         }
+        datos += 0xA000;
         D_80069498 = (u32)datos;
         D_800694A0 = secciones[posicion].alineado + secciones[posicion + 1].alineado + 0x800;
         D_8006949C = D_80069490 + 0x800;
@@ -584,6 +584,7 @@ s32 CargarContenedor(s16 archivo, void* destino)
          * Contenedor sin lectura por anillo: cada seccion se lee entera a su destino con una orden
          * de lectura propia y se espera a que el retorno de llamada la complete.
          */
+        datos = datos + 0xA000;
         D_80069484 = 0;
         D_80069488 = 0;
         D_800694A0 = 0x800;
