@@ -430,7 +430,7 @@ typedef struct {
  * no van en orden numerico.
  *
  * Dos decremento-incremento no generan codigo (`libre--; libre++;` al abrir el caso 0x2C y
- * `nodo--; nodo++;` en el chunk 0x22; el codigo generado tiene 2947 instrucciones con y sin ellos).
+ * `nodo--; nodo++;` en el chunk 0x22; el codigo generado tiene las mismas 2954 instrucciones con y sin ellos).
  * Causa medida en el volcado de `cc1` (prioridad `floor_log2(R) * R / L` de `global-alloc`): (1) el
  * cursor del script (pseudo 91, R 1071, L 2060, prioridad 5,20) superaba al nodo de los chunks de
  * recursos y modelos (pseudo 95, R 340, L 528, 5,15) y tomaba s1; con el par el nodo pasa a R 352
@@ -498,7 +498,7 @@ typedef struct {
  * Lectura de etiquetas por miembro: en los chunks 0x02, 0x3D y 0x3E el original lee los campos del
  * bufer sin releerlos tras un almacen a un global y agrupa las cargas antes de los almacenes; con un
  * puntero y un desplazamiento el compilador las intercala y relee. `Etiquetas` (union de arreglos de
- * cada ancho) y `EtiquetasListas` dan acceso por miembro; en los chunks probados cuyo destino es un
+ * cada ancho) y `EtiquetasListas` dan acceso por miembro; en los chunks cuyo destino es un
  * miembro de un nodo (0x26, 0x3F, 0x27, 0x28, 0x0D) o el vector de punto de vista (0x2B) la cifra no
  * cambia con el acceso por miembro y se deja el acceso por puntero. Se supone, sin verificar, que la
  * causa es que el compilador no da por afectado un miembro de un agregado por un almacen a un global
@@ -816,6 +816,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             libre--;
             libre++;
             if (pools_listos != 1) {
+                /* El original sale con `bne t4,t1` (0x80041CCC) al bucle infinito de 0x80042088. */
                 goto sin_listas;
             }
             if (banco_cargado == 0) {
@@ -884,6 +885,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             }
             func_8003652C();
             func_800365D0();
+            /* El original salta con `j` (0x80042080) por encima del bucle infinito de 0x80042088. */
             goto con_listas;
         sin_listas:
             for (;;) {
