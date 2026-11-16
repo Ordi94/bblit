@@ -442,8 +442,8 @@ s32 func_800151FC(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1425 con la configuracion versionada (g = 8 del archivo; ejes 72 de operando, 0 reordenadas,
- * 235 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
+ * Pendiente: puntuacion 1255 con la configuracion versionada (g = 8 del archivo; ejes 72 de operando, 11 reordenadas,
+ * 216 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
  * original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante.
@@ -480,6 +480,13 @@ s32 func_800151FC(void)
  * Desplazamiento de la fila (`fila = n * 0x28;` al inicio de cada vuelta del directorio y usada en los cuatro accesos,
  * 1580 a 1425): el original conserva un solo valor de la fila en toda la vuelta (`move a3,a2` en 0x80015CE0 y
  * 0x80015D14 copia la misma base) en lugar de recalcular `n * 0x28` en cada acceso.
+ * Suma de la entrada del directorio (1425 a 1255): el original suma primero la fila y el desplazamiento del grupo y
+ * despues las dos bases (`addu v0,a2,v0` en 0x80015D4C y `addu v1,v0,t1` y `addu v0,v0,t2` tras ella), de modo que
+ * la entrada y la palabra de 0x24 se escriben como `base + (fila + desplazamiento_grupo)`; con la suma escrita de
+ * izquierda a derecha el compilador suma la base al desplazamiento y despues la fila. Escribir el tercer
+ * desplazamiento en una local propia (`desplazamiento_entrada`) sube a 1395 y copiar la fila en una local antes de
+ * los bucles interiores (una local de relleno, una local de busqueda o ambas) da 1980, 1425 y 1660 (el CSE funde la
+ * copia cuando solo la usa el bucle de relleno); `n * 0x28` escrito en el bucle de busqueda 1560.
  * Queda el reparto de registros del directorio: `n` cae en a3 (en a1 en el original), `fila` en a1 (a2), el contador de
  * los bucles interiores en a0 (v1) y la cadena de desplazamientos en v1 (a0), y el bucle de busqueda del final del nombre
  * calcula la direccion del simbolo de la tabla en su preludio (`lui` y `addiu a2`) mientras el original usa t1 ya
@@ -498,7 +505,7 @@ s32 func_800151FC(void)
  * El argumento que pasa main se ignora.
  *
  * Reserva de pila: el marco del original es de 0x40 bytes (`addiu sp` en 0x800156F4) y el del C sin la local, de
- * 0x30 (16 bytes); la cifra medida sin la local es 1627 y con ella 1425. La funcion es pendiente: con la local la
+ * 0x30 (16 bytes); la cifra medida sin la local es 1457 y con ella 1255. La funcion es pendiente: con la local la
  * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)
@@ -720,12 +727,12 @@ void SondearTarjeta(void)
                     quince = grupo << 4;
                     quince -= grupo;
                     desplazamiento_grupo = quince << 3;
-                    entrada = (EntradaDirectorio*)(D_800697B0 + fila + desplazamiento_grupo);
+                    entrada = (EntradaDirectorio*)(D_800697B0 + (fila + desplazamiento_grupo));
                     entrada->attr = 0;
                     entrada->tam = 0;
                     entrada->sig = 0;
                     entrada->cabeza = 0;
-                    *(s32*)(D_800697B0 + 0x24 + fila + desplazamiento_grupo) = 0;
+                    *(s32*)(D_800697B0 + 0x24 + (fila + desplazamiento_grupo)) = 0;
                 }
                 D_8006936C = func_80014AC4(ranura);
                 if (D_8006936C >= 0) {

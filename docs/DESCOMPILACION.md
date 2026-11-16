@@ -743,7 +743,7 @@ referencia se actualiza la tabla en el mismo cambio.
 | `LogicaEfectoAnclado` | `src/logica_de_niveles_3.c` | reserva de pila | 1 | coincide | Marco de 0x48 bytes (`addiu sp` en `0x8002EAA4`) frente a 0x28 sin la local: 32 bytes; 286 sin ella y 0 con ella |
 | `func_80018664` | `src/graficos_y_gte.c` | reserva de pila | 1 | coincide | Marco de 0x28 bytes (`addiu sp` en `0x80018664`) frente a 0x20 sin la local: 8 bytes; 58 sin ella y 0 con ella |
 | `func_80014E24` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | coincide | Marco de 0x220 bytes (`addiu sp` en `0x80014E24`) frente a 0x20 sin la local: 512 bytes; 4131 sin ella y 0 con ella |
-| `SondearTarjeta` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | NON_MATCHING 1425 | Marco de 0x40 bytes (`addiu sp` en `0x800156F4`) frente a 0x30 sin la local: 16 bytes; 1627 sin ella y 1425 con ella |
+| `SondearTarjeta` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | NON_MATCHING 1255 | Marco de 0x40 bytes (`addiu sp` en `0x800156F4`) frente a 0x30 sin la local: 16 bytes; 1457 sin ella y 1255 con ella |
 | `func_80020B90` | `src/logica_de_niveles.c` | reserva de pila | 1 | NON_MATCHING 3750 | Marco de 0x48 bytes (`addiu sp` en `0x80020B90`) frente a 0x40 sin la local: 8 bytes; 3904 sin ella y 3750 con ella |
 | `func_8004048C` | `src/entrada_de_mando.c` | reserva de pila | 1 | NON_MATCHING 1655 | Marco de 0x28 bytes (`addiu sp` en `0x80040494`) frente a 0x20 sin la local: 8 bytes; 1729 sin ella y 1655 con ella |
 | `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 1 | NON_MATCHING 22106 | Marco de 0x210 bytes (`addiu sp` en `0x800415A0`) frente a 0x208 sin la local: 8 bytes; 23127 sin ella y 22106 con ella |
