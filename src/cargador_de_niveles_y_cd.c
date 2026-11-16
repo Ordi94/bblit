@@ -424,11 +424,12 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 11218 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 10643 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2954 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2880 coinciden en el mnemonico (97,5 %). Los cuerpos de los
+ * original, y alineando el mnemonico de cada instruccion de ambos (SequenceMatcher de difflib sin
+ * descarte automatico) 2448 coinciden (82,8 %). Los cuerpos de los
  * casos de los cinco `switch` y del despacho de primer nivel van en el orden de direcciones de las
  * tablas de saltos del original: el orden del fuente decide el orden de emision, por eso los casos
  * no van en orden numerico.
@@ -441,8 +442,8 @@ typedef struct {
  * (L 529, 5,32), toma s1 y el cursor s2, como el original. (2) la variable compartida de abajo
  * (pseudo 103, R 118, L 2075, 0,34) superaba a la zona libre `libre` (pseudo 93, R 124, L 2298,
  * 0,32) y le quitaba s6; con el par `libre` pasa a R 132 (L 2300, 0,40), toma s6, la variable s7 y
- * `datos` fp (pseudo 82, R 106, L 2132, 0,30), como el original. Puntuacion con ninguno: 14348;
- * solo el de `libre`: 13938; solo el del nodo: 11628; los dos: 11218. La forma del fuente
+ * `datos` fp (pseudo 82, R 106, L 2132, 0,30), como el original. Puntuacion con ninguno: 13648;
+ * solo el de `libre`: 13233; solo el del nodo: 11058; los dos: 10643. La forma del fuente
  * original que producia este reparto se desconoce.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
@@ -506,11 +507,19 @@ typedef struct {
  * miembro de un nodo (0x26, 0x3F, 0x27, 0x28, 0x0D) o el vector de punto de vista (0x2B) la cifra no
  * cambia con el acceso por miembro y se deja el acceso por puntero. Se supone, sin verificar, que la
  * causa es que el compilador no da por afectado un miembro de un agregado por un almacen a un global
- * escalar, y que si lo hace con un puntero.
+ * escalar, y que si lo hace con un puntero. En el chunk 0x3E las lecturas de 0x10 y 0x18 van por
+ * miembro (`d10`, `d18`) y la de 0x14 por puntero: la ultima por miembro empeora la cifra. En el
+ * chunk 0x36 el segundo entero va por miembro (`ETQ(w, campos, 1)`) y se almacena despues del puntero
+ * de zonas, como el original (`addu` en 0x80042FA8 antes del `sw` a 0x180($gp) en 0x80042FAC); con el almacen del
+ * entero primero, o por puntero, la cifra sube.
+ *
+ * Orden de la seccion de anillo: el original calcula los dos tamanos de seccion y avanza la posicion
+ * antes de sumar 0xA000 a `datos` (el `ori` y el `addu` salen tras `addiu s1,s1,0x2`, 0x800418D0 y
+ * 0x800418D4), por eso `D_800694A0` y `posicion += 2` van antes de `datos += 0xA000`.
  *
  * Residuo por causas (cada fila insertada o borrada pesa unos 100 puntos): (1) el chunk 0x3E, donde el
  * original deja tres cargas (0x10, 0x14 y 0x18 de las etiquetas) intercaladas entre los almacenes y
- * el C las deja al final; (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
+ * el C las deja al final, tras el ultimo almacen de la serie; (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
  * `libre += x; monton = libre` en dos instrucciones (tres filas); (4) el hueco de retardo del salto de
  * `func_80044664` y del `bgtz` inicial, que el planificador de saltos llena distinto; (5) el orden de
  * `cursor += 8` frente a las cargas en los chunks 0x36 y 0x47; (6) nombres de registro (unas 150
@@ -530,7 +539,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 12999 y con ella 11218. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 12440 y con ella 10643. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -694,11 +703,11 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             secciones[i].alineado = *(u32*)(cabecera + 8);
             cabecera += 12;
         }
+        D_800694A0 = secciones[posicion].alineado + (secciones[posicion + 1].alineado + 0x800);
+        posicion += 2;
         datos += 0xA000;
         D_80069498 = (u32)datos;
-        D_800694A0 = secciones[posicion].alineado + (secciones[posicion + 1].alineado + 0x800);
         D_8006949C = D_80069490 + 0x800;
-        posicion += 2;
         if (func_80044664((u8*)D_8006949C, datos, (void*)0x1F800000) == 0) {
             return 1;
         }
