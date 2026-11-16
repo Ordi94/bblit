@@ -390,27 +390,55 @@ extern u8* D_80069644;
 extern u8* D_80069528;
 extern u8* D_80069538;
 
+/*
+ * Vista del bufer de etiquetas por arreglos de cada ancho: un elemento de arreglo de una union es un
+ * acceso a miembro, y el compilador no lo da por afectado por los almacenes a variables globales
+ * escalares que lo rodean (no relee ni retrasa las cargas).
+ */
+typedef union {
+    u8 b[0x80];
+    u16 h[0x40];
+    s16 hs[0x40];
+    s32 w[0x20];
+} Etiquetas;
+
+#define ETQ(ancho, base, i) (((Etiquetas*)(base))->ancho[i])
+
+/*
+ * Primeras etiquetas del chunk 0x3E (tamano de las listas de la escena). Se leen por nombre de
+ * miembro y no por puntero con desplazamiento.
+ */
+typedef struct {
+    u16 w00;
+    u16 w02;
+    u16 w04;
+    u16 w06;
+    u16 w08;
+    u16 w0A;
+    s32 d0C;
+} EtiquetasListas;
+
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 18213 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 15728 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
- * caso del de su tabla. Medido: el codigo generado tiene 2949 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2835 coinciden en el mnemonico (95,9 %). Los cuerpos de los
+ * caso del de su tabla. Medido: el codigo generado tiene 2947 instrucciones frente a 2955 del
+ * original, y alineando el texto de ambos 2849 coinciden en el mnemonico (96,4 %). Los cuerpos de los
  * casos de los cinco `switch` y del despacho de primer nivel van en el orden de direcciones de las
  * tablas de saltos del original: el orden del fuente decide el orden de emision, por eso los casos
  * no van en orden numerico.
  *
  * Dos decremento-incremento no generan codigo (`libre--; libre++;` al abrir el caso 0x2C y
- * `nodo--; nodo++;` en el chunk 0x22; el codigo generado tiene 2949 instrucciones con y sin ellos).
+ * `nodo--; nodo++;` en el chunk 0x22; el codigo generado tiene 2947 instrucciones con y sin ellos).
  * Causa medida en el volcado de `cc1` (prioridad `floor_log2(R) * R / L` de `global-alloc`): (1) el
- * cursor del script (pseudo 91, R 1071, L 2051, prioridad 5,22) superaba al nodo de los chunks de
- * recursos y modelos (pseudo 95, R 340, L 524, 5,19) y tomaba s1; con el par el nodo pasa a R 352
+ * cursor del script (pseudo 90, R 1071, L 2051, prioridad 5,22) superaba al nodo de los chunks de
+ * recursos y modelos (pseudo 94, R 340, L 524, 5,19) y tomaba s1; con el par el nodo pasa a R 352
  * (L 525, 5,36), toma s1 y el cursor s2, como el original. (2) la variable compartida de abajo
- * (pseudo 103, R 118, L 2069, 0,34) superaba a la zona libre `libre` (pseudo 93, R 124, L 2291,
+ * (pseudo 102, R 118, L 2069, 0,34) superaba a la zona libre `libre` (pseudo 92, R 124, L 2291,
  * 0,32) y le quitaba s6; con el par `libre` pasa a R 132 (L 2293, 0,40), toma s6, la variable s7 y
- * `datos` fp (pseudo 82, R 106, L 2124, 0,30), como el original. Puntuacion con ninguno: 21608;
- * solo el de `libre`: 21063; solo el del nodo: 18758; los dos: 18213. La forma del fuente
+ * `datos` fp (pseudo 82, R 106, L 2125, 0,30), como el original. Puntuacion con ninguno: 18988;
+ * solo el de `libre`: 18578; solo el del nodo: 16138; los dos: 15728. La forma del fuente
  * original que producia este reparto se desconoce.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
@@ -431,11 +459,23 @@ extern u8* D_80069538;
  * Casos de lista (0x30 a 0x35): el original copia `campos` a un registro guardado (s0) en el hueco
  * de retardo de la prueba de la cabeza (`move s0,s4` en 0x80041F70 y los casos vecinos), lee los
  * campos por esa copia, carga la cabeza de la lista en un temporal y la copia al recorrido (`move
- * a0,v0`), que vive en un temporal. `fuente` copia `campos` antes de la prueba (el CSE solo la
- * conserva si la copia queda fuera del bloque de las lecturas: las lecturas ocurren tras la union de
- * las dos ramas), `cabeza` guarda la cabeza leida y `elemento` es el recorrido, una local de cada
- * caso para que no cruce llamadas. Residuo: `fuente` toma un temporal (a1) y el original s0 (se
- * supone, sin verificar, que la copia de s0 es de un valor que cruza llamadas en el original).
+ * a0,v0`), que vive en un temporal. La copia es `aux`, la misma variable que en otros casos recibe
+ * `campos` y se usa tras una llamada (casos 0x11 y los de dos llamadas): al cruzar llamadas toma el
+ * primer registro guardado (pseudo 98, R 384, L 293, prioridad 10,48, s0); una variable propia de
+ * los casos de lista, de vida corta y sin llamadas, toma otro registro guardado y desplaza a los
+ * demas pseudos. La copia se hace antes de la prueba de la cabeza: el CSE
+ * solo la conserva si queda fuera del bloque de las lecturas, que ocurren tras la union de las dos
+ * ramas. `cabeza` guarda la cabeza leida y `elemento` es el recorrido, una local de cada caso para
+ * que no cruce llamadas.
+ *
+ * Lectura de etiquetas por miembro: en los chunks 0x02, 0x3D y 0x3E el original lee los campos del
+ * bufer sin releerlos tras un almacen a un global y agrupa las cargas antes de los almacenes; con un
+ * puntero y un desplazamiento el compilador las intercala y relee. `Etiquetas` (union de arreglos de
+ * cada ancho) y `EtiquetasListas` dan acceso por miembro; en los chunks probados cuyo destino es un
+ * miembro de un nodo (0x26, 0x3F, 0x27, 0x28, 0x0D) o el vector de punto de vista (0x2B) la cifra no
+ * cambia con el acceso por miembro y se deja el acceso por puntero. Se supone, sin verificar, que la
+ * causa es que el compilador no da por afectado un miembro de un agregado por un almacen a un global
+ * escalar, y que si lo hace con un puntero.
  *
  * Se supone, sin verificar, que el original conserva `libre += x` y `monton = libre` en dos
  * instrucciones (0x80041E44 y 0x80041E58) y que eso le da a `libre` las referencias que aqui da el
@@ -451,7 +491,7 @@ extern u8* D_80069538;
  * asignacion previa); con la variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 20124 y con ella 18213. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 17507 y con ella 15728. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -487,7 +527,6 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     u8 campos_mem[0x80];
     /* Reserva de pila: local sin uso que completa el marco del original. */
     s32 reserva_cima[2];
-    u8* fuente;
     u8* campos;
     RegistroArchivo* registro;
     u8* cursor;
@@ -1070,6 +1109,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x11:
                             CopiarBytes(cursor, campos, 6);
+                            aux = campos;
                             hijo = (u8*)func_800363D4();
                             if (hijo == NULL) {
                                 for (;;) {
@@ -1083,9 +1123,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             aux = EN(u8*, hijo_matriz, 4);
                             EN(s32, aux, 0x4C) = 0;
                             EN(s32, aux, 0x48) = 0;
-                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x10) = *(u16*)campos_mem;
-                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x12) = *(u16*)(campos + 2);
-                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x14) = *(u16*)(campos + 4);
+                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x10) = *(u16*)aux;
+                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x12) = *(u16*)(aux +2);
+                            EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x14) = *(u16*)(aux +4);
                             EN(s32, EN(u8*, hijo_matriz, 4), 0) = 0;
                             cursor += 6;
                             RotMatrix((SVECTOR*)(EN(u8*, EN(u8*, hijo_matriz, 4), 0x44) + 0x10),
@@ -1156,10 +1196,10 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x02:
                             CopiarBytes(cursor, campos, 8);
-                            desp_campo = *(s32*)campos_mem;
+                            desp_campo = ((Etiquetas*)campos_mem)->w[0];
                             D_8006951C = 0x1010;
-                            D_800694A0 = *(s32*)(campos + 4);
-                            func_8003ECD4(datos + desp_campo, *(s32*)(campos + 4));
+                            D_800694A0 = ((Etiquetas*)campos)->w[1];
+                            func_8003ECD4(datos + desp_campo, D_800694A0);
                             D_8006951C += D_800694A0;
                             cursor += 8;
                             break;
@@ -1307,13 +1347,13 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         case 0x3E:
                             CopiarBytes(cursor, campos, 0x1C);
                             pools_listos = 1;
-                            D_80069660 = *(u16*)(campos + 2);
-                            D_80069670 = *(u16*)campos_mem;
-                            D_8006955C = *(u16*)(campos + 6);
-                            D_800694E6 = *(u16*)(campos + 4);
-                            D_8006967E = *(u16*)(campos + 8);
-                            D_800695C2 = *(u16*)(campos + 10);
-                            D_80069548 = *(s32*)(campos + 12);
+                            D_80069660 = ((EtiquetasListas*)campos)->w02;
+                            D_80069670 = ((EtiquetasListas*)campos_mem)->w00;
+                            D_8006955C = ((EtiquetasListas*)campos)->w06;
+                            D_800694E6 = ((EtiquetasListas*)campos)->w04;
+                            D_8006967E = ((EtiquetasListas*)campos)->w08;
+                            D_800695C2 = ((EtiquetasListas*)campos)->w0A;
+                            D_80069548 = ((EtiquetasListas*)campos)->d0C;
                             D_8006952E = *(u16*)(campos + 0x14);
                             D_8006954C = *(s32*)(campos + 0x10) & ~7;
                             D_80069678 = *(s32*)(campos + 0x18);
@@ -1331,9 +1371,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x3D:
                             CopiarBytes(cursor, campos, 6);
-                            D_800694B0 = *(s16*)campos_mem / 4;
-                            D_800695F2 = *(s16*)(campos + 2) / 4;
-                            D_800695F4 = *(s16*)(campos + 4) / 4;
+                            D_800694B0 = ETQ(hs, campos_mem, 0) / 4;
+                            D_800695F2 = ETQ(hs, campos, 1) / 4;
+                            D_800695F4 = ETQ(hs, campos, 2) / 4;
                             cursor += 6;
                             D_8006969C = D_800694B0 - 0x80;
                             break;
@@ -1426,7 +1466,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
 
                             /* Elemento de 0x24 bytes al final de la lista +0x30 del volumen. */
                             CopiarBytes(cursor, campos, 0x20);
-                            fuente = campos;
+                            aux = campos;
                             cabeza = EN(u8*, nodo, 0x30);
                             if (cabeza != NULL) {
                                 elemento = cabeza;
@@ -1445,18 +1485,18 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 for (;;) {
                                 }
                             }
-                            EN(s32, elemento, 4) = *(s32*)fuente;
-                            EN(s32, elemento, 8) = *(s32*)(fuente + 4);
-                            EN(u8, elemento, 0xC) = fuente[8];
-                            EN(u8, elemento, 0xF) = fuente[0xB];
-                            EN(u8, elemento, 0xD) = fuente[9];
-                            EN(u8, elemento, 0xE) = fuente[0xA];
-                            EN(u16, elemento, 0x10) = *(u16*)(fuente + 0xC);
-                            EN(u16, elemento, 0x12) = *(u16*)(fuente + 0xE);
-                            EN(s32, elemento, 0x14) = *(s32*)(fuente + 0x10);
-                            EN(s32, elemento, 0x18) = *(s32*)(fuente + 0x14);
-                            EN(s32, elemento, 0x1C) = *(s32*)(fuente + 0x18);
-                            EN(s32, elemento, 0x20) = *(s32*)(fuente + 0x1C);
+                            EN(s32, elemento, 4) = *(s32*)aux;
+                            EN(s32, elemento, 8) = *(s32*)(aux +4);
+                            EN(u8, elemento, 0xC) = aux[8];
+                            EN(u8, elemento, 0xF) = aux[0xB];
+                            EN(u8, elemento, 0xD) = aux[9];
+                            EN(u8, elemento, 0xE) = aux[0xA];
+                            EN(u16, elemento, 0x10) = *(u16*)(aux +0xC);
+                            EN(u16, elemento, 0x12) = *(u16*)(aux +0xE);
+                            EN(s32, elemento, 0x14) = *(s32*)(aux +0x10);
+                            EN(s32, elemento, 0x18) = *(s32*)(aux +0x14);
+                            EN(s32, elemento, 0x1C) = *(s32*)(aux +0x18);
+                            EN(s32, elemento, 0x20) = *(s32*)(aux +0x1C);
                             cursor += 0x20;
                             break;
                         }
@@ -1650,7 +1690,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
 
                             /* Elemento de 0x20 bytes que se encadena al final de la lista +0xF8 del entidad. */
                             CopiarBytes(cursor, campos, 0x20);
-                            fuente = campos;
+                            aux = campos;
                             cabeza = EN(u8*, entidad, 0xF8);
                             if (cabeza != NULL) {
                                 elemento = cabeza;
@@ -1669,17 +1709,17 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 for (;;) {
                                 }
                             }
-                            EN(u16, elemento, 4) = *(u16*)fuente;
-                            EN(u16, elemento, 6) = *(u16*)(fuente + 2);
-                            EN(u16, elemento, 8) = *(u16*)(fuente + 4);
-                            EN(u16, elemento, 0xA) = *(u16*)(fuente + 8);
-                            EN(s32, elemento, 0xC) = *(s32*)(fuente + 0xC);
-                            EN(s32, elemento, 0x10) = *(s32*)(fuente + 0x10);
-                            EN(u16, elemento, 0x14) = *(u16*)(fuente + 0x14);
-                            EN(u16, elemento, 0x16) = *(u16*)(fuente + 0x16);
-                            EN(u16, elemento, 0x18) = *(u16*)(fuente + 0x18);
-                            EN(u16, elemento, 0x1A) = *(u16*)(fuente + 0x1A);
-                            EN(u16, elemento, 0x1C) = *(u16*)(fuente + 0x1C);
+                            EN(u16, elemento, 4) = *(u16*)aux;
+                            EN(u16, elemento, 6) = *(u16*)(aux +2);
+                            EN(u16, elemento, 8) = *(u16*)(aux +4);
+                            EN(u16, elemento, 0xA) = *(u16*)(aux +8);
+                            EN(s32, elemento, 0xC) = *(s32*)(aux +0xC);
+                            EN(s32, elemento, 0x10) = *(s32*)(aux +0x10);
+                            EN(u16, elemento, 0x14) = *(u16*)(aux +0x14);
+                            EN(u16, elemento, 0x16) = *(u16*)(aux +0x16);
+                            EN(u16, elemento, 0x18) = *(u16*)(aux +0x18);
+                            EN(u16, elemento, 0x1A) = *(u16*)(aux +0x1A);
+                            EN(u16, elemento, 0x1C) = *(u16*)(aux +0x1C);
                             cursor += 0x20;
                             break;
                         }
@@ -1689,7 +1729,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
 
                             /* Elemento de 0x1C bytes al final de la lista +0xF8 del entidad. */
                             CopiarBytes(cursor, campos, 0x18);
-                            fuente = campos;
+                            aux = campos;
                             cabeza = EN(u8*, entidad, 0xF8);
                             if (cabeza != NULL) {
                                 elemento = cabeza;
@@ -1708,15 +1748,15 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 for (;;) {
                                 }
                             }
-                            EN(u16, elemento, 4) = *(u16*)fuente;
-                            EN(u16, elemento, 6) = *(u16*)(fuente + 2);
-                            EN(u16, elemento, 8) = *(u16*)(fuente + 4);
-                            EN(s32, elemento, 0xC) = *(s32*)(fuente + 8);
-                            EN(s32, elemento, 0x10) = *(s32*)(fuente + 0xC);
-                            EN(u16, elemento, 0xA) = *(u16*)(fuente + 0x10);
-                            EN(u16, elemento, 0x14) = *(u16*)(fuente + 0x12);
-                            EN(u16, elemento, 0x16) = *(u16*)(fuente + 0x14);
-                            EN(u16, elemento, 0x18) = *(u16*)(fuente + 0x16);
+                            EN(u16, elemento, 4) = *(u16*)aux;
+                            EN(u16, elemento, 6) = *(u16*)(aux +2);
+                            EN(u16, elemento, 8) = *(u16*)(aux +4);
+                            EN(s32, elemento, 0xC) = *(s32*)(aux +8);
+                            EN(s32, elemento, 0x10) = *(s32*)(aux +0xC);
+                            EN(u16, elemento, 0xA) = *(u16*)(aux +0x10);
+                            EN(u16, elemento, 0x14) = *(u16*)(aux +0x12);
+                            EN(u16, elemento, 0x16) = *(u16*)(aux +0x14);
+                            EN(u16, elemento, 0x18) = *(u16*)(aux +0x16);
                             cursor += 0x18;
                             break;
                         }
@@ -1726,7 +1766,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
 
                             /* Elemento de 0x24 bytes al final de la lista +0xFC del entidad. */
                             CopiarBytes(cursor, campos, 0x20);
-                            fuente = campos;
+                            aux = campos;
                             cabeza = EN(u8*, entidad, 0xFC);
                             if (cabeza != NULL) {
                                 elemento = cabeza;
@@ -1745,19 +1785,19 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 for (;;) {
                                 }
                             }
-                            EN(u16, elemento, 4) = *(u16*)fuente;
-                            EN(u16, elemento, 6) = *(u16*)(fuente + 2);
-                            EN(s32, elemento, 8) = *(s32*)(fuente + 4);
-                            EN(s32, elemento, 0xC) = *(s32*)(fuente + 8);
-                            EN(u8, elemento, 0x10) = fuente[0xC];
-                            EN(u8, elemento, 0x13) = fuente[0xF];
-                            EN(u8, elemento, 0x11) = fuente[0xD];
-                            EN(u8, elemento, 0x12) = fuente[0xE];
-                            EN(u16, elemento, 0x14) = *(u16*)(fuente + 0x10);
-                            EN(u16, elemento, 0x16) = *(u16*)(fuente + 0x12);
-                            EN(s32, elemento, 0x18) = *(s32*)(fuente + 0x14);
-                            EN(s32, elemento, 0x1C) = *(s32*)(fuente + 0x18);
-                            EN(s32, elemento, 0x20) = *(s32*)(fuente + 0x1C);
+                            EN(u16, elemento, 4) = *(u16*)aux;
+                            EN(u16, elemento, 6) = *(u16*)(aux +2);
+                            EN(s32, elemento, 8) = *(s32*)(aux +4);
+                            EN(s32, elemento, 0xC) = *(s32*)(aux +8);
+                            EN(u8, elemento, 0x10) = aux[0xC];
+                            EN(u8, elemento, 0x13) = aux[0xF];
+                            EN(u8, elemento, 0x11) = aux[0xD];
+                            EN(u8, elemento, 0x12) = aux[0xE];
+                            EN(u16, elemento, 0x14) = *(u16*)(aux +0x10);
+                            EN(u16, elemento, 0x16) = *(u16*)(aux +0x12);
+                            EN(s32, elemento, 0x18) = *(s32*)(aux +0x14);
+                            EN(s32, elemento, 0x1C) = *(s32*)(aux +0x18);
+                            EN(s32, elemento, 0x20) = *(s32*)(aux +0x1C);
                             cursor += 0x20;
                             break;
                         }
@@ -1767,7 +1807,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
 
                             /* Elemento de 0x2C bytes al final de la lista +0xFC del entidad. */
                             CopiarBytes(cursor, campos, 0x28);
-                            fuente = campos;
+                            aux = campos;
                             cabeza = EN(u8*, entidad, 0xFC);
                             if (cabeza != NULL) {
                                 elemento = cabeza;
@@ -1786,23 +1826,23 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 for (;;) {
                                 }
                             }
-                            EN(u16, elemento, 4) = *(u16*)fuente;
-                            EN(u16, elemento, 6) = *(u16*)(fuente + 2);
-                            EN(u16, elemento, 8) = *(u16*)(fuente + 4);
-                            EN(u16, elemento, 0xA) = *(u16*)(fuente + 8);
-                            EN(u16, elemento, 0xC) = *(u16*)(fuente + 6);
-                            EN(u8, elemento, 0xE) = fuente[0xA];
-                            EN(u8, elemento, 0x11) = fuente[0xD];
-                            EN(u8, elemento, 0xF) = fuente[0xB];
-                            EN(u8, elemento, 0x10) = fuente[0xC];
-                            EN(u16, elemento, 0x12) = *(u16*)(fuente + 0xE);
-                            EN(u16, elemento, 0x14) = *(u16*)(fuente + 0x10);
-                            EN(s32, elemento, 0x28) = *(s32*)(fuente + 0x24);
-                            EN(u16, elemento, 0x16) = *(u16*)(fuente + 0x12);
-                            EN(u16, elemento, 0x18) = *(u16*)(fuente + 0x14);
-                            EN(s32, elemento, 0x1C) = *(s32*)(fuente + 0x18);
-                            EN(s32, elemento, 0x20) = *(s32*)(fuente + 0x1C);
-                            EN(s32, elemento, 0x24) = *(s32*)(fuente + 0x20);
+                            EN(u16, elemento, 4) = *(u16*)aux;
+                            EN(u16, elemento, 6) = *(u16*)(aux +2);
+                            EN(u16, elemento, 8) = *(u16*)(aux +4);
+                            EN(u16, elemento, 0xA) = *(u16*)(aux +8);
+                            EN(u16, elemento, 0xC) = *(u16*)(aux +6);
+                            EN(u8, elemento, 0xE) = aux[0xA];
+                            EN(u8, elemento, 0x11) = aux[0xD];
+                            EN(u8, elemento, 0xF) = aux[0xB];
+                            EN(u8, elemento, 0x10) = aux[0xC];
+                            EN(u16, elemento, 0x12) = *(u16*)(aux +0xE);
+                            EN(u16, elemento, 0x14) = *(u16*)(aux +0x10);
+                            EN(s32, elemento, 0x28) = *(s32*)(aux +0x24);
+                            EN(u16, elemento, 0x16) = *(u16*)(aux +0x12);
+                            EN(u16, elemento, 0x18) = *(u16*)(aux +0x14);
+                            EN(s32, elemento, 0x1C) = *(s32*)(aux +0x18);
+                            EN(s32, elemento, 0x20) = *(s32*)(aux +0x1C);
+                            EN(s32, elemento, 0x24) = *(s32*)(aux +0x20);
                             cursor += 0x28;
                             break;
                         }
@@ -1813,7 +1853,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
 
                             /* Cinco referencias de 16 bits; el elemento (0x10 bytes) va a la lista +0xF4. */
                             CopiarBytes(cursor, campos, 0xC);
-                            fuente = campos;
+                            aux = campos;
                             cabeza = EN(u8*, entidad, 0xF4);
                             if (cabeza != NULL) {
                                 elemento = cabeza;
@@ -1832,9 +1872,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 for (;;) {
                                 }
                             }
-                            EN(u16, elemento, 4) = *(u16*)fuente;
+                            EN(u16, elemento, 4) = *(u16*)aux;
                             for (j = 0; j < 5; j++) {
-                                EN(u16, elemento, 6 + j * 2) = *(u16*)(fuente + 2 + j * 2);
+                                EN(u16, elemento, 6 + j * 2) = *(u16*)(aux +2 + j * 2);
                             }
                             cursor += 0xC;
                             break;
