@@ -83,6 +83,14 @@ s16* D_800693DC;
    `vy` de D_80069D60 y dos de `flags14`) se escriben por desplazamiento en bytes; con los seis accesos por nombre la cifra
    es 7570 (se supone, sin verificar con el volcado, que el planificador los reordena con los almacenes a D_8006965A,
    D_8006965B y D_8006965E).
+   Residuo medido sin resolver (cifra de cada prueba con el C vigente): (4) el original relee `sc->desp.x` y
+   `sc->desp.z` de memoria (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414) tras almacenarlos (0x800223FC y
+   0x80022400) y aqui el compilador reutiliza el registro; escribir la relectura por desplazamiento en bytes no cambia
+   la cifra (3750); (5) el original carga `o->p70` tres veces antes del almacen a 0xE8 (0x80023830, 0x80023840 y
+   0x80023848) y aqui las dos ultimas lecturas salen tras los almacenes del bloque; leer `p70` por
+   `*(Objeto**)&o->p70` no cambia la cifra; (6) en el prologo el original copia el valor de `flags14` (`move
+   v0,v1`, 0x80020BF4) antes de aplicar la mascara; con una variable distinta para el resultado de la mascara la cifra
+   sube a 4000.
    Reserva de pila: el marco del original es de 0x48 bytes (`addiu sp` en 0x80020B90) y el del C sin la local, de
    0x40 (8 bytes); la cifra medida sin la local es 3904 y con ella 3750. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
