@@ -32,7 +32,6 @@ extern u8 D_8006ACEC[6];
 extern s32 D_8006ACF4[3];
 extern s32 D_8006AD30[3];
 extern s32 D_8006AD70[3];
-extern s32 D_8006AD74;
 
 /*
  * Datos pequenos que el original direcciona con desplazamiento($gp): cada uno se define en este
@@ -59,8 +58,11 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2285 con la configuracion versionada (g = 8 del archivo; ejes 478 de operando, 3 reordenadas, 440
-   insertadas o borradas). La logica coincide. Cuatro formas del C que bajaron de 3750: (d) en el bloque del apoyo
+/* Pendiente: puntuacion 1980 con la configuracion versionada (g = 8 del archivo; ejes 478 de operando, 3 reordenadas, 437
+   insertadas o borradas). La logica coincide. Cinco formas del C que bajaron de 3750: (e) el almacen de la altura
+   tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo
+   arreglo que usa la rama contraria, y no como un simbolo aparte (`D_8006AD74`): el original calcula la base con
+   `lui v1` y el simbolo suelto da `lui at` (2285 a 1980); (d) en el bloque del apoyo
    por contacto (0x80023828..0x80023878 del original) el calculo de `giro.u.y` del apoyo, que lee `o->p70`, va ANTES del
    almacen de `o->coord.param` y de los tres de la escala: el original lee los dos giros antes de esos almacenes
    (`lhu v1,0xde(v1)` antes de `addiu v0,s4,0x18c`) y con el calculo al final el compilador no podia adelantar las
@@ -112,7 +114,7 @@ s16* D_800693DC;
    v0,v1`, 0x80020BF4) antes de aplicar la mascara; con una variable distinta para el resultado de la mascara la cifra
    sube a 4000.
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 2439 y con ella 2285. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 2134 y con ella 1980. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {
@@ -1664,7 +1666,7 @@ caja_defecto:
         GEO_GUARDAR_W_T1(pos);
         func_8001CBB8(o, (Movimiento*)&sc->desp, &sc->res, w);
         o->param.trans.vy = o->param.trans.vy + sc->desp.y;
-        D_8006AD74 = o->param.trans.vy;
+        D_8006AD70[1] = o->param.trans.vy;
     } else {
         D_8006AD70[0] = o->param.trans.vx;
         D_8006AD70[1] = o->param.trans.vy;
