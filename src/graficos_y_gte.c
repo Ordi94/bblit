@@ -38,9 +38,12 @@ typedef struct ConsultaSondeo {
 
 
 /* Esquinas del barrido y punto de prueba como pares (z, x) de 16 bits; func_80017478 las usa para elegir la arista mas cercana. */
-typedef struct ParZX {
-    s16 z;
-    s16 x;
+typedef union ParZX {
+    struct {
+        s16 z;
+        s16 x;
+    } c;
+    u32 w;
 } ParZX;
 extern ParZX D_80069D18[5];
 extern VECTOR D_80069D08;
@@ -456,48 +459,48 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
             k++;
         }
         if (k == 0) {
-            D_80069D18[0].x = w->p[0].vx;
-            D_80069D18[0].z = w->p[0].vz;
-            D_80069D18[1].x = w->p[1].vx;
-            D_80069D18[1].z = w->p[1].vz;
-            D_80069D18[2].x = w->p[2].vx;
-            D_80069D18[2].z = w->p[2].vz;
-            D_80069D18[3].x = w->p[3].vx;
-            D_80069D18[3].z = w->p[3].vz;
+            D_80069D18[0].c.x = w->p[0].vx;
+            D_80069D18[0].c.z = w->p[0].vz;
+            D_80069D18[1].c.x = w->p[1].vx;
+            D_80069D18[1].c.z = w->p[1].vz;
+            D_80069D18[2].c.x = w->p[2].vx;
+            D_80069D18[2].c.z = w->p[2].vz;
+            D_80069D18[3].c.x = w->p[3].vx;
+            D_80069D18[3].c.z = w->p[3].vz;
             D_80069380 = -1;
             w->angs[0] = 0;
 ciclo_aristas:
             if (w->angs[0] < 4) {
                 if (w->angs[0] == 0) {
-                    D_80069D18[4].x = w->b->max.vx + w->radio;
-                    D_80069D18[4].z = w->b->max.vz + w->radio;
+                    D_80069D18[4].c.x = w->b->max.vx + w->radio;
+                    D_80069D18[4].c.z = w->b->max.vz + w->radio;
                 } else if (w->angs[0] == 1) {
-                    D_80069D18[4].x = w->b->max.vx + w->radio;
-                    D_80069D18[4].z = w->b->min.vz - w->radio;
+                    D_80069D18[4].c.x = w->b->max.vx + w->radio;
+                    D_80069D18[4].c.z = w->b->min.vz - w->radio;
                 } else if (w->angs[0] == 2) {
-                    D_80069D18[4].x = w->b->min.vx - w->radio;
-                    D_80069D18[4].z = w->b->min.vz - w->radio;
+                    D_80069D18[4].c.x = w->b->min.vx - w->radio;
+                    D_80069D18[4].c.z = w->b->min.vz - w->radio;
                 } else if (w->angs[0] == 3) {
-                    D_80069D18[4].x = w->b->min.vx - w->radio;
-                    D_80069D18[4].z = w->b->max.vz + w->radio;
+                    D_80069D18[4].c.x = w->b->min.vx - w->radio;
+                    D_80069D18[4].c.z = w->b->max.vz + w->radio;
                 }
                 D_80069380 = 0x7FFFFFFF;
-                gte_NormalClip(*(u32*)&D_80069D18[0], *(u32*)&D_80069D18[1], *(u32*)&D_80069D18[4], &k);
+                gte_NormalClip(D_80069D18[0].w, D_80069D18[1].w, D_80069D18[4].w, &k);
                 if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 0;
                 }
-                gte_NormalClip(*(u32*)&D_80069D18[1], *(u32*)&D_80069D18[3], *(u32*)&D_80069D18[4], &k);
+                gte_NormalClip(D_80069D18[1].w, D_80069D18[3].w, D_80069D18[4].w, &k);
                 if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 1;
                 }
-                gte_NormalClip(*(u32*)&D_80069D18[3], *(u32*)&D_80069D18[2], *(u32*)&D_80069D18[4], &k);
+                gte_NormalClip(D_80069D18[3].w, D_80069D18[2].w, D_80069D18[4].w, &k);
                 if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 2;
                 }
-                gte_NormalClip(*(u32*)&D_80069D18[2], *(u32*)&D_80069D18[0], *(u32*)&D_80069D18[4], &k);
+                gte_NormalClip(D_80069D18[2].w, D_80069D18[0].w, D_80069D18[4].w, &k);
                 if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 3;
@@ -509,25 +512,25 @@ ciclo_aristas:
             }
             if (D_80069380 > 0) {
                 if (i == 0) {
-                    w->e_x = D_80069D18[1].x - D_80069D18[0].x;
-                    w->e_z = D_80069D18[1].z - D_80069D18[0].z;
-                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[0].x;
-                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[0].z;
+                    w->e_x = D_80069D18[1].c.x - D_80069D18[0].c.x;
+                    w->e_z = D_80069D18[1].c.z - D_80069D18[0].c.z;
+                    D_80069D08.vx = D_80069D18[4].c.x - D_80069D18[0].c.x;
+                    D_80069D08.vz = D_80069D18[4].c.z - D_80069D18[0].c.z;
                 } else if (i == 1) {
-                    w->e_x = D_80069D18[3].x - D_80069D18[1].x;
-                    w->e_z = D_80069D18[3].z - D_80069D18[1].z;
-                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[1].x;
-                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[1].z;
+                    w->e_x = D_80069D18[3].c.x - D_80069D18[1].c.x;
+                    w->e_z = D_80069D18[3].c.z - D_80069D18[1].c.z;
+                    D_80069D08.vx = D_80069D18[4].c.x - D_80069D18[1].c.x;
+                    D_80069D08.vz = D_80069D18[4].c.z - D_80069D18[1].c.z;
                 } else if (i == 2) {
-                    w->e_x = D_80069D18[2].x - D_80069D18[3].x;
-                    w->e_z = D_80069D18[2].z - D_80069D18[3].z;
-                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[3].x;
-                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[3].z;
+                    w->e_x = D_80069D18[2].c.x - D_80069D18[3].c.x;
+                    w->e_z = D_80069D18[2].c.z - D_80069D18[3].c.z;
+                    D_80069D08.vx = D_80069D18[4].c.x - D_80069D18[3].c.x;
+                    D_80069D08.vz = D_80069D18[4].c.z - D_80069D18[3].c.z;
                 } else if (i == 3) {
-                    w->e_x = D_80069D18[0].x - D_80069D18[2].x;
-                    w->e_z = D_80069D18[0].z - D_80069D18[2].z;
-                    D_80069D08.vx = D_80069D18[4].x - D_80069D18[2].x;
-                    D_80069D08.vz = D_80069D18[4].z - D_80069D18[2].z;
+                    w->e_x = D_80069D18[0].c.x - D_80069D18[2].c.x;
+                    w->e_z = D_80069D18[0].c.z - D_80069D18[2].c.z;
+                    D_80069D08.vx = D_80069D18[4].c.x - D_80069D18[2].c.x;
+                    D_80069D08.vz = D_80069D18[4].c.z - D_80069D18[2].c.z;
                 }
                 k = SquareRoot0(w->e_x * w->e_x + w->e_z * w->e_z);
                 i = SquareRoot0(D_80069D08.vx * D_80069D08.vx + D_80069D08.vz * D_80069D08.vz);
@@ -595,6 +598,8 @@ ciclo_aristas:
 siguiente:
         w->actual = w->actual->sig10;
     }
+    v++;
+    v--;
     if (mejor != 0) {
         v->vx = salida.vx;
         v->vz = salida.vz;
