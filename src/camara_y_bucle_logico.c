@@ -1304,33 +1304,42 @@ void func_80035244(void)
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 410 con la configuracion versionada (g = 8 del archivo): 91 diferencias de operando, 0 lineas
- * reordenadas y 119 insertadas o borradas (de 820, 86, 1 y 162). El flujo coincide salvo el `nop` del hueco de
+ * reordenadas y 119 insertadas o borradas. El flujo coincide salvo el `nop` del hueco de
  * retardo de 0x80035704 (la copia del limite de la busqueda del modelo, ver abajo). Quedan diferencias de registros
  * y de forma simbolica: (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las
  * diferencias); (2) la constante -3 en s2 y el original en s3, con el puntero a la proyeccion al reves; (3) el
  * limite y el puntero al objeto de la busqueda del modelo en a2 y a1 donde el original los tiene en a1 y a2; (4) el
  * byte D_8006AA7C que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc` (diferencia de forma
- * simbolica de los mismos bytes; con el simbolo escalar en los dos sitios la funcion mide 1470 antes de corregir la
- * prueba de la busqueda del modelo).
+ * simbolica de los mismos bytes).
  *
  * La atenuacion sigue el flujo del original: el original tiene una sola llamada a func_800351B4 (0x800358A4) y la
  * atenuacion por distancia y la de proyeccion saltan a ella tras recargar el objeto en `a0` (0x80035DCC), con la
  * `jal` en el sitio de la busqueda del modelo. Aqui las dos atenuaciones comparten la recarga (`recargar`, con la
  * asignacion de `t` desde `sc->cur` tras el almacen) y saltan a la llamada de la busqueda del modelo (`llamar`):
- * con tres llamadas escritas salian dos `jal` (820) y con las dos atenuaciones saltando a la llamada del final
- * del bloque la `jal` quedaba en otro sitio (895); la forma actual deja una sola `jal` en 0x800358A4. El puntero al
- * objeto en curso se copia en la local `t` para las pruebas de proyeccion, de la banderas 0x10000 y de la
- * atenuacion (el original lo lee una vez en `a0` y lo reutiliza: 820 a 680 solo con las pruebas de proyeccion). La
- * cola de la lista usa una local propia (`cola`) porque con `t`, que vive en varios bloques, el reparto global la
- * pone en `a0` y `a1` en lugar de `v0` y `v1` (460 a 410). Reparto (2): la prioridad del reparto global de los
- * tres punteros fijos es 3 * 11 / 790 = 0,042 para la constante -3 y 2 * 6 / 393 = 0,031 para cada puntero del
- * contexto (volcado `.lreg`), de modo que la constante se asigna primero y toma s2; el original asigna primero el
- * puntero a la proyeccion (s2) y despues la constante (s3). Ni una referencia sin codigo sobre el puntero
- * (`pz--; pz++`: 410 sin cambio; `if (pz) {}`: el recuento del volcado no cambia, el optimizador las pliega
- * antes) ni mover la asignacion de la constante tras las de los punteros (800) ni escribirla como literal en cada
- * uso (800) mejoran. Reparto (3): asignar el
- * puntero al objeto antes de copiar el limite da la asignacion del original pero la carga queda antes del `move` y
- * la cifra sube a 450.
+ * con tres llamadas escritas salian dos `jal` (820); la forma actual deja una sola `jal` en 0x800358A4.
+ *
+ * Copias de `t`. El puntero al objeto en curso se copia en la local `t` con `t = sc->cur;` escrita cinco veces:
+ * antes de las pruebas de la bandera 0x10000 de la busqueda del modelo, en `modelo_hallado`, tras la proyeccion de
+ * un objeto simple, en `tras_proyeccion` (proyeccion de volumen) y en `recargar`. Es la sentencia duplicada en
+ * caminos que se reunen (en `llamar` y en las pruebas de `atenuar`): una sola copia tras la union serviria
+ * igual, pero el original carga `sc->cur` en `a0` en cada camino (0x8003584C y 0x80035888 en la busqueda del
+ * modelo) y las copias no generan codigo mas alla de esa carga, que el original tambien tiene. Medido quitando una
+ * a una (con `sc->cur->` en su lugar o con una sola asignacion en el punto de reunion), la funcion mide: sin la
+ * de la busqueda del modelo 425; sin la de la proyeccion de un objeto simple 834; sin la de `tras_proyeccion`
+ * 580; sin la de `recargar` 500; con una sola asignacion al comienzo del cuerpo del bucle 1840, en el bloque de
+ * la busqueda del modelo 1005 y en la rama de proyeccion 1400; y con las etiquetas de union tras la copia 620. No
+ * se verifico con un volcado de `cc1` el reparto de pseudos que lo explica (se supone, sin verificar, que cada
+ * copia es un pseudo local del bloque y una sola copia en una variable viva en varios bloques cambia el orden de
+ * los pseudos globales). La forma del fuente original que producia este reparto se desconoce.
+ *
+ * La cola de la lista usa una local propia (`cola`) porque con `t`, que vive en varios bloques, el reparto
+ * global la pone en `a0` y `a1` en lugar de `v0` y `v1` (460 a 410). Reparto (2): la prioridad del reparto
+ * global de los tres punteros fijos es 3 * 11 / 790 = 0,042 para la constante -3 y 2 * 6 / 393 = 0,031 para
+ * cada puntero del contexto (volcado `.lreg`), de modo que la constante se asigna primero y toma s2; el original
+ * asigna primero el puntero a la proyeccion (s2) y despues la constante (s3). Ninguna referencia sin codigo sobre
+ * el puntero, mover la asignacion de la constante tras las de los punteros ni escribirla como literal en cada
+ * uso cambia ese reparto. Reparto (3): asignar el puntero al objeto antes de copiar el limite da la asignacion
+ * del original pero la carga queda antes del `move`, de modo que el limite se copia primero.
  *
  * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
  * asigna el reparto global a `a0` y la recarga lo mueve despues a `t7` ("Spilling reg 15" para esa insn en el
@@ -1378,8 +1387,7 @@ void func_80035244(void)
  * original tampoco tenia notas de bucle en esos dos recorridos. El resultado de la ultima comprobacion de
  * proyeccion se lee de los campos (sc->sx, sc->sy) donde el original los relee, no de locales (7961 a 4388 con
  * las tres formas juntas).
- */
-/*
+ *
  * Lista de comprobaciones del cuadro: recorre los objetos de escena, los clasifica en cuatro listas
  * (segun sus indicadores) con la memoria de trabajo del scratchpad en 0x1F800000, los vuelve a enlazar en
  * D_80069630 y ejecuta la rutina de logica de cada uno (tabla D_8005E35C).
@@ -1489,6 +1497,7 @@ buscar_modelo:
                     }
                     if (sc->i40 < D_80069588) {
                         if ((sc->tp3C->bandera & 1) != 0) {
+                            /* Sentencia replicada: es la misma que la de las otras ramas. */
                             t = sc->cur;
                             if ((t->flags08 & 0x10000) != 0) {
                                 goto sigue2;
@@ -1500,6 +1509,7 @@ buscar_modelo:
                         goto sigue2;
                     }
 modelo_hallado:
+                    /* Sentencia replicada: es la misma que la de las otras ramas. */
                     t = sc->cur;
                     if ((t->w3C & 0x40) == 0) {
 llamar:
@@ -1524,6 +1534,7 @@ sigue2:
                             sc->cur->flags04 &= m3;
                             sc->cur->flags18 |= 0x100;
                         }
+                        /* Sentencia replicada: es la misma que la de las otras ramas. */
                         t = sc->cur;
                         if ((t->flags04 & 2) == 0) {
                             if ((t->w3C & 0xC0) == 0) {
@@ -1586,11 +1597,13 @@ otro_nodo:
                             sc->cur->flags18 |= 0x100;
                         }
 tras_proyeccion:
+                        /* Sentencia replicada: es la misma que la de las otras ramas. */
                         t = sc->cur;
                         if ((t->flags04 & 2) == 0 && (t->w3C & 0xC0) == 0) {
 atenuar:
                             t->w24 = (0x400 - sc->i40) >> 7;
 recargar:
+                            /* Sentencia replicada: es la misma que la de las otras ramas. */
                             t = sc->cur;
                             goto llamar;
                         }
