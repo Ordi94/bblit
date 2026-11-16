@@ -426,8 +426,12 @@ extern u8* D_80069538;
  * instrucciones (0x80041E44 y 0x80041E58) y que eso le da a `libre` las referencias que aqui da el
  * par; el compilador funde las dos sentencias en una al compilar el fuente actual.
  *
- * La constante 0x2E de las pruebas de fin de chunk no se iza: hay 34 `li ...,46` en el codigo
- * generado y 35 en el original. El pseudo de R 68 y L 2279 que ocupaba s8 en versiones anteriores
+ * La constante 0x2E de las pruebas de fin de chunk no se iza a un registro guardado en ningun
+ * bucle: hay 34 `li ...,46` en el codigo generado y 35 en el original. Lo que difiere es la forma
+ * de los bucles de etiquetas (por ejemplo el del chunk 0x36, original 0x80042F68 a 0x80042FB8): el
+ * original conserva el valor de la guarda en s0 (`addu s0,t4,zero` en 0x80042F78) y la etiqueta 0x37
+ * en s1, y la prueba de salida del bucle compara con s0; aqui solo la etiqueta se iza (a s0) y la
+ * prueba de salida recarga 0x2E con `li` en cada vuelta. El pseudo de R 68 y L 2279 que ocupaba s8 en versiones anteriores
  * es `hijo_matriz` (vivo desde la entrada de la funcion porque se lee en algun camino sin
  * asignacion previa); con la variable compartida queda en la pila, como el original.
  *
