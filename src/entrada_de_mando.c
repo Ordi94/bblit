@@ -285,13 +285,14 @@ void func_80040430(s8* contador, u16 mascara)
  * `sb` y el valor caia en `v1`.
  *
  * Reparto de a3 y t0 en la rama de los ejes (medido en el volcado `-dg`/`-dl`): el original guarda `botones_c` en t0 y
- * el umbral D_8006952C del eje X en a3 (`lhu t0` en 0x800403A8 y `lh a3` en 0x800403B0); aqui es al reves porque `global-alloc` asigna antes la
+ * el umbral D_8006952C del eje X en a3 (`lhu t0` en 0x80040834 y `lh a3` en 0x8004083C); aqui es al reves porque `global-alloc` asigna antes la
  * lectura de `botones_c` (pseudo 81: 4 usos, vida 19, prioridad 2 * 4 / 19 = 0,42) que la del umbral (pseudo 236:
  * 3 usos, vida 8, prioridad 1 * 3 / 8 = 0,375) y el primero libre es a3. Con un cuarto uso del umbral la prioridad
- * seria 1,0 y el reparto saldria como el del original, pero la unica forma probada para sumarlo (`umbral = D_8006952C;
- * umbral--; umbral++;` sobre una local) emite codigo (2150 en lugar de 1655); la local sola no cambia la cifra
- * (1655). Con el `if`/`else` en lugar del `switch` la cifra sube a 2555, y con la lectura de la rama por defecto
- * hecha por el simbolo (`D_8006AA70[0]`) sube a 1710 (el compilador repite el `lui` en lugar de compartirlo).
+ * seria 1,0 y el reparto saldria como el del original, pero la forma probada para sumarlo (decremento seguido de
+ * incremento sobre una local que guarda el umbral) emite codigo, de modo que no se aplica; la local sola se funde
+ * con la lectura y no cambia la cifra. En la rama por defecto, leer el primer byte del banco por el simbolo en lugar
+ * de por `banco` no comparte el `lui` de s2: el compilador repite el `lui` en ese bloque (el volcado `-ds` deja
+ * dos instrucciones `high` del mismo pseudo, una por bloque).
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
  * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0); la lectura del identificador D_8006CFF1 en
