@@ -674,9 +674,13 @@ tiene un marco mayor que el que genera el C sin él. Se cumplen las cinco condic
    sentencia de la función la nombra: ni la lee ni la escribe ni toma su dirección.
 4. La declaración lleva encima, en su propia línea, el comentario fijo
    `/* Reserva de pila: local sin uso que completa el marco del original. */`, que es el que localiza la prueba. La
-   cabecera de la función dice el marco del original con su `addiu sp` y la cifra sin la local, con la forma
-   «Reserva de pila: el marco del original es de 0xNN bytes (`addiu sp` en 0xDIRECCION) y el del C sin la local, de
-   0xMM; la cifra medida sin la local es X y con ella Y.» La frase de las dos cifras va con esa redacción exacta
+   cabecera de la función dice el marco del original con su `addiu sp`, el marco sin la local y la cifra sin la
+   local, con la forma «Reserva de pila: el original reserva 0xNNN (`addiu sp` en 0xDDDDDDDD) y sin la local el marco
+   es 0xMMM; la cifra medida sin la local es X y con ella Y.» La frase de los marcos va con esa redacción exacta
+   (`el original reserva 0xNNN (`addiu sp` en 0xDDDDDDDD) y sin la local el marco es 0xMMM`, con la dirección de ocho
+   dígitos) y la prueba exige que NNN menos MMM sea igual a 4 por el número de elementos del arreglo `reserva` (la
+   suma de todos los arreglos de la función si hay varios; «sin la local» es entonces sin todas). La frase de las
+   dos cifras va con esa redacción exacta
    (`la cifra medida sin la local es X y con ella Y`, en una o varias líneas del comentario): Y es menor que X; si la
    función coincide, Y es 0; si es pendiente, Y es la cifra de la columna Estado de su fila.
 5. La función tiene su fila en la tabla de abajo con la forma «reserva de pila» y el número de arreglos de reserva
@@ -702,7 +706,8 @@ par `x--; x++;`, cada `if (...) {}`, cada local con inicializador que nadie lee,
 replicada y cada declaración de reserva de pila con su comentario fijo, fuera de una macro, debe estar en la tabla
 con la misma forma y el mismo número, y cada fila debe tener su declaración. La cabecera de su función debe llevar
 «no genera código» (o «no generan código») y la oración fija; la de una reserva de pila, «Reserva de pila:»,
-`addiu sp` y «sin la local». Una local cuyo nombre empieza por `reserva`, de cualquier tipo (`u8 reserva[8];`,
+`addiu sp` y «sin la local», con la frase de los marcos de la condición 4 y la diferencia entre el marco del original
+y el marco sin la local igual a 4 por el número de elementos de sus arreglos `reserva`. Una local cuyo nombre empieza por `reserva`, de cualquier tipo (`u8 reserva[8];`,
 `SVECTOR reserva;`, `s32 reserva[N];`), que ninguna sentencia nombra y no lleva el comentario fijo hace fallar la
 prueba, igual que la que lo lleva pero no es un arreglo de `s32`; las locales con otro nombre no se detectan.
 La columna Estado también se cruza con `src/`: `coincide` si la función no tiene su `INCLUDE_ASM` en el `#else` de
@@ -728,7 +733,7 @@ referencia se actualiza la tabla en el mismo cambio.
 | `AplicarCuadro` | `src/gestion_y_dibujo_de_objetos.c` | envoltura | 2 | coincide | Orden de la ayuda y del área de trabajo: la ayuda sube de 56 a 64 usos (prioridad 2,41 a 3,31) y pasa por delante del área (2,82 a 2,90), que toma `$s1` y deja `$s0` a la ayuda; con una sola envoltura la ayuda queda en 58 usos (2,50) o en 62 (2,67) y el reparto no cambia |
 | `func_80020A90` | `src/movimiento_y_objetos_de_escena_3.c` | envoltura | 1 | coincide | Operando del `sll` de la comparación del peldaño: sin la envoltura lee el acumulador (`sll v0,a0,0x10`, 5) y con ella la suma, como el original (`sll v0,v0,0x10`, 0); la suma pasa de 4 a 7 usos ponderados y de 2 a 3 instrucciones de vida |
 | `LogicaDirectorCamara` | `src/logica_de_niveles_3.c` | condición vacía | 1 | coincide | Orden de izado del par `lui`/`addiu` de `D_8006D928` y de la matriz del scratchpad: sin la condición la matriz se iza como 1632 y el par como 1634 y 1636 (sale delante, `diff` 160); con ella el par como 1641 y 1643 y la matriz como 1645 (sale detrás) |
-| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | decremento-incremento | 2 | NON_MATCHING 22106 | Dos disputas de `global-alloc`: el nodo de los chunks (pseudo 94) pasa de R 340 a 352 (de 5,21 a 5,38 frente a 5,25 del cursor, pseudo 90) y toma s1; `libre` (pseudo 92) pasa de R 124 a 132 (de 0,33 a 0,41 frente a 0,34 de la variable compartida, pseudo 102) y toma s6; puntuacion sin ninguno 25501, solo `libre` 24956, solo el nodo 22651, los dos 22106 |
+| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | decremento-incremento | 2 | NON_MATCHING 21788 | Dos disputas de `global-alloc`: el nodo de los chunks (pseudo 94) pasa de R 340 a 352 (de 5,21 a 5,38 frente a 5,25 del cursor, pseudo 90) y toma s1; `libre` (pseudo 92) pasa de R 124 a 132 (de 0,33 a 0,41 frente a 0,34 de la variable compartida, pseudo 102) y toma s6; puntuacion sin ninguno 25183, solo `libre` 24638, solo el nodo 22333, los dos 21788 |
 | `func_8001E528` | `src/movimiento_y_objetos_de_escena_3.c` | decremento-incremento | 1 | coincide | Orden de la coordenada u (pseudo 93) y del puntero al fotograma (83): u pasa de 6 a 10 usos (de 0,80 a 2,0 frente a 1,04), toma a3 y el puntero t0; la pareja va en la rama de la llamada porque junto a la carga de u alarga su cadena y el planificador sube la carga por encima de la lectura del puntero del sprite (60) |
 | `func_80026FEC` | `src/logica_de_niveles_3.c` | sentencia duplicada en ambas ramas | 6 | NON_MATCHING 1790 | Almacenes de las bandas del vuelo `t->w114 = banda_alta;` y `t->w118 = banda_baja;` en la rama del jugador y en la final: con la pareja en cada rama los valores son pseudos locales del bloque (2 usos sobre 2 insns) en v0 y v1 con el almacén al final de su camino, como el original; con una sola pareja tras la unión son pseudos globales (5 usos sobre 12 insns y 6 sobre 14) en a1 y v1, los almacenes suben tras la unión y la cifra pasa de 1790 a 3670. Llamada de cierre de la composición `func_8001CFCC(&o->coord);` en la rama que copia el giro del portador y en la de la comprobación de apoyo: el salto cruzado las fusiona (21 referencias al símbolo en el volcado de saltos antes del cruce y 20 después, igual que las 20 llamadas del original) y la preparación del argumento queda dentro de cada camino; con una sola llamada tras una etiqueta de unión cae en el hueco de retardo de la llamada (1790 con las dos llamadas frente a 1995 con una sola) |
 | `func_800353B0` | `src/camara_y_bucle_logico.c` | sentencia duplicada en ambas ramas | 5 | NON_MATCHING 410 | Copia del objeto en curso `t = sc->cur;` en cada camino que llega a la llamada única de `func_800351B4` y a las pruebas de atenuación: el original carga `sc->cur` en `a0` en cada camino. Sin la de la búsqueda del modelo 425, sin la de la proyección simple 834, sin la de `tras_proyeccion` 580 y sin la de `recargar` 500; con una sola asignación al comienzo del bucle 1840, en el bloque del modelo 1005 y en la rama de proyección 1400. Volcado: `t` es un solo pseudo (84, cinco cargas, 30 usos sobre 31 insns, prioridad 3,871) que toma `a0` por ser el argumento de `func_800351B4`; con una sola asignación (1380) las cargas de la proyección simple y de `tras_proyeccion` pasan a dos pseudos (332 y 412, 2,4) que toman `v1` en lugar de `a0` |
@@ -746,7 +751,7 @@ referencia se actualiza la tabla en el mismo cambio.
 | `SondearTarjeta` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | NON_MATCHING 1255 | Marco de 0x40 bytes (`addiu sp` en `0x800156F4`) frente a 0x30 sin la local: 16 bytes; 1457 sin ella y 1255 con ella |
 | `func_80020B90` | `src/logica_de_niveles.c` | reserva de pila | 1 | NON_MATCHING 3750 | Marco de 0x48 bytes (`addiu sp` en `0x80020B90`) frente a 0x40 sin la local: 8 bytes; 3904 sin ella y 3750 con ella |
 | `func_8004048C` | `src/entrada_de_mando.c` | reserva de pila | 1 | NON_MATCHING 1655 | Marco de 0x28 bytes (`addiu sp` en `0x80040494`) frente a 0x20 sin la local: 8 bytes; 1729 sin ella y 1655 con ella |
-| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 1 | NON_MATCHING 22106 | Marco de 0x210 bytes (`addiu sp` en `0x800415A0`) frente a 0x208 sin la local: 8 bytes; 23127 sin ella y 22106 con ella |
+| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 2 | NON_MATCHING 21788 | Marco de 0x210 bytes (`addiu sp` en `0x800415A0`) frente a 0x200 sin las dos locales: 16 bytes (8 antes de `tamanos` y 8 tras `campos_mem`); 23127 sin ellas y 21788 con ellas |
 
 ## Medir el progreso
 

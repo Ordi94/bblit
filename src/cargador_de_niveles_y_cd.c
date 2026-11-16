@@ -392,12 +392,11 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 22106 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 21788 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2944 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2834 coinciden en el mnemonico (95,9 %) y 2232 son
- * identicas (75,5 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
+ * original, y alineando el texto de ambos 2834 coinciden en el mnemonico (95,9 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
  * van en el orden de direcciones de las tablas de saltos del original: el orden del fuente decide
  * el orden de emision, por eso los casos no van en orden numerico.
  *
@@ -409,8 +408,8 @@ extern u8* D_80069538;
  * (L 523, 5,38), toma s1 y el cursor s2, como el original. (2) la variable compartida de abajo
  * (pseudo 102, R 118, L 2057, 0,34) superaba a la zona libre `libre` (pseudo 92, R 124, L 2279,
  * 0,33) y le quitaba s6; con el par `libre` pasa a R 132 (L 2281, 0,41), toma s6, la variable s7 y
- * `datos` fp (pseudo 82, R 106, L 2112, 0,30), como el original. Puntuacion con ninguno: 25501;
- * solo el de `libre`: 24956; solo el del nodo: 22651; los dos: 22106. La forma del fuente
+ * `datos` fp (pseudo 82, R 106, L 2112, 0,30), como el original. Puntuacion con ninguno: 25183;
+ * solo el de `libre`: 24638; solo el del nodo: 22333; los dos: 21788. La forma del fuente
  * original que producia este reparto se desconoce.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
@@ -420,7 +419,7 @@ extern u8* D_80069538;
  * el tamano de audio van en la pila (sw a 0x1DC y lw a 0x1D8) y la compensacion del chunk 0x3F en
  * un temporal. Por eso `desp_campo` hace de las tres variables. Con una variable por uso ese valor
  * no cruza llamadas, `global-alloc` le da un temporal (v1) y cada uso carga y suma por separado
- * (29032); compartida cruza llamadas, toma un registro guardado y baja a 25501.
+ * (29032); compartida cruza llamadas, toma un registro guardado y baja a 25183.
  *
  * Se supone, sin verificar, que el original conserva `libre += x` y `monton = libre` en dos
  * instrucciones (0x80041E44 y 0x80041E58) y que eso le da a `libre` las referencias que aqui da el
@@ -435,8 +434,12 @@ extern u8* D_80069538;
  * es `hijo_matriz` (vivo desde la entrada de la funcion porque se lee en algun camino sin
  * asignacion previa); con la variable compartida queda en la pila, como el original.
  *
- * Reserva de pila: el marco del original es de 0x210 bytes (`addiu sp` en 0x800415A0) y el del C sin
- * la local, de 0x208; la cifra medida sin la local es 23127 y con ella 22106.
+ * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
+ * 0x200; la cifra medida sin la local es 23127 y con ella 21788. Las dos reservas de 8 bytes suman los
+ * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
+ * tras `campos_mem`; con una sola de 16 bytes antes de `tamanos` el marco es 0x210 pero `tamanos` y
+ * `campos_mem` se desplazan 8 bytes (22653). Residuo: los derrames de registros quedan 8 bytes mas
+ * arriba que en el original (0x1B0 frente a 0x1A8 en el primero).
  *
  * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `datos`.
  * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
@@ -465,6 +468,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
      * puntero y `campos_mem` el bufer, que se usa directo solo en el primer campo de cada etiqueta.
      */
     u8 campos_mem[0x80];
+    /* Reserva de pila: local sin uso que completa el marco del original. */
+    s32 reserva_cima[2];
     u8* campos;
     RegistroArchivo* registro;
     u8* cursor;
@@ -1180,22 +1185,22 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             CopiarBytes(cursor, campos, 0x30);
                             /* Igual que en 0x4C: el almacen del original (0x80042E8C) solo sigue a una coincidencia. */
                             if (D_80010050 == 0) {
-                                desp_campo =*(s32*)campos_mem;
+                                desp_campo = *(s32*)campos_mem;
                                 D_800694A0 = *(s32*)(campos + 4);
                             } else if (D_80010050 == 1) {
-                                desp_campo =*(s32*)(campos + 8);
+                                desp_campo = *(s32*)(campos + 8);
                                 D_800694A0 = *(s32*)(campos + 12);
                             } else if (D_80010050 == 2) {
-                                desp_campo =*(s32*)(campos + 16);
+                                desp_campo = *(s32*)(campos + 16);
                                 D_800694A0 = *(s32*)(campos + 20);
                             } else if (D_80010050 == 3) {
-                                desp_campo =*(s32*)(campos + 24);
+                                desp_campo = *(s32*)(campos + 24);
                                 D_800694A0 = *(s32*)(campos + 28);
                             } else if (D_80010050 == 4) {
-                                desp_campo =*(s32*)(campos + 32);
+                                desp_campo = *(s32*)(campos + 32);
                                 D_800694A0 = *(s32*)(campos + 36);
                             } else if (D_80010050 == 5) {
-                                desp_campo =*(s32*)(campos + 40);
+                                desp_campo = *(s32*)(campos + 40);
                                 D_800694A0 = *(s32*)(campos + 44);
                             }
                             D_800695E4 = D_8006951C;
