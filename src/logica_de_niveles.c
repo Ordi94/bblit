@@ -59,8 +59,13 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 3185 con la configuracion versionada (g = 8 del archivo; ejes 477 de operando, 4 reordenadas, 467
-   insertadas o borradas). La logica coincide. Dos formas del C que bajaron de 3750: (a) la relectura de `sc->desp.x` y
+/* Pendiente: puntuacion 2880 con la configuracion versionada (g = 8 del archivo; ejes 478 de operando, 3 reordenadas, 464
+   insertadas o borradas). La logica coincide. Tres formas del C que bajaron de 3750: (c) en el bloque del apoyo
+   hallado (0x80022C90..0x80022CC4 del original, tras `func_80020354`) la lectura de `h0A` va antes del almacen
+   de `trans.vz`: el original emite `sw zero,0x1ac(s4)` despues de `lw v0,0xa8(s3)` y de `lh v0,0xa(v0)` y detras del
+   almacen de `o->p70`; con el almacen a cero escrito antes de la lectura el compilador lo adelantaba sobre el de
+   `o->p70` (3185 a 2880; se supone, sin verificar con el volcado, que el almacen a cero se ordena ante la carga por
+   el posible solape con el scratchpad); (a) la relectura de `sc->desp.x` y
    `sc->desp.z` tras sus almacenes (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414 del original) solo sale
    cuando el almacen de `desp.z` usa otra base que `sc` (`w - 0x128`, la direccion de `sc->desp.z`, con comentario en el
    codigo): con la base de `sc` el compilador reutiliza el registro y no relee. Con `pos = &sc->desp` la relectura sale
@@ -102,7 +107,7 @@ s16* D_800693DC;
    v0,v1`, 0x80020BF4) antes de aplicar la mascara; con una variable distinta para el resultado de la mascara la cifra
    sube a 4000.
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 3339 y con ella 3185. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 3034 y con ella 2880. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {
@@ -845,8 +850,8 @@ llamar_salto:
                     o->coord.param = (GsCOORD2PARAM*)APOYO(o);
                     APOYO(o)->trans.vx = 0;
                     o->p70 = t1;
-                    APOYO(o)->trans.vz = 0;
                     APOYO(o)->trans.vy = sc->apoyo_hallado->h0A;
+                    APOYO(o)->trans.vz = 0;
                     sc->tmp = (s16)o->param.giro.u.y - (s16)o->p70->param.giro.u.y;
                     if (sc->tmp < 0) {
                         sc->tmp = sc->tmp - 0x1000;
