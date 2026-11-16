@@ -21,7 +21,7 @@ extern void srand(u32 semilla);
 extern void func_80044D44(void);
 extern void func_80044E58(void);
 extern void ConstruirRegistrosArchivo(void);
-extern s32 CargarContenedor(s16 nivel, void* destino);
+extern s32 CargarContenedor(s16 nivel, u8* destino);
 extern void func_8003DF84(void);
 extern void func_8003E9E8(void);
 extern void SondearTarjeta();

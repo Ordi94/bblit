@@ -8,7 +8,7 @@
 #include "psyq/LIBCD.H"
 #include "geometria.h"
 
-extern s32 CargarContenedor(s16 archivo, void* destino);
+extern s32 CargarContenedor(s16 archivo, u8* destino);
 extern void func_80044A04(void);
 extern void func_8003DF84(void);
 extern void func_8003E068(void);
