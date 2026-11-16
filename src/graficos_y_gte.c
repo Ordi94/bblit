@@ -277,6 +277,7 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
     s32 i;
     s32 t2;
     s32 k;
+    s32* kp;
     SVECTOR salida;
     s32 salida_y;
     u16 lista;
@@ -467,6 +468,7 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
             D_80069D18[2].c.z = w->p[2].vz;
             D_80069D18[3].c.x = w->p[3].vx;
             D_80069D18[3].c.z = w->p[3].vz;
+            kp = &k;
             D_80069380 = -1;
             w->angs[0] = 0;
 ciclo_aristas:
@@ -485,22 +487,22 @@ ciclo_aristas:
                     D_80069D18[4].c.z = w->b->max.vz + w->radio;
                 }
                 D_80069380 = 0x7FFFFFFF;
-                gte_NormalClip(D_80069D18[0].w, D_80069D18[1].w, D_80069D18[4].w, &k);
+                gte_NormalClip(D_80069D18[0].w, D_80069D18[1].w, D_80069D18[4].w, kp);
                 if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 0;
                 }
-                gte_NormalClip(D_80069D18[1].w, D_80069D18[3].w, D_80069D18[4].w, &k);
+                gte_NormalClip(D_80069D18[1].w, D_80069D18[3].w, D_80069D18[4].w, kp);
                 if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 1;
                 }
-                gte_NormalClip(D_80069D18[3].w, D_80069D18[2].w, D_80069D18[4].w, &k);
+                gte_NormalClip(D_80069D18[3].w, D_80069D18[2].w, D_80069D18[4].w, kp);
                 if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 2;
                 }
-                gte_NormalClip(D_80069D18[2].w, D_80069D18[0].w, D_80069D18[4].w, &k);
+                gte_NormalClip(D_80069D18[2].w, D_80069D18[0].w, D_80069D18[4].w, kp);
                 if (D_80069380 > k) {
                     D_80069380 = k;
                     i = 3;
