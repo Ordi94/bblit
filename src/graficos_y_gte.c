@@ -219,67 +219,49 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 6896 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 93 de
- * operando, 19 reordenadas y 318 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
- * que casi todo el residuo es desalineacion encadenada de pocas inserciones. El marco del C es el del original, de
- * 0x50 bytes: la salida es una estructura SVECTOR local (`vx` en 0x10 y `vz` en 0x14, con el hueco de `vy`), y le
- * siguen `k` (0x18), `salida_y` (0x1c) y `lista` (0x20); con dos variables `s16` sueltas el marco era de 0x48 y la
- * cifra 11694 frente a 10909.
- * `k` es una sola variable que vive en memoria (se pasa su direccion a gte_NormalClip): en el original el contador
- * de impactos del bucle de puntos (`sw zero,0x18(sp)` en 0x80017B28, `lw`/`sw` 0x18(sp) en 0x80017ED4), los resultados de
- * NormalClip, el primer resultado de SquareRoot0 (`sw v0,0x18(sp)` en 0x80018344) y la bandera de impacto
- * (`sw zero,0x18(sp)` en 0x80018404) comparten la ranura 0x18(sp); unirlas baja de 18547 a 17782. El indice de
- * arista usa `i` (su valor y el del contador de los bucles de puntos tienen vida disjunta) y no `t2`: la cifra no
- * cambia (17782), pero el pseudo del radio de alcance deja de vivir 534 instrucciones a traves de 9 llamadas y de
- * tomar s1 (30 referencias sobre 534 insns).
- * Reparto medido en los volcados de `cc1` (`.lreg` y `.greg`). Original: `w` en s1 (524 usos sobre 1680 insns,
- * prioridad 2,81), direccion de D_80069D18 en s2, `mejor` en s3, `v` en s4, `a` en s5, constante 0x2000000 en s6,
- * `mejor_d` en s7 y `dif` (`w + 0x50`) en fp, con s0 solo para el segundo producto de cada norma (`mflo s0`).
- * Causa principal, resuelta con un acceso por desplazamiento: la parte alta de D_80069D08 (8 usos sobre 62 insns,
- * prioridad 0,39) y su direccion completa (6 usos sobre 68 insns, 0,18) cruzaban la segunda llamada a SquareRoot0
- * porque las lecturas posteriores usaban el mismo simbolo, y las tomaban en s0 y s1 antes de la asignacion global:
- * `w` quedaba en s2, el resto un registro desplazado, `dif` caia a la pila y el segundo producto de la norma y el
- * de la longitud se derramaban a 0x28(sp). El original recalcula el `lui` tras esa llamada (0x800183A4). Leer
- * D_80069D08 tras la llamada como un desplazamiento de 0x100 bytes desde D_80069C08, cuya parte alta ya se
- * calcula tras la llamada, deja de cruzar la llamada: la cifra baja de 17782 a 15249 y los globales `w`, direccion
- * de D_80069D18, `mejor`, constante, `mejor_d` y `dif` caen en s1, s2, s3, s6, s7 y fp como en el original. La
- * cifra del mismo C con el acceso por nombre (`D_80069D08.vx` y `.vz`) es 14632. Una copia reducida de la norma
- * fuera del repositorio comparte la parte alta y la direccion entre llamadas igual que el acceso por nombre.
- * Formas que no se conservan: leer los dos componentes de D_80069D08 en locales antes de la llamada (17894), una
- * local con `&D_80069D08` (17782, el CSE la pliega), una local propia para el radio de alcance (20852) y una para
- * el resultado tras SquareRoot0 en lugar del contador (20069).
- * Otras correcciones al fuente medidas con el ensamblador: los dos valores de `D_80069D08` se calculan en locales y
- * se almacenan juntos en cada rama (15249 a 13864); la busqueda en la cadena de padres usa `while` y no `do`
- * (13864 a 13209; el compilador rotaba el bucle y duplicaba la comparacion con `a`, 0x80017640 a 0x80017668 en el original); y
- * `p[4].vy` recibe `a->min.vy` (`lhu 0x4A` en 0x80017A60 y `sh 0xBA` en 0x80017A6C) en vez de cero (13209 a 12354).
- * El bucle de las aristas se escribe con etiqueta y salto hacia atras (`if (angs < 4) { ...; if (D_80069380 < 0)
- * goto ciclo_aristas; }`) porque el original comprueba `< 4` en la cabeza en cada vuelta y cierra con `bltz` a la
- * cabeza (0x80018194 y 0x80017F78), sin rotar el bucle: con `while` el compilador lo rotaba y duplicaba la prueba
- * (12354 a 11964). El segundo resultado de SquareRoot0 se guarda en `i` (el original lo copia a t2, `move t2,v0` en
- * 0x80018384, el registro del indice de arista que ya esta muerto): 11964 a 11694. Las comparaciones del barrido
- * se escriben con el lado de `w->pt` primero (`pt + sal > b->max + radio`): el original carga `w->pt` antes que
- * `w->b` (0x80017BB4 y 0x80017BB8, `lw a3,0xC0` y `lw a2,0x94`), 10909 a 7984 con las de `vz` y `vx` (9359 con solo las
- * de `vz`). Las dos primeras llamadas de la rama de angulo negativo restan el radio a `min.vx` (`subu a0,a0,a2` en
- * 0x8001798C y 0x800179BC), no lo suman: 7984 a 7584. Orden de los almacenes: las cuatro esquinas de D_80069D18
- * guardan `x` antes que `z` (0x80017F0C a 0x80017F64 en el original, 7584 a 7494) y la salida final almacena `vx`,
- * `vz` y `vy` en ese orden (7494 a 7041). Una lectura de las parejas de D_80069D18 como `((u32*)D_80069D18)[n]` en
- * vez de `*(u32*)&D_80069D18[n]` no cambia la cifra (7494). Las pruebas de la arista mas cercana se escriben
- * `D_80069380 > k` (el original carga `D_80069380` antes que `k`, 0x80018088 y 0x8001808C): 7041 a 6941.
- * Cada rama de la arista elegida lleva su propia pareja de locales para la diferencia con el punto de prueba
- * (`ax`/`az`, `bx`/`bz`, `cx`/`cz`, `dx`/`dz`): con una sola pareja compartida el compilador fusiona las colas de
- * las cuatro ramas (6941 con la pareja compartida, 6896 con una por rama); el original conserva los almacenes
- * dentro de cada rama, con registros distintos en cada una (0x80017C54 a 0x80017D00), y el residuo de esa zona es
- * que aqui siguen fusionadas.
- * Residuo de esa zona: el compilador calcula como valores las direcciones `D_80069D18 + 4`, `+ 0xC` y `+ 0x10` (tres
- * `addiu` en la cabeza del bucle de aristas) y las usa como base; el original las lee con desplazamiento fijo desde
- * la direccion de D_80069D18, sin esos valores. Se supone, sin verificar, que el original lee cada pareja como un
- * elemento de un arreglo de palabras y no como dereferencia de la direccion de una esquina.
- * Residuo conocido: `a` y `v` estan intercambiados (a en s4 y v en s5, 25 usos cada una sobre 1680 y 1688 insns;
- * prioridades 0,0595 y 0,0592: el original da a `v` mayor prioridad); la cola de la ultima rama de la comparacion con
- * la mascara 0x2000000 esta fuera de linea en el original (0x80017EAC) y en linea aqui; y se supone, sin
- * verificar, que el original carga `lista` en una temporal y la copia (`lhu t8,0x20(sp)` y `move v0,t8`,
- * 0x80017518 y 0x80017520) por la forma de su prueba, y que eso explica los dos `move v0,t8` que faltan (0x80017520
- * y 0x80017588).
+ * Pendiente: puntuacion 3066 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 96 de
+ * operando, 19 reordenadas y 268 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones). El marco
+ * del C es el del original, de 0x50 bytes, y el reparto de los registros salvados coincide con el del original
+ * (`w` s1, direccion de D_80069D18 s2, `mejor` s3, constante 0x2000000 s6, `mejor_d` s7, `dif` fp) salvo `a` y `v`.
+ * Formas que reproducen el original; entre parentesis, la puntuacion que da este mismo C con la forma contraria:
+ * - `k` es una sola variable que vive en memoria (se pasa su direccion a gte_NormalClip): el contador de impactos
+ *   del bucle de puntos, los resultados de NormalClip, el primer resultado de SquareRoot0 y la bandera de impacto
+ *   comparten la ranura 0x18(sp) en el original (0x80017B28, 0x80017ED4, 0x80018344 y 0x80018404).
+ * - La salida es una estructura SVECTOR local (`vx` en 0x10 y `vz` en 0x14, con el hueco de `vy`), seguida de `k`
+ *   (0x18), `salida_y` (0x1c) y `lista` (0x20): son las ranuras y el marco del original.
+ * - `i` es el indice de arista (su valor y el del contador de los bucles de puntos tienen vida disjunta) y recibe
+ *   el segundo resultado de SquareRoot0, que el original copia a t2 (`move t2,v0` en 0x80018384).
+ * - La busqueda en la cadena de padres usa `while`: con `do` el compilador rota el bucle y duplica la comparacion
+ *   con `a`, y el original tiene una sola (0x80017640 a 0x80017668).
+ * - El bucle de las aristas se escribe con etiqueta y salto hacia atras (`if (angs < 4) { ...; if (D_80069380 < 0)
+ *   goto ciclo_aristas; }`): el original comprueba `< 4` en la cabeza en cada vuelta y cierra con `bltz` a la
+ *   cabeza (0x80018194 y 0x80017F78); con `while` y `break` la puntuacion es 9803.
+ * - Las comparaciones del barrido llevan el lado de `w->pt` primero (`pt + sal > b->max + radio`): el original carga
+ *   `w->pt` antes que `w->b` (0x80017BB4 y 0x80017BB8); con el lado de `b` primero, 5991.
+ * - Las pruebas de la arista mas cercana se escriben `D_80069380 > k`: el original carga `D_80069380` antes que `k`
+ *   (0x80018088 y 0x8001808C); con `k < D_80069380`, 3166.
+ * - `p[4].vy` recibe `a->min.vy` (`lhu 0x4A` en 0x80017A60 y `sh 0xBA` en 0x80017A6C); con cero, 4176.
+ * - La rama de angulo negativo resta el radio a `min.vx` en las dos primeras llamadas a ratan2 (`subu a0,a0,a2` en
+ *   0x8001798C y 0x800179BC). Las esquinas de D_80069D18 guardan `x` antes que `z` (0x80017F0C a 0x80017F64), la
+ *   salida final almacena `vx`, `vz` y `vy` en ese orden y cada rama de arista lleva su pareja de locales
+ *   (`ax`/`az`, `bx`/`bz`, `cx`/`cz`, `dx`/`dz`) para la diferencia con el punto de prueba.
+ * Formas medidas que no se conservan: leer D_80069D08 tras la segunda llamada como un desplazamiento de 0x100 bytes
+ * desde D_80069C08 (6896; con otras partes del C distintas fue la forma que bajo el reparto de s0 y s1, que ya no
+ * hace falta), leer los componentes de D_80069D08 en locales antes de la llamada, una local con `&D_80069D08` (el
+ * CSE la pliega) y `((u32*)D_80069D18)[n]` en vez de `*(u32*)&D_80069D18[n]` (misma cifra).
+ * Residuo medido en el volcado y el diff:
+ * - `a` y `v` estan intercambiados (a en s4 y v en s5: 25 usos cada una sobre 1670 y 1682 insns, prioridades 0,0599
+ *   y 0,0595, con lo que `a` se asigna antes); el original da a `v` mayor prioridad (`v` en s4, `a` en s5).
+ * - El compilador calcula como valores las direcciones `D_80069D18 + 4`, `+ 0xC` y `+ 0x10` (tres `addiu` en la
+ *   cabeza del bucle de aristas) y las usa como base, y `addiu a0,sp,0x18` queda dentro del bucle (el original lo
+ *   calcula antes, 0x80017F5C); el original lee cada pareja con desplazamiento fijo. Se supone, sin verificar, que
+ *   el original lee cada pareja como un elemento de un arreglo de palabras.
+ * - El original copia `a` antes de sumar el desplazamiento de `param.trans` (`move v0,s5` y `addiu v0,v0,0xe4`,
+ *   0x8001777C y 0x80017788), con un `addiu` directo aqui.
+ * - El original carga `lista` en una temporal y la copia (`lhu t8,0x20(sp)` y `move v0,t8`, 0x80017518 y
+ *   0x80017520); falta ese `move` en los dos sitios (0x80017520 y 0x80017588). Se supone, sin verificar, que lo
+ *   produce la forma de su prueba.
+ * - El orden de las copias de los parametros del prologo (`move s3,zero` y `li s7,-1` antes de `move s1,a2`).
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con
  * mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la
@@ -571,9 +553,8 @@ ciclo_aristas:
                 D_80069C08.vx = (D_80069C08.vx * i) >> 12;
                 D_80069C08.vz = (D_80069C08.vz * i) >> 12;
                 k = 1;
-                /* Desplazamiento de 0x100 bytes desde D_80069C08: equivale a D_80069D08.vx y D_80069D08.vz. */
-                w->sal.vx = w->sal.vx - (D_80069C08.vx - ((VECTOR*)((u8*)&D_80069C08 + 0x100))->vx);
-                w->sal.vz = w->sal.vz - (D_80069C08.vz - ((VECTOR*)((u8*)&D_80069C08 + 0x100))->vz);
+                w->sal.vx = w->sal.vx - (D_80069C08.vx - D_80069D08.vx);
+                w->sal.vz = w->sal.vz - (D_80069C08.vz - D_80069D08.vz);
             } else {
                 k = 0;
             }
