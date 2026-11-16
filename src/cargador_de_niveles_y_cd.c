@@ -647,7 +647,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         estado->r[0x10] = 0;
     }
     estado->r[0xA6] = D_80069594;
-    registro = &D_8005F200[archivo];
+    /* El original forma la direccion base de la tabla antes del indice (`lui` en 0x800416FC). */
+    registro = D_8005F200;
+    registro += archivo;
     if (registro->tamano == 0) {
         printf("BouzeID %d not found\n", archivo);
     }
