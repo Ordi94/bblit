@@ -420,11 +420,11 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 15728 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 14598 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
- * caso del de su tabla. Medido: el codigo generado tiene 2947 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2849 coinciden en el mnemonico (96,4 %). Los cuerpos de los
+ * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones frente a 2955 del
+ * original, y alineando el texto de ambos 2859 coinciden en el mnemonico (96,7 %). Los cuerpos de los
  * casos de los cinco `switch` y del despacho de primer nivel van en el orden de direcciones de las
  * tablas de saltos del original: el orden del fuente decide el orden de emision, por eso los casos
  * no van en orden numerico.
@@ -468,7 +468,14 @@ typedef struct {
  * ramas. `cabeza` guarda la cabeza leida y `elemento` es el recorrido, una local de cada caso para
  * que no cruce llamadas.
  *
- * Lectura de etiquetas por miembro: en los chunks 0x02, 0x3D y 0x3E el original lee los campos del
+ * Relecturas del original: tras un almacen a un miembro de un nodo el original vuelve a leer el campo
+ * de las etiquetas (no lo reutiliza). En el chunk 0x1C el cuadrado se calcula con una segunda
+ * lectura de `campos + 6`; en el 0x12 las tres lecturas de `campos` (por puntero) se repiten, y en el
+ * 0x13 el valor se guarda en una variable de 32 bits (`modo`; con 8 bits el compilador anade un
+ * `andi 0xff` que el original no tiene) para compararlo sin releerlo tras el almacen. El caso 0x24
+ * de los chunks de modelos usa un puntero propio (`modelo_gs`) para no cruzar llamadas con `aux`.
+ *
+ * Lectura de etiquetas por miembro: en los chunks 0x02, 0x21, 0x3D y 0x3E el original lee los campos del
  * bufer sin releerlos tras un almacen a un global y agrupa las cargas antes de los almacenes; con un
  * puntero y un desplazamiento el compilador las intercala y relee. `Etiquetas` (union de arreglos de
  * cada ancho) y `EtiquetasListas` dan acceso por miembro; en los chunks probados cuyo destino es un
@@ -491,7 +498,7 @@ typedef struct {
  * asignacion previa); con la variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 17507 y con ella 15728. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 16369 y con ella 14598. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -992,14 +999,15 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             u8* lista;
                             u8* cab;
                             CopiarBytes(cursor, campos, 8);
+                            aux = campos;
                             lista = (u8*)AllocListNode((u8*)D_80069570, 0x14, D_80069670 * 0x14);
                             if (lista == NULL) {
                                 for (;;) {
                                 }
                             }
                             EN(u8*, nodo, 0x54) = lista;
-                            desp_campo = *(s32*)campos_mem;
-                            D_800694A0 = *(s32*)(campos + 4);
+                            desp_campo = *(s32*)aux;
+                            D_800694A0 = *(s32*)(aux + 4);
                             EN(u8*, lista, 8) = datos + desp_campo;
                             EN(u16, nodo, 0xA) = 4;
                             cab = EN(u8*, lista, 8);
@@ -1070,22 +1078,25 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     }
                     while (*cursor != 0x2E) {
                         switch (*cursor++) {
-                        case 0x24:
+                        case 0x24: {
+                            u8* modelo_gs;
+
                             CopiarBytes(cursor, campos, 8);
                             desp_campo = *(s32*)campos_mem;
                             EN(u16, nodo, 0xA) = 2;
-                            aux = datos + desp_campo + 4;
+                            modelo_gs = datos + desp_campo + 4;
                             D_800694A0 = *(s32*)(campos + 4);
-                            EN(u8*, nodo, 0x54) = aux;
-                            GsMapModelingData((unsigned long*)aux);
+                            EN(u8*, nodo, 0x54) = modelo_gs;
+                            GsMapModelingData((unsigned long*)modelo_gs);
                             cursor += 8;
                             EN(u8*, nodo, 0x54) += 8;
                             break;
+                        }
                         case 0x21:
                             CopiarBytes(cursor, campos, 4);
                             cursor += 4;
                             EN(u16, nodo, 0x4E) = 0;
-                            EN(s32, nodo, 0xC) = *(u16*)campos_mem;
+                            EN(s32, nodo, 0xC) = ETQ(h, campos_mem, 0);
                             break;
                         case 0x10:
                             CopiarBytes(cursor, campos, 0xC);
@@ -1100,9 +1111,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x12:
                             CopiarBytes(cursor, campos, 0xC);
-                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0) = *(s32*)campos_mem;
-                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 4) = *(s32*)campos_mem;
-                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 8) = *(s32*)campos_mem;
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0) = *(s32*)campos;
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 4) = *(s32*)campos;
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 8) = *(s32*)campos;
                             cursor += 0xC;
                             ScaleMatrix((MATRIX*)(EN(u8*, hijo_matriz, 4) + 4),
                                         (VECTOR*)EN(u8*, EN(u8*, hijo_matriz, 4), 0x44));
@@ -1120,9 +1131,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(s32, hijo_matriz, 0xC) = -1;
                             EN(s32, hijo, 0xC) = 0;
                             EN(u8*, hijo_matriz, 8) = EN(u8*, nodo, 0x54);
-                            aux = EN(u8*, hijo_matriz, 4);
-                            EN(s32, aux, 0x4C) = 0;
-                            EN(s32, aux, 0x48) = 0;
+                            EN(s32, EN(u8*, hijo_matriz, 4), 0x4C) = 0;
+                            EN(s32, EN(u8*, hijo_matriz, 4), 0x48) = 0;
                             EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x10) = *(u16*)aux;
                             EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x12) = *(u16*)(aux +2);
                             EN(u16, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0x14) = *(u16*)(aux +4);
@@ -1635,7 +1645,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(u16, entidad, 0x52) = *(u16*)(campos + 2);
                             EN(u16, entidad, 0x54) = *(u16*)(campos + 4);
                             EN(u16, entidad, 0x2E) = *(u16*)(campos + 6);
-                            EN(s32, entidad, 0x30) = (s16)EN(u16, entidad, 0x2E) * (s16)EN(u16, entidad, 0x2E);
+                            EN(s32, entidad, 0x30) = (s16)*(u16*)(campos + 6) * (s16)*(u16*)(campos + 6);
                             cursor += 8;
                             break;
                         case 0x11:
@@ -1668,10 +1678,13 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(u8*, entidad, 0x74) = (u8*)AppendListNode((NodoLista*)EN(u8*, entidad, 0x74), (NodoLista*)aux);
                             cursor += 2;
                             break;
-                        case 0x13:
+                        case 0x13: {
+                            u32 modo;
+
                             CopiarBytes(cursor, campos, 1);
-                            EN(u16, entidad, 0x2C) = campos_mem[0];
-                            if (campos_mem[0] == 1) {
+                            modo = campos_mem[0];
+                            EN(u16, entidad, 0x2C) = modo;
+                            if (modo == 1) {
                                 D_80069640 = (s32*)(entidad + 0xE4);
                                 EN(u16, entidad, 0x3C) = 0x40;
                                 D_80069560 = entidad;
@@ -1680,6 +1693,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             }
                             cursor += 1;
                             break;
+                        }
                         case 0x19:
                             CopiarBytes(cursor, campos, 4);
                             cursor += 4;
