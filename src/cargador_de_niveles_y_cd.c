@@ -392,22 +392,26 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 25501 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 22106 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2944 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2834 coinciden en el mnemonico (95,9 %) y 1918 son
- * identicas (64,9 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
+ * original, y alineando el texto de ambos 2834 coinciden en el mnemonico (95,9 %) y 2232 son
+ * identicas (75,5 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
  * van en el orden de direcciones de las tablas de saltos del original: el orden del fuente decide
  * el orden de emision, por eso los casos no van en orden numerico.
  *
- * Reparto de registros guardados (volcado de `cc1`, prioridad `floor_log2(R) * R / L` de
- * `global-alloc`): el cursor del script (R 1071, L 2041, prioridad 5,25) toma s1 y el nodo de los
- * chunks de recursos y modelos (R 340, L 522, 5,21) toma s2; el original guarda el nodo en s1 y el
- * cursor en s2. Se supone, sin verificar, que basta acortar la vida del nodo en unas 5 instrucciones
- * (hay 5 instrucciones de mas en los chunks 0x22 y 0x20) para que su prioridad supere la del
- * cursor, porque con 5,29 frente a 5,27 el reparto coincidia con el original en una medicion
- * intermedia.
+ * Dos decremento-incremento no generan codigo (`libre--; libre++;` al abrir el caso 0x2C y
+ * `nodo--; nodo++;` en el chunk 0x22; el codigo generado tiene 2944 instrucciones con y sin ellos).
+ * Causa medida en el volcado de `cc1` (prioridad `floor_log2(R) * R / L` de `global-alloc`): (1) el
+ * cursor del script (pseudo 90, R 1071, L 2039, prioridad 5,25) superaba al nodo de los chunks de
+ * recursos y modelos (pseudo 94, R 340, L 522, 5,21) y tomaba s1; con el par el nodo pasa a R 352
+ * (L 523, 5,38), toma s1 y el cursor s2, como el original. (2) la variable compartida de abajo
+ * (pseudo 102, R 118, L 2057, 0,34) superaba a la zona libre `libre` (pseudo 92, R 124, L 2279,
+ * 0,33) y le quitaba s6; con el par `libre` pasa a R 132 (L 2281, 0,41), toma s6, la variable s7 y
+ * `datos` fp (pseudo 82, R 106, L 2112, 0,30), como el original. Puntuacion con ninguno: 25501;
+ * solo el de `libre`: 24956; solo el del nodo: 22651; los dos: 22106. La forma del fuente
+ * original que producia este reparto se desconoce.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
  * recibe, en vez de una variable por uso, el desplazamiento de los chunks (`lw s7,0x128($sp)` y
@@ -418,12 +422,9 @@ extern u8* D_80069538;
  * no cruza llamadas, `global-alloc` le da un temporal (v1) y cada uso carga y suma por separado
  * (29032); compartida cruza llamadas, toma un registro guardado y baja a 25501.
  *
- * Lo que queda de ese reparto (volcado de `cc1`): la variable compartida (R 118, L 2057,
- * prioridad 0,34) toma s6, la zona libre `libre` (R 124, L 2279, 0,33) s7 y `datos` (R 106, L 2112,
- * 0,30) s8; el original da s6 a `libre`, s7 a la variable y fp a `datos`. Se supone, sin
- * verificar, que en el original la prioridad de la variable queda entre 0,30 y 0,33 y que la de
- * `libre` supera a la de ella (el original conserva `libre += x` y `monton = libre` en dos
- * instrucciones en 0x80041E44 y 0x80041E58, y aqui el compilador las funde en una).
+ * Se supone, sin verificar, que el original conserva `libre += x` y `monton = libre` en dos
+ * instrucciones (0x80041E44 y 0x80041E58) y que eso le da a `libre` las referencias que aqui da el
+ * par; el compilador funde las dos sentencias en una al compilar el fuente actual.
  *
  * La constante 0x2E de las pruebas de fin de chunk no se iza: hay 34 `li ...,46` en el codigo
  * generado y 35 en el original. El pseudo de R 68 y L 2279 que ocupaba s8 en versiones anteriores
@@ -431,7 +432,7 @@ extern u8* D_80069538;
  * asignacion previa); con la variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el marco del original es de 0x210 bytes (`addiu sp` en 0x800415A0) y el del C sin
- * la local, de 0x208; la cifra medida sin la local es 26382 y con ella 25501.
+ * la local, de 0x208; la cifra medida sin la local es 23127 y con ella 22106.
  *
  * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `datos`.
  * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
@@ -710,6 +711,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
              * inicializa los grupos, busca la posicion de los datos de cada seccion en el
              * contenedor y lanza la lectura del resto.
              */
+            libre--;
+            libre++;
             if (pools_listos != 1) {
                 for (;;) {
                 }
@@ -864,6 +867,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     D_80069648 = AppendListNode((NodoLista*)D_80069648, (NodoLista*)nodo);
                     EN(u16, nodo, 0x10) = 0;
                     EN(u16, nodo, 0x12) = 0;
+                    nodo--;
+                    nodo++;
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
