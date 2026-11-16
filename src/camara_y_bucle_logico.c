@@ -454,7 +454,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2930 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * Pendiente: puntuacion 2590 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
  * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
  * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
  * los bucles de las ocho sondas (modo de apuntado y seguimiento libre) coinciden con `i++` escrito DESPUES de la
@@ -474,11 +474,15 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * de `D_8006D928.vpy` del modo de transicion (0x11d0..0x11ec), adelantada aqui sobre tres almacenes de `v30`
  * (escribirla por `cam->` empeora); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el
  * original lo guarda en `s1`, el registro del puntero `&w->dir` que muere en la preparacion de los argumentos de la
- * llamada siguiente (el volcado `.sched` muestra la copia del resultado antes de los movimientos de argumentos, de
- * modo que el pseudo del resultado vive a la vez que el del puntero; se supone, sin verificar, que la causa es la
- * prioridad que le da su cadena posterior, el cociente `d / 200`; escribir los almacenes de `dir` antes de la
- * llamada lo empeora); el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx` tras el salto y el original
- * tambien, pero aqui el compilador reutiliza el registro; en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y
+ * llamada siguiente (el volcado `.greg` muestra `s2 = v0` justo tras la llamada y los movimientos de argumentos
+ * despues, con el registro `s1` del puntero muriendo en `move a1,s1`: los dos pseudos coinciden en vida un
+ * instante y por eso el resultado no puede tomar `s1`; el original emite `move s1,v0` tras los argumentos; se
+ * supone, sin verificar, que la causa es la prioridad de planificacion que le da su cadena posterior, el cociente
+ * `d / 200`; escribir los almacenes de `dir` antes de la llamada lo empeora y reutilizar `r` en lugar de `d`
+ * lo deja en 2980 sobre la cifra anterior de 2930); el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx`
+ * como el original al escribir el almacen de `flags80` ANTES de calcular el cuadrado (2930 a 2590; la relectura la
+ * provoca el almacen intermedio a un global que el CSE no distingue de `w->v90`; con el orden de los operandos
+ * del `or` invertido sube a 2935); en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y
  * el original en `a3`/`a2` (sin efecto: cargar `w->p4` antes de `ec`, o en una local propia). La direccion de
  * acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos. La prueba del giro tras el
  * bloque de la cuenta de espera (0xed4..0xfd8) coincide con una sola cola `w->rot.vy = D_80069402` y dos
@@ -1044,8 +1048,8 @@ fin_giro:
         w->v90.vz = w->v90.vz + w->v70.vz;
     } while (i < 8);
     if (reiniciar == 0 && (w->v90.vx | w->v90.vz) != 0) {
-        d = w->v90.vx * w->v90.vx + w->v90.vz * w->v90.vz;
         D_8006D928.flags80 = D_8006D928.flags80 | 2;
+        d = w->v90.vx * w->v90.vx + w->v90.vz * w->v90.vz;
         if (SquareRoot0(d) >= 0x1F5) {
             D_80069402 = (u16)D_80069402 - (u16)D_80069408;
         }
