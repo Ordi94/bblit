@@ -59,8 +59,20 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 3750 con la configuracion versionada (g = 8 del archivo; ejes 476 de operando, 5 reordenadas, 485
-   insertadas o borradas). La logica coincide. El tramo en Z de la guarda de D_80069D30 (0x800222B8..0x80022308) se
+/* Pendiente: puntuacion 3185 con la configuracion versionada (g = 8 del archivo; ejes 477 de operando, 4 reordenadas, 467
+   insertadas o borradas). La logica coincide. Dos formas del C que bajaron de 3750: (a) la relectura de `sc->desp.x` y
+   `sc->desp.z` tras sus almacenes (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414 del original) solo sale
+   cuando el almacen de `desp.z` usa otra base que `sc` (`w - 0x128`, la direccion de `sc->desp.z`, con comentario en el
+   codigo): con la base de `sc` el compilador reutiliza el registro y no relee. Con `pos = &sc->desp` la relectura sale
+   tambien (3550) pero la base se materializa en `s0` (`addiu s0,s3,0x18`), que el original no tiene. Queda que el
+   original almacena `desp.z` con `sw v1,0x20(s3)`, es decir con la base de `sc` (se supone, sin verificar, que su
+   segunda base es otro pseudo que el asignador funde con `s3`); (b) el almacen de `o->p180` va antes del de
+   `o->trabajo.i14` en el bloque de entrada de la espera (0x80021020..0x80021050): el original lee `i14`, carga
+   `sc->sec`, almacena a cero y escribe D_80069584 antes de la guarda de `o->p70`, con el almacen de `p180` en el hueco
+   de retardo del salto, y asi el bloque coincide entero. Diferencia de estructura que queda: en las dos ramas que
+   acaban en `sc->vel.z = sc->vel.z + (lo >> 11)` (0x80021560 y 0x80021690) el original lee `lhu v0,0xc(s3)` en cada camino
+   y comparte desde `mflo t7`; aqui el `lhu` sale tras el `mflo` de la cola comun (una local por rama con la lectura de
+   `vel.z` iguala las colas y solo baja 5 puntos, por eso no se instala). El tramo en Z de la guarda de D_80069D30 (0x800222B8..0x80022308) se
    escribe por un puntero a la base del arreglo (`p = D_80069D30; p[2]`) y con un valor propio del bloque
    (`z_nueva`) que recoge las tres ramas y se almacena una sola vez: el original carga la base en a0 (`lui v0 ;
    addiu a0,v0,%lo(D_80069D30)` en 0x800222B8) y lee y escribe el campo con desplazamiento 8 sobre ese registro,
@@ -83,16 +95,14 @@ s16* D_800693DC;
    `vy` de D_80069D60 y dos de `flags14`) se escriben por desplazamiento en bytes; con los seis accesos por nombre la cifra
    es 7570 (se supone, sin verificar con el volcado, que el planificador los reordena con los almacenes a D_8006965A,
    D_8006965B y D_8006965E).
-   Residuo medido sin resolver (cifra de cada prueba con el C vigente): (4) el original relee `sc->desp.x` y
-   `sc->desp.z` de memoria (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414) tras almacenarlos (0x800223FC y
-   0x80022400) y aqui el compilador reutiliza el registro; escribir la relectura por desplazamiento en bytes no cambia
-   la cifra (3750); (5) el original carga `o->p70` tres veces antes del almacen a 0xE8 (0x80023830, 0x80023840 y
+   Residuo medido sin resolver (cifra de cada prueba con el C vigente): (4) la base del almacen de `desp.z` (ver
+   (a)); (5) el original carga `o->p70` tres veces antes del almacen a 0xE8 (0x80023830, 0x80023840 y
    0x80023848) y aqui las dos ultimas lecturas salen tras los almacenes del bloque; leer `p70` por
    `*(Objeto**)&o->p70` no cambia la cifra; (6) en el prologo el original copia el valor de `flags14` (`move
    v0,v1`, 0x80020BF4) antes de aplicar la mascara; con una variable distinta para el resultado de la mascara la cifra
    sube a 4000.
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 3904 y con ella 3750. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 3339 y con ella 3185. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {
@@ -239,8 +249,8 @@ void func_80020B90(Objeto* o)
         o->registro184 = (RegistroAnim*)sc->reg;
         o->nodo188 = (NodoSecuencia*)sc->trans;
         D_80069584 = (u16)o->trabajo.i14;
-        o->trabajo.i14 = 0;
         o->p180 = sc->sec;
+        o->trabajo.i14 = 0;
         if (o->p70 != NULL && (o->p70->flags08 & 4) && (o->flags14 & 2)) {
             o->coord.super = NULL;
             o->coord.param = (GsCOORD2PARAM*)&o->param;
@@ -646,7 +656,8 @@ void func_80020B90(Objeto* o)
                 }
             }
             sc->desp.x = D_80069D30[0];
-            sc->desp.z = D_80069D30[2];
+            /* Equivale a sc->desp.z (0x1F800148 - 0x128 = 0x1F800020): con otra base el compilador relee los dos campos. */
+            *(s32*)((u8*)w - 0x128) = D_80069D30[2];
             sc->desp.x += D_80069D40[0];
             sc->desp.z += D_80069D40[2];
         } else {
