@@ -684,7 +684,10 @@ tiene un marco mayor que el que genera el C sin él. Se cumplen las cinco condic
    (`la cifra medida sin la local es X y con ella Y`, en una o varias líneas del comentario): Y es menor que X; si la
    función coincide, Y es 0; si es pendiente, Y es la cifra de la columna Estado de su fila.
 5. La función tiene su fila en la tabla de abajo con la forma «reserva de pila» y el número de arreglos de reserva
-   que declara (una función con tres reservas separadas por otras locales cuenta tres).
+   que declara (una función con tres reservas separadas por otras locales cuenta tres). La columna «Qué decide» de
+   esa fila empieza con la misma frase fija de la cabecera, con los mismos marcos, la misma dirección y las mismas
+   cifras (con varias reservas se usa tal cual, «la local» se lee como «la reserva», y una frase corta añadida tras
+   ella dice cuántos arreglos son y dónde van).
 
 La forma solo rellena el marco: no se usa para cambiar el reparto de registros, que sería otra forma y exige sus
 propias condiciones.
@@ -714,7 +717,9 @@ La columna Estado también se cruza con `src/`: `coincide` si la función no tie
 un bloque `#ifdef NON_MATCHING`, y `NON_MATCHING <cifra>` si lo tiene; una fila que dice lo contrario, un estado con
 otra forma o dos filas de una misma función con estados distintos hacen fallar la prueba. En las reservas de pila la
 prueba lee de la cabecera las dos cifras de la frase fija y exige que la cifra con la local sea menor que la cifra
-sin ella, que sea 0 si la función coincide y que, si es pendiente, sea la cifra de la fila. Al añadir o quitar una
+sin ella, que sea 0 si la función coincide y que, si es pendiente, sea la cifra de la fila. También exige que
+la columna «Qué decide» de la fila lleve la frase de los marcos y la de las dos cifras con los mismos números, y
+la misma dirección del `addiu sp`, que la cabecera. Al añadir o quitar una
 referencia se actualiza la tabla en el mismo cambio.
 
 | Función | Archivo | Forma | Referencias | Estado | Qué decide |
@@ -738,20 +743,20 @@ referencia se actualiza la tabla en el mismo cambio.
 | `func_80026FEC` | `src/logica_de_niveles_3.c` | sentencia duplicada en ambas ramas | 6 | NON_MATCHING 1790 | Almacenes de las bandas del vuelo `t->w114 = banda_alta;` y `t->w118 = banda_baja;` en la rama del jugador y en la final: con la pareja en cada rama los valores son pseudos locales del bloque (2 usos sobre 2 insns) en v0 y v1 con el almacén al final de su camino, como el original; con una sola pareja tras la unión son pseudos globales (5 usos sobre 12 insns y 6 sobre 14) en a1 y v1, los almacenes suben tras la unión y la cifra pasa de 1790 a 3670. Llamada de cierre de la composición `func_8001CFCC(&o->coord);` en la rama que copia el giro del portador y en la de la comprobación de apoyo: el salto cruzado las fusiona (21 referencias al símbolo en el volcado de saltos antes del cruce y 20 después, igual que las 20 llamadas del original) y la preparación del argumento queda dentro de cada camino; con una sola llamada tras una etiqueta de unión cae en el hueco de retardo de la llamada (1790 con las dos llamadas frente a 1995 con una sola) |
 | `func_800353B0` | `src/camara_y_bucle_logico.c` | sentencia duplicada en ambas ramas | 5 | NON_MATCHING 410 | Copia del objeto en curso `t = sc->cur;` en cada camino que llega a la llamada única de `func_800351B4` y a las pruebas de atenuación: el original carga `sc->cur` en `a0` en cada camino. Sin la de la búsqueda del modelo 425, sin la de la proyección simple 834, sin la de `tras_proyeccion` 580 y sin la de `recargar` 500; con una sola asignación al comienzo del bucle 1840, en el bloque del modelo 1005 y en la rama de proyección 1400. Volcado: `t` es un solo pseudo (84, cinco cargas, 30 usos sobre 31 insns, prioridad 3,871) que toma `a0` por ser el argumento de `func_800351B4`; con una sola asignación (1380) las cargas de la proyección simple y de `tras_proyeccion` pasan a dos pseudos (332 y 412, 2,4) que toman `v1` en lugar de `a0` |
 | `func_80039094` | `src/gestion_y_dibujo_de_objetos_2.c` | envoltura | 1 | NON_MATCHING 1300 | Valor leído de la barra (pseudo 83) en `$a0` por detrás del byte extendido de la comparación `beq` (pseudo 181, que toma `$v1`): con la envoltura 14 usos sobre 22 instrucciones (1,909) frente a 6 sobre 6 (2,0); sin ella 11 sobre 22 (1,5) frente a 3 sobre 6 (0,5), el valor toma `$v1`, el otro cae en `$a0` y la puntuación sube a 1520; margen de 0,09, reparto corto |
-| `func_80038884` | `src/gestion_y_dibujo_de_objetos_2.c` | reserva de pila | 1 | coincide | Marco de 0x50 bytes (`addiu sp` en `0x80038884`) frente a 0x48 sin la local: 8 bytes; 154 sin ella y 0 con ella |
-| `func_80045498` | `src/inicializacion_de_motor.c` | reserva de pila | 1 | coincide | Marco de 0x58 bytes (`addiu sp` en `0x800454A0`) frente a 0x50 sin la local: 8 bytes; 569 sin ella y 0 con ella |
-| `LogicaBloqueEmpujable` | `src/logica_de_niveles_3.c` | reserva de pila | 1 | coincide | Marco de 0x38 bytes (`addiu sp` en `0x8002D68C`) frente a 0x30 sin la local: 8 bytes; 188 sin ella y 0 con ella |
-| `func_800330AC` | `src/camara_y_bucle_logico.c` | reserva de pila | 1 | coincide | Marco de 0x48 bytes (`addiu sp` en `0x800330AC`) frente a 0x38 sin la local: 16 bytes; 490 sin ella y 0 con ella |
-| `AvanzarAnimacionSprite` | `src/movimiento_y_objetos_de_escena_3.c` | reserva de pila | 1 | coincide | Marco de 0x78 bytes (`addiu sp` en `0x8001E720`) frente a 0x68 sin la local: 16 bytes; 361 sin ella y 0 con ella |
-| `func_8001F268` | `src/movimiento_y_objetos_de_escena_3.c` | reserva de pila | 3 | coincide | Marco de 0xB8 bytes (`addiu sp` en `0x8001F268`) frente a 0x70 sin las tres locales: 72 bytes (16, 24 y 32), que dejan el vector de aparición en +0x28 y +0x30 y el acumulador de nodos en +0x58; 1280 sin ellas y 0 con ellas |
-| `func_8001D994` | `src/movimiento_y_objetos_de_escena_2.c` | reserva de pila | 1 | coincide | Marco de 0x50 bytes (`addiu sp` en `0x8001D994`) frente a 0x18 sin la local: 56 bytes; 122 sin ella y 0 con ella |
-| `LogicaEfectoAnclado` | `src/logica_de_niveles_3.c` | reserva de pila | 1 | coincide | Marco de 0x48 bytes (`addiu sp` en `0x8002EAA4`) frente a 0x28 sin la local: 32 bytes; 286 sin ella y 0 con ella |
-| `func_80018664` | `src/graficos_y_gte.c` | reserva de pila | 1 | coincide | Marco de 0x28 bytes (`addiu sp` en `0x80018664`) frente a 0x20 sin la local: 8 bytes; 58 sin ella y 0 con ella |
-| `func_80014E24` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | coincide | Marco de 0x220 bytes (`addiu sp` en `0x80014E24`) frente a 0x20 sin la local: 512 bytes; 4131 sin ella y 0 con ella |
-| `SondearTarjeta` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | NON_MATCHING 1255 | Marco de 0x40 bytes (`addiu sp` en `0x800156F4`) frente a 0x30 sin la local: 16 bytes; 1457 sin ella y 1255 con ella |
-| `func_80020B90` | `src/logica_de_niveles.c` | reserva de pila | 1 | NON_MATCHING 3750 | Marco de 0x48 bytes (`addiu sp` en `0x80020B90`) frente a 0x40 sin la local: 8 bytes; 3904 sin ella y 3750 con ella |
-| `func_8004048C` | `src/entrada_de_mando.c` | reserva de pila | 1 | NON_MATCHING 1655 | Marco de 0x28 bytes (`addiu sp` en `0x80040494`) frente a 0x20 sin la local: 8 bytes; 1729 sin ella y 1655 con ella |
-| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 2 | NON_MATCHING 21788 | Marco de 0x210 bytes (`addiu sp` en `0x800415A0`) frente a 0x200 sin las dos locales: 16 bytes (8 antes de `tamanos` y 8 tras `campos_mem`); 23127 sin ellas y 21788 con ellas |
+| `func_80038884` | `src/gestion_y_dibujo_de_objetos_2.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x50 (`addiu sp` en 0x80038884) y sin la local el marco es 0x48; la cifra medida sin la local es 154 y con ella 0. |
+| `func_80045498` | `src/inicializacion_de_motor.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x58 (`addiu sp` en 0x800454A0) y sin la local el marco es 0x50; la cifra medida sin la local es 569 y con ella 0. |
+| `LogicaBloqueEmpujable` | `src/logica_de_niveles_3.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x38 (`addiu sp` en 0x8002D68C) y sin la local el marco es 0x30; la cifra medida sin la local es 188 y con ella 0. |
+| `func_800330AC` | `src/camara_y_bucle_logico.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x800330AC) y sin la local el marco es 0x38; la cifra medida sin la local es 490 y con ella 0. |
+| `AvanzarAnimacionSprite` | `src/movimiento_y_objetos_de_escena_3.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x78 (`addiu sp` en 0x8001E720) y sin la local el marco es 0x68; la cifra medida sin la local es 361 y con ella 0. La reserva queda antes del giro. |
+| `func_8001F268` | `src/movimiento_y_objetos_de_escena_3.c` | reserva de pila | 3 | coincide | Reserva de pila: el original reserva 0xB8 (`addiu sp` en 0x8001F268) y sin la local el marco es 0x70; la cifra medida sin la local es 1280 y con ella 0. La reserva son 3 arreglos de 16, 24 y 32 bytes, que dejan el vector de aparición en +0x28 y +0x30 y el acumulador de nodos en +0x58. |
+| `func_8001D994` | `src/movimiento_y_objetos_de_escena_2.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x50 (`addiu sp` en 0x8001D994) y sin la local el marco es 0x18; la cifra medida sin la local es 122 y con ella 0. |
+| `LogicaEfectoAnclado` | `src/logica_de_niveles_3.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x8002EAA4) y sin la local el marco es 0x28; la cifra medida sin la local es 286 y con ella 0. |
+| `func_80018664` | `src/graficos_y_gte.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x28 (`addiu sp` en 0x80018664) y sin la local el marco es 0x20; la cifra medida sin la local es 58 y con ella 0. |
+| `func_80014E24` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x220 (`addiu sp` en 0x80014E24) y sin la local el marco es 0x20; la cifra medida sin la local es 4131 y con ella 0. |
+| `SondearTarjeta` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | NON_MATCHING 1255 | Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es 0x30; la cifra medida sin la local es 1457 y con ella 1255. |
+| `func_80020B90` | `src/logica_de_niveles.c` | reserva de pila | 1 | NON_MATCHING 3750 | Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es 0x40; la cifra medida sin la local es 3904 y con ella 3750. |
+| `func_8004048C` | `src/entrada_de_mando.c` | reserva de pila | 1 | NON_MATCHING 1655 | Reserva de pila: el original reserva 0x28 (`addiu sp` en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1729 y con ella 1655. |
+| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 2 | NON_MATCHING 21788 | Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es 0x200; la cifra medida sin la local es 23127 y con ella 21788. La reserva son 2 arreglos de 8 bytes: uno antes de `tamanos` y otro tras `campos_mem`. |
 
 ## Medir el progreso
 
