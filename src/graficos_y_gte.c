@@ -222,6 +222,21 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * Pendiente: puntuacion 19849 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin
  * afinar: el reparto de registros y el orden de las comparaciones de las regiones no se han ajustado al
  * original. La lista de registros destruidos de GEO_NORMA2_XZ la mueve 100 puntos (antes 19749).
+ * Ejes medidos con `diff`: 60 de operando, 39 reordenadas y 1125 insertadas o borradas; el original ocupa 0x11EC
+ * bytes (1147 instrucciones) y el C genera 1138, de modo que casi todo el residuo es desalineacion encadenada de
+ * unas pocas inserciones (la primera, el reparto del prologo). Reparto medido en los volcados de `cc1` (`.lreg` y
+ * `.greg`): el original deja `mejor_d` en s7 y la direccion `w + 0x50` (`dif`) en fp, con `a` en s5, `v` en s4,
+ * `w` en s1, `mejor` en s3, la constante 0x2000000 en s6 y la direccion de D_80069D18 en s2, y reserva en pila
+ * solo `salida_x` y `salida_z` (0x10 y 0x14), `salida_y` (0x1c) y `lista` (0x20); aqui `mejor_d` (9 usos sobre
+ * 832 insns) y `dif` caen a la pila (0x14 y 0x24), `w` toma s3, `a` s6, `v` s7, `mejor` s5, la constante
+ * 0x2000000 toma fp y el temporal `t2` (radio de alcance e indice de arista, una sola variable) ocupa s1,
+ * mientras que el original lo deja en t2 (0x80017B1C `move t2,zero`, sin cruzar llamadas). Referencias medidas del
+ * resto: `a` 27 usos sobre 1670 insns, `v` 25 sobre 1678, `w` 524 sobre 1670 y `mejor` 29 sobre 840. Dos
+ * formas probadas sobre esa causa y no conservadas: una local propia para el radio de alcance (20852) y una
+ * variable propia para el resultado tras las llamadas a SquareRoot0 en lugar de reutilizar el contador de
+ * golpes (20069); ninguna cambia las variables que van a la pila. Se supone, sin verificar, que el original
+ * carga `lista` en una temporal y la copia (`lhu t8,0x20(sp)` y `move v0,t8`, 0x80017518 y 0x80017520) por la
+ * forma de su prueba, y que eso explica los dos `move v0,t8` que faltan (0x80017520 y 0x80017588).
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con
  * mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la
