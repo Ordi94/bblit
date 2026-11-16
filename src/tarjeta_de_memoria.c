@@ -359,6 +359,7 @@ typedef struct BloqueTarjeta {
     u8 cuadro_b[0x80];
 } BloqueTarjeta;
 
+/* Bloque de 0x200 bytes con alineacion de un byte: la copia al buffer comprueba la alineacion en ejecucion, como el original. */
 typedef struct Fragmento {
     u8 b[0x200];
 } Fragmento;
@@ -368,10 +369,12 @@ typedef struct Copia168 {
     u8 b[0x168];
 } Copia168;
 
+/* Imagen de icono (0x20 bytes) como ocho palabras: alineacion 4 y copia por palabras, sin comprobacion, como en el original. */
 typedef struct Imagen32 {
     u32 w[8];
 } Imagen32;
 
+/* Paleta y cuadros de animacion (0x80 bytes cada uno) como 32 palabras: misma copia por palabras que Imagen32. */
 typedef struct Bloque80 {
     u32 w[0x20];
 } Bloque80;
