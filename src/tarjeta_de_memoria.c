@@ -490,8 +490,13 @@ s32 func_800151FC(void)
  * Queda el reparto de registros del directorio: `n` cae en a3 (en a1 en el original), `fila` en a1 (a2), el contador de
  * los bucles interiores en a0 (v1) y la cadena de desplazamientos en v1 (a0), y el bucle de busqueda del final del nombre
  * calcula la direccion del simbolo de la tabla en su preludio (`lui` y `addiu a2`) mientras el original usa t1 ya
- * cargado; se supone, sin verificar, que ambas cosas salen de la copia de la fila a3 del original, que aqui
- * no existe. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
+ * cargado. La copia `move a3,a2` del original (0x80015CEC y 0x80015D2C, en el preludio de cada bucle interior, tras su
+ * guardia) se reproduce, medido en `diff`, escribiendo `n * 0x28` en el indice de los dos bucles interiores en lugar de la
+ * local `fila`: el compilador la crea al sustituir el producto por el puntero inducido del bucle exterior; pero entonces
+ * calcula la direccion de la tabla (`lui` y `addiu`) en el preludio de cada bucle interior en lugar de compartir un
+ * unico registro como el original (1495 frente a 1255). Con la direccion guardada en un `u32` previo al bucle el
+ * registro unico aparece pero el compilador anade copias de la base para el final (1620). Se supone, sin verificar,
+ * que el original comparte la direccion porque la usa tambien la parte final del cuerpo del bucle exterior. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
  * del resultado que despues compara con 1) se reproduce guardando el resultado en la local `rc`, compartida con la del
  * sondeo. Con otra local en su lugar (`estado`, `tam` o `partida`) la cifra sube; calcular la mascara de ranuras (`1 << (partida - 1)`) en una local antes del almacen de 0xE la
  * sube a 3090. El orden de los sumandos del indice de los dos bucles interiores no mueve el reparto de `j` ni de la
