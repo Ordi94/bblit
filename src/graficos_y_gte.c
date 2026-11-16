@@ -219,8 +219,8 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 10909 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 85 de
- * operando, 42 reordenadas y 546 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
+ * Pendiente: puntuacion 7584 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 92 de
+ * operando, 17 reordenadas y 376 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
  * que casi todo el residuo es desalineacion encadenada de pocas inserciones. El marco del C es el del original, de
  * 0x50 bytes: la salida es una estructura SVECTOR local (`vx` en 0x10 y `vz` en 0x14, con el hueco de `vy`), y le
  * siguen `k` (0x18), `salida_y` (0x1c) y `lista` (0x20); con dos variables `s16` sueltas el marco era de 0x48 y la
@@ -256,7 +256,11 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * goto ciclo_aristas; }`) porque el original comprueba `< 4` en la cabeza en cada vuelta y cierra con `bltz` a la
  * cabeza (0x80018194 y 0x80017F78), sin rotar el bucle: con `while` el compilador lo rotaba y duplicaba la prueba
  * (12354 a 11964). El segundo resultado de SquareRoot0 se guarda en `i` (el original lo copia a t2, `move t2,v0` en
- * 0x80018384, el registro del indice de arista que ya esta muerto): 11964 a 11694.
+ * 0x80018384, el registro del indice de arista que ya esta muerto): 11964 a 11694. Las comparaciones del barrido
+ * se escriben con el lado de `w->pt` primero (`pt + sal > b->max + radio`): el original carga `w->pt` antes que
+ * `w->b` (0x80017BB4 y 0x80017BB8, `lw a3,0xC0` y `lw a2,0x94`), 10909 a 7984 con las de `vz` y `vx` (9359 con solo las
+ * de `vz`). Las dos primeras llamadas de la rama de angulo negativo restan el radio a `min.vx` (`subu a0,a0,a2` en
+ * 0x8001798C y 0x800179BC), no lo suman: 7984 a 7584.
  * Residuo conocido: `a` y `v` estan intercambiados (a en s4 y v en s5, 25 usos cada una sobre 1680 y 1688 insns;
  * prioridades 0,0595 y 0,0592: el original da a `v` mayor prioridad); la cola de la ultima rama de la comparacion con
  * la mascara 0x2000000 esta fuera de linea en el original (0x80017EAC) y en linea aqui; y se supone, sin
@@ -360,8 +364,8 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
             w->angs[0] = ratan2(w->b->max.vx + w->radio - w->p[0].vx, w->b->max.vz + w->radio - w->p[0].vz);
             w->angs[1] = ratan2(w->b->max.vx + w->radio - w->p[0].vx, w->b->min.vz - w->radio - w->p[0].vz);
         } else {
-            w->angs[2] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->max.vz + w->radio - w->p[0].vz);
-            w->angs[3] = ratan2(w->b->min.vx + w->radio - w->p[0].vx, w->b->min.vz - w->radio - w->p[0].vz);
+            w->angs[2] = ratan2(w->b->min.vx - w->radio - w->p[0].vx, w->b->max.vz + w->radio - w->p[0].vz);
+            w->angs[3] = ratan2(w->b->min.vx - w->radio - w->p[0].vx, w->b->min.vz - w->radio - w->p[0].vz);
         }
         w->p[0].vx = w->p[2].vx = w->a->min.vx - w->a->radio;
         w->p[1].vx = w->p[3].vx = w->a->max.vx + w->a->radio;
@@ -390,20 +394,20 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
             gte_stsv(w->pt);
             if (w->ang >= 0) {
                 if (w->ang < w->angs[0]) {
-                    if (w->b->max.vz + w->radio < w->pt->vz + w->sal.vz) {
+                    if (w->pt->vz + w->sal.vz > w->b->max.vz + w->radio) {
                         continue;
                     }
-                    if (w->b->max.vx + w->radio < w->pt->vx + w->sal.vx) {
+                    if (w->pt->vx + w->sal.vx > w->b->max.vx + w->radio) {
                         continue;
                     }
                     if ((w->b->flags08 & 0x2000000) == 0) {
                         w->sal.vz = w->b->max.vz + w->radio - w->pt->vz;
                     }
                 } else if (w->ang < w->angs[1]) {
-                    if (w->b->max.vx + w->radio < w->pt->vx + w->sal.vx) {
+                    if (w->pt->vx + w->sal.vx > w->b->max.vx + w->radio) {
                         continue;
                     }
-                    if (w->b->max.vz + w->radio < w->pt->vz + w->sal.vz) {
+                    if (w->pt->vz + w->sal.vz > w->b->max.vz + w->radio) {
                         continue;
                     }
                     if (w->pt->vz + w->sal.vz < w->b->min.vz - w->radio) {
@@ -416,7 +420,7 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
                     if (w->pt->vz + w->sal.vz < w->b->min.vz - w->radio) {
                         continue;
                     }
-                    if (w->b->max.vx + w->radio < w->pt->vx + w->sal.vx) {
+                    if (w->pt->vx + w->sal.vx > w->b->max.vx + w->radio) {
                         continue;
                     }
                     if ((w->b->flags08 & 0x2000000) == 0) {
@@ -424,7 +428,7 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
                     }
                 }
             } else if (w->angs[2] < w->ang) {
-                if (w->b->max.vz + w->radio < w->pt->vz + w->sal.vz) {
+                if (w->pt->vz + w->sal.vz > w->b->max.vz + w->radio) {
                     continue;
                 }
                 if (w->pt->vx + w->sal.vx < w->b->min.vx - w->radio) {
@@ -437,7 +441,7 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
                 if (w->pt->vx + w->sal.vx < w->b->min.vx - w->radio) {
                     continue;
                 }
-                if (w->b->max.vz + w->radio < w->pt->vz + w->sal.vz) {
+                if (w->pt->vz + w->sal.vz > w->b->max.vz + w->radio) {
                     continue;
                 }
                 if (w->pt->vz + w->sal.vz < w->b->min.vz - w->radio) {
