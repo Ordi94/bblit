@@ -62,9 +62,10 @@ _CONDICIONAL_ELSE = re.compile(r"^\s*#\s*else\b")
 _CONDICIONAL_CIERRA = re.compile(r"^\s*#\s*endif\b")
 _CIFRAS_DE_RESERVA = re.compile(r"la cifra medida sin la local es (\d+) y con ella (\d+)")
 _MARCOS_DE_RESERVA = re.compile(
-    r"el original reserva 0x([0-9A-Fa-f]+) \(`addiu sp` en 0x[0-9A-Fa-f]{8}\) "
-    r"y sin la local el marco es 0x([0-9A-Fa-f]+)"
+    r"el original reserva 0x(?P<original>[0-9A-Fa-f]+) \(`addiu sp` en 0x(?P<direccion>[0-9A-Fa-f]{8})\) "
+    r"y sin la local el marco es 0x(?P<sin_local>[0-9A-Fa-f]+)"
 )
+_FILA_DE_RESERVA_CON_DECISION = re.compile(r"^\|\s*`(\w+)`\s*\|(?:[^|]*\|){4}\s*(.*?)\s*\|\s*$")
 BYTES_POR_ELEMENTO_DE_RESERVA = 4
 _INCREMENTO = re.compile(r"^\s*(?:(\w+)(\+\+|--)|(\+\+|--)(\w+))\s*;\s*$")
 _IF_VACIO_EN_UNA_LINEA = re.compile(r"^\s*(?:\}\s*else\s+)?if\s*\(.*\)\s*\{\s*\}\s*$")
@@ -617,7 +618,7 @@ def _incumplimientos_de_marcos_de_reserva(texto: str) -> list[str]:
                 "y sin la local el marco es 0xMMM`"
             )
             continue
-        original, sin_local = int(marcos.group(1), 16), int(marcos.group(2), 16)
+        original, sin_local = int(marcos["original"], 16), int(marcos["sin_local"], 16)
         esperada = BYTES_POR_ELEMENTO_DE_RESERVA * elementos
         if original - sin_local != esperada:
             fallos.append(
@@ -777,6 +778,83 @@ def _incumplimientos_de_cifras_de_reserva(texto: str, estados: dict[str, str]) -
         elif leido[0] and con_local != leido[1]:
             fallos.append(f"{funcion}: la fila dice {leido[1]} y la cabecera {con_local} con la local")
     return fallos
+
+
+def _datos_de_reserva(texto: str) -> tuple[tuple[int, str, int] | None, tuple[int, int] | None]:
+    """Lee de un texto los marcos y las cifras de la frase fija de una reserva de pila.
+
+    Contexto:
+        Lo usa ``_incumplimientos_de_fila_de_reserva`` para aplicar los mismos patrones a la cabecera de
+        la funcion y a la celda ``Qué decide`` de su fila, de modo que se comparen los mismos datos.
+
+    Args:
+        texto (str): Cabecera o celda, con los espacios y los saltos de linea ya colapsados.
+
+    Returns:
+        tuple: ``((marco del original, direccion del addiu sp en mayusculas, marco sin la local), (cifra
+        sin la local, cifra con ella))``; cada parte es ``None`` si la frase correspondiente no aparece.
+
+    Ejemplo:
+        _datos_de_reserva(celda)[1] == (154, 0)
+    """
+    marcos = _MARCOS_DE_RESERVA.search(texto)
+    cifras = _CIFRAS_DE_RESERVA.search(texto)
+    return (
+        None
+        if marcos is None
+        else (int(marcos["original"], 16), marcos["direccion"].upper(), int(marcos["sin_local"], 16)),
+        None if cifras is None else (int(cifras.group(1)), int(cifras.group(2))),
+    )
+
+
+def _incumplimientos_de_fila_de_reserva(texto: str, decisiones: dict[str, str]) -> list[str]:
+    """Comprueba que la celda ``Qué decide`` de cada reserva cita los mismos marcos y cifras que su cabecera.
+
+    Contexto:
+        Complementa a ``_incumplimientos_de_marcos_de_reserva`` y a ``_incumplimientos_de_cifras_de_reserva``:
+        esas leen la cabecera, esta cruza la fila de la tabla con ella para que el documento y el codigo no
+        cuenten dos medidas distintas de la misma funcion.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+        decisiones (dict[str, str]): funcion -> celda ``Qué decide`` de su fila de reserva de pila.
+
+    Returns:
+        list[str]: Un mensaje por cada incumplimiento; vacia si todas las filas dicen lo que la cabecera.
+
+    Ejemplo:
+        _incumplimientos_de_fila_de_reserva(texto_con_reserva, {"func_800000A0": celda}) == []
+    """
+    cuentas, _ = _reservas_de_pila(texto)
+    fallos: list[str] = []
+    for funcion, _forma in sorted(cuentas):
+        cabecera = _datos_de_reserva(" ".join(_cabecera(texto, funcion).replace("*", " ").split()))
+        fila = _datos_de_reserva(" ".join(decisiones.get(funcion, "").split()))
+        if fila[0] is None or fila[1] is None:
+            fallos.append(
+                f"{funcion}: la fila no lleva la frase fija de la cabecera con sus marcos y sus cifras"
+            )
+            continue
+        if cabecera[0] is not None and fila[0] != cabecera[0]:
+            fallos.append(f"{funcion}: la fila cita los marcos {fila[0]} y la cabecera {cabecera[0]}")
+        if cabecera[1] is not None and fila[1] != cabecera[1]:
+            fallos.append(f"{funcion}: la fila cita las cifras {fila[1]} y la cabecera {cabecera[1]}")
+    return fallos
+
+
+def _decisiones_de_reserva_del_documento() -> dict[str, str]:
+    """Lee la celda ``Qué decide`` de cada fila de reserva de pila como funcion -> texto de la celda."""
+    texto = (RAIZ_REPOSITORIO / "docs" / "DESCOMPILACION.md").read_text(encoding="utf-8")
+    inicio = texto.index("## Referencias sin código")
+    siguiente = texto.find("\n## ", inicio + 1)
+    seccion = texto[inicio : siguiente if siguiente != -1 else len(texto)]
+    decisiones: dict[str, str] = {}
+    for linea in seccion.splitlines():
+        fila = _FILA_TABLA.match(linea)
+        celda = _FILA_DE_RESERVA_CON_DECISION.match(linea)
+        if fila is not None and celda is not None and fila.group(3) == RESERVA_DE_PILA:
+            decisiones[celda.group(1)] = celda.group(2)
+    return decisiones
 
 
 def _referencias_en_src() -> dict[tuple[str, str], tuple[str, int]]:
@@ -2196,5 +2274,128 @@ def test_toda_reserva_de_pila_de_src_cierra_la_diferencia_de_marcos_del_original
         f"{archivo.name}: {fallo}"
         for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c"))
         for fallo in _incumplimientos_de_marcos_de_reserva(archivo.read_text(encoding="utf-8"))
+    ]
+    assert fallos == []
+
+
+def _celda_de_reserva(
+    original: str, direccion: str, sin_local: str, sin: int, con: int, resto: str = ""
+) -> str:
+    return (
+        f"Reserva de pila: el original reserva {original} (`addiu sp` en {direccion}) y sin la local el "
+        f"marco es {sin_local}; la cifra medida sin la local es {sin} y con ella {con}.{resto}"
+    )
+
+
+def _funcion_con_fila(celda: str, locales: str = MARCA_RESERVA + DECLARACION_RESERVA) -> list[str]:
+    texto = _funcion_con_marcos("0x30", "0x28", locales)
+    return _incumplimientos_de_fila_de_reserva(texto, {"func_800000A0": celda})
+
+
+def test_la_fila_de_reserva_que_cita_los_mismos_marcos_y_cifras_que_la_cabecera_se_acepta() -> None:
+    """Caso valido: la celda repite la frase fija de la cabecera con los mismos numeros.
+
+    Regla:
+        Fila y cabecera usan la misma redaccion y dicen lo mismo; una frase propia tras la fija no molesta.
+
+    Ejemplo:
+        Cabecera 0x30, 0x80000000, 0x28, 100 y 0 con una celda igual no produce incumplimientos.
+    """
+    celda = _celda_de_reserva("0x30", "0x80000000", "0x28", 100, 0, " La reserva queda antes del giro.")
+    assert _funcion_con_fila(celda) == []
+
+
+def test_la_fila_de_reserva_con_un_marco_distinto_al_de_la_cabecera_se_rechaza() -> None:
+    """Caso con error esperado: el marco del original de la fila no es el de la cabecera.
+
+    Regla:
+        Los marcos de la fila son los de la cabecera.
+
+    Ejemplo:
+        La fila dice 0x38 y la cabecera 0x30: un incumplimiento que cita los dos marcos.
+    """
+    celda = _celda_de_reserva("0x38", "0x80000000", "0x28", 100, 0)
+    assert _funcion_con_fila(celda) == [
+        "func_800000A0: la fila cita los marcos (56, '80000000', 40) y la cabecera (48, '80000000', 40)"
+    ]
+    otra_direccion = _celda_de_reserva("0x30", "0x80000004", "0x28", 100, 0)
+    assert len(_funcion_con_fila(otra_direccion)) == 1
+
+
+def test_la_fila_de_reserva_con_una_cifra_distinta_a_la_de_la_cabecera_se_rechaza() -> None:
+    """Caso con error esperado: la cifra sin la local o con ella no es la de la cabecera.
+
+    Regla:
+        Las cifras de la fila son las de la cabecera, las dos.
+
+    Ejemplo:
+        La fila dice 101 y 0 y la cabecera 100 y 0: un incumplimiento que cita las dos parejas.
+    """
+    celda = _celda_de_reserva("0x30", "0x80000000", "0x28", 101, 0)
+    assert _funcion_con_fila(celda) == [
+        "func_800000A0: la fila cita las cifras (101, 0) y la cabecera (100, 0)"
+    ]
+    assert len(_funcion_con_fila(_celda_de_reserva("0x30", "0x80000000", "0x28", 100, 1))) == 1
+
+
+def test_la_fila_de_reserva_sin_la_frase_fija_o_ausente_se_rechaza() -> None:
+    """Caso con error esperado: la redaccion antigua, una frase a medias o la falta de fila no se aceptan.
+
+    Regla:
+        La celda lleva la frase de los marcos y la de las cifras, con la redaccion exacta de la cabecera.
+
+    Ejemplo:
+        ``Marco de 0x30 bytes ... 100 sin ella y 0 con ella`` da un incumplimiento, igual que una fila vacia.
+    """
+    antigua = (
+        "Marco de 0x30 bytes (`addiu sp` en `0x80000000`) frente a 0x28 sin la local: 8 bytes; 100 sin ella"
+    )
+    esperado = ["func_800000A0: la fila no lleva la frase fija de la cabecera con sus marcos y sus cifras"]
+    assert _funcion_con_fila(antigua) == esperado
+    solo_marcos = _celda_de_reserva("0x30", "0x80000000", "0x28", 100, 0).split(";")[0]
+    assert _funcion_con_fila(solo_marcos) == esperado
+    assert _funcion_con_fila("") == esperado
+
+
+def test_una_funcion_con_dos_arreglos_de_reserva_acepta_la_frase_fija_en_fila_y_cabecera() -> None:
+    """Caso valido: dos arreglos de reserva, cabecera y fila con la frase fija en singular.
+
+    Regla:
+        Con varias reservas la frase fija se usa tal cual y la frase propia aclara cuantos arreglos son.
+
+    Ejemplo:
+        Dos ``s32 reserva[2];`` con 0x210 y 0x200 y la celda con ``La reserva son 2 arreglos`` cumplen.
+    """
+    locales = MARCA_RESERVA + DECLARACION_RESERVA + MARCA_RESERVA + "    s32 reserva_cima[2];\n"
+    texto = _funcion_con_marcos("0x210", "0x200", locales)
+    celda = _celda_de_reserva(
+        "0x210",
+        "0x80000000",
+        "0x200",
+        100,
+        0,
+        " La reserva son 2 arreglos de 8 bytes: uno antes y otro tras.",
+    )
+    assert _incumplimientos_de_fila_de_reserva(texto, {"func_800000A0": celda}) == []
+    assert _incumplimientos_de_marcos_de_reserva(texto) == []
+
+
+def test_la_celda_que_decide_de_la_tabla_se_lee_por_funcion_solo_en_las_filas_de_reserva() -> None:
+    """La lectura del documento devuelve la ultima columna de cada fila de la forma reserva de pila."""
+    decisiones = _decisiones_de_reserva_del_documento()
+    reservas = {funcion for (funcion, forma) in _tabla_del_documento() if forma == RESERVA_DE_PILA}
+    assert decisiones
+    assert set(decisiones) == reservas
+    assert all(celda.startswith("Reserva de pila: el original reserva") for celda in decisiones.values())
+
+
+def test_las_filas_de_reserva_de_pila_de_la_tabla_dicen_lo_mismo_que_las_cabeceras_de_src() -> None:
+    """Toda fila de reserva de pila cita los mismos marcos, direccion y cifras que su cabecera."""
+    decisiones = _decisiones_de_reserva_del_documento()
+    assert decisiones
+    fallos = [
+        f"{archivo.name}: {fallo}"
+        for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c"))
+        for fallo in _incumplimientos_de_fila_de_reserva(archivo.read_text(encoding="utf-8"), decisiones)
     ]
     assert fallos == []
