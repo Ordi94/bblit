@@ -234,7 +234,14 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * resto: `a` 27 usos sobre 1670 insns, `v` 25 sobre 1678, `w` 524 sobre 1670 y `mejor` 29 sobre 840. Dos
  * formas ensayadas sobre esa causa que no se conservan: una local propia para el radio de alcance (20852) y una
  * variable propia para el resultado tras las llamadas a SquareRoot0 en lugar de reutilizar el contador de
- * golpes (20069); ninguna cambia las variables que van a la pila. Se supone, sin verificar, que el original
+ * golpes (20069); ninguna cambia las variables que van a la pila. Medido en `.greg` y `.lreg`: `w` (524 usos, la
+ * mas prioritaria, 2,82) toma s3 porque los pseudos de bloque que cruzan una llamada dentro del tramo de la
+ * norma (copia del primer resultado de SquareRoot0 en s0 y dos punteros a D_80069D08 y D_80069C08 en s1 y s2)
+ * ocupan s0 a s2 en ese bloque y `w`, viva en toda la funcion, hereda el conflicto; en el original ese primer
+ * resultado no tiene registro (`sw v0,0x18(sp)` en 0x80018344 y `lw a1,0x18(sp)` en 0x80018358, despues de la segunda llamada, la
+ * misma ranura que usa `hits`) y solo `mflo s0` ocupa s0. Dos mediciones sobre esa causa: leer los dos
+ * componentes de D_80069D08 en locales antes de la segunda llamada (20169, `w` sigue en s3) y guardar el primer
+ * resultado en `hits` (19882: `w` baja a s2, pero el marco crece de 0x50 a 0x58 y el resto empeora). Se supone, sin verificar, que el original
  * carga `lista` en una temporal y la copia (`lhu t8,0x20(sp)` y `move v0,t8`, 0x80017518 y 0x80017520) por la
  * forma de su prueba, y que eso explica los dos `move v0,t8` que faltan (0x80017520 y 0x80017588).
  *
