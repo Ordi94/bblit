@@ -607,7 +607,7 @@ referencias sin código admitidas son las de [Referencias sin código](#referenc
 **Qué es.** Una referencia sin código es una construcción de la función que no emite ninguna instrucción pero que
 el analizador de flujo cuenta como uso de una variable, de modo que el asignador global (que ordena los pseudos
 por referencias ponderadas entre longitud de vida, `floor_log2(R) * R / L`) los reparte como el original, o de modo que el optimizador de bucles tome la misma decisión
-de izado que el original. Hay cinco formas:
+de izado que el original; o, en la local de reserva de pila, que el marco de la función mida lo que mide el del original. Hay seis formas:
 
 | Forma | Qué es | Mecanismo |
 |---|---|---|
@@ -616,8 +616,10 @@ de izado que el original. Hay cinco formas:
 | condición vacía | `if (x) {}` o `if (p->campo) {}` sobre una variable o un campo real | El optimizador de saltos elimina la condición sin rama antes del análisis de flujo; medido sobre un campo cargado de memoria (`w->cur`), la lectura desaparece con ella y los usos ponderados no cambian (solo se desplaza la numeración de los pseudos): puede servir para mover un empate por número de pseudo, no para sumar referencias |
 | local sin uso | Una local con inicializador que ninguna sentencia lee | La asignación no deja instrucción y el efecto sobre el asignador solo existe si el volcado lo muestra para esa función. Medido en `func_8003B354` (`src/menus_e_interfaz.c`, 270 a 0): una asignación muerta de la base de la tabla en una local da el mismo 0 que su uso real, y quitarla da 915, de modo que la forma actúa en este binario; la función conserva el uso real (la local se lee) y no queda ninguna referencia de esta forma en `src/` |
 | sentencia duplicada en ambas ramas | La misma sentencia escrita en dos o más caminos que terminan en una misma cola (las ramas de un `if`/`else` o varios saltos a una etiqueta común), con una variable propia por camino si hace falta | Cada variable por rama es un pseudo local de su bloque y el asignador local lo reparte antes que los pseudos globales, como en el original, que tiene ese valor como local de cada rama. Las colas de los caminos quedan idénticas y el salto cruzado (cross-jumping) del compilador las vuelve a fusionar en una sola, así que la sentencia replicada no deja instrucciones propias |
+| local de reserva de pila | Un arreglo de `s32` sin inicializador, declarado en la función y que ninguna sentencia lee ni escribe | El compilador no emite ninguna instrucción para ella, pero le reserva su tamaño en el marco: el `addiu sp` baja otro tanto y los desplazamientos de pila de las locales declaradas después y de los registros salvados suben ese tamaño, como en el original, que declaraba una local que el compilador eliminó. No cambia el reparto de registros: solo el tamaño y la disposición del marco |
 
-**Cuándo se admite.** Solo si se cumplen las tres condiciones a la vez, para las cinco formas:
+**Cuándo se admite.** Solo si se cumplen las tres condiciones a la vez, para las cinco primeras formas (la local de
+reserva de pila tiene las suyas, más abajo, y no lleva la oración fija):
 
 1. El volcado de `cc1` muestra la decisión del compilador que la referencia cambia (la prioridad de dos pseudos del
    asignador, o el umbral de izado del optimizador de bucles) y la referencia la cambia de forma predecible. En el
@@ -657,18 +659,46 @@ return 1;` no se reúnen en ningún punto donde una sola copia no exija un resul
 aunque dos de ellos terminen en la misma comparación, el compilador los comparte por salto cruzado igual que el
 original. Esas funciones no llevan marca ni fila; la cabecera explica qué distingue a cada camino.
 
+**Local de reserva de pila.** Se admite un arreglo de `s32` que completa el marco de la función cuando el original
+tiene un marco mayor que el que genera el C sin él. Se cumplen las cinco condiciones a la vez:
+
+1. El marco del original es mayor que el que genera el C sin la local, y la diferencia es exactamente el tamaño de la
+   reserva. Se cita el `addiu sp` del original con su dirección y su tamaño, el del C sin la local y los bytes de la
+   reserva (`func_80038884`: `addiu sp, sp, -0x50` en `0x80038884`; sin la local sale `-0x48`; reserva de 8 bytes).
+2. La cifra medida con `diff` sin la local es distinta de 0 y con ella es 0 o menor. Se cita (`func_80038884`: 154 sin
+   la local y 0 con ella). Si la cifra sin la local también es 0, la local sobra y se quita.
+3. La reserva es un arreglo de `s32` del tamaño justo (`s32 reserva[N];`, el nombre empieza por `reserva`), sin
+   inicializador, declarado en la posición que deja los demás desplazamientos de pila como en el original, y ninguna
+   sentencia de la función la nombra: ni la lee ni la escribe ni toma su dirección.
+4. La declaración lleva encima, en su propia línea, el comentario fijo
+   `/* Reserva de pila: local sin uso que completa el marco del original. */`, que es el que localiza la prueba. La
+   cabecera de la función dice el marco del original con su `addiu sp` y la cifra sin la local, con la forma
+   «Reserva de pila: el marco del original es de 0xNN bytes (`addiu sp` en 0xDIRECCION) y el del C sin la local, de
+   0xMM; la cifra medida sin la local es X y con ella 0.»
+5. La función tiene su fila en la tabla de abajo con la forma «reserva de pila» y el número de arreglos de reserva
+   que declara (una función con tres reservas separadas por otras locales cuenta tres).
+
+La forma solo rellena el marco: no se usa para cambiar el reparto de registros, que sería otra forma y exige sus
+propias condiciones.
+
 **Qué sigue sin admitirse.** Barreras `asm`, `register __asm__("$N")`, `volatile` sin respaldo (también el
 `volatile` sin uso que reserva pila), partir una sentencia en varias, la sentencia duplicada que no es la misma
 sentencia real de la función (la duplicada solo para sumar referencias o en una rama que no la ejecuta), el molde de
 puntero a función contra la fusión de colas, los almacenes muertos, las lecturas muertas con una variable nueva, la
-auto-referencia `u8 x = -x;` y la local sin inicializador y sin uso.
+auto-referencia `u8 x = -x;` y la local sin inicializador y sin uso, salvo la reserva de pila regulada arriba.
+Tampoco se admiten las reservas que cambian el reparto de registros en vez del marco, ni cualquier local sin uso
+(del tipo y el tamaño que sea) que no cumpla las cinco condiciones: un arreglo de otro tipo que `s32`, un `SVECTOR`
+o un arreglo de bytes sin uso no son la forma regulada.
 
 **Cómo se cuentan.** La tabla de abajo lista cada función con su forma y su número de referencias. La prueba
 `tests/test_business_envolturas_sin_codigo.py` la cruza con `src/` en los dos sentidos: cada `} while (0);`, cada
-par `x--; x++;`, cada `if (...) {}`, cada local con inicializador que nadie lee y cada comentario de sentencia
-replicada, fuera de una macro, debe estar en la tabla con la misma forma y el mismo número, y la cabecera de su
-función debe llevar «no genera código» (o «no generan código») y la oración fija. Al añadir o quitar una referencia
-se actualiza la tabla en el mismo cambio.
+par `x--; x++;`, cada `if (...) {}`, cada local con inicializador que nadie lee, cada comentario de sentencia
+replicada y cada declaración de reserva de pila con su comentario fijo, fuera de una macro, debe estar en la tabla
+con la misma forma y el mismo número, y cada fila debe tener su declaración. La cabecera de su función debe llevar
+«no genera código» (o «no generan código») y la oración fija; la de una reserva de pila, «Reserva de pila:»,
+`addiu sp` y «sin la local». Un arreglo `s32 reserva...[N];` que ninguna sentencia nombra y no lleva el comentario
+fijo hace fallar la prueba (la detección se limita a arreglos de `s32` cuyo nombre empieza por `reserva`). Al
+añadir o quitar una referencia se actualiza la tabla en el mismo cambio.
 
 | Función | Archivo | Forma | Referencias | Estado | Qué decide |
 |---|---|---|---:|---|---|
@@ -689,6 +719,12 @@ se actualiza la tabla en el mismo cambio.
 | `func_8001E528` | `src/movimiento_y_objetos_de_escena_3.c` | decremento-incremento | 1 | coincide | Orden de la coordenada u (pseudo 93) y del puntero al fotograma (83): u pasa de 6 a 10 usos (de 0,80 a 2,0 frente a 1,04), toma a3 y el puntero t0; la pareja va en la rama de la llamada porque junto a la carga de u alarga su cadena y el planificador sube la carga por encima de la lectura del puntero del sprite (60) |
 | `func_80026FEC` | `src/logica_de_niveles_3.c` | sentencia duplicada en ambas ramas | 6 | NON_MATCHING 1790 | Almacenes de las bandas del vuelo `t->w114 = banda_alta;` y `t->w118 = banda_baja;` en la rama del jugador y en la final: con la pareja en cada rama los valores son pseudos locales del bloque (2 usos sobre 2 insns) en v0 y v1 con el almacén al final de su camino, como el original; con una sola pareja tras la unión son pseudos globales (5 usos sobre 12 insns y 6 sobre 14) en a1 y v1, los almacenes suben tras la unión y la cifra pasa de 1790 a 3670. Llamada de cierre de la composición `func_8001CFCC(&o->coord);` en la rama que copia el giro del portador y en la de la comprobación de apoyo: el salto cruzado las fusiona (21 referencias al símbolo en el volcado de saltos antes del cruce y 20 después, igual que las 20 llamadas del original) y la preparación del argumento queda dentro de cada camino; con una sola llamada tras una etiqueta de unión cae en el hueco de retardo de la llamada (1790 con las dos llamadas frente a 1995 con una sola) |
 | `func_80039094` | `src/gestion_y_dibujo_de_objetos_2.c` | envoltura | 1 | NON_MATCHING 1300 | Valor leído de la barra (pseudo 83) en `$a0` por detrás del byte extendido de la comparación `beq` (pseudo 181, que toma `$v1`): con la envoltura 14 usos sobre 22 instrucciones (1,909) frente a 6 sobre 6 (2,0); sin ella 11 sobre 22 (1,5) frente a 3 sobre 6 (0,5), el valor toma `$v1`, el otro cae en `$a0` y la puntuación sube a 1520; margen de 0,09, reparto corto |
+| `func_80038884` | `src/gestion_y_dibujo_de_objetos_2.c` | reserva de pila | 1 | coincide | Marco de 0x50 bytes (`addiu sp` en `0x80038884`) frente a 0x48 sin la local: 8 bytes; 154 sin ella y 0 con ella |
+| `func_80045498` | `src/inicializacion_de_motor.c` | reserva de pila | 1 | coincide | Marco de 0x58 bytes (`addiu sp` en `0x800454A0`) frente a 0x50 sin la local: 8 bytes; 569 sin ella y 0 con ella |
+| `LogicaBloqueEmpujable` | `src/logica_de_niveles_3.c` | reserva de pila | 1 | coincide | Marco de 0x38 bytes (`addiu sp` en `0x8002D68C`) frente a 0x30 sin la local: 8 bytes; 188 sin ella y 0 con ella |
+| `func_800330AC` | `src/camara_y_bucle_logico.c` | reserva de pila | 1 | coincide | Marco de 0x48 bytes (`addiu sp` en `0x800330AC`) frente a 0x38 sin la local: 16 bytes; 490 sin ella y 0 con ella |
+| `AvanzarAnimacionSprite` | `src/movimiento_y_objetos_de_escena_3.c` | reserva de pila | 1 | coincide | Marco de 0x78 bytes (`addiu sp` en `0x8001E720`) frente a 0x68 sin la local: 16 bytes; 361 sin ella y 0 con ella |
+| `func_8001F268` | `src/movimiento_y_objetos_de_escena_3.c` | reserva de pila | 3 | coincide | Marco de 0xB8 bytes (`addiu sp` en `0x8001F268`) frente a 0x70 sin las tres locales: 72 bytes (16, 24 y 32), que dejan el vector de aparición en +0x28 y +0x30 y el acumulador de nodos en +0x58; 1280 sin ellas y 0 con ellas |
 
 ## Medir el progreso
 

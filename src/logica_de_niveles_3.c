@@ -3289,9 +3289,9 @@ siguiente:
  *   salta al reposo con el resto de las salidas.
  * - La rama sin empuje lee D_800694F2 dos veces (comprobacion y almacen) y no la guarda en una local:
  *   con la local la funcion da 40 puntos mas.
- * - reserva[2] ocupa 8 bytes de pila que ninguna sentencia usa: el marco del original es de 0x38 bytes
- *   y sin esa local la funcion sube a 188 (se supone, sin verificar, que el original tenia ahi una
- *   local que el compilador elimino).
+ * - Reserva de pila: el marco del original es de 0x38 bytes (addiu sp en 0x8002D68C) y el del C sin la
+ *   local, de 0x30; la cifra medida sin la local es 188 y con ella 0. Se supone, sin verificar, que el
+ *   original tenia ahi una local que el compilador elimino.
  */
 void LogicaBloqueEmpujable(Objeto* o)
 {
@@ -3306,6 +3306,7 @@ void LogicaBloqueEmpujable(Objeto* o)
     u8 flags;
     s16 id;
     u32 est;
+    /* Reserva de pila: local sin uso que completa el marco del original. */
     s32 reserva[2];
 
     t = TRABAJO_BLOQUE;

@@ -379,6 +379,9 @@ INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80032B2C);
  * Busca un giro en Y para el que la sonda de colision avance libre: prueba hasta 25 giros de la
  * tabla D_8005E6F8 y guarda la distancia de cada uno en D_80069D90. Devuelve 0 si el giro
  * inicial sirve, 1 si sirve otro y 2 si ninguno (entonces elige el de mayor distancia).
+ *
+ * Reserva de pila: el marco del original es de 0x48 bytes (addiu sp en 0x800330AC) y el del C sin la
+ * local, de 0x38; la cifra medida sin la local es 490 y con ella 0.
  */
 s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 {
@@ -389,7 +392,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
     s32 x;
     s32 z;
     s32* q;
-    /* El marco del original reserva 16 bytes de locales que ninguna sentencia toca. */
+    /* Reserva de pila: local sin uso que completa el marco del original. */
     s32 reserva[4];
 
     w = arg;

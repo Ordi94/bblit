@@ -1,15 +1,23 @@
 """Las referencias sin codigo deben estar declaradas y contadas.
 
-Se admiten cinco formas que no generan ninguna instruccion propia y que solo mueven el reparto de registros o
-una decision del optimizador de bucles: la envoltura ``do { ... } while (0)``, el par ``x--; x++;``, la
-condicion vacia ``if (x) {}``, la local sin uso con inicializador y la sentencia duplicada en ambas ramas (la
-misma sentencia escrita en las ramas de un ``if``/``else``, que el salto cruzado del compilador vuelve a
-fusionar; se localiza por su comentario fijo). La tecnica solo se admite con condiciones: el comentario de
-cabecera de la funcion dice que la referencia no genera codigo y cierra el parrafo con una oracion fija que
-reconoce que se desconoce la forma del fuente original, y ``docs/DESCOMPILACION.md`` lista cada funcion con su
-forma y su numero de referencias. Estas pruebas cruzan ``src/`` con esa tabla para que una referencia nueva no
+Se admiten seis formas que no generan ninguna instruccion propia y que solo mueven el reparto de
+registros, una decision del optimizador de bucles o el tamano del marco de pila: la envoltura
+``do { ... } while (0)``, el par ``x--; x++;``, la condicion vacia ``if (x) {}``, la local sin uso con
+inicializador, la sentencia duplicada en ambas ramas (la misma sentencia escrita en las ramas de un
+``if``/``else``, que el salto cruzado del compilador vuelve a fusionar; se localiza por su comentario fijo)
+y la local de reserva de pila (un arreglo de ``s32`` sin uso que completa el marco del original; se
+localiza por su comentario fijo). La tecnica solo se admite con condiciones: el comentario de cabecera de
+la funcion dice que la referencia no genera codigo y cierra el parrafo con una oracion fija que reconoce
+que se desconoce la forma del fuente original (la reserva de pila lleva en su cabecera el marco del
+original y la cifra sin la local), y ``docs/DESCOMPILACION.md`` lista cada funcion con su forma y su
+numero de referencias. Estas pruebas cruzan ``src/`` con esa tabla para que una referencia nueva no
 entre sin su comentario ni sin su fila, y para que una fila no sobreviva a la referencia que describia. Solo
 leen archivos.
+
+La deteccion de la reserva de pila se limita a los arreglos ``s32 reserva...[N];`` (nombre que empieza por
+``reserva``) que ninguna sentencia de su funcion nombra: detectar cualquier local sin uso, de cualquier tipo y
+nombre, no es fiable sin un analizador completo de C y marcaria como reserva los campos y las locales que se
+leen por una macro.
 """
 
 import re
@@ -26,8 +34,19 @@ DECREMENTO_INCREMENTO = "decremento-incremento"
 CONDICION_VACIA = "condición vacía"
 LOCAL_SIN_USO = "local sin uso"
 SENTENCIA_DUPLICADA = "sentencia duplicada en ambas ramas"
-FORMAS = (ENVOLTURA, DECREMENTO_INCREMENTO, CONDICION_VACIA, LOCAL_SIN_USO, SENTENCIA_DUPLICADA)
+RESERVA_DE_PILA = "reserva de pila"
+FORMAS = (
+    ENVOLTURA,
+    DECREMENTO_INCREMENTO,
+    CONDICION_VACIA,
+    LOCAL_SIN_USO,
+    SENTENCIA_DUPLICADA,
+    RESERVA_DE_PILA,
+)
 COMENTARIO_REPLICADA = "Sentencia replicada: es la misma que la de las otras ramas."
+COMENTARIO_RESERVA = "Reserva de pila: local sin uso que completa el marco del original."
+MENSAJE_MARCA_SIN_DECLARACION = "el comentario de reserva de pila no precede a `s32 reserva[N];`"
+MARCADORES_DE_CABECERA_RESERVA = ("Reserva de pila:", "addiu sp", "sin la local")
 
 _CIERRE_ENVOLTURA = re.compile(r"^\s*\}\s*while\s*\(0\)\s*;")
 _DEFINICION = re.compile(r"^[A-Za-z_][\w \t\*]*?[\s\*](\w+)\([^;]*\)\s*\{?\s*$")
@@ -39,6 +58,9 @@ _CIERRE_SOLO = re.compile(r"^\s*\}\s*$")
 _DECLARACION_CON_VALOR = re.compile(r"^\s+((?:[A-Za-z_]\w*[\s\*]+)+?)(\w+)\s*=\s*[^=].*;\s*$")
 _PALABRAS_QUE_NO_DECLARAN = {"return", "else", "goto", "case", "sizeof", "do", "while", "if", "for", "switch"}
 _COMENTARIO_REPLICADA = re.compile(rf"^\s*/\*\s*{re.escape(COMENTARIO_REPLICADA)}\s*\*/\s*$")
+_COMENTARIO_RESERVA = re.compile(rf"^\s*/\*\s*{re.escape(COMENTARIO_RESERVA)}\s*\*/\s*$")
+_DECLARACION_RESERVA = re.compile(r"^\s+s32\s+(reserva\w*)\[\d+\]\s*;\s*$")
+_COMENTARIO_DE_BLOQUE = re.compile(r"/\*.*?\*/", re.DOTALL)
 _CABEZA_CON_TIPO = re.compile(
     r"^(?:[A-Za-z_]\w*[ \t]*\*+[ \t]*|[A-Za-z_]\w*[ \t]+)+([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$"
 )
@@ -417,14 +439,142 @@ def _incumplimientos(texto: str) -> list[str]:
     return fallos
 
 
+def _reservas_de_una_funcion(funcion: str, cuerpo: list[str]) -> tuple[int, list[str]]:
+    """Cuenta las reservas de pila marcadas de una funcion y lista las que incumplen la regla.
+
+    Contexto:
+        Lo usa ``_reservas_de_pila`` una vez por cada definicion del archivo.
+
+    Una declaracion ``s32 reserva...[N];`` es una reserva sin uso si, quitados los comentarios, su nombre solo
+    aparece en la propia declaracion. Si va precedida del comentario fijo se cuenta; si lo lleva pero la
+    funcion usa el nombre, o si no lo lleva y nadie lo usa, es un incumplimiento. Un arreglo ``reserva`` que
+    la funcion si usa y que no lleva comentario es un arreglo corriente y se ignora. El comentario fijo que no
+    precede a una declaracion de reserva tambien es un incumplimiento.
+
+    Args:
+        funcion (str): Nombre de la funcion, para los mensajes.
+        cuerpo (list[str]): Lineas de la funcion, de la definicion al cierre, con las macros vaciadas.
+
+    Returns:
+        tuple[int, list[str]]: Reservas marcadas y sin uso, y un mensaje por cada incumplimiento.
+
+    Ejemplo:
+        _reservas_de_una_funcion("f", ["s32 f(void)", "{", "    s32 reserva[2];", "}"]) == (0, [...])
+    """
+    sin_comentarios = _COMENTARIO_DE_BLOQUE.sub(" ", "\n".join(cuerpo))
+    marcadas = 0
+    fallos: list[str] = []
+    for indice, linea in enumerate(cuerpo):
+        if _COMENTARIO_RESERVA.match(linea):
+            siguiente = cuerpo[indice + 1] if indice + 1 < len(cuerpo) else ""
+            if _DECLARACION_RESERVA.match(siguiente) is None:
+                fallos.append(f"{funcion}: {MENSAJE_MARCA_SIN_DECLARACION}")
+            continue
+        declaracion = _DECLARACION_RESERVA.match(linea)
+        if declaracion is None:
+            continue
+        nombre = declaracion.group(1)
+        sin_uso = len(re.findall(rf"\b{re.escape(nombre)}\b", sin_comentarios)) == 1
+        marcada = indice > 0 and _COMENTARIO_RESERVA.match(cuerpo[indice - 1]) is not None
+        if marcada and sin_uso:
+            marcadas += 1
+        elif marcada:
+            fallos.append(f"{funcion}: la reserva de pila `{nombre}` se usa en la funcion")
+        elif sin_uso:
+            fallos.append(f"{funcion}: la reserva `{nombre}` no lleva el comentario fijo de reserva de pila")
+    return marcadas, fallos
+
+
+def _reservas_de_pila(texto: str) -> tuple[dict[tuple[str, str], int], list[str]]:
+    """Cuenta las reservas de pila por funcion y lista las que no cumplen la regla de la forma.
+
+    Contexto:
+        Lo ejerce la prueba que recorre ``src/``; el recuento alimenta el cruce con la tabla del documento y
+        los mensajes alimentan ``_incumplimientos_de_reservas``.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+
+    Returns:
+        tuple[dict[tuple[str, str], int], list[str]]: ``(funcion, RESERVA_DE_PILA)`` -> reservas marcadas, y
+        los incumplimientos de las declaraciones.
+
+    Ejemplo:
+        cuentas, fallos = _reservas_de_pila(Path("src/inicializacion_de_motor.c").read_text(encoding="utf-8"))
+    """
+    lineas = _lineas_de_codigo(texto)
+    cuentas: dict[tuple[str, str], int] = {}
+    fallos: list[str] = []
+    for funcion, inicio, cierre in _cuerpos(lineas):
+        marcadas, de_la_funcion = _reservas_de_una_funcion(funcion, lineas[inicio : cierre + 1])
+        if marcadas:
+            cuentas[(funcion, RESERVA_DE_PILA)] = marcadas
+        fallos.extend(de_la_funcion)
+    return cuentas, fallos
+
+
+def _incumplimientos_de_reservas(texto: str) -> list[str]:
+    """Lista los incumplimientos de la reserva de pila: declaracion mal marcada o cabecera sin el marco.
+
+    Contexto:
+        Complementa a ``_incumplimientos``: la reserva de pila no lleva la oracion fija de forma original
+        desconocida, su cabecera debe decir el marco del original (``addiu sp``) y la cifra sin la local.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+
+    Returns:
+        list[str]: Un mensaje por cada incumplimiento; vacia si todas las reservas cumplen.
+
+    Ejemplo:
+        _incumplimientos_de_reservas(Path("src/logica_de_niveles_3.c").read_text(encoding="utf-8")) == []
+    """
+    cuentas, fallos = _reservas_de_pila(texto)
+    for funcion, _ in sorted(cuentas):
+        cabecera = " ".join(_cabecera(texto, funcion).replace("*", " ").split())
+        for marcador in MARCADORES_DE_CABECERA_RESERVA:
+            if marcador not in cabecera:
+                fallos.append(f"{funcion}: la cabecera de la reserva de pila no lleva `{marcador}`")
+    return fallos
+
+
 def _referencias_en_src() -> dict[tuple[str, str], tuple[str, int]]:
     """Devuelve (funcion, forma) -> (archivo relativo, referencias) para todo ``src/*.c``."""
     resultado: dict[tuple[str, str], tuple[str, int]] = {}
     for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c")):
         texto = archivo.read_text(encoding="utf-8")
-        for clave, cantidad in _buscar_referencias(texto).items():
+        for clave, cantidad in {**_buscar_referencias(texto), **_reservas_de_pila(texto)[0]}.items():
             resultado[clave] = (f"src/{archivo.name}", cantidad)
     return resultado
+
+
+def _diferencias_con_la_tabla(
+    en_src: dict[tuple[str, str], tuple[str, int]], tabla: dict[tuple[str, str], tuple[str, int]]
+) -> list[str]:
+    """Compara lo que hay en ``src/`` con las filas de la tabla en los dos sentidos.
+
+    Contexto:
+        La usan las pruebas de la reserva de pila para ejercer el cruce con datos inventados y con el real.
+
+    Args:
+        en_src (dict): (funcion, forma) -> (archivo, referencias) segun el codigo.
+        tabla (dict): (funcion, forma) -> (archivo, referencias) segun el documento.
+
+    Returns:
+        list[str]: Un mensaje por declaracion sin fila, por fila sin declaracion y por archivo o numero
+        distinto.
+
+    Ejemplo:
+        _diferencias_con_la_tabla({("f", RESERVA_DE_PILA): ("src/a.c", 1)}, {}) != []
+    """
+    sin_fila = sorted(set(en_src) - set(tabla))
+    sin_declaracion = sorted(set(tabla) - set(en_src))
+    diferencias = [f"{clave}: declarada en src sin fila en la tabla" for clave in sin_fila]
+    diferencias += [f"{clave}: fila de la tabla sin declaracion en src" for clave in sin_declaracion]
+    for clave in sorted(set(en_src) & set(tabla)):
+        if en_src[clave] != tabla[clave]:
+            diferencias.append(f"{clave}: src dice {en_src[clave]} y la tabla {tabla[clave]}")
+    return diferencias
 
 
 def _tabla_del_documento() -> dict[tuple[str, str], tuple[str, int]]:
@@ -997,7 +1147,7 @@ def test_toda_fila_de_la_tabla_corresponde_a_una_referencia_en_src() -> None:
     assert sobran == [], f"filas de la tabla sin referencia en src: {sobran}"
 
 
-def test_toda_fila_de_la_tabla_usa_una_de_las_cinco_formas() -> None:
+def test_toda_fila_de_la_tabla_usa_una_de_las_seis_formas() -> None:
     formas = {forma for _, forma in _tabla_del_documento()}
     assert formas <= set(FORMAS), sorted(formas - set(FORMAS))
 
@@ -1042,3 +1192,286 @@ def test_una_referencia_con_marcador_y_frase_en_la_cabecera_se_acepta(tmp_path: 
         encoding="utf-8",
     )
     assert _incumplimientos(archivo.read_text(encoding="utf-8")) == []
+
+
+CABECERA_RESERVA = (
+    "/*\n"
+    " * Reserva de pila: el marco del original es de 0x30 bytes (addiu sp en 0x80000000) y el del C sin la\n"
+    " * local, de 0x28; la cifra medida sin la local es 100 y con ella 0.\n"
+    " */\n"
+)
+MARCA_RESERVA = f"    /* {COMENTARIO_RESERVA} */\n"
+DECLARACION_RESERVA = "    s32 reserva[2];\n"
+
+
+def _funcion_con_reserva(locales: str, cuerpo: str = "", cabecera: str = CABECERA_RESERVA) -> str:
+    return f"{cabecera}s32 func_800000A0(s32 a)\n{{\n{locales}{cuerpo}    return a;\n}}\n"
+
+
+def test_una_reserva_de_pila_con_su_comentario_fijo_y_sin_uso_se_cuenta_y_se_acepta() -> None:
+    """Un arreglo de ``s32`` sin uso con el comentario fijo y la cabecera del marco cumple la forma.
+
+    Regla:
+        Condiciones (c) y (d): la declaracion lleva el comentario fijo, ninguna sentencia nombra la reserva
+        y la cabecera dice el marco del original y la cifra sin la local.
+
+    Ejemplo:
+        ``s32 reserva[2];`` marcada cuenta una reserva y no produce incumplimientos.
+    """
+    texto = _funcion_con_reserva(MARCA_RESERVA + DECLARACION_RESERVA)
+    assert _reservas_de_pila(texto) == ({("func_800000A0", RESERVA_DE_PILA): 1}, [])
+    assert _incumplimientos_de_reservas(texto) == []
+
+
+def test_la_reserva_de_pila_no_se_cuenta_como_ninguna_otra_forma() -> None:
+    """La reserva no es una local con inicializador ni lleva la oracion fija de las demas formas.
+
+    Regla:
+        Cada forma se cuenta por su propia marca: una reserva sin inicializador no suma a la local sin uso, y
+        su funcion no queda obligada a decir que no genera codigo.
+
+    Ejemplo:
+        Una funcion con solo una reserva no aparece en ``_buscar_referencias`` ni en ``_incumplimientos``.
+    """
+    texto = _funcion_con_reserva(MARCA_RESERVA + DECLARACION_RESERVA)
+    assert _buscar_referencias(texto) == {}
+    assert _incumplimientos(texto) == []
+
+
+def test_una_funcion_con_tres_reservas_separadas_por_otras_locales_cuenta_tres() -> None:
+    """Cada declaracion marcada es una reserva: tres separadas por otras locales cuentan tres.
+
+    Regla:
+        Condicion (e): el numero de la fila es el de arreglos de reserva que declara la funcion.
+
+    Ejemplo:
+        ``reserva``, ``reserva2`` y ``reserva3`` marcadas dan la cuenta 3.
+    """
+    locales = (
+        MARCA_RESERVA
+        + DECLARACION_RESERVA
+        + "    SVECTOR giro;\n"
+        + MARCA_RESERVA
+        + "    s32 reserva2[6];\n"
+        + MARCA_RESERVA
+        + "    s32 reserva3[8];\n"
+    )
+    texto = _funcion_con_reserva(locales)
+    assert _reservas_de_pila(texto) == ({("func_800000A0", RESERVA_DE_PILA): 3}, [])
+
+
+def test_una_reserva_sin_uso_que_no_lleva_el_comentario_fijo_se_rechaza() -> None:
+    """Un arreglo ``s32 reserva[N];`` que nadie nombra y no lleva el comentario fijo hace fallar la prueba.
+
+    Regla:
+        Condicion (d): toda reserva sin uso se declara con la frase fija; sin ella la forma no esta regulada.
+
+    Ejemplo:
+        ``s32 reserva[2];`` sin comentario produce un incumplimiento y no se cuenta.
+    """
+    texto = _funcion_con_reserva(DECLARACION_RESERVA)
+    assert _reservas_de_pila(texto) == (
+        {},
+        ["func_800000A0: la reserva `reserva` no lleva el comentario fijo de reserva de pila"],
+    )
+
+
+def test_una_reserva_con_otro_comentario_se_rechaza_como_reserva_sin_la_frase_fija() -> None:
+    """Un comentario distinto del fijo no regula la reserva, aunque explique para que sirve.
+
+    Regla:
+        La frase fija es la unica marca que reconoce la prueba.
+
+    Ejemplo:
+        ``/* Sin uso: relleno del marco. */`` encima de ``s32 reserva[2];`` es un incumplimiento.
+    """
+    texto = _funcion_con_reserva("    /* Sin uso: relleno del marco. */\n" + DECLARACION_RESERVA)
+    assert len(_incumplimientos_de_reservas(texto)) == 1
+
+
+def test_un_arreglo_reserva_que_la_funcion_usa_no_es_una_reserva_de_pila() -> None:
+    """Un arreglo llamado ``reserva`` que alguna sentencia lee o escribe es un buffer corriente.
+
+    Regla:
+        Condicion (c): la forma exige que ninguna sentencia nombre la reserva; con uso, no se cuenta ni se
+        exige el comentario.
+
+    Ejemplo:
+        ``reserva[0] = a;`` hace que el arreglo se ignore.
+    """
+    texto = _funcion_con_reserva(DECLARACION_RESERVA, "    reserva[0] = a;\n")
+    assert _reservas_de_pila(texto) == ({}, [])
+
+
+def test_una_reserva_marcada_que_la_funcion_usa_se_rechaza() -> None:
+    """Con el comentario fijo pero usada por una sentencia, la declaracion incumple la condicion (c).
+
+    Regla:
+        La frase fija declara que la local no se usa: si se usa, la marca es falsa y se rechaza.
+
+    Ejemplo:
+        ``a = reserva[0];`` con el comentario fijo encima de la declaracion da un incumplimiento.
+    """
+    texto = _funcion_con_reserva(MARCA_RESERVA + DECLARACION_RESERVA, "    a = reserva[0];\n")
+    esperado = ["func_800000A0: la reserva de pila `reserva` se usa en la funcion"]
+    assert _reservas_de_pila(texto) == ({}, esperado)
+
+
+def test_un_comentario_que_solo_nombra_la_reserva_no_cuenta_como_uso() -> None:
+    """Un comentario que menciona la palabra ``reserva`` no es una sentencia que use el arreglo.
+
+    Regla:
+        El uso se busca en el codigo, sin los comentarios: documentar la reserva no la convierte en usada.
+
+    Ejemplo:
+        ``/* reserva el marco */`` dentro de la funcion no impide que la reserva marcada se cuente.
+    """
+    texto = _funcion_con_reserva(MARCA_RESERVA + DECLARACION_RESERVA, "    /* reserva el marco */\n")
+    assert _reservas_de_pila(texto) == ({("func_800000A0", RESERVA_DE_PILA): 1}, [])
+
+
+def test_el_comentario_fijo_que_no_precede_a_una_declaracion_de_reserva_se_rechaza() -> None:
+    """La marca debe ir encima de ``s32 reserva[N];``; encima de otra cosa es un error de marcado.
+
+    Regla:
+        Condicion (d): el comentario fijo localiza una declaracion; sobre cualquier otra linea, o como ultima
+        linea de una funcion sin cierre, no marca nada.
+
+    Ejemplo:
+        El comentario fijo encima de ``s32 otra;`` o al final del texto da un incumplimiento.
+    """
+    encima_de_otra = _funcion_con_reserva(MARCA_RESERVA + "    s32 otra;\n")
+    esperado = [f"func_800000A0: {MENSAJE_MARCA_SIN_DECLARACION}"]
+    assert _reservas_de_pila(encima_de_otra) == ({}, esperado)
+    sin_cierre = f"s32 func_800000A0(s32 a)\n{{\n{MARCA_RESERVA}"
+    assert _reservas_de_pila(sin_cierre) == ({}, esperado)
+
+
+def test_una_cabecera_de_reserva_sin_el_marco_ni_la_cifra_se_rechaza() -> None:
+    """La cabecera de la funcion debe decir el marco del original y la cifra sin la local.
+
+    Regla:
+        Condicion (d): sin ``Reserva de pila:``, sin el ``addiu sp`` y sin la medicion, la reserva no esta
+        justificada y se rechaza, un mensaje por cada dato que falta.
+
+    Ejemplo:
+        Una cabecera que solo dice ``Suma uno.`` da tres incumplimientos.
+    """
+    texto = _funcion_con_reserva(MARCA_RESERVA + DECLARACION_RESERVA, cabecera="/* Suma uno. */\n")
+    assert _incumplimientos_de_reservas(texto) == [
+        "func_800000A0: la cabecera de la reserva de pila no lleva `Reserva de pila:`",
+        "func_800000A0: la cabecera de la reserva de pila no lleva `addiu sp`",
+        "func_800000A0: la cabecera de la reserva de pila no lleva `sin la local`",
+    ]
+
+
+def test_una_reserva_declarada_dentro_de_una_macro_no_cuenta() -> None:
+    """Las lineas de una macro se vacian antes de buscar: una reserva dentro de ``#define`` no es una local.
+
+    Regla:
+        La forma regula locales de funciones; el texto de una macro no es una declaracion.
+
+    Ejemplo:
+        Un ``#define`` con ``s32 reserva[2];`` en su cuerpo no produce cuentas ni incumplimientos.
+    """
+    texto = "#define M \\\n    s32 reserva[2];\n\n" + _funcion_con_reserva("")
+    assert _reservas_de_pila(texto) == ({}, [])
+
+
+def test_la_deteccion_de_reservas_se_limita_a_los_arreglos_de_s32_que_empiezan_por_reserva() -> None:
+    """Un arreglo de bytes o una estructura sin uso, o con otro nombre, no entra en la deteccion.
+
+    Regla:
+        Limite documentado de la prueba: solo se vigila ``s32 reserva...[N];``. Que ``u8 reserva[8];`` o
+        ``s32 relleno[2];`` pasen sin comentario no los regula: el documento tampoco los admite.
+
+    Ejemplo:
+        ``u8 reserva[8];`` y ``s32 relleno[2];`` sin uso no producen incumplimientos de esta forma.
+    """
+    texto = _funcion_con_reserva("    u8 reserva[8];\n    s32 relleno[2];\n")
+    assert _reservas_de_pila(texto) == ({}, [])
+
+
+FILA_RESERVA = ("src/inventado.c", 1)
+
+
+def test_toda_declaracion_de_reserva_sin_fila_en_la_tabla_se_rechaza() -> None:
+    """Una reserva declarada en ``src/`` que no esta en la tabla del documento es una diferencia.
+
+    Regla:
+        Condicion (e), primer sentido del cruce: toda declaracion con la frase fija tiene su fila.
+
+    Ejemplo:
+        ``func_800000A0`` con una reserva y la tabla vacia da una diferencia.
+    """
+    en_src = {("func_800000A0", RESERVA_DE_PILA): FILA_RESERVA}
+    assert _diferencias_con_la_tabla(en_src, {}) == [
+        "('func_800000A0', 'reserva de pila'): declarada en src sin fila en la tabla"
+    ]
+
+
+def test_toda_fila_de_reserva_sin_declaracion_en_src_se_rechaza() -> None:
+    """Una fila de la tabla cuya reserva ya no existe en ``src/`` es una diferencia.
+
+    Regla:
+        Condicion (e), segundo sentido del cruce: toda fila de esta forma tiene su declaracion.
+
+    Ejemplo:
+        La tabla con ``func_800000A0`` y ``src/`` sin reservas da una diferencia.
+    """
+    tabla = {("func_800000A0", RESERVA_DE_PILA): FILA_RESERVA}
+    assert _diferencias_con_la_tabla({}, tabla) == [
+        "('func_800000A0', 'reserva de pila'): fila de la tabla sin declaracion en src"
+    ]
+
+
+def test_una_fila_de_reserva_con_otro_numero_o_archivo_se_rechaza() -> None:
+    """El numero de reservas y el archivo de la fila deben ser los reales de ``src/``.
+
+    Regla:
+        Condicion (e): una funcion con tres reservas separadas cuenta tres, no una; y la fila nombra el
+        archivo donde esta la funcion.
+
+    Ejemplo:
+        Tres reservas en ``src`` y la fila con 1 dan una diferencia; la fila con otro archivo, tambien.
+    """
+    clave = ("func_800000A0", RESERVA_DE_PILA)
+    assert len(_diferencias_con_la_tabla({clave: ("src/inventado.c", 3)}, {clave: FILA_RESERVA})) == 1
+    assert len(_diferencias_con_la_tabla({clave: FILA_RESERVA}, {clave: ("src/otro.c", 1)})) == 1
+
+
+def test_una_fila_de_reserva_con_la_forma_equivocada_se_rechaza_en_los_dos_sentidos() -> None:
+    """Una fila con la forma de otra tecnica deja sin fila a la reserva y sin declaracion a la fila.
+
+    Regla:
+        El cruce es por (funcion, forma): confundir la forma de la fila no pasa desapercibido.
+
+    Ejemplo:
+        La reserva de ``func_800000A0`` con una fila ``envoltura`` da dos diferencias.
+    """
+    en_src = {("func_800000A0", RESERVA_DE_PILA): FILA_RESERVA}
+    tabla = {("func_800000A0", ENVOLTURA): FILA_RESERVA}
+    assert len(_diferencias_con_la_tabla(en_src, tabla)) == 2
+
+
+def test_una_fila_de_reserva_que_coincide_con_src_no_da_diferencias() -> None:
+    clave = ("func_800000A0", RESERVA_DE_PILA)
+    assert _diferencias_con_la_tabla({clave: FILA_RESERVA}, {clave: FILA_RESERVA}) == []
+
+
+def test_la_tabla_del_documento_coincide_con_las_reservas_de_pila_de_src() -> None:
+    """Las filas de reserva de pila del documento son exactamente las declaraciones de ``src/``."""
+    de_reserva = {k: v for k, v in _referencias_en_src().items() if k[1] == RESERVA_DE_PILA}
+    en_tabla = {k: v for k, v in _tabla_del_documento().items() if k[1] == RESERVA_DE_PILA}
+    assert en_tabla
+    assert _diferencias_con_la_tabla(de_reserva, en_tabla) == []
+
+
+def test_toda_reserva_de_pila_de_src_cumple_la_regla() -> None:
+    """Toda reserva de ``src/`` lleva el comentario fijo, no se usa y su cabecera dice el marco y la cifra."""
+    fallos = [
+        f"{archivo.name}: {fallo}"
+        for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c"))
+        for fallo in _incumplimientos_de_reservas(archivo.read_text(encoding="utf-8"))
+    ]
+    assert fallos == []

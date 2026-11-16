@@ -650,11 +650,14 @@ void func_8003861C(s32 idx)
  * bucle que impide reordenar la lectura del limite y el incremento; en ese orden el incremento
  * llena el hueco de la carga, como en el original.
  * La forma del fuente original que producia este reparto se desconoce.
+ *
+ * Reserva de pila: el marco del original es de 0x50 bytes (addiu sp en 0x80038884) y el del C sin la
+ * local, de 0x48; la cifra medida sin la local es 154 y con ella 0.
  */
 void func_80038884(s32 idx, s32 modo)
 {
     Objeto* v[3];
-    /* Sin uso: el original deja 8 bytes de pila libres entre los argumentos y los registros salvados. */
+    /* Reserva de pila: local sin uso que completa el marco del original. */
     s32 reserva[2];
     Objeto** p;
     Objeto** celda_par_completo;

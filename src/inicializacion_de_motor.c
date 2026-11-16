@@ -543,12 +543,15 @@ s32 func_800453D0(u8** p)
  * al objeto (15 usos sobre 822, 0,055), de modo que x0 ocupa $fp y el objeto se queda en la pila como en el
  * original. Con 7 usos (0,036) el objeto roba $fp.
  * La forma del fuente original que producia este reparto se desconoce.
+ *
+ * Reserva de pila: el marco del original es de 0x58 bytes (addiu sp en 0x800454A0) y el del C sin la
+ * local, de 0x50; la cifra medida sin la local es 569 y con ella 0.
  */
 u32 func_80045498(Objeto* o, u8* guion, BloqueTrabajo* cursor)
 {
     /* pos es la pluma de texto (x en +0, y en +4) que func_800450E8 lee por la direccion. */
     PosicionTexto pos;
-    /* Reserva sin uso: el original deja 8 bytes entre la pluma y la lista de botones. */
+    /* Reserva de pila: local sin uso que completa el marco del original. */
     s32 reserva[2];
     /* Hasta tres caracteres del nombre de un boton, terminados en cero. */
     u8 boton[3];
