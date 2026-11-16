@@ -238,11 +238,19 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * - La suma de radios y su cuadrado se calculan en `i`, la misma variable que despues recibe el indice de arista: el
  *   original deja suma y producto en `t2` y el segundo resultado de SquareRoot0 tambien va a `t2` (0x80017754 a
  *   0x80017774 y 0x80018384). Los sumandos van con el objeto actual primero.
- * - La rama de dos objetos marcados con 8 (`mejor` y el actual) escribe su propia cola con `mejor`, `mejor_d` y
- *   `salida_y` (`move s3,a1`, `lw t8,0x78(s1)` y `move s7,v1`, 0x8001858C a 0x80018598): reutiliza los registros de
- *   `w->actual` y de la distancia ya cargados, mientras que la cola de las demas ramas (0x8001859C) los relee de
- *   memoria. Cada camino emite codigo propio, tambien en el original, de modo que la sentencia repetida no es una
- *   referencia sin codigo.
+ * - Las asignaciones `mejor = w->actual; mejor_d = w->dist2; salida_y = w->caja;` se escriben en las tres ramas que
+ *   terminan la seleccion (la de dos objetos marcados con 8 y las dos restantes) y no generan codigo propio por
+ *   copia: el original tiene dos colas, la de la rama de dos objetos marcados con 8 (`addu s3,a1,zero`, `lw
+ *   t8,0x78(s1)`, `j` y `addu s7,v1,zero`, 0x8001858C a 0x80018598), que reutiliza los registros de `w->actual` y de
+ *   la distancia ya cargados, y la comun a las demas (`lw t9,0x78(s1)`, `lw s3,0x88(s1)`, `lw s7,0xC4(s1)` y `j`,
+ *   0x8001859C a 0x800185A8), que los relee de memoria. Volcados de `cc1` de la funcion: con `-dj` las tres copias
+ *   cargan `salida_y` de memoria (la carga de `w + 196` hacia el pseudo 85, insns 2775, 2789 y 2844), cada una con su
+ *   cola; con `-dJ`, tras el salto cruzado y la planificacion, las colas de las dos ramas restantes siguen
+ *   recargando de `0x88(s1)` y `0xC4(s1)` y la de la rama de dos marcados queda en `move s7,v1` (insn 2775) con
+ *   un salto a la etiqueta compartida (3147), las dos colas del original y sin la carga repetida. Sin la cola propia
+ *   (la rama escribe solo la comprobacion y cae en la cola de las demas) la puntuacion es 1403 frente a 943 con
+ *   ella. Las asignaciones replicadas son codigo real de la funcion, con las mismas variables y sin valores ni
+ *   almacenes nuevos. La forma del fuente original que producia este reparto se desconoce.
  * - Las esquinas de D_80069D18 son una union (`c.z` y `c.x` por separado, `w` como palabra) y gte_NormalClip lee
  *   `D_80069D18[n].w`: el acceso por miembro lleva el desplazamiento dentro de la carga (`lw t8,4(s2)`, 0x8001805C) en
  *   vez de calcular `s2 + 4` como valor con `*(u32*)&D_80069D18[n]`.
@@ -590,13 +598,19 @@ ciclo_aristas:
                 if (!(w->dist2 < mejor_d)) {
                     goto siguiente;
                 }
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 mejor = w->actual;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 mejor_d = w->dist2;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 salida_y = w->caja;
                 goto siguiente;
             }
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             mejor = w->actual;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             mejor_d = w->dist2;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             salida_y = w->caja;
         } else {
             if (mejor != 0) {
@@ -607,8 +621,11 @@ ciclo_aristas:
                     goto siguiente;
                 }
             }
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             mejor = w->actual;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             mejor_d = w->dist2;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             salida_y = w->caja;
         }
 siguiente:
