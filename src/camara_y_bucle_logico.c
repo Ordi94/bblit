@@ -494,7 +494,14 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * `.sched`) desaparece del almacen y la carga de `D_80069402` sigue delante de el; se supone, sin verificar,
  * que es porque la base del almacen es un pseudo que el planificador resuelve al simbolo `D_8006D928`, de
  * modo que los dos accesos no se solapan. Con la mascara de la prueba de bits en una local propia
- * (0xba0..0xbb8) y con la raiz de la distancia en otra local (0x1324..0x13a8) la cifra empeora.
+ * (0xba0..0xbb8) y con la raiz de la distancia en otra local (0x1324..0x13a8) la cifra empeora. Medido sobre la raiz
+ * de la distancia: copiar `d` a `i` antes del cociente da 2690, y escribir los tres almacenes de `dir` antes de
+ * la llamada a SquareRoot0 da 2970 (el copiado del resultado sigue saliendo antes de los movimientos de argumentos);
+ * con la prueba de la mascara guardada en la local `hit` dentro de la condicion (0xba0..0xbb8) da 2960; leer
+ * `D_80069402` antes del almacen de las banderas en la rama del giro a la derecha (0xcc4..0xd30) no cambia la
+ * cifra. Se supone, sin verificar con el volcado, que el planificador deja el copiado del resultado de la llamada
+ * delante de los movimientos de argumentos porque ambos tienen la misma prioridad y gana el de menor orden en el
+ * fuente.
  */
 /*
  * Acerca la altura del punto de vista a la banda [base - 0x64, base + 0x64] desplazada por p4: si queda por encima
