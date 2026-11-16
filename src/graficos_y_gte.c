@@ -222,28 +222,32 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1623 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 101 de
- * operando, 0 reordenadas y 87 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones). El marco
+ * Pendiente: puntuacion 943 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 101 de
+ * operando, 0 reordenadas y 63 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones). El marco
  * del C es el del original, de 0x50 bytes, y el reparto de los registros salvados coincide con el del original
  * (`a` s5, `v` s4, `w` s1, direccion de D_80069D18 s2, `mejor` s3, constante 0x2000000 s6, `mejor_d` s7, `dif` fp).
- * El par `v++; v--;` de antes del retorno no genera codigo (la salida de cc1 tiene el mismo numero de instrucciones
- * con y sin el par) y decide el orden de asignacion de `a` y `v`. Causa medida en el volcado de `cc1` (prioridad
- * `floor_log2(R) * R / L` de `global-alloc`): sin el par, `a` (pseudo 80, R 25, L 1670, prioridad 0,0599) se asigna
- * antes que `v` (pseudo 81, R 25, L 1682, 0,0595) y toma s4; con el par, `v` pasa a R 29 y L 842 (0,1378), se asigna
- * antes que `a`, toma s4 y deja s5 a `a`, como el original. Puntuacion sin el par: 1786. La forma del fuente original
- * que producia este reparto se desconoce.
+ * El orden de `a` y `v` lo decide la prioridad `floor_log2(R) * R / L` de `global-alloc` (volcado de `cc1`): `a`
+ * (pseudo 80) tiene R 23 y L 1672 (0,0550) y `v` (pseudo 81) R 25 y L 1684 (0,0594), de modo que `v` se asigna antes
+ * y toma s4. Con la base del primer vector leida de `a` en vez de `w->a` (la forma de abajo), `a` tiene R 25 y L
+ * 1670 (0,0599), se asigna antes que `v` (R 25, L 1682, 0,0595) y los registros salen intercambiados.
  * Formas que reproducen el original; entre parentesis, la puntuacion que da este mismo C sin ella:
+ * - La base del primer vector de la pared (`param.trans` del objeto) se lee por el miembro recien almacenado
+ *   (`GEO_CARGAR_W(&w->a->param.trans)` tras `w->a = a`): el original copia `a` y suma sobre la copia (`move v0,s5`
+ *   en el hueco de retardo de 0x80017778 y `addiu v0,v0,0xe4`, 0x80017788); la lectura por la local da un `addiu`
+ *   directo desde `a` y un `nop` en ese hueco, y deja a `a` con mas referencias que `v` (1711 con `&a->param.trans`).
+ * - La suma de radios y su cuadrado se calculan en `i`, la misma variable que despues recibe el indice de arista: el
+ *   original deja suma y producto en `t2` y el segundo resultado de SquareRoot0 tambien va a `t2` (0x80017754 a
+ *   0x80017774 y 0x80018384). Los sumandos van con el objeto actual primero.
  * - La rama de dos candidatos marcados con 8 (`mejor` y el actual) escribe su propia cola con `mejor`, `mejor_d` y
  *   `salida_y` (`move s3,a1`, `lw t8,0x78(s1)` y `move s7,v1`, 0x8001858C a 0x80018598): reutiliza los registros de
  *   `w->actual` y de la distancia ya cargados, mientras que la cola de las demas ramas (0x8001859C) los relee de
  *   memoria. Cada camino emite codigo propio, tambien en el original, de modo que la sentencia repetida no es una
- *   referencia sin codigo (2248 sin ella).
+ *   referencia sin codigo.
  * - Las esquinas de D_80069D18 son una union (`c.z` y `c.x` por separado, `w` como palabra) y gte_NormalClip lee
  *   `D_80069D18[n].w`: el acceso por miembro lleva el desplazamiento dentro de la carga (`lw t8,4(s2)`, 0x8001805C) en
- *   vez de calcular `s2 + 4` como valor con `*(u32*)&D_80069D18[n]` (2448 sin ella).
+ *   vez de calcular `s2 + 4` como valor con `*(u32*)&D_80069D18[n]`.
  * - La direccion de `k` se guarda en `kp` antes del bucle de aristas y es la que se pasa a gte_NormalClip: el
- *   original la calcula una vez antes de la etiqueta (`addiu a0,sp,0x18`, 0x80017F5C) y no dentro del bucle (1783 sin
- *   `kp`).
+ *   original la calcula una vez antes de la etiqueta (`addiu a0,sp,0x18`, 0x80017F5C) y no dentro del bucle.
  * - `k` es una sola variable que vive en memoria (se pasa su direccion a gte_NormalClip): el contador de impactos
  *   del bucle de puntos, los resultados de NormalClip, el primer resultado de SquareRoot0 y la bandera de impacto
  *   comparten la ranura 0x18(sp) en el original (0x80017B28, 0x80017ED4, 0x80018344 y 0x80018404).
@@ -272,11 +276,6 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  *   prueba de `lista` (0x8001758C) con la copia hecha en el hueco de retardo (`move v0,t8`, 0x80017554) en vez de
  *   releerla; aqui las dos entradas pasan por la relectura (0x80017580). Se supone, sin verificar, que lo produce la
  *   forma de su prueba.
- * - El original copia `a` antes de sumar el desplazamiento de `param.trans` (`move v0,s5` en el hueco de retardo de
- *   0x80017778 y `addiu v0,v0,0xe4` en 0x80017788), con un `addiu` directo aqui y un `nop` en ese hueco.
- * - El producto de `t2` (0x80017754 a 0x80017774) usa otros temporales: el original deja la suma y el producto en
- *   `t2` y carga la distancia en `v0` tras el `mult`; aqui los usa en `v0` y `v1`. Se supone, sin verificar, que es
- *   el orden de asignacion de los temporales del bloque.
  * - El orden de las copias de los parametros del prologo (`move s3,zero` y `li s7,-1` antes de `move s1,a2`).
  * - `D_80069380` figura como `%gp_rel(D_80069380)(gp)` en el C y como `0x60(gp)` en el original (13 lineas marcadas
  *   de operando). Se supone, sin verificar, que los bytes son los mismos.
@@ -615,8 +614,6 @@ ciclo_aristas:
 siguiente:
         w->actual = w->actual->sig10;
     }
-    v++;
-    v--;
     if (mejor != 0) {
         v->vx = salida.vx;
         v->vz = salida.vz;
