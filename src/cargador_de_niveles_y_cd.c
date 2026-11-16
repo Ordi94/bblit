@@ -862,7 +862,14 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             cursor += 4;
                             break;
                         case 0x24: {
-                            /* El modelo se usa solo hasta la llamada: un temporal propio, no `aux`. */
+                            /*
+                             * El original tiene un cuerpo por etiqueta (dos entradas de la tabla de saltos:
+                             * 0x800423E8 para 0x24 y 0x80042424 para 0x40) que comparten solo la cola del
+                             * almacen de la clase en 0x8004245C; por eso el C repite el cuerpo y no es una
+                             * sentencia replicada. Unidos en un solo cuerpo con la clase elegida por la
+                             * etiqueta la cifra sube a 30877. El modelo se usa solo hasta la llamada: un
+                             * temporal propio, no `aux`.
+                             */
                             u8* modelo_gs;
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
