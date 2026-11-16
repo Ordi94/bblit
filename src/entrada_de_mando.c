@@ -259,9 +259,9 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2715 con la configuracion versionada (g = 8 del archivo): 48 diferencias de operando, 6
- * lineas reordenadas y 317 insertadas o borradas. Reserva de pila: el marco del original es de 0x28 bytes (`addiu
- * sp` en 0x80040494) y el del C sin la local, de 0x20; la cifra medida sin la local es 2789 y con ella 2715. El
+ * Pendiente: puntuacion 1835 con la configuracion versionada (g = 8 del archivo): 51 diferencias de operando, 1
+ * linea reordenada y 281 insertadas o borradas. Reserva de pila: el marco del original es de 0x28 bytes (`addiu
+ * sp` en 0x80040494) y el del C sin la local, de 0x20; la cifra medida sin la local es 1909 y con ella 1835. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
@@ -273,6 +273,11 @@ void func_80040430(s8* contador, u16 mascara)
  * (`lbu v0,0xc(s1)` en 0x80040520 y el almacen en 0x80040528), y la base de `est` se calcula tras las tres
  * llamadas de borrado, donde el original repite `lui s0` (0x80040564). Con la lectura en una local de un solo
  * uso, o sin ella, el compilador vuelve a colocar la carga tras el almacen.
+ *
+ * Una sola variable (`bits`) guarda los botones de direccion en la rama de grabacion y en la de lectura de la BIOS:
+ * el original usa el mismo registro (s1) en las dos (`lhu s1` en 0x800401DC y `move s1,s2` en 0x800402C0), y con dos
+ * variables la de la rama de grabacion cae en un temporal y la otra intercambia s1 y s2 con `hi` (2715 con dos
+ * variables y 1835 con una).
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
  * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0); la lectura del identificador D_8006CFF1 en
@@ -307,7 +312,6 @@ void func_8004048C(void)
     u32 id;
     u32 v;
     s32 bits;
-    s32 bits2;
     s32 hi;
     s32 centro;
     s32 eje;
@@ -412,7 +416,7 @@ normal:
         D_80069672 = 0;
         cf2 = D_8006CFF2;
         hi = (cf2 ^ 0xFF) << 8;
-        bits2 = hi;
+        bits = hi;
         cf3 = D_8006CFF3;
         lo = cf3 ^ 0xFF;
         b = lo | hi;
@@ -434,9 +438,9 @@ normal:
             } else if (hi & 0x2000) {
                 ESTADO_PRINCIPAL->mando.eje_x = 0x7F;
             }
-            if (bits2 & 0x1000) {
+            if (bits & 0x1000) {
                 W14 = 0x7F;
-            } else if (bits2 & 0x4000) {
+            } else if (bits & 0x4000) {
                 W14 = -0x80;
             }
             return;
