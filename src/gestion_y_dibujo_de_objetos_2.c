@@ -921,6 +921,16 @@ void func_80038E84(s32 idx, s32 paso)
  * la forma `if (== -1) { n = 1; } else { n = producto; }` en los cuatro temporizadores `n` no vive durante la
  * comparacion y toma v0 como el original (1465). Con la nueva forma en un solo temporizador la cifra no cambia
  * (1525): `n` es un solo pseudo compartido y los otros tres siguen en conflicto.
+ * Copia propia del valor mostrado de la barra 0 (`move a0,v1`, 0x800390F4 del original; medido sobre el C
+ * vigente): una local `u8` copiada de `mostrado` se propaga (el compilador usa v1, sin copia) y la cifra
+ * sube de 1300 a 1725; la misma local `s32` en lugar de `e_rama` deja la base en a1 y `mostrado` en a0 como
+ * el original, pero la carga va directa a a0 sin copia y la cifra es 1825; una local `s16` da 2110 (extension
+ * de signo y `andi` de mas) y una `u16` solo para esa barra 1610 (relectura de D_80069525); declarar
+ * `mostrado` como `s32` en todas las barras da 3815. Leer `D_80069525` en la comparacion en lugar de
+ * `mostrado`, o mover `mostrado = D_80069525` tras el recorte del estado, deja 1300 con el mismo codigo. Se
+ * supone, sin verificar, que la copia del original no es una copia vista por el optimizador sino una segunda
+ * lectura convertida en copia tras la asignacion de registros, y que para ello la segunda lectura no debe
+ * quedar unida a la primera en el optimizador.
  */
 /*
  * Una vez por cuadro de juego, con el estado principal distinto de 3, sin pantalla pedida
