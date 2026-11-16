@@ -392,12 +392,12 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 29937 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 29032 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
- * caso del de su tabla. Medido: el codigo generado tiene 2958 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2812 coinciden en el mnemonico (95,2 %) y 1923 son
- * identicas (65,1 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
+ * caso del de su tabla. Medido: el codigo generado tiene 2956 instrucciones frente a 2955 del
+ * original, y alineando el texto de ambos 2816 coinciden en el mnemonico (95,3 %) y 1930 son
+ * identicas (65,3 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
  * van en el orden de direcciones de las tablas de saltos del original: el orden del fuente decide
  * el orden de emision, por eso los casos no van en orden numerico.
  *
@@ -418,7 +418,7 @@ extern u8* D_80069538;
  * constante no llega a registro.
  *
  * Reserva de pila: el marco del original es de 0x210 bytes (`addiu sp` en 0x800415A0) y el del C sin
- * la local, de 0x208; la cifra medida sin la local es 31052 y con ella 29937.
+ * la local, de 0x208; la cifra medida sin la local es 30147 y con ella 29032.
  *
  * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `datos`.
  * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
@@ -973,9 +973,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
-                    do {
-                        etiqueta = *cursor++;
-                        switch (etiqueta) {
+                    while (*cursor != 0x2E) {
+                        switch (*cursor++) {
                         case 0x24:
                             CopiarBytes(cursor, campos, 8);
                             desp_campo = *(s32*)campos_mem;
@@ -1049,7 +1048,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         default:
                             break;
                         }
-                    } while (*cursor != 0x2E);
+                    }
                     break;
 
                 case 0x29:
@@ -1089,9 +1088,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
-                    do {
-                        etiqueta = *cursor++;
-                        switch (etiqueta) {
+                    while (*cursor != 0x2E) {
+                        switch (*cursor++) {
                         case 0x01:
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
@@ -1182,7 +1180,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             cursor += 0xC;
                             break;
                         }
-                    } while (*cursor != 0x2E);
+                    }
                     break;
 
                 case 0x05:
@@ -1241,9 +1239,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
-                    do {
-                        etiqueta = *cursor++;
-                        switch (etiqueta) {
+                    while (*cursor != 0x2E) {
+                        switch (*cursor++) {
                         case 0x3C:
                             CopiarBytes(cursor, campos, 4);
                             D_800695B4 = campos[2];
@@ -1285,7 +1282,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             D_8006969C = D_800694B0 - 0x80;
                             break;
                         }
-                    } while (*cursor != 0x2E);
+                    }
                     break;
 
                 case 0x49:
@@ -1332,9 +1329,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
-                    do {
-                        etiqueta = *cursor++;
-                        switch (etiqueta) {
+                    while (*cursor != 0x2E) {
+                        switch (*cursor++) {
                         case 0x16:
                             CopiarBytes(cursor, campos, 8);
                             EN(s32, nodo, 8) = *(s32*)campos_mem;
@@ -1405,7 +1401,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         default:
                             break;
                         }
-                    } while (*cursor != 0x2E);
+                    }
                     break;
 
                 case 0x08:
@@ -1432,9 +1428,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         ResolverReferenciasContenedor((ContenedorCarga*)entidad);
                         break;
                     }
-                    do {
-                        etiqueta = *cursor++;
-                        switch (etiqueta) {
+                    while (*cursor != 0x2E) {
+                        switch (*cursor++) {
                         case 0x1F:
                             CopiarBytes(cursor, campos, 1);
                             EN(u16, entidad, 0x26) = campos_mem[0];
@@ -1812,7 +1807,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         default:
                             break;
                         }
-                    } while (*cursor != 0x2E);
+                    }
                     ResolverReferenciasContenedor((ContenedorCarga*)entidad);
                     break;
 
