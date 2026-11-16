@@ -220,21 +220,21 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
     return 0;
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 244 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 103 de
- * operando, 0 reordenadas y 40 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones). El marco
- * del C es el del original, de 0x50 bytes, y el reparto de los registros salvados coincide con el del original
- * (`a` s5, `v` s4, `w` s1, direccion de D_80069D18 s2, `mejor` s3, constante 0x2000000 s6, `mejor_d` s7, `dif` fp).
+ * Coincide con el original byte a byte con la configuracion versionada (g = 8 del archivo); el original ocupa
+ * 0x11EC bytes (1147 instrucciones) y `diff` solo avisa de 12 referencias en forma numerica a `D_80069380`
+ * (`%gp_rel(D_80069380)(gp)` en el C y `0x60(gp)` en el original), con los mismos bytes. El marco es el del original,
+ * de 0x50 bytes, y el reparto de los registros salvados tambien (`a` s5, `v` s4, `w` s1, direccion de D_80069D18 s2,
+ * `mejor` s3, constante 0x2000000 s6, `mejor_d` s7, `dif` fp).
  * El orden de `a` y `v` lo decide la prioridad `floor_log2(R) * R / L` de `global-alloc` (volcado de `cc1`): `a`
- * (pseudo 80) tiene R 23 y L 1672 (0,0550) y `v` (pseudo 81) R 25 y L 1684 (0,0594), de modo que `v` se asigna antes
+ * (pseudo 80) tiene R 23 y L 1676 (0,0549) y `v` (pseudo 81) R 25 y L 1688 (0,0592), de modo que `v` se asigna antes
  * y toma s4. Con la base del primer vector leida de `a` en vez de `w->a` (la forma de abajo), `a` tiene R 25 y L
- * 1670 (0,0599), se asigna antes que `v` (R 25, L 1682, 0,0595) y los registros salen intercambiados.
+ * 1674 (0,0597), se asigna antes que `v` (R 25, L 1686, 0,0593) y los registros salen intercambiados.
  * Formas que reproducen el original; entre parentesis, la puntuacion que da este mismo C sin ella:
  * - La base del primer vector de la pared (`param.trans` del objeto) se lee por el miembro recien almacenado
  *   (`GEO_CARGAR_W(&w->a->param.trans)` tras `w->a = a`): el original copia `a` y suma sobre la copia (`move v0,s5`
  *   en el hueco de retardo de 0x80017778 y `addiu v0,v0,0xe4`, 0x80017788); la lectura por la local da un `addiu`
- *   directo desde `a` y un `nop` en ese hueco, y deja a `a` con mas referencias que `v` (1012 con `&a->param.trans`).
+ *   directo desde `a` y un `nop` en ese hueco, y deja a `a` con mas referencias que `v` (828 con `&a->param.trans`).
  * - La suma de radios y su cuadrado se calculan en `i`, la misma variable que despues recibe el indice de arista: el
  *   original deja suma y producto en `t2` y el segundo resultado de SquareRoot0 tambien va a `t2` (0x80017754 a
  *   0x80017774 y 0x80018384). Los sumandos van con el objeto actual primero.
@@ -244,11 +244,11 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  *   t8,0x78(s1)`, `j` y `addu s7,v1,zero`, 0x8001858C a 0x80018598), que reutiliza los registros de `w->actual` y de
  *   la distancia ya cargados, y la comun a las demas (`lw t9,0x78(s1)`, `lw s3,0x88(s1)`, `lw s7,0xC4(s1)` y `j`,
  *   0x8001859C a 0x800185A8), que los relee de memoria. Volcados de `cc1` de la funcion: con `-dj` las tres copias
- *   cargan `salida_y` de memoria (la carga de `w + 196` hacia el pseudo 85, insns 2777, 2791 y 2846), cada una con su
+ *   cargan `salida_y` de memoria (la carga de `w + 196` hacia el pseudo 86, insns 2780, 2794 y 2849), cada una con su
  *   cola; con `-dJ`, tras el salto cruzado y la planificacion, las colas de las dos ramas restantes siguen
- *   recargando de `0x88(s1)` y `0xC4(s1)` y la de la rama de dos marcados queda en `move s7,v1` (insn 2777) con
- *   un salto a la etiqueta compartida (3155), las dos colas del original y sin la carga repetida. Sin la cola propia
- *   (la rama escribe solo la comprobacion y cae en la cola de las demas) la puntuacion es 704 frente a 244 con
+ *   recargando de `0x88(s1)` y `0xC4(s1)` y la de la rama de dos marcados queda en `move s7,v1` (insn 2780) con
+ *   un salto a la etiqueta compartida (3158), las dos colas del original y sin la carga repetida. Sin la cola propia
+ *   (la rama escribe solo la comprobacion y cae en la cola de las demas) la puntuacion es 520 frente a 0 con
  *   ella. Las asignaciones replicadas son codigo real de la funcion, con las mismas variables y sin valores ni
  *   almacenes nuevos. La forma del fuente original que producia este reparto se desconoce.
  * - Las esquinas de D_80069D18 son una union (`c.z` y `c.x` por separado, `w` como palabra) y gte_NormalClip lee
@@ -282,22 +282,22 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  *   antes de cada prueba (0x80017518 a 0x80017520 y 0x80017580 a 0x80017588), y desde 0x80017550 salta a la
  *   prueba con la copia hecha en el hueco de retardo (`move v0,t8`, 0x80017554). Una variable corta con signo se
  *   compara por una copia del registro, sin la extension a 32 bits que pide la variante sin signo (que da `lhu v0`
- *   directo); con `u16` la puntuacion de este mismo C es 794.
- * - `dif = &w->dif;` es la primera sentencia: con ella tercera, tras `mejor` y `mejor_d`, la puntuacion es 393. Residuo
- *   medido en el diff (de mayor a menor numero de lineas): el orden de las copias de los parametros del prologo (el
- *   original hace `move s3,zero`, `li s7,-1` y despues `move s1,a2` y `addiu s8,s1,0x50`; aqui `move s1,a2` y
- *   `addiu s8,s1,0x50` van delante, 8 lineas marcadas) y `D_80069380`, que figura como `%gp_rel(D_80069380)(gp)` en
- *   el C y como `0x60(gp)` en el original (12 lineas marcadas de operando). Se supone, sin verificar, que los bytes
- *   de `D_80069380` son los mismos y que el orden del prologo lo decide la prioridad de planificacion del bloque
- *   inicial, que el orden de las sentencias de apertura solo mueve en parte.
+ *   directo); con `u16` la puntuacion de este mismo C es 610.
+ * - El parametro se llama `w0` y `w` es una copia local asignada tras `mejor = 0;` y `mejor_d = 0xFFFFFFFF;` y antes
+de `dif = &w->dif;`: el original hace `move s3,zero` (0x8001748C), `li s7,-1` (0x80017498) y despues `move s1,a2`
+ *   (0x800174A0) y `addiu s8,s1,0x50` (0x800174A8). Se supone, sin verificar, que la copia local sobrevive al
+ *   propagado de copias y por eso la copia del parametro se planifica detras de las dos inicializaciones. Sin la copia (el parametro se llama `w`) la
+ *   puntuacion es 244 con `dif` primera y 393 con `dif` tras `mejor_d`; con la copia y `w = w0; dif = &w->dif;`
+ *   delante de `mejor` tambien 244.
  *
  * Desliza el volumen de a por la velocidad v contra los objetos solidos de la lista cuyos indicadores coinciden con
  * mascara: para cada candidato lleva los cinco puntos del barrido a su sistema local, recorta la velocidad contra la
  * pared que cruzan y, si ninguno la cruza, usa la arista mas cercana. Devuelve el candidato elegido (el de menor
  * distancia, con preferencia por los marcados con 8) o 0.
  */
-Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
+Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w0, u32 mascara)
 {
+    ConsultaSondeo* w;
     Objeto* mejor;
     u32 mejor_d;
     s32 i;
@@ -308,9 +308,10 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
     s16 lista;
     SVECTOR* dif;
 
-    dif = &w->dif;
     mejor = 0;
     mejor_d = 0xFFFFFFFF;
+    w = w0;
+    dif = &w->dif;
     salida_y = 0;
     lista = 0;
     w->destino.vx = a->param.trans.vx + v->vx;
@@ -641,9 +642,6 @@ siguiente:
     }
     return mejor;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/graficos_y_gte", func_80017478);
-#endif
 
 /*
  * Estructura del original en los seis caminos de clasificacion del bucle (0x44c, 0x498, 0x4b4, 0x500,

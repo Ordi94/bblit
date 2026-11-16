@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 414 | 103232 |
+| Código del juego | 450 | 201416 | 415 | 107820 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 103232 de 201416 (51.25 %).
-Funciones marcadas `NON_MATCHING`: 19.
-Coherencia con el ensamblador: correcta (688 `glabel` en `asm/` + 414 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 107820 de 201416 (53.53 %).
+Funciones marcadas `NON_MATCHING`: 18.
+Coherencia con el ensamblador: correcta (687 `glabel` en `asm/` + 415 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -27,7 +27,7 @@ Coherencia con el ensamblador: correcta (688 `glabel` en `asm/` + 414 en C = 110
 | colision_y_terreno | 1 | 3 | 1 | 0 | 1432 | 12480 |
 | entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
 | gestion_y_dibujo_de_objetos | 4 | 31 | 3 | 8 | 11516 | 18624 |
-| graficos_y_gte | 3 | 18 | 1 | 0 | 7224 | 11812 |
+| graficos_y_gte | 3 | 19 | 0 | 0 | 11812 | 11812 |
 | inicializacion_de_motor | 1 | 11 | 1 | 4 | 4484 | 5276 |
 | interprete_de_eventos | 1 | 195 | 0 | 2 | 11788 | 11900 |
 | logica_de_niveles | 3 | 18 | 3 | 0 | 18264 | 60648 |
@@ -51,7 +51,7 @@ Coherencia con el ensamblador: correcta (688 `glabel` en `asm/` + 414 en C = 110
 | `src/gestion_y_dibujo_de_objetos_2.c` | 10 | 2 | 8 | 4632 | 10604 |
 | `src/gestion_y_dibujo_de_objetos_3.c` | 1 | 0 | 0 | 564 | 564 |
 | `src/gestion_y_dibujo_de_objetos_4.c` | 5 | 1 | 0 | 2508 | 3644 |
-| `src/graficos_y_gte.c` | 8 | 1 | 0 | 5484 | 10072 |
+| `src/graficos_y_gte.c` | 9 | 0 | 0 | 10072 | 10072 |
 | `src/graficos_y_gte_10.c` | 6 | 0 | 0 | 1076 | 1076 |
 | `src/graficos_y_gte_12.c` | 4 | 0 | 0 | 664 | 664 |
 | `src/inicializacion_de_motor.c` | 11 | 1 | 4 | 4484 | 5276 |
@@ -75,7 +75,6 @@ Coherencia con el ensamblador: correcta (688 `glabel` en `asm/` + 414 en C = 110
 - `LogicaObjetoMovil`: Pendiente: puntuacion 165 con la configuracion versionada (g = 8 del archivo; ejes 112 de operando, 4 reordenadas, 23 insertadas o borradas). Residuo medido en tres trozos: (1) bloque de limites del movil: el original deja el paso en a0, el limite alto en v0 y el bajo en v1 y conserva la copia `move v1,v0` tambien en la rama del paso negativo (0x1c4), mientras aqui el paso cae en v0, el limite alto en a0 y la suma de la rama negativa se pliega sin copia (la escritura directa de cada limite con su propia lectura del campo da el reparto del original en la rama positiva pero invierte v0 y v1 en l
 - `ResolverReferenciasContenedor`: Pendiente: puntuacion 335 con la configuracion versionada (g = 8 del archivo; ejes 17 de operando, 0 reordenadas, 108 insertadas o borradas; el diff no muestra ninguna linea de un solo lado, todas son diferencias de registro). Mismas instrucciones, mismo flujo y mismos huecos de retardo que el ensamblador; difiere solo en el reparto de registros. El original deja en las cinco variables del primer bucle (lista A, puntero a los campos, busqueda en B, fin de los campos e identificador) v1, a0, a1, a2 y a3, y el identificador en a3 en todos los bucles de busqueda; aqui salen v1 (busqueda), a0, a1 
 - `SondearTarjeta`: Pendiente: puntuacion 1255 con la configuracion versionada (g = 8 del archivo; ejes 72 de operando, 11 reordenadas, 216 insertadas o borradas). Flujo y distribucion de bloques iguales al original; quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante. Medido en el volcado del optimiza
-- `func_80017478`: Pendiente: puntuacion 244 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 103 de operando, 0 reordenadas y 40 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones). El marco del C es el del original, de 0x50 bytes, y el reparto de los registros salvados coincide con el del original (`a` s5, `v` s4, `w` s1, direccion de D_80069D18 s2, `mejor` s3, constante 0x2000000 s6, `mejor_d` s7, `dif` fp). El orden de `a` y `v` lo decide la prioridad `floor_log2(R) * R / L` de `global-alloc` (volcado de `cc1`): `a` (pseudo 80) tiene R 23 y L 1672 (0,0550) 
 - `func_8001E600`: Pendiente: puntuacion 905 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 55 insertadas o borradas). Difiere en: momento de dos lecturas y reparto de registros. Medido en los volcados de `cc1`: los seis pseudos globales (objeto, bloque, puntero al sprite, desplazamiento de color, indice y puntero al fotograma) se reparten como el original salvo el puntero al sprite (pseudo de 16 usos y vida 32, prioridad 2,0), que toma `a3` y en el original `v1`. Causa: el puntero crudo leido de +0x78 (pseudo local de 3 usos y vida 9) recibe `a3` de la asignacion local y 
 - `func_80020B90`: Pendiente: puntuacion 2310 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de escritura del C, cada una con la cifra que da la escritura contraria: (e) el almacen de la altura tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo arreglo que usa la rama contraria, y no como un simbolo aparte (`D_8006AD74`): el original calcula la base con `lui v1` y el simbolo suelto da `lui at` (2615); (d) en el bloque del apoyo por contacto (0x80023828..0x80023878 del original) el calculo de `giro.u.y` del apoyo, que 
 - `func_80026FEC`: Pendiente: puntuacion 1790 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 5 reordenadas, 252 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`) reproduce la carga del original del hijo y baja de 2625 a 2605. La resta de la X del portador en el barrido se escribe directa (`o->param.trans.vx - o->p70->param.trans.vx`): con una local previa (`x_portador`) la cifra es 1915. La traslacion en Z de la rama de
