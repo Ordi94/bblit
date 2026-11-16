@@ -3251,16 +3251,16 @@ siguiente:
 /*
  * Filtra el desplazamiento pedido d segun el eje (bit eje) y el sentido permitido (0x100, 0x200). La
  * pertenencia a los dos sentidos (w17C & 0x300) se prueba primero, con un salto propio, como en el
- * original, y por eso va en una sola condicion compuesta: con las pruebas de 0x100 y 0x200
- * encadenadas la funcion da 3165, con un if anidado 2495, con las dos pruebas en if separados 2895 y
- * con una sola condicion 1880. Se supone, sin verificar, que en las otras formas el compilador
- * elimina la prueba redundante de 0x300.
+ * original, y por eso va en una sola condicion compuesta con la prueba del eje: la anulacion del
+ * desplazamiento es una unica sentencia que sirve a las dos causas (eje no permitido o sentido
+ * prohibido), igual que el destino comun del original. Con las pruebas de 0x100 y 0x200 en if
+ * separados la funcion da 2895 puntos. Se supone, sin verificar, que en las otras formas el
+ * compilador elimina la prueba redundante de 0x300.
  */
 #define BLOQUE_FILTRAR(d, eje) \
     { \
-        if (!(o->w17C & (eje))) { \
-            d = 0; \
-        } else if ((o->w17C & 0x300) && (((o->w17C & 0x100) && d < 0) || ((o->w17C & 0x200) && d > 0))) { \
+        if (!(o->w17C & (eje)) || \
+            ((o->w17C & 0x300) && (((o->w17C & 0x100) && d < 0) || ((o->w17C & 0x200) && d > 0)))) { \
             d = 0; \
         } \
     }
