@@ -807,9 +807,10 @@ s32 CargarContenedor(s16 archivo, u8* datos)
      * Script de carga, ya descomprimido en `datos`. Ordenes de primer nivel hasta el fin 0x2F:
      * 0x2C reparte la memoria en listas y grupos y lee las secciones de datos, 0x4B elige el banco
      * del idioma y 0x2D abre una serie de chunks de recursos (tipo, y etiquetas con longitud
-     * fija) hasta el cierre 0x2E.
+     * fija) hasta el cierre 0x2E. El cursor continua donde lo dejo la lectura de las secciones, sobre
+     * el buffer del script: `datos` ya apunta mas alla (suma 0x1D000) y el original no copia `datos` al
+     * cursor (el salto de 0x80041C84 al bucle conserva `s2`).
      */
-    cursor = datos;
     campos = campos_mem;
     for (;;) {
         orden = *cursor;
