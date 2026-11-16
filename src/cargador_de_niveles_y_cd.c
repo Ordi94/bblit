@@ -416,6 +416,10 @@ typedef struct {
     u16 w08;
     u16 w0A;
     s32 d0C;
+    s32 d10;
+    u16 w14;
+    u16 w16;
+    s32 d18;
 } EtiquetasListas;
 
 #ifdef NON_MATCHING
@@ -1355,8 +1359,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             desp_campo = *(s32*)campos_mem;
-                            D_800694A0 = *(s32*)(campos + 4);
                             D_800694FC = datos + desp_campo;
+                            D_800694A0 = ETQ(w, campos, 1);
                         }
                     } while (*cursor != 0x2E);
                     break;
@@ -1404,8 +1408,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             D_800695C2 = ((EtiquetasListas*)campos)->w0A;
                             D_80069548 = ((EtiquetasListas*)campos)->d0C;
                             D_8006952E = *(u16*)(campos + 0x14);
-                            D_8006954C = *(s32*)(campos + 0x10) & ~7;
-                            D_80069678 = *(s32*)(campos + 0x18);
+                            D_8006954C = ((EtiquetasListas*)campos)->d10 & ~7;
+                            D_80069678 = ((EtiquetasListas*)campos)->d18;
                             if (D_8006952E < 0x12C) {
                                 D_8006952E = 0x12C;
                             }
