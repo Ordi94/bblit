@@ -392,24 +392,24 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 39407 con la configuracion versionada (g = 8 del archivo; ejes 236 de
- * operando, 35 reordenadas, 1904 insertadas o borradas). La cifra incluye palabras con direcciones
+ * Pendiente: puntuacion 32034 con la configuracion versionada (g = 8 del archivo; ejes 246 de
+ * operando, 38 reordenadas, 1913 insertadas o borradas). La cifra incluye palabras con direcciones
  * absolutas dentro del archivo (saltos y tablas de saltos), de modo que depende del tamano de las
- * funciones anteriores. Medido: el codigo generado tiene 2959 instrucciones frente a 2955 del
- * original, y alineando el texto de ambos 2741 coinciden en el mnemonico (92,8 %) y 1996 son
- * identicas (67,5 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
+ * funciones anteriores. Medido: el codigo generado tiene 2960 instrucciones frente a 2955 del
+ * original, y alineando el texto de ambos 2787 coinciden en el mnemonico (94,3 %) y 1962 son
+ * identicas (66,4 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
  * van en el orden de direcciones de las tablas de saltos del original: el orden del fuente decide
  * el orden de emision, por eso los casos no van en orden numerico. Lo que queda es el reparto de
- * registros: el original deja el destino en s8 y las constantes de las comparaciones de cada bucle
- * interior en registros propios (s0, s1), mientras que aqui una sola constante 0x2E se iza fuera del
- * bucle de chunks (s8) y el destino pasa a s7; esa constante compartida hace ademas que el
- * compilador enlace el final de cada bucle interior con la salida del exterior, cosa que el original
- * no hace (salta a la prueba del bucle exterior en 0x800442F4). Se supone, sin verificar, que el
- * original compara en el bucle exterior con una constante que el compilador no reconoce como la del
- * interior.
+ * registros guardados: usos de s0, s1, s5 y s7 en el original frente a aqui, 124 y 193, 125 y 47,
+ * 53 y 81, 22 y 54 (s2, s3, s4, s6 y s8 coinciden dentro de un 30 %). El original guarda el nodo de
+ * los chunks de recursos, modelos y volumenes en s1 y el de entidades en s3, el resultado de la
+ * reserva de la lista de 0x14 y 0xC bytes en a1 (aqui `aux` es una variable de toda la funcion en un
+ * registro guardado; una variable propia para esos dos casos da 32049, sin efecto) y la direccion
+ * del bufer en s4. Se supone, sin verificar, que quedan por separar otras variables que el original
+ * usa por chunk.
  *
  * Reserva de pila: el marco del original es de 0x210 bytes (`addiu sp` en 0x800415A0) y el del C sin
- * la local, de 0x208; la cifra medida sin la local es 40562 y con ella 39407.
+ * la local, de 0x208; la cifra medida sin la local es 33057 y con ella 32034.
  *
  * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `datos`.
  * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
