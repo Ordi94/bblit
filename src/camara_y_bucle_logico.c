@@ -1327,10 +1327,15 @@ void func_80035244(void)
  * a una (con `sc->cur->` en su lugar o con una sola asignacion en el punto de reunion), la funcion mide: sin la
  * de la busqueda del modelo 425; sin la de la proyeccion de un objeto simple 834; sin la de `tras_proyeccion`
  * 580; sin la de `recargar` 500; con una sola asignacion al comienzo del cuerpo del bucle 1840, en el bloque de
- * la busqueda del modelo 1005 y en la rama de proyeccion 1400; y con las etiquetas de union tras la copia 620. No
- * se verifico con un volcado de `cc1` el reparto de pseudos que lo explica (se supone, sin verificar, que cada
- * copia es un pseudo local del bloque y una sola copia en una variable viva en varios bloques cambia el orden de
- * los pseudos globales). La forma del fuente original que producia este reparto se desconoce.
+ * la busqueda del modelo 1005 y en la rama de proyeccion 1400; y con las etiquetas de union tras la copia 620.
+ * Volcado de `cc1` (`-dl` y `-dg`, `-G8`): `t` es un solo pseudo de usuario (84) con cinco asignaciones, las cinco
+ * cargas de `sc->cur` (insn 560, 600, 786, 1164 y 1193), 30 usos sobre 31 insns, sin cruzar llamadas y con
+ * preferencia por `a0` (es el argumento de `func_800351B4`): prioridad 3,871, quinto del orden del reparto global,
+ * y toma `a0`, como el original en 0x8003584C, 0x80035888, 0x80035A24, 0x80035D88 y 0x80035DCC. Con una sola
+ * asignacion antes de la prueba del modelo y `sc->cur->` en el resto (1380), `t` baja a 6 usos sobre 15 insns
+ * (0,800) y las cargas de la proyeccion simple y de `tras_proyeccion` pasan a dos pseudos nuevos (332 y 412, 6
+ * usos sobre 5 insns, 2,4) que toman `v1` en lugar de `a0`; los demas pseudos conservan su registro. La forma del
+ * fuente original que producia este reparto se desconoce.
  *
  * La cola de la lista usa una local propia (`cola`) porque con `t`, que vive en varios bloques, el reparto
  * global la pone en `a0` y `a1` en lugar de `v0` y `v1` (460 a 410). Reparto (2): la prioridad del reparto
