@@ -219,8 +219,8 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 7584 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 92 de
- * operando, 17 reordenadas y 376 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
+ * Pendiente: puntuacion 7041 con la configuracion versionada (g = 8 del archivo). Ejes medidos con `diff`: 93 de
+ * operando, 17 reordenadas y 332 insertadas o borradas; el original ocupa 0x11EC bytes (1147 instrucciones), de modo
  * que casi todo el residuo es desalineacion encadenada de pocas inserciones. El marco del C es el del original, de
  * 0x50 bytes: la salida es una estructura SVECTOR local (`vx` en 0x10 y `vz` en 0x14, con el hueco de `vy`), y le
  * siguen `k` (0x18), `salida_y` (0x1c) y `lista` (0x20); con dos variables `s16` sueltas el marco era de 0x48 y la
@@ -260,7 +260,10 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
  * se escriben con el lado de `w->pt` primero (`pt + sal > b->max + radio`): el original carga `w->pt` antes que
  * `w->b` (0x80017BB4 y 0x80017BB8, `lw a3,0xC0` y `lw a2,0x94`), 10909 a 7984 con las de `vz` y `vx` (9359 con solo las
  * de `vz`). Las dos primeras llamadas de la rama de angulo negativo restan el radio a `min.vx` (`subu a0,a0,a2` en
- * 0x8001798C y 0x800179BC), no lo suman: 7984 a 7584.
+ * 0x8001798C y 0x800179BC), no lo suman: 7984 a 7584. Orden de los almacenes: las cuatro esquinas de D_80069D18
+ * guardan `x` antes que `z` (0x80017F0C a 0x80017F64 en el original, 7584 a 7494) y la salida final almacena `vx`,
+ * `vz` y `vy` en ese orden (7494 a 7041). Una lectura de las parejas de D_80069D18 como `((u32*)D_80069D18)[n]` en
+ * vez de `*(u32*)&D_80069D18[n]` no cambia la cifra (7494).
  * Residuo conocido: `a` y `v` estan intercambiados (a en s4 y v en s5, 25 usos cada una sobre 1680 y 1688 insns;
  * prioridades 0,0595 y 0,0592: el original da a `v` mayor prioridad); la cola de la ultima rama de la comparacion con
  * la mascara 0x2000000 esta fuera de linea en el original (0x80017EAC) y en linea aqui; y se supone, sin
@@ -464,14 +467,14 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
             k++;
         }
         if (k == 0) {
-            D_80069D18[0].z = w->p[0].vz;
             D_80069D18[0].x = w->p[0].vx;
-            D_80069D18[1].z = w->p[1].vz;
+            D_80069D18[0].z = w->p[0].vz;
             D_80069D18[1].x = w->p[1].vx;
-            D_80069D18[2].z = w->p[2].vz;
+            D_80069D18[1].z = w->p[1].vz;
             D_80069D18[2].x = w->p[2].vx;
-            D_80069D18[3].z = w->p[3].vz;
+            D_80069D18[2].z = w->p[2].vz;
             D_80069D18[3].x = w->p[3].vx;
+            D_80069D18[3].z = w->p[3].vz;
             D_80069380 = -1;
             w->angs[0] = 0;
 ciclo_aristas:
@@ -610,8 +613,8 @@ siguiente:
     }
     if (mejor != 0) {
         v->vx = salida.vx;
-        v->vy = salida_y;
         v->vz = salida.vz;
+        v->vy = salida_y;
     }
     return mejor;
 }
