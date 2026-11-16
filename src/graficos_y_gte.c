@@ -219,12 +219,23 @@ Objeto* func_800171E4(Objeto* a, VECTOR* p, u32 mascara, u32 excluir, ConsultaVo
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 19849 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin
+ * Pendiente: puntuacion 18547 con la configuracion versionada (g = 8 del archivo). Traduccion completa sin
  * afinar: el reparto de registros y el orden de las comparaciones de las regiones no se han ajustado al
  * original. La lista de registros destruidos de GEO_NORMA2_XZ la mueve 100 puntos (antes 19749).
- * Ejes medidos con `diff`: 60 de operando, 39 reordenadas y 1125 insertadas o borradas; el original ocupa 0x11EC
- * bytes (1147 instrucciones) y el C genera 1138, de modo que casi todo el residuo es desalineacion encadenada de
- * unas pocas inserciones (la primera, el reparto del prologo). Reparto medido en los volcados de `cc1` (`.lreg` y
+ * Ejes medidos con `diff`: 64 de operando, 39 reordenadas y 1135 insertadas o borradas; el original ocupa 0x11EC
+ * bytes (1147 instrucciones), de modo que casi todo el residuo es desalineacion encadenada de
+ * unas pocas inserciones (la primera, el reparto del prologo). El marco del C es de 0x58 bytes (vars = 32) y el
+ * del original de 0x50.
+ * El primer resultado de SquareRoot0 se guarda en `k`, la local cuya direccion se pasa a gte_NormalClip (vive en
+ * memoria): 19849 a 18547. En el original ese resultado va a 0x18(sp), la misma ranura que recibe los resultados
+ * de NormalClip (13 accesos a 0x18(sp) en el original); se supone, sin verificar, que ambos usos son la misma
+ * variable. Con `k` el resultado ya no ocupa s0 en el tramo de la norma, pero el marco sigue en 0x58: `mejor_d` y
+ * `dif` siguen en la pila. Segunda medicion sobre la misma idea: guardar el segundo resultado (`len2`) en `t2`, que
+ * el original usa para ese valor (`addu t2,v0,zero` en 0x80018384), empeora a 19193 (cruza una llamada y toma un
+ * registro salvado). Medido en el volcado de `cc1`: los dos pseudos que direccionan D_80069D08 (la parte alta y
+ * la direccion completa) se reparten en s1 y s2 por `local-alloc` porque sus usos antes y despues de la segunda
+ * llamada se comparten; el original recalcula el `lui` tras la llamada (0x800183A4), es decir, no los conserva
+ * en registro salvado. Queda sin resolver que forma del fuente lo produce. Reparto medido en los volcados de `cc1` (`.lreg` y
  * `.greg`): el original deja `mejor_d` en s7 y la direccion `w + 0x50` (`dif`) en fp, con `a` en s5, `v` en s4,
  * `w` en s1, `mejor` en s3, la constante 0x2000000 en s6 y la direccion de D_80069D18 en s2, y reserva en pila
  * solo `salida_x` y `salida_z` (0x10 y 0x14), `salida_y` (0x1c) y `lista` (0x20); aqui `mejor_d` (9 usos sobre
@@ -258,7 +269,6 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
     s32 t2;
     s32 hits;
     s32 k;
-    s32 len1;
     s32 len2;
     s16 salida_x;
     s16 salida_z;
@@ -516,10 +526,10 @@ Objeto* func_80017478(Objeto* a, SVECTOR* v, ConsultaSondeo* w, u32 mascara)
                     D_80069D08.vx = D_80069D18[4].x - D_80069D18[2].x;
                     D_80069D08.vz = D_80069D18[4].z - D_80069D18[2].z;
                 }
-                len1 = SquareRoot0(w->e_x * w->e_x + w->e_z * w->e_z);
+                k = SquareRoot0(w->e_x * w->e_x + w->e_z * w->e_z);
                 len2 = SquareRoot0(D_80069D08.vx * D_80069D08.vx + D_80069D08.vz * D_80069D08.vz);
-                D_80069C08.vx = (w->e_x << 12) / len1;
-                D_80069C08.vz = (w->e_z << 12) / len1;
+                D_80069C08.vx = (w->e_x << 12) / k;
+                D_80069C08.vz = (w->e_z << 12) / k;
                 D_80069C08.vx = (D_80069C08.vx * len2) >> 12;
                 D_80069C08.vz = (D_80069C08.vz * len2) >> 12;
                 hits = 1;
