@@ -12,8 +12,10 @@
  * direccion vive en una variable puntero, por eso el C usa `EstadoPrincipal* e = ESTADO_PRINCIPAL;`.
  * Algunos accesos del original usan en cambio la forma simbolica (un `lui` propio por acceso); esos
  * bytes se declaran aparte como variables sueltas en globales.h (D_80010000, D_8001000A, D_8001003E,
- * D_80010041, D_80010065, D_800100E6...) y no se acceden por esta estructura: hacerlo cambia el
- * reparto del `lui` y el codigo generado.
+ * D_80010041, D_80010065, D_800100E6...) y, salvo donde se indica, no se acceden por esta estructura:
+ * hacerlo cambia el reparto del `lui` y el codigo generado. La excepcion es CargarContenedor, que
+ * accede a D_80010041, D_80010050 y D_800100E6 por `estado->r[...]` porque el original usa una sola
+ * base para los tres (un `lui` en 0x800416B8 y los desplazamientos 0x41, 0x50 y 0xE6).
  *
  * Anchos y signos por campo (los demas son relleno):
  * - nivel (s32): las comparaciones de `main` lo tratan con signo (nivel >= 0); el interprete de

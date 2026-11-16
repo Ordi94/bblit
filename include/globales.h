@@ -654,10 +654,10 @@ struct NodoVolumen;
 /* D_8001000A: botones_a de EstadoPrincipal (arranque.h) que los eventos leen con la forma simbolica (un lui por acceso); accesos del ensamblador: lhu x16, sh x15 */
 extern u16 D_8001000A;
 
-/* D_80010041: r[0x01] del banco de registros de EstadoPrincipal (arranque.h) con la forma simbolica; accesos del ensamblador: lbu x11, sb x12, lb x1 */
+/* D_80010041: r[0x01] del banco de registros de EstadoPrincipal (arranque.h) con la forma simbolica salvo en CargarContenedor, que lo accede por el banco con una sola base como el original; accesos del ensamblador: lbu x11, sb x12, lb x1 */
 extern u8 D_80010041;
 
-/* D_800100E6: r[0xA6] del banco de registros de EstadoPrincipal con la forma simbolica; accesos del ensamblador: lbu x8, sb x9 */
+/* D_800100E6: r[0xA6] del banco de registros de EstadoPrincipal con la forma simbolica salvo en CargarContenedor, que lo accede por el banco con una sola base como el original; accesos del ensamblador: lbu x8, sb x9 */
 extern u8 D_800100E6;
 
 /* D_80069402: accesos del ensamblador: sh(gp) x6, lh(gp) x2, lhu(gp) x5, sh x5, lhu x1 */
