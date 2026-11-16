@@ -392,23 +392,24 @@ extern u8* D_80069538;
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 38617 con la configuracion versionada (g = 8 del archivo). La cifra incluye
- * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
- * depende del tamano de las funciones anteriores. Medido: el codigo generado tiene 2958
- * instrucciones frente a 2955 del original, y alineando el texto de ambos 2357 coinciden en el
- * mnemonico (79,8 %) y 1362 son identicas (46,1 %). Los cuerpos de los casos de los cinco `switch`
- * y del despacho de primer nivel van en el orden de direcciones de las tablas de saltos del
- * original: el orden del fuente decide el orden de emision, por eso los casos no van en orden
- * numerico. Lo que queda es el reparto de registros guardados: usos de s0, s1, s3, s4, s7 y s8 en
- * el original frente a aqui, 124 y 193, 125 y 47, 96 y 176, 187 y 238, 22 y 51, 50 y 27 (s2, s5 y
- * s6 coinciden dentro de un 30 %). El original guarda el nodo de los chunks de recursos, modelos y
- * volumenes en s1 y el de entidades en s3, el resultado de la reserva de la lista de 0x14 y 0xC
+ * Pendiente: puntuacion 34389 con la configuracion versionada (g = 8 del archivo; ejes 249 de
+ * operando, 54 reordenadas, 2259 insertadas o borradas). La cifra incluye palabras con direcciones
+ * absolutas dentro del archivo (saltos y tablas de saltos), de modo que depende del tamano de las
+ * funciones anteriores. Medido: el codigo generado tiene 2958 instrucciones frente a 2955 del
+ * original, y alineando el texto de ambos 2361 coinciden en el mnemonico (79,9 %) y 1248 son
+ * identicas (42,2 %). Los cuerpos de los casos de los cinco `switch` y del despacho de primer nivel
+ * van en el orden de direcciones de las tablas de saltos del original: el orden del fuente decide
+ * el orden de emision, por eso los casos no van en orden numerico. Lo que queda es el reparto de
+ * registros guardados: usos de s0, s1, s4, s5 y s7 en el original frente a aqui, 124 y 193, 125 y
+ * 41, 187 y 92, 53 y 238, 22 y 54 (s2, s3, s6 y s8 coinciden dentro de un 30 %). El original guarda
+ * el nodo de los chunks de recursos, modelos y volumenes y los modelos de la etiqueta 0x18 de las
+ * entidades en s1 y el de entidades en s3, el resultado de la reserva de la lista de 0x14 y 0xC
  * bytes en a1 (aqui `aux` es una variable de toda la funcion en un registro guardado) y la
  * direccion del bufer en s4. Se supone, sin verificar, que quedan por separar otras variables que
  * el original usa por chunk.
  *
  * Reserva de pila: el marco del original es de 0x210 bytes (`addiu sp` en 0x800415A0) y el del C sin
- * la local, de 0x208; la cifra medida sin la local es 39632 y con ella 38617.
+ * la local, de 0x208; la cifra medida sin la local es 35412 y con ella 34389.
  *
  * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `datos`.
  * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
@@ -1768,20 +1769,21 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(u16, entidad, 0x12A) = *(u16*)(campos + 4);
                             EN(u16, entidad, 0x12C) = *(u16*)(campos + 6);
                             aux = campos;
-                            modelo = func_80036164(*(u32*)(aux + 8));
-                            if (modelo == NULL) {
+                            /* Los modelos de esta etiqueta van en s1, el mismo registro que el nodo de los demas chunks (0x8004422C). */
+                            nodo = func_80036164(*(u32*)(aux + 8));
+                            if (nodo == NULL) {
                                 for (;;) {
                                 }
                             }
-                            EN(u8*, entidad, 0x130) = EN(u8*, modelo, 0x54);
-                            modelo = func_80036164(*(u32*)(aux + 12));
-                            if (modelo == NULL) {
+                            EN(u8*, entidad, 0x130) = EN(u8*, nodo, 0x54);
+                            nodo = func_80036164(*(u32*)(aux + 12));
+                            if (nodo == NULL) {
                                 for (;;) {
                                 }
                             }
                             cursor += 0x10;
                             EN(s32, entidad, 4) = 2;
-                            EN(u8*, entidad, 0x134) = EN(u8*, modelo, 0x54);
+                            EN(u8*, entidad, 0x134) = EN(u8*, nodo, 0x54);
                             break;
                         case 0x1D:
                             CopiarBytes(cursor, campos, 4);
