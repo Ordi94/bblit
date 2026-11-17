@@ -75,16 +75,15 @@ s16* D_800693DC;
    el posible solape con el scratchpad); (a) `sc->desp.x` y `sc->desp.z` se almacenan por el campo y por la misma base
    `sc`, como hace el original (`sw v0,0x18(s3)` y `sw v1,0x20(s3)`, 0x800223FC y 0x80022400). El original relee los dos
    campos tras almacenarlos (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414). La lectura de `desp.x` de la
-   suma se escribe como lectura `volatile s32` del mismo campo y por la misma base `sc`: es una relectura que el original
-   hace (admitida solo con esa razon). Medido en los volcados de `cc1`: sin la lectura volatile la relectura de
-   `desp.x` esta en el volcado tras el reparto de registros y la recarga (`.greg`) y ya no esta en el de la segunda
-   planificacion (`.sched2`); se supone, sin verificar con el volcado de esa limpieza, que la elimina porque el registro
-   del valor almacenado sigue intacto. La de `desp.z` no la necesita: el registro de su valor se reescribe antes
-   (`lui v1,%hi(D_80069D40)`, 0x80022404). Con la lectura volatile la relectura se conserva y el resto de la funcion
-   recupera la longitud del original: la cifra es 1265 sin ella y 1165 con ella. Queda: el planificador emite los dos
-   almacenes en orden inverso al del original (`sw 0x20` antes de `sw 0x18`, con las dos cargas de `D_80069D30` tambien
-   invertidas, 0x800223F4 a 0x80022400); escribir las sumas en el orden contrario da 1535 y escribir en el orden
-   contrario los almacenes y las sumas da 1490. Con `pos = &sc->desp` la
+   suma se escribe como lectura `volatile s32` del mismo campo y por la misma base `sc`, la forma regulada en el
+   documento de descompilacion para una relectura que el original hace: el original relee el mismo campo por la misma
+   base, sin ningun almacen a 0x18 ni llamada entre el `sw` de 0x800223FC y el `lw` de 0x8002240C (el `sw` de
+   0x80022400 es a 0x20), y el valor almacenado sigue en `v0`, que es el registro en el que lo relee. Sin el molde el
+   compilador elimina la relectura (esta en el volcado `.greg` y ya no en el `.sched2`) y la cifra es 1265; con el
+   molde es 1165. La de `desp.z` no lo necesita: el registro de su valor se reescribe antes (`lui v1,%hi(D_80069D40)`,
+   0x80022404). Queda: el planificador emite los dos almacenes en orden inverso al del original (`sw 0x20` antes de
+   `sw 0x18`, con las dos cargas de `D_80069D30` tambien invertidas, 0x800223F4 a 0x80022400); escribir las sumas
+   en el orden contrario da 1535. Con `pos = &sc->desp` la
    base se materializa en `s0` (`addiu s0,s3,0x18`), que el original no tiene; (b) el almacen de `o->p180` va antes del de
    `o->trabajo.i14` en el bloque de entrada de la espera (0x80021020..0x80021050): el original lee `i14`, carga
    `sc->sec`, almacena a cero y escribe D_80069584 antes de la guarda de `o->p70`, con el almacen de `p180` en el hueco
@@ -92,20 +91,17 @@ s16* D_800693DC;
    `sc->vel.z = sc->vel.z + (producto >> 11)` (0x80021560 y 0x80021690) escriben cada una su propio producto
    (`sc->tmp * a` y `sc->tmp * (s16)(0x800 - a)`) y sin variable intermedia: el original lee `lhu v0,0xc(s3)` en cada
    camino y comparte una sola cola desde `mflo` (0x80021694; el primer camino salta ahi desde 0x80021564 y el segundo
-   cae), y con el producto en una variable (`valor_vel`) `mflo` cae en `s0` y no en `t7`: la cifra es 1175 con la
-   variable y 1165 sin ella. Lo que muestra el volcado de `cc1`: en el RTL, tras la primera pasada de saltos y tras la
-   segunda planificacion cada rama tiene su propio desplazamiento `>> 11` (dos), y tras la pasada de saltos posterior
-   al reparto de registros, que funde las colas identicas por salto cruzado, queda uno solo bajo una unica etiqueta en
-   `mflo`, a la que el otro camino salta tras su `mult` y su `lhu`, como en el original; las dos sentencias son
-   distintas (cada una tiene su producto), de modo que no son una sentencia repetida. Con la variable, el pseudo
-   (98, con preferencia por el registro LO) quedaba en el registro 16 despues de que la recarga de la multiplicacion de
-   la prueba de `a * a` (insn 1127, que pide un registro de clase LO) gastara los registros 15, 64 y 65; sin la
-   variable el producto es un temporal y toma `t7`. La velocidad del objeto de apoyo (0x80022584..0x800225B4)
+   cae). Las dos sentencias son distintas (cada una tiene su producto), de modo que no son una sentencia repetida, y
+   la pasada de saltos posterior al reparto de registros funde las dos colas identicas en una sola bajo `mflo`,
+   como el original. Con el producto en una variable (`valor_vel`) el pseudo, con preferencia por el registro LO,
+   queda en el registro 16 despues de que la recarga de la multiplicacion de la prueba de `a * a` (que pide un
+   registro de clase LO) gaste los registros 15, 64 y 65, y `mflo` cae en `s0` y no en `t7`: la cifra es 1175 con la
+   variable y 1165 sin ella. La velocidad del objeto de apoyo (0x80022584..0x800225B4)
    se guarda en `vel_apoyo`, variable propia: el original deja el valor en `v0` y el `bnez` de 0x80022598 con `nop`
    en el hueco, porque `v0`, el registro probado, es el que escribe la primera instruccion del producto por `0x145`;
-   con una variable que comparten otros bloques (`vs`) ese bloque sale igual y la cifra es 1175 (se supone, sin
-   verificar, que el cambio esta en el reparto de otro bloque que usa `vs`) y con la variable propia 1165.
-   La forma del fuente original que producia este reparto se desconoce.
+   con la variable `vs`, que solo comparte con el producto de la prueba de la espera del final de la funcion, ese
+   bloque sale igual y la cifra es 1175 (se supone, sin verificar, que el cambio esta en el reparto del bloque que
+   usa `vs`) y con la variable propia 1165.
    El tramo en Z de la guarda de D_80069D30 (0x800222B8..0x80022308) se
    escribe por un puntero a la base del arreglo (`p = D_80069D30; p[2]`) y con un valor propio del bloque
    (`z_nueva`) que recoge las tres ramas y se almacena una sola vez: el original carga la base en a0 (`lui v0 ;
