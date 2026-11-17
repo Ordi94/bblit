@@ -49,7 +49,7 @@ COINCIDENTES = (
     "func_8003F06C",
     "func_80036164",
     "func_8001E1A4",
-    "func_8003AE08",
+    "func_8003B5AC",
     "func_80020240",
     "func_800363D4",
 )
@@ -298,7 +298,7 @@ def test_ciclo_real_con_funciones_en_c_reproduce_el_ejecutable_y_discrimina(
         "func_80030D60",
         "func_80036164",
         "func_8001E1A4",
-        "func_8003AE08",
+        "func_8003B5AC",
         "func_80020240",
     ):
         assert cli.main(["diff", funcion], variables, raiz) == 0
