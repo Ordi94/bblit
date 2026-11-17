@@ -254,37 +254,22 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 800 con la configuracion versionada (g = 0 del archivo; ejes 213 de operando,
- * 3 reordenadas, 85 insertadas o borradas). Difiere en: orden de escrituras y reparto de registros,
- * a saber, en los cuatro avances del recorrido general (subcelda y baldosa) el original almacena la
- * copia del punto previo en rx o bx (rz/bz antes) despues de la copia `move` de la segunda lectura y
- * con el punto previo en v1 y la altura en a1/a2, mientras que aqui ese almacen sube justo tras las
- * lecturas y los registros salen permutados; y la posicion de dos instrucciones del prologo (el
- * original coloca `sw s0,0x10(sp)` y `move s0,a3` tras el `lui`/`ori` de la guarda del area de trabajo,
- * 0x8001BA1C-0x8001BA28; aqui van antes: la comparacion con los operandos conmutados da el mismo
- * ensamblador, de modo que no es una cuestion de forma de la comparacion).
- * Medido: escribir la suma que actualiza el punto de cruce como segunda lectura del campo (el original
- * tiene `move v0,v1` tras los almacenes) baja de 2020 a 1565; con una sola lectura local da 2020 (la
- * cifra anterior, sin cambio) y con las dos lecturas como campo sube a 2500; con las dos lecturas como
- * campo y los almacenes en el orden del original, solo en el avance de subcelda del eje z, 2155 (la
- * lectura del punto previo se carga la primera y su almacen sube antes de la suma); mover la lectura
- * del punto previo (`tx = w->sz_x`) tras la de la altura (`w->aux = w->sz_y`) deja 775 con la cola entera de
- * los planos por rama (800 con la cola comun): el orden de las
- * cargas lo decide el planificador y no el orden de las sentencias (el original carga la altura antes
- * que el punto previo y carga este tras la segunda lectura de la celda); leer el punto previo como
- * acceso que no es de miembro (`*(s32*)((u8*)w + 0x20)`) tampoco lo mueve (775 con esa misma forma);
- * escribir `tx = w->sz_x` despues de los almacenes de `w->sz_z` y `w->lim_z` del avance del eje z deja 800
- * con el mismo ensamblador (diff identico fila a fila), de modo que el orden de las sentencias no mueve las
- * cargas de ese avance.
- * Medido en el avance de subcelda del eje z (original: cargas de +0x24 y +0x28, segunda lectura de celda_z y
- * al final +0x20, con `tx` en v1 tras el `mult`; aqui +0x24, +0x20 antes del `mult` en a2 y +0x28 al final):
- * con `tx` tras los almacenes de lim_z y sz_z 810; con las tres lecturas como campo, sin `tx`, 1400; con `tx`
- * escrita la primera 800 (el mismo ensamblador que la forma actual). Ninguna cambia que `tx` se cargue antes del
- * `mult` y tome a2, de modo que el orden de cargas y el reparto de ese avance no dependen del orden del fuente.
- * Los planos 0x7E y 0x7F del caso estatico (0x8001BCD4-0x8001BF6B) dejaron de diferir en su reparto de
- * registros (1565 a 800): ver la cabecera de la funcion. Medido: escribir la cola entera de esos planos
- * (diez sentencias) en cada rama da 775, 25 puntos menos; no se adopta porque no acerca el cierre y
- * exigiria veinte sentencias duplicadas.
+ * Pendiente: puntuacion 550 con la configuracion versionada (g = 0 del archivo; ejes 212 de operando,
+ * 4 reordenadas, 42 insertadas o borradas). Los cuatro avances del recorrido general (subcelda y baldosa)
+ * escriben el punto de cruce y la altura como lecturas del campo, sin variables intermedias, en el orden de
+ * cargas del original (en el avance de subcelda de z, la lectura del punto previo primero; en el de x, la
+ * de la coordenada z primero; en los de baldosa, la del punto previo y despues la de la coordenada). Queda:
+ * (1) en los dos avances de subcelda el `mult` de la prueba sale una instruccion antes que en el original
+ * (antes de la segunda carga de la altura o de la coordenada, 0x8001A198 en el avance de z) y en el avance de z el
+ * almacen del punto previo sale antes de los de `lim_z` y `sz_z`, sin la copia `move v0,v1` que el original
+ * emite tras ellos; se supone, sin verificar, que el compilador comparte las dos lecturas del campo cuando
+ * entre ellas solo hay almacenes a otros miembros y que el original no lo hace porque el almacen del punto
+ * previo va despues; (2) el original coloca `sw s0,0x10(sp)` (0x80019498) y `move s0,a3` tras el `lui`/`ori`
+ * de la guarda del area de trabajo y aqui van antes; (3) el reparto a2/a3 del producto del recorrido de
+ * zona (`mflo`, 0x8001A0BC); (4) el orden de los tres almacenes de media palabra de la salida sin
+ * desplazamiento (0x8001BEA4).
+ * Los planos 0x7E y 0x7F del caso estatico dejaron de diferir en su reparto de registros: ver la cabecera
+ * de la funcion.
  */
 /*
  * Barrido de un desplazamiento (desp) del punto pos contra el terreno por baldosas: avanza baldosa a
@@ -298,12 +283,10 @@ void func_80019364(s32* a0)
  * Tres recorridos casi gemelos segun las componentes no nulas de desp: ambas (caso general, con
  * pendientes de 12 bits de fraccion), solo x y solo z. k es una constante de una sola asignacion
  * (el desfase de partida del historial en el cierre): el compilador la deja como equivalente a 0 y
- * no la pliega en las comparaciones del cierre. tx y tz conservan el valor previo de un punto de
- * cruce antes de sobrescribirlo, y solo se usan para la copia a rx/bx (y rz/bz); la suma que actualiza el
- * propio punto de cruce vuelve a leer el campo tras los almacenes, porque el original la obtiene con un
- * `move` de la primera lectura: el compilador no comparte dos lecturas separadas por un almacen y la
- * segunda queda como copia del registro de la primera (con una variable local para las dos la copia
- * desaparece).
+ * no la pliega en las comparaciones del cierre. En los avances el valor previo de un punto de cruce se
+ * copia a rx/bx (y rz/bz) leyendo el campo, y la suma que actualiza el propio punto de cruce vuelve a leer
+ * el campo tras los almacenes: el original la obtiene con un `move` de la primera lectura y el compilador
+ * deja la segunda como copia del registro de la primera.
  *
  * La cola de los planos 0x7E y 0x7F del caso estatico va tras una etiqueta comun (`plano`) y por rama
  * quedan solo las sentencias que el original tambien emite una vez por rama (`pos[1]`, la carga de
@@ -329,8 +312,6 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
     s32 dz;
     s32 px;
     s32 pz;
-    s32 tx;
-    s32 tz;
 
     if (0x1F8003FFU < (u32)w + 0x1C8) {
         for (;;) { }
@@ -538,25 +519,20 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             w->d_sx = SquareRoot0(w->dsx_x * w->dsx_x + w->dsx_z * w->dsx_z);
                             if (w->d_sz < w->d_sx) {
                                 if (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z) {
-                                    w->rz = w->sz_z;
-                                    tx = w->sz_x;
-                                    /* Copiar sz_y despues de sz_z es el orden que menos difiere del original
-                                     * (con sz_y antes la puntuacion sube de 2030 a 2040). */
+                                    w->rx = w->sz_x;
                                     w->aux = w->sz_y;
+                                    w->rz = w->sz_z;
                                     w->sz_z = w->lim_z = w->lim_z + w->celda_z;
-                                    w->rx = tx;
                                     w->sz_x = ((w->pend_z * w->celda_z) >> 12) + w->sz_x;
                                 } else {
                                     w->acc_x = w->dx;
                                 }
                             } else {
                                 if (w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x) {
-                                    tx = w->sx_x;
-                                    tz = w->sx_z;
+                                    w->rz = w->sx_z;
                                     w->aux = w->sx_y;
-                                    w->rz = tz;
+                                    w->rx = w->sx_x;
                                     w->sx_x = w->lim_x = w->lim_x + w->celda_x;
-                                    w->rx = tx;
                                     w->sx_z = ((w->pend_x * w->celda_x) >> 12) + w->sx_z;
                                 } else {
                                     w->acc_z = w->dz;
@@ -599,17 +575,14 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                         w->d_bz = SquareRoot0(w->ebz_x * w->ebz_x + w->ebz_z * w->ebz_z);
                         w->d_bx = SquareRoot0(w->ebx_x * w->ebx_x + w->ebx_z * w->ebx_z);
                         if (w->d_bz < w->d_bx) {
-                            tx = w->cbz_x;
+                            w->bx = w->cbz_x;
                             w->bz = w->cbz_z;
                             w->cbz_z = w->lin_z = w->lin_z + w->paso_z;
-                            w->bx = tx;
                             w->cbz_x = w->cbz_x + ((w->pend_z * w->paso_z) >> 12);
                         } else {
-                            tz = w->cbx_z;
-                            tx = w->cbx_x;
-                            w->bz = tz;
+                            w->bx = w->cbx_x;
+                            w->bz = w->cbx_z;
                             w->cbx_x = w->lin_x = w->lin_x + w->paso_x;
-                            w->bx = tx;
                             w->cbx_z = w->cbx_z + ((w->pend_x * w->paso_x) >> 12);
                         }
                     } while ((w->dx > 0 ? w->acc_x < w->dx : w->dx < w->acc_x)
