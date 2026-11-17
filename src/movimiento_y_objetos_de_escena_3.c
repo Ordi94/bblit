@@ -137,6 +137,8 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     s32 desplazamiento_color;
     s32 indice;
     u16 ancho_cuadro;
+    /* El campo 0x2E del contexto se lee antes del almacen de `s10`, como el original (carga en 0x8001E698,
+     * almacen en 0x8001E6A8): leerlo en el propio almacen sube la puntuacion de 905 a 1490. */
     u16 ancho_bloque;
     Fotograma* fotogramas;
     s16 v_pagina;
