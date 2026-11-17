@@ -424,7 +424,7 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 9943 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 9413 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2955 instrucciones, las mismas que el
@@ -433,17 +433,13 @@ typedef struct {
  * tablas de saltos del original: el orden del fuente decide el orden de emision, por eso los casos
  * no van en orden numerico.
  *
- * Un decremento-incremento no genera codigo (`libre--; libre++;` al abrir el caso 0x2C; el codigo
- * generado tiene las mismas 2955 instrucciones con y sin el). Causa medida en el volcado de `cc1`
- * (prioridad `floor_log2(R) * R / L` de `global-alloc`): la variable compartida de abajo (pseudo
- * 103, R 118, L 2075, 0,34) supera a la zona libre `libre` (pseudo 93, R 124, L 2299, 0,32) y le
- * quita s6; con el par `libre` pasa a R 132 (L 2300, 0,40), toma s6, la variable s7 y `datos` fp
- * (pseudo 82, R 105, L 2132, 0,30), como el original. Puntuacion sin el par: 10358; con el: 9943.
- * El nodo de los chunks de recursos y modelos (pseudo 95, R 340, L 528, 5,15) supera al cursor del
+ * Reparto de registros de las zonas: un par `libre--; libre++;` al abrir el caso 0x2C llego a darle
+ * a `libre` las referencias que le faltaban para tomar s6; con la copia `monton = libre` escrita
+ * como el original (ver abajo) el par ya no cambia la cifra (9413 con y sin el) y no se escribe. El
+ * nodo de los chunks de recursos y modelos (pseudo 95, R 340, L 528, 5,15) supera al cursor del
  * script (pseudo 91, R 1074, L 2089, 5,14) sin ninguna referencia anadida (el cursor ya no se
- * reasigna desde `datos` al abrir el script), de modo que no hace falta un par `nodo--; nodo++;`: la
- * puntuacion es 9943 sin el. La
- * forma del fuente original que producia este reparto se desconoce.
+ * reasigna desde `datos` al abrir el script), de modo que tampoco hace falta un par `nodo--;
+ * nodo++;`: la puntuacion es 9413 sin el.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
  * recibe, en vez de una variable por uso, el desplazamiento de los chunks (`lw s7,0x128($sp)` y
@@ -526,14 +522,17 @@ typedef struct {
  * Residuo por causas (cada fila insertada o borrada pesa unos 100 puntos): (1) el chunk 0x3E, donde el
  * original deja tres cargas (0x10, 0x14 y 0x18 de las etiquetas) intercaladas entre los almacenes y
  * el C las deja al final, tras el ultimo almacen de la serie; (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
- * `libre += x; monton = libre` en dos instrucciones (tres filas); (4) el hueco de retardo del salto de
+ * la carga de `D_80069678`, que el original iza a a0 (0x80041D70) y el C deja junto a su uso, con
+ * `D_8006954C` izada en su lugar (una fila y dos de operandos); (4) el hueco de retardo del salto de
  * `func_80044664` y del `bgtz` inicial, que el planificador de saltos llena distinto; (5) el orden de
  * `cursor += 8` frente a las cargas en los chunks 0x36 y 0x47; (6) nombres de registro (unas 150
  * filas de 5 puntos).
  *
- * Se supone, sin verificar, que el original conserva `libre += x` y `monton = libre` en dos
- * instrucciones (0x80041E44 y 0x80041E58) y que eso le da a `libre` las referencias que aqui da el
- * par; el compilador funde las dos sentencias en una al compilar el fuente actual.
+ * El original conserva `libre += x` y `monton = libre` en dos instrucciones (`addu s6,s6,v0` en
+ * 0x80041E44 y `move s5,s6` en 0x80041E58, con las cargas de `D_80069548` y `D_8006952E` entre
+ * ambas). El C las conserva al escribir `D_80069538 = libre;` antes de `monton = libre;`: con
+ * `monton = libre` primero el compilador funde las dos sentencias en un solo `addu s5,s6,v0` y no
+ * emite la copia.
  *
  * La constante 0x2E de las pruebas de fin de chunk no se iza a un registro guardado en ningun
  * bucle: hay 34 `li ...,46` en el codigo generado y 35 en el original. Lo que difiere es la forma
@@ -545,7 +544,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 11632 y con ella 9943. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 11102 y con ella 9413. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -833,8 +832,6 @@ s32 CargarContenedor(s16 archivo, u8* datos)
              * inicializa los grupos, busca la posicion de los datos de cada seccion en el
              * contenedor y lanza la lectura del resto.
              */
-            libre--;
-            libre++;
             if (pools_listos != 1) {
                 /* El original sale con `bne t4,t1` (0x80041CCC) al bucle infinito de 0x80042088. */
                 goto sin_listas;
@@ -866,8 +863,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             libre += D_8006967E * 0xC;
             D_80069528 = libre;
             libre += D_800695C2 * 0x3C;
-            monton = libre;
             D_80069538 = libre;
+            monton = libre;
             libre = monton + D_80069548;
             D_800694B8 = libre;
             libre += (s16)D_8006952E * 8;
