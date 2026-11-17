@@ -232,7 +232,13 @@ void func_80032A24(void)
  * Pendiente: puntuacion 60 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y el
  * reparto de los registros salvados coinciden; difiere la posicion de una sola instruccion: el original coloca el
  * almacen de i58 (sw v0,0x58) tras la copia del objeto en curso (move v1,a1) y GCC lo deja antes, porque el do/while
- * que abre las escrituras de a48 impide subir la copia por encima del almacen. Meter el almacen en ese do/while
+ * que abre las escrituras de a48 impide subir la copia por encima del almacen. Medido en el volcado de la planificacion
+ * previa: el almacen de i58 queda antes de la nota de inicio de bucle de ese do/while y la lectura del objeto en curso
+ * (la copia) despues; se supone, sin verificar, que la nota impide a la planificacion mover lecturas de memoria por encima
+ * de ella. Sin ese do/while la puntuacion es 63 (los registros de la cola cambian). Con la escritura de a48.vx fuera
+ * del do/while (este abre en la de a48.vz) la copia y el almacen salen en el orden del original y los registros
+ * coinciden, pero el `addiu` de la direccion de la rotacion, que el original coloca entre las dos lecturas de la
+ * primera resta, queda tras ella: 220 (cinco lineas insertadas o borradas). Meter el almacen en ese do/while
  * lo coloca bien pero intercambia a1 y a2 en la cadena de pruebas (60 tambien): el temporal del objeto en curso
  * (14 usos ponderados sobre 25 instrucciones, 1,68) queda por debajo del de max.vy (7 sobre 8, 1,75) y el original
  * da a1 al primero. Con el almacen dentro del do/while la relectura de w->cur no depende de el (misma base,
