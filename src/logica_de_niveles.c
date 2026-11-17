@@ -58,22 +58,20 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1645 con la configuracion versionada (g = 8 del archivo). La logica coincide. Las cifras de
-   las escrituras contrarias que siguen se midieron con la asignacion de `pos` antes de la prueba de la espera
-   (base 2045; ver (8)); se supone, sin verificar, que con ella en su sitio actual todas bajan en la misma cantidad. Decisiones de
-   escritura del C, cada una con la cifra que da la escritura contraria: (e) el almacen de la altura
+/* Pendiente: puntuacion 1645 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
+   escritura del C, cada una con la cifra medida sobre este estado que da la escritura contraria: (e) el almacen de la altura
    tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo
    arreglo que usa la rama contraria, y no como un simbolo aparte (`D_8006AD74`): el original calcula la base con
-   `lui v1` y el simbolo suelto da `lui at` (2350); (d) en el bloque del apoyo
+   `lui v1` y el simbolo suelto da `lui at` (1950); (d) en el bloque del apoyo
    por contacto (0x80023828..0x80023878 del original) el calculo de `giro.u.y` del apoyo, que lee `o->p70`, va ANTES del
    almacen de `o->coord.param` y de los tres de la escala: el original lee los dos giros antes de esos almacenes
    (`lhu v1,0xde(v1)` antes de `addiu v0,s4,0x18c`) y con el calculo al final el compilador no puede adelantar las
-   lecturas por `o->p70` sobre los almacenes de `o` (2640; se supone, sin verificar con el volcado, que un
+   lecturas por `o->p70` sobre los almacenes de `o` (2240; se supone, sin verificar con el volcado, que un
    almacen por la base de `o` se ordena ante una carga por un puntero leido de `o`); (c) en el bloque del apoyo
    hallado (0x80022C90..0x80022CC4 del original, tras `func_80020354`) la lectura de `h0A` va antes del almacen
    de `trans.vz`: el original emite `sw zero,0x1ac(s4)` despues de `lw v0,0xa8(s3)` y de `lh v0,0xa(v0)` y detras del
    almacen de `o->p70`; con el almacen a cero escrito antes de la lectura el compilador lo adelanta sobre el de
-   `o->p70` (2355; se supone, sin verificar con el volcado, que el almacen a cero se ordena ante la carga por
+   `o->p70` (1955; se supone, sin verificar con el volcado, que el almacen a cero se ordena ante la carga por
    el posible solape con el scratchpad); (a) `sc->desp.x` y `sc->desp.z` se almacenan por el campo y por la misma base
    `sc`, como hace el original (`sw v0,0x18(s3)` y `sw v1,0x20(s3)`, 0x800223FC y 0x80022400). El original relee los dos
    campos tras almacenarlos (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414). Medido en los volcados de
@@ -81,20 +79,24 @@ s16* D_800693DC;
    pasadas; en el ensamblador final la de `desp.x` ha desaparecido y la de `desp.z` sigue (se supone, sin verificar,
    que la elimina la limpieza posterior al reparto de registros cuando el registro del valor sigue intacto). Ademas aqui el
    planificador emite los dos almacenes en orden inverso al del original (`sw 0x20` antes de `sw 0x18`, con las dos
-   cargas de `D_80069D30` tambien invertidas). Escribir los almacenes en el orden contrario da 2115 y sumar en el orden
-   contrario 2315. Se supone, sin verificar, que el
+   cargas de `D_80069D30` tambien invertidas). Escribir los almacenes en el orden contrario da 1715 y sumar en el orden
+   contrario 1915. Se supone, sin verificar, que el
    original conserva la relectura de `desp.x` porque su reparto de registros no deja el valor almacenado en el
    registro de la relectura. Con `pos = &sc->desp` la
    base se materializa en `s0` (`addiu s0,s3,0x18`), que el original no tiene; (b) el almacen de `o->p180` va antes del de
    `o->trabajo.i14` en el bloque de entrada de la espera (0x80021020..0x80021050): el original lee `i14`, carga
    `sc->sec`, almacena a cero y escribe D_80069584 antes de la guarda de `o->p70`, con el almacen de `p180` en el hueco
-   de retardo del salto, y asi el bloque coincide entero (2420 con el orden contrario). Sentencia replicada (no genera codigo): en las dos ramas que
+   de retardo del salto, y asi el bloque coincide entero (2020 con el orden contrario). Sentencia replicada (no genera codigo): en las dos ramas que
    acaban en `sc->vel.z = sc->vel.z + (valor_vel >> 11)` (0x80021560 y 0x80021690) el original lee `lhu v0,0xc(s3)` en cada camino
-   y comparte una sola cola desde `mflo` (0x80021694; el primer camino salta ahi desde 0x80021564 y el segundo cae); la sentencia se escribe en cada rama porque con una sola copia tras la
-   union el `lhu` y el `mflo` quedan en la cola comun (1945; con la replica 1645). El ensamblador generado tiene una sola cola
-   (una etiqueta compartida en `mflo`, a la que salta el otro camino tras su `mult` y su `lhu`), como el original. La
-   asignacion de `mflo` queda en `a0` y el original usa `t7`; se supone, sin verificar, que `valor_vel`, compartida con
-   otro uso de la funcion, entra al reparto global y no como temporal de bloque.
+   y comparte una sola cola desde `mflo` (0x80021694; el primer camino salta ahi desde 0x80021564 y el segundo cae). La
+   sentencia se escribe en cada rama porque con una sola copia tras la union la cifra es 1945 y con la replica 1645. Lo que
+   muestra el volcado de `cc1`: en el RTL y tras la primera pasada de saltos cada rama tiene su propio desplazamiento
+   `>> 11` (dos), y tras la pasada de saltos posterior al reparto de registros, que funde las colas identicas por salto
+   cruzado, queda uno solo bajo una unica etiqueta en `mflo`, a la que el otro camino salta tras su `mult` y su `lhu`,
+   como en el original. Se supone, sin verificar con el volcado de la escritura de una sola copia, que sin la replica el
+   planificador deja el `lhu` en la cola comun. La asignacion de `mflo` queda en `a0` y el original usa `t7`; se supone,
+   sin verificar, que `valor_vel`, compartida con otro uso de la funcion, entra al reparto global y no como temporal de
+   bloque.
    La forma del fuente original que producia este reparto se desconoce.
    El tramo en Z de la guarda de D_80069D30 (0x800222B8..0x80022308) se
    escribe por un puntero a la base del arreglo (`p = D_80069D30; p[2]`) y con un valor propio del bloque
@@ -124,19 +126,17 @@ s16* D_800693DC;
    original frente a la carga en v1 y la mascara en v0 aqui; 0x8002400C y 0x80024B84 del original) que ni el
    orden de los operandos ni una local para la mascara cambian; (6) en el prologo el original copia el valor de `flags14` (`move
    v0,v1`, 0x80020BF4) antes de aplicar la mascara: se reproduce leyendo el campo dos veces, una para el almacen a
-   `D_800693D4` y otra para la mascara (con una sola lectura en una local la cifra es 2170 en
-   lugar de 2045); (7) en los bloques que reparten registros entre punteros de objeto, el original usa un registro
+   `D_800693D4` y otra para la mascara (con una sola lectura en una local la cifra es 1770); (7) en los bloques que reparten registros entre punteros de objeto, el original usa un registro
    distinto del que da la variable compartida, y cada uno se escribe en su propia variable: el angulo del bloque de
-   0x800217F4 (`move v1,v0` tras `ratan2`) en `angulo_giro` (con `ang` la cifra es 2075), el objeto de apoyo del bloque de
-   0x80022CA0 en `objeto_contacto` (con `t1`, 2220), el objeto tocado de la escala (0x800251CC) en `objeto_contacto` (con `t1`, 2065), la
-   comparacion `sc->tocado != o->p70` del bloque de 0x80024F90 en ese orden (con `o->p70 != sc->tocado`, 2055) y el
-   producto de `vel.z` (0x80021560 y 0x80021690, que el original deja en `t7`) en `valor_vel` (con `lo`, 2090); (8) el `addiu s1,s4,0xe4` de
+   0x800217F4 (`move v1,v0` tras `ratan2`) en `angulo_giro` (con `ang` la cifra es 1675), el objeto de apoyo del bloque de
+   0x80022CA0 en `objeto_contacto` (con `t1`, 1820), el objeto tocado de la escala (0x800251CC) en `objeto_contacto` (con `t1`, 1665), la
+   comparacion `sc->tocado != o->p70` del bloque de 0x80024F90 en ese orden (con `o->p70 != sc->tocado`, 1655) y el
+   producto de `vel.z` (0x80021560 y 0x80021690, que el original deja en `t7`) en `valor_vel` (con `lo`, 1690); (8) el `addiu s1,s4,0xe4` de
    0x800255CC (hueco de retardo del salto que omite la espera) y el de 0x80025638 (tras `func_8003AA7C`) son la misma
    instruccion; se supone, sin verificar con el volcado de saltos, que es la primera de la cola comun, copiada al hueco por
    el relleno de saltos. Por eso `pos` se
    asigna una sola vez, tras el bloque de la espera y justo antes de cargar el vector; asignada antes de la prueba de
-   `flags14` el valor cruza la llamada en `s1` y la instruccion de 0x80025638 desaparece (100 puntos mas con esa escritura,
-   medidos con una sola copia de la suma de `vel.z` tras la union).
+   `flags14` el valor cruza la llamada en `s1` y la instruccion de 0x80025638 desaparece (con esa escritura la cifra es 1745).
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
    0x40; la cifra medida sin la local es 1799 y con ella 1645. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
