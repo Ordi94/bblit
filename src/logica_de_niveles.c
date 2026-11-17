@@ -58,7 +58,7 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2310 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
+/* Pendiente: puntuacion 2090 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
    escritura del C, cada una con la cifra que da la escritura contraria: (e) el almacen de la altura
    tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo
    arreglo que usa la rama contraria, y no como un simbolo aparte (`D_8006AD74`): el original calcula la base con
@@ -116,10 +116,14 @@ s16* D_800693DC;
    pruebas de mascara (`lw v0,8(v0) ; lui v1,0x200 ; and v0,v0,v1` en el
    original frente a la carga en v1 y la mascara en v0 aqui; 0x8002400C y 0x80024B84 del original) que ni el
    orden de los operandos ni una local para la mascara cambian; (6) en el prologo el original copia el valor de `flags14` (`move
-   v0,v1`, 0x80020BF4) antes de aplicar la mascara; con una variable distinta para el resultado de la mascara la cifra
-   sube.
+   v0,v1`, 0x80020BF4) antes de aplicar la mascara: se reproduce leyendo el campo dos veces, una para el almacen a
+   `D_800693D4` y otra para la mascara (con una sola lectura en una local y la mascara sobre ella la cifra es 2310 en
+   lugar de 2185); (7) en las ramas que reparten registros entre punteros de objeto, el original usa un registro
+   distinto del que da la variable compartida: el angulo del bloque de 0x800217F4 (`move v1,v0` tras `ratan2`) se
+   escribe en `dd`, el objeto de apoyo del bloque de 0x80022CA0 en `t2`, el objeto tocado de la escala (0x800251CC) en
+   `t2` y la comparacion `sc->tocado != o->p70` del bloque de 0x80024F90 en ese orden; se remide cada una al cierre.
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 2464 y con ella 2310. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 2244 y con ella 2090. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {
@@ -165,9 +169,8 @@ void func_80020B90(Objeto* o)
         a++;
         p++;
     } while ((u16)a < 0x52);
-    fl = o->flags14;
-    D_800693D4 = fl;
-    fl &= 0xFFF9BFFF;
+    D_800693D4 = o->flags14;
+    fl = o->flags14 & 0xFFF9BFFF;
     o->flags14 = fl;
     if (ESTADO_PRINCIPAL->r[BANCO_DEMO] == 0 && ((D_8006D9A8[0] & 0x100) || (s32)fl < 0)) {
         D_80069D30[2] = 0;
@@ -424,8 +427,8 @@ void func_80020B90(Objeto* o)
             if (o->coord.super != NULL) {
                 sc->tmp_v.vx = D_8006D928.vpx - o->param.trans.vx;
                 sc->tmp_v.vz = D_8006D928.vpz - o->param.trans.vz;
-                ang = ratan2(sc->tmp_v.vx, sc->tmp_v.vz);
-                sc->tmp = (s16)o->param.giro.u.y - ang % 0x1000;
+                dd = ratan2(sc->tmp_v.vx, sc->tmp_v.vz);
+                sc->tmp = (s16)o->param.giro.u.y - dd % 0x1000;
                 if (sc->tmp > 0x800) {
                     sc->tmp -= 0x1000;
                 }
@@ -857,10 +860,10 @@ llamar_salto:
                 sc->punto.vz = o->param.trans.vz;
                 sc->apoyo_hallado = func_80020354(o, &sc->punto, w, 0x400004);
                 if (sc->apoyo_hallado != NULL) {
-                    t1 = sc->apoyo_hallado->objeto;
+                    t2 = sc->apoyo_hallado->objeto;
                     o->coord.param = (GsCOORD2PARAM*)APOYO(o);
                     APOYO(o)->trans.vx = 0;
-                    o->p70 = t1;
+                    o->p70 = t2;
                     APOYO(o)->trans.vy = sc->apoyo_hallado->h0A;
                     APOYO(o)->trans.vz = 0;
                     sc->tmp = (s16)o->param.giro.u.y - (s16)o->p70->param.giro.u.y;
@@ -1515,7 +1518,7 @@ sin_rebote:
         }
         GEO_CERO_WH(&sc->tmp_sv);
         if (o->p6C == NULL && (sc->reg->flags0C & 0x20) && o->raiz_ayudantes != 0 && (sc->tocado = D_80069388) != NULL) {
-            if ((sc->tocado->flags08 & 0x2802) && o->p70 != sc->tocado) {
+            if ((sc->tocado->flags08 & 0x2802) && sc->tocado != o->p70) {
                 if (sc->tocado->flags08 & 0x2000) {
                     sc->tmp_sv.vx = 0;
                     sc->tmp_sv.vy = -0x32;
@@ -1561,10 +1564,10 @@ sin_rebote:
                     D_80069388 = NULL;
                     GEO_CERO_W(&PORTADO(sc->tocado)->trans);
                     GEO_CERO_WH(&PORTADO(sc->tocado)->giro);
-                    t1 = sc->tocado;
-                    PORTADO(t1)->escala.vz = 0x1000;
-                    PORTADO(t1)->escala.vy = 0x1000;
-                    PORTADO(t1)->escala.vx = 0x1000;
+                    t2 = sc->tocado;
+                    PORTADO(t2)->escala.vz = 0x1000;
+                    PORTADO(t2)->escala.vy = 0x1000;
+                    PORTADO(t2)->escala.vx = 0x1000;
                     sc->tocado->p70 = o;
                     func_8001CFCC(&sc->tocado->coord);
                 }
