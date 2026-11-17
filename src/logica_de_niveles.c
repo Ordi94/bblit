@@ -28,6 +28,10 @@ extern s32 D_8006AC30[3];
 extern u8 D_8006AC3C[6];
 extern s32 D_8006AC44[3];
 extern s32 D_8006ACE0[3];
+/*
+ * Su tamano real se desconoce (el mapa de simbolos no lo trae): sin tamano el acceso se direcciona como en el
+ * original, con `lui` y `addiu` (0x80025854 y 0x8002585C), sin un tamano supuesto que cambie la planificacion.
+ */
 extern u8 D_8006ACEC[];
 extern s32 D_8006ACF4[3];
 extern s32 D_8006AD30[3];
@@ -163,9 +167,7 @@ s16* D_800693DC;
    se declara sin tamano: con 6 bytes la direccion entra al planificador como una sola instruccion (`symbol_ref`) y la
    carga de `D_8006ACE0` sale antes del `lui t7`; sin tamano el volcado `.sched2` la muestra partida en `high` y
    `lo_sum`, el `lui t7` precede a la carga como en el original (0x80025858) y la cifra baja de 1145 a 1085.
-   Residuo vigente (1085; el listado de `diff` marca 165 lineas como diferencia de operando y 159 de ellas solo difieren
-   en la forma de escribir un simbolo o un desplazamiento del `gp` (66 del `gp`, 38 de `D_8001xxxx` y 55 de
-   `D_1F8xxxxx`), de modo que la parte que el C puede cambiar es el resto): la
+   Residuo vigente (1085; la herramienta da 0 lineas de operando, 0 reordenadas y 346 insertadas o borradas): la
    mascara de 0x800211F4 (`lui v1,0x8000` en el original, `v0` aqui); las dos cargas y los dos almacenes de
    0x800223F4 (el volcado `.sched2` muestra la carga de `desp.z` antes de la de `desp.x` y el almacen de `desp.x` tras la
    direccion de `D_80069D40`; se supone, sin verificar, que la lectura `volatile` actua de barrera de memoria para el
