@@ -194,15 +194,20 @@ def _macros_del_archivo(texto: str) -> dict[str, str]:
 def _locales_sin_uso(lineas: list[str], macros: dict[str, str], cuentas: dict[tuple[str, str], int]) -> None:
     """Cuenta las locales con inicializador que nada lee, contando el uso de las macros que el cuerpo invoca.
 
-    Una macro del archivo puede leer una local por su nombre sin recibirla como argumento: es un uso.
+    Una macro del archivo puede leer una local por su nombre sin recibirla como argumento: es un uso. Los
+    nombres que solo aparecen en un comentario, del cuerpo o de una macro invocada, no son un uso: se
+    cuentan sobre el texto sin comentarios de bloque, el mismo criterio que usa la deteccion de reservas.
+    Las declaraciones tambien se buscan en ese texto, de modo que un comentario al final de su linea no
+    las oculta y una declaracion escrita dentro de un comentario no cuenta como declaracion.
     """
     for funcion, inicio, cierre in _cuerpos(lineas):
-        cuerpo = lineas[inicio : cierre + 1]
-        texto_cuerpo = "\n".join(cuerpo)
+        texto_cuerpo = _COMENTARIO_DE_BLOQUE.sub(" ", "\n".join(lineas[inicio : cierre + 1]))
         invocadas = [
-            texto for nombre, texto in macros.items() if re.search(rf"\b{re.escape(nombre)}\b", texto_cuerpo)
+            _COMENTARIO_DE_BLOQUE.sub(" ", texto)
+            for nombre, texto in macros.items()
+            if re.search(rf"\b{re.escape(nombre)}\b", texto_cuerpo)
         ]
-        for linea in cuerpo:
+        for linea in texto_cuerpo.splitlines():
             coincidencia = _DECLARACION_CON_VALOR.match(linea)
             if coincidencia is None:
                 continue
@@ -975,6 +980,42 @@ def test_una_local_que_solo_lee_una_macro_invocada_se_cuenta_como_usada() -> Non
 def test_una_asignacion_o_un_return_no_se_toman_por_una_declaracion() -> None:
     texto = _texto_con("    a = 3;\n    p->campo = 4;\n    return a = 1;\n")
     assert _buscar_referencias(texto) == {}
+
+
+def test_una_local_sin_uso_cuyo_nombre_aparece_en_un_comentario_de_una_linea_se_sigue_contando() -> None:
+    texto = _texto_con("    s32 sin_uso = 2;\n    /* sin_uso se calculaba aqui */\n    a = 1;\n")
+    assert _buscar_referencias(texto) == {("func_800000A0", LOCAL_SIN_USO): 1}
+
+
+def test_una_local_sin_uso_cuyo_nombre_aparece_en_un_comentario_de_varias_lineas_se_sigue_contando() -> None:
+    comentario = "    /* Nota larga:\n     * sin_uso no se lee\n     */\n"
+    texto = _texto_con(f"    s32 sin_uso = 2;\n{comentario}    a = 1;\n")
+    assert _buscar_referencias(texto) == {("func_800000A0", LOCAL_SIN_USO): 1}
+
+
+def test_una_local_sin_uso_con_un_comentario_al_final_de_su_declaracion_se_sigue_contando() -> None:
+    texto = _texto_con("    s32 sin_uso = 2; /* sin_uso */\n    a = 1;\n")
+    assert _buscar_referencias(texto) == {("func_800000A0", LOCAL_SIN_USO): 1}
+
+
+def test_una_local_que_se_lee_de_verdad_y_ademas_se_cita_en_un_comentario_no_se_cuenta() -> None:
+    texto = _texto_con("    s32 usada = 3; /* usada */\n    /* usada vale 3 */\n    a = usada;\n")
+    assert _buscar_referencias(texto) == {}
+
+
+def test_una_declaracion_escrita_dentro_de_un_comentario_no_es_una_local() -> None:
+    texto = _texto_con("    /* s32 vieja = 2; */\n    a = 1;\n")
+    assert _buscar_referencias(texto) == {}
+
+
+def test_una_macro_invocada_que_solo_cita_la_local_en_un_comentario_no_la_lee() -> None:
+    texto = "#define SUMA(x) ((x) + 1) /* k */\n\n" + _texto_con("    s32 k = 0;\n    a = SUMA(a);\n")
+    assert _buscar_referencias(texto) == {("func_800000A0", LOCAL_SIN_USO): 1}
+
+
+def test_un_nombre_de_macro_citado_solo_en_un_comentario_no_cuenta_como_invocacion() -> None:
+    texto = "#define LEE_K(x) ((x) + k)\n\n" + _texto_con("    s32 k = 0;\n    /* LEE_K */\n    a = 1;\n")
+    assert _buscar_referencias(texto) == {("func_800000A0", LOCAL_SIN_USO): 1}
 
 
 def _rama_replicada(variable: str) -> str:

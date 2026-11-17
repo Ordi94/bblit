@@ -705,7 +705,8 @@ que algún tipo distinto de `s32` exija para dar la cifra tendría que citar en 
 
 **Cómo se cuentan.** La tabla de abajo lista cada función con su forma y su número de referencias. La prueba
 `tests/test_business_envolturas_sin_codigo.py` la cruza con `src/` en los dos sentidos: cada `} while (0);`, cada
-par `x--; x++;`, cada `if (...) {}`, cada local con inicializador que nadie lee, cada comentario de sentencia
+par `x--; x++;`, cada `if (...) {}`, cada local con inicializador que nadie lee (los usos se cuentan sobre el texto sin comentarios de bloque, así que citar
+el nombre en un comentario no la convierte en usada), cada comentario de sentencia
 replicada y cada declaración de reserva de pila con su comentario fijo, fuera de una macro, debe estar en la tabla
 con la misma forma y el mismo número, y cada fila debe tener su declaración. La cabecera de su función debe llevar
 «no genera código» (o «no generan código») y la oración fija; la de una reserva de pila, «Reserva de pila:»,
