@@ -720,7 +720,10 @@ otra forma o dos filas de una misma función con estados distintos hacen fallar 
 prueba lee de la cabecera las dos cifras de la frase fija y exige que la cifra con la local sea menor que la cifra
 sin ella, que sea 0 si la función coincide y que, si es pendiente, sea la cifra de la fila. También exige que
 la columna «Qué decide» de la fila lleve la frase de los marcos y la de las dos cifras con los mismos números, y
-la misma dirección del `addiu sp`, que la cabecera. Al añadir o quitar una
+la misma dirección del `addiu sp`, que la cabecera. La prueba también rechaza, con el archivo, la función y la línea,
+cualquier `break;` o `continue;` que pertenezca directamente a una envoltura (la condición 3 de arriba): los de un
+`for`, un `while`, un `do` o un `switch` anidados dentro de ella pertenecen a ese bloque y se aceptan, y las palabras
+dentro de comentarios, cadenas, macros o identificadores no cuentan. Al añadir o quitar una
 referencia se actualiza la tabla en el mismo cambio.
 
 | Función | Archivo | Forma | Referencias | Estado | Qué decide |

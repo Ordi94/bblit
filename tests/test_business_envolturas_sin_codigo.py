@@ -80,6 +80,12 @@ _LOCAL_RESERVA_DE_CUALQUIER_TIPO = re.compile(
     r"^\s+(?!return\b)[A-Za-z_][\w \t\*]*?[\s\*](reserva\w*)\s*(?:\[[^\]]*\])?\s*;\s*$"
 )
 _COMENTARIO_DE_BLOQUE = re.compile(r"/\*.*?\*/", re.DOTALL)
+_CADENA_O_CARACTER = re.compile(r"\"(?:\\.|[^\"\\\n])*\"|'(?:\\.|[^'\\\n])*'")
+_TOKEN_DE_FLUJO = re.compile(r"\b(?P<palabra>do|for|while|switch|break|continue)\b|(?P<signo>[{}();])")
+_WHILE_TRAS_LLAVE = re.compile(r"\s*(while)\b")
+_CIERRE_DE_ENVOLTURA = re.compile(r"\s*while\s*\(0\)\s*;")
+_BLOQUES_DE_BREAK = frozenset({"do", "for", "while", "switch"})
+_BLOQUES_DE_CONTINUE = frozenset({"do", "for", "while"})
 _CABEZA_CON_TIPO = re.compile(
     r"^(?:[A-Za-z_]\w*[ \t]*\*+[ \t]*|[A-Za-z_]\w*[ \t]+)+([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$"
 )
@@ -461,6 +467,120 @@ def _incumplimientos(texto: str) -> list[str]:
         if FRASE_FIJA not in cabecera:
             fallos.append(f"{funcion}: la cabecera no lleva la oracion fija")
     return fallos
+
+
+def _destino_del_salto(
+    pila: list[tuple[str, list[tuple[int, str]]]], palabra: str
+) -> list[tuple[int, str]] | None:
+    """Devuelve la lista de saltos del bloque al que pertenece un ``break`` o un ``continue``.
+
+    Contexto:
+        Lo usa ``_saltos_de_envolturas`` al recorrer las llaves del archivo.
+
+    Un ``break`` pertenece al bucle o al ``switch`` mas cercano y un ``continue`` solo al bucle mas
+    cercano: un ``switch`` no recoge los ``continue`` que contiene, que siguen hacia el bucle de fuera.
+
+    Args:
+        pila (list): Bloques abiertos, del mas externo al mas interno, como (tipo, saltos directos).
+        palabra (str): ``break`` o ``continue``.
+
+    Returns:
+        list[tuple[int, str]] | None: Lista de saltos del bloque ``do`` que recoge el salto, o None si lo
+        recoge otro bloque o ninguno.
+
+    Ejemplo:
+        _destino_del_salto([("do", []), ("bloque", [])], "break") is not None
+    """
+    admitidos = _BLOQUES_DE_BREAK if palabra == "break" else _BLOQUES_DE_CONTINUE
+    for tipo, saltos in reversed(pila):
+        if tipo in admitidos:
+            return saltos if tipo == "do" else None
+    return None
+
+
+def _saltos_de_envolturas(texto: str) -> list[tuple[str, int, str]]:
+    """Lista los ``break`` y ``continue`` que pertenecen directamente a una envoltura ``do { } while (0);``.
+
+    Contexto:
+        Lo usa ``_incumplimientos_de_saltos``. La envoltura solo puede dejar de cambiar la semantica si
+        ningun salto la tiene por destino: con ``break`` o ``continue`` el flujo sale por el final de la
+        envoltura en vez de seguir el de la funcion.
+
+    La apertura de cada ``do`` se toma de la pila de llaves, con un bloque por cada ``{``, y se decide al
+    cerrarlo si lo que sigue es ``while (0);`` (una envoltura) o la condicion de un bucle corriente. Los
+    saltos dentro de un ``for``, ``while``, ``do`` o ``switch`` anidados pertenecen a ese bloque, no a la
+    envoltura, y las palabras dentro de comentarios, cadenas, macros o identificadores no cuentan.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+
+    Returns:
+        list[tuple[str, int, str]]: (funcion, linea con base 1, palabra) de cada salto directo.
+
+    Ejemplo:
+        _saltos_de_envolturas("void f(void)\\n{\\n    do {\\n        break;\\n    } while (0);\\n}\\n")
+    """
+    lineas = _lineas_de_codigo(texto)
+    sin_comentarios = _COMENTARIO_DE_BLOQUE.sub(lambda m: "\n" * m.group().count("\n"), "\n".join(lineas))
+    limpio = _CADENA_O_CARACTER.sub('""', sin_comentarios)
+    lineas_limpias = limpio.split("\n")
+    pila: list[tuple[str, list[tuple[int, str]]]] = []
+    omitir: set[int] = set()
+    pendiente: str | None = None
+    parentesis = 0
+    resultado: list[tuple[str, int, str]] = []
+    for token in _TOKEN_DE_FLUJO.finditer(limpio):
+        if token.start() in omitir:
+            continue
+        palabra, signo = token.group("palabra"), token.group("signo")
+        linea = limpio.count("\n", 0, token.start())
+        if palabra in ("do", "for", "while", "switch"):
+            pendiente = palabra
+        elif palabra is not None and pendiente is None:
+            destino = _destino_del_salto(pila, palabra)
+            if destino is not None:
+                destino.append((linea, palabra))
+        elif signo == "(":
+            parentesis += 1
+        elif signo == ")":
+            parentesis = max(0, parentesis - 1)
+        elif signo == "{":
+            pila.append((pendiente or "bloque", []))
+            pendiente = None
+        elif signo == ";" and parentesis == 0:
+            pendiente = None
+        elif signo == "}" and pila:
+            tipo, saltos = pila.pop()
+            resto = limpio[token.end() :]
+            cola = _WHILE_TRAS_LLAVE.match(resto) if tipo == "do" else None
+            if cola is not None:
+                omitir.add(token.end() + cola.start(1))
+                if _CIERRE_DE_ENVOLTURA.match(resto) is not None:
+                    funcion = _funcion_que_contiene(lineas_limpias, saltos[0][0]) if saltos else None
+                    resultado.extend((funcion or "?", numero + 1, nombre) for numero, nombre in saltos)
+    return resultado
+
+
+def _incumplimientos_de_saltos(texto: str) -> list[str]:
+    """Lista un mensaje por cada ``break`` o ``continue`` que pertenece directamente a una envoltura.
+
+    Contexto:
+        Lo ejerce la prueba que recorre ``src/``; el llamador antepone el archivo al mensaje.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+
+    Returns:
+        list[str]: Mensajes con la funcion y la linea; vacia si ninguna envoltura tiene un salto propio.
+
+    Ejemplo:
+        _incumplimientos_de_saltos(Path("src/graficos_y_gte.c").read_text(encoding="utf-8")) == []
+    """
+    return [
+        f"{funcion}: linea {linea}: `{palabra};` pertenece a la envoltura "
+        "`do { ... } while (0);` y cambia su flujo"
+        for funcion, linea, palabra in _saltos_de_envolturas(texto)
+    ]
 
 
 def _reservas_de_una_funcion(funcion: str, cuerpo: list[str]) -> tuple[int, list[str]]:
@@ -1016,6 +1136,97 @@ def test_una_macro_invocada_que_solo_cita_la_local_en_un_comentario_no_la_lee() 
 def test_un_nombre_de_macro_citado_solo_en_un_comentario_no_cuenta_como_invocacion() -> None:
     texto = "#define LEE_K(x) ((x) + k)\n\n" + _texto_con("    s32 k = 0;\n    /* LEE_K */\n    a = 1;\n")
     assert _buscar_referencias(texto) == {("func_800000A0", LOCAL_SIN_USO): 1}
+
+
+def _envoltura_con(interior: str) -> str:
+    sangrado = "".join(f"        {linea}\n" for linea in interior.splitlines())
+    return _texto_con(f"    do {{\n{sangrado}    }} while (0);\n")
+
+
+def test_una_envoltura_con_un_break_directo_se_rechaza_con_su_funcion_y_su_linea() -> None:
+    texto = _envoltura_con("if (a) {\n    break;\n}\na += 2;")
+    assert _saltos_de_envolturas(texto) == [("func_800000A0", 8, "break")]
+    assert _incumplimientos_de_saltos(texto) == [
+        "func_800000A0: linea 8: `break;` pertenece a la envoltura `do { ... } while (0);` y cambia su flujo"
+    ]
+
+
+def test_una_envoltura_con_un_continue_directo_se_rechaza() -> None:
+    texto = _envoltura_con("a += 2;\nif (b) continue;")
+    assert _saltos_de_envolturas(texto) == [("func_800000A0", 8, "continue")]
+
+
+def test_una_envoltura_con_un_for_interno_que_contiene_break_se_acepta() -> None:
+    texto = _envoltura_con(
+        "for (b = 0; b < 4; b++) {\n    if (b == a) {\n        break;\n    }\n    continue;\n}"
+    )
+    assert _incumplimientos_de_saltos(texto) == []
+
+
+def test_una_envoltura_con_un_switch_interno_que_contiene_break_se_acepta() -> None:
+    texto = _envoltura_con("switch (a) {\ncase 1:\n    a = 2;\n    break;\ndefault:\n    break;\n}")
+    assert _incumplimientos_de_saltos(texto) == []
+
+
+def test_un_continue_dentro_de_un_switch_de_la_envoltura_pertenece_a_la_envoltura() -> None:
+    texto = _envoltura_con("switch (a) {\ncase 1:\n    continue;\n}")
+    assert _saltos_de_envolturas(texto) == [("func_800000A0", 9, "continue")]
+
+
+def test_una_envoltura_legitima_sin_saltos_se_acepta() -> None:
+    assert _incumplimientos_de_saltos(_envoltura_con("a += 2;\nb = a;")) == []
+
+
+def test_las_palabras_en_comentarios_cadenas_o_identificadores_no_cuentan_como_saltos() -> None:
+    interior = (
+        "/* break; continue; */\n"
+        "/* nota larga:\n"
+        " * continue;\n"
+        " */\n"
+        'p = "break;";\n'
+        "break_total = 1;\n"
+        "no_continue = 2;"
+    )
+    assert _incumplimientos_de_saltos(_envoltura_con(interior)) == []
+
+
+def test_el_break_de_un_bucle_sin_llaves_dentro_de_la_envoltura_pertenece_al_bucle() -> None:
+    assert _incumplimientos_de_saltos(_envoltura_con("while (a) break;\nfor (;;) break;")) == []
+
+
+def test_un_break_en_un_do_while_que_no_es_cero_es_de_un_bucle_corriente_y_se_acepta() -> None:
+    texto = _texto_con(
+        "    do {\n        if (a) {\n            break;\n        }\n        a--;\n    } while (a);\n"
+    )
+    assert _incumplimientos_de_saltos(texto) == []
+
+
+def test_un_break_de_un_bucle_que_contiene_una_envoltura_sin_saltos_no_es_de_la_envoltura() -> None:
+    texto = _texto_con(
+        "    for (b = 0; b < 4; b++) {\n        do {\n            a += 2;\n        } while (0);\n"
+        "        if (a) {\n            break;\n        }\n    }\n"
+    )
+    assert _incumplimientos_de_saltos(texto) == []
+
+
+def test_un_break_de_una_envoltura_dentro_de_un_bucle_se_atribuye_a_la_envoltura() -> None:
+    texto = _texto_con(
+        "    for (b = 0; b < 4; b++) {\n        do {\n            break;\n        } while (0);\n    }\n"
+    )
+    assert [palabra for _, _, palabra in _saltos_de_envolturas(texto)] == ["break"]
+
+
+def test_una_envoltura_dentro_de_una_macro_no_se_revisa() -> None:
+    texto = "#define SALE() do { \\\n    break; \\\n} while (0)\n\n" + _texto_con("    a = 1;\n")
+    assert _incumplimientos_de_saltos(texto) == []
+
+
+def test_ninguna_envoltura_de_src_tiene_un_break_ni_un_continue_propios() -> None:
+    fallos: list[str] = []
+    for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c")):
+        for fallo in _incumplimientos_de_saltos(archivo.read_text(encoding="utf-8")):
+            fallos.append(f"src/{archivo.name}: {fallo}")
+    assert fallos == []
 
 
 def _rama_replicada(variable: str) -> str:
