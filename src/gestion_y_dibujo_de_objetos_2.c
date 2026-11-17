@@ -417,21 +417,15 @@ void func_80037FB8(NodoLista* n)
  * sustituye `e` por su valor constante en las dos lecturas (`lui` + `lbu`) y el pseudo muere sin
  * usos. Se supone, sin verificar, que la lectura con un indice en registro es lo que impide esa
  * sustitucion; el original lee el ultimo grupo con dos desplazamientos constantes sobre un solo
- * `lui` en s3 (0x520 y 0x578), y el C actual no lo mantiene en ninguna de las formas escritas. Leer los dos bytes de ese grupo por los
- * externos D_80010044 y D_800100FA (sin la local `e`) deja dos `lui` distintos (hi de cada simbolo, 940): los
- * simbolos son expresiones distintas y el optimizador no las comparte, de modo que la base comun del original no
- * viene de una lectura por nombre de simbolo. Leer el segundo byte del grupo del contador 0xB8 por D_800100F9 da 2273. Con `pos` escrito
- * despues de `ids[5]` y `tpos = pos - 6` en lugar de `D_8005E8F8 - 6` la cifra es 925, la misma que la actual.
- * Con los tres bytes del contador de porcentaje leidos con ESTADO_PRINCIPAL directo (sin la local
- * `e`, que abarcaba el grupo) en una sola expresion y con `r[7] + r[5]` sumado antes de sumarlo al
- * byte alto desplazado, la cifra baja de 2287 a 2137 (el lui compartido y la suma coinciden con
- * 0x1b8..0x1d0); con los ids del porcentaje escritos en orden de indices 2 y 3 baja de 2137 a 1325
- * (el valor BCD pasa a a1 como en el original); con la prueba `i == 1` como `if` independiente y no
- * como `else if` baja de 1325 a 925, porque el original cae del bloque `i == 0` a esa prueba. Sin
- * bajada: una variable BCD distinta por conversion da 13847 (cambia la planificacion del
- * primer grupo); un puntero propio para el ultimo grupo da 950 y para los dos ultimos 2508 (se
- * redistribuyen los registros salvados de todos los grupos); escribir `tpos` antes que `pos` en el grupo del contador
- * 0xB8 da 2558.
+ * `lui` en s3 (0x520 y 0x578), y el C actual no lo mantiene. El C no lee los dos bytes de ese grupo por
+ * los externos D_80010044 y D_800100FA: los simbolos son expresiones distintas, el optimizador no
+ * comparte su `lui` y la base comun del original no viene de una lectura por nombre de simbolo.
+ * Forma vigente del C: los tres bytes del contador de porcentaje se leen con ESTADO_PRINCIPAL directo
+ * (sin una local `e` que abarque el grupo) en una sola expresion, con `r[7] + r[5]` sumado antes de
+ * sumarlo al byte alto desplazado (asi el `lui` compartido y la suma coinciden con 0x1b8..0x1d0); los
+ * ids del porcentaje se escriben en orden de indices 2 y 3 (el valor BCD pasa a a1 como en el
+ * original); y la prueba `i == 1` es un `if` independiente y no un `else if`, porque el original cae
+ * del bloque `i == 0` a esa prueba.
  */
 /*
  * Crea los objetos de los indicadores de la interfaz al entrar en un nivel: reinicia los

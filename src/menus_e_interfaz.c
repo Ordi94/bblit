@@ -289,10 +289,11 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
  * por otra local de bloque, de modo que la direccion toma a0 y el desplazamiento a2.
  * Medido ademas: calcular el brillo sobre la variable del color (en vez de la del color acumulado de la cola) da
  * 395, y leer la bandera de transparencia directamente en la condicion, sin variable, da 920.
- * Con la palabra en una variable (435) el color cae en t0 y la direccion de la ranura en a3 (en el original a3 y a0);
- * usar una sola variable para la direccion de las palabras, la lista y la ranura no cambia la cifra (360 y 435): el
- * compilador ya las funde, de modo que el reparto de a0 no depende de cuantas variables se escriban. Se supone, sin
- * verificar, que el original deja la direccion de las palabras en a0 porque v1 esta ocupado en la asignacion local.
+ * Con la palabra en una variable el color cae en t0 y la direccion de la ranura en a3 (en el original a3 y a0). El C
+ * escribe variables propias para la direccion de las palabras, la lista y la ranura; fundirlas en una sola no cambia
+ * el reparto, porque el compilador ya las funde y el reparto de a0 no depende de cuantas variables se escriban. Se
+ * supone, sin verificar, que el original deja la direccion de las palabras en a0 porque v1 esta ocupado en la
+ * asignacion local.
  */
 /*
  * Encola un sprite de ocho palabras en la lista de ordenacion segun la profundidad del objeto: calcula el color y

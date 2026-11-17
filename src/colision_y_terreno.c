@@ -258,10 +258,10 @@ void func_80019364(s32* a0)
  * 3 reordenadas, 47 insertadas o borradas). Los cuatro avances del recorrido general (subcelda y baldosa)
  * escriben el punto de cruce y la altura como lecturas del campo, sin variables intermedias. En el avance de
  * subcelda de z las tres lecturas de preparacion van en el orden `rz`, `aux`, `rx` y antes de los almacenes de
- * `sz_z` y `lim_z`: con `rx` en primer lugar la puntuacion es 550 y con `rx` despues de `lim_z` es 1090; con la
- * actual aparece la copia `move` que el original emite (la segunda lectura de `sz_x` queda como copia de la
- * primera). En el de x el orden `rz`, `aux`, `rx` da 470 y los otros dos ordenes de `rz`, `aux` y `rx` ensayados
- * dan 520 y 510. Queda:
+ * `sz_z` y `lim_z`: con ese orden aparece la copia `move` que el original emite (la segunda lectura de `sz_x`
+ * queda como copia de la primera) y con `rx` en primer lugar la puntuacion es 550. El avance de subcelda de x
+ * tiene el mismo orden `rz`, `aux`, `rx`: es el que ya tenia ese avance y se conserva para que los dos sean
+ * iguales; no se ha medido con otro orden en este estado. Queda:
  * (1) en los dos avances de subcelda el `mult` de la prueba sale una instruccion antes que en el original
  * (antes de la segunda carga de la altura o de la coordenada, 0x8001A198 en el avance de z) y el reparto de
  * `a0`/`a1`/`v1` de las tres lecturas difiere: el original carga `sz_y` y `sz_z` antes del `mult` y `sz_x` despues,
