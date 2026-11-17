@@ -559,9 +559,9 @@ typedef struct {
  * bucle de ordenes) y la de la lectura de las listas (`ne` a la prueba del final del bucle) apuntan
  * a etiquetas distintas; tras ese pase la apertura sale con un salto a una etiqueta nueva delante
  * del `jal` de las listas y el volcado conserva cuatro llamadas. Escribir la cola una sola vez con
- * `goto` desde las listas hacia una etiqueta delante del `jal` de la apertura sube la cifra. Se supone, sin verificar, que el optimizador de saltos recorre los saltos en el orden de
- * aparicion y redirige el primero, y que el original llega a ese pase con las dos continuaciones ya
- * iguales por otra estructura de los saltos de retorno.
+ * `goto` desde las listas hacia una etiqueta delante del `jal` de la apertura sube la cifra. Se supone, sin
+ * verificar, que el optimizador de saltos recorre los saltos en el orden de aparicion y redirige el primero, y que
+ * el original llega a ese pase con las dos continuaciones ya iguales por otra estructura de los saltos de retorno.
  *
  * Bucles de etiquetas del chunk 0x05 (causa 2): escrito como `while (*cursor != 0x2E)` el
  * compilador iza la constante a s0 (`move s0,t3` como el original y `li s1,6`) pero deja la salida del
@@ -1101,6 +1101,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(u8*, lista, 8) = datos + desp_campo;
                             D_800694A0 = compensacion;
                             EN(u16, nodo, 0xA) = 4;
+                            /* Los almacenes van en el orden del original: la palabra de 0xE se lee de `cab` antes de
+                             * reescribir `lista + 8`, y el primer almacen a `lista + 8` (0x800424EC), aunque se
+                             * sobrescribe en 0x80042500, existe en el original y se conserva. */
                             cab = EN(u8*, lista, 8);
                             EN(u8*, lista, 8) = cab + 4;
                             EN(u16, lista, 0x12) = EN(u16, cab, 2) >> 1;
