@@ -278,8 +278,11 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 360 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
- * 56 insertadas o borradas). Las dos ramas que recortan el nivel de la lista coinciden: el nivel se guarda dentro de
+ * Pendiente: puntuacion 565 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
+ * 60 insertadas o borradas). El recorte de la direccion del primitivo a 24 bits se escribe en una sola sentencia
+ * (`p = (u32*)(((s32)p << 8) >> 8)`): el original emite `sll` y `sra` consecutivos sobre a1 (0x8003B218 y 0x8003B21C),
+ * tras los almacenes del color, y aqui el `sll` cae en v0 antes del almacen del color, de modo que la direccion y la
+ * ranura toman otros registros. Las dos ramas que recortan el nivel de la lista coinciden: el nivel se guarda dentro de
  * cada rama, antes de leer la lista, y el original las funde en una cola comun que empieza por ese almacen (con una
  * variable `n` y un solo almacen tras la union la puntuacion sube de 360 a 575). La cola del color coincide en forma
  * (`or ; lui 0x2c00 ; or`) y el color cae en a3 como en el original. Difiere el reparto de registros del resto: el
@@ -391,11 +394,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         }
         tinte |= 0x2C000000;
         p[1] = tinte;
-        /* Los dos desplazamientos que recortan la direccion del primitivo operan sobre la propia variable, como en el
-         * original (sll y sra sobre a1): escritos en una sola expresion que no la reasigna la puntuacion sube de 360
-         * a 575. */
-        p = (u32*)((s32)p << 8);
-        p = (u32*)((s32)p >> 8);
+        p = (u32*)(((s32)p << 8) >> 8);
         *ranura = (u32)p;
         D_80076188 += 0x28;
         if (ctx->limite < D_80076188) {
