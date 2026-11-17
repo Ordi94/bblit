@@ -424,7 +424,7 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 8598 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 7738 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones y el original 2955; la
@@ -517,6 +517,15 @@ typedef struct {
  * orden ascendente de direccion (`lhu v0,0x128($sp)` ... `lw t0,0xc($s4)`, 0x800430E4 a 0x800430FC),
  * y el fuente las lee en ese orden; los almacenes salen en el orden que decide el planificador.
  *
+ * Segundo entero de las etiquetas leido antes de un almacen: en los chunks 0x24, 0x26, 0x36 y 0x47 el
+ * original carga el entero de `campos + 4` antes del almacen intermedio (`lw v1,4(s4)` en 0x80042808
+ * y `lw v0,4(s4)` en 0x80043008, delante de `sh v0,0xa(s1)` en 0x80042810 y de `sb t2` a D_8001004F
+ * en 0x80043014) y lo guarda en D_800694A0 despues (`sw` a 0x180($gp) en 0x8004281C y 0x8004301C).
+ * Con la lectura dentro de la asignacion al global el planificador deja la carga tras el almacen
+ * y adelanta el almacen al global (se supone, sin verificar, que un acceso por puntero no se da por
+ * independiente de un almacen a otro objeto); `compensacion` guarda el valor leido, como ya hacia
+ * el chunk 0x3F.
+ *
  * Tipo de `orden` y `tipo`: son enteros de 32 bits (`orden` con signo, como pide el `slti` del
  * despacho de primer nivel en 0x80041C94; `tipo` sin signo, `sltiu` en 0x80042300). Con 8 bits el
  * compilador anade un `andi 0xff` tras cada lectura que el original no tiene (0x80041C88 y
@@ -556,7 +565,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 10147 y con ella 8598. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 9287 y con ella 7738. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -1070,8 +1079,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             }
                             EN(u8*, nodo, 0x54) = lista;
                             desp_campo = *(s32*)aux;
-                            D_800694A0 = *(s32*)(aux + 4);
+                            compensacion = *(s32*)(aux + 4);
                             EN(u8*, lista, 8) = datos + desp_campo;
+                            D_800694A0 = compensacion;
                             EN(u16, nodo, 0xA) = 4;
                             cab = EN(u8*, lista, 8);
                             EN(u8*, lista, 8) = cab + 4;
@@ -1146,8 +1156,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
 
                             CopiarBytes(cursor, campos, 8);
                             desp_campo = *(s32*)campos_mem;
-                            D_800694A0 = *(s32*)(campos + 4);
+                            compensacion = *(s32*)(campos + 4);
                             EN(u16, nodo, 0xA) = 2;
+                            D_800694A0 = compensacion;
                             modelo_gs = datos + desp_campo + 4;
                             EN(u8*, nodo, 0x54) = modelo_gs;
                             GsMapModelingData((unsigned long*)modelo_gs);
@@ -1383,8 +1394,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             desp_campo = *(s32*)campos_mem;
+                            compensacion = ETQ(w, campos, 1);
+                            D_800694A0 = compensacion;
                             D_800694FC = datos + desp_campo;
-                            D_800694A0 = ETQ(w, campos, 1);
                         }
                     } while (*cursor != 0x2E);
                     break;
@@ -1400,8 +1412,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             desp_campo = *(s32*)campos_mem;
-                            D_800694A0 = *(s32*)(campos + 4);
+                            compensacion = *(s32*)(campos + 4);
                             D_8001004F = 1;
+                            D_800694A0 = compensacion;
                             D_800695B0 = (u16*)(datos + desp_campo);
                         }
                     } while (*cursor != 0x2E);
