@@ -348,7 +348,8 @@ def _locales_de_funcion(lineas: list[str], inicio: int, cierre: int) -> frozense
     Se reconocen las declaraciones de varios nombres en una linea (``s32 a, b;``), los punteros
     (``u8 *p;``), los arreglos (``s16 v[3];``), las que llevan inicializador y las de los bloques internos:
     una declaracion en un bloque anidado se trata como de toda la funcion, que es lo conservador porque solo
-    amplia el conjunto de nombres que pueden variar a los que la funcion declara de verdad.
+    amplia el conjunto de nombres que pueden variar a los que la funcion declara de verdad. Los comentarios
+    de bloque no cuentan: una declaracion con un comentario al final de su linea sigue declarando su nombre.
 
     Args:
         lineas (list[str]): Lineas del archivo, con las macros vaciadas.
@@ -361,10 +362,14 @@ def _locales_de_funcion(lineas: list[str], inicio: int, cierre: int) -> frozense
     Ejemplo:
         _locales_de_funcion(["s32 f(s32 a)", "{", "    s32 b, *c;", "}"], 0, 3) == {"a", "b", "c"}
     """
-    definicion = lineas[inicio]
+    definicion = _COMENTARIO_DE_BLOQUE.sub(" ", lineas[inicio])
     parametros = definicion[definicion.index("(") + 1 : definicion.rindex(")")]
     nombres = [_nombre_de_declarador(parametro, con_tipo=True) for parametro in _dividir_en_comas(parametros)]
-    for linea in lineas[inicio + 1 : cierre]:
+    # Los comentarios se quitan del cuerpo entero y no linea a linea: asi un comentario al final de la
+    # declaracion no la descarta por no acabar en ``;``, uno de varias lineas no la parte y una declaracion
+    # escrita dentro de un comentario no cuenta. Es el mismo criterio de ``_locales_sin_uso``.
+    cuerpo = _COMENTARIO_DE_BLOQUE.sub(" ", "\n".join(lineas[inicio + 1 : cierre]))
+    for linea in cuerpo.splitlines():
         texto = linea.strip()
         if not texto.endswith(";") or texto.split(None, 1)[0] in _PALABRAS_QUE_NO_DECLARAN:
             continue
@@ -1984,6 +1989,68 @@ def test_las_locales_de_declaracion_multiple_y_puntero_pueden_variar_entre_camin
     de_punteros = _texto_de_dos_ramas_con("w[0] = 1;", "z[0] = 1;", declaraciones)
     assert _incumplimientos_de_replicadas(de_enteros) == []
     assert _incumplimientos_de_replicadas(de_punteros) == []
+
+
+def test_una_local_declarada_con_comentario_al_final_de_la_linea_es_local_de_la_funcion() -> None:
+    """Un comentario tras el ``;`` de la declaracion no la oculta del conjunto de locales.
+
+    Regla:
+        El comentario no es codigo: la linea ``s32 x; /* nota */`` declara ``x`` igual que ``s32 x;``.
+
+    Ejemplo:
+        ``s32 x; /* nota */`` aporta ``x``.
+    """
+    lineas = ["s32 f(void)", "{", "    s32 x; /* nota */", "    u8 *p; /* otra */", "    return 0;", "}"]
+    assert _locales_de_funcion(lineas, 0, len(lineas) - 1) == {"x", "p"}
+
+
+def test_dos_ramas_con_variables_propias_declaradas_una_con_comentario_y_otra_sin_el_se_aceptan() -> None:
+    """La pareja de sentencia duplicada empareja aunque solo una de sus variables lleve comentario.
+
+    Regla:
+        Condicion (c): la variable propia de cada camino puede cambiar, se declare como se declare.
+
+    Ejemplo:
+        ``o->x = u;`` y ``o->x = v;`` con ``s32 u; /* nota */`` y ``s32 v;`` no producen incumplimientos.
+    """
+    declaraciones = "    s32 u; /* nota de la rama primera */\n    s32 v;\n    Obj *o;\n"
+    texto = _texto_de_dos_ramas_con("o->x = u;", "o->x = v;", declaraciones)
+    assert _incumplimientos_de_replicadas(texto) == []
+
+
+def test_un_comentario_de_varias_lineas_tras_la_declaracion_no_oculta_la_local_ni_la_siguiente() -> None:
+    """Un comentario que empieza en la linea de la declaracion y acaba mas abajo no pierde locales.
+
+    Regla:
+        Los comentarios se quitan antes de mirar las lineas: la declaracion anterior al comentario y la
+        escrita justo despues de su cierre son ambas locales; una declaracion dentro del comentario no.
+
+    Ejemplo:
+        ``s32 x; /* abre`` + ``s32 y; */`` + ``s32 z;`` aporta ``x`` y ``z``, no ``y``.
+    """
+    lineas = [
+        "s32 f(void)",
+        "{",
+        "    s32 x; /* abre",
+        "    s32 y; cierra */",
+        "    s32 z;",
+        "    return 0;",
+        "}",
+    ]
+    assert _locales_de_funcion(lineas, 0, len(lineas) - 1) == {"x", "z"}
+
+
+def test_las_locales_sin_comentarios_se_reconocen_igual_que_antes() -> None:
+    """Quitar los comentarios no cambia el reconocimiento de un cuerpo que no los tiene.
+
+    Regla:
+        Parametros, declaraciones multiples y punteros se siguen leyendo con el mismo criterio.
+
+    Ejemplo:
+        ``s32 f(s32 a)`` con ``s32 b, *c;`` aporta ``a``, ``b`` y ``c``.
+    """
+    lineas = ["s32 f(s32 a)", "{", "    s32 b, *c;", "    return a;", "}"]
+    assert _locales_de_funcion(lineas, 0, len(lineas) - 1) == {"a", "b", "c"}
 
 
 def test_una_marca_que_no_precede_a_una_sentencia_se_rechaza() -> None:
