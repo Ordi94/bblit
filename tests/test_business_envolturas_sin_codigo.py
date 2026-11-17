@@ -29,6 +29,7 @@ analizador completo de C y marcaria como reserva los campos y las locales que se
 
 import re
 from collections import Counter
+from itertools import combinations
 from pathlib import Path
 from typing import NamedTuple
 
@@ -96,6 +97,10 @@ _CABEZA_CON_TIPO = re.compile(
     r"^(?:[A-Za-z_]\w*[ \t]*\*+[ \t]*|[A-Za-z_]\w*[ \t]+)+([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$"
 )
 _CABEZA_SIN_TIPO = re.compile(r"^\**\s*([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$")
+_RAMIFICACION = re.compile(
+    r"\b(?:if|else|switch|case|default|goto|return|break|continue|for|while|do)\b|\?|^\s*[A-Za-z_]\w*\s*:(?!:)",
+    re.MULTILINE,
+)
 _MOLDE_VOLATILE = re.compile(r"(?:\*|\()\s*\(\s*[\w\s\*]*?\bvolatile\b[\w\s\*]*\*\s*\)")
 _DIRECCION_DE_ORIGINAL = re.compile(r"\b0x8[0-9A-Fa-f]{7}\b")
 _FILA_DE_MOLDE = re.compile(
@@ -446,24 +451,108 @@ def _incumplimientos_de_replicadas(texto: str) -> list[str]:
     locales_por_funcion = {
         funcion: _locales_de_funcion(lineas, inicio, cierre) for funcion, inicio, cierre in _cuerpos(lineas)
     }
-    sentencias: dict[str, list[str]] = {}
+    limpias = _texto_limpio(texto).split("\n")
+    bloques = _bloque_de_cada_linea(limpias)
+    sentencias: dict[str, list[tuple[int, str]]] = {}
     for indice, linea in enumerate(lineas):
         if not _COMENTARIO_REPLICADA.match(linea):
             continue
         funcion = _funcion_que_contiene(lineas, indice) or "?"
         siguiente = lineas[indice + 1] if indice + 1 < len(lineas) else ""
-        sentencias.setdefault(funcion, []).append(siguiente.strip())
+        sentencias.setdefault(funcion, []).append((indice + 1, siguiente.strip()))
     fallos: list[str] = []
     for funcion, marcadas in sorted(sentencias.items()):
         locales = locales_por_funcion.get(funcion, frozenset())
-        validas = [sentencia for sentencia in marcadas if sentencia.endswith(";")]
+        validas = [(linea, sentencia) for linea, sentencia in marcadas if sentencia.endswith(";")]
         if len(validas) != len(marcadas):
             fallos.append(f"{funcion}: la marca de sentencia replicada no precede a una sentencia")
-        grupos = Counter(_esqueleto(sentencia, locales) for sentencia in validas)
-        for sentencia in validas:
+        grupos = Counter(_esqueleto(sentencia, locales) for _, sentencia in validas)
+        for _, sentencia in validas:
             if grupos[_esqueleto(sentencia, locales)] < 2:
                 huerfana = f"la sentencia replicada `{sentencia}` no tiene pareja de igual forma"
                 fallos.append(f"{funcion}: {huerfana}")
+        fallos.extend(_repetidas_en_linea_recta(funcion, validas, locales, limpias, bloques))
+    return fallos
+
+
+def _bloque_de_cada_linea(lineas_limpias: list[str]) -> list[int]:
+    """Devuelve, por cada linea, el numero del bloque de llaves en el que empieza (0 es el nivel del archivo).
+
+    Contexto:
+        Lo usa ``_incumplimientos_de_replicadas`` para saber si dos sentencias marcadas viven en el mismo
+        bloque. Cada ``{`` abre un bloque con un numero nuevo y cada ``}`` vuelve al bloque que lo contenia;
+        la linea ``} else {`` empieza en el bloque que cierra, pero las sentencias marcadas nunca van en ella.
+
+    Args:
+        lineas_limpias (list[str]): Lineas sin comentarios, cadenas ni macros (``_texto_limpio``).
+
+    Returns:
+        list[int]: Un numero de bloque por linea, en el mismo orden.
+
+    Ejemplo:
+        _bloque_de_cada_linea(["f()", "{", "  a;", "}"]) == [0, 0, 1, 1]
+    """
+    pila = [0]
+    contador = 0
+    bloques: list[int] = []
+    for linea in lineas_limpias:
+        bloques.append(pila[-1])
+        for caracter in linea:
+            if caracter == "{":
+                contador += 1
+                pila.append(contador)
+            elif caracter == "}" and len(pila) > 1:
+                pila.pop()
+    return bloques
+
+
+def _repetidas_en_linea_recta(
+    funcion: str,
+    marcadas: list[tuple[int, str]],
+    locales: frozenset[str],
+    lineas_limpias: list[str],
+    bloques: list[int],
+) -> list[str]:
+    """Lista las parejas de sentencias marcadas iguales que van una tras otra en el mismo bloque.
+
+    Contexto:
+        Lo usa ``_incumplimientos_de_replicadas``. La sentencia duplicada por rama existe porque sus copias
+        estan en caminos que despues se reunen; dos copias en el mismo bloque de llaves sin ninguna
+        bifurcacion entre ellas se ejecutan siempre una tras otra y son una sentencia repetida, no una
+        duplicada por rama.
+
+    Se comprueba solo lo decidible sobre el texto: el mismo bloque de llaves y la ausencia, en las lineas que
+    separan las dos sentencias, de ``if``, ``else``, ``switch``, ``case``, ``default``, ``goto``, ``return``,
+    ``break``, ``continue``, bucles, el operador ``?`` o una etiqueta. No se analiza el flujo: dos marcas en
+    bloques distintos se aceptan aunque los bloques no se reunan, y una bifurcacion entre ellas basta aunque
+    no separe de verdad los caminos. El criterio no tiene falsos positivos: nunca rechaza dos marcas que
+    esten en ramas distintas o con una bifurcacion en medio.
+
+    Args:
+        funcion (str): Nombre de la funcion, para los mensajes.
+        marcadas (list[tuple[int, str]]): (indice de la linea, sentencia) de las marcas validas de la funcion.
+        locales (frozenset[str]): Parametros y locales de la funcion, para comparar por esqueleto.
+        lineas_limpias (list[str]): Lineas del archivo sin comentarios, cadenas ni macros.
+        bloques (list[int]): Bloque de llaves de cada linea (``_bloque_de_cada_linea``).
+
+    Returns:
+        list[str]: Un mensaje por cada pareja en linea recta, con las lineas con base 1; vacia si no hay.
+
+    Ejemplo:
+        _repetidas_en_linea_recta("f", [(3, "a = 1;"), (6, "a = 1;")], frozenset(), lineas, bloques)
+    """
+    fallos: list[str] = []
+    for (primera, texto_primera), (segunda, texto_segunda) in combinations(sorted(marcadas), 2):
+        if _esqueleto(texto_primera, locales) != _esqueleto(texto_segunda, locales):
+            continue
+        if bloques[primera] != bloques[segunda]:
+            continue
+        if _RAMIFICACION.search("\n".join(lineas_limpias[primera + 1 : segunda])) is None:
+            fallos.append(
+                f"{funcion}: la sentencia replicada `{texto_primera}` aparece en las lineas {primera + 1} y "
+                f"{segunda + 1} del mismo bloque sin ninguna bifurcacion entre ellas: es una sentencia "
+                "repetida, no una duplicada por rama"
+            )
     return fallos
 
 
@@ -3041,3 +3130,64 @@ def test_toda_lectura_con_molde_volatile_de_src_cumple_la_regla_de_su_fila() -> 
     assert (
         _incumplimientos_de_moldes_volatile(_usos_de_molde_en_src(), _filas_de_moldes_del_documento()) == []
     )
+
+
+def _dos_marcas_iguales(entre: str = "") -> str:
+    """Dos sentencias marcadas iguales una tras otra en el mismo bloque, con ``entre`` en medio."""
+    return _texto_con(_marcada("b = a;") + entre + _marcada("b = a;"))
+
+
+def test_dos_marcas_iguales_en_las_ramas_de_un_if_else_se_aceptan() -> None:
+    """Regla: la misma sentencia en cada rama de un if/else es la forma regulada."""
+    assert _incumplimientos_de_replicadas(_texto_de_dos_ramas_con("b = a;", "b = a;")) == []
+
+
+def test_dos_marcas_iguales_en_bloques_que_saltan_a_la_misma_etiqueta_se_aceptan() -> None:
+    """Regla: dos bloques que acaban en un goto a una etiqueta comun son caminos que se reunen."""
+    texto = _texto_de_tres_caminos(["b = a;"], ["b = a;"], [])
+    assert _incumplimientos_de_replicadas(texto) == []
+
+
+def test_dos_marcas_iguales_consecutivas_en_el_mismo_bloque_se_rechazan_con_sus_lineas() -> None:
+    """Regla: la misma sentencia dos veces en linea recta es repetida, no duplicada por rama."""
+    assert _incumplimientos_de_replicadas(_dos_marcas_iguales()) == [
+        "func_800000A0: la sentencia replicada `b = a;` aparece en las lineas 7 y 9 del mismo bloque sin "
+        "ninguna bifurcacion entre ellas: es una sentencia repetida, no una duplicada por rama"
+    ]
+
+
+def test_dos_marcas_iguales_separadas_por_una_sentencia_sin_bifurcacion_se_rechazan() -> None:
+    """Regla: una sentencia cualquiera entre las dos copias no las convierte en ramas."""
+    assert len(_incumplimientos_de_replicadas(_dos_marcas_iguales("        c = 1;\n"))) == 1
+
+
+def test_dos_marcas_iguales_separadas_por_una_bifurcacion_en_el_mismo_bloque_se_aceptan() -> None:
+    """Limite aceptado: con un `if` entre las copias no se afirma que sean la misma sentencia repetida."""
+    entre = "        if (c) {\n            d = 1;\n        }\n"
+    assert _incumplimientos_de_replicadas(_dos_marcas_iguales(entre)) == []
+
+
+def test_dos_marcas_iguales_separadas_por_una_etiqueta_o_un_operador_condicional_se_aceptan() -> None:
+    """Regla: una etiqueta es un punto de entrada y `?` una bifurcacion: ambos rompen la linea recta."""
+    assert _incumplimientos_de_replicadas(_dos_marcas_iguales("    otra:\n")) == []
+    assert _incumplimientos_de_replicadas(_dos_marcas_iguales("        c = d ? 1 : 2;\n")) == []
+
+
+def test_dos_marcas_de_distinta_sentencia_en_el_mismo_bloque_no_se_comparan_entre_si() -> None:
+    """Regla: solo se comparan las marcas de igual esqueleto; las parejas distintas de una rama conviven."""
+    texto = _texto_con(
+        "    if (a) {\n"
+        + _marcada("MOVIL_LIMITE_ALTO(o) = num;")
+        + _marcada("MOVIL_LIMITE_BAJO(o) = num;")
+        + "    } else {\n"
+        + _marcada("MOVIL_LIMITE_ALTO(o) = num;")
+        + _marcada("MOVIL_LIMITE_BAJO(o) = num;")
+        + "    }\n"
+    )
+    assert _incumplimientos_de_replicadas(texto) == []
+
+
+def test_el_bloque_de_cada_linea_distingue_las_llaves_anidadas_y_hermanas() -> None:
+    """Cada llave abre un bloque nuevo y cada cierre vuelve al que contenia."""
+    lineas = ["f()", "{", "  if (a) {", "    x;", "  } else {", "    y;", "  }", "  z;", "}"]
+    assert _bloque_de_cada_linea(lineas) == [0, 0, 1, 2, 2, 3, 3, 1, 1]

@@ -756,6 +756,13 @@ misma línea) debe citar exactamente dos direcciones `0x8...`, y son el `sw` y e
 molde debe ser peor que la cifra con él. Un uso sin fila, una fila sin uso, un comentario sin las dos direcciones o
 con otras direcciones hacen fallar la prueba, con el archivo, la función y la línea.
 
+Sobre la sentencia duplicada, la prueba rechaza además dos marcas de igual sentencia que están en el mismo bloque de
+llaves sin ninguna bifurcación entre ellas (`if`, `else`, `switch`, `case`, `goto`, `return`, `break`, `continue`,
+bucles, `?` o una etiqueta): una tras otra en línea recta son una sentencia repetida, no una duplicada por rama.
+Es la comprobación mínima decidible sobre el texto; no analiza el flujo, de modo que dos marcas en bloques
+distintos se aceptan aunque sus caminos no se reúnan (la frontera de arriba sigue siendo una decisión de quien
+escribe la cabecera).
+
 | Función | Archivo | Forma | Referencias | Estado | Qué decide |
 |---|---|---|---:|---|---|
 | `func_80018D98` | `src/graficos_y_gte.c` | envoltura | 1 | coincide | Orden de `a` y del puntero a la diferencia (13 usos, 0,382 frente a 0,381) |
