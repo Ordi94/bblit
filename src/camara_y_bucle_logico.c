@@ -232,34 +232,14 @@ void func_80032A24(void)
  * Pendiente: puntuacion 60 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y el
  * reparto de los registros salvados coinciden; difiere la posicion de una sola instruccion: el original coloca el
  * almacen de i58 (sw v0,0x58) tras la copia del objeto en curso (move v1,a1) y GCC lo deja antes, porque el do/while
- * que abre las escrituras de a48 impide subir la copia por encima del almacen. Medido en el volcado de la planificacion
- * previa: el almacen de i58 queda antes de la nota de inicio de bucle de ese do/while y la lectura del objeto en curso
- * (la copia) despues; se supone, sin verificar, que la nota impide a la planificacion mover lecturas de memoria por encima
- * de ella. Sin ese do/while la puntuacion es 63 (los registros de la cola cambian). Con la escritura de a48.vx fuera
- * del do/while (este abre en la de a48.vz) la copia y el almacen salen en el orden del original y los registros
- * coinciden, pero el `addiu` de la direccion de la rotacion, que el original coloca entre las dos lecturas de la
- * primera resta, queda tras ella: 220 (cinco lineas insertadas o borradas). Meter el almacen en ese do/while
- * lo coloca bien pero intercambia a1 y a2 en la cadena de pruebas (60 tambien): el temporal del objeto en curso
- * (14 usos ponderados sobre 25 instrucciones, 1,68) queda por debajo del de max.vy (7 sobre 8, 1,75) y el original
- * da a1 al primero. Con el almacen dentro del do/while la relectura de w->cur no depende de el (misma base,
- * desplazamientos distintos) y sube por encima; las lecturas por otra base (a0->x y el campo de posicion del objeto)
- * si dependen del almacen y quedan despues, como en el original. Para que el objeto en curso se asigne antes que max.vy
- * bastan 15 usos ponderados (3 * 15 / 25 = 1,8); una pareja `x--; x++` sobre un puntero local con el objeto suma 8 de
- * golpe (22 usos, 3,52): pasa por delante de i60 y de v28.vx y desplaza los tres registros, y no hay referencia sin
- * codigo de un solo uso. Una condicion vacia sobre w->cur no suma usos (el optimizador de saltos la elimina antes del
- * analisis de flujo), y una local con el objeto asignada antes del almacen coloca el almacen bien pero funde las
- * dos copias `move v1,a1` con el puntero (el CSE la sustituye por el pseudo de la cadena de pruebas y el combinador
- * borra la copia).
+ * que abre las escrituras de a48 impide subir la copia por encima del almacen. Medido en el volcado de la primera
+ * planificacion (`-dS`, antes del reparto de registros): el almacen de i58 queda antes de la nota de inicio de bucle
+ * de ese do/while y la lectura del objeto en curso (la copia) despues; se supone, sin verificar, que la nota impide
+ * a la planificacion mover lecturas de memoria por encima de ella.
  *
- * Medido en el volcado: con el almacen de i58 dentro del primer do/while (el calculo tambien dentro) el valor de
- * max.vy pasa a 7 usos ponderados sobre 8 instrucciones (1,75) y supera al objeto en curso (14 sobre 25, 1,68), de
- * modo que toma a1 y el objeto a2. Calculando antes la diferencia en una local `nivel = w->cur->max.vy - w->v28.vy;`
- * y almacenandola como primera sentencia del do/while, max.vy baja a 6 usos (1,5), el objeto en curso se asigna
- * antes y los registros coinciden, pero el almacen sale antes de la copia `move v1,a1` (60 con una sola
- * instruccion fuera de sitio): se supone, sin verificar, que sin el calculo dentro de la region que abre el do/while
- * el almacen queda listo desde su primer instante y el planificador lo coloca primero. Una local con el objeto en curso
- * asignada antes del almacen coloca bien el almacen pero funde la primera copia con el puntero (105), y envolver
- * `RotMatrix` en el ultimo do/while no cambia nada (la vida del objeto termina antes).
+ * El almacen de i58 se escribe fuera de ese do/while y no dentro porque dentro intercambia a1 y a2 en la cadena de
+ * pruebas: el valor de max.vy pasa a 7 usos ponderados sobre 8 instrucciones (1,75) y supera al objeto en curso
+ * (14 sobre 25, 1,68), de modo que toma a1 y el objeto a2, y el original da a1 al objeto.
  *
  * Los tres do/while (0) no generan codigo: ponderan por un nivel mas las referencias de su cuerpo para que la
  * prioridad de global-alloc ordene los punteros como el original (v28 en s3, rot en s4, a0 en s5, i58 en s6):

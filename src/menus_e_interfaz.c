@@ -282,19 +282,16 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
  * acumulado de la cola caen en a0 y v1 en lugar de a3, y el original guarda la palabra de ordenacion despues del salto
  * de la bandera de transparencia, junto al color, y aqui sale antes.
  *
- * Medido: con la palabra en una variable y su almacen tras la union la puntuacion es 435 (la forma coincide en todas
- * las instrucciones salvo el orden de dos: el `lui` de 0x09000000 se planifica antes de la carga de la bandera). La
- * direccion de las palabras (local de bloque) toma v1 aunque a0 esta libre en su vida y el desplazamiento de la
+ * La direccion de las palabras (local de bloque) toma v1 aunque a0 esta libre en su vida y el desplazamiento de la
  * textura (global, prioridad 0,136) toma a0; se supone, sin verificar, que el original deja v1 ocupado durante esa vida
  * por otra local de bloque, de modo que la direccion toma a0 y el desplazamiento a2.
  * Medido en el volcado de la asignacion local y global: la bandera de transparencia es una local de un solo bloque (2 usos
  * sobre 4 instrucciones) y la asigna la fase local antes que la global; toma a0 porque la constante 0x09000000 ocupa v1
  * durante su vida, y entonces la lista de ordenacion (global, 4 usos sobre 8 instrucciones) cae en v1 y la ranura en a2. El
- * original tiene la bandera en v1 y la lista y la ranura en a0. Con la palabra en una variable global (almacen tras la
- * union) la constante pasa a a0 y la bandera a v1, pero la lista sigue en v1 y la planificacion sube el `lui` por encima de
- * la carga de la bandera; cambiar el orden de las dos sentencias en el fuente no cambia la planificacion (435).
- * Medido ademas: calcular el brillo sobre la variable del color (en vez de la del color acumulado de la cola) da
- * 395, y leer la bandera de transparencia directamente en la condicion, sin variable, da 920.
+ * original tiene la bandera en v1 y la lista y la ranura en a0. Con la palabra de ordenacion en una variable global
+ * (almacen tras la union) la constante pasa a a0 y la bandera a v1, pero la lista sigue en v1 y la planificacion sube el
+ * `lui` por encima de la carga de la bandera; cambiar el orden de las dos sentencias en el fuente no cambia la
+ * planificacion.
  * Con la palabra en una variable el color cae en t0 y la direccion de la ranura en a3 (en el original a3 y a0). El C
  * escribe variables propias para la direccion de las palabras, la lista y la ranura; fundirlas en una sola no cambia
  * el reparto, porque el compilador ya las funde y el reparto de a0 no depende de cuantas variables se escriban. Se
