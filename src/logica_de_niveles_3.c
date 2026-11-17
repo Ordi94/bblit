@@ -540,7 +540,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * `t->w114` en 0x8002B928: aqui el compilador reutiliza a0 en lugar de recargar; una referencia con indice
  * constante a D_800693C0 como elemento de arreglo (referencia dentro de estructura) tampoco la recarga. (c) el destino
  * de la suma de la secuencia en 0x8002B870 (v0 aqui, v1 en el original) y la rama invertida del bucle de busqueda
- * (0x80028C04): sin cambio con las formas de indexacion del fuente medidas.
+ * (0x80028C04): el C vigente no las reproduce y su causa no esta verificada.
  */
 /*
  * Las cuatro sentencias replicadas son `t->w114 = banda_alta;` y `t->w118 = banda_baja;` escritas en la rama del
