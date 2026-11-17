@@ -38,7 +38,15 @@ extern void func_80039094(void);
  * `sw` en 0x1cc), mientras que en el volcado de planificacion el almacen queda aqui por encima de la suma. La
  * copia `move v1,v0` no se conserva con una variable copiada (`sentido = num; sentido += ritmo` da 170 y 485 con
  * `sentido` declarado antes que `num`: en las dos la suma sale sin copia; se supone, sin verificar, que el CSE la
- * pliega); (2) producto del seno de la
+ * pliega). Medido despues en el volcado de la primera pasada de cse (`.cse`) y en una copia reducida del bloque:
+ * en la rama positiva la copia solo sobrevive si el almacen del limite bajo se escribe antes que el del alto (el
+ * pseudo del alto vive mas); con el alto primero cse reescribe la carga hacia el pseudo de la copia y la copia
+ * desaparece. Con el paso en `num` (la variable de toda la funcion, que toma a0 como en el original) y los dos
+ * limites en locales propias del bloque, el reparto del bloque es el del original (paso a0, alto v0, bajo v1) y con
+ * el bajo primero la rama positiva coincide instruccion por instruccion; el C vigente conserva el alto primero y las
+ * variables actuales porque el bajo primero cambia la cola comun: el almacen del bajo ya no pasa a la ranura de
+ * retardo de la guarda 0x40 (se supone, sin verificar, que el planificador de ranuras no puede mover un almacen por
+ * encima de otro) y la rama negativa sigue sin copia; (2) producto del seno de la
  * oscilacion (0x648): el original lo deja en t0 y aqui cae en a0, que es el registro de `num`; quitar `num` de esa
  * rama invierte el reparto del modo 0x40 y sube la puntuacion a 770; (3) en el camino 0x400 el `sw zero,0x1c(sp)`
  * sale una instruccion antes que en el original (0x954). El balancin (paso en a0, empuje en v1, desplazamiento en v1,
