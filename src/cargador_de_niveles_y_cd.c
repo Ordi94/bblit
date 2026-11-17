@@ -424,7 +424,7 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 10328 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 9943 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2955 instrucciones, las mismas que el
@@ -438,11 +438,11 @@ typedef struct {
  * (prioridad `floor_log2(R) * R / L` de `global-alloc`): la variable compartida de abajo (pseudo
  * 103, R 118, L 2075, 0,34) supera a la zona libre `libre` (pseudo 93, R 124, L 2299, 0,32) y le
  * quita s6; con el par `libre` pasa a R 132 (L 2300, 0,40), toma s6, la variable s7 y `datos` fp
- * (pseudo 82, R 105, L 2132, 0,30), como el original. Puntuacion sin el par: 10743; con el: 10328.
+ * (pseudo 82, R 105, L 2132, 0,30), como el original. Puntuacion sin el par: 10358; con el: 9943.
  * El nodo de los chunks de recursos y modelos (pseudo 95, R 340, L 528, 5,15) supera al cursor del
  * script (pseudo 91, R 1074, L 2089, 5,14) sin ninguna referencia anadida (el cursor ya no se
  * reasigna desde `datos` al abrir el script), de modo que no hace falta un par `nodo--; nodo++;`: la
- * puntuacion es 10328 sin el. La
+ * puntuacion es 9943 sin el. La
  * forma del fuente original que producia este reparto se desconoce.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
@@ -512,6 +512,13 @@ typedef struct {
  * de zonas, como el original (`addu` en 0x80042FA8 antes del `sw` a 0x180($gp) en 0x80042FAC); con el almacen del
  * entero primero, o por puntero, la cifra sube.
  *
+ * Orden de las sentencias de dos chunks: en el caso que fija `audio_cargado` el original almacena
+ * la bandera (`sb t3,0x1d0($sp)`, 0x80042C4C) antes de las dos lecturas del bufer, por eso
+ * `audio_cargado = 1` va antes de `cursor += 8`; con la bandera despues, el planificador sube las
+ * lecturas por encima del almacen. En el chunk 0x3E el original carga las etiquetas 0x00 a 0x0C en
+ * orden ascendente de direccion (`lhu v0,0x128($sp)` ... `lw t0,0xc($s4)`, 0x800430E4 a 0x800430FC),
+ * y el fuente las lee en ese orden; los almacenes salen en el orden que decide el planificador.
+ *
  * Orden de la seccion de anillo: el original calcula los dos tamanos de seccion y avanza la posicion
  * antes de sumar 0xA000 a `datos` (el `ori` y el `addu` salen tras `addiu s1,s1,0x2`, 0x800418D0 y
  * 0x800418D4), por eso `D_800694A0` y `posicion += 2` van antes de `datos += 0xA000`.
@@ -538,7 +545,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 12125 y con ella 10328. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 11632 y con ella 9943. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -1244,8 +1251,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         switch (*cursor++) {
                         case 0x01:
                             CopiarBytes(cursor, campos, 8);
-                            cursor += 8;
                             audio_cargado = 1;
+                            cursor += 8;
                             tam_audio = *(s32*)campos_mem;
                             libre += *(s32*)(campos + 4);
                             D_800694A0 = *(s32*)(campos + 4);
@@ -1407,10 +1414,10 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         case 0x3E:
                             CopiarBytes(cursor, campos, 0x1C);
                             pools_listos = 1;
-                            D_80069660 = ((EtiquetasListas*)campos)->w02;
                             D_80069670 = ((EtiquetasListas*)campos_mem)->w00;
-                            D_8006955C = ((EtiquetasListas*)campos)->w06;
+                            D_80069660 = ((EtiquetasListas*)campos)->w02;
                             D_800694E6 = ((EtiquetasListas*)campos)->w04;
+                            D_8006955C = ((EtiquetasListas*)campos)->w06;
                             D_8006967E = ((EtiquetasListas*)campos)->w08;
                             D_800695C2 = ((EtiquetasListas*)campos)->w0A;
                             D_80069548 = ((EtiquetasListas*)campos)->d0C;
