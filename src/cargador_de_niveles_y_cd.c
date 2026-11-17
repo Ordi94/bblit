@@ -424,7 +424,7 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 8798 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 8598 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones y el original 2955; la
@@ -437,11 +437,11 @@ typedef struct {
  *
  * Reparto de registros de las zonas: un par `libre--; libre++;` al abrir el caso 0x2C llego a darle
  * a `libre` las referencias que le faltaban para tomar s6; con la copia `monton = libre` escrita
- * como el original (ver abajo) el par ya no cambia la cifra (8798 con y sin el) y no se escribe. El
+ * como el original (ver abajo) el par ya no cambia la cifra y no se escribe. El
  * nodo de los chunks de recursos y modelos (pseudo 95, R 340, L 528, 5,15) supera al cursor del
  * script (pseudo 91, R 1074, L 2089, 5,14) sin ninguna referencia anadida (el cursor ya no se
  * reasigna desde `datos` al abrir el script), de modo que tampoco hace falta un par `nodo--;
- * nodo++;`: la puntuacion es 8798 sin el.
+ * nodo++;`.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
  * recibe, en vez de una variable por uso, el desplazamiento de los chunks (`lw s7,0x128($sp)` y
@@ -556,7 +556,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 10347 y con ella 8798. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 10147 y con ella 8598. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -851,7 +851,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                 D_8006959C = (u32)libre;
                 libre += D_8006954C;
             }
-            for (i = 0; i < 3; i++) {
+            /* El original compara el contador con signo (`slti`, 0x80041D5C). */
+            for (i = 0; (s32)i < 3; i++) {
                 D_8006AE20[i].length = 9;
                 D_8006AE20[i].org = (GsOT_TAG*)libre;
                 libre += tamanos[9];
