@@ -62,16 +62,16 @@ s16* D_800693DC;
    escritura del C, cada una con la cifra que da la escritura contraria: (e) el almacen de la altura
    tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo
    arreglo que usa la rama contraria, y no como un simbolo aparte (`D_8006AD74`): el original calcula la base con
-   `lui v1` y el simbolo suelto da `lui at` (2615); (d) en el bloque del apoyo
+   `lui v1` y el simbolo suelto da `lui at` (2350); (d) en el bloque del apoyo
    por contacto (0x80023828..0x80023878 del original) el calculo de `giro.u.y` del apoyo, que lee `o->p70`, va ANTES del
    almacen de `o->coord.param` y de los tres de la escala: el original lee los dos giros antes de esos almacenes
    (`lhu v1,0xde(v1)` antes de `addiu v0,s4,0x18c`) y con el calculo al final el compilador no puede adelantar las
-   lecturas por `o->p70` sobre los almacenes de `o` (2905; se supone, sin verificar con el volcado, que un
+   lecturas por `o->p70` sobre los almacenes de `o` (2640; se supone, sin verificar con el volcado, que un
    almacen por la base de `o` se ordena ante una carga por un puntero leido de `o`); (c) en el bloque del apoyo
    hallado (0x80022C90..0x80022CC4 del original, tras `func_80020354`) la lectura de `h0A` va antes del almacen
    de `trans.vz`: el original emite `sw zero,0x1ac(s4)` despues de `lw v0,0xa8(s3)` y de `lh v0,0xa(v0)` y detras del
    almacen de `o->p70`; con el almacen a cero escrito antes de la lectura el compilador lo adelanta sobre el de
-   `o->p70` (2615; se supone, sin verificar con el volcado, que el almacen a cero se ordena ante la carga por
+   `o->p70` (2355; se supone, sin verificar con el volcado, que el almacen a cero se ordena ante la carga por
    el posible solape con el scratchpad); (a) `sc->desp.x` y `sc->desp.z` se almacenan por el campo y por la misma base
    `sc`, como hace el original (`sw v0,0x18(s3)` y `sw v1,0x20(s3)`, 0x800223FC y 0x80022400). El original relee los dos
    campos tras almacenarlos (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414). Medido en los volcados de
@@ -79,17 +79,16 @@ s16* D_800693DC;
    pasadas; en el ensamblador final la de `desp.x` ha desaparecido y la de `desp.z` sigue (se supone, sin verificar,
    que la elimina la limpieza posterior al reparto de registros cuando el registro del valor sigue intacto). Ademas aqui el
    planificador emite los dos almacenes en orden inverso al del original (`sw 0x20` antes de `sw 0x18`, con las dos
-   cargas de `D_80069D30` tambien invertidas). Escribir los almacenes en el orden contrario da 2380, sumar en el orden
-   contrario 2580, y pasar los valores por locales propias no cambia la cifra (2310). Se supone, sin verificar, que el
+   cargas de `D_80069D30` tambien invertidas). Escribir los almacenes en el orden contrario da 2115 y sumar en el orden
+   contrario 2315. Se supone, sin verificar, que el
    original conserva la relectura de `desp.x` porque su reparto de registros no deja el valor almacenado en el
    registro de la relectura. Con `pos = &sc->desp` la
    base se materializa en `s0` (`addiu s0,s3,0x18`), que el original no tiene; (b) el almacen de `o->p180` va antes del de
    `o->trabajo.i14` en el bloque de entrada de la espera (0x80021020..0x80021050): el original lee `i14`, carga
    `sc->sec`, almacena a cero y escribe D_80069584 antes de la guarda de `o->p70`, con el almacen de `p180` en el hueco
-   de retardo del salto, y asi el bloque coincide entero (2685 con el orden contrario). Diferencia de estructura que queda: en las dos ramas que
-   acaban en `sc->vel.z = sc->vel.z + (lo >> 11)` (0x80021560 y 0x80021690) el original lee `lhu v0,0xc(s3)` en cada camino
-   y comparte desde `mflo t7`; aqui el `lhu` sale tras el `mflo` de la cola comun (una local por rama con la lectura de
-   `vel.z` iguala las colas y solo baja 5 puntos, por eso no se instala). El tramo en Z de la guarda de D_80069D30 (0x800222B8..0x80022308) se
+   de retardo del salto, y asi el bloque coincide entero (2420 con el orden contrario). Diferencia de estructura que queda: en las dos ramas que
+   acaban en `sc->vel.z = sc->vel.z + (valor_vel >> 11)` (0x80021560 y 0x80021690) el original lee `lhu v0,0xc(s3)` en cada camino
+   y comparte desde `mflo t7`; aqui el `lhu` sale tras el `mflo` de la cola comun. El tramo en Z de la guarda de D_80069D30 (0x800222B8..0x80022308) se
    escribe por un puntero a la base del arreglo (`p = D_80069D30; p[2]`) y con un valor propio del bloque
    (`z_nueva`) que recoge las tres ramas y se almacena una sola vez: el original carga la base en a0 (`lui v0 ;
    addiu a0,v0,%lo(D_80069D30)` en 0x800222B8) y lee y escribe el campo con desplazamiento 8 sobre ese registro,
@@ -120,10 +119,10 @@ s16* D_800693DC;
    `D_800693D4` y otra para la mascara (con una sola lectura en una local la cifra es 2170 en
    lugar de 2045); (7) en los bloques que reparten registros entre punteros de objeto, el original usa un registro
    distinto del que da la variable compartida, y cada uno se escribe en su propia variable: el angulo del bloque de
-   0x800217F4 (`move v1,v0` tras `ratan2`) en `dd` (con `ang` la cifra es 2075), el objeto de apoyo del bloque de
-   0x80022CA0 en `t2` (con `t1`, 2220), el objeto tocado de la escala (0x800251CC) en `t2` (con `t1`, 2065), la
+   0x800217F4 (`move v1,v0` tras `ratan2`) en `angulo_giro` (con `ang` la cifra es 2075), el objeto de apoyo del bloque de
+   0x80022CA0 en `objeto_contacto` (con `t1`, 2220), el objeto tocado de la escala (0x800251CC) en `objeto_contacto` (con `t1`, 2065), la
    comparacion `sc->tocado != o->p70` del bloque de 0x80024F90 en ese orden (con `o->p70 != sc->tocado`, 2055) y el
-   producto de `vel.z` (0x80021560 y 0x80021690, que el original deja en `t7`) en `vj` (con `lo`, 2090); (8) en el bloque
+   producto de `vel.z` (0x80021560 y 0x80021690, que el original deja en `t7`) en `valor_vel` (con `lo`, 2090); (8) en el bloque
    de 0x800255CC el original recalcula `pos` tras la llamada a `func_8003AA7C` (`addiu s1,s4,0xe4`, 0x80025638) y aqui el
    compilador elimina la asignacion repetida como redundante: se supone, sin verificar, que el original la conserva porque
    `pos` no es el mismo pseudo en los dos puntos.
@@ -146,14 +145,14 @@ void func_80020B90(Objeto* o)
     s32 z_nueva;
     s32 d;
     s32 tilt;
-    s32 dd;
+    s32 angulo_giro;
     s16 d16;
     s32 pj;
-    s32 vj;
+    s32 valor_vel;
     s16 dd16;
     Objeto* pp;
     Objeto* t1;
-    Objeto* t2;
+    Objeto* objeto_contacto;
     RegistroEstado* rg;
     s32 mz;
     SVECTOR* vec_ref;
@@ -366,7 +365,7 @@ void func_80020B90(Objeto* o)
                             sc->tmp = -sc->tmp;
                         }
                         sc->tmp = 0x800 - sc->tmp;
-                        vj = sc->tmp * a;
+                        valor_vel = sc->tmp * a;
                     } else {
                         sc->tmp = a;
                         a = ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
@@ -397,9 +396,9 @@ void func_80020B90(Objeto* o)
                         if (a < 0) {
                             a = -a;
                         }
-                        vj = sc->tmp * (s16)(0x800 - a);
+                        valor_vel = sc->tmp * (s16)(0x800 - a);
                     }
-                    sc->vel.z = sc->vel.z + (vj >> 11);
+                    sc->vel.z = sc->vel.z + (valor_vel >> 11);
                 }
                 if (sc->reg->flags0C & 0x100000) {
                     sc->vel.z += sc->reg->s14 * D_80069694;
@@ -432,8 +431,8 @@ void func_80020B90(Objeto* o)
             if (o->coord.super != NULL) {
                 sc->tmp_v.vx = D_8006D928.vpx - o->param.trans.vx;
                 sc->tmp_v.vz = D_8006D928.vpz - o->param.trans.vz;
-                dd = ratan2(sc->tmp_v.vx, sc->tmp_v.vz);
-                sc->tmp = (s16)o->param.giro.u.y - dd % 0x1000;
+                angulo_giro = ratan2(sc->tmp_v.vx, sc->tmp_v.vz);
+                sc->tmp = (s16)o->param.giro.u.y - angulo_giro % 0x1000;
                 if (sc->tmp > 0x800) {
                     sc->tmp -= 0x1000;
                 }
@@ -708,14 +707,14 @@ void func_80020B90(Objeto* o)
                     sc->tmp = pj;
                     if ((o->p70->flags08 & 0x8000) || (o->p70->clase == 0xE && o->p70->registro184 != NULL && (((RegistroEstado*)o->p70->registro184)->flags10 & 0x10000000))) {
                         if (o->p70->clase == 5) {
-                            vj = o->p70->s1E;
+                            valor_vel = o->p70->s1E;
                         } else {
-                            vj = *(s16*)&o->p70->u18C.estado.w196;
+                            valor_vel = *(s16*)&o->p70->u18C.estado.w196;
                         }
-                        if (vj == 0) {
-                            vj = pj * 0x145 >> 9;
+                        if (valor_vel == 0) {
+                            valor_vel = pj * 0x145 >> 9;
                         }
-                        sc->tmp = vj;
+                        sc->tmp = valor_vel;
                     }
                     sc->rel.vx = o->param.trans.vx - o->p70->param.trans.vx;
                     sc->rel.vy = 0;
@@ -865,10 +864,10 @@ llamar_salto:
                 sc->punto.vz = o->param.trans.vz;
                 sc->apoyo_hallado = func_80020354(o, &sc->punto, w, 0x400004);
                 if (sc->apoyo_hallado != NULL) {
-                    t2 = sc->apoyo_hallado->objeto;
+                    objeto_contacto = sc->apoyo_hallado->objeto;
                     o->coord.param = (GsCOORD2PARAM*)APOYO(o);
                     APOYO(o)->trans.vx = 0;
-                    o->p70 = t2;
+                    o->p70 = objeto_contacto;
                     APOYO(o)->trans.vy = sc->apoyo_hallado->h0A;
                     APOYO(o)->trans.vz = 0;
                     sc->tmp = (s16)o->param.giro.u.y - (s16)o->p70->param.giro.u.y;
@@ -938,10 +937,10 @@ llamar_salto:
             sc->desp.z += sc->rel.vz - (s16)sc->tmp_sv.vz;
             o->param.giro.u.y = ratan2(sc->paso_x, (s16)sc->paso_z);
         }
-        t2 = o->p6C;
-        sc->tocado = t2;
-        if (t2 != NULL) {
-            if (((t2->flags08 & 0x2000) || t2->clase == 0x22) && !(sc->reg->flags0C & 0x40)) {
+        objeto_contacto = o->p6C;
+        sc->tocado = objeto_contacto;
+        if (objeto_contacto != NULL) {
+            if (((objeto_contacto->flags08 & 0x2000) || objeto_contacto->clase == 0x22) && !(sc->reg->flags0C & 0x40)) {
                 if (!(sc->reg->flags10 & 0x40000)) {
                     D_80069D60[0].vx = D_80069D60[2].vx = o->min.vx;
                     D_80069D60[1].vx = D_80069D60[3].vx = o->max.vx;
@@ -1569,10 +1568,10 @@ sin_rebote:
                     D_80069388 = NULL;
                     GEO_CERO_W(&PORTADO(sc->tocado)->trans);
                     GEO_CERO_WH(&PORTADO(sc->tocado)->giro);
-                    t2 = sc->tocado;
-                    PORTADO(t2)->escala.vz = 0x1000;
-                    PORTADO(t2)->escala.vy = 0x1000;
-                    PORTADO(t2)->escala.vx = 0x1000;
+                    objeto_contacto = sc->tocado;
+                    PORTADO(objeto_contacto)->escala.vz = 0x1000;
+                    PORTADO(objeto_contacto)->escala.vy = 0x1000;
+                    PORTADO(objeto_contacto)->escala.vx = 0x1000;
                     sc->tocado->p70 = o;
                     func_8001CFCC(&sc->tocado->coord);
                 }
@@ -1615,9 +1614,9 @@ sin_rebote:
     }
     func_8001D414(sc->reg->id);
     if (sc->reg->flags10 & 0x2000) {
-        t2 = o->p6C;
-        sc->tocado = t2;
-        if (t2 != NULL) {
+        objeto_contacto = o->p6C;
+        sc->tocado = objeto_contacto;
+        if (objeto_contacto != NULL) {
             o->min.vx = (u16)sc->tocado->min.vx;
             o->min.vy = (u16)sc->tocado->min.vy;
             o->min.vz = (u16)sc->tocado->min.vz;
@@ -1628,10 +1627,10 @@ sin_rebote:
             o->alcance2 = o->p6C->alcance2;
         }
     } else {
-        t2 = o->p6C;
-        sc->tocado = t2;
-        if (t2 != NULL) {
-            if ((t2->flags08 & 0x2000) && !(sc->reg->flags0C & 0x40)) {
+        objeto_contacto = o->p6C;
+        sc->tocado = objeto_contacto;
+        if (objeto_contacto != NULL) {
+            if ((objeto_contacto->flags08 & 0x2000) && !(sc->reg->flags0C & 0x40)) {
                 o->max.vx = 0x46;
                 o->min.vx = -0x46;
                 o->min.vz = -0x28;
