@@ -438,8 +438,8 @@ typedef struct {
  * Reparto de registros de las zonas: un par `libre--; libre++;` al abrir el caso 0x2C llego a darle
  * a `libre` las referencias que le faltaban para tomar s6; con la copia `monton = libre` escrita
  * como el original (ver abajo) el par ya no cambia la cifra y no se escribe. El
- * nodo de los chunks de recursos y modelos (pseudo 95, R 340, L 528, 5,15) supera al cursor del
- * script (pseudo 91, R 1074, L 2089, 5,14) sin ninguna referencia anadida (el cursor ya no se
+ * nodo de los chunks de recursos y modelos (pseudo 95, R 340, L 528, 5,152) supera al cursor del
+ * script (pseudo 91, R 1074, L 2087, 5,146) sin ninguna referencia anadida (el cursor ya no se
  * reasigna desde `datos` al abrir el script), de modo que tampoco hace falta un par `nodo--;
  * nodo++;`.
  *
@@ -546,8 +546,22 @@ typedef struct {
  * el `jal` en la copia posterior y es la apertura la que salta hacia delante (el compilador fusiona
  * las dos colas porque las dos llegan al mismo bucle de ordenes sin asignar `campos`), y el hueco
  * de retardo del `bgtz` inicial, que el planificador de saltos llena distinto; (5) el orden de
- * `cursor += 8` frente a las cargas en los chunks 0x36 y 0x47; (6) nombres de registro (unas 150
- * filas de 5 puntos).
+ * `addiu s2,s2,0x10` frente a la carga de `0x54(s1)` en el chunk que obtiene su objeto con
+ * `func_80036164` (0x80044268); (6) nombres de registro (unas 150 filas de 5 puntos).
+ *
+ * Fusion de las llamadas de la causa 4 (medido en los volcados de saltos): al empezar el ultimo pase
+ * de saltos la prueba de la llamada de la apertura (`ne` a la copia de la prueba del principio del
+ * bucle de ordenes) y la de la lectura de las listas (`ne` a la prueba del final del bucle) apuntan
+ * a etiquetas distintas; tras ese pase la apertura sale con un salto a una etiqueta nueva delante
+ * del `jal` de las listas y el volcado conserva cuatro llamadas. Escribir la cola una sola vez con
+ * `goto` desde las listas hacia una etiqueta delante del `jal` de la apertura sube la cifra de 7738
+ * a 10733. Se supone, sin verificar, que el optimizador de saltos recorre los saltos en el orden de
+ * aparicion y redirige el primero, y que el original llega a ese pase con las dos continuaciones ya
+ * iguales por otra estructura de los saltos de retorno.
+ *
+ * Bucles de etiquetas del chunk 0x05 (causa 2): escrito como `while (*cursor != 0x2E)` el
+ * compilador iza la constante a s0 (`move s0,t3` como el original y `li s1,6`) pero deja la salida del
+ * bucle como `beq` mas `j` y no recarga `*cursor` antes del bucle: la cifra sube de 7738 a 8253.
  *
  * El original conserva `libre += x` y `monton = libre` en dos instrucciones (`addu s6,s6,v0` en
  * 0x80041E44 y `move s5,s6` en 0x80041E58, con las cargas de `D_80069548` y `D_8006952E` entre
