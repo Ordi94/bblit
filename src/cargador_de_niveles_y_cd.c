@@ -424,7 +424,7 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 7738 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 7648 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones y el original 2955; la
@@ -559,14 +559,13 @@ typedef struct {
  * bucle de ordenes) y la de la lectura de las listas (`ne` a la prueba del final del bucle) apuntan
  * a etiquetas distintas; tras ese pase la apertura sale con un salto a una etiqueta nueva delante
  * del `jal` de las listas y el volcado conserva cuatro llamadas. Escribir la cola una sola vez con
- * `goto` desde las listas hacia una etiqueta delante del `jal` de la apertura sube la cifra de 7738
- * a 10733. Se supone, sin verificar, que el optimizador de saltos recorre los saltos en el orden de
+ * `goto` desde las listas hacia una etiqueta delante del `jal` de la apertura sube la cifra. Se supone, sin verificar, que el optimizador de saltos recorre los saltos en el orden de
  * aparicion y redirige el primero, y que el original llega a ese pase con las dos continuaciones ya
  * iguales por otra estructura de los saltos de retorno.
  *
  * Bucles de etiquetas del chunk 0x05 (causa 2): escrito como `while (*cursor != 0x2E)` el
  * compilador iza la constante a s0 (`move s0,t3` como el original y `li s1,6`) pero deja la salida del
- * bucle como `beq` mas `j` y no recarga `*cursor` antes del bucle: la cifra sube de 7738 a 8253.
+ * bucle como `beq` mas `j` y no recarga `*cursor` antes del bucle: la cifra sube.
  *
  * El original conserva `libre += x` y `monton = libre` en dos instrucciones (`addu s6,s6,v0` en
  * 0x80041E44 y `move s5,s6` en 0x80041E58, con las cargas de `D_80069548` y `D_8006952E` entre
@@ -584,7 +583,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 9287 y con ella 7738. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 9197 y con ella 7648. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -1105,8 +1104,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             cab = EN(u8*, lista, 8);
                             EN(u8*, lista, 8) = cab + 4;
                             EN(u16, lista, 0x12) = EN(u16, cab, 2) >> 1;
-                            EN(u8*, lista, 8) = cab + 8;
                             EN(u16, lista, 0xE) = EN(u16, cab, 4);
+                            EN(u8*, lista, 8) = cab + 8;
                             cursor += 8;
                             EN(u16, lista, 0x10) = EN(u16, cab + 8, 4);
                             break;
