@@ -58,7 +58,7 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1945 con la configuracion versionada (g = 8 del archivo). La logica coincide. Las cifras de
+/* Pendiente: puntuacion 1645 con la configuracion versionada (g = 8 del archivo). La logica coincide. Las cifras de
    las escrituras contrarias que siguen se midieron con la asignacion de `pos` antes de la prueba de la espera
    (base 2045; ver (8)); se supone, sin verificar, que con ella en su sitio actual todas bajan en la misma cantidad. Decisiones de
    escritura del C, cada una con la cifra que da la escritura contraria: (e) el almacen de la altura
@@ -88,9 +88,15 @@ s16* D_800693DC;
    base se materializa en `s0` (`addiu s0,s3,0x18`), que el original no tiene; (b) el almacen de `o->p180` va antes del de
    `o->trabajo.i14` en el bloque de entrada de la espera (0x80021020..0x80021050): el original lee `i14`, carga
    `sc->sec`, almacena a cero y escribe D_80069584 antes de la guarda de `o->p70`, con el almacen de `p180` en el hueco
-   de retardo del salto, y asi el bloque coincide entero (2420 con el orden contrario). Diferencia de estructura que queda: en las dos ramas que
+   de retardo del salto, y asi el bloque coincide entero (2420 con el orden contrario). Sentencia replicada (no genera codigo): en las dos ramas que
    acaban en `sc->vel.z = sc->vel.z + (valor_vel >> 11)` (0x80021560 y 0x80021690) el original lee `lhu v0,0xc(s3)` en cada camino
-   y comparte desde `mflo t7`; aqui el `lhu` sale tras el `mflo` de la cola comun. El tramo en Z de la guarda de D_80069D30 (0x800222B8..0x80022308) se
+   y comparte una sola cola desde `mflo` (0x80021694; el primer camino salta ahi desde 0x80021564 y el segundo cae); la sentencia se escribe en cada rama porque con una sola copia tras la
+   union el `lhu` y el `mflo` quedan en la cola comun (1945; con la replica 1645). El ensamblador generado tiene una sola cola
+   (una etiqueta compartida en `mflo`, a la que salta el otro camino tras su `mult` y su `lhu`), como el original. La
+   asignacion de `mflo` queda en `a0` y el original usa `t7`; se supone, sin verificar, que `valor_vel`, compartida con
+   otro uso de la funcion, entra al reparto global y no como temporal de bloque.
+   La forma del fuente original que producia este reparto se desconoce.
+   El tramo en Z de la guarda de D_80069D30 (0x800222B8..0x80022308) se
    escribe por un puntero a la base del arreglo (`p = D_80069D30; p[2]`) y con un valor propio del bloque
    (`z_nueva`) que recoge las tres ramas y se almacena una sola vez: el original carga la base en a0 (`lui v0 ;
    addiu a0,v0,%lo(D_80069D30)` en 0x800222B8) y lee y escribe el campo con desplazamiento 8 sobre ese registro,
@@ -129,10 +135,10 @@ s16* D_800693DC;
    instruccion; se supone, sin verificar con el volcado de saltos, que es la primera de la cola comun, copiada al hueco por
    el relleno de saltos. Por eso `pos` se
    asigna una sola vez, tras el bloque de la espera y justo antes de cargar el vector; asignada antes de la prueba de
-   `flags14` el valor cruza la llamada en `s1` y la instruccion de 0x80025638 desaparece (2045 con esa escritura, 1945
-   con la actual).
+   `flags14` el valor cruza la llamada en `s1` y la instruccion de 0x80025638 desaparece (100 puntos mas con esa escritura,
+   medidos con una sola copia de la suma de `vel.z` tras la union).
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 2099 y con ella 1945. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 1799 y con ella 1645. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {
@@ -371,6 +377,8 @@ void func_80020B90(Objeto* o)
                         }
                         sc->tmp = 0x800 - sc->tmp;
                         valor_vel = sc->tmp * a;
+                        /* Sentencia replicada: es la misma que la de las otras ramas. */
+                        sc->vel.z = sc->vel.z + (valor_vel >> 11);
                     } else {
                         sc->tmp = a;
                         a = ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
@@ -402,8 +410,9 @@ void func_80020B90(Objeto* o)
                             a = -a;
                         }
                         valor_vel = sc->tmp * (s16)(0x800 - a);
+                        /* Sentencia replicada: es la misma que la de las otras ramas. */
+                        sc->vel.z = sc->vel.z + (valor_vel >> 11);
                     }
-                    sc->vel.z = sc->vel.z + (valor_vel >> 11);
                 }
                 if (sc->reg->flags0C & 0x100000) {
                     sc->vel.z += sc->reg->s14 * D_80069694;
