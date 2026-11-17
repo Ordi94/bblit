@@ -58,7 +58,7 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2090 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
+/* Pendiente: puntuacion 2045 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
    escritura del C, cada una con la cifra que da la escritura contraria: (e) el almacen de la altura
    tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo
    arreglo que usa la rama contraria, y no como un simbolo aparte (`D_8006AD74`): el original calcula la base con
@@ -117,13 +117,18 @@ s16* D_800693DC;
    original frente a la carga en v1 y la mascara en v0 aqui; 0x8002400C y 0x80024B84 del original) que ni el
    orden de los operandos ni una local para la mascara cambian; (6) en el prologo el original copia el valor de `flags14` (`move
    v0,v1`, 0x80020BF4) antes de aplicar la mascara: se reproduce leyendo el campo dos veces, una para el almacen a
-   `D_800693D4` y otra para la mascara (con una sola lectura en una local y la mascara sobre ella la cifra es 2310 en
-   lugar de 2185); (7) en las ramas que reparten registros entre punteros de objeto, el original usa un registro
-   distinto del que da la variable compartida: el angulo del bloque de 0x800217F4 (`move v1,v0` tras `ratan2`) se
-   escribe en `dd`, el objeto de apoyo del bloque de 0x80022CA0 en `t2`, el objeto tocado de la escala (0x800251CC) en
-   `t2` y la comparacion `sc->tocado != o->p70` del bloque de 0x80024F90 en ese orden; se remide cada una al cierre.
+   `D_800693D4` y otra para la mascara (con una sola lectura en una local la cifra es 2170 en
+   lugar de 2045); (7) en los bloques que reparten registros entre punteros de objeto, el original usa un registro
+   distinto del que da la variable compartida, y cada uno se escribe en su propia variable: el angulo del bloque de
+   0x800217F4 (`move v1,v0` tras `ratan2`) en `dd` (con `ang` la cifra es 2075), el objeto de apoyo del bloque de
+   0x80022CA0 en `t2` (con `t1`, 2220), el objeto tocado de la escala (0x800251CC) en `t2` (con `t1`, 2065), la
+   comparacion `sc->tocado != o->p70` del bloque de 0x80024F90 en ese orden (con `o->p70 != sc->tocado`, 2055) y el
+   producto de `vel.z` (0x80021560 y 0x80021690, que el original deja en `t7`) en `vj` (con `lo`, 2090); (8) en el bloque
+   de 0x800255CC el original recalcula `pos` tras la llamada a `func_8003AA7C` (`addiu s1,s4,0xe4`, 0x80025638) y aqui el
+   compilador elimina la asignacion repetida como redundante: se supone, sin verificar, que el original la conserva porque
+   `pos` no es el mismo pseudo en los dos puntos.
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 2244 y con ella 2090. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 2199 y con ella 2045. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {
@@ -361,7 +366,7 @@ void func_80020B90(Objeto* o)
                             sc->tmp = -sc->tmp;
                         }
                         sc->tmp = 0x800 - sc->tmp;
-                        lo = sc->tmp * a;
+                        vj = sc->tmp * a;
                     } else {
                         sc->tmp = a;
                         a = ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
@@ -392,9 +397,9 @@ void func_80020B90(Objeto* o)
                         if (a < 0) {
                             a = -a;
                         }
-                        lo = sc->tmp * (s16)(0x800 - a);
+                        vj = sc->tmp * (s16)(0x800 - a);
                     }
-                    sc->vel.z = sc->vel.z + (lo >> 11);
+                    sc->vel.z = sc->vel.z + (vj >> 11);
                 }
                 if (sc->reg->flags0C & 0x100000) {
                     sc->vel.z += sc->reg->s14 * D_80069694;
@@ -1660,7 +1665,6 @@ caja_defecto:
             D_800694E1 = 0;
             D_800694E8 = 0;
             func_8003AA7C(2, 0x200);
-            pos = &o->param.trans;
         }
     }
     GEO_CARGAR_W(pos);
