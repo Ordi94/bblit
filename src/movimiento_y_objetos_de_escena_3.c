@@ -129,7 +129,7 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * bits) y fija la anchura de la textura y el modo del sprite.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 905 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 55 insertadas o borradas). Difiere en: momento de dos lecturas y reparto de registros. Medido en los volcados de `cc1`: los seis pseudos globales (objeto, bloque, puntero al sprite, desplazamiento de color, indice y puntero al fotograma) se reparten como el original salvo el puntero al sprite (pseudo de 16 usos y vida 32, prioridad 2,0), que toma `a3` y en el original `v1`. Causa: el puntero crudo leido de +0x78 (pseudo local de 3 usos y vida 9) recibe `a3` de la asignacion local y el puntero al sprite lo comparte (preferencia por el registro de su origen), y la variable del campo 0x0E toma `v1` en lugar de `a3`; tras la primera planificacion la suma `p = crudo + 0xC` queda detras del primer almacen, de modo que sus vidas no se solapan y la planificacion posterior al reparto, con `a3` libre, sube la lectura de +0x78 y deja el almacen antes de la suma (`addiu a3,a3,0xc`), mientras que el original la lee tras la ultima operacion aritmetica en `v0` y calcula la suma antes del primer almacen. Medido sobre esa causa: calcular `p` justo antes del primer almacen (905), escribir el primer almacen como acceso que no es de miembro, `*(s16*)p` (905), y guardar el puntero crudo en una local con el primer almacen por ella y `p` calculado despues (905) no cambian nada; leer la tabla de fotogramas tras la reunion de las dos ramas, como el original, deja 5 globales en lugar de 6 (el puntero al fotograma pasa a ser local) y mueve el objeto a `t0`, la constante 2 a `t1` y el puntero al fotograma a `a2` (1020). Medido en `.sched`, `.lreg` y `.greg`: el puntero crudo (+0x78) es un pseudo local de bloque con 3 usos (lectura, suma de 0xC y primer almacen) que `local-alloc` asigna a `a3`; tras la primera planificacion su lectura queda entre las cargas del fotograma (antes de la altura del cuadro) y su vida cubre los temporales de v0, v1, a0, a1 y a2 (se supone, sin verificar, que por eso no recibe v0 aunque es el primero de la lista de registros); el pseudo del puntero al sprite (16 usos, vida 32) llega a la asignacion global con preferencia por `a3` (`83 preferences: 7` en `.greg`) y lo toma, de modo que el crudo y el puntero comparten registro, el primer almacen (por el crudo con desplazamiento 0xC) debe preceder a la suma y la lectura del campo 0x0E cae en v1. En el original el crudo (v0) y el puntero (v1) viven a la vez y la lectura de +0x78 queda tras la cadena aritmetica del fotograma, de modo que el campo 0x0E toma a3, el registro del objeto liberado por esa lectura. Leer el campo 0x0E del fotograma antes del primer almacen sube la cifra a 1215 (la lectura de +0x78 sube aun mas). La lectura del campo 0x0E del fotograma en una local tres sentencias antes de su almacen, el cuadro por indice, la copia del modo y la copia del fotograma para la paleta bajan de 935 a 905. Mismos accesos y almacenes; difieren el momento de dos lecturas y el reparto de registros: el original copia el objeto a a3 al entrar, lee la tabla de fotogramas despues de la reunion de las dos ramas del cuadro y el puntero al sprite (+0x78 del objeto) tras los campos del cuadro (la altura en a3 y la anchura del bloque despues del primer almacen), mientras que GCC lee la tabla antes de la rama y el puntero justo despues del cuadro, y usa t3, t1 y a3 en otro orden. Medido: la lectura de +0x78 sube al principio (el original la deja tras las cuatro lecturas del fotograma) y no hay causa cerrada: se supone, sin verificar, que va ligada a un almacen o una llamada previa; copiar el objeto a una local al entrar combinado con leer la tabla tras la reunion de las ramas da 1035 (la cifra no es atribuible solo a la copia), y copiar ademas el bloque de trabajo a una local al entrar da 1095, leer la tabla tras la reunion de las ramas sube a 1020 y leer +0x78 por desplazamiento en bytes no cambia (905). */
+/* Pendiente: puntuacion 905 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 55 insertadas o borradas). Mismos accesos y almacenes que el original; difieren el momento de la lectura del puntero del sprite (+0x78 del objeto) y el reparto de registros. Original: copia el objeto a a3 al entrar (0x0); lee el puntero del sprite en v0 tras la cadena aritmetica del fotograma (`lw v0,0x78(a3)` en 0x78); carga el campo 0x0E en a3, el registro que el objeto libera en esa lectura (0x7C); calcula el puntero al sprite en v1 (`addiu v1,v0,0xc`, 0x80) antes del primer almacen, que sale por el puntero crudo (`sh a0,0xc(v0)`, 0x84). Aqui el puntero crudo comparte a3 con el objeto y con el puntero al sprite: la lectura sube (`lw a3,0x78(a3)` en 0x128), el primer almacen precede a la suma (`sh a0,0xc(a3)` en 0x158 y `addiu a3,a3,0xc` en 0x160) y el campo 0x0E toma v1. Medido en los volcados de `cc1` (`-dl`, `-dg`): el puntero al sprite es un pseudo global de 16 usos y vida 32 con preferencia por a3 (`83 preferences: 7`) y el puntero crudo un pseudo local del bloque de 3 usos y vida 9; la primera planificacion deja la lectura del crudo entre las cargas del fotograma, de modo que su vida cubre los temporales de v0 a a2. Se supone, sin verificar, que el original llega a v0 y v1 porque su primera planificacion deja esa lectura tras la cadena aritmetica y que la prioridad con que el planificador situa una carga cuya cadena es corta (carga, suma, almacenes) es lo que la sube aqui. */
 void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     SpriteEscalado* p;
@@ -140,22 +140,16 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     u16 ancho_bloque;
     Fotograma* fotogramas;
     s16 v_pagina;
-    /* Copias que cambian el recuento de usos y con ello el orden de asignacion de registros: el modo se
-     * copia al entrar, el campo 0x0E del fotograma se lee tres sentencias antes de su almacen y la paleta
-     * se lee por una copia del puntero al fotograma; quitar cualquiera sube la puntuacion (905 a 920 al
-     * quitar la copia del modo). */
-    u32 modo_copia;
+    /* El campo 0x0E del fotograma se lee tres sentencias antes de su almacen, como el original (carga en
+     * 0x7C, almacen en 0xA4): leerlo en el propio almacen sube la puntuacion de 905 a 1220. */
     u16 campo_0e;
-    Fotograma* fotograma_paleta;
 
-    /* La tabla se lee antes de elegir el cuadro: sin esa lectura anticipada el compilador la coloca
-     * tras la reunion de las ramas y el reparto de registros se aleja del original. La copia local
-     * de la tabla es deliberada: cambia el recuento de usos y con ello el orden en que se asignan
-     * los registros del bloque de trabajo. */
+    /* La tabla se lee antes de elegir el cuadro: el original la lee tras la reunion de las dos ramas
+     * (0x30), pero con esa forma el bloque de reunion empieza por el desplazamiento del indice y la
+     * puntuacion sube de 905 a 1020. */
     fotogramas = c->fotogramas;
-    modo_copia = modo;
     /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
-    if (modo_copia & 1) {
+    if (modo & 1) {
         indice = (u16)c->cuadro;
     } else {
         indice = (c->duraciones + (u16)c->cuadro)->indice;
@@ -166,7 +160,6 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     ancho = fotogramas->w0C;
     v_pagina = fotogramas->v + (0x100 & (fotogramas->pagina << 4));
     p = (SpriteEscalado*)(0xC + (u8*)o->u78.p);
-    fotograma_paleta = fotogramas;
     desplazamiento_color = 2 - ((fotogramas->pagina >> 7) & 3);
     ancho_cuadro = ancho;
     ancho = ancho_cuadro >> desplazamiento_color;
@@ -178,7 +171,7 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     p->s10 = ancho;
     p->w12 = campo_0e;
     p->w0A = ancho_bloque;
-    p->s04 = (0x3F & fotograma_paleta->h0A) * 0x10;
+    p->s04 = (0x3F & fotogramas->h0A) * 0x10;
     p->s06 = fotogramas->h0A >> 6;
     p->w0C = c->w30;
     p->w0E = c->w32;
