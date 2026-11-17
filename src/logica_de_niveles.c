@@ -58,7 +58,9 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 2045 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
+/* Pendiente: puntuacion 1945 con la configuracion versionada (g = 8 del archivo). La logica coincide. Las cifras de
+   las escrituras contrarias que siguen se midieron con la asignacion de `pos` antes de la prueba de la espera
+   (base 2045; ver (8)); se supone, sin verificar, que con ella en su sitio actual todas bajan en la misma cantidad. Decisiones de
    escritura del C, cada una con la cifra que da la escritura contraria: (e) el almacen de la altura
    tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo
    arreglo que usa la rama contraria, y no como un simbolo aparte (`D_8006AD74`): el original calcula la base con
@@ -122,12 +124,15 @@ s16* D_800693DC;
    0x800217F4 (`move v1,v0` tras `ratan2`) en `angulo_giro` (con `ang` la cifra es 2075), el objeto de apoyo del bloque de
    0x80022CA0 en `objeto_contacto` (con `t1`, 2220), el objeto tocado de la escala (0x800251CC) en `objeto_contacto` (con `t1`, 2065), la
    comparacion `sc->tocado != o->p70` del bloque de 0x80024F90 en ese orden (con `o->p70 != sc->tocado`, 2055) y el
-   producto de `vel.z` (0x80021560 y 0x80021690, que el original deja en `t7`) en `valor_vel` (con `lo`, 2090); (8) en el bloque
-   de 0x800255CC el original recalcula `pos` tras la llamada a `func_8003AA7C` (`addiu s1,s4,0xe4`, 0x80025638) y aqui el
-   compilador elimina la asignacion repetida como redundante: se supone, sin verificar, que el original la conserva porque
-   `pos` no es el mismo pseudo en los dos puntos.
+   producto de `vel.z` (0x80021560 y 0x80021690, que el original deja en `t7`) en `valor_vel` (con `lo`, 2090); (8) el `addiu s1,s4,0xe4` de
+   0x800255CC (hueco de retardo del salto que omite la espera) y el de 0x80025638 (tras `func_8003AA7C`) son la misma
+   instruccion; se supone, sin verificar con el volcado de saltos, que es la primera de la cola comun, copiada al hueco por
+   el relleno de saltos. Por eso `pos` se
+   asigna una sola vez, tras el bloque de la espera y justo antes de cargar el vector; asignada antes de la prueba de
+   `flags14` el valor cruza la llamada en `s1` y la instruccion de 0x80025638 desaparece (2045 con esa escritura, 1945
+   con la actual).
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 2199 y con ella 2045. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 2099 y con ella 1945. La funcion es pendiente: con la local la
    cifra es menor que sin ella. */
 void func_80020B90(Objeto* o)
 {
@@ -1656,7 +1661,6 @@ caja_defecto:
             o->alcance2 = 0x1900;
         }
     }
-    pos = &o->param.trans;
     if (o->flags14 & 0x01000000) {
         vs = (s16)((u16)o->trabajo.ultimo - (u16)o->trabajo.cuadro) * o->trabajo.espera;
         if (!((u8)D_8006966A & 2) && (s16)vs < 9) {
@@ -1666,6 +1670,7 @@ caja_defecto:
             func_8003AA7C(2, 0x200);
         }
     }
+    pos = &o->param.trans;
     GEO_CARGAR_W(pos);
     GEO_GUARDAR_W_T1(&sc->punto);
     sc->res.grupo = o->w26;
