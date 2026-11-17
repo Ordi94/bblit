@@ -517,14 +517,19 @@ typedef struct {
  * orden ascendente de direccion (`lhu v0,0x128($sp)` ... `lw t0,0xc($s4)`, 0x800430E4 a 0x800430FC),
  * y el fuente las lee en ese orden; los almacenes salen en el orden que decide el planificador.
  *
- * Segundo entero de las etiquetas leido antes de un almacen: en los chunks 0x24, 0x26, 0x36 y 0x47 el
- * original carga el entero de `campos + 4` antes del almacen intermedio (`lw v1,4(s4)` en 0x80042808
- * y `lw v0,4(s4)` en 0x80043008, delante de `sh v0,0xa(s1)` en 0x80042810 y de `sb t2` a D_8001004F
- * en 0x80043014) y lo guarda en D_800694A0 despues (`sw` a 0x180($gp) en 0x8004281C y 0x8004301C).
- * Con la lectura dentro de la asignacion al global el planificador deja la carga tras el almacen
- * y adelanta el almacen al global (se supone, sin verificar, que un acceso por puntero no se da por
- * independiente de un almacen a otro objeto); `compensacion` guarda el valor leido, como ya hacia
- * el chunk 0x3F.
+ * Segundo entero de las etiquetas leido antes de un almacen: en la etiqueta 0x25 del chunk 0x22, la 0x24
+ * del chunk 0x20, la 0x37 del chunk 0x36 y la 0x48 del chunk 0x47 el original carga el entero de
+ * `campos + 4` antes del almacen intermedio y lo guarda en D_800694A0 despues. Etiqueta 0x25: `lw v0,4(s0)`
+ * en 0x800424C0, delante de `sw a0,8(a1)` en 0x800424D0 (el almacen de la direccion de la lista), con el `sw`
+ * a 0x180($gp) en 0x800424C8. Etiqueta 0x24: `lw v1,4(s4)` en 0x80042808, delante de `sh v0,0xa(s1)` en
+ * 0x80042810, con el `sw` a 0x180($gp) en 0x8004281C. Chunk 0x36: `lw v0,4(s4)` en 0x80042FA4, delante del
+ * almacen del puntero de zonas (`sw a0,D_800694FC` en 0x80042FB4), con el `sw` a 0x180($gp) en 0x80042FAC.
+ * Chunk 0x47: `lw v0,4(s4)` en 0x80043008, delante de `sb t2` a D_8001004F en 0x80043014, con el `sw` a
+ * 0x180($gp) en 0x8004301C. Con la lectura dentro de la asignacion al global el planificador deja la carga
+ * tras el almacen y adelanta el almacen al global (se supone, sin verificar, que un acceso por puntero no se
+ * da por independiente de un almacen a otro objeto). Por eso la lectura se guarda en la local `compensacion`
+ * y se almacena despues, como ya hacia el chunk 0x3F: la local fija la carga antes del almacen intermedio, como
+ * el original, y la cifra sin ella en las cuatro etiquetas es 8963.
  *
  * Tipo de `orden` y `tipo`: son enteros de 32 bits (`orden` con signo, como pide el `slti` del
  * despacho de primer nivel en 0x80041C94; `tipo` sin signo, `sltiu` en 0x80042300). Con 8 bits el
