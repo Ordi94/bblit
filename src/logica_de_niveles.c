@@ -719,6 +719,11 @@ void func_80020B90(Objeto* o)
             }
             sc->desp.x = D_80069D30[0];
             sc->desp.z = D_80069D30[2];
+            /*
+             * Relectura forzosa: el original almacena desp.x con sw en 0x800223FC y lo vuelve a cargar con lw de la
+             * misma direccion y base en 0x8002240C, sin ningun almacen a ese campo entre ambas, en lugar de
+             * reutilizar el registro.
+             */
             sc->desp.x = *(volatile s32*)&sc->desp.x + D_80069D40[0];
             sc->desp.z += D_80069D40[2];
         } else {

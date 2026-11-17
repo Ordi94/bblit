@@ -598,8 +598,25 @@ el compilador no puede generar desde C, cada uno con comentario técnico en el c
   instrucciones sobre `$sp` y C no tiene forma de expresar una escritura en el registro de pila, así que no hay
   alternativa sin ensamblador.
 
-Barreras vacías, sentencias partidas, `register __asm__("$N")` locales, `"+r"`, `volatile` sin respaldo y registros
-destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE_ASM` con su comentario. Las únicas
+**Lectura con molde `volatile` respaldada por una relectura del original.** No es ensamblador, pero es la única
+forma de `volatile` admitida en una lectura: `x = *(volatile T*)&dato` escribe la lectura de un dato que el
+compilador, sin el molde, reutilizaría del registro y eliminaría. Se admite solo si se cumplen las cuatro
+condiciones a la vez: (1) el original almacena el dato con `sw` y lo vuelve a cargar con `lw` de la misma dirección
+por la misma base (o por el mismo símbolo con su `lui`), sin ningún almacén a ese dato ni llamada entre ambas
+instrucciones, en lugar de reutilizar el registro; (2) el molde tiene el mismo tipo, ancho y signo que el dato, de
+modo que el valor leído es el mismo; (3) un comentario junto a la sentencia, o la cabecera de la función, cita las
+direcciones del almacén y de la relectura; (4) la cifra sin el molde está medida y es peor que con él. Hay dos usos,
+y ninguno más se admite sin cumplir las cuatro condiciones:
+
+- `src/camara_y_bucle_logico.c`, `ActualizarCamaraSeguimiento`: la relectura de `D_800695B8`
+  (`zp = *(u16* volatile*)&D_800695B8;`); el original almacena con `sw` en `0x80033408` y relee con `lw` en
+  `0x80033410`. Sin el molde la cifra es 2880 y con él 2590.
+- `src/logica_de_niveles.c`, `func_80020B90`: la relectura de `desp.x` (`sc->desp.x = *(volatile s32*)&sc->desp.x +
+  D_80069D40[0];`); el original almacena con `sw` en `0x800223FC` y relee con `lw` en `0x8002240C` por la misma base
+  `s3`, y `Vec3.x` es `s32`. Sin el molde la cifra es 1265 y con él 1165.
+
+Barreras vacías, sentencias partidas, `register __asm__("$N")` locales, `"+r"`, `volatile` fuera de la lectura
+respaldada descrita arriba y registros destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE_ASM` con su comentario. Las únicas
 referencias sin código admitidas son las de [Referencias sin código](#referencias-sin-código).
 
 ## Referencias sin código
@@ -692,8 +709,8 @@ tiene un marco mayor que el que genera el C sin él. Se cumplen las cinco condic
 La forma solo rellena el marco: no se usa para cambiar el reparto de registros, que sería otra forma y exige sus
 propias condiciones.
 
-**Qué sigue sin admitirse.** Barreras `asm`, `register __asm__("$N")`, `volatile` sin respaldo (también el
-`volatile` sin uso que reserva pila), partir una sentencia en varias, la sentencia duplicada que no es la misma
+**Qué sigue sin admitirse.** Barreras `asm`, `register __asm__("$N")`, `volatile` sin el respaldo de una relectura
+del original (el apartado de la lectura con molde `volatile` de arriba; tampoco el `volatile` sin uso que reserva pila), partir una sentencia en varias, la sentencia duplicada que no es la misma
 sentencia real de la función (la duplicada solo para sumar referencias o en una rama que no la ejecuta), el molde de
 puntero a función contra la fusión de colas, los almacenes muertos, las lecturas muertas con una variable nueva, la
 auto-referencia `u8 x = -x;` y la local sin inicializador y sin uso, salvo la reserva de pila regulada arriba.
