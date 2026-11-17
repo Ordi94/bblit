@@ -424,25 +424,25 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 10241 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 10328 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
- * caso del de su tabla. Medido: el codigo generado tiene 2953 instrucciones frente a 2955 del
+ * caso del de su tabla. Medido: el codigo generado tiene 2955 instrucciones, las mismas que el
  * original. Los cuerpos de los
  * casos de los cinco `switch` y del despacho de primer nivel van en el orden de direcciones de las
  * tablas de saltos del original: el orden del fuente decide el orden de emision, por eso los casos
  * no van en orden numerico.
  *
  * Un decremento-incremento no genera codigo (`libre--; libre++;` al abrir el caso 0x2C; el codigo
- * generado tiene las mismas 2953 instrucciones con y sin el). Causa medida en el volcado de `cc1`
+ * generado tiene las mismas 2955 instrucciones con y sin el). Causa medida en el volcado de `cc1`
  * (prioridad `floor_log2(R) * R / L` de `global-alloc`): la variable compartida de abajo (pseudo
  * 103, R 118, L 2075, 0,34) supera a la zona libre `libre` (pseudo 93, R 124, L 2299, 0,32) y le
  * quita s6; con el par `libre` pasa a R 132 (L 2300, 0,40), toma s6, la variable s7 y `datos` fp
- * (pseudo 82, R 105, L 2132, 0,30), como el original. Puntuacion sin el par: 10656; con el: 10241.
+ * (pseudo 82, R 105, L 2132, 0,30), como el original. Puntuacion sin el par: 10743; con el: 10328.
  * El nodo de los chunks de recursos y modelos (pseudo 95, R 340, L 528, 5,15) supera al cursor del
  * script (pseudo 91, R 1074, L 2089, 5,14) sin ninguna referencia anadida (el cursor ya no se
- * reasigna desde `datos` al abrir el script), de modo que el par `nodo--; nodo++;` que antes hacia
- * falta se retiro: la puntuacion es 10241 con y sin el. La
+ * reasigna desde `datos` al abrir el script), de modo que no hace falta un par `nodo--; nodo++;`: la
+ * puntuacion es 10328 sin el. La
  * forma del fuente original que producia este reparto se desconoce.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
@@ -538,7 +538,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 12030 y con ella 10241. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 12125 y con ella 10328. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -647,9 +647,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         estado->r[0x10] = 0;
     }
     estado->r[0xA6] = D_80069594;
-    /* El original forma la direccion base de la tabla antes del indice (`lui` en 0x800416FC). */
-    registro = D_8005F200;
-    registro += archivo;
+    registro = &D_8005F200[archivo];
     if (registro->tamano == 0) {
         printf("BouzeID %d not found\n", archivo);
     }
