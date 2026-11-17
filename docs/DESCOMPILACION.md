@@ -606,14 +606,17 @@ por la misma base (o por el mismo símbolo con su `lui`), sin ningún almacén a
 instrucciones, en lugar de reutilizar el registro; (2) el molde tiene el mismo tipo, ancho y signo que el dato, de
 modo que el valor leído es el mismo; (3) un comentario junto a la sentencia, o la cabecera de la función, cita las
 direcciones del almacén y de la relectura; (4) la cifra sin el molde está medida y es peor que con él. Hay dos usos,
-y ninguno más se admite sin cumplir las cuatro condiciones:
+y ninguno más se admite sin cumplir las cuatro condiciones. Cada uso lleva su fila en esta tabla y, junto a su
+sentencia, un comentario que cita exactamente las dos direcciones de su fila:
 
-- `src/camara_y_bucle_logico.c`, `ActualizarCamaraSeguimiento`: la relectura de `D_800695B8`
-  (`zp = *(u16* volatile*)&D_800695B8;`); el original almacena con `sw` en `0x80033408` y relee con `lw` en
-  `0x80033410`. Sin el molde la cifra es 2880 y con él 2590.
-- `src/logica_de_niveles.c`, `func_80020B90`: la relectura de `desp.x` (`sc->desp.x = *(volatile s32*)&sc->desp.x +
-  D_80069D40[0];`); el original almacena con `sw` en `0x800223FC` y relee con `lw` en `0x8002240C` por la misma base
-  `s3`, y `Vec3.x` es `s32`. Sin el molde la cifra es 1265 y con él 1165.
+| Función | Archivo | Dirección del `sw` | Dirección del `lw` | Cifra sin el molde | Cifra con el molde |
+|---|---|---|---|---:|---:|
+| `ActualizarCamaraSeguimiento` | `src/camara_y_bucle_logico.c` | `0x80033408` | `0x80033410` | 2880 | 2590 |
+| `func_80020B90` | `src/logica_de_niveles.c` | `0x800223FC` | `0x8002240C` | 1265 | 1165 |
+
+- `ActualizarCamaraSeguimiento`: la relectura de `D_800695B8` (`zp = *(u16* volatile*)&D_800695B8;`).
+- `func_80020B90`: la relectura de `desp.x` (`sc->desp.x = *(volatile s32*)&sc->desp.x + D_80069D40[0];`) por la
+  misma base `s3`; `Vec3.x` es `s32`.
 
 Barreras vacías, sentencias partidas, `register __asm__("$N")` locales, `"+r"`, `volatile` fuera de la lectura
 respaldada descrita arriba y registros destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE_ASM` con su comentario. Las únicas
@@ -742,6 +745,16 @@ cualquier `break;` o `continue;` que pertenezca directamente a una envoltura (la
 `for`, un `while`, un `do` o un `switch` anidados dentro de ella pertenecen a ese bloque y se aceptan, y las palabras
 dentro de comentarios, cadenas, macros o identificadores no cuentan. Al añadir o quitar una
 referencia se actualiza la tabla en el mismo cambio.
+
+La prueba también vigila la lectura con molde `volatile` de [Ensamblador en línea admitido](#ensamblador-en-línea-admitido)
+con el mismo diseño: detecta en `src/` todo molde de puntero con `volatile` desreferenciado (`*(volatile T*)&dato`,
+`*(T* volatile*)&dato` o `((volatile T*)p)[i]`; no cuentan `__asm__ volatile`, las globales `volatile`, los tipos
+`vu8`/`vu16`/`vu32` ni la palabra dentro de comentarios, cadenas o macros del archivo, y una macro de un encabezado
+que encierre el molde no se sigue). Cada uso debe tener su fila en la tabla de esa sección y cada fila su uso en ese
+archivo y función; el comentario junto a la sentencia (el de bloque que termina en la línea anterior o el de su
+misma línea) debe citar exactamente dos direcciones `0x8...`, y son el `sw` y el `lw` de su fila; y la cifra sin el
+molde debe ser peor que la cifra con él. Un uso sin fila, una fila sin uso, un comentario sin las dos direcciones o
+con otras direcciones hacen fallar la prueba, con el archivo, la función y la línea.
 
 | Función | Archivo | Forma | Referencias | Estado | Qué decide |
 |---|---|---|---:|---|---|

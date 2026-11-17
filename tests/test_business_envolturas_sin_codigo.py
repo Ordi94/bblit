@@ -15,6 +15,11 @@ entre sin su comentario ni sin su fila, y para que una fila no sobreviva a la re
 Tambien cruzan la columna Estado con el estado real de cada funcion en ``src/`` y, en las reservas de pila,
 las dos cifras de la cabecera con la fila. Solo leen archivos.
 
+Vigilan ademas la lectura con molde ``volatile`` (``*(volatile T*)&dato``), que no es una referencia sin
+codigo pero se regula con el mismo diseno: cada uso de ``src/`` debe tener su fila en la tabla de
+``docs/DESCOMPILACION.md`` y, junto a la sentencia, un comentario con las dos direcciones de esa fila. Y
+rechazan la sentencia duplicada que en realidad esta repetida en linea recta dentro de un bloque.
+
 La deteccion de la reserva de pila alcanza a toda local cuyo nombre empieza por ``reserva``, sea cual sea su
 tipo (``u8 reserva[8];``, ``SVECTOR reserva;``, ``s32 reserva[N];``), que ninguna sentencia de su funcion
 nombra: sin el comentario fijo, o con el comentario pero de un tipo que no es un arreglo de ``s32``, hace
@@ -25,6 +30,7 @@ analizador completo de C y marcaria como reserva los campos y las locales que se
 import re
 from collections import Counter
 from pathlib import Path
+from typing import NamedTuple
 
 from tools.proyecto import RAIZ_REPOSITORIO
 
@@ -90,6 +96,12 @@ _CABEZA_CON_TIPO = re.compile(
     r"^(?:[A-Za-z_]\w*[ \t]*\*+[ \t]*|[A-Za-z_]\w*[ \t]+)+([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$"
 )
 _CABEZA_SIN_TIPO = re.compile(r"^\**\s*([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*$")
+_MOLDE_VOLATILE = re.compile(r"(?:\*|\()\s*\(\s*[\w\s\*]*?\bvolatile\b[\w\s\*]*\*\s*\)")
+_DIRECCION_DE_ORIGINAL = re.compile(r"\b0x8[0-9A-Fa-f]{7}\b")
+_FILA_DE_MOLDE = re.compile(
+    r"^\|\s*`(\w+)`\s*\|\s*`([^`]+)`\s*\|\s*`(0x8[0-9A-Fa-f]{7})`\s*\|\s*`(0x8[0-9A-Fa-f]{7})`\s*\|"
+    r"\s*(\d+)\s*\|\s*(\d+)\s*\|\s*$"
+)
 _TOKEN_DE_SENTENCIA = re.compile(
     r"(?P<acceso>->|\.)\s*(?P<campo>[A-Za-z_]\w*)"
     r"|(?P<literal>\d\w*)"
@@ -111,6 +123,33 @@ def _lineas_de_codigo(texto: str) -> list[str]:
         else:
             resultado.append(linea)
     return resultado
+
+
+def _texto_limpio(texto: str) -> str:
+    """Devuelve el texto sin macros, comentarios de bloque ni contenido de cadenas, conservando las lineas.
+
+    Contexto:
+        Lo usan la deteccion de saltos de las envolturas, la de lecturas con molde ``volatile`` y el calculo
+        de bloques de la sentencia duplicada: las tres deben ignorar las palabras y las llaves que viven en
+        un comentario, en una cadena o en una macro.
+
+    Los comentarios se sustituyen por tantos saltos de linea como tenian y las cadenas y caracteres por
+    ``""``, de modo que el indice de cada linea sigue siendo el del archivo original. Solo se reconocen los
+    comentarios ``/* */`` porque el codigo del proyecto es C89.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+
+    Returns:
+        str: Texto con el mismo numero de lineas que el original.
+
+    Ejemplo:
+        _texto_limpio('x = "volatile"; /* volatile */') == 'x = ""; '
+    """
+    sin_comentarios = _COMENTARIO_DE_BLOQUE.sub(
+        lambda coincidencia: "\n" * coincidencia.group().count("\n"), "\n".join(_lineas_de_codigo(texto))
+    )
+    return _CADENA_O_CARACTER.sub('""', sin_comentarios)
 
 
 def _funcion_que_contiene(lineas: list[str], indice: int) -> str | None:
@@ -428,6 +467,181 @@ def _incumplimientos_de_replicadas(texto: str) -> list[str]:
     return fallos
 
 
+class UsoDeMolde(NamedTuple):
+    """Una lectura con molde ``volatile`` de un archivo: funcion, linea con base 1 y direcciones citadas."""
+
+    funcion: str
+    linea: int
+    direcciones: frozenset[str]
+
+
+class FilaDeMolde(NamedTuple):
+    """Una fila de la tabla de lecturas con molde ``volatile`` del documento."""
+
+    funcion: str
+    archivo: str
+    almacen: str
+    relectura: str
+    cifra_sin_molde: int
+    cifra_con_molde: int
+
+
+def _direcciones_junto_a(lineas: list[str], indice: int) -> frozenset[str]:
+    """Devuelve las direcciones ``0x8...`` que cita el comentario pegado a la sentencia de la linea dada.
+
+    Contexto:
+        Lo usa ``_usos_de_molde_volatile``. El comentario "junto a la sentencia" es el de bloque que termina
+        en la linea inmediatamente anterior (y empieza por ``/*`` en su propia linea) o el que va en la misma
+        linea; un comentario separado por otra linea o que sigue a codigo de la linea anterior no cuenta.
+
+    Args:
+        lineas (list[str]): Lineas del archivo con las macros vaciadas.
+        indice (int): Indice de la linea de la sentencia.
+
+    Returns:
+        frozenset[str]: Direcciones en mayusculas, sin repetir; vacio si no hay comentario pegado.
+
+    Ejemplo:
+        _direcciones_junto_a(["/* sw 0x80033408 */", "x = 1;"], 1) == frozenset({"0x80033408"})
+    """
+    textos = _COMENTARIO_DE_BLOQUE.findall(lineas[indice])
+    if indice > 0 and lineas[indice - 1].rstrip().endswith("*/"):
+        inicio = indice - 1
+        while inicio > 0 and "/*" not in lineas[inicio]:
+            inicio -= 1
+        if lineas[inicio].lstrip().startswith("/*"):
+            textos.append("\n".join(lineas[inicio:indice]))
+    return frozenset(
+        direccion.upper() for texto in textos for direccion in _DIRECCION_DE_ORIGINAL.findall(texto)
+    )
+
+
+def _usos_de_molde_volatile(texto: str) -> list[UsoDeMolde]:
+    """Lista las lecturas con molde ``volatile``: un molde de puntero con ``volatile`` desreferenciado.
+
+    Contexto:
+        Lo ejerce la prueba que recorre ``src/``. Cuentan ``*(volatile T*)&dato``, ``*(T* volatile*)&dato`` y
+        ``((volatile T*)p)[i]``. No cuentan ``__asm__ volatile``, las declaraciones ``volatile s32 x;``, los
+        tipos ``vu8``/``vu16``/``vu32`` de include ni la palabra dentro de comentarios, cadenas o macros del
+        archivo. Limite aceptado: una macro de un encabezado que encierre el molde se invoca sin el y no se
+        sigue; este detector lee el texto del archivo, no expande macros.
+
+    Args:
+        texto (str): Contenido completo de un archivo ``.c``.
+
+    Returns:
+        list[UsoDeMolde]: Un uso por molde, en orden de aparicion; ``funcion`` es ``?`` fuera de una funcion.
+
+    Ejemplo:
+        _usos_de_molde_volatile("s32 f(s32* p)\\n{\\n    return *(volatile s32*)p;\\n}\\n")
+    """
+    lineas = _lineas_de_codigo(texto)
+    limpio = _texto_limpio(texto)
+    limpias = limpio.split("\n")
+    usos: list[UsoDeMolde] = []
+    for coincidencia in _MOLDE_VOLATILE.finditer(limpio):
+        indice = limpio.count("\n", 0, coincidencia.start())
+        funcion = _funcion_que_contiene(limpias, indice) or "?"
+        usos.append(UsoDeMolde(funcion, indice + 1, _direcciones_junto_a(lineas, indice)))
+    return usos
+
+
+def _incumplimientos_de_moldes_volatile(
+    usos: dict[str, list[UsoDeMolde]], filas: list[FilaDeMolde]
+) -> list[str]:
+    """Cruza las lecturas con molde ``volatile`` de ``src/`` con la tabla del documento en los dos sentidos.
+
+    Contexto:
+        Lo ejerce la prueba que recorre ``src/``. La lectura con molde ``volatile`` solo se admite con una
+        fila en la tabla de ``docs/DESCOMPILACION.md`` y con un comentario junto a la sentencia que cita
+        las dos direcciones de esa fila (el ``sw`` del almacen y el ``lw`` de la relectura); la cifra sin el
+        molde debe ser peor que la cifra con el.
+
+    Args:
+        usos (dict[str, list[UsoDeMolde]]): archivo relativo -> lecturas con molde de ese archivo.
+        filas (list[FilaDeMolde]): Filas de la tabla del documento.
+
+    Returns:
+        list[str]: Un mensaje por incumplimiento, con archivo, funcion y linea si procede; vacia si cuadra.
+
+    Ejemplo:
+        _incumplimientos_de_moldes_volatile({}, []) == []
+    """
+    de_src: dict[tuple[str, str], list[UsoDeMolde]] = {}
+    for archivo, lecturas in usos.items():
+        for uso in lecturas:
+            de_src.setdefault((archivo, uso.funcion), []).append(uso)
+    de_tabla: dict[tuple[str, str], list[FilaDeMolde]] = {}
+    for fila in filas:
+        de_tabla.setdefault((fila.archivo, fila.funcion), []).append(fila)
+    fallos: list[str] = []
+    for fila in filas:
+        if fila.cifra_sin_molde <= fila.cifra_con_molde:
+            fallos.append(
+                f"{fila.archivo}: {fila.funcion}: la cifra sin el molde ({fila.cifra_sin_molde}) no es peor "
+                f"que la cifra con el ({fila.cifra_con_molde})"
+            )
+    for archivo, funcion in sorted(set(de_src) | set(de_tabla)):
+        lecturas, de_la_funcion = de_src.get((archivo, funcion), []), de_tabla.get((archivo, funcion), [])
+        if not de_la_funcion:
+            fallos.extend(
+                f"{archivo}: {funcion}: linea {uso.linea}: lectura con molde `volatile` sin fila en la tabla"
+                for uso in lecturas
+            )
+            continue
+        if not lecturas:
+            fallos.append(
+                f"{archivo}: {funcion}: la fila de la tabla no tiene su lectura con molde `volatile`"
+            )
+            continue
+        if len(lecturas) != len(de_la_funcion):
+            fallos.append(
+                f"{archivo}: {funcion}: hay {len(lecturas)} lecturas con molde `volatile` y "
+                f"{len(de_la_funcion)} filas en la tabla"
+            )
+            continue
+        pendientes = [frozenset({fila.almacen.upper(), fila.relectura.upper()}) for fila in de_la_funcion]
+        for uso in lecturas:
+            if len(uso.direcciones) != 2:
+                fallos.append(
+                    f"{archivo}: {funcion}: linea {uso.linea}: la lectura con molde `volatile` no lleva "
+                    "junto a la sentencia un comentario que cite dos direcciones 0x8..."
+                )
+            elif uso.direcciones in pendientes:
+                pendientes.remove(uso.direcciones)
+            else:
+                fallos.append(
+                    f"{archivo}: {funcion}: linea {uso.linea}: el comentario cita "
+                    f"{sorted(uso.direcciones)} y ninguna fila de la tabla tiene esas dos direcciones"
+                )
+    return fallos
+
+
+def _filas_de_moldes_del_documento() -> list[FilaDeMolde]:
+    """Lee la tabla de lecturas con molde ``volatile`` de ``## Ensamblador en línea admitido``."""
+    texto = (RAIZ_REPOSITORIO / "docs" / "DESCOMPILACION.md").read_text(encoding="utf-8")
+    inicio = texto.index("## Ensamblador en línea admitido")
+    siguiente = texto.find("\n## ", inicio + 1)
+    seccion = texto[inicio : siguiente if siguiente != -1 else len(texto)]
+    filas: list[FilaDeMolde] = []
+    for linea in seccion.splitlines():
+        coincidencia = _FILA_DE_MOLDE.match(linea)
+        if coincidencia is not None:
+            funcion, archivo, almacen, relectura, sin_molde, con_molde = coincidencia.groups()
+            filas.append(FilaDeMolde(funcion, archivo, almacen, relectura, int(sin_molde), int(con_molde)))
+    return filas
+
+
+def _usos_de_molde_en_src() -> dict[str, list[UsoDeMolde]]:
+    """Devuelve archivo relativo -> lecturas con molde ``volatile`` para todo ``src/*.c`` que tenga alguna."""
+    resultado: dict[str, list[UsoDeMolde]] = {}
+    for archivo in sorted((RAIZ_REPOSITORIO / "src").glob("*.c")):
+        usos = _usos_de_molde_volatile(archivo.read_text(encoding="utf-8"))
+        if usos:
+            resultado[f"src/{archivo.name}"] = usos
+    return resultado
+
+
 def _buscar_referencias(texto: str) -> dict[tuple[str, str], int]:
     """Cuenta las referencias sin codigo por (funcion, forma), ignorando las que viven dentro de una macro."""
     lineas = _lineas_de_codigo(texto)
@@ -520,9 +734,7 @@ def _saltos_de_envolturas(texto: str) -> list[tuple[str, int, str]]:
     Ejemplo:
         _saltos_de_envolturas("void f(void)\\n{\\n    do {\\n        break;\\n    } while (0);\\n}\\n")
     """
-    lineas = _lineas_de_codigo(texto)
-    sin_comentarios = _COMENTARIO_DE_BLOQUE.sub(lambda m: "\n" * m.group().count("\n"), "\n".join(lineas))
-    limpio = _CADENA_O_CARACTER.sub('""', sin_comentarios)
+    limpio = _texto_limpio(texto)
     lineas_limpias = limpio.split("\n")
     pila: list[tuple[str, list[tuple[int, str]]]] = []
     omitir: set[int] = set()
@@ -1688,7 +1900,12 @@ def test_las_locales_de_declaracion_multiple_y_puntero_pueden_variar_entre_camin
 def test_una_marca_que_no_precede_a_una_sentencia_se_rechaza() -> None:
     sola = f"        /* {COMENTARIO_REPLICADA} */\n    }}\n"
     texto = _texto_con(
-        "    if (a) {\n" + _rama_replicada("p") + _rama_replicada("q") + "    } else {\n" + sola
+        "    if (a) {\n"
+        + _rama_replicada("p")
+        + "    } else {\n"
+        + _rama_replicada("q")
+        + "    }\n    if (b) {\n"
+        + sola
     )
     assert _incumplimientos_de_replicadas(texto) == [
         "func_800000A0: la marca de sentencia replicada no precede a una sentencia"
@@ -2651,3 +2868,176 @@ def test_las_filas_de_reserva_de_pila_de_la_tabla_dicen_lo_mismo_que_las_cabecer
         for fallo in _incumplimientos_de_fila_de_reserva(archivo.read_text(encoding="utf-8"), decisiones)
     ]
     assert fallos == []
+
+
+ARCHIVO_DE_MOLDE = "src/ejemplo.c"
+FUNCION_DE_MOLDE = "func_800000B0"
+SENTENCIA_CON_MOLDE = "a = *(volatile s32*)&b;"
+COMENTARIO_DE_MOLDE = "    /* El original almacena con sw en 0x80000010 y relee con lw en 0x80000018. */\n"
+FILA_DE_MOLDE = FilaDeMolde(FUNCION_DE_MOLDE, ARCHIVO_DE_MOLDE, "0x80000010", "0x80000018", 20, 10)
+
+
+def _texto_con_molde(sentencia: str = SENTENCIA_CON_MOLDE, comentario: str = COMENTARIO_DE_MOLDE) -> str:
+    """Funcion con la sentencia (y su comentario previo) tras dos lineas de cabecera."""
+    return f"s32 {FUNCION_DE_MOLDE}(s32 a, s32 b)\n{{\n{comentario}    {sentencia}\n    return a;\n}}\n"
+
+
+def _cruce_de_molde(texto: str, filas: list[FilaDeMolde]) -> list[str]:
+    return _incumplimientos_de_moldes_volatile({ARCHIVO_DE_MOLDE: _usos_de_molde_volatile(texto)}, filas)
+
+
+def test_un_uso_de_molde_volatile_con_fila_y_comentario_con_sus_dos_direcciones_se_acepta() -> None:
+    """Regla: con fila en la tabla y comentario con las dos direcciones, la lectura con molde es valida."""
+    assert _cruce_de_molde(_texto_con_molde(), [FILA_DE_MOLDE]) == []
+
+
+def test_un_uso_de_molde_volatile_sin_fila_se_rechaza_con_archivo_funcion_y_linea() -> None:
+    """Regla: un tercer uso que nadie documento no pasa, y el mensaje dice donde esta."""
+    assert _cruce_de_molde(_texto_con_molde(), []) == [
+        f"{ARCHIVO_DE_MOLDE}: {FUNCION_DE_MOLDE}: linea 4: lectura con molde `volatile` sin fila en la tabla"
+    ]
+
+
+def test_una_fila_de_molde_volatile_sin_su_uso_en_la_funcion_se_rechaza() -> None:
+    """Regla: una fila no sobrevive al uso que describia, ni en otra funcion ni en otro archivo."""
+    sin_molde = _texto_con_molde(sentencia="a = b;")
+    assert _cruce_de_molde(sin_molde, [FILA_DE_MOLDE]) == [
+        f"{ARCHIVO_DE_MOLDE}: {FUNCION_DE_MOLDE}: "
+        "la fila de la tabla no tiene su lectura con molde `volatile`"
+    ]
+    otra_fila = FILA_DE_MOLDE._replace(archivo="src/otro.c")
+    assert len(_cruce_de_molde(_texto_con_molde(), [otra_fila])) == 2
+
+
+def test_un_uso_de_molde_volatile_sin_comentario_con_dos_direcciones_se_rechaza() -> None:
+    """Regla: sin comentario, o con una sola direccion, la condicion documentada no esta citada."""
+    mensaje = (
+        f"{ARCHIVO_DE_MOLDE}: {FUNCION_DE_MOLDE}: linea 3: la lectura con molde `volatile` no lleva junto a "
+        "la sentencia un comentario que cite dos direcciones 0x8..."
+    )
+    assert _cruce_de_molde(_texto_con_molde(comentario=""), [FILA_DE_MOLDE]) == [mensaje]
+    una_sola = "    /* El original almacena con sw en 0x80000010. */\n"
+    assert _cruce_de_molde(_texto_con_molde(comentario=una_sola), [FILA_DE_MOLDE]) == [
+        mensaje.replace("linea 3", "linea 4")
+    ]
+
+
+def test_un_comentario_separado_de_la_sentencia_no_cuenta_como_junto_a_ella() -> None:
+    """Regla: el comentario debe estar pegado a la sentencia; otra linea de por medio lo desliga."""
+    separado = COMENTARIO_DE_MOLDE + "    b = 0;\n"
+    fallos = _cruce_de_molde(_texto_con_molde(comentario=separado), [FILA_DE_MOLDE])
+    assert len(fallos) == 1
+    assert "no lleva junto a la sentencia un comentario" in fallos[0]
+
+
+def test_el_comentario_que_sigue_a_codigo_en_la_linea_anterior_no_es_del_uso() -> None:
+    """Regla: un comentario al final de otra sentencia pertenece a esa sentencia, no a la lectura."""
+    ajeno = "    b = 0; /* sw en 0x80000010 y lw en 0x80000018 */\n"
+    fallos = _cruce_de_molde(_texto_con_molde(comentario=ajeno), [FILA_DE_MOLDE])
+    assert len(fallos) == 1
+    assert "no lleva junto a la sentencia un comentario" in fallos[0]
+
+
+def test_un_comentario_en_la_misma_linea_que_la_lectura_con_molde_se_acepta() -> None:
+    """Regla: el comentario de la misma linea tambien esta junto a la sentencia."""
+    sentencia = SENTENCIA_CON_MOLDE + " /* sw en 0x80000010 y lw en 0x80000018 */"
+    assert _cruce_de_molde(_texto_con_molde(sentencia, comentario=""), [FILA_DE_MOLDE]) == []
+
+
+def test_un_uso_de_molde_volatile_cuyas_direcciones_no_son_las_de_la_fila_se_rechaza() -> None:
+    """Regla: el comentario cita las direcciones de la fila, no otras."""
+    otras = "    /* El original almacena con sw en 0x80000010 y relee con lw en 0x80000020. */\n"
+    fallos = _cruce_de_molde(_texto_con_molde(comentario=otras), [FILA_DE_MOLDE])
+    assert fallos == [
+        f"{ARCHIVO_DE_MOLDE}: {FUNCION_DE_MOLDE}: linea 4: el comentario cita ['0X80000010', '0X80000020'] y "
+        "ninguna fila de la tabla tiene esas dos direcciones"
+    ]
+
+
+def test_las_direcciones_del_comentario_se_comparan_sin_importar_las_mayusculas() -> None:
+    """Regla: 0x800223fc y 0x800223FC son la misma direccion."""
+    minusculas = "    /* sw en 0x8000001a y lw en 0x80000018. */\n"
+    fila = FILA_DE_MOLDE._replace(almacen="0x8000001A")
+    assert _cruce_de_molde(_texto_con_molde(comentario=minusculas), [fila]) == []
+
+
+def test_una_funcion_con_mas_usos_de_molde_volatile_que_filas_se_rechaza() -> None:
+    """Regla: cada uso de una funcion necesita su propia fila."""
+    dos_usos = _texto_con_molde().replace("    return a;", COMENTARIO_DE_MOLDE + "    " + SENTENCIA_CON_MOLDE)
+    fallos = _cruce_de_molde(dos_usos, [FILA_DE_MOLDE])
+    assert fallos == [
+        f"{ARCHIVO_DE_MOLDE}: {FUNCION_DE_MOLDE}: hay 2 lecturas con molde `volatile` y 1 filas en la tabla"
+    ]
+
+
+def test_una_cifra_sin_el_molde_que_no_es_peor_que_con_el_se_rechaza() -> None:
+    """Regla: la cuarta condicion exige que la cifra sin el molde sea peor que con el."""
+    fila = FILA_DE_MOLDE._replace(cifra_sin_molde=10, cifra_con_molde=10)
+    fallos = _cruce_de_molde(_texto_con_molde(), [fila])
+    assert fallos == [
+        f"{ARCHIVO_DE_MOLDE}: {FUNCION_DE_MOLDE}: "
+        "la cifra sin el molde (10) no es peor que la cifra con el (10)"
+    ]
+
+
+def test_las_dos_formas_del_molde_volatile_y_la_lectura_indexada_se_detectan() -> None:
+    """Regla: `*(volatile T*)`, `*(T* volatile*)` y `((volatile T*)p)[i]` son lecturas con molde."""
+    cuerpo = (
+        "    a = *(volatile s32*)&b;\n"
+        "    a = *(u16* volatile*)&b;\n"
+        "    a = ((volatile s32*)&b)[1];\n"
+        "    a = *( volatile  u8 * )&b;\n"
+    )
+    texto = f"s32 {FUNCION_DE_MOLDE}(s32 a, s32 b)\n{{\n{cuerpo}    return a;\n}}\n"
+    assert [uso.linea for uso in _usos_de_molde_volatile(texto)] == [3, 4, 5, 6]
+
+
+def test_ensamblador_global_comentario_cadena_y_tipos_de_include_con_volatile_no_cuentan() -> None:
+    """Regla: solo el molde de puntero desreferenciado es una lectura con molde `volatile`."""
+    texto = (
+        "volatile s32 D_80069484;\n"
+        "extern volatile u8 D_80069488;\n"
+        "/* Se lee con *(volatile s32*)&dato en otra parte. */\n"
+        f"s32 {FUNCION_DE_MOLDE}(vu32* p, vu16 q)\n"
+        "{\n"
+        '    char* t = "*(volatile s32*)&x";\n'
+        "    /* a = *(volatile s32*)&b; */\n"
+        '    __asm__ volatile ("nop; nop" : : : "memory");\n'
+        "    *(vu32*)0x1F801070 = q;\n"
+        "    return *p;\n"
+        "}\n"
+        "#define LEE(x) (*(volatile s32*)&(x))\n"
+    )
+    assert _usos_de_molde_volatile(texto) == []
+
+
+def test_un_uso_de_molde_volatile_fuera_de_una_funcion_se_atribuye_a_la_funcion_desconocida() -> None:
+    """Regla: sin funcion que lo contenga el uso no puede tener fila y se rechaza."""
+    texto = "s32 D_80069490 = *(volatile s32*)&D_80069494;\n"
+    assert [uso.funcion for uso in _usos_de_molde_volatile(texto)] == ["?"]
+
+
+def test_la_tabla_de_moldes_volatile_del_documento_tiene_sus_filas_con_direcciones_y_cifras() -> None:
+    """La tabla del documento se lee entera: funcion, archivo, dos direcciones y las dos cifras."""
+    filas = _filas_de_moldes_del_documento()
+    assert {(fila.archivo, fila.funcion) for fila in filas} == {
+        ("src/camara_y_bucle_logico.c", "ActualizarCamaraSeguimiento"),
+        ("src/logica_de_niveles.c", "func_80020B90"),
+    }
+    assert all(fila.cifra_sin_molde > fila.cifra_con_molde > 0 for fila in filas)
+
+
+def test_las_lecturas_con_molde_volatile_de_src_son_exactamente_las_de_la_tabla() -> None:
+    """Todo uso de src tiene fila y toda fila tiene su uso, hoy dos."""
+    usos = _usos_de_molde_en_src()
+    en_src = sorted((archivo, uso.funcion) for archivo, lecturas in usos.items() for uso in lecturas)
+    en_tabla = sorted((fila.archivo, fila.funcion) for fila in _filas_de_moldes_del_documento())
+    assert en_src == en_tabla
+    assert len(en_src) == 2
+
+
+def test_toda_lectura_con_molde_volatile_de_src_cumple_la_regla_de_su_fila() -> None:
+    """Cada uso de src lleva junto a la sentencia el comentario con las dos direcciones de su fila."""
+    assert (
+        _incumplimientos_de_moldes_volatile(_usos_de_molde_en_src(), _filas_de_moldes_del_documento()) == []
+    )
