@@ -291,9 +291,17 @@ void func_80019364(s32* a0)
  * en cada rama (`lhu v1,0x198(s0)`, 0x8001BE74 y 0x8001BE98) y se almacena al final de la cola, tras los dos
  * almacenes de ceros (`sh v1,0(s3)`, 0x8001BEAC). Por eso la clase pasa por la local `clase_plano`, asignada
  * en cada rama y almacenada en la cola, y las banderas se escriben en cada rama; escribir la clase directa en
- * cada rama la deja antes de los ceros y la puntuacion pasa de 130 a 155. Se supone, sin verificar, que con
- * las banderas escritas por rama el pseudo de la clase, que cruza el salto, es el unico candidato a v1 al
- * asignarse despues de los pseudos locales de cada rama.
+ * cada rama la deja antes de los ceros y la puntuacion pasa de 130 a 155.
+ * La sentencia `clase_plano = w->celdas[0];` esta repetida en las dos ramas y no genera codigo propio: la cola
+ * ya es comun desde el fuente por la etiqueta, de modo que el compilador no tiene nada que fundir y el
+ * ensamblador generado conserva una sola carga por rama y una sola cola, sin instrucciones de mas. Lo que decide
+ * la copia por rama es la planificacion posterior al reparto de registros (volcado `-dR`): con la sentencia en
+ * cada rama la carga `lhu` queda en el bloque de su rama, en `v1`, y el valor cruza el salto hasta el almacen
+ * final, como en el original; con una sola copia tras la etiqueta la carga pasa a la cola, el planificador la
+ * deja despues del almacen de las banderas y la toma en `v0`, y la puntuacion pasa de 130 a 435. Se supone,
+ * sin verificar, que con las banderas escritas por rama el pseudo de la clase, que cruza el salto, es el unico
+ * pseudo que puede recibir `v1` al asignarse despues de los pseudos locales de cada rama.
+ * La forma del fuente original que producia este reparto se desconoce.
  */
 s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* w)
 {
@@ -849,12 +857,14 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
     }
     if (c == 0x7E) {
         pos[1] = cur->y_max;
+        /* Sentencia replicada: es la misma que la de las otras ramas. */
         clase_plano = w->celdas[0];
         res->flags = 8;
         goto plano;
     }
     if (c == 0x7F) {
         pos[1] = cur->y_max;
+        /* Sentencia replicada: es la misma que la de las otras ramas. */
         clase_plano = w->celdas[0];
         res->flags = 6;
 plano:
