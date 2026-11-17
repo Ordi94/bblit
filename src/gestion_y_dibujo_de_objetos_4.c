@@ -90,8 +90,7 @@ void func_80039CD0(s32 limite)
     for (;;) {
         d = D_80069610 - limite;
         if (d < 0) {
-            d -= 0x400;
-            d += anillo;
+            d += anillo - 0x400;
         }
         if (d >= 0x800) {
             return;

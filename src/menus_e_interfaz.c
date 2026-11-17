@@ -621,6 +621,7 @@ void func_8003B5AC(Objeto* lista)
             }
             esc->estado.s6 = esc->objeto->w28;
             if (esc->objeto->flags14 & 0x10) {
+                /* El original almacena el campo dos veces: la mitad en 0x8003BA70 y la suma en 0x8003BA88. */
                 esc->estado.s6 = (s16)esc->objeto->w28 >> 1;
                 esc->estado.s6 = esc->estado.s6 + esc->objeto->p70->w28;
             }

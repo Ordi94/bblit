@@ -1212,6 +1212,7 @@ orientar_al_mando:
 
 giro_sin_ayudante:
     /* seguimiento sin ayudante: el giro del propio objeto converge al rumbo del mando */
+    /* El original almacena el campo tres veces: el rumbo en 0x80028764, la suma en 0x80028774 y el resto en 0x80028790. */
     t->w_a0 = ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
     t->w_a0 = t->w_a0 + t->w118;
     t->w_a0 = t->w_a0 % 0x1000;
