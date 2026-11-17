@@ -427,11 +427,13 @@ typedef struct {
  * Pendiente: puntuacion 8798 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
- * caso del de su tabla. Medido: el codigo generado tiene 2955 instrucciones, las mismas que el
- * original. Los cuerpos de los
- * casos de los cinco `switch` y del despacho de primer nivel van en el orden de direcciones de las
- * tablas de saltos del original: el orden del fuente decide el orden de emision, por eso los casos
- * no van en orden numerico.
+ * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones y el original 2955; la
+ * diferencia de cuatro es la llamada a `func_80044664` de la apertura del anillo: el original la
+ * tiene entera (`lui a2,0x1f80`, `jal`, `nop`, `bnez` y `li`, de 0x80041A04 a 0x80041A18) y el C la
+ * fusiona con la de la lectura de las listas y solo conserva un `lui a2,0x1f80` tras el salto
+ * (causa 4 del residuo, mas abajo). Los cuerpos de los casos de los cinco `switch` y del
+ * despacho de primer nivel van en el orden de direcciones de las tablas de saltos del original: el
+ * orden del fuente decide el orden de emision, por eso los casos no van en orden numerico.
  *
  * Reparto de registros de las zonas: un par `libre--; libre++;` al abrir el caso 0x2C llego a darle
  * a `libre` las referencias que le faltaban para tomar s6; con la copia `monton = libre` escrita
