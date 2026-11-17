@@ -254,17 +254,19 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 550 con la configuracion versionada (g = 0 del archivo; ejes 212 de operando,
- * 4 reordenadas, 42 insertadas o borradas). Los cuatro avances del recorrido general (subcelda y baldosa)
- * escriben el punto de cruce y la altura como lecturas del campo, sin variables intermedias, en el orden de
- * cargas del original (en el avance de subcelda de z, la lectura del punto previo primero; en el de x, la
- * de la coordenada z primero; en los de baldosa, la del punto previo y despues la de la coordenada). Queda:
+ * Pendiente: puntuacion 470 con la configuracion versionada (g = 0 del archivo; ejes 213 de operando,
+ * 3 reordenadas, 47 insertadas o borradas). Los cuatro avances del recorrido general (subcelda y baldosa)
+ * escriben el punto de cruce y la altura como lecturas del campo, sin variables intermedias. En el avance de
+ * subcelda de z las tres lecturas de preparacion van en el orden `rz`, `aux`, `rx` y antes de los almacenes de
+ * `sz_z` y `lim_z`: con `rx` en primer lugar la puntuacion es 550 y con `rx` despues de `lim_z` es 1090; con la
+ * actual aparece la copia `move` que el original emite (la segunda lectura de `sz_x` queda como copia de la
+ * primera). En el de x el orden `rz`, `aux`, `rx` da 470 y los otros dos ordenes de `rz`, `aux` y `rx` ensayados
+ * dan 520 y 510. Queda:
  * (1) en los dos avances de subcelda el `mult` de la prueba sale una instruccion antes que en el original
- * (antes de la segunda carga de la altura o de la coordenada, 0x8001A198 en el avance de z) y en el avance de z el
- * almacen del punto previo sale antes de los de `lim_z` y `sz_z`, sin la copia `move v0,v1` que el original
- * emite tras ellos; se supone, sin verificar, que el compilador comparte las dos lecturas del campo cuando
- * entre ellas solo hay almacenes a otros miembros y que el original no lo hace porque el almacen del punto
- * previo va despues; (2) el original coloca `sw s0,0x10(sp)` (0x80019498) y `move s0,a3` tras el `lui`/`ori`
+ * (antes de la segunda carga de la altura o de la coordenada, 0x8001A198 en el avance de z) y el reparto de
+ * `a0`/`a1`/`v1` de las tres lecturas difiere: el original carga `sz_y` y `sz_z` antes del `mult` y `sz_x` despues,
+ * y aqui `sz_x` se carga primero; se supone, sin verificar, que el planificador adelanta la lectura de `sz_x` por
+ * ser la que alimenta la suma tras el producto; (2) el original coloca `sw s0,0x10(sp)` (0x80019498) y `move s0,a3` tras el `lui`/`ori`
  * de la guarda del area de trabajo y aqui van antes; (3) el reparto a2/a3 del producto del recorrido de
  * zona (`mflo`, 0x8001A0BC); (4) el orden de los tres almacenes de media palabra de la salida sin
  * desplazamiento (0x8001BEA4).
@@ -297,7 +299,7 @@ void func_80019364(s32* a0)
  * banderas (92: 3 usos, vida 8, prioridad 0,375) y tomaba v0, mientras que el original deja las banderas
  * en v0 y la clase en v1; con la clase y las banderas escritas en cada rama ambos valores son pseudos
  * locales de su bloque y se reparten como en el original (los ejes de operando de `diff` no cambian: 213).
- * Esa forma da 800 (el almacen de la clase queda antes de los dos almacenes de ceros).
+ * Esa forma deja el almacen de la clase antes de los dos almacenes de ceros, y el original no.
  */
 s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* w)
 {
@@ -519,9 +521,9 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             w->d_sx = SquareRoot0(w->dsx_x * w->dsx_x + w->dsx_z * w->dsx_z);
                             if (w->d_sz < w->d_sx) {
                                 if (w->dz > 0 ? w->acc_z < w->dz : w->dz < w->acc_z) {
-                                    w->rx = w->sz_x;
-                                    w->aux = w->sz_y;
                                     w->rz = w->sz_z;
+                                    w->aux = w->sz_y;
+                                    w->rx = w->sz_x;
                                     w->sz_z = w->lim_z = w->lim_z + w->celda_z;
                                     w->sz_x = ((w->pend_z * w->celda_z) >> 12) + w->sz_x;
                                 } else {
