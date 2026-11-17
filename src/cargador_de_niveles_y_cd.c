@@ -424,7 +424,7 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 9413 con la configuracion versionada (g = 8 del archivo). La cifra incluye
+ * Pendiente: puntuacion 8798 con la configuracion versionada (g = 8 del archivo). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2955 instrucciones, las mismas que el
@@ -435,11 +435,11 @@ typedef struct {
  *
  * Reparto de registros de las zonas: un par `libre--; libre++;` al abrir el caso 0x2C llego a darle
  * a `libre` las referencias que le faltaban para tomar s6; con la copia `monton = libre` escrita
- * como el original (ver abajo) el par ya no cambia la cifra (9413 con y sin el) y no se escribe. El
+ * como el original (ver abajo) el par ya no cambia la cifra (8798 con y sin el) y no se escribe. El
  * nodo de los chunks de recursos y modelos (pseudo 95, R 340, L 528, 5,15) supera al cursor del
  * script (pseudo 91, R 1074, L 2089, 5,14) sin ninguna referencia anadida (el cursor ya no se
  * reasigna desde `datos` al abrir el script), de modo que tampoco hace falta un par `nodo--;
- * nodo++;`: la puntuacion es 9413 sin el.
+ * nodo++;`: la puntuacion es 8798 sin el.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
  * recibe, en vez de una variable por uso, el desplazamiento de los chunks (`lw s7,0x128($sp)` y
@@ -515,6 +515,12 @@ typedef struct {
  * orden ascendente de direccion (`lhu v0,0x128($sp)` ... `lw t0,0xc($s4)`, 0x800430E4 a 0x800430FC),
  * y el fuente las lee en ese orden; los almacenes salen en el orden que decide el planificador.
  *
+ * Tipo de `orden` y `tipo`: son enteros de 32 bits (`orden` con signo, como pide el `slti` del
+ * despacho de primer nivel en 0x80041C94; `tipo` sin signo, `sltiu` en 0x80042300). Con 8 bits el
+ * compilador anade un `andi 0xff` tras cada lectura que el original no tiene (0x80041C88 y
+ * 0x800422F8). `campos` se asigna al abrir cada serie de chunks (`addiu s4,$sp,0x128` en
+ * 0x800422F4) y no antes del bucle de ordenes: los casos 0x2C y 0x4B no lo usan.
+ *
  * Orden de la seccion de anillo: el original calcula los dos tamanos de seccion y avanza la posicion
  * antes de sumar 0xA000 a `datos` (el `ori` y el `addu` salen tras `addiu s1,s1,0x2`, 0x800418D0 y
  * 0x800418D4), por eso `D_800694A0` y `posicion += 2` van antes de `datos += 0xA000`.
@@ -523,8 +529,12 @@ typedef struct {
  * original deja tres cargas (0x10, 0x14 y 0x18 de las etiquetas) intercaladas entre los almacenes y
  * el C las deja al final, tras el ultimo almacen de la serie; (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
  * la carga de `D_80069678`, que el original iza a a0 (0x80041D70) y el C deja junto a su uso, con
- * `D_8006954C` izada en su lugar (una fila y dos de operandos); (4) el hueco de retardo del salto de
- * `func_80044664` y del `bgtz` inicial, que el planificador de saltos llena distinto; (5) el orden de
+ * `D_8006954C` izada en su lugar (una fila y dos de operandos); (4) la llamada a `func_80044664` que
+ * comparten la apertura del anillo (suma de 0x1D000 a `datos`) y la lectura de las listas: el
+ * original deja el `jal` en 0x80041A0C y es la copia posterior la que salta hacia atras; el C deja
+ * el `jal` en la copia posterior y es la apertura la que salta hacia delante (el compilador fusiona
+ * las dos colas porque las dos llegan al mismo bucle de ordenes sin asignar `campos`), y el hueco
+ * de retardo del `bgtz` inicial, que el planificador de saltos llena distinto; (5) el orden de
  * `cursor += 8` frente a las cargas en los chunks 0x36 y 0x47; (6) nombres de registro (unas 150
  * filas de 5 puntos).
  *
@@ -544,7 +554,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 11102 y con ella 9413. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 10347 y con ella 8798. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -615,8 +625,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     s32 desp_texturas;
     u32 tam_extra;
     u8* datos_extra;
-    u8 orden;
-    u8 tipo;
+    s32 orden;
+    u32 tipo;
     u8 etiqueta;
     EstadoPrincipal* estado;
 
@@ -817,7 +827,6 @@ s32 CargarContenedor(s16 archivo, u8* datos)
      * el buffer del script: `datos` ya apunta mas alla (suma 0x1D000) y el original no copia `datos` al
      * cursor (el salto de 0x80041C84 al bucle conserva `s2`).
      */
-    campos = campos_mem;
     for (;;) {
         orden = *cursor;
         if (orden == 0x2F) {
@@ -976,6 +985,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                 cursor++;
                 continue;
             }
+            campos = campos_mem;
             do {
                 tipo = *cursor++;
                 if (tipo >= 0x4A) {
