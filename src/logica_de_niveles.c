@@ -28,7 +28,7 @@ extern s32 D_8006AC30[3];
 extern u8 D_8006AC3C[6];
 extern s32 D_8006AC44[3];
 extern s32 D_8006ACE0[3];
-extern u8 D_8006ACEC[6];
+extern u8 D_8006ACEC[];
 extern s32 D_8006ACF4[3];
 extern s32 D_8006AD30[3];
 extern s32 D_8006AD70[3];
@@ -58,7 +58,7 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1165 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
+/* Pendiente: puntuacion 1085 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
    escritura del C (la cifra que acompana a una decision es la que da la escritura contraria, medida sobre este estado): (e) el almacen de la altura
    tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo
    arreglo que usa la rama contraria, y no como un simbolo aparte (`D_8006AD74`): el original calcula la base con
@@ -79,8 +79,8 @@ s16* D_800693DC;
    documento de descompilacion para una relectura que el original hace: el original relee el mismo campo por la misma
    base, sin ningun almacen a 0x18 ni llamada entre el `sw` de 0x800223FC y el `lw` de 0x8002240C (el `sw` de
    0x80022400 es a 0x20), y el valor almacenado sigue en `v0`, que es el registro en el que lo relee. Sin el molde el
-   compilador elimina la relectura (esta en el volcado `.greg` y ya no en el `.sched2`) y la cifra es 1265; con el
-   molde es 1165. La de `desp.z` no lo necesita: el registro de su valor se reescribe antes (`lui v1,%hi(D_80069D40)`,
+   compilador elimina la relectura (esta en el volcado `.greg` y ya no en el `.sched2`) y la cifra es 1185; con el
+   molde es 1085. La de `desp.z` no lo necesita: el registro de su valor se reescribe antes (`lui v1,%hi(D_80069D40)`,
    0x80022404). Queda: el planificador emite los dos almacenes en orden inverso al del original (`sw 0x20` antes de
    `sw 0x18`, con las dos cargas de `D_80069D30` tambien invertidas, 0x800223F4 a 0x80022400); escribir las sumas
    en el orden contrario da 1535. Con `pos = &sc->desp` la
@@ -155,19 +155,26 @@ s16* D_800693DC;
    `sc->paso_y` queda en una sola copia que alcanzan los dos; con una variable `vs` que reuna los dos valores la
    mascara de 0x80024004 cae en `v0` y la cifra es 1195.
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 1319 y con ella 1165. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 1239 y con ella 1085. La funcion es pendiente: con la local la
    cifra es menor que sin ella.
-   Residuo vigente (1165; el listado de `diff` marca ademas 164 lineas que solo difieren en la forma de escribir un
-   simbolo o un desplazamiento del `gp` y se supone, sin verificar, que aportan la mayor parte de la cifra): el
-   registro del puntero del bucle de puesta a cero del scratchpad (`v1` en el original, `a0` aqui; el volcado de `cc1`
-   da al pseudo del puntero conflicto con v0 y v1); la mascara de 0x800211F4 (`lui v1,0x8000` en el original, `v0`
-   aqui); las dos cargas y los dos almacenes de 0x800223F4; el registro de la relectura de `o->p70` de 0x800248C8
-   (`a0` en el original, `a1` aqui) y el orden de `lui t7` y de la carga de `D_8006ACE0` de 0x80025858. */
+   El bucle de puesta a cero del scratchpad (0x80020BD0..0x80020BE4) usa su propio puntero (`cursor_cero`): con el
+   puntero `p` de la guarda de D_80069D30 el mismo pseudo vive en las dos zonas, el volcado de `cc1` le da conflicto con
+   v0 y v1 y cae en a0, y el original lo deja en v1; la cifra es 1165 con `p` y 1145 con la local propia. `D_8006ACEC`
+   se declara sin tamano: con 6 bytes la direccion entra al planificador como una sola instruccion (`symbol_ref`) y la
+   carga de `D_8006ACE0` sale antes del `lui t7`; sin tamano el volcado `.sched2` la muestra partida en `high` y
+   `lo_sum`, el `lui t7` precede a la carga como en el original (0x80025858) y la cifra baja de 1145 a 1085.
+   Residuo vigente (1085; el listado de `diff` marca ademas 164 lineas que solo difieren en la forma de escribir un
+   simbolo o un desplazamiento del `gp` y se supone, sin verificar, que aportan la mayor parte de la cifra): la
+   mascara de 0x800211F4 (`lui v1,0x8000` en el original, `v0` aqui); las dos cargas y los dos almacenes de
+   0x800223F4 (el volcado `.sched2` muestra la carga de `desp.z` antes de la de `desp.x` y el almacen de `desp.x` tras la
+   direccion de `D_80069D40`; se supone, sin verificar, que la lectura `volatile` actua de barrera de memoria para el
+   planificador); y el registro de la relectura de `o->p70` de 0x800248C8 (`a0` en el original, `a1` aqui). */
 void func_80020B90(Objeto* o)
 {
     ScratchJugador* sc;
     void* w;
     s32* p;
+    s32* cursor_cero;
     s16 a;
     u32 fl;
     u32 f4;
@@ -201,12 +208,12 @@ void func_80020B90(Objeto* o)
 
     sc = (ScratchJugador*)0x1F800000;
     w = (void*)0x1F800148;
-    p = (s32*)0x1F800000;
+    cursor_cero = (s32*)0x1F800000;
     a = 0;
     do {
-        *p = 0;
+        *cursor_cero = 0;
         a++;
-        p++;
+        cursor_cero++;
     } while ((u16)a < 0x52);
     D_800693D4 = o->flags14;
     fl = o->flags14 & 0xFFF9BFFF;
