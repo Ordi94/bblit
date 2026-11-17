@@ -339,9 +339,7 @@ void func_800450E8(Glifo* a0, u16 a1, OrigenEntrada* a2)
  * Vista de las dos primeras palabras de POLY_FT4: `enlace` cubre `tag` (+0) y `color` cubre `r0`, `g0`, `b0` y
  * `code` (+4) como una sola palabra. Se escribe asi porque el original guarda cada una con un unico `sw`
  * (`sw a2,4(v0)` en 0x80045250 y `sw a0,0(v0)` en 0x8004525C) y el color llega ya compuesto en 32 bits; por
- * miembros de POLY_FT4 el color seria cuatro almacenes de byte. Con `p->tag` por miembro y el color por
- * `*(u32*)&p->r0` la cifra de func_80045150 es 601 y con ese mismo par y `p` releido tras la lista de cabezas
- * 1086, frente a 431 con la vista.
+ * miembros de POLY_FT4 el color seria cuatro almacenes de byte.
  */
 typedef struct CabeceraPrimitiva {
     u32 enlace;
@@ -350,8 +348,11 @@ typedef struct CabeceraPrimitiva {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 431 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
- * reordenadas, 43 insertadas o borradas).
+ * Pendiente: puntuacion 641 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
+ * reordenadas, 54 insertadas o borradas). El color se escribe en una sola sentencia, `c + ((c << 8) + 0x2C000000 + (c <<
+ * 16))`, con la base `c` sumada al
+ * final de los componentes: es la agrupacion que menos puntuacion da de las dos formas naturales (641 frente a 706 con
+ * la suma de izquierda a derecha).
  *
  * La primitiva se escribe por miembros de POLY_FT4: el compilador marca un acceso por miembro como
  * acceso a estructura y no lo trata como posible alias de los globales escalares (D_80076188,
@@ -407,8 +408,8 @@ void func_80045150(EntradaLista* e)
     u32* cabeza;
 
     /* El orden de las lecturas del glifo y del elemento, la anchura y la altura menos uno en 32 bits, la
-     * suma del color en dos sentencias (base y luego los componentes desplazados) y D_80076188 sumado tras
-     * escribir el indice de paleta son los que acercan el reparto de registros guardados al original. */
+     * suma del color con la base al final y D_80076188 sumado tras escribir el indice de paleta son los
+     * que acercan el reparto de registros guardados al original. */
     i = 0;
     if (D_80069652 > 0) {
         do {
@@ -422,8 +423,7 @@ void func_80045150(EntradaLista* e)
             func_80039CD0(D_80076188);
             if (D_8006966A != 0) {
                 c = 0x80 - ((s16)D_800694E2 >> 5);
-                color = c;
-                color += (c << 8) + 0x2C000000 + (c << 16);
+                color = c + ((c << 8) + 0x2C000000 + (c << 16));
             } else {
                 color = 0x2C808080;
             }
