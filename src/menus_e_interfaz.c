@@ -201,6 +201,17 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
     D_80069416 = D_80069402;
 }
 
+#ifdef NON_MATCHING
+/*
+ * Pendiente: puntuacion 505 con la configuracion versionada (ejes 2 de operando, 0 reordenadas, 65 insertadas o
+ * borradas). El enlace de 24 bits de cada paquete se escribe en una sola sentencia, `(x << 8) >> 8` con `x` de
+ * tipo `s32` (el original emite `sll` y `sra`). Difiere el segundo paquete: el original calcula el `sll` del enlace en
+ * 0x8003AF1C, antes del almacen de la palabra 4 (0x8003AF20), y deja el paquete en a0 y la ranura de la tabla en a1;
+ * aqui el `sll` sale una instruccion despues, tras ese almacen, y el paquete y la ranura toman a1 y a2, con lo que la
+ * relectura del anillo de la cola cae en a0 en lugar de v1. Se supone, sin verificar en el volcado, que el original
+ * conserva el desplazado en un pseudo distinto del paquete y que con la expresion de una sola sentencia el
+ * compilador lo funde con el paquete y cambia el orden de asignacion de los registros.
+ */
 /*
  * Encola en la lista de ordenacion activa un primitivo de 0x18 bytes (codigo 0x05000000, un
  * solo dato por vertice) con los puntos 3, 5 y 7 de la lista recibida y, si el punto 8 no es
@@ -211,20 +222,18 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
  */
 s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 {
+    s32 cursor;
     u32* tabla;
     u32* datos;
     s32 actual;
     s32 siguiente;
-    s32 cursor;
 
     /* Copia local del parametro de puntos: sin ella el reparto de registros empeora de 605 a 943. */
     datos = puntos;
     func_80039CD0(D_80076188);
     actual = D_80076188;
     /* `cursor` guarda tres contenidos sucesivos: la copia de `actual`, el enlace de 24 bits de cada
-     * paquete y la relectura final del anillo. Compartir una sola variable es lo que produce el
-     * reparto de registros del original: con una local nueva para el enlace la puntuacion es 865,
-     * reutilizando `actual` 1240 y con el enlace en una sola expresion 605. */
+     * paquete y la relectura final del anillo. */
     cursor = actual;
     tabla = (u32*)D_8006AEA0[D_8006967C].org;
     /* El original lee la palabra de la tabla y le aplica la constante `0x05000000` como segundo
@@ -235,10 +244,7 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
     ((u32*)actual)[3] = datos[3];
     ((u32*)actual)[4] = datos[5];
     ((u32*)actual)[5] = datos[7];
-    /* Enlace de 24 bits del primer paquete, en dos sentencias sobre el cursor (en una sola expresion la
-     * puntuacion es 20). */
-    cursor = actual << 8;
-    cursor = cursor >> 8;
+    cursor = (actual << 8) >> 8;
     *tabla = cursor;
     actual = D_80076188;
     siguiente = actual + 0x18;
@@ -254,10 +260,7 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
         ((u32*)siguiente)[3] = datos[4];
         ((u32*)siguiente)[4] = datos[6];
         ((u32*)siguiente)[5] = datos[8];
-        /* Los dos desplazamientos del enlace van en sentencias separadas sobre el cursor: en una sola
-         * expresion el enlace queda en otro registro y la puntuacion sube a 605. */
-        cursor = siguiente << 8;
-        cursor = cursor >> 8;
+        cursor = (siguiente << 8) >> 8;
         *tabla = cursor;
         D_80076188 += 0x18;
     }
@@ -269,6 +272,9 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
     }
     return 0;
 }
+#else
+INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
+#endif
 
 #ifdef NON_MATCHING
 /*
