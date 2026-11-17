@@ -83,7 +83,7 @@ s16* D_800693DC;
    molde es 1085. La de `desp.z` no lo necesita: el registro de su valor se reescribe antes (`lui v1,%hi(D_80069D40)`,
    0x80022404). Queda: el planificador emite los dos almacenes en orden inverso al del original (`sw 0x20` antes de
    `sw 0x18`, con las dos cargas de `D_80069D30` tambien invertidas, 0x800223F4 a 0x80022400); escribir las sumas
-   en el orden contrario da 1535. Con `pos = &sc->desp` la
+   en el orden contrario da 1455. Con `pos = &sc->desp` la
    base se materializa en `s0` (`addiu s0,s3,0x18`), que el original no tiene; (b) el almacen de `o->p180` va antes del de
    `o->trabajo.i14` en el bloque de entrada de la espera (0x80021020..0x80021050): el original lee `i14`, carga
    `sc->sec`, almacena a cero y escribe D_80069584 antes de la guarda de `o->p70`, con el almacen de `p180` en el hueco
@@ -95,13 +95,13 @@ s16* D_800693DC;
    la pasada de saltos posterior al reparto de registros funde las dos colas identicas en una sola bajo `mflo`,
    como el original. Con el producto en una variable (`valor_vel`) el pseudo, con preferencia por el registro LO,
    queda en el registro 16 despues de que la recarga de la multiplicacion de la prueba de `a * a` (que pide un
-   registro de clase LO) gaste los registros 15, 64 y 65, y `mflo` cae en `s0` y no en `t7`: la cifra es 1175 con la
-   variable y 1165 sin ella. La velocidad del objeto de apoyo (0x80022584..0x800225B4)
+   registro de clase LO) gaste los registros 15, 64 y 65, y `mflo` cae en `s0` y no en `t7`: la cifra es 1095 con la
+   variable y 1085 sin ella. La velocidad del objeto de apoyo (0x80022584..0x800225B4)
    se guarda en `vel_apoyo`, variable propia: el original deja el valor en `v0` y el `bnez` de 0x80022598 con `nop`
    en el hueco, porque `v0`, el registro probado, es el que escribe la primera instruccion del producto por `0x145`;
    con la variable `vs`, que solo comparte con el producto de la prueba de la espera del final de la funcion, ese
-   bloque sale igual y la cifra es 1175 (se supone, sin verificar, que el cambio esta en el reparto del bloque que
-   usa `vs`) y con la variable propia 1165.
+   bloque sale igual y la cifra es 1095 (se supone, sin verificar, que el cambio esta en el reparto del bloque que
+   usa `vs`) y con la variable propia 1085.
    El tramo en Z de la guarda de D_80069D30 (0x800222B8..0x80022308) se
    escribe por un puntero a la base del arreglo (`p = D_80069D30; p[2]`) y con un valor propio del bloque
    (`z_nueva`) que recoge las tres ramas y se almacena una sola vez: el original carga la base en a0 (`lui v0 ;
@@ -142,29 +142,30 @@ s16* D_800693DC;
    `flags14` el valor cruza la llamada en `s1` y la instruccion de 0x80025638 desaparece. (f) El objeto de la caja de
    colision del final de la funcion (0x80025410 y 0x800254A8, `lw v0,0x6c(s4)`) se guarda en `objeto_caja`, variable
    propia de esos dos bloques: con `objeto_contacto`, compartida con los bloques de 0x80022CA0 y 0x800251CC, el puntero
-   cae en `v1` y el original lo deja en `v0` (`lhu v0,0x48(v0)`); la cifra es 1205 con la variable compartida y 1165
+   cae en `v1` y el original lo deja en `v0` (`lhu v0,0x48(v0)`); la cifra es 1125 con la variable compartida y 1085
    con la propia. (h) La prueba `(registro184->flags10 & 0x10000000) o (flags18 & 0x40)` de 0x80024B7C a 0x80024B9C se
    escribe con una prueba de salida (`continue`) directa en cada camino, no con una variable `vs` que reuna los dos
    valores: el original carga la mascara en `v1` antes de la bandera y rellena con ella el hueco del `beqz` de
    0x80024B7C, y los dos caminos comparten la prueba `beqz` de 0x80024B9C. Medido en los volcados de `cc1`: con la
    variable la mascara se carga despues de la bandera, cae en `v0` y el relleno de saltos no la puede mover al hueco
-   (queda un `nop` y el resto de la funcion se desplaza una instruccion: 1490); con la prueba en cada camino, la pasada de
-   saltos posterior al reparto funde las dos pruebas identicas en una sola cola (0x80024B9C) y la cifra es 1165. La
+   (queda un `nop` y el resto de la funcion se desplaza una instruccion: 1410); con la prueba en cada camino, la pasada de
+   saltos posterior al reparto funde las dos pruebas identicas en una sola cola (0x80024B9C) y la cifra es 1085. La
    prueba de 0x80024004 se escribe igual: en el camino de 0x80023E24 (`sc->reg->flags0C & 0x40`) y en el de 0x80024004
    (`sc->tocado->flags08 & 0x02000000`) se sale con `goto` directo a la etiqueta del final del bloque, y la prueba de
    `sc->paso_y` queda en una sola copia que alcanzan los dos; con una variable `vs` que reuna los dos valores la
-   mascara de 0x80024004 cae en `v0` y la cifra es 1195.
+   mascara de 0x80024004 cae en `v0` (se supone, sin verificar, y sin cifra remedida sobre el estado final).
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
    0x40; la cifra medida sin la local es 1239 y con ella 1085. La funcion es pendiente: con la local la
    cifra es menor que sin ella.
    El bucle de puesta a cero del scratchpad (0x80020BD0..0x80020BE4) usa su propio puntero (`cursor_cero`): con el
    puntero `p` de la guarda de D_80069D30 el mismo pseudo vive en las dos zonas, el volcado de `cc1` le da conflicto con
-   v0 y v1 y cae en a0, y el original lo deja en v1; la cifra es 1165 con `p` y 1145 con la local propia. `D_8006ACEC`
+   v0 y v1 y cae en a0, y el original lo deja en v1; la cifra es 1105 con `p` y 1085 con la local propia. `D_8006ACEC`
    se declara sin tamano: con 6 bytes la direccion entra al planificador como una sola instruccion (`symbol_ref`) y la
    carga de `D_8006ACE0` sale antes del `lui t7`; sin tamano el volcado `.sched2` la muestra partida en `high` y
    `lo_sum`, el `lui t7` precede a la carga como en el original (0x80025858) y la cifra baja de 1145 a 1085.
-   Residuo vigente (1085; el listado de `diff` marca ademas 164 lineas que solo difieren en la forma de escribir un
-   simbolo o un desplazamiento del `gp` y se supone, sin verificar, que aportan la mayor parte de la cifra): la
+   Residuo vigente (1085; el listado de `diff` marca 165 lineas como diferencia de operando y 159 de ellas solo difieren
+   en la forma de escribir un simbolo o un desplazamiento del `gp` (66 del `gp`, 38 de `D_8001xxxx` y 55 de
+   `D_1F8xxxxx`), de modo que la parte que el C puede cambiar es el resto): la
    mascara de 0x800211F4 (`lui v1,0x8000` en el original, `v0` aqui); las dos cargas y los dos almacenes de
    0x800223F4 (el volcado `.sched2` muestra la carga de `desp.z` antes de la de `desp.x` y el almacen de `desp.x` tras la
    direccion de `D_80069D40`; se supone, sin verificar, que la lectura `volatile` actua de barrera de memoria para el
