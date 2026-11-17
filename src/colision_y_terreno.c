@@ -254,14 +254,20 @@ void func_80019364(s32* a0)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 130 con la configuracion versionada (g = 0 del archivo; ejes 216 de operando,
- * 0 reordenadas, 8 insertadas o borradas). Queda: (1) el original coloca `sw s0,0x10(sp)` (0x80019498) y
- * `move s0,a3` (0x8001949C) tras el `lui`/`ori` (0x80019490, 0x80019494) de la guarda del area de trabajo y aqui
+ * Pendiente: puntuacion 120 con la configuracion versionada (g = 0 del archivo; ejes 216 de operando,
+ * 0 reordenadas, 4 insertadas o borradas). Queda un solo tramo: el original coloca `sw s0,0x10(sp)` (0x80019498)
+ * y `move s0,a3` (0x8001949C) tras el `lui`/`ori` (0x80019490, 0x80019494) de la guarda del area de trabajo y aqui
  * van antes de ellos; con la suma del desplazamiento escrita en otra forma (`(u32)w + 0x1C8 > 0x1F8003FF`,
- * o en una local) el codigo generado es el mismo; (2) el reparto a2/a3 del producto `dsz_x * dsz_x` del recorrido
- * de zona (`mflo`, 0x8001A0BC): el original lo deja en a2 y aqui sale a3; se supone, sin verificar, que a2
- * queda ocupado en el reparto por la copia de `acc_z` a `ant_z`; adelantar esa copia a la linea anterior
- * al calculo de `dsz_z` da 650 porque desplaza las lecturas de las lineas siguientes.
+ * o en una local) el codigo generado es el mismo. Volcado de la planificacion posterior al reparto (`-dR`): las
+ * copias de los parametros (`move s7,a0` a `move s0,a3`) son los cuatro primeros insns del bloque y la carga de
+ * la constante de la guarda (`lui`/`ori`) llega despues de ellos y la copia de `a3` queda antes de la constante;
+ * en el original la constante va antes de esa copia. Se supone, sin verificar, que el planificador desempata
+ * por el orden de entrada y que en el original la constante ya precedia a la copia de `a3` en esa entrada.
+ * El reparto a2/a3 del producto `dsz_x * dsz_x` del recorrido de zona (`mflo`, 0x8001A0BC) coincide: el original
+ * lo deja en a2 porque la lectura de `acc_z` para `ant_z` queda acabada antes del producto; con `ant_z` copiado
+ * despues de `dsz_z` el producto empezaba antes de acabar esa copia y tomaba a3. La copia de `ant_z` va por eso
+ * justo tras la de `ant_x`; con `acc_x` actualizado antes que `dsz_z` los dos temporales de esos calculos toman
+ * v0 y v1 como en el original (con `dsz_z` antes la puntuacion es 650).
  * Los cuatro avances del recorrido general y la cola de los planos estaticos ya coinciden con el original:
  * ver la cabecera de la funcion.
  */
@@ -282,7 +288,7 @@ void func_80019364(s32* a0)
  * actualiza el propio punto de cruce es una asignacion compuesta (`+=`). Con ese orden las lecturas de `sz_y`
  * y `sz_z` (o `sx_y` y `sx_z`) quedan antes del `mult` y la de `sz_x` despues, como en el original, y la
  * asignacion compuesta deja la copia `move` de esa lectura antes del almacen de `rx` (0x8001A1BC en el avance
- * de z, 0x8001A258 en el de x). Escrita la suma como `((pend * celda) >> 12) + campo`, la puntuacion es 550.
+ * de z, 0x8001A258 en el de x). Escrita la suma como `((pend * celda) >> 12) + campo`, la puntuacion es 540.
  *
  * La cola de los planos 0x7E y 0x7F del caso estatico va tras una etiqueta comun (`plano`) y por rama
  * quedan solo las sentencias que el original tambien emite una vez por rama (`pos[1]`, la lectura de
@@ -291,14 +297,14 @@ void func_80019364(s32* a0)
  * en cada rama (`lhu v1,0x198(s0)`, 0x8001BE74 y 0x8001BE98) y se almacena al final de la cola, tras los dos
  * almacenes de ceros (`sh v1,0(s3)`, 0x8001BEAC). Por eso la clase pasa por la local `clase_plano`, asignada
  * en cada rama y almacenada en la cola, y las banderas se escriben en cada rama; escribir la clase directa en
- * cada rama la deja antes de los ceros y la puntuacion pasa de 130 a 155.
+ * cada rama la deja antes de los ceros y la puntuacion pasa de 120 a 145.
  * La sentencia `clase_plano = w->celdas[0];` esta repetida en las dos ramas y no genera codigo propio: la cola
  * ya es comun desde el fuente por la etiqueta, de modo que el compilador no tiene nada que fundir y el
  * ensamblador generado conserva una sola carga por rama y una sola cola, sin instrucciones de mas. Lo que decide
  * la copia por rama es la planificacion posterior al reparto de registros (volcado `-dR`): con la sentencia en
  * cada rama la carga `lhu` queda en el bloque de su rama, en `v1`, y el valor cruza el salto hasta el almacen
  * final, como en el original; con una sola copia tras la etiqueta la carga pasa a la cola, el planificador la
- * deja despues del almacen de las banderas y la toma en `v0`, y la puntuacion pasa de 130 a 435. Se supone,
+ * deja despues del almacen de las banderas y la toma en `v0`, y la puntuacion pasa de 120 a 425. Se supone,
  * sin verificar, que con las banderas escritas por rama el pseudo de la clase, que cruza el salto, es el unico
  * pseudo que puede recibir `v1` al asignarse despues de los pseudos locales de cada rama.
  * La forma del fuente original que producia este reparto se desconoce.
@@ -514,9 +520,9 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
                             w->dsz_x = w->rx - w->sz_x;
                             w->az = w->rz + w->bz;
                             w->ant_x = w->acc_x;
-                            w->dsz_z = w->rz - w->sz_z;
                             w->ant_z = w->acc_z;
                             w->acc_x = w->rx + w->bx - w->x;
+                            w->dsz_z = w->rz - w->sz_z;
                             w->acc_z = w->rz + w->bz - w->z;
                             w->dsx_x = w->rx - w->sx_x;
                             w->dsx_z = w->rz - w->sx_z;
