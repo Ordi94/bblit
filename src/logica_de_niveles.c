@@ -58,45 +58,53 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1645 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
-   escritura del C, cada una con la cifra medida sobre este estado que da la escritura contraria: (e) el almacen de la altura
+/* Pendiente: puntuacion 1205 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
+   escritura del C (la cifra que acompana a una decision es la que da la escritura contraria, medida sobre este estado): (e) el almacen de la altura
    tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo
    arreglo que usa la rama contraria, y no como un simbolo aparte (`D_8006AD74`): el original calcula la base con
-   `lui v1` y el simbolo suelto da `lui at` (1950); (d) en el bloque del apoyo
+   `lui v1` y el simbolo suelto da `lui at`; (d) en el bloque del apoyo
    por contacto (0x80023828..0x80023878 del original) el calculo de `giro.u.y` del apoyo, que lee `o->p70`, va ANTES del
    almacen de `o->coord.param` y de los tres de la escala: el original lee los dos giros antes de esos almacenes
    (`lhu v1,0xde(v1)` antes de `addiu v0,s4,0x18c`) y con el calculo al final el compilador no puede adelantar las
-   lecturas por `o->p70` sobre los almacenes de `o` (2240; se supone, sin verificar con el volcado, que un
+   lecturas por `o->p70` sobre los almacenes de `o` (se supone, sin verificar con el volcado, que un
    almacen por la base de `o` se ordena ante una carga por un puntero leido de `o`); (c) en el bloque del apoyo
    hallado (0x80022C90..0x80022CC4 del original, tras `func_80020354`) la lectura de `h0A` va antes del almacen
    de `trans.vz`: el original emite `sw zero,0x1ac(s4)` despues de `lw v0,0xa8(s3)` y de `lh v0,0xa(v0)` y detras del
    almacen de `o->p70`; con el almacen a cero escrito antes de la lectura el compilador lo adelanta sobre el de
-   `o->p70` (1955; se supone, sin verificar con el volcado, que el almacen a cero se ordena ante la carga por
+   `o->p70` (se supone, sin verificar con el volcado, que el almacen a cero se ordena ante la carga por
    el posible solape con el scratchpad); (a) `sc->desp.x` y `sc->desp.z` se almacenan por el campo y por la misma base
    `sc`, como hace el original (`sw v0,0x18(s3)` y `sw v1,0x20(s3)`, 0x800223FC y 0x80022400). El original relee los dos
-   campos tras almacenarlos (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414). Medido en los volcados de
-   `cc1` (CSE y segundo CSE): el compilador NO reutiliza el valor en el RTL, las dos relecturas sobreviven a ambas
-   pasadas; en el ensamblador final la de `desp.x` ha desaparecido y la de `desp.z` sigue (se supone, sin verificar,
-   que la elimina la limpieza posterior al reparto de registros cuando el registro del valor sigue intacto). Ademas aqui el
-   planificador emite los dos almacenes en orden inverso al del original (`sw 0x20` antes de `sw 0x18`, con las dos
-   cargas de `D_80069D30` tambien invertidas). Escribir los almacenes en el orden contrario da 1715 y sumar en el orden
-   contrario 1915. Se supone, sin verificar, que el
-   original conserva la relectura de `desp.x` porque su reparto de registros no deja el valor almacenado en el
-   registro de la relectura. Con `pos = &sc->desp` la
+   campos tras almacenarlos (`lw v0,0x18(s3)` y `lw v1,0x20(s3)`, 0x8002240C y 0x80022414). La lectura de `desp.x` de la
+   suma se escribe como lectura `volatile s32` del mismo campo y por la misma base `sc`: es una relectura que el original
+   hace (admitida solo con esa razon). Medido en los volcados de `cc1`: sin la lectura volatile la relectura de
+   `desp.x` esta en el volcado tras el reparto de registros y la recarga (`.greg`) y ya no esta en el de la segunda
+   planificacion (`.sched2`); se supone, sin verificar con el volcado de esa limpieza, que la elimina porque el registro
+   del valor almacenado sigue intacto. La de `desp.z` no la necesita: el registro de su valor se reescribe antes
+   (`lui v1,%hi(D_80069D40)`, 0x80022404). Con la lectura volatile la relectura se conserva y el resto de la funcion
+   recupera la longitud del original: la cifra es 1305 sin ella y 1205 con ella. Queda: el planificador emite los dos almacenes en orden inverso al del
+   original (`sw 0x20` antes de `sw 0x18`, con las dos cargas de `D_80069D30` tambien invertidas, 0x800223F4 a
+   0x80022400); escribir las sumas en el orden contrario da 1575 y escribir en el orden contrario los almacenes y las
+   sumas da 1530. Con `pos = &sc->desp` la
    base se materializa en `s0` (`addiu s0,s3,0x18`), que el original no tiene; (b) el almacen de `o->p180` va antes del de
    `o->trabajo.i14` en el bloque de entrada de la espera (0x80021020..0x80021050): el original lee `i14`, carga
    `sc->sec`, almacena a cero y escribe D_80069584 antes de la guarda de `o->p70`, con el almacen de `p180` en el hueco
-   de retardo del salto, y asi el bloque coincide entero (2020 con el orden contrario). Sentencia replicada (no genera codigo): en las dos ramas que
+   de retardo del salto, y asi el bloque coincide entero. Sentencia replicada (no genera codigo): en las dos ramas que
    acaban en `sc->vel.z = sc->vel.z + (valor_vel >> 11)` (0x80021560 y 0x80021690) el original lee `lhu v0,0xc(s3)` en cada camino
    y comparte una sola cola desde `mflo` (0x80021694; el primer camino salta ahi desde 0x80021564 y el segundo cae). La
-   sentencia se escribe en cada rama porque con una sola copia tras la union la cifra es 1945 y con la replica 1645. Lo que
+   sentencia se escribe en cada rama porque con una sola copia tras la union la cifra es 1914 y con la replica 1205. Lo que
    muestra el volcado de `cc1`: en el RTL y tras la primera pasada de saltos cada rama tiene su propio desplazamiento
    `>> 11` (dos), y tras la pasada de saltos posterior al reparto de registros, que funde las colas identicas por salto
    cruzado, queda uno solo bajo una unica etiqueta en `mflo`, a la que el otro camino salta tras su `mult` y su `lhu`,
    como en el original. Se supone, sin verificar con el volcado de la escritura de una sola copia, que sin la replica el
-   planificador deja el `lhu` en la cola comun. La asignacion de `mflo` queda en `a0` y el original usa `t7`; se supone,
-   sin verificar, que `valor_vel`, compartida con otro uso de la funcion, entra al reparto global y no como temporal de
-   bloque.
+   planificador deja el `lhu` en la cola comun. La asignacion de `mflo` queda en `s0` y el original usa `t7`. Medido en
+   el volcado de `cc1` tras la recarga (`.greg`): `valor_vel` (pseudo 98, con preferencia por el registro LO) queda
+   en el registro 16 despues de que la recarga de la multiplicacion de la prueba de `a * a` (insn 1127, que pide un
+   registro de clase LO) gaste los registros 15, 64 y 65. Se supone, sin verificar, que en el original el pseudo no
+   pudo tomar LO porque su vida cruza otra multiplicacion. La velocidad del objeto de apoyo (0x80022584..0x800225B4)
+   se guarda en `vel_apoyo`, variable propia: con `valor_vel` compartida entre los dos usos el valor del apoyo cae en `a0`,
+   el original lo deja en `v0`, y con `a0` el relleno de saltos adelanta la primera instruccion del producto por `0x145`
+   al hueco del `bnez` (0x80022598), que el original deja con `nop` porque `v0`, el registro probado, es el que esa
+   instruccion escribe; la cifra es 1330 con la variable compartida y 1205 con la propia.
    La forma del fuente original que producia este reparto se desconoce.
    El tramo en Z de la guarda de D_80069D30 (0x800222B8..0x80022308) se
    escribe por un puntero a la base del arreglo (`p = D_80069D30; p[2]`) y con un valor propio del bloque
@@ -116,30 +124,48 @@ s16* D_800693DC;
    a `SquareRoot0` y a `alcance2`, sin la local `d` (con `d = a` el temporal de la extension salia en `v0`).
    Queda: el original carga el radio (0x20) antes de max.vz (0x54) en la suma de `sum` y aqui sale al reves (con
    los sumandos en el otro orden o en dos sentencias la cifra no baja); (3) la mascara
-   0x10000000 de la prueba del registro de estado se carga en v1 y la bandera en v0 en el original, y aqui al reves; el
-   orden de operandos no lo cambia. Los accesos que el original no ordena con los almacenes a globales (los cuatro
+   0x10000000 de la prueba del registro de estado en 0x80024B7C se carga en v1 y la bandera en v0 en el original: se
+   reproduce con la prueba escrita en cada camino (ver (h)). Los accesos que el original no ordena con los almacenes a globales (los cuatro
    `vy` de D_80069D60 y dos de `flags14`) se escriben por desplazamiento en bytes; con los seis accesos por nombre la cifra
    sube mucho (se supone, sin verificar con el volcado, que el planificador los reordena con los almacenes a D_8006965A,
    D_8006965B y D_8006965E).
-   Residuo sin resolver: (4) la relectura de `desp.x` y `desp.z` descrita en (a); (5) el reparto de v0/v1/a0 en las
-   pruebas de mascara (`lw v0,8(v0) ; lui v1,0x200 ; and v0,v0,v1` en el
-   original frente a la carga en v1 y la mascara en v0 aqui; 0x8002400C y 0x80024B84 del original) que ni el
-   orden de los operandos ni una local para la mascara cambian; (6) en el prologo el original copia el valor de `flags14` (`move
+   Residuo sin resolver: (4) la relectura de `desp.z` y el orden de las dos cargas y los dos almacenes descritos en (a);
+   (5) el reparto de v0/v1 en la prueba de mascara de 0x8002400C (`lw v0,8(v0) ; lui v1,0x200 ; and v0,v0,v1` en el
+   original frente a la carga en v1 y la mascara en v0 aqui): la mascara se asigna en el camino que reune el valor de
+   `vs` con el de otro camino (0x80023E24, `sc->reg->flags0C & 0x40`, que salta a la prueba de 0x80024018) y escribir
+   el operando de la mascara primero no lo cambia; (6) en el prologo el original copia el valor de `flags14` (`move
    v0,v1`, 0x80020BF4) antes de aplicar la mascara: se reproduce leyendo el campo dos veces, una para el almacen a
-   `D_800693D4` y otra para la mascara (con una sola lectura en una local la cifra es 1770); (7) en los bloques que reparten registros entre punteros de objeto, el original usa un registro
+   `D_800693D4` y otra para la mascara; (7) en los bloques que reparten registros entre punteros de objeto, el original usa un registro
    distinto del que da la variable compartida, y cada uno se escribe en su propia variable: el angulo del bloque de
-   0x800217F4 (`move v1,v0` tras `ratan2`) en `angulo_giro` (con `ang` la cifra es 1675), el objeto de apoyo del bloque de
-   0x80022CA0 en `objeto_contacto` (con `t1`, 1820), el objeto tocado de la escala (0x800251CC) en `objeto_contacto` (con `t1`, 1665), la
-   comparacion `sc->tocado != o->p70` del bloque de 0x80024F90 en ese orden (con `o->p70 != sc->tocado`, 1655) y el
-   producto de `vel.z` (0x80021560 y 0x80021690, que el original deja en `t7`) en `valor_vel` (con `lo`, 1690); (8) el `addiu s1,s4,0xe4` de
+   0x800217F4 (`move v1,v0` tras `ratan2`) en `angulo_giro`, el objeto de apoyo del bloque de
+   0x80022CA0 en `objeto_contacto`, el objeto tocado de la escala (0x800251CC) en `objeto_contacto`, la
+   comparacion `sc->tocado != o->p70` del bloque de 0x80024F90 en ese orden y el
+   producto de `vel.z` (0x80021560 y 0x80021690, que el original deja en `t7`) en `valor_vel`; (8) el `addiu s1,s4,0xe4` de
    0x800255CC (hueco de retardo del salto que omite la espera) y el de 0x80025638 (tras `func_8003AA7C`) son la misma
    instruccion; se supone, sin verificar con el volcado de saltos, que es la primera de la cola comun, copiada al hueco por
    el relleno de saltos. Por eso `pos` se
    asigna una sola vez, tras el bloque de la espera y justo antes de cargar el vector; asignada antes de la prueba de
-   `flags14` el valor cruza la llamada en `s1` y la instruccion de 0x80025638 desaparece (con esa escritura la cifra es 1745).
+   `flags14` el valor cruza la llamada en `s1` y la instruccion de 0x80025638 desaparece. (f) El objeto de la caja de
+   colision del final de la funcion (0x80025410 y 0x800254A8, `lw v0,0x6c(s4)`) se guarda en `objeto_caja`, variable
+   propia de esos dos bloques: con `objeto_contacto`, compartida con los bloques de 0x80022CA0 y 0x800251CC, el puntero
+   cae en `v1` y el original lo deja en `v0` (`lhu v0,0x48(v0)`); la cifra es 1245 con la variable compartida y 1205
+   con la propia. (h) La prueba `(registro184->flags10 & 0x10000000) o (flags18 & 0x40)` de 0x80024B7C a 0x80024B9C se
+   escribe con una prueba de salida (`continue`) directa en cada camino, no con una variable `vs` que reuna los dos
+   valores: el original carga la mascara en `v1` antes de la bandera y rellena con ella el hueco del `beqz` de
+   0x80024B7C, y los dos caminos comparten la prueba `beqz` de 0x80024B9C. Medido en los volcados de `cc1`: con la
+   variable la mascara se carga despues de la bandera, cae en `v0` y el relleno de saltos no la puede mover al hueco
+   (queda un `nop` y el resto de la funcion se desplaza una instruccion: 1520); con la prueba en cada camino, la pasada de
+   saltos posterior al reparto funde las dos pruebas identicas en una sola cola (0x80024B9C) y la cifra es 1205.
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 1799 y con ella 1645. La funcion es pendiente: con la local la
-   cifra es menor que sin ella. */
+   0x40; la cifra medida sin la local es 1359 y con ella 1205. La funcion es pendiente: con la local la
+   cifra es menor que sin ella.
+   Residuo vigente (1205; el listado de `diff` marca ademas 164 lineas que solo difieren en la forma de escribir un
+   simbolo o un desplazamiento del `gp` y se supone, sin verificar, que aportan la mayor parte de la cifra): el
+   registro del puntero del bucle de puesta a cero del scratchpad (`v1` en el original, `a0` aqui; el volcado de `cc1`
+   da al pseudo del puntero conflicto con v0 y v1); la mascara de 0x800211F4 (`lui v1,0x8000` en el original, `v0`
+   aqui); `mflo` de 0x80021694 (`t7`, `s0` aqui); las dos cargas y los dos almacenes de 0x800223F4; la mascara de
+   0x8002400C; el registro de la relectura de `o->p70` de 0x800248C8 (`a0` en el original, `a1` aqui); `mflo` de
+   0x800255FC (`s0` en el original, `v0` aqui) y el orden de `lui t7` y de la carga de `D_8006ACE0` de 0x80025858. */
 void func_80020B90(Objeto* o)
 {
     ScratchJugador* sc;
@@ -160,10 +186,12 @@ void func_80020B90(Objeto* o)
     s16 d16;
     s32 pj;
     s32 valor_vel;
+    s32 vel_apoyo;
     s16 dd16;
     Objeto* pp;
     Objeto* t1;
     Objeto* objeto_contacto;
+    Objeto* objeto_caja;
     RegistroEstado* rg;
     s32 mz;
     SVECTOR* vec_ref;
@@ -695,7 +723,7 @@ void func_80020B90(Objeto* o)
             }
             sc->desp.x = D_80069D30[0];
             sc->desp.z = D_80069D30[2];
-            sc->desp.x += D_80069D40[0];
+            sc->desp.x = *(volatile s32*)&sc->desp.x + D_80069D40[0];
             sc->desp.z += D_80069D40[2];
         } else {
             D_80069D40[0] = sc->desp.x;
@@ -721,14 +749,14 @@ void func_80020B90(Objeto* o)
                     sc->tmp = pj;
                     if ((o->p70->flags08 & 0x8000) || (o->p70->clase == 0xE && o->p70->registro184 != NULL && (((RegistroEstado*)o->p70->registro184)->flags10 & 0x10000000))) {
                         if (o->p70->clase == 5) {
-                            valor_vel = o->p70->s1E;
+                            vel_apoyo = o->p70->s1E;
                         } else {
-                            valor_vel = *(s16*)&o->p70->u18C.estado.w196;
+                            vel_apoyo = *(s16*)&o->p70->u18C.estado.w196;
                         }
-                        if (valor_vel == 0) {
-                            valor_vel = pj * 0x145 >> 9;
+                        if (vel_apoyo == 0) {
+                            vel_apoyo = pj * 0x145 >> 9;
                         }
-                        sc->tmp = valor_vel;
+                        sc->tmp = vel_apoyo;
                     }
                     sc->rel.vx = o->param.trans.vx - o->p70->param.trans.vx;
                     sc->rel.vy = 0;
@@ -1453,11 +1481,10 @@ sin_rebote:
                             continue;
                         }
                         if (o->p70 != NULL && o->p70->clase == 0xE && o->p70->registro184 != NULL) {
-                            vs = ((RegistroEstado*)o->p70->registro184)->flags10 & 0x10000000;
-                        } else {
-                            vs = o->flags18 & 0x40;
-                        }
-                        if (vs == 0) {
+                            if (!(((RegistroEstado*)o->p70->registro184)->flags10 & 0x10000000)) {
+                                continue;
+                            }
+                        } else if (!(o->flags18 & 0x40)) {
                             continue;
                         }
                     }
@@ -1628,9 +1655,9 @@ sin_rebote:
     }
     func_8001D414(sc->reg->id);
     if (sc->reg->flags10 & 0x2000) {
-        objeto_contacto = o->p6C;
-        sc->tocado = objeto_contacto;
-        if (objeto_contacto != NULL) {
+        objeto_caja = o->p6C;
+        sc->tocado = objeto_caja;
+        if (objeto_caja != NULL) {
             o->min.vx = (u16)sc->tocado->min.vx;
             o->min.vy = (u16)sc->tocado->min.vy;
             o->min.vz = (u16)sc->tocado->min.vz;
@@ -1641,10 +1668,10 @@ sin_rebote:
             o->alcance2 = o->p6C->alcance2;
         }
     } else {
-        objeto_contacto = o->p6C;
-        sc->tocado = objeto_contacto;
-        if (objeto_contacto != NULL) {
-            if ((objeto_contacto->flags08 & 0x2000) && !(sc->reg->flags0C & 0x40)) {
+        objeto_caja = o->p6C;
+        sc->tocado = objeto_caja;
+        if (objeto_caja != NULL) {
+            if ((objeto_caja->flags08 & 0x2000) && !(sc->reg->flags0C & 0x40)) {
                 o->max.vx = 0x46;
                 o->min.vx = -0x46;
                 o->min.vz = -0x28;
