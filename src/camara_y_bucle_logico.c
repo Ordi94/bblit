@@ -1328,13 +1328,14 @@ void func_80035244(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 410 con la configuracion versionada (g = 8 del archivo): 91 diferencias de operando, 0 lineas
- * reordenadas y 119 insertadas o borradas. El flujo coincide salvo el `nop` del hueco de
+ * Pendiente: puntuacion 365 con la configuracion versionada (g = 8 del archivo): 91 diferencias de operando, 0 lineas
+ * reordenadas y 103 insertadas o borradas. El flujo coincide salvo el `nop` del hueco de
  * retardo de 0x80035704 (la copia del limite de la busqueda del modelo, ver abajo). Quedan diferencias de registros
  * y de forma simbolica: (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las
  * diferencias; causa medida: la lista de destruidos de la macro de distancia aproximada declara `$7`, que su
  * cuerpo escribe, y con ella la recarga evita `a3`; sin `$7` en una copia de la cabecera la funcion mide 220);
- * (2) la constante -3 en s2 y el original en s3, con el puntero a la proyeccion al reves; (3) el
+ * (2) resuelta con dos envolturas que no generan codigo (mas abajo): puntero a la proyeccion en s2, constante -3 en s3
+ * y puntero a `sx` en s4, como el original; (3) el
  * limite y el puntero al objeto de la busqueda del modelo en a2 y a1 donde el original los tiene en a1 y a2; (4) el
  * byte D_8006AA7C que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc` (diferencia de forma
  * simbolica de los mismos bytes).
@@ -1367,11 +1368,23 @@ void func_80035244(void)
  * La cola de la lista usa una local propia (`cola`) porque con `t`, que vive en varios bloques, el reparto
  * global la pone en `a0` y `a1` en lugar de `v0` y `v1` (460 a 410). Reparto (2): la prioridad del reparto
  * global de los tres punteros fijos es 3 * 11 / 790 = 0,042 para la constante -3 y 2 * 6 / 393 = 0,031 para
- * cada puntero del contexto (volcado `.lreg`), de modo que la constante se asigna primero y toma s2; el original
- * asigna primero el puntero a la proyeccion (s2) y despues la constante (s3). Ninguna referencia sin codigo sobre
- * el puntero, mover la asignacion de la constante tras las de los punteros ni escribirla como literal en cada
- * uso cambia ese reparto. Reparto (3): asignar el puntero al objeto antes de copiar el limite da la asignacion
+ * cada puntero del contexto (volcado `.lreg`), de modo que sin envolturas la constante se asigna primero y toma s2;
+ * el original asigna primero el puntero a la proyeccion (s2), despues la constante (s3) y por ultimo el puntero a
+ * `sx` (s4). Mover la asignacion de la constante tras las de los punteros o escribirla como literal en cada uso no
+ * cambia ese reparto. Reparto (3): asignar el puntero al objeto antes de copiar el limite da la asignacion
  * del original pero la carga queda antes del `move`, de modo que el limite se copia primero.
+ *
+ * Envolturas `do { } while (0)`: las dos, anidadas, rodean la sentencia `GUARDAR_MAC3(pz);` del recorrido de
+ * proyeccion de los ocho puntos (el segundo, con `sc->i40 < 8`) y no generan codigo: el optimizador de saltos las
+ * elimina y el ensamblador es el mismo que sin ellas. Causa medida (volcado `-dl`, `-dg`, `-G8`): cada envoltura
+ * suma un nivel de profundidad a las referencias de su cuerpo, de modo que el puntero `pz` (pseudo 89, 393
+ * instrucciones de vida) pasa de 6 a 8 usos ponderados y su prioridad de 2 * 6 / 393 = 0,031 a 3 * 8 / 393 = 0,061,
+ * por delante de la constante -3 (pseudo 90, 3 * 11 / 790 = 0,042) y del puntero a `sx` (pseudo 87, 0,031); el
+ * orden de asignacion pasa a ser `pz` en s2, constante en s3 y `sx` en s4, que es el del original (`addiu s2` en
+ * 0x80035540 y `addiu s4` en 0x8003553C, con -3 en s3). Con una sola envoltura `pz` tiene 7 usos (2 * 7 / 393 =
+ * 0,036, por debajo de la constante) y la cifra es 420; envolver `rtps` y `stsxy(psx)` en lugar de `pz` sube a `psx`
+ * y da 385; intercambiar el orden de las asignaciones de los dos punteros da 375. La forma del fuente original que
+ * producia este reparto se desconoce.
  *
  * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
  * asigna el reparto global a `a0` y la recarga lo mueve despues a `t7` ("Spilling reg 15" para esa insn en el
@@ -1436,11 +1449,11 @@ void func_800353B0(Objeto* a0)
     Scratch* sc;
     Objeto* o;
     Objeto* s0;
-    Objeto* t;
     Objeto* cola;
     GsCOORDINATE2* n;
     s32 r;
     s16* psx;
+    Objeto* t;
     s32* pz;
     s32 m3;
     s32 nmod;
@@ -1624,7 +1637,11 @@ otro_nodo:
                             gte_ldv0(sc->p144);
                             gte_rtps();
                             gte_stsxy(psx);
-                            GUARDAR_MAC3(pz);
+                            do {
+                                do {
+                                    GUARDAR_MAC3(pz);
+                                } while (0);
+                            } while (0);
                             if (sc->z6C >= 0 && (u16)(sc->sx + 0x100) < 0x201 && sc->sy >= -0x78 && sc->sy < 0x79) {
                                 break;
                             }
