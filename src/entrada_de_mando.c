@@ -259,9 +259,9 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1655 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
- * lineas reordenadas y 270 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
- * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1729 y con ella 1655. El
+ * Pendiente: puntuacion 1540 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
+ * lineas reordenadas y 267 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1614 y con ella 1540. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
@@ -337,6 +337,7 @@ void func_8004048C(void)
     /* Lecturas sin centrar de los ejes X e Y del mando: el original lee cada una una sola vez (0x80040830 y 0x800408E4). */
     u32 eje_x_crudo;
     u32 eje_y_crudo;
+    u32 eje_y_mas_uno;
     EstadoPrincipal* est;
     u8* banco;
     /* Reserva de pila: local sin uso que completa el marco del original. */
@@ -427,7 +428,6 @@ normal:
     case 0x73:
         est->r[BANCO_VIBRACION] |= 0x80;
     aplicar:
-        D_80069672 = 0;
         cf2 = D_8006CFF2;
         hi = (cf2 ^ 0xFF) << 8;
         bits = hi;
@@ -436,6 +436,9 @@ normal:
         b = lo | hi;
         ESTADO_PRINCIPAL->mando.botones_c = lo;
         ESTADO_PRINCIPAL->mando.botones = lo;
+        /* El original lo almacena antes de la `xori` de la mascara (`sh zero` en 0x80040738); escrito ahi la cifra
+           es 1655 y tras los dos primeros almacenes de `botones` 1560: el planificador lo adelanta solo. */
+        D_80069672 = 0;
         ESTADO_PRINCIPAL->mando.botones = b;
         if ((hi & 0xF000) != 0 || (D_8006CFF1 & 0x7F) == 0x41) {
             ESTADO_PRINCIPAL->mando.botones_c = b;
@@ -495,7 +498,10 @@ normal:
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x1000;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x1000;
         } else if (centro + D_8006952C < eje) {
-            ESTADO_PRINCIPAL->mando.eje_y = centro - (eje_y_crudo + 1);
+            /* La lectura mas uno va a una local antes de restarla del centro: con la resta en una sola
+               expresion la cifra es 1560 y con la local 1540. */
+            eje_y_mas_uno = eje_y_crudo + 1;
+            ESTADO_PRINCIPAL->mando.eje_y = centro - eje_y_mas_uno;
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x4000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x4000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x4000;
