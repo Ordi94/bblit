@@ -259,9 +259,9 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1540 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
- * lineas reordenadas y 267 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
- * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1614 y con ella 1540. El
+ * Pendiente: puntuacion 1560 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
+ * lineas reordenadas y 271 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1634 y con ella 1560. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
@@ -289,12 +289,12 @@ void func_80040430(s8* contador, u16 mascara)
  * lectura de `botones_c` (pseudo 81: 4 usos, vida 19, prioridad 2 * 4 / 19 = 0,42) que la del umbral (pseudo 236:
  * 3 usos, vida 8, prioridad 1 * 3 / 8 = 0,375) y el primero libre es a3. Con un cuarto uso del umbral la prioridad
  * seria 1,0 y el reparto saldria como el del original, pero sumarlo con `umbral = D_8006952C; umbral--; umbral++;` y
- * usar `umbral` en las cuatro comparaciones emite codigo (la puntuacion sube de 1655 a 2080), de modo que no se
+ * usar `umbral` en las cuatro comparaciones emite codigo (la puntuacion sube de 1560 a 1985), de modo que no se
  * aplica; la local sola se funde con la lectura y no cambia la cifra, tambien con su asignacion dentro de una
- * envoltura (el pseudo del umbral desaparece del volcado y la cifra sube a 2510), y una envoltura sobre toda la
- * cadena `if`/`else` del eje x genera codigo (7420). En la rama por defecto, leer el primer byte del banco por el simbolo en lugar
- * de por `banco` no comparte el `lui` de s2: el compilador repite el `lui` en ese bloque (el volcado `-ds` deja
- * dos instrucciones `high` del mismo pseudo, una por bloque).
+ * envoltura (el pseudo del umbral desaparece del volcado y la cifra sube), y una envoltura sobre toda la cadena
+ * `if`/`else` del eje x genera codigo. En la rama por defecto, leer el primer byte del banco por el simbolo en
+ * lugar de por `banco` no comparte el `lui` de s2: el compilador repite el `lui` en ese bloque (el volcado `-ds`
+ * deja dos instrucciones `high` del mismo pseudo, una por bloque).
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
  * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0); la lectura del identificador D_8006CFF1 en
@@ -339,7 +339,6 @@ void func_8004048C(void)
     /* Lecturas sin centrar de los ejes X e Y del mando: el original lee cada una una sola vez (0x80040830 y 0x800408E4). */
     u32 eje_x_crudo;
     u32 eje_y_crudo;
-    u32 eje_y_mas_uno;
     EstadoPrincipal* est;
     u8* banco;
     /* Reserva de pila: local sin uso que completa el marco del original. */
@@ -471,7 +470,7 @@ normal:
         /* Cada eje se lee una sola vez (0x80040830 y 0x800408E4) y las ramas reutilizan el valor tras los almacenes;
            el original repite `andi 0xff` sobre la lectura en las ramas de la izquierda y de arriba (0x80040880 y
            0x80040908) y la conversion a u8 no lo emite (el compilador la da por redundante tras `lbu`); escribirla
-           como `& 0xFF` lo funde con la comparacion y la cifra sube (1540 a 1595 en el eje x y a 1665 en el y). */
+           como `& 0xFF` lo funde con la comparacion y la cifra sube (1560 a 1610 en el eje x y a 1605 en el y). */
         eje_x_crudo = D_8006CFF6;
         eje = eje_x_crudo & 0xFF;
         prev = mascara & ~ESTADO_PRINCIPAL->mando.botones_e;
@@ -502,10 +501,7 @@ normal:
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x1000;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x1000;
         } else if (centro + D_8006952C < eje) {
-            /* La lectura mas uno va a una local antes de restarla del centro: con la resta en una sola
-               expresion la cifra es 1560 y con la local 1540. */
-            eje_y_mas_uno = eje_y_crudo + 1;
-            ESTADO_PRINCIPAL->mando.eje_y = centro - eje_y_mas_uno;
+            ESTADO_PRINCIPAL->mando.eje_y = centro - (eje_y_crudo + 1);
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x4000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x4000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x4000;
