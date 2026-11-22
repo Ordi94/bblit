@@ -290,7 +290,9 @@ void func_80040430(s8* contador, u16 mascara)
  * 3 usos, vida 8, prioridad 1 * 3 / 8 = 0,375) y el primero libre es a3. Con un cuarto uso del umbral la prioridad
  * seria 1,0 y el reparto saldria como el del original, pero sumarlo con `umbral = D_8006952C; umbral--; umbral++;` y
  * usar `umbral` en las cuatro comparaciones emite codigo (la puntuacion sube de 1655 a 2080), de modo que no se
- * aplica; la local sola se funde con la lectura y no cambia la cifra. En la rama por defecto, leer el primer byte del banco por el simbolo en lugar
+ * aplica; la local sola se funde con la lectura y no cambia la cifra, tambien con su asignacion dentro de una
+ * envoltura (el pseudo del umbral desaparece del volcado y la cifra sube a 2510), y una envoltura sobre toda la
+ * cadena `if`/`else` del eje x genera codigo (7420). En la rama por defecto, leer el primer byte del banco por el simbolo en lugar
  * de por `banco` no comparte el `lui` de s2: el compilador repite el `lui` en ese bloque (el volcado `-ds` deja
  * dos instrucciones `high` del mismo pseudo, una por bloque).
  *
