@@ -1386,12 +1386,12 @@ void func_80035244(void)
  * Par `pz--; pz++;` antes de la sentencia `GUARDAR_MAC3(pz);` del recorrido de proyeccion de los ocho puntos (el
  * segundo, con `sc->i40 < 8`): no genera codigo (el combinador anula el par y el ensamblador tiene las mismas
  * instrucciones que sin el). Causa medida (volcado `-dl`, `-dg`, `-G8`): el par suma cuatro referencias ponderadas
- * por la profundidad del bucle, de modo que el puntero `pz` (pseudo 89, 393 instrucciones de vida y 394 con el par) pasa de 6 a 18
- * usos y su prioridad de 2 * 6 / 393 = 0,031 a 4 * 18 / 394 = 0,183, por delante de la constante -3 (pseudo 90,
- * 3 * 11 / 792 = 0,042) y del puntero a `sx` (pseudo 87, 0,030); el orden de asignacion pasa a ser `pz` en s2,
- * constante en s3 y `sx` en s4, que es el del original (`addiu s2` en 0x80035540 y `addiu s4` en 0x8003553C, con -3
- * en s3). Sin el par la cifra es 390 y con el 345. La forma del fuente original que producia este reparto se
- * desconoce.
+ * por la profundidad del bucle, de modo que el puntero `pz` (pseudo 89, 393 instrucciones de vida y 394 con el par)
+ * pasa de 6 a 18 usos y su prioridad de 2 * 6 / 393 = 0,031 a 4 * 18 / 394 = 0,183, por delante de la constante
+ * -3 (pseudo 90, 3 * 11 / 792 = 0,042) y del puntero a `sx` (pseudo 87, 0,030); el orden de asignacion pasa a
+ * ser `pz` en s2, constante en s3 y `sx` en s4, que es el del original (`addiu s2` en 0x80035540 y `addiu s4`
+ * en 0x8003553C, con -3 en s3). Sin el par la cifra es 390 y con el 345. La forma del fuente original que
+ * producia este reparto se desconoce.
  *
  * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
  * asigna el reparto global a `a0` y la recarga lo mueve despues a `t7` ("Spilling reg 15" para esa insn en el

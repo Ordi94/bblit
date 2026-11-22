@@ -350,11 +350,10 @@ typedef struct CabeceraPrimitiva {
 /*
  * Pendiente: puntuacion 626 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
  * reordenadas, 54 insertadas o borradas). El color se escribe en una sola sentencia, `0x2C000000 + (c << 16) + (c <<
- * 8) + c`, con la base `c` sumada la ultima: es la agrupacion que menos puntuacion da de las medidas, todas en
- * una sentencia (626; 641 con `c + ((c << 8) + 0x2C000000 + (c << 16))`; 686 con `c + ((c << 16) + ((c << 8) +
- * 0x2C000000))`, que sigue el arbol de sumas del original: `addu a0,a0,v0` y `addu a2,a2,a0`, 0x80045208 y
- * 0x80045210, pero el compilador reasocia la constante con `c << 16`; 701 y 716 con la constante o la base al final
- * de la izquierda). Partir el color en dos sentencias queda fuera. El orden de lectura del glifo y del elemento, la
+ * 8) + c`, con la base `c` sumada la ultima: es la agrupacion de una sola sentencia que menos puntuacion da (626
+ * contra 641 con la base al principio). La que sigue el arbol de sumas del original (`addu a0,a0,v0` y
+ * `addu a2,a2,a0`, 0x80045208 y 0x80045210) da una puntuacion mayor porque el compilador reasocia la constante
+ * con `c << 16`. Partir el color en dos sentencias queda fuera. El orden de lectura del glifo y del elemento, la
  * copia de la cabeza de la lista a una local y el orden de los operandos de `y2` no cambian la cifra (medido).
  *
  * La primitiva se escribe por miembros de POLY_FT4: el compilador marca un acceso por miembro como

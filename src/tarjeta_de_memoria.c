@@ -459,7 +459,7 @@ s32 func_800151FC(void)
  * los otros dos usos (las marca como hechas "matches") y las iza una sola vez al preludio del bucle del directorio. El
  * fuente escribe el producto `grupo * 120` en cada uso, en una sola expresion, que es lo que el documento admite: una
  * cadena partida en varias asignaciones sobre locales que se reescriben en cada uso evita el izado, pero es partir una
- * operacion en varias sentencias y no se admite. Con el producto en los tres usos la cifra era 2730 (medida antes de la guardia y del parentesis de abajo); el compilador
+ * operacion en varias sentencias y no se admite. Con el producto en los tres usos la cifra es 2060; el compilador
  * conserva la cadena una vez en el preludio y el original la tiene tres veces dentro del cuerpo.
  * Contador propio del bucle del directorio (`n`): el contador `i` vive desde el bucle de relleno de
  * 0x96 palabras hasta el del directorio y cruza la llamada de MemCardGetDirentry, que usa a1 como argumento, de modo que
