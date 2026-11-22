@@ -378,7 +378,10 @@ typedef struct CabeceraPrimitiva {
  * y la entrada `e` 9/94 = 0,287. Con R = 9 para y (0,500, entre x y u/v) se igualan x, y, u y v
  * (los pseudos de las locales se numeran por orden de declaracion y los empates de prioridad se
  * deciden por ese numero), pero esa forma hace que el planificador adelante la suma v + h (`addu` en
- * 0x80045290 del original frente a antes de los almacenes de u en el C) y no se deja.
+ * 0x80045290 del original frente a antes de los almacenes de u en el C) y no se deja. Medido: una envoltura
+ * `do { } while (0)` sobre `p->y1 = y;` sube y a 9 usos (3 * 9 / 54 = 0,5) y, declarando `u` antes que `v`, x, y,
+ * u y v quedan en s0, s1, s2 y s3 como el original, pero la cifra sube de 626 a 1001: el planificador adelanta las
+ * sumas de la anchura y la altura y el almacen de x, y el color y el contador siguen sin coincidir. No se instala.
  * (b) El contador debe ir antes que la anchura y la altura, lo que exige una prioridad entre 0,267 y
  * 0,287 que ningun R entero da con L = 93 (R = 9 da 0,290, por delante de `e`); una condicion vacia
  * sobre ellos no cambia la cifra porque el salto vacio se elimina antes de contar las referencias.
