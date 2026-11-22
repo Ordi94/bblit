@@ -1358,9 +1358,9 @@ s32 func_8003DD70(VerticeCaja* v, LimitesPantalla* lim)
 
 /*
  * Espera a que quede espacio en el anillo de primitivas del cuadro: mientras la distancia al
- * limite sea menor que 0x800, reinicia la marca cuando han pasado cuatro VSync. El ajuste del anillo
- * se hace en dos sentencias: en una sola el compilador calcula antes del bucle la constante
- * combinada de la longitud y 0x400.
+ * limite sea menor que 0x800, reinicia la marca cuando han pasado cuatro VSync. Una distancia
+ * negativa se corrige sumando la longitud del anillo menos 0x400 en una sola sentencia; esa constante
+ * combinada se calcula antes del bucle, como en el original.
  */
 void func_8003DF10(s32 limite)
 {
@@ -1373,8 +1373,7 @@ void func_8003DF10(s32 limite)
     while (1) {
         libre = D_80069610 - limite;
         if (libre < 0) {
-            libre -= 0x400;
-            libre += anillo;
+            libre += anillo - 0x400;
         }
         if (libre >= 0x800) {
             return;
