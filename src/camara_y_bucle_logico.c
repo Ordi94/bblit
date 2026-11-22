@@ -1328,15 +1328,15 @@ void func_80035244(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 365 con la configuracion versionada (g = 8 del archivo): 91 diferencias de operando, 0 lineas
- * reordenadas y 103 insertadas o borradas. El flujo coincide salvo el `nop` del hueco de
+ * Pendiente: puntuacion 345 con la configuracion versionada (g = 8 del archivo): 91 diferencias de operando, 0 lineas
+ * reordenadas y 95 insertadas o borradas. El flujo coincide salvo el `nop` del hueco de
  * retardo de 0x80035704 (la copia del limite de la busqueda del modelo, ver abajo). Quedan diferencias de registros
  * y de forma simbolica: (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las
  * diferencias; causa medida: la lista de destruidos de la macro de distancia aproximada declara `$7`, que su
  * cuerpo escribe, y con ella la recarga evita `a3`; sin `$7` en una copia de la cabecera la funcion mide 220);
  * (2) resuelta con dos envolturas que no generan codigo (mas abajo): puntero a la proyeccion en s2, constante -3 en s3
- * y puntero a `sx` en s4, como el original; (3) el
- * limite y el puntero al objeto de la busqueda del modelo en a2 y a1 donde el original los tiene en a1 y a2; (4) el
+ * y puntero a `sx` en s4, como el original; (3) resuelta con una tercera envoltura (mas abajo): el limite en a1 y el
+ * puntero al objeto de la busqueda del modelo en a2, como el original; (4) el
  * byte D_8006AA7C que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc` (diferencia de forma
  * simbolica de los mismos bytes).
  *
@@ -1372,9 +1372,18 @@ void func_80035244(void)
  * el original asigna primero el puntero a la proyeccion (s2), despues la constante (s3) y por ultimo el puntero a
  * `sx` (s4). Mover la asignacion de la constante tras las de los punteros o escribirla como literal en cada uso no
  * cambia ese reparto. Reparto (3): asignar el puntero al objeto antes de copiar el limite da la asignacion
- * del original pero la carga queda antes del `move`, de modo que el limite se copia primero.
+ * del original pero la carga queda antes del `move`, de modo que el limite se copia primero; con la tercera
+ * envoltura (mas abajo) el reparto sale como el del original sin cambiar el orden de las sentencias.
  *
- * Envolturas `do { } while (0)`: las dos, anidadas, rodean la sentencia `GUARDAR_MAC3(pz);` del recorrido de
+ * Tercera envoltura `do { } while (0)`: rodea la comparacion `if (idx < lim) goto buscar_modelo;` de la busqueda
+ * del modelo y no genera codigo (el optimizador de saltos la elimina). Causa medida (volcado `-dl`, `-dg`, `-G8`):
+ * el limite `lim` (pseudo 93, 14 instrucciones de vida) pasa de 4 a 5 usos ponderados y su prioridad de
+ * 2 * 4 / 14 = 0,571 a 2 * 5 / 14 = 0,714, por delante del puntero al objeto `busca` (pseudo 94, 4 usos sobre 13
+ * instrucciones, 2 * 4 / 13 = 0,615); el orden de asignacion los invierte y el limite toma `a1` y el puntero `a2`,
+ * como el original, en lugar de `a2` y `a1` (365 a 345). La forma del fuente original que producia este reparto se
+ * desconoce.
+ *
+ * Envolturas `do { } while (0)` de `pz`: las dos, anidadas, rodean la sentencia `GUARDAR_MAC3(pz);` del recorrido de
  * proyeccion de los ocho puntos (el segundo, con `sc->i40 < 8`) y no generan codigo: el optimizador de saltos las
  * elimina y el ensamblador es el mismo que sin ellas. Causa medida (volcado `-dl`, `-dg`, `-G8`): cada envoltura
  * suma un nivel de profundidad a las referencias de su cuerpo, de modo que el puntero `pz` (pseudo 89, 393
@@ -1542,9 +1551,11 @@ buscar_modelo:
                             sc->i40 = idx + 1;
                             sc->tp3C++;
                             idx = sc->i40;
-                            if (idx < lim) {
-                                goto buscar_modelo;
-                            }
+                            do {
+                                if (idx < lim) {
+                                    goto buscar_modelo;
+                                }
+                            } while (0);
                         }
                     }
                     if (sc->i40 < D_80069588) {
