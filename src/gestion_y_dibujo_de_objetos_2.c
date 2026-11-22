@@ -900,7 +900,7 @@ void func_80038E84(s32 idx, s32 paso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1300 con la configuracion versionada (g = 8 del archivo; ejes 67 de
+ * Pendiente: puntuacion 1285 con la configuracion versionada (g = 8 del archivo; ejes 67 de
  * operando, 0 reordenadas, 159 insertadas o borradas). Coinciden la
  * estructura, los desplazamientos y los simbolos; difiere en el reparto de registros de la barra 0
  * (el original deja la base de 0x80010000 en a1 y copia el valor mostrado a a0 con `move a0,v1` en el
@@ -931,7 +931,16 @@ void func_80038E84(s32 idx, s32 paso)
  * la forma `if (== -1) { n = 1; } else { n = producto; }` en los cuatro temporizadores `n` no vive durante la
  * comparacion y toma v0 como el original (1465). Con la nueva forma en un solo temporizador la cifra no cambia
  * (1525): `n` es un solo pseudo compartido y los otros tres siguen en conflicto.
- * Residuo vigente (1300): el original copia el valor mostrado de la barra 0 (`move a0,v1`, 0x800390F4);
+ * Segunda envoltura `do { } while (0)`, alrededor del almacen que limita la vida a 0x63 (`e->r[0x03] = 0x63;`),
+ * tampoco genera codigo. Causa medida (volcado `-dl` y `-dg` del estado final, con y sin ella): el pseudo 99
+ * pasa de 3 a 4 usos sobre 18 instrucciones de vida (prioridad floor_log2(R) * R / L de 1 * 3 / 18 = 0,167 a
+ * 2 * 4 / 18 = 0,444) y se asigna por delante del pseudo 95 (4 usos sobre 42 instrucciones, 2 * 4 / 42 = 0,190);
+ * los dos intercambian registro (99 de a1 a a0 y 95 de a0 a a1) y la base de 0x80010000 pasa a `a1` como en el
+ * original (`lui a1` en 0x80039098), lo que baja la cifra de 1300 a 1285. Se supone, sin verificar, que el pseudo
+ * 99 es el puntero de la rama de la vida y el 95 la base del cuerpo; solo se comprobo en el ensamblador el
+ * registro de la base. La forma del fuente original que producia este reparto se desconoce.
+ *
+ * Residuo vigente (1285): el original copia el valor mostrado de la barra 0 (`move a0,v1`, 0x800390F4);
  * el C no tiene esa copia porque el optimizador propaga cualquier local que se copie de `mostrado` y usa
  * v1 directamente. Por eso `mostrado` es una sola local `u8` compartida por todas las barras y la barra
  * 0 no lleva una copia propia: con ella la cifra empeora. Se supone, sin verificar, que la copia del original no es una copia vista por el optimizador sino una segunda
@@ -1006,7 +1015,9 @@ void func_80039094(void)
              * la puntuacion sube de 1745 a 1950. */
             e_rama = e;
             if (e->r[0x03] >= 0x64) {
-                e->r[0x03] = 0x63;
+                do {
+                    e->r[0x03] = 0x63;
+                } while (0);
             }
             modo = 1;
             if (mostrado == 0xFF) {
