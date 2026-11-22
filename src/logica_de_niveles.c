@@ -62,7 +62,9 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1085 con la configuracion versionada (g = 8 del archivo). La logica coincide. Decisiones de
+/* Pendiente: puntuacion 1075 con la configuracion versionada (g = 8 del archivo). La logica coincide. El almacen de
+   `o->param.giro.u.z = 0` va antes del de `o->coord.param` en la rama de la superficie de apoyo (cifra 1085 con el
+   orden contrario). Decisiones de
    escritura del C (la cifra que acompana a una decision es la que da la escritura contraria, medida sobre este estado): (e) el almacen de la altura
    tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo
    arreglo que usa la rama contraria, y no como un simbolo aparte (`D_8006AD74`): el original calcula la base con
@@ -83,8 +85,8 @@ s16* D_800693DC;
    documento de descompilacion para una relectura que el original hace: el original relee el mismo campo por la misma
    base, sin ningun almacen a 0x18 ni llamada entre el `sw` de 0x800223FC y el `lw` de 0x8002240C (el `sw` de
    0x80022400 es a 0x20), y el valor almacenado sigue en `v0`, que es el registro en el que lo relee. Sin el molde el
-   compilador elimina la relectura (esta en el volcado `.greg` y ya no en el `.sched2`) y la cifra es 1185; con el
-   molde es 1085. La de `desp.z` no lo necesita: el registro de su valor se reescribe antes (`lui v1,%hi(D_80069D40)`,
+   compilador elimina la relectura (esta en el volcado `.greg` y ya no en el `.sched2`) y la cifra es 1175; con el
+   molde es 1075. La de `desp.z` no lo necesita: el registro de su valor se reescribe antes (`lui v1,%hi(D_80069D40)`,
    0x80022404). Queda: el planificador emite los dos almacenes en orden inverso al del original (`sw 0x20` antes de
    `sw 0x18`, con las dos cargas de `D_80069D30` tambien invertidas, 0x800223F4 a 0x80022400); escribir las sumas
    en el orden contrario da 1455. Con `pos = &sc->desp` la
@@ -159,7 +161,7 @@ s16* D_800693DC;
    `sc->paso_y` queda en una sola copia que alcanzan los dos; con una variable `vs` que reuna los dos valores la
    mascara de 0x80024004 cae en `v0` (se supone, sin verificar, y sin cifra remedida sobre el estado final).
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 1239 y con ella 1085. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 1229 y con ella 1075. La funcion es pendiente: con la local la
    cifra es menor que sin ella.
    El bucle de puesta a cero del scratchpad (0x80020BD0..0x80020BE4) usa su propio puntero (`cursor_cero`): con el
    puntero `p` de la guarda de D_80069D30 el mismo pseudo vive en las dos zonas, el volcado de `cc1` le da conflicto con
@@ -167,7 +169,7 @@ s16* D_800693DC;
    se declara sin tamano: con 6 bytes la direccion entra al planificador como una sola instruccion (`symbol_ref`) y la
    carga de `D_8006ACE0` sale antes del `lui t7`; sin tamano el volcado `.sched2` la muestra partida en `high` y
    `lo_sum`, el `lui t7` precede a la carga como en el original (0x80025858) y la cifra baja de 1145 a 1085.
-   Residuo vigente (1085; la herramienta da 0 lineas de operando, 0 reordenadas y 346 insertadas o borradas): la
+   Residuo vigente (1075; la herramienta da 0 lineas de operando, 0 reordenadas y 342 insertadas o borradas): la
    mascara de 0x800211F4 (`lui v1,0x8000` en el original, `v0` aqui); las dos cargas y los dos almacenes de
    0x800223F4 (el volcado `.sched2` muestra la carga de `desp.z` antes de la de `desp.x` y el almacen de `desp.x` tras la
    direccion de `D_80069D40`; se supone, sin verificar, que la lectura `volatile` actua de barrera de memoria para el
@@ -1443,8 +1445,8 @@ sin_rebote:
                     BarrerTerreno(&sc->punto, &sc->rel, &sc->res, w);
                     o->param.trans.vx = o->p70->param.trans.vx + sc->rel.vx;
                     o->param.trans.vz = o->p70->param.trans.vz + sc->rel.vz;
-                    o->coord.param = (GsCOORD2PARAM*)&o->param;
                     o->param.giro.u.z = 0;
+                    o->coord.param = (GsCOORD2PARAM*)&o->param;
                     o->coord.super = NULL;
                     o->p70->p6C = NULL;
                     o->p70 = NULL;
