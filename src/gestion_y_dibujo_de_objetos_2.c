@@ -426,6 +426,19 @@ void func_80037FB8(NodoLista* n)
  * ids del porcentaje se escriben en orden de indices 2 y 3 (el valor BCD pasa a a1 como en el
  * original); y la prueba `i == 1` es un `if` independiente y no un `else if`, porque el original cae
  * del bloque `i == 0` a esa prueba.
+ *
+ * Medido en el ultimo grupo (los contadores 0xBA y 0x04): una envoltura `do { } while (0)` alrededor de
+ * `e = ESTADO_PRINCIPAL;` y de las tres primeras sentencias de ids baja la cifra de 925 a 815, pero no
+ * se instala: el volcado `-dl` solo muestra que `bcd` (pseudo 84) sube de 30 a 33 usos (prioridad
+ * floor_log2(R) * R / L de 4 * 30 / 121 = 0,99 a 5 * 33 / 120 = 1,38) y `e` (pseudo 88) de 11 a 13 (3 * 11 / 50 = 0,66 a
+ * 0,78), y el orden de asignacion cambia (`84` pasa por delante de `527` y `533`, y `88` por delante de `502`
+ * y `516`), pero el volcado `-dg` da el mismo registro a los tres pseudos con y sin la envoltura (83 en el 18,
+ * 84 en el 5 y 88 en el 19); lo que cambia es la planificacion (tres notas
+ * `LOOP` mas en `.sched`, 24 a 27: el `move s2,zero` y el `addiu` de la pila se colocan tras la llamada) y no
+ * el reparto, de modo que la causa medida no es la prioridad del asignador. Un par `bcd--; bcd++;` en ese grupo
+ * sube `bcd` a 34 usos y reordena igual la lista de asignacion, y un `e--; e++;` solo suma una referencia a `e`
+ * (12): la cifra se queda en 925. Se supone, sin verificar, que la envoltura actua como limite de
+ * planificacion de las lecturas de memoria que la rodean.
  */
 /*
  * Crea los objetos de los indicadores de la interfaz al entrar en un nivel: reinicia los
