@@ -799,7 +799,7 @@ escribe la cabecera).
 | `SondearTarjeta` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | NON_MATCHING 2060 | Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es 0x30; la cifra medida sin la local es 2262 y con ella 2060. |
 | `func_80020B90` | `src/logica_de_niveles.c` | reserva de pila | 1 | NON_MATCHING 1075 | Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es 0x40; la cifra medida sin la local es 1229 y con ella 1075. |
 | `func_8004048C` | `src/entrada_de_mando.c` | reserva de pila | 1 | NON_MATCHING 1540 | Reserva de pila: el original reserva 0x28 (`addiu sp` en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1614 y con ella 1540. |
-| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 2 | NON_MATCHING 6908 | Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es 0x200; la cifra medida sin la local es 8457 y con ella 6908. La reserva son 2 arreglos de 8 bytes: uno antes de `tamanos` y otro tras `campos_mem`. |
+| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 2 | NON_MATCHING 7138 | Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es 0x200; la cifra medida sin la local es 8687 y con ella 7138. La reserva son 2 arreglos de 8 bytes: uno antes de `tamanos` y otro tras `campos_mem`. |
 
 ## Medir el progreso
 

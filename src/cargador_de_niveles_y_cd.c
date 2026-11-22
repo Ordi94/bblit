@@ -424,8 +424,8 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 6908 con la configuracion versionada (g = 8 del archivo; ejes 284 de
- * operandos, 5 de lineas reordenadas y 612 de lineas insertadas o borradas). La cifra incluye
+ * Pendiente: puntuacion 7138 con la configuracion versionada (g = 8 del archivo; ejes 283 de
+ * operandos, 5 de lineas reordenadas y 626 de lineas insertadas o borradas). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones y el original 2955; la
@@ -508,9 +508,10 @@ typedef struct {
  * escalar, y que si lo hace con un puntero. En el chunk 0x3E las lecturas de 0x10 y 0x18 van por
  * miembro (`d10`, `d18`) y la de 0x14 por puntero: la ultima por miembro empeora la cifra. La de
  * 0x18 se guarda ademas en la local `d18_etiqueta` justo tras la copia: el original la carga en `a1`
- * (`lw a1,0x18(s4)`, 0x80043128), antes de los almacenes a los globales, y la escribe al final
- * (`sw a1,D_80069678`, 0x80043174); con la lectura dentro de la asignacion final la cifra es 7648 y con
- * la local 7143 (la local de `d10` no cambia la cifra y no se escribe). En el
+ * (`lw a1,0x18(s4)`, 0x80043128) tras los almacenes a `D_80069660`, `D_80069670` y `D_8006955C`
+ * (0x8004310C, 0x80043118 y 0x80043124) y antes de los demas, y la escribe al final
+ * (`sw a1,D_80069678`, 0x80043174); con la lectura dentro de la asignacion final la cifra es 7643 y con
+ * la local 7138 (la local de `d10` no cambia la cifra y no se escribe). En el
  * chunk 0x36 el segundo entero va por miembro (`ETQ(w, campos, 1)`) y se almacena despues del puntero
  * de zonas, como el original (`addu` en 0x80042FA8 antes del `sw` a 0x180($gp) en 0x80042FAC); con el almacen del
  * entero primero, o por puntero, la cifra sube.
@@ -588,7 +589,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 8457 y con ella 6908. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 8687 y con ella 7138. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -664,7 +665,6 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     u8 etiqueta;
     EstadoPrincipal* estado;
     s32 d18_etiqueta;
-    u32 base_sin_margen;
 
     /* Memoria de trabajo del cargador: el destino recibe primero el contenido y luego la memoria libre. */
     libre = datos;
@@ -916,13 +916,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             libre += (s16)D_8006952E * 8;
             D_80076188 = D_8006959C;
             D_80069680 = D_8006959C;
-            /*
-             * El original resta 0x400 a la base (`addiu v0,v0,-0x400`, 0x80041E98) y despues suma
-             * D_8006954C (`addu`, 0x80041E9C). En una sola expresion el compilador reordena la suma;
-             * con la local la cifra baja de 7143 a 6908 (se supone, sin verificar, que reasocia la constante).
-             */
-            base_sin_margen = D_8006959C - 0x400;
-            D_8006958C = base_sin_margen + D_8006954C;
+            D_8006958C = D_8006959C + D_8006954C - 0x400;
             D_80069610 = D_8006958C;
             D_80069614 = D_8006958C;
             if (D_80069678 != 0) {
