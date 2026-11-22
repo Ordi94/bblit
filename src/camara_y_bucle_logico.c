@@ -440,7 +440,8 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2590 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y
+ * Pendiente: puntuacion 2080 con la configuracion versionada (g = 8 del archivo; ejes 125 de operandos, 0 de lineas
+ * reordenadas y 280 de lineas insertadas o borradas). El flujo, las macros vectoriales y
  * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
  * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
  * los bucles de las ocho sondas (modo de apuntado y seguimiento libre) coinciden con `i++` escrito DESPUES de la
@@ -552,6 +553,7 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
     u16 pulsado;
     EstadoCamara* ec;
     s32 vp;
+    s32 pos_x;
 
     if (o == NULL) {
         return;
@@ -953,8 +955,14 @@ fin_giro:
         w->v30.vy = 0;
         w->v30.vx = 0;
         w->v30.vz = w->dist;
+        /*
+         * El original carga la posicion x del objeto (`lw v1,0xE4(s4)`, 0x8003453C) junto con la altura
+         * del punto de vista, antes del primer almacen a `v70` (0x80034540); sin la local el
+         * planificador la carga tras ese almacen y la cifra sube de 2080 a 2590.
+         */
+        pos_x = o->param.trans.vx;
         w->v70.vy = D_8006D928.vpy;
-        w->v70.vx = o->param.trans.vx;
+        w->v70.vx = pos_x;
         w->v70.vz = o->param.trans.vz;
         GEO_CARGAR_WH(&w->rot);
         GEO_GUARDAR_WH(&w->rot28);

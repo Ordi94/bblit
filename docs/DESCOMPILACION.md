@@ -611,7 +611,7 @@ sentencia, un comentario que cita exactamente las dos direcciones de su fila:
 
 | Función | Archivo | Dirección del `sw` | Dirección del `lw` | Cifra sin el molde | Cifra con el molde |
 |---|---|---|---|---:|---:|
-| `ActualizarCamaraSeguimiento` | `src/camara_y_bucle_logico.c` | `0x80033408` | `0x80033410` | 2880 | 2590 |
+| `ActualizarCamaraSeguimiento` | `src/camara_y_bucle_logico.c` | `0x80033408` | `0x80033410` | 2510 | 2080 |
 | `func_80020B90` | `src/logica_de_niveles.c` | `0x800223FC` | `0x8002240C` | 1185 | 1085 |
 
 - `ActualizarCamaraSeguimiento`: la relectura de `D_800695B8` (`zp = *(u16* volatile*)&D_800695B8;`).
