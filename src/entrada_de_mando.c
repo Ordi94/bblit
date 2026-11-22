@@ -467,7 +467,9 @@ normal:
         centro = ESTADO_PRINCIPAL->mando.centro_x;
         mascara = ESTADO_PRINCIPAL->mando.botones_c;
         /* Cada eje se lee una sola vez (0x80040830 y 0x800408E4) y las ramas reutilizan el valor tras los almacenes;
-           la conversion a u8 en las ramas conserva el `andi 0xff` del original (0x80040880 y 0x80040908). */
+           el original repite `andi 0xff` sobre la lectura en las ramas de la izquierda y de arriba (0x80040880 y
+           0x80040908) y la conversion a u8 no lo emite (el compilador la da por redundante tras `lbu`); escribirla
+           como `& 0xFF` lo funde con la comparacion y la cifra sube (1540 a 1595 en el eje x y a 1665 en el y). */
         eje_x_crudo = D_8006CFF6;
         eje = eje_x_crudo & 0xFF;
         prev = mascara & ~ESTADO_PRINCIPAL->mando.botones_e;
