@@ -442,10 +442,10 @@ s32 func_800151FC(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 605 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
- * 214 insertadas o borradas). Flujo, orden de instrucciones y distribucion de bloques iguales al original;
- * quedan permutaciones de registros temporales (v0/v1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
- * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y el reparto de registros del recorrido del directorio.
+ * Pendiente: puntuacion 560 con la configuracion versionada (g = 8 del archivo; ejes 76 de operando, 0 reordenadas,
+ * 198 insertadas o borradas). Flujo, orden de instrucciones y distribucion de bloques iguales al original;
+ * quedan permutaciones de registros temporales (v0/v1) en el bloque de la orden de grabar con sonido (base de D_8006AA70 y
+ * constante 5 del caso 4 del sondeo) y el reparto de registros del recorrido del directorio.
  * Recorrido del directorio: el original recalcula en cada uso el desplazamiento de la ranura (tres cadenas
  * `sll 4 ; subu ; sll 3` en 0x80015CC0, 0x80015D10 y 0x80015D40) y tiene como registros propios la base del directorio (t1)
  * y la base mas 0x24 (t2). El bucle exterior se escribe con etiqueta y salto hacia atras (`siguiente_entrada`): el optimizador
@@ -469,7 +469,8 @@ s32 func_800151FC(void)
  * despues las dos bases (`addu v0,a2,v0` en 0x80015D4C y `addu v1,v0,t1` y `addu v0,v0,t2` tras ella), de modo que
  * la entrada y la palabra de 0x24 se escriben como `base + (fila + grupo * 120)`. El `move a1,v0 ; bnez a1` de la llamada de
  * formateo (el original comprueba una copia del resultado que despues compara con 1) se reproduce guardando el resultado en
- * la local `rc`, compartida con la del sondeo. La busqueda del final del nombre se
+ * el contador `i`, que ya vive en a1 en los bucles; la prueba de la mascara de ranuras del final del sondeo pasa por `j`
+ * (v1 en el recorrido), con lo que `lw` y `andi` salen en v1 y la constante 0xE en v0. La busqueda del final del nombre se
  * escribe con guardia (`j = 0; if (nombre[j] != 0) { do { j++; } while (nombre[j] != 0); }`) como el original
  * (`beqz` a 0x80015D08 tras la primera lectura, 0x80015CDC, y el `addiu` de `j` ya en el cuerpo).
  *
@@ -481,7 +482,7 @@ s32 func_800151FC(void)
  * El argumento que pasa main se ignora.
  *
  * Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es
- * 0x30; la cifra medida sin la local es 807 y con ella 605. La funcion es pendiente: con la local la
+ * 0x30; la cifra medida sin la local es 762 y con ella 560. La funcion es pendiente: con la local la
  * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)
@@ -529,6 +530,8 @@ void SondearTarjeta(void)
             MemCardAccept(0);
         } else if (orden == 2) {
             MemCardSync(0, &D_80069360, &D_80069368);
+            /* El resultado se guarda en el contador i: la variable vive entre bloques y comparte el registro
+             * del contador de los bucles del directorio, como el original. */
             i = MemCardFormat(0);
             if (i == 0) {
                 D_8006AA70[0x1B] = 0xB;
@@ -733,6 +736,8 @@ void SondearTarjeta(void)
                         }
                     }
                     D_8006AA70[0x1B] = 0xE;
+                    /* Las ranuras con partida se leen en j: la variable vive entre bloques y toma el registro del
+                     * indice del recorrido del directorio, como el original (el resultado temporal tomaba el otro). */
                     j = D_8006D060.mascara & 0x3F;
                     if (j != 0) {
                         goto con_partidas;
