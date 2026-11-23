@@ -313,11 +313,9 @@ void func_80040430(s8* contador, u16 mascara)
  * que es el orden de la formula si el byte crudo pesa mas que `centro` y `eje` menos; se supone, sin verificar, que
  * el original lee el byte sin `andi` en las ramas derecha y abajo y por eso suma cuatro usos por eje.
  *
- * En la rama por defecto, leer el primer byte del banco por el simbolo en lugar de por `banco` no comparte
- * el `lui` de s2: el compilador repite el `lui` en ese bloque (el volcado `-ds` deja dos instrucciones `high` del
- * mismo pseudo, una por bloque). Se supone, sin verificar, que el bloque extendido del primer `lui` termina en el
- * bloque de la lectura por demo, que acaba en `return` y deja la etiqueta de la llamada a func_80040240 sin
- * predecesor de caida.
+ * En la rama por defecto el primer byte del banco se lee por `banco` (0(s1)): leerlo por el simbolo no comparte el
+ * `lui` de s2, el compilador repite el `lui` en ese bloque (el volcado `-ds` deja dos instrucciones `high` del
+ * mismo pseudo, una por bloque).
  *
  * Cola de la rama por defecto: el original deja en el hueco de retardo de las cuatro bifurcaciones del bloque de
  * la prueba (0x800409EC, 0x80040A00, 0x80040A18 y 0x80040A28) el `lui` de D_8006AA7C. Esa lectura se escribe como
