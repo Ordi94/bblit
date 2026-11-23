@@ -298,12 +298,15 @@ void func_80040430(s8* contador, u16 mascara)
  * valor y un almacen tras la etiqueta, el compilador sacaba las lecturas de D_8006CFF2/D_8006CFF3 por encima del
  * `sb` y el valor caia en `v1`.
  *
- * Reparto de a3 y t0 en la rama de los ejes (medido en el volcado `-dg`/`-dl`): el original guarda `botones_c` en t0 y
- * el umbral D_8006952C del eje X en a3 (`lhu t0` en 0x80040834 y `lh a3` en 0x8004083C); aqui es al reves porque `global-alloc` asigna antes la
- * lectura de `botones_c` (pseudo 81: 4 usos, vida 19, prioridad 2 * 4 / 19 = 0,42) que la del umbral (pseudo 236:
- * 3 usos, vida 8, prioridad 1 * 3 / 8 = 0,375) y el primero libre es a3. Con un cuarto uso del umbral la prioridad
- * seria 1,0 y el reparto saldria como el del original, pero no se conoce una forma del fuente que lo sume sin emitir
- * codigo. En la rama por defecto, leer el primer byte del banco por el simbolo en lugar de por `banco` no comparte
+ * Reparto de registros en la rama de los ejes (volcados `-dl` y `-dg`; prioridad = floor_log2(R) * R / L con R usos y
+ * L vida): `eje` 8 usos y vida 28 (0,857), `centro` 10 y 45 (0,667), umbral del eje Y 3 y 6 (0,500), byte crudo del
+ * eje Y 3 y 7 (0,429), `botones_c` 4 y 19 (0,421), umbral del eje X 3 y 8 (0,375) y byte crudo del eje X 3 y 18
+ * (0,167). Por eso se asigna primero `eje` (v1) y el byte crudo queda el ultimo (t0 en X, a3 en Y). El original lo
+ * reparte como crudo v1, `centro` a1, `eje` a2, umbral a3 y `botones_c` t0 (0x80040830, 0x8004083C y 0x8004084C),
+ * que es el orden de la formula si el byte crudo pesa mas que `centro` y `eje` menos; se supone, sin verificar, que
+ * el original lee el byte sin `andi` en las ramas derecha y abajo y por eso suma cuatro usos por eje.
+ *
+ * En la rama por defecto, leer el primer byte del banco por el simbolo en lugar de por `banco` no comparte
  * el `lui` de s2: el compilador repite el `lui` en ese bloque (el volcado `-ds` deja dos instrucciones `high` del
  * mismo pseudo, una por bloque). Se supone, sin verificar, que el bloque extendido del primer `lui` termina en el
  * bloque de la lectura por demo, que acaba en `return` y deja la etiqueta de la llamada a func_80040240 sin
@@ -320,9 +323,8 @@ void func_80040430(s8* contador, u16 mascara)
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
  * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0);
- * el reparto de registros de los ejes: el original guarda el byte crudo en v1 y `eje` en a2 (0x80040830 y 0x8004084C)
- * y aqui el byte cae en t0 y `eje` en v1; se supone, sin verificar, que `eje`, que el original no
- * usa en las ramas derecha y abajo (alli lee el byte sin `andi`), pesa mas aqui y se asigna antes;
+ * el reparto de registros de los ejes (arriba) y el `andi 0xff` de la rama de arriba (0x80040908), que aqui el
+ * combinador pliega sobre la suma `crudo + 1`;
  * el almacen de `lo` en el campo de botones (0x10) que el original conserva antes del almacen de
  * `lo | hi` (0x80040760 y 0x80040768) y que aqui desaparece entre `.cse` y `.combine` (se supone, sin verificar,
  * que lo borra el analisis de vida al ver dos almacenes seguidos a la misma direccion); y la forma simbolica de
