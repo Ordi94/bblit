@@ -148,8 +148,9 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * 0x0E: causa medida con `-ds` y `-dg` sobre el pseudo 124 (puntero crudo: 3 usos y vida de 8 instrucciones sin la
  * envoltura, prioridad 0,375 con `floor_log2(R) * R / L`; 5 usos y vida de 4 con ella, 2,5), el 84 (puntero al sprite:
  * 16 usos sobre 32 instrucciones sin ella, 2,0; 17 sobre 33 con ella, 2,06) y el 85 (valor de +0: 2 usos y vida de 2
- * instrucciones sin la envoltura, 1,0; de 9 con ella, 0,22): sin la envoltura (870) la primera planificacion pone la lectura del crudo antes de la suma final del valor de +0, el
- * crudo vive entre los temporales de v0 de esa suma, toma a3 (`124 in 7`) y el puntero al sprite hereda a3
+ * instrucciones sin la envoltura, 1,0; de 9 con ella, 0,22): sin la envoltura (870) la primera planificacion pone la
+ * lectura del crudo antes de la suma final del valor de +0, el crudo vive entre los temporales de v0 de esa suma, toma
+ * a3 (`124 in 7`) y el puntero al sprite hereda a3
  * (`84 preferences: 7`) porque el crudo muere en la suma que lo crea; con la envoltura la nota LOOP_BEG queda tras la
  * aritmetica del fotograma y la nota LOOP_END tras la suma del puntero al sprite en `.sched`, la lectura del crudo no
  * sube sobre la aritmetica y el crudo toma v0 (`124 in 2`). El valor de +0 se calcula antes de ella en
