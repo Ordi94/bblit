@@ -600,7 +600,7 @@ void SondearTarjeta(void)
             }
             /* El valor del banco que se restaura tras la llamada vive en una local propia de esta orden: con la
              * local `salvado` de las otras dos ordenes, que guardan otro registro del banco, el reparto de
-             * registros del recorrido del directorio empeora (de 2835 a 2870). */
+             * registros del recorrido del directorio empeora (de 725 a 760). */
             valor_salvado_a6 = ESTADO_PRINCIPAL->r[0xA6];
             ESTADO_PRINCIPAL->r[0xA6] = D_80069594;
             if (func_8001515C() != 0) {
@@ -684,7 +684,7 @@ void SondearTarjeta(void)
                     cuenta_previa = *bloques;
                     if ((tam & 0x1FFF) != 0) {
                         /* El bloque parcial se suma en una temporal antes de los completos: el reparto
-                         * de registros de la suma se acerca al original (2850 a 2835). */
+                         * de registros de la suma se acerca al original (740 a 725). */
                         con_parcial = cuenta_previa + 1;
                         *bloques = con_parcial + completos;
                     } else {
