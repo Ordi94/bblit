@@ -400,48 +400,35 @@ void func_80037FB8(NodoLista* n)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 815 con la configuracion versionada (g = 8 del archivo; ejes 16 de
- * operando, 0 reordenadas, 73 insertadas o borradas). Difiere en: reparto de registros de los dos
- * ultimos grupos. Los cuatro primeros grupos coinciden en codigo (quedan solo las marcas de operando
- * por nombre de simbolo: el original lleva D_8005E836 y D_8005E858 donde el C genera
- * D_8005E830+6 y D_8005E830+0x28, y D_8001013C o D_80010047 donde el C genera 0x13c(v0) o 0x47(v0)).
- * Residuo medido: (1) grupo del contador 0xB8 (D_800100F8): el original guarda el puntero a
- * 0x80010000 en s4 y el puntero a la pila en s3, aqui al reves, y la base de las posiciones
- * D_8005E8F8 cae en a2 en vez de v1 (0x48c, 0x494, 0x4ac); (2) grupo del contador 0xBA (el
- * ultimo): el original conserva el puntero a 0x80010000 en s3 a traves de la primera conversion
- * BCD (lui en 0x520, lbu 0x44 y, tras la llamada, lbu 0xFA en 0x578) y aqui el compilador lo
- * rematerializa con un lui propio en cada lectura (a0). Medido en el volcado
- * de asignacion (`-dl`): los grupos de los contadores 0xB6 y 0xB8, que leen `e->r[e->r[..]]`, tienen
- * cada uno un pseudo para el puntero (3 usos, 42 instrucciones de vida, cruza 1 llamada) que el
- * asignador global manda a un registro salvado; el ultimo grupo no tiene ninguno, porque el CSE
- * sustituye `e` por su valor constante en las dos lecturas (`lui` + `lbu`) y el pseudo muere sin
- * usos. Se supone, sin verificar, que la lectura con un indice en registro es lo que impide esa
- * sustitucion; el original lee el ultimo grupo con dos desplazamientos constantes sobre un solo
- * `lui` en s3 (0x520 y 0x578), y el C actual no lo mantiene. El C no lee los dos bytes de ese grupo por
- * los externos D_80010044 y D_800100FA: los simbolos son expresiones distintas, el optimizador no
- * comparte su `lui` y la base comun del original no viene de una lectura por nombre de simbolo.
+ * Pendiente: puntuacion 230 con la configuracion versionada (g = 8 del archivo; ejes 16 de
+ * operando, 0 reordenadas, 76 insertadas o borradas). Todos los grupos coinciden en instrucciones;
+ * difiere solo el reparto de registros salvados (y las marcas de operando por nombre de simbolo: el
+ * original lleva D_8005E836 y D_8005E858 donde el C genera D_8005E830+6 y D_8005E830+0x28, y D_8001013C
+ * o D_80010047 donde el C genera 0x13c(v0) o 0x47(v0)). Residuo medido en la comparacion: (1) grupos de
+ * los contadores 0xB6 (0x800382D8 a 0x800383A0) y 0xBA (0x80038508 a 0x800385C4): el original guarda el
+ * puntero a 0x80010000 en s3, la direccion de la pila en s4 y la base de D_8006AB70 en s5; el C los
+ * reparte en s4, s5 y s4 (la base de D_8006AB70 reutiliza el s4 del puntero, que ya murio); (2) grupo del
+ * contador 0xB8: la base de D_8005E8F8 cae en a2 en vez de v1 (0x80038474, 0x8003847C y 0x80038494).
+ * Medido en el volcado de asignacion (`-dl`) con y sin la forma vigente: con `e = ESTADO_PRINCIPAL`
+ * escrito dentro de cada `if` el ultimo grupo no usa el pseudo de `e` (87; 11 usos sobre 50 instrucciones,
+ * cruza 2 llamadas), porque el CSE sustituye `e` por su valor constante en las dos lecturas y el
+ * compilador rematerializa la base con un `lui` propio en cada una (cifra 945); con la asignacion escrita
+ * antes del `if` de los grupos 0xB6 y 0xBA, las lecturas de los desplazamientos 68 y 250 conservan el
+ * pseudo 87 (11 usos sobre 76 instrucciones, cruza 3 llamadas) y la base vive en un registro salvado a
+ * traves de la primera conversion BCD, como en el original (cifra 230). Se supone, sin verificar, que
+ * el original tiene un pseudo propio de `e` por grupo (s3, s4 y s3) y que el C, que comparte un solo `e`,
+ * lo fuerza a un solo registro. El C no lee los dos bytes del ultimo grupo por los externos D_80010044 y
+ * D_800100FA: los simbolos son expresiones distintas, el optimizador no comparte su `lui` y la base comun
+ * del original no viene de una lectura por nombre de simbolo.
  * Forma vigente del C: los tres bytes del contador de porcentaje se leen con ESTADO_PRINCIPAL directo
  * (sin una local `e` que abarque el grupo) en una sola expresion, con `r[7] + r[5]` sumado antes de
  * sumarlo al byte alto desplazado (asi el `lui` compartido y la suma coinciden con 0x1b8..0x1d0); los
  * ids del porcentaje se escriben en orden de indices 2 y 3 (el valor BCD pasa a a1 como en el
  * original); y la prueba `i == 1` es un `if` independiente y no un `else if`, porque el original cae
- * del bloque `i == 0` a esa prueba.
+ * del bloque `i == 0` a esa prueba. La rama `else` de la prueba `D_800100F7` del grupo 0xB8 pasa
+ * `ids[i]` directo a la llamada (con una local intermedia para el valor la cifra sube de 230 a 250).
  *
- * Causa medida del residuo del ultimo grupo (los contadores 0xBA y 0x04): no es la prioridad del asignador
- * global. El volcado `-dg` da el mismo registro a los pseudos `bcd` (84), `e` (88) y al 83 (en el 5, en el 19 y
- * en el 18) aunque se les sumen usos ponderados, de modo que ninguna referencia sin codigo sobre ellos cambia el
- * reparto; lo que cambia con esas referencias es la planificacion.
- *
- * La envoltura `do { } while (0)` del bloque que prepara los tres primeros identificadores del ultimo grupo
- * (desde `e = ESTADO_PRINCIPAL` hasta `ids[2]`) no genera codigo. Causa medida (volcados `-dg` y `-dS` del estado
- * final, con y sin ella): la disposicion de registros de todos los pseudos de la funcion es identica (los 655
- * campos de `Register dispositions` coinciden); solo cambia el orden de la lista `regs to allocate` (el pseudo 84
- * pasa tras el 533 y el 527) y la planificacion, porque la envoltura anade tres notas `LOOP` a `.sched` (de 24 a 27,
- * de ellas una `LOOP_BEG` mas, de 6 a 7) que cierran la region de planificacion: el `lui` de `D_8005E830`, el `move s2,zero`, el `addiu s4,sp,0x10`
- * y la lectura del byte del contador 0xBA (0x80038560 en el original) cambian de lugar respecto a la copia sin
- * envoltura, y el `.s` generado difiere solo en la colocacion de esas instrucciones. La cifra es 925 sin la envoltura y 815 con ella. Se supone, sin verificar, que la causa del resto
- * es el limite de planificacion de las lecturas de memoria que rodean al grupo. La forma del fuente original que
- * producia este reparto se desconoce.
+ * La funcion no lleva ninguna referencia sin codigo.
  *
  * Crea los objetos de los indicadores de la interfaz al entrar en un nivel: reinicia los
  * grupos de tres y cuatro digitos a partir de los contadores del estado principal (cada
@@ -451,7 +438,6 @@ void func_80037FB8(NodoLista* n)
 void func_80037FE8(void* lista)
 {
     s32 ids[6];
-    s32* pid;
     s16 (*pos)[2];
     s32 i;
     s32 bcd;
@@ -459,7 +445,6 @@ void func_80037FE8(void* lista)
     Objeto* o;
     s16 (*tpos)[2];
     EstadoPrincipal* e;
-    s32 id_plantilla_copia;
 
     func_80038C2C(0, D_80010043, 1);
     func_80038884(0xE, 1);
@@ -468,11 +453,8 @@ void func_80037FE8(void* lista)
     ids[0] = D_8005E830[3];
     ids[1] = D_8005E81C[(bcd & 0xF00) >> 8];
     ids[2] = D_8005E81C[(bcd & 0xF0) >> 4];
-    /* El contador de las vueltas toma prestado el valor BCD para el ultimo digito: con `bcd`
-     * directo la puntuacion sube de 2297 a 2845. */
-    i = bcd;
     pos = D_8005E928;
-    ids[3] = D_8005E81C[i & 0xF];
+    ids[3] = D_8005E81C[bcd & 0xF];
     for (i = 0; i < 4; i++) {
         ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[3 + i], ids[i], pos[i], 1);
     }
@@ -510,8 +492,8 @@ void func_80037FE8(void* lista)
         ((ReiniciarSinConversion)func_80037DB4)(D_8006AB70[20 + i], ids[i], pos[i], 1);
     }
 
+    e = ESTADO_PRINCIPAL;
     if (D_800100F7 != 0) {
-        e = ESTADO_PRINCIPAL;
         bcd = ((DigitosSinConversion)func_80037D3C)(e->r[e->r[0xB6]]);
         ids[0] = D_8005E830[3];
         ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
@@ -547,21 +529,18 @@ void func_80037FE8(void* lista)
             if (D_800100F7 != 0) {
                 ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], pos[i], 1);
             } else {
-                id_plantilla_copia = ids[i];
-                ((ReiniciarSinConversion)func_80037DB4)(o, id_plantilla_copia, tpos[i], 1);
+                ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], tpos[i], 1);
             }
             o->u78.ayudas->m94.t[2] = 0x5DC;
         }
     }
 
+    e = ESTADO_PRINCIPAL;
     if (D_800100FA != 0) {
-        do {
-            e = ESTADO_PRINCIPAL;
-            bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0x04]);
-            ids[0] = D_8005E830[0x18];
-            ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
-            ids[2] = D_8005E81C[bcd & 0xF];
-        } while (0);
+        bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0x04]);
+        ids[0] = D_8005E830[0x18];
+        ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
+        ids[2] = D_8005E81C[bcd & 0xF];
         i = 0;
         bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0xBA]);
         ids[3] = D_8005E830[0x19];
