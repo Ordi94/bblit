@@ -262,9 +262,9 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1315 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
- * lineas reordenadas y 252 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
- * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1389 y con ella 1315. El
+ * Pendiente: puntuacion 1325 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
+ * lineas reordenadas y 256 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1399 y con ella 1325. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
@@ -280,16 +280,14 @@ void func_80040430(s8* contador, u16 mascara)
  * Los bytes del bufer de la BIOS (D_8006CFF1, D_8006CFF2, D_8006CFF3, D_8006CFF6 y D_8006CFF7) se declaran como
  * estructuras de un solo campo y se leen por ese campo: con bytes sueltos el planificador sube la lectura del
  * identificador (D_8006CFF1) por encima de los almacenes a los campos del estado (el original la deja tras el
- * almacen de 0x8001000C, 0x80040664) y como miembro de estructura la deja detras de ellos. La cifra es 1515 con
- * bytes sueltos y 1315 con el campo; con una sola estructura de siete bytes desde D_8006CFF1 baja a 1470, pero las
- * referencias salen como `D_8006CFF1+n` y el compilador comparte la direccion de dos lecturas (una `addiu` mas).
- * Se supone, sin verificar, que la diferencia es la marca de miembro de estructura de la direccion de memoria.
+ * almacen de 0x8001000C, 0x80040664) y como miembro de estructura la deja detras de ellos. La cifra es 1525 con
+ * bytes sueltos y 1325 con el campo. Se declaran uno por uno y no como una sola estructura desde D_8006CFF1: con una
+ * sola las referencias salen como `D_8006CFF1+n`, que el ensamblador del original no escribe asi, y el compilador
+ * comparte la direccion de dos lecturas (una `addiu` mas). Se supone, sin verificar, que la diferencia es la marca
+ * de miembro de estructura de la direccion de memoria.
  *
  * El resultado de las dos restas de `eje_y` se convierte a `s16` antes del almacen (el campo es de 16 bits): sin las
- * conversiones la cifra es 1550 y con ellas 1515. El tope izquierdo del eje X (-0x80) se guarda en la local
- * `tope_izquierda` antes de su almacen en la rama de la grabacion y en la de la BIOS: sin ella la cifra es 1525 y con
- * ella 1515 (se supone, sin verificar, que el valor deja de ser una constante de la rama y cambia el reparto del
- * registro temporal del almacen).
+ * conversiones la cifra es 1350 y con ellas 1325.
  *
  * Una sola variable (`bits`) guarda los botones de direccion en la rama de grabacion y en la de lectura de la BIOS:
  * el original usa el mismo registro (s1) en las dos (`lhu s1` en 0x80040668 y `move s1,s2` en 0x8004074C), y con dos
@@ -305,18 +303,26 @@ void func_80040430(s8* contador, u16 mascara)
  * el umbral D_8006952C del eje X en a3 (`lhu t0` en 0x80040834 y `lh a3` en 0x8004083C); aqui es al reves porque `global-alloc` asigna antes la
  * lectura de `botones_c` (pseudo 81: 4 usos, vida 19, prioridad 2 * 4 / 19 = 0,42) que la del umbral (pseudo 236:
  * 3 usos, vida 8, prioridad 1 * 3 / 8 = 0,375) y el primero libre es a3. Con un cuarto uso del umbral la prioridad
- * seria 1,0 y el reparto saldria como el del original, pero sumarlo con `umbral = D_8006952C; umbral--; umbral++;` y
- * usar `umbral` en las cuatro comparaciones emite codigo (la puntuacion sube de 1560 a 1985), de modo que no se
- * aplica; la local sola se funde con la lectura y no cambia la cifra, tambien con su asignacion dentro de una
- * envoltura (el pseudo del umbral desaparece del volcado y la cifra sube), y una envoltura sobre toda la cadena
- * `if`/`else` del eje x genera codigo. En la rama por defecto, leer el primer byte del banco por el simbolo en
- * lugar de por `banco` no comparte el `lui` de s2: el compilador repite el `lui` en ese bloque (el volcado `-ds`
- * deja dos instrucciones `high` del mismo pseudo, una por bloque).
+ * seria 1,0 y el reparto saldria como el del original, pero no se conoce una forma del fuente que lo sume sin emitir
+ * codigo. En la rama por defecto, leer el primer byte del banco por el simbolo en lugar de por `banco` no comparte
+ * el `lui` de s2: el compilador repite el `lui` en ese bloque (el volcado `-ds` deja dos instrucciones `high` del
+ * mismo pseudo, una por bloque). Se supone, sin verificar, que el bloque extendido del primer `lui` termina en el
+ * bloque de la lectura por demo, que acaba en `return` y deja la etiqueta de la llamada a func_80040240 sin
+ * predecesor de caida.
+ *
+ * Cola de la rama por defecto: el original deja en el hueco de retardo de las cuatro bifurcaciones del bloque de
+ * la prueba (0x800409EC, 0x80040A00, 0x80040A18 y 0x80040A28) el `lui` de D_8006AA7C y mantiene en el flujo el
+ * `lui` de D_8006D9A8 y el `li` del 5 tras la lectura de `botones_a`; aqui el compilador rellena el hueco del
+ * segundo salto con el `lui` de D_8006D9A8 y el del cuarto con el `li` del 5, y el del primero y el tercero
+ * quedan en `nop`. Se supone, sin verificar, que es una diferencia de relleno de huecos de retardo y no de reparto
+ * de registros: las lecturas de D_8006AA7C y D_8006966A salen como instrucciones de macro (`lbu $2,D_8006AA7C`) y
+ * no son elegibles para un hueco, mientras que la de D_8006D9A8 (arreglo de 10 bytes) se divide en `lui` y `lw`.
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
- * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0); la lectura del identificador D_8006CFF1 en
- * la rama de grabacion, que sale antes del almacen del tercer registro del cuadro cuando en el original sale
- * despues; el almacen de `lo` en el campo de botones (0x10) que el original conserva antes del almacen de
+ * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0); la cola de la rama por defecto de arriba;
+ * el `andi 0xff` que el original repite sobre la lectura de cada eje en las ramas de la izquierda y de arriba
+ * (0x80040880 y 0x80040908; ver mas abajo);
+ * el almacen de `lo` en el campo de botones (0x10) que el original conserva antes del almacen de
  * `lo | hi` (0x80040760 y 0x80040768) y que aqui desaparece entre `.cse` y `.combine` (se supone, sin verificar,
  * que lo borra el analisis de vida al ver dos almacenes seguidos a la misma direccion); y la forma simbolica de
  * los campos de 0x80010000.
@@ -351,7 +357,6 @@ void func_8004048C(void)
     s32 eje;
     u16* grab;
     s32 lo;
-    s32 tope_izquierda;
     u32 cf2;
     u32 cf3;
     u32 cfd;
@@ -415,7 +420,7 @@ normal:
         id = D_8006CFF1.valor & 0x7F;
         D_800695B0 = grab + 4;
         ESTADO_PRINCIPAL->mando.botones = c;
-        /* La lectura de D_8006CFF2 va dentro de la condicion: sacarla antes del `if` la carga siempre y sube la cifra (6644 a 6964). */
+        /* La lectura de D_8006CFF2 va dentro de la condicion: sacarla antes del `if` la carga siempre y la cifra sube mucho. */
         if ((id == 0x41 || id == 0x73) && ((cfd = D_8006CFF2.valor, ((cfd ^ 0xFF) << 8) & 0x800)) && ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
             ESTADO_PRINCIPAL->mando.botones_a = a | 0x100;
             ESTADO_PRINCIPAL->mando.botones_c = b | 0x100;
@@ -425,8 +430,7 @@ normal:
         ESTADO_PRINCIPAL->mando.eje_x = 0;
         ESTADO_PRINCIPAL->mando.eje_y = 0;
         if (bits & 0x8000) {
-            tope_izquierda = -0x80;
-            ESTADO_PRINCIPAL->mando.eje_x = tope_izquierda;
+            ESTADO_PRINCIPAL->mando.eje_x = -0x80;
         } else if (bits & 0x2000) {
             ESTADO_PRINCIPAL->mando.eje_x = 0x7F;
         }
@@ -457,7 +461,7 @@ normal:
         ESTADO_PRINCIPAL->mando.botones_c = lo;
         ESTADO_PRINCIPAL->mando.botones = lo;
         /* El original lo almacena antes de la `xori` de la mascara (`sh zero` en 0x80040738); escrito ahi la cifra
-           es 1655 y tras los dos primeros almacenes de `botones` 1560: el planificador lo adelanta solo. */
+           sube: tras los dos primeros almacenes de `botones` el planificador lo adelanta solo. */
         D_80069672 = 0;
         ESTADO_PRINCIPAL->mando.botones = b;
         if ((hi & 0xF000) != 0 || (D_8006CFF1.valor & 0x7F) == 0x41) {
@@ -471,8 +475,7 @@ normal:
             ESTADO_PRINCIPAL->mando.w3E = prev;
             ESTADO_PRINCIPAL->mando.botones_a = prev;
             if (hi & 0x8000) {
-                tope_izquierda = -0x80;
-                ESTADO_PRINCIPAL->mando.eje_x = tope_izquierda;
+                ESTADO_PRINCIPAL->mando.eje_x = -0x80;
             } else if (hi & 0x2000) {
                 ESTADO_PRINCIPAL->mando.eje_x = 0x7F;
             }
@@ -490,7 +493,7 @@ normal:
         /* Cada eje se lee una sola vez (0x80040830 y 0x800408E4) y las ramas reutilizan el valor tras los almacenes;
            el original repite `andi 0xff` sobre la lectura en las ramas de la izquierda y de arriba (0x80040880 y
            0x80040908) y la conversion a u8 no lo emite (el compilador la da por redundante tras `lbu`); escribirla
-           como `& 0xFF` lo funde con la comparacion y la cifra sube (1560 a 1610 en el eje x y a 1605 en el y). */
+           como `& 0xFF` lo funde con la comparacion y la cifra sube en los dos ejes. */
         eje_x_crudo = D_8006CFF6.valor;
         eje = eje_x_crudo & 0xFF;
         prev = mascara & ~ESTADO_PRINCIPAL->mando.botones_e;
