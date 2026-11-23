@@ -442,8 +442,8 @@ s32 func_800151FC(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 825 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
- * 214 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
+ * Pendiente: puntuacion 725 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
+ * 217 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y el recorrido del directorio.
  * Recorrido del directorio: el original recalcula en cada uso el desplazamiento de la ranura (tres cadenas
@@ -456,10 +456,12 @@ s32 func_800151FC(void)
  * la cifra baja a 885; con el relleno de 0x96 palabras escrito con un puntero que avanza (`*palabras++ = 0;`) la base se
  * carga antes de `move a1,zero`, como en el original (0x80015BAC a 0x80015BB4), y baja a 825. Las inicializaciones del bucle van dentro de la guardia (`n < D_80069358[0]`) y la de `fila` tras la de
  * las bases, como el preludio del original (0x80015CA4 a 0x80015CB8).
- * Queda: el original copia la fila (`move a3,a2` en 0x80015CE0 y 0x80015D14) en el preludio de cada bucle interior y el C no
- * (se supone, sin verificar, que la copia nace de la sustitucion de `n * 0x28` por el puntero inducido del bucle exterior,
- * que aqui no se hace); `move v1,zero` de la cabecera del bucle queda en el hueco de retardo de la guardia; y el reparto de
- * registros: `n` cae en a2 (en a1 en el original), `fila` en a0 (a2), la base en a3 (t1) y la cadena en a1 (a0).
+ * La busqueda del final del nombre lee la fila por una copia (`fila_busqueda = fila;` antes de la guardia): el compilador
+ * no la propaga al bucle y deja `move a0,a2` en el preludio del bucle, como el `move a3,a2` del original (0x80015CE0), con
+ * lo que `fila` queda en a2 y `move v1,zero` en la cabecera del bucle; con `fila` directa la cifra es 825.
+ * Queda: el original copia la fila tambien en el preludio del bucle de relleno (`move a3,a2`, 0x80015D14) y el C no (con
+ * una segunda copia asignada antes del bucle el compilador la propaga y la cifra no cambia); y el reparto de registros:
+ * `n` cae en a3 (en a1 en el original), `grupo` en t1 (t0), la base en t0 (t1) y la cadena en a1 (a0).
  * Contador propio del bucle del directorio (`n`): el contador `i` vive desde el bucle de relleno de
  * 0x96 palabras hasta el del directorio y cruza la llamada de MemCardGetDirentry, que usa a1 como argumento, de modo que
  * no puede tomar a1 (volcado `-dg`: el pseudo de `i`, 23 usos sobre 88 instrucciones, cae en t0); el original tiene a1
@@ -482,7 +484,7 @@ s32 func_800151FC(void)
  * El argumento que pasa main se ignora.
  *
  * Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es
- * 0x30; la cifra medida sin la local es 1027 y con ella 825. La funcion es pendiente: con la local la
+ * 0x30; la cifra medida sin la local es 927 y con ella 725. La funcion es pendiente: con la local la
  * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)
@@ -505,6 +507,7 @@ void SondearTarjeta(void)
     s32 i;
     s32 n;
     s32 fila;
+    s32 fila_busqueda;
     u32 rslt;
     s32 estado;
     s32 cmds;
@@ -696,10 +699,11 @@ void SondearTarjeta(void)
                     fila = n;
                 siguiente_entrada:
                     j = 0;
+                    fila_busqueda = fila;
                     if (directorio[j + fila + grupo * 120] != 0) {
                         do {
                             j++;
-                        } while (directorio[j + fila + grupo * 120] != 0);
+                        } while (directorio[j + fila_busqueda + grupo * 120] != 0);
                     }
                     for (; j < 0x14; j++) {
                         ((EntradaDirectorio*)(directorio + (fila + grupo * 120)))->nombre[j] = 0;
