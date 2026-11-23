@@ -424,8 +424,8 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 6973 con la configuracion versionada (g = 8 del archivo; ejes 283 de
- * operandos, 5 de lineas reordenadas y 620 de lineas insertadas o borradas). La cifra incluye
+ * Pendiente: puntuacion 5958 con la configuracion versionada (g = 8 del archivo; ejes 285 de
+ * operandos, 3 de lineas reordenadas y 580 de lineas insertadas o borradas). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones y el original 2955; la
@@ -486,7 +486,9 @@ typedef struct {
  *
  * Relecturas del original: tras un almacen a un miembro de un nodo el original vuelve a leer el campo
  * de las etiquetas (no lo reutiliza). En el chunk 0x1C el cuadrado se calcula con una segunda
- * lectura de `campos + 6`; en el 0x12 las tres lecturas de `campos` (por puntero) se repiten, y en el
+ * lectura de `campos + 6`; en el 0x12 de modelos las tres lecturas del primer entero (`lw v0,0x128(sp)`,
+ * 0x80042930, 0x80042948 y 0x80042960) se repiten y van por `ETQ(w, campos_mem, 0)` (con `*(s32*)campos_mem` el
+ * compilador las reune en una sola carga), y en el
  * 0x13 el valor se guarda en una variable de 32 bits (`modo`; con 8 bits el compilador anade un
  * `andi 0xff` que el original no tiene) para compararlo sin releerlo tras el almacen. Los casos que
  * en el original usan un temporal y en el C tomaban el registro guardado de `aux` llevan un puntero
@@ -512,7 +514,7 @@ typedef struct {
  * 0x80043110, y `lw a1,0x18(s4)`, 0x80043128) tras los almacenes a `D_80069660`, `D_80069670` y
  * `D_8006955C` (0x8004310C, 0x80043118 y 0x80043124) y antes de los demas, y las escribe al final
  * (`sw v1,D_8006954C`, 0x8004316C, y `sw a1,D_80069678`, 0x80043174); con la local de `d18` y la
- * lectura de `d10` dentro de la asignacion final la cifra es 7138 y con las dos locales 6973. En el
+ * lectura de `d10` dentro de la asignacion final la cifra es 6123 y con las dos locales 5958. En el
  * chunk 0x36 el segundo entero va por miembro (`ETQ(w, campos, 1)`) y se almacena despues del puntero
  * de zonas, como el original (`addu` en 0x80042FA8 antes del `sw` a 0x180($gp) en 0x80042FAC); con el almacen del
  * entero primero, o por puntero, la cifra sube.
@@ -558,9 +560,10 @@ typedef struct {
  * original deja el `jal` en 0x80041A0C y es la copia posterior la que salta hacia atras; el C deja
  * el `jal` en la copia posterior y es la apertura la que salta hacia delante (el compilador fusiona
  * las dos colas porque las dos llegan al mismo bucle de ordenes sin asignar `campos`), y el hueco
- * de retardo del `bgtz` inicial, que el planificador de saltos llena distinto; (5) el orden de
- * `addiu s2,s2,0x10` frente a la carga de `0x54(s1)` en el chunk que obtiene su objeto con
- * `func_80036164` (0x80044268); (6) nombres de registro (unas 150 filas de 5 puntos).
+ * de retardo del `bgtz` inicial, que el planificador de saltos llena distinto; (5) el reparto de
+ * `v0` y `v1` entre la lectura de `campos + 4` y la suma `datos + desp_campo` en la etiqueta 0x25, y la
+ * copia `move a0,v0` de la cabecera del modelo (0x800424DC) que el C no emite; (6) nombres de registro
+ * (unas 150 filas de 5 puntos).
  *
  * Fusion de las llamadas de la causa 4 (medido en los volcados de saltos): al empezar el ultimo pase
  * de saltos la prueba de la llamada de la apertura (`ne` a la copia de la prueba del principio del
@@ -591,7 +594,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 8522 y con ella 6973. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 7531 y con ella 5958. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -1111,12 +1114,13 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(u8*, lista, 8) = datos + desp_campo;
                             D_800694A0 = compensacion;
                             EN(u16, nodo, 0xA) = 4;
-                            /* Los almacenes van en el orden del original: la palabra de 0xE se lee de `cab` antes de
-                             * reescribir `lista + 8`, y el primer almacen a `lista + 8` (0x800424EC), aunque se
-                             * sobrescribe en 0x80042500, existe en el original y se conserva. */
+                            /* Los almacenes van en el orden del original: la media palabra de `cab + 2` se lee antes
+                             * de escribir `lista + 8` (`lhu` en 0x800424E4 delante del `sw` de 0x800424EC), y el
+                             * primer almacen a `lista + 8` (0x800424EC), aunque se sobrescribe en 0x80042500,
+                             * existe en el original y se conserva. */
                             cab = EN(u8*, lista, 8);
-                            EN(u8*, lista, 8) = cab + 4;
                             EN(u16, lista, 0x12) = EN(u16, cab, 2) >> 1;
+                            EN(u8*, lista, 8) = cab + 4;
                             EN(u16, lista, 0xE) = EN(u16, cab, 4);
                             EN(u8*, lista, 8) = cab + 8;
                             cursor += 8;
@@ -1129,9 +1133,12 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             compensacion = *(s32*)(campos + 8);
                             EN(u16, nodo, 0xA) = 1;
                             EN(u8*, nodo, 0x54) = datos + desp_campo;
-                            EN(u16, nodo, 0x50) = *(u16*)campos_mem;
                             cursor += 0xC;
                             D_800694A0 = compensacion;
+                            /* En el original el `sh` de 0x50 (0x80042550) ocupa el hueco del salto de salida, tras
+                             * el `addiu` del cursor y el `sw` a 0x180($gp); su carga (`lhu`, 0x80042540) va antes.
+                             * Con la sentencia delante del avance del cursor el `sh` sale antes que ambos. */
+                            EN(u16, nodo, 0x50) = *(u16*)campos_mem;
                             break;
                         case 0x27:
                             CopiarBytes(cursor, campos, 4);
@@ -1216,9 +1223,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x12:
                             CopiarBytes(cursor, campos, 0xC);
-                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0) = *(s32*)campos;
-                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 4) = *(s32*)campos;
-                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 8) = *(s32*)campos;
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 0) = ETQ(w, campos_mem, 0);
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 4) = ETQ(w, campos_mem, 0);
+                            EN(s32, EN(u8*, EN(u8*, hijo_matriz, 4), 0x44), 8) = ETQ(w, campos_mem, 0);
                             cursor += 0xC;
                             ScaleMatrix((MATRIX*)(EN(u8*, hijo_matriz, 4) + 4),
                                         (VECTOR*)EN(u8*, EN(u8*, hijo_matriz, 4), 0x44));
@@ -2022,13 +2029,23 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(u16, entidad, 0x100) = *(u16*)campos_mem;
                             cursor += 4;
                             break;
-                        case 0x17:
+                        case 0x17: {
+                            /*
+                             * Tabla de nueve enteros de la entidad: el original recorre dos punteros que
+                             * avanzan (origen `campos` y destino con la base ya sumada, `addiu a0,s3,0x104` en
+                             * 0x800441A8). Con el desplazamiento escrito dentro del indice el compilador deja
+                             * la base sin sumar y lo pone en el almacen (0x104(v1)); con el puntero `tabla`
+                             * como variable la base se suma antes del bucle.
+                             */
+                            u32* tabla;
                             CopiarBytes(cursor, campos, 0x24);
+                            tabla = (u32*)(entidad + 0x104);
                             for (i = 0; i < 9; i++) {
-                                EN(u32, entidad, 0x104 + i * 4) = ((u32*)campos)[i];
+                                tabla[i] = ((u32*)campos)[i];
                             }
                             cursor += 0x24;
                             break;
+                        }
                         case 0x18:
                             /* Solo se copian 4 bytes, pero se leen 16 del bufer: lo restante es lo que dejo la etiqueta anterior. */
                             CopiarBytes(cursor, campos, 4);
@@ -2051,8 +2068,11 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                                 }
                             }
                             cursor += 0x10;
-                            EN(s32, entidad, 4) = 2;
+                            /* Orden del original (0x80044268 en adelante): `addiu` del cursor, carga de `nodo + 0x54`,
+                             * almacen de la constante 2 en la espera de la carga y almacen del puntero. La
+                             * constante delante de la carga hace que el planificador la emita antes. */
                             EN(u8*, entidad, 0x134) = EN(u8*, nodo, 0x54);
+                            EN(s32, entidad, 4) = 2;
                             break;
                         case 0x1D:
                             CopiarBytes(cursor, campos, 4);
