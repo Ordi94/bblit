@@ -432,7 +432,9 @@ void func_80037FB8(NodoLista* n)
  * D_800100F6 a D_800100FA sobre una base compartida con el puntero de estado). En esos dos grupos el original guarda el puntero
  * a 0x80010000 en s3, la direccion de la pila en s4 y la base de D_8006AB70 en s5; el C los reparte en
  * s4, s5 y s4 (la base de D_8006AB70 reutiliza el s4 del puntero, que ya murio). El volcado de asignacion
- * (`-dl`) muestra el pseudo de `e` (87) con 11 usos sobre 76 instrucciones y 3 llamadas cruzadas. Se
+ * (`-dl`) muestra el pseudo de `e` (88) con 11 usos sobre 76 instrucciones y 3 llamadas cruzadas (prioridad
+ * floor_log2(R) * R / L de 3 * 11 / 76 = 0,43, por detras del puntero a la pila del grupo 0xB8: 3 * 9 / 50 =
+ * 0,54, que toma s3 y deja s4 a `e`). Se
  * supone, sin verificar, que el original tiene un pseudo de `e` para los grupos 0xB6 y 0xBA (s3) y otro
  * para el 0xB8 (s4), y que el C, que comparte un solo `e`, lo fuerza a un solo registro.
  * Forma vigente del C: `e = ESTADO_PRINCIPAL` se escribe antes del `if` de los grupos 0xB6 y 0xBA (dentro
