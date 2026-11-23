@@ -450,7 +450,7 @@ void func_80037FB8(NodoLista* n)
  * 0x8003847C y 0x80038494). La rama `else` de la prueba `D_800100F7` del grupo 0xB8 pasa `ids[i]`
  * directo a la llamada. Los elementos D_8005E836, D_8005E83E y D_8005E858 de D_8005E830 se leen por su
  * propio simbolo, declarado como arreglo incompleto (ver las tablas de arriba): el `lui` queda separado
- * de la carga y el operando lleva el nombre del ensamblador; no cambia los bytes generados.
+ * de la carga y el operando lleva el nombre del ensamblador; las instrucciones del `diff` son las mismas.
  *
  * La funcion no lleva ninguna referencia sin codigo.
  *
@@ -932,7 +932,7 @@ void func_80038E84(s32 idx, s32 paso)
  * base del temporizador siguiente (visto en el ensamblador que sale con el simbolo suelto).
  * Los tres iconos de estado del final leen sus elementos de D_8006AB70, D_8005E830 y D_8005E86C por su
  * propio simbolo, declarado como arreglo incompleto (ver las tablas de arriba): el `lui` queda separado
- * de la carga y el operando lleva el nombre del ensamblador; no cambia los bytes generados.
+ * de la carga y el operando lleva el nombre del ensamblador; las instrucciones del `diff` son las mismas.
  * Un puntero propio por barra (g3 y g7 para el indice y el valor, f3 y f7 para la relectura tras la
  * llamada) en lugar de los compartidos `g` y `f` deja las bases de las barras 3 y 7 en v0 como el original
  * (se supone, sin verificar, que un pseudo compartido une las vidas de todas las barras y toma el mismo
