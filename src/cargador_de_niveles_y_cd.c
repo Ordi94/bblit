@@ -198,41 +198,24 @@ void CopiarBytes(u8* origen, u8* destino, s16 n)
     }
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 335 con la configuracion versionada (g = 8 del archivo; ejes 17 de
- * operando, 0 reordenadas, 108 insertadas o borradas; el diff no muestra ninguna linea de un solo lado,
- * todas son diferencias de registro). Mismas instrucciones, mismo flujo y mismos huecos de retardo que
- * el ensamblador; difiere solo en el reparto de registros. El original deja en
- * las cinco variables del primer bucle (lista A, puntero a los campos, busqueda en B, fin de los
- * campos e identificador) v1, a0, a1, a2 y a3, y el identificador en a3 en todos los bucles de
- * busqueda; aqui salen v1 (busqueda), a0, a1 (lista A), a2 (identificador) y a3 (fin). Medido en
- * -dg: global-alloc asigna por prioridad floor_log2(R) * R / L y cada pseudo toma el primer registro
- * libre; el orden de aqui es la busqueda (28 usos sobre 10, 11,2), el puntero a los campos (20 sobre
- * 19, 4,21), el nodo de C (44 sobre 57, 3,86), el identificador (27 sobre 30, 3,60), la lista A (12
- * sobre 24, 1,5) y el fin (5 sobre 18, 0,56). Respecto del original son dos pares intercambiados: la
- * lista A y la busqueda (v1 y a1 en el original) y el fin y el identificador (a2 y a3); en los bucles
- * de B y de C el identificador tambien queda en a2 donde el original lo deja en a3, y el recorrido
- * exterior queda en a3 (B) y a1 (C) frente a a1 y a2 del original. Para dejar a1 a la busqueda y
- * a3 al identificador la lista A tendria que asignarse antes que la busqueda y el identificador al
- * final; se supone, sin
- * verificar, que el original los asigna asi, pero ninguna forma medida mueve esas prioridades en la
- * proporcion que pide (la lista A necesitaria una prioridad mayor que 11,2). Tambien difiere la
- * secuencia de la division por el tamano del nodo: el original deja el cociente en v0 y el producto
- * en v1, aqui al reves (el cociente es la local `idx`; sin ella, con la expresion directa, la
- * puntuacion sube a 2480). Medido ademas: el recorrido de la lista B (pseudo de 28 usos sobre 10) y el de la lista A
- * de los bucles de C (60 sobre 30, 10,0) se asignan antes que el puntero (4,21), de modo que la lista A (12 sobre 24,
- * 1,5) solo podria pasar delante con unos 56 usos ponderados (floor_log2(56) * 56 / 24 = 11,7); un identificador por
- * bucle (`id`, `id2`, `id3`) deja 335, y escribir el bucle de campos con un puntero `p = (u16*)a` y un fin `p + 5`
- * explicitos da 970 (el optimizador de bucles deja de reducir la direccion y anade tres instrucciones).
+ * Reparto de registros: el original usa tres variables de recorrido, una por lista (A, B y C), y cada
+ * una hace de recorrido exterior en un bucle y de busqueda en otro (la lista A es el recorrido del
+ * primer bucle y la busqueda del tercero; la B, la busqueda del primero y el recorrido del segundo; la
+ * C, la busqueda del segundo y el recorrido del tercero). Una variable por lista acumula las
+ * referencias de sus dos usos y `global-alloc` le da prioridad antes que al puntero a los campos
+ * (v1 para A, a1 para B y a2 para C, con el identificador en a3). Con una variable de busqueda
+ * propia en cada bucle el reparto no coincide. El cociente de cada division por el tamano del nodo
+ * es una local de bloque: con una sola local compartida, `global-alloc` la trata como un pseudo de
+ * vida larga y el cociente y el producto quedan en los registros contrarios a los del original.
  *
  * El identificador se lee del campo dos veces: una en la prueba de la guarda y otra al guardarlo en
- * la variable. Medido en el ensamblador: el original carga el campo en v0, lo compara y despues lo
- * copia con `move a3,v0` en el hueco del salto de la busqueda; con una sola lectura copiada a la
- * variable antes de la prueba la carga cae directa en el registro del identificador y no hay
- * copia. El identificador es una variable de 32 bits aunque los campos que lee sean de 16 (con 16
- * bits la puntuacion es 1115). En los dos campos extra del nodo de C el original carga el valor
- * en a3 antes de la guarda de la lista A, y aqui tambien.
+ * la variable. El original carga el campo en v0, lo compara y despues lo copia con `move a3,v0` en
+ * el hueco del salto de la busqueda; con una sola lectura copiada a la variable antes de la prueba
+ * la carga cae directa en el registro del identificador y no hay copia. El identificador es una
+ * variable de 32 bits aunque los campos que lee sean de 16: con 16 bits aparece una conversion que
+ * el original no tiene. En los dos campos extra del nodo de C el original carga el valor en a3
+ * antes de la guarda de la lista A, y aqui tambien.
  *
  * Convierte, en un contenedor ya cargado, las referencias entre registros por identificador en
  * desplazamientos dentro de cada lista, para que el codigo que las usa no tenga que buscar:
@@ -248,12 +231,9 @@ void ResolverReferenciasContenedor(ContenedorCarga* c)
     NodoA* a;
     NodoB* b;
     NodoC* k;
-    NodoA* na;
-    NodoB* nb;
     /* De 32 bits aunque los campos que lee sean de 16 (ver la cabecera). */
     s32 id;
     u32 i;
-    s32 idx;
     u32 desp;
 
     if (c->clase == 0xE || c->clase == 2 || c->clase == 0x22) {
@@ -263,13 +243,13 @@ void ResolverReferenciasContenedor(ContenedorCarga* c)
                     break;
                 }
                 id = a->ref[i];
-                for (nb = c->listaB; nb != NULL; nb = nb->sig) {
-                    if (nb->id == id) {
+                for (b = c->listaB; b != NULL; b = b->sig) {
+                    if (b->id == id) {
                         break;
                     }
                 }
-                if (nb != NULL) {
-                    desp = ((u8*)nb - (u8*)c->listaB) & 0xFFE0;
+                if (b != NULL) {
+                    desp = ((u8*)b - (u8*)c->listaB) & 0xFFE0;
                     a->ref[i] = desp;
                 }
             }
@@ -283,52 +263,52 @@ void ResolverReferenciasContenedor(ContenedorCarga* c)
                     }
                 }
                 if (k != NULL) {
-                    idx = k - c->listaC;
-                    b->desplazamiento = idx * 0x24;
+                    s32 indice;
+                    indice = k - c->listaC;
+                    b->desplazamiento = indice * 0x24;
                 }
             }
         }
         for (k = c->listaC; k != NULL; k = k->sig) {
             if (k->refA != 0) {
                 id = k->refA;
-                for (na = c->listaA; na != NULL; na = na->sig) {
-                    if (na->id == id) {
+                for (a = c->listaA; a != NULL; a = a->sig) {
+                    if (a->id == id) {
                         break;
                     }
                 }
-                if (na != NULL) {
-                    desp = ((u8*)na - (u8*)c->listaA) & 0xFFF0;
+                if (a != NULL) {
+                    desp = ((u8*)a - (u8*)c->listaA) & 0xFFF0;
                     k->refA = desp;
                 }
             }
             if (k->banderas & 0x20) {
                 id = k->refA1;
-                for (na = c->listaA; na != NULL; na = na->sig) {
-                    if (na->id == id) {
+                for (a = c->listaA; a != NULL; a = a->sig) {
+                    if (a->id == id) {
                         break;
                     }
                 }
-                if (na != NULL) {
-                    idx = na - c->listaA;
-                    k->refA1 = idx * 0x10;
+                if (a != NULL) {
+                    s32 indice;
+                    indice = a - c->listaA;
+                    k->refA1 = indice * 0x10;
                 }
                 id = k->refA2;
-                for (na = c->listaA; na != NULL; na = na->sig) {
-                    if (na->id == id) {
+                for (a = c->listaA; a != NULL; a = a->sig) {
+                    if (a->id == id) {
                         break;
                     }
                 }
-                if (na != NULL) {
-                    idx = na - c->listaA;
-                    k->refA2 = idx * 0x10;
+                if (a != NULL) {
+                    s32 indice;
+                    indice = a - c->listaA;
+                    k->refA2 = indice * 0x10;
                 }
             }
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/cargador_de_niveles_y_cd", ResolverReferenciasContenedor);
-#endif
 
 void CopiarBytesSolapados(u8* origen, u32 n, u8* destino)
 {
