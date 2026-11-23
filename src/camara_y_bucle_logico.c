@@ -460,17 +460,17 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * despues, 0x498 y 0x49c), y el bloque de las posiciones de la camara (0x17b0..0x1868) coincide en el orden de las
  * lecturas y almacenes con los tres almacenes de `v30` escritos tras el de `vpz`, en el orden `vx`, `vy`, `vz`;
  * queda: la prueba de los dos bits de la direccion del ajuste de altura (0xba0..0xbb8), que carga la mascara antes
- * que la bandera (con el orden de operandos del `or` invertido no cambia); el par de modificaciones de banderas
- * (0xcc4..0xd30), donde el original carga el contador tras el almacen de las banderas y aqui el planificador lo
+ * que la bandera (con el orden de operandos del `or` invertido el reparto no cambia y la cifra sube a 1965); el par
+ * de modificaciones de banderas (0xcc4..0xd30), donde el original carga el contador tras el almacen de las banderas y aqui el planificador lo
  * adelanta (el volcado `.sched` de la rama del giro a la izquierda muestra el orden `li`, carga de `D_80069402`,
  * `ori`, `sh` sin ninguna arista de dependencia entre la carga del simbolo y el almacen a `0x80(reg)`, de modo que el
  * planificador adelanta la carga; el original la deja tras el almacen. Se supone, sin verificar, que el original
  * almacena las banderas por un puntero que el planificador no puede separar del acceso por `$gp`; medido: escribir
- * el almacen por `cam->` empeora, en una o en las dos ramas, y hacerlo por un puntero `u16*` local o escribir `k`
- * antes que `c` dejan la cifra en 3340; escribirlo por `ec` tras asignarle `&D_8006D928` no cambia la cifra, se supone,
- * sin verificar, que porque el CSE pliega la constante en la direccion y el almacen sigue siendo de simbolo); la carga
+ * el almacen por `cam->` empeora (2120 en la rama izquierda); por un puntero `u16*` local en las dos ramas, por `ec`
+ * tras asignarle `&D_8006D928` o con `k` escrito antes que `c` la cifra no cambia (1960), se supone, sin verificar,
+ * que porque el CSE pliega la constante en la direccion y el almacen sigue siendo de simbolo); la carga
  * de `D_8006D928.vpy` del modo de transicion (0x11d0..0x11ec), adelantada aqui sobre tres almacenes de `v30`
- * (escribirla por `cam->` empeora); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el
+ * (escribirla por `cam->` da 2295); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el
  * original lo guarda en `s1`, el registro del puntero `&w->dir` que muere en la preparacion de los argumentos de la
  * llamada siguiente (el volcado `.greg` muestra `s2 = v0` justo tras la llamada y los movimientos de argumentos
  * despues, con el registro `s1` del puntero muriendo en `move a1,s1`: los dos pseudos coinciden en vida un
@@ -484,7 +484,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * el original en `a3`/`a2` (sin efecto: cargar `w->p4` antes de `ec`, o en una local propia). La direccion de
  * acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos. La prueba del giro tras el
  * bloque de la cuenta de espera (0xed4..0xfd8) coincide con una sola cola `w->rot.vy = D_80069402` y dos
- * `goto` (la forma `if (f2 & 2 || byte)` tras el bloque cuesta 410 puntos mas: el
+ * `goto` (la forma `if (f2 & 2 || byte)` tras el bloque empeora la cifra: el
  * compilador conservaba una prueba de mas por cada camino del bloque; con el bit guardado en una local la
  * prueba se reutilizaba pero no se enhebraba, y con la prueba del byte repetida en cada rama y la cola
  * replicada la cola sobrevivia en el otro extremo). Medido sobre el almacen de banderas del giro
