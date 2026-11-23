@@ -129,26 +129,55 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * bits) y fija la anchura de la textura y el modo del sprite.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 905 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 55 insertadas o borradas). Mismos accesos y almacenes que el original; difieren el momento de la lectura del puntero del sprite (+0x78 del objeto) y el reparto de registros. Original: copia el objeto a a3 al entrar (0x0); lee el puntero del sprite en v0 tras la cadena aritmetica del fotograma (`lw v0,0x78(a3)` en 0x78); carga el campo 0x0E en a3, el registro que el objeto libera en esa lectura (0x7C); calcula el puntero al sprite en v1 (`addiu v1,v0,0xc`, 0x80) antes del primer almacen, que sale por el puntero crudo (`sh a0,0xc(v0)`, 0x84). Aqui el puntero crudo comparte a3 con el objeto y con el puntero al sprite: la lectura sube (`lw a3,0x78(a3)` en 0x128), el primer almacen precede a la suma (`sh a0,0xc(a3)` en 0x158 y `addiu a3,a3,0xc` en 0x160) y el campo 0x0E toma v1. Medido en los volcados de `cc1` (`-dl`, `-dg`): el puntero al sprite es un pseudo global de 16 usos y vida 32 con preferencia por a3 (`83 preferences: 7`) y el puntero crudo un pseudo local del bloque de 3 usos y vida 9; la primera planificacion deja la lectura del crudo entre las cargas del fotograma, de modo que su vida cubre los temporales de v0 a a2. Medido ademas con `-ds` y `-fsched-verbose-2`: la primera planificacion recorre el bloque de atras adelante y deja el orden lectura del crudo entre las cargas del fotograma, suma del primer valor, primer almacen, cadena del valor de +2, `lhu` del campo 0x0E y suma que crea el puntero al sprite; el crudo (pseudo 108) tiene su ultimo uso en esa suma y la preferencia 7 del pseudo 83 (a3) queda libre, de modo que el objeto, el crudo y el puntero comparten a3 (en `-dg`: 80, 83 y 108 en 7). Con esa primera planificacion desactivada en una copia de diagnostico fuera del repositorio, el crudo y el puntero al sprite toman registros distintos ($6 y $8). Se supone, sin verificar, que el original deja la suma del puntero al sprite antes del primer almacen en su primera planificacion, que el crudo vive entonces hasta ese almacen (v0, con el puntero en v1) y que la segunda planificacion solo puede subir la suma sobre el almacen cuando ambos usan registros distintos. */
+/* Pendiente: puntuacion 775 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas,
+ * 38 insertadas o borradas). Mismos accesos y almacenes que el original. Original: copia el objeto a a3 al entrar
+ * (0x0); lee el puntero del sprite en v0 tras la aritmetica del fotograma (`lw v0,0x78(a3)` en 0x78); carga el campo
+ * 0x0E en a3, el registro que el objeto libera en esa lectura (0x7C); y calcula el puntero al sprite en v1
+ * (`addiu v1,v0,0xc`, 0x80) antes del primer almacen, que sale por el puntero crudo (`sh a0,0xc(v0)`, 0x84). El C
+ * reproduce esa lectura tardia y ese reparto del puntero crudo (v0) y del puntero al sprite (v1). Lo que queda,
+ * medido en `diff`: (1) la tabla de fotogramas se lee antes de la rama (`lw t1,0x20(t3)` en 0xDC) y el original la
+ * lee tras la reunion (0x30); el `sll` del indice se copia a cada rama (0xF4 y 0x110) y la reunion empieza por el
+ * `addu` (0x114), mientras que el original lo deja en la reunion (0x34) y un `nop` en el hueco del `j` (0x18); con
+ * la tabla leida tras la reunion la puntuacion es 1000; (2) el campo 0x0E sale con las cargas del fotograma
+ * (`lhu a3,0xe(t1)` en 0x12C), el objeto pasa a t4 y tras el `lw` del puntero crudo queda un `nop` (0x15C) donde el
+ * original carga el campo (0x7C); (3) las cargas de u (+8), de la anchura (+0xC) y de v (+9) salen en otro orden
+ * (0x120 a 0x128 frente a 0x44 a 0x4C) y con otros registros. Se supone, sin verificar, que (2) y (3) vienen del
+ * desempate de la segunda planificacion entre cargas sin predecesores.
+ *
+ * La `do { } while (0);` del puntero al sprite no genera codigo: el ensamblador es el que saldria sin ella, pero
+ * las notas de bucle que deja el parser actuan como limite de la primera planificacion. Causa medida con `-ds` y
+ * `-dg` sobre el pseudo 123 (puntero crudo: 3 usos y vida de 7 instrucciones sin la envoltura, 5 usos y vida de 3
+ * con ella), el 84 (puntero al sprite: 16 usos sobre 32 instrucciones sin ella, 17 sobre 33 con ella) y el 85
+ * (valor de +0: vida de 2 instrucciones sin la envoltura y de 10 con ella): sin la envoltura (1255) la primera
+ * planificacion pone la lectura del crudo antes de la suma final del valor de +0, el crudo vive entre los
+ * temporales de v0 de esa suma, toma a3 (`123 in 7`) y el puntero al sprite hereda a3 (`84 preferences: 7`) porque
+ * el crudo muere en la suma que lo crea; la segunda planificacion deja entonces el almacen antes de la suma
+ * (`sh a0,0xc(a3)` y despues `addiu a3,a3,0xc`). Con la envoltura la nota LOOP_BEG queda tras la suma del valor de
+ * +0 y la nota LOOP_END tras la suma del puntero al sprite en `.sched`, la lectura del crudo no sube sobre la
+ * aritmetica, el crudo toma v0 (`123 in 2`), el puntero v1 (`84 in 3`) y el campo 0x0E a3 (`92 in 7`), como el
+ * original. El valor de +0 se calcula antes de la envoltura en `coordenada_u`: con el valor dentro de la
+ * sentencia del almacen la puntuacion es 2825 (se supone, sin verificar, que la aritmetica queda entonces tras las
+ * notas). El cuerpo de la envoltura es la sentencia real del puntero, sin `break` ni `continue`. Se supone, sin
+ * verificar, que el original no lleva ninguna envoltura y que lo que fija ese orden en el es otra construccion que
+ * el volcado no distingue. La forma del fuente original que producia este reparto se desconoce. */
 void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     SpriteEscalado* p;
-    s32 ancho;
+    s32 coordenada_u;
     s32 desplazamiento_color;
     s32 indice;
-    u16 ancho_cuadro;
+    s32 ancho_cuadro;
     /* El campo 0x2E del contexto se lee antes del almacen de `s10`, como el original (carga en 0x8001E698,
-     * almacen en 0x8001E6A8): leerlo en el propio almacen sube la puntuacion de 905 a 1490. */
+     * almacen en 0x8001E6A8). */
     u16 ancho_bloque;
     Fotograma* fotogramas;
     s16 v_pagina;
-    /* El campo 0x0E del fotograma se lee tres sentencias antes de su almacen, como el original (carga en
-     * 0x7C, almacen en 0xA4): leerlo en el propio almacen sube la puntuacion de 905 a 1220. */
+    /* El campo 0x0E del fotograma se lee antes del primer almacen, como el original (carga en 0x8001E67C,
+     * almacen en 0x8001E6A4). */
     u16 campo_0e;
 
     /* La tabla se lee antes de elegir el cuadro: el original la lee tras la reunion de las dos ramas
-     * (0x30), pero con esa forma el bloque de reunion empieza por el desplazamiento del indice y la
-     * puntuacion sube de 905 a 1020. */
+     * (0x8001E630); leerla tras la reunion da 1000 (ver la cabecera). */
     fotogramas = c->fotogramas;
     /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
     if (modo & 1) {
@@ -156,21 +185,22 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     } else {
         indice = (c->duraciones + (u16)c->cuadro)->indice;
     }
-    /* El mismo puntero recorre la tabla y apunta luego al cuadro elegido; con una variable por paso
-     * el reparto de registros empeora. */
+    /* El mismo puntero recorre la tabla y apunta luego al cuadro elegido. */
     fotogramas = fotogramas + indice;
-    ancho = fotogramas->w0C;
-    v_pagina = fotogramas->v + (0x100 & (fotogramas->pagina << 4));
-    p = (SpriteEscalado*)(0xC + (u8*)o->u78.p);
+    ancho_cuadro = fotogramas->w0C;
     desplazamiento_color = 2 - ((fotogramas->pagina >> 7) & 3);
-    ancho_cuadro = ancho;
-    ancho = ancho_cuadro >> desplazamiento_color;
-    p->s00 = (fotogramas->u >> desplazamiento_color) + ((fotogramas->pagina & 0xF) << 6);
+    /* Los valores de +0 y +2 se calculan antes de la envoltura (ver la cabecera). */
+    coordenada_u = (fotogramas->u >> desplazamiento_color) + ((fotogramas->pagina & 0xF) << 6);
+    v_pagina = fotogramas->v + (0x100 & (fotogramas->pagina << 4));
     campo_0e = fotogramas->w0E;
+    do {
+        p = (SpriteEscalado*)(0xC + (u8*)o->u78.p);
+    } while (0);
+    p->s00 = coordenada_u;
     p->s02 = v_pagina;
     p->w08 = c->w2C;
     ancho_bloque = c->w2E;
-    p->s10 = ancho;
+    p->s10 = ancho_cuadro >> desplazamiento_color;
     p->w12 = campo_0e;
     p->w0A = ancho_bloque;
     p->s04 = (0x3F & fotogramas->h0A) * 0x10;
