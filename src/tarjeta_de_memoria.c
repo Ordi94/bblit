@@ -508,6 +508,7 @@ void SondearTarjeta(void)
     s32 n;
     s32 fila;
     s32 fila_busqueda;
+    s32 fila_relleno;
     u32 rslt;
     s32 estado;
     s32 cmds;
@@ -706,9 +707,9 @@ void SondearTarjeta(void)
                         } while (directorio[j + fila_busqueda + grupo * 120] != 0);
                     }
                     if (j < 0x14) {
-                        fila_busqueda = fila;
+                        fila_relleno = fila;
                         do {
-                            directorio[j + fila_busqueda + grupo * 120] = 0;
+                            directorio[j + fila_relleno + grupo * 120] = 0;
                             j++;
                         } while (j < 0x14);
                     }
