@@ -46,9 +46,18 @@ extern void func_80039094(void);
  * el bajo primero la rama positiva coincide instruccion por instruccion; el C vigente conserva el alto primero y las
  * variables actuales porque el bajo primero cambia la cola comun: el almacen del bajo ya no pasa a la ranura de
  * retardo de la guarda 0x40 (se supone, sin verificar, que el planificador de ranuras no puede mover un almacen por
- * encima de otro) y la rama negativa sigue sin copia; (2) producto del seno de la
+ * encima de otro) y la rama negativa sigue sin copia. La copia `move v1,v0` de la rama negativa SI se reproduce
+ * leyendo el campo dos veces con el almacen del limite alto entre ambas (`MOVIL_LIMITE_ALTO(o) = o->param.trans.vy;
+ * MOVIL_LIMITE_BAJO(o) = o->param.trans.vy + ritmo;`, sin local intermedia): el cse no comparte dos lecturas
+ * separadas por un almacen y el paso posterior al reparto convierte la segunda en `move`. Con esa forma las dos
+ * ramas dejan de fundir su cola de almacenes porque en la negativa la primera lectura recibe v1 y la segunda v0
+ * (en el original, v0 y v1), y la puntuacion sube por encima de la vigente; con el limite bajo escrito primero en
+ * esa rama la copia sigue, pero la suma cae sobre la primera lectura. Se supone, sin verificar, que la segunda
+ * lectura, mas corta, se asigna antes que la primera, que vive hasta el almacen; (2) producto del seno de la
  * oscilacion (0x648): el original lo deja en t0 y aqui cae en a0, que es el registro de `num`; quitar `num` de esa
- * rama invierte el reparto del modo 0x40 y sube la puntuacion a 770; (3) en el camino 0x400 el `sw zero,0x1c(sp)`
+ * rama invierte el reparto del modo 0x40 y sube la puntuacion a 770; guardar el producto en otra local de la funcion
+ * (`altura`, `descenso`, `empuje` o `desplaza`) sube la puntuacion por encima de 800 porque cambia el reparto de esa
+ * variable en el resto de la funcion, y el producto cae en a0 o a1, no en t0; (3) en el camino 0x400 el `sw zero,0x1c(sp)`
  * sale una instruccion antes que en el original (0x954). El balancin (paso en a0, empuje en v1, desplazamiento en v1,
  * productos y divisores), el modo 0x40, el modo 0x20 y la lista de disparadores coinciden.
  */
@@ -548,7 +557,11 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * `t->w114` en 0x8002B928: aqui el compilador reutiliza a0 en lugar de recargar; una referencia con indice
  * constante a D_800693C0 como elemento de arreglo (referencia dentro de estructura) tampoco la recarga. (c) el destino
  * de la suma de la secuencia en 0x8002B870 (v0 aqui, v1 en el original) y la rama invertida del bucle de busqueda
- * (0x80028C04): el C vigente no las reproduce y su causa no esta verificada.
+ * (0x80028C04): el C vigente no las reproduce. En esa busqueda el original sale del bucle por `beqz v0,0x80028C04`
+ * directo a la rama comun (0x80028FD0) y vuelve al cuerpo con `j`, sin repetir la prueba del bucle; con el bucle
+ * escrito con la salida nula explicita dentro del cuerpo (`if (t->aux == 0) goto mover_con_colision;` tras avanzar)
+ * o como `do { } while`, el compilador duplica el cuerpo de la prueba tras la primera vuelta y la puntuacion sube a
+ * 2495; con `while` y `break` la cifra no cambia (1175).
  */
 /*
  * Las cuatro sentencias replicadas son `t->w114 = banda_alta;` y `t->w118 = banda_baja;` escritas en la rama del
