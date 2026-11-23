@@ -140,11 +140,12 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * 0x0E v1 (a3), y u, v y la anchura toman a1, a0 y a2 (a0, a2 y a1).
  *
  * La sentencia `fotogramas = c->fotogramas + indice;` esta escrita en cada rama del indice y no genera codigo distinto
- * del original: el salto cruzado funde las dos colas en una (`lw`, `sll` y `addu` de la reunion, 0x30 a 0x38). Causa
- * medida con `-dl` y `-dg`: con la sentencia una sola vez tras la reunion el puntero al fotograma (pseudo 90) es un
- * pseudo local del bloque y toma a0 en la asignacion local, antes que las lecturas del fotograma; con una copia en cada
- * rama el pseudo se asigna en dos bloques, pasa a global (pseudo 89: 10 usos sobre 35 instrucciones, 0,857), se reparte
- * despues de los locales y toma t1, como el original, y deja a0 libre para las lecturas.
+ * del original: el salto cruzado funde las dos colas en una (`lw`, `sll` y `addu` de la reunion, 0x30 a 0x38; `-dJ`:
+ * dos lecturas de +0x20 hasta la segunda pasada de saltos y una despues). Causa medida con `-dl` y `-dg`: con la
+ * sentencia una sola vez tras la reunion el puntero al fotograma (pseudo 90) es un pseudo local del bloque y toma a0 en
+ * la asignacion local, antes que las lecturas del fotograma; con una copia en cada rama el pseudo se asigna en dos
+ * bloques, pasa a global (pseudo 89: 10 usos sobre 35 instrucciones, 0,857), se reparte despues de los locales y toma
+ * t1, como el original, y deja a0 libre para las lecturas.
  *
  * La `do { } while (0);` no genera codigo: el ensamblador es el que saldria sin ella, pero las notas de bucle que deja
  * el parser actuan como limite de la primera planificacion. Cubre la suma del puntero al sprite y la lectura del campo
