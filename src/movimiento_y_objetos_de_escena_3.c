@@ -166,6 +166,7 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     SpriteEscalado* p;
     s32 coordenada_u;
+    s32 desplazamiento_maximo;
     s32 desplazamiento_color;
     s32 indice;
     s32 ancho_cuadro;
@@ -188,8 +189,11 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     do {
         fotogramas = c->fotogramas + indice;
     } while (0);
+    /* Desplazamiento de los colores de 4 bits: es la primera instruccion tras la envoltura y el resto de las
+     * cargas del fotograma se agrupan tras ella (ver la cabecera). */
+    desplazamiento_maximo = 2;
     ancho_cuadro = fotogramas->w0C;
-    desplazamiento_color = 2 - ((fotogramas->pagina >> 7) & 3);
+    desplazamiento_color = desplazamiento_maximo - ((fotogramas->pagina >> 7) & 3);
     /* Los valores de +0 y +2 se calculan antes de la envoltura (ver la cabecera). */
     coordenada_u = (fotogramas->u >> desplazamiento_color) + ((fotogramas->pagina & 0xF) << 6);
     v_pagina = fotogramas->v + (0x100 & (fotogramas->pagina << 4));
