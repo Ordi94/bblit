@@ -1341,7 +1341,7 @@ void func_80035244(void)
 /*
  * Pendiente: puntuacion 345 con la configuracion versionada (g = 8 del archivo): 91 diferencias de operando, 0 lineas
  * reordenadas y 95 insertadas o borradas. El flujo coincide salvo el `nop` del hueco de
- * retardo de 0x80035704 (la copia del limite de la busqueda del modelo, ver abajo). Quedan diferencias de registros
+ * retardo de 0x800357D4 (la copia del limite de la busqueda del modelo, ver abajo). Quedan diferencias de registros
  * y de forma simbolica: (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las
  * diferencias; causa medida: la lista de destruidos de la macro de distancia aproximada declara `$7`, que su
  * cuerpo escribe, y con ella la recarga evita `a3`; sin `$7` en una copia de la cabecera la funcion mide 220);
@@ -1419,9 +1419,14 @@ void func_80035244(void)
  * causa por la que la recarga del puntero evita `a3`. Con `$7` en la lista la recarga evita `a3` (se supone, sin verificar, que porque otro punto de la funcion
  * lo escribe por asm; no se leyo el codigo de la recarga). La busqueda del
  * modelo copia el limite (`lim`) en una local propia dentro del bloque, como el original (`addu a1,v1,zero`); la
- * copia hecha antes de la comparacion se vuelve a fundir con `nmod` (470). El original rellena el hueco de la primera
- * comparacion con esa copia; aqui el hueco queda con un `nop` (se supone, sin verificar, que porque la carga del
- * puntero al objeto, que sale primero, no cabe en el hueco).
+ * copia hecha antes de la comparacion se vuelve a fundir con `nmod` (470). El original rellena con esa copia el hueco
+ * del `beqz` de la primera comparacion (`addu a1,v1,zero` en 0x800357D4); aqui el hueco queda con un `nop`. Medido
+ * en la salida de `cc1`: ese salto no lleva relleno y el `nop` lo anade el ensamblador de `maspsx`; la copia sigue al
+ * salto y el volcado de la primera pasada de CSE muestra que la comparacion pasa a usar el registro de la copia
+ * cuando esta se hace antes de ella. Se supone, sin verificar, que el relleno de huecos no toma una copia de registro
+ * de la rama que cae (si toma un `addu` con inmediato en el salto siguiente) y que el original la tenia antes de la
+ * comparacion con la comparacion sobre el registro cargado, forma que solo da un resultado de comparacion guardado
+ * en una variable y probado despues (una operacion partida en dos sentencias, que no se instala).
  *
  * La prueba tras la busqueda del modelo sigue la estructura del original: con la entrada hallada se
  * comprueba el bit 1 de la bandera y el bit 0x10000 de las banderas del objeto, y sin el bit 1 se cae a la
