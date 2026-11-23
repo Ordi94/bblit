@@ -447,10 +447,10 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1705 con la configuracion versionada (g = 8 del archivo; ejes 125 de operandos, 0 de lineas
- * reordenadas y 258 de lineas insertadas o borradas). La resta `i = n - 10` del final de la funcion se escribe antes
+ * Pendiente: puntuacion 1600 con la configuracion versionada (g = 8 del archivo; ejes 125 de operandos, 0 de lineas
+ * reordenadas y 228 de lineas insertadas o borradas). La resta `i = n - 10` del final de la funcion se escribe antes
  * de la prueba de zonas y no dentro de ella: el original la calcula en el hueco de retardo del primer `beq`
- * (`addiu s0,s1,-0xa` en 0x80034D94) y escrita dentro de la prueba sale en el hueco del `bnez` siguiente (1825 con la
+ * (`addiu s0,s1,-0xa` en 0x80034D94) y escrita dentro de la prueba sale en el hueco del `bnez` siguiente (1720 con la
  * resta dentro). El flujo, las macros vectoriales y
  * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
  * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
@@ -460,7 +460,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * despues, 0x498 y 0x49c), y el bloque de las posiciones de la camara (0x17b0..0x1868) coincide en el orden de las
  * lecturas y almacenes con los tres almacenes de `v30` escritos tras el de `vpz`, en el orden `vx`, `vy`, `vz`;
  * queda: la prueba de los dos bits de la direccion del ajuste de altura (0xba0..0xbb8), que carga la mascara antes
- * que la bandera (con el orden de operandos del `or` invertido el reparto no cambia y la cifra sube a 1710); el par
+ * que la bandera (con el orden de operandos del `or` invertido el reparto no cambia y la cifra sube a 1605); el par
  * de modificaciones de banderas (0xcc4..0xd30), donde el original carga el contador tras el almacen de las banderas y aqui el planificador lo
  * adelanta (el volcado `.sched` de la rama del giro a la izquierda muestra el orden `li`, carga de `D_80069402`,
  * `ori`, `sh` sin ninguna arista de dependencia entre la carga del simbolo y el almacen a `0x80(reg)`, de modo que el
@@ -475,14 +475,14 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * `d = raiz - i * 200`): con la raiz guardada en `d`, que se asigna dos veces, el copiado del resultado de la llamada
  * salia delante de los movimientos de argumentos y el resultado tomaba `s2` en lugar de `s1`, el registro del
  * puntero `&w->dir` que muere en `move a1,s1` (los dos pseudos coincidian en vida un instante); con `raiz` el
- * copiado `move s1,v0` queda tras los argumentos como en el original (1960 a 1705). Se supone, sin verificar con
+ * copiado `move s1,v0` queda tras los argumentos como en el original (1960 a 1705 con solo esa variable). Se supone, sin verificar con
  * el volcado de planificacion, que una variable de una sola asignacion se hunde hasta su primer consumidor y una
  * de dos asignaciones queda donde esta escrita; escribir los almacenes de `dir` antes de la llamada o reutilizar
  * `r` en lugar de `d` empeoraba la cifra; el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx`
  * como el original al escribir el almacen de `flags80` ANTES de calcular el cuadrado (la relectura la
  * provoca el almacen intermedio a un global que el CSE no distingue de `w->v90`; con el orden de los operandos
- * del `or` invertido la cifra sube); en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y
- * el original en `a3`/`a2` (sin efecto: cargar `w->p4` antes de `ec`, o en una local propia). La direccion de
+ * del `or` invertido la cifra sube); el bloque de alturas coincide con `ec` y `vp` locales de cada copia (ver su
+ * comentario). La direccion de
  * acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos. La prueba del giro tras el
  * bloque de la cuenta de espera (0xed4..0xfd8) coincide con una sola cola `w->rot.vy = D_80069402` y dos
  * `goto` (la forma `if (f2 & 2 || byte)` tras el bloque empeora la cifra: el
@@ -499,13 +499,16 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * Acerca la altura del punto de vista a la banda [base - 0x64, base + 0x64] desplazada por p4: si queda por encima
  * del limite inferior de la banda se mueve un octavo hacia el, y si queda por debajo del superior, hacia el otro.
  * El original repite el bloque entero en cada rama de la eleccion de `base`; llaves simples para que cada copia
- * sea un unico bloque basico. La direccion de la camara (`ec`) y la copia de la altura (`vp`) son variables de la
- * funcion compartidas por las tres copias, no locales de cada una: el original conserva `a3` y `v1` vivos hasta la
- * cola comun (`sra`, `addu`, `sw` en 0x80034CDC) y salta a ella desde las tres ramas, y la segunda mitad de la
- * comprobacion (desde `subu` en 0x80034CCC) tambien se comparte. Con locales de cada copia los registros salen
- * distintos por rama, el compilador no puede fundir las colas y emite una copia completa de la segunda mitad de
- * la comprobacion y de la cola `sra`/`addu` en cada rama. Queda sin explicar por que la direccion de la
- * camara (`ec`) y la base de la banda (`w->p4`) salen en `a2`/`a3` y el original las tiene en `a3`/`a2`.
+ * sea un unico bloque basico. La direccion de la camara (`ec`) y la copia de la altura (`vp`) son locales de cada
+ * copia y `vp` se asigna una sola vez: el original carga `vp` (`lw v1,4(a3)`, 0x80034C48) despues de la base y de
+ * `w->p4` (`lw a0,0xe8(s4)` y `lw a2,0xc4(s3)`, 0x80034C40 y 0x80034C44), y escrita como variable de la funcion,
+ * compartida por las tres copias y asignada tres veces, la carga de `vp` salia la primera (se supone, sin
+ * verificar con el volcado de planificacion, que una variable de una sola asignacion se carga junto a su primer
+ * consumidor). Con `ec` compartida el volcado de reparto (`.lreg`) daba 12 usos ponderados sobre 57 instrucciones
+ * (0,62), por encima de `w->p4` (3 usos sobre 7, 0,43), y `ec` tomaba `a2` y `w->p4` `a3`, al reves que el original;
+ * con `ec` local de cada copia son 4 usos sobre 38 instrucciones (0,21), `w->p4` toma `a2` y `ec` `a3`. Las tres
+ * copias reciben los mismos registros y el compilador sigue fundiendo la cola comun (`sra`, `addu`, `sw` en
+ * 0x80034CDC) y la segunda mitad de la comprobacion (desde `subu` en 0x80034CCC): el tamano de la funcion no cambia.
  */
 #define ALTURA_CAMARA(base) \
     { \
@@ -513,6 +516,8 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
         s32 t2; \
         s32 techo; \
         s32 piso; \
+        s32 vp; \
+        EstadoCamara* ec; \
         ec = &D_8006D928; \
         vp = ec->vpy; \
         techo = (base) + 0x64; \
@@ -560,8 +565,6 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
     u16 f2;
     s32 g;
     u16 pulsado;
-    EstadoCamara* ec;
-    s32 vp;
     s32 pos_x;
 
     if (o == NULL) {
@@ -967,7 +970,7 @@ fin_giro:
         /*
          * El original carga la posicion x del objeto (`lw v1,0xE4(s4)`, 0x8003453C) junto con la altura
          * del punto de vista, antes del primer almacen a `v70` (0x80034540); sin la local el
-         * planificador la carga tras ese almacen y la cifra sube de 1705 a 2215.
+         * planificador la carga tras ese almacen y la cifra sube de 1600 a 2110.
          */
         pos_x = o->param.trans.vx;
         w->v70.vy = D_8006D928.vpy;
