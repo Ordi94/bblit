@@ -335,12 +335,11 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
  * desplazamiento cuenta 5 usos sobre 29 instrucciones (0,345) y el color 15 sobre 103 (0,437), el color se asigna
  * primero y toma a2 con el desplazamiento en a3 (325); con ellas el desplazamiento cuenta 7 usos ponderados sobre 30
  * (0,467), se asigna antes que el color y toma a2, el color a3 como el original; quitando solo una de las dos la
- * puntuacion es 130. La tercera envuelve el recorte de la direccion del primitivo: las notas de bucle que deja el
- * analizador actuan como frontera del planificador, de modo que el `sll` no sube por delante de los dos almacenes
- * anteriores (sin ella 235, con las otras dos). El puntero (17 usos ponderados sobre 79, 0,86) y la direccion de las
- * palabras (16 sobre 41, 1,56) siguen por delante de los dos. Se supone, sin verificar, que la frontera del
- * planificador es la causa de la posicion del `sll`. La forma del fuente original que producia este reparto se
- * desconoce.
+ * puntuacion es 130. La tercera envuelve el recorte de la direccion del primitivo: en el volcado del planificador
+ * posterior al reparto de registros, sin ella el `sll` se coloca por delante de los dos almacenes anteriores y con ella
+ * queda detras (las notas de bucle que deja la envoltura le cierran el paso); sin la tercera, con las otras dos, la
+ * puntuacion es 235. El puntero (17 usos ponderados sobre 79, 0,86) y la direccion de las palabras (16 sobre 41, 1,56)
+ * siguen por delante de los dos. La forma del fuente original que producia este reparto se desconoce.
  */
 void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
 {
