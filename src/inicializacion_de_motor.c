@@ -349,7 +349,7 @@ typedef struct CabeceraPrimitiva {
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 320 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
- * reordenadas, 9 insertadas o borradas: la causa mayor es la copia del puntero a la primitiva, (d), y ademas la
+ * reordenadas, 9 insertadas o borradas: la causa mayor es la copia del puntero a la primitiva (ver Residuo), y ademas la
  * lectura de D_80069652 sale en a2 en lugar de v0 por compartir `color`). La
  * intensidad y el color empaquetado comparten la local `color`, como en el original, donde la intensidad
  * (`subu a2,v1,v0`, 0x800451F4) y el color (`addu a2,a2,a0`, 0x80045210) viven en el mismo registro: con una
@@ -391,20 +391,14 @@ typedef struct CabeceraPrimitiva {
  * pseudos una referencia ponderada mas que no deja instruccion.
  * La forma del fuente original que producia este reparto se desconoce.
  *
- * Difiere en:
- * (d) El original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el
+ * Residuo: el original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el
  * enlace con `sll v0,v0,8` sobre el propio v0 y escribe el resto de la primitiva por v1 (el color y la
  * palabra de enlace salen por v0); el C relee D_80076188 (`lui` y `lw`, dos instrucciones en lugar de
  * la copia) porque el almacen a la lista de cabezas, que no es un acceso por miembro, impide reutilizar
- * el valor ya cargado. Se supone, sin verificar, que el original obtiene la copia porque la segunda
- * lectura se convierte en copia al volver a pasar el optimizador tras la asignacion de registros y que
- * para eso el almacen intermedio no debe invalidar el registro. Una local reescrita en sitio para el enlace
- * (`direccion = D_80076188; ...; p = (POLY_FT4*)direccion; direccion = (direccion << 8) >> 8;`) deja la copia y
- * quita la relectura, pero toma a1 y deja la cabeza de la lista en a0 y el planificador coloca la copia tras el
- * almacen del enlace (en el volcado de planificacion la copia depende solo de la carga y el almacen del enlace
- * precede a los almacenes de la primitiva): la cifra sube a 340. Con la copia antes de los almacenes de la
- * cabecera el CSE la funde con la lectura y no queda copia (470), y con la cabeza de la lista como
- * `CabeceraPrimitiva*` el almacen por miembro no invalida la lectura, el CSE la funde y tampoco queda copia (470).
+ * el valor ya cargado, y en el volcado de planificacion la relectura depende de ese almacen y no sube sobre el.
+ * Se supone, sin verificar, que el original obtiene la copia porque la segunda lectura se convierte en copia al
+ * volver a pasar el optimizador tras la asignacion de registros y que para eso el almacen intermedio no debe
+ * invalidar el registro.
  */
 void func_80045150(EntradaLista* e)
 {
@@ -472,7 +466,8 @@ void func_80045150(EntradaLista* e)
             do {
                 e++;
             } while (0);
-            /* `color` ya no se lee en esta vuelta: guarda la cantidad de elementos para que su carga quede antes de `i++`. */
+            /* `color` ya no se lee en esta vuelta: guarda la cantidad de elementos para que su carga
+             * quede antes de `i++`. */
             color = D_80069652;
             do {
                 i++;
