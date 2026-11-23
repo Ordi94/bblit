@@ -252,29 +252,6 @@ void func_80019364(s32* a0)
         return ret; \
     }
 
-#ifdef NON_MATCHING
-/*
- * Pendiente: puntuacion 120 con la configuracion versionada (g = 0 del archivo; ejes 216 de operando,
- * 0 reordenadas, 4 insertadas o borradas). Queda un solo tramo: el original coloca `sw s0,0x10(sp)` (0x80019498)
- * y `move s0,a3` (0x8001949C) tras el `lui`/`ori` (0x80019490, 0x80019494) de la guarda del area de trabajo y aqui
- * van antes de ellos. Con la guarda escrita `(u32)w + 0x1C8 > 0x1F8003FF`, con la constante en una local propia
- * y con la suma en una local propia la puntuacion sigue en 120 y el codigo generado es el mismo. Volcado de la
- * primera planificacion (`-dS`): las copias de los cuatro parametros (insns 4, 6, 8 y 10) no figuran entre los
- * insns planificados; `k = 0`, la suma y la comparacion llevan la prioridad elevada de los pseudos asignados una
- * vez y el par `lui`/`ori` (pseudo asignado dos veces) no la lleva, de modo que sale el primero. Volcado de la
- * segunda (`-dR`): todos los insns del bloque tienen prioridad 1 y la lista de listos se ordena de mayor a menor
- * numero de orden; elegida la suma, `ori` precede en la lista a la copia de `a3` (insn 10) y despues sale `lui`,
- * de modo que la copia queda delante de la constante; en el original va detras. Se supone, sin verificar, que en
- * el original la copia de `a3` no estaba entre las de entrada que la primera planificacion deja fuera y por eso
- * se planificaba detras de la constante.
- * El reparto a2/a3 del producto `dsz_x * dsz_x` del recorrido de zona (`mflo`, 0x8001A0BC) coincide: el original
- * lo deja en a2 porque la lectura de `acc_z` para `ant_z` queda acabada antes del producto; con `ant_z` copiado
- * despues de `dsz_z` el producto empezaba antes de acabar esa copia y tomaba a3. La copia de `ant_z` va por eso
- * justo tras la de `ant_x`; con `acc_x` actualizado antes que `dsz_z` los dos temporales de esos calculos toman
- * v0 y v1 como en el original (con `dsz_z` antes la puntuacion es 650).
- * Los cuatro avances del recorrido general y la cola de los planos estaticos ya coinciden con el original:
- * ver la cabecera de la funcion.
- */
 /*
  * Barrido de un desplazamiento (desp) del punto pos contra el terreno por baldosas: avanza baldosa a
  * baldosa (320 unidades) y subcelda a subcelda (40 unidades) hasta que una pared (celda 0x7F), un
@@ -284,6 +261,23 @@ void func_80019364(s32* a0)
  * punto sale de las zonas y 1 en los demas casos. w es el area de trabajo del scratchpad: si no cabe
  * ahi (w + 0x1C8 > 0x1F8003FF) la rutina se queda en un bucle infinito a proposito.
  *
+ * El area llega en `area_trabajo` y la primera sentencia la copia a `w`; el parametro no se vuelve a usar. En la
+ * primera planificacion (`-dS`) las copias de entrada de los parametros desde registros duros quedan fuera de lo
+ * planificado y la segunda (`-dR`) desempata por orden de entrada, de modo que con el parametro usado
+ * directamente la copia `move s0,a3` (0x8001949C) sale delante del `lui`/`ori` de la guarda (0x80019490) y la
+ * puntuacion es 120 (escribir la guarda como `(u32)w + 0x1C8 > 0x1F8003FF`, con la constante en una local o con la
+ * suma en una local no la cambia). Con la copia local el volcado de `combine` borra la copia de entrada de `a3` y
+ * deja `w = a3` como un insn del bloque (tras `k = 0`), que la primera planificacion mueve junto a la suma, detras
+ * del par `lui`/`ori` (pseudo asignado dos veces, sin la prioridad elevada de los asignados una vez): coincide el
+ * orden `lui`, `ori`, `sw s0,0x10(sp)`, `move s0,a3` del original. La misma copia escrita como inicializador de
+ * la declaracion deja la puntuacion en 120. Se supone, sin verificar, que el original recibia el area por una
+ * variable distinta de la que usa el resto de la funcion.
+ *
+ * El reparto a2/a3 del producto `dsz_x * dsz_x` del recorrido de zona (`mflo`, 0x8001A0BC) coincide: el original
+ * lo deja en a2 porque la lectura de `acc_z` para `ant_z` queda acabada antes del producto. La copia de `ant_z`
+ * va por eso justo tras la de `ant_x` (con `ant_z` tras `dsz_z` la puntuacion es 520) y `acc_x` se actualiza antes
+ * que `dsz_z` (al reves es 530).
+ *
  * Tres recorridos casi gemelos segun las componentes no nulas de desp: ambas (caso general, con
  * pendientes de 12 bits de fraccion), solo x y solo z. k es una constante de una sola asignacion
  * (el desfase de partida del historial en el cierre): el compilador la deja como equivalente a 0 y
@@ -292,7 +286,7 @@ void func_80019364(s32* a0)
  * actualiza el propio punto de cruce es una asignacion compuesta (`+=`). Con ese orden las lecturas de `sz_y`
  * y `sz_z` (o `sx_y` y `sx_z`) quedan antes del `mult` y la de `sz_x` despues, como en el original, y la
  * asignacion compuesta deja la copia `move` de esa lectura antes del almacen de `rx` (0x8001A1BC en el avance
- * de z, 0x8001A258 en el de x). Escrita la suma como `((pend * celda) >> 12) + campo`, la puntuacion es 540.
+ * de z, 0x8001A258 en el de x). Escrita la suma como `((pend * celda) >> 12) + campo`, la puntuacion es 420.
  *
  * La cola de los planos 0x7E y 0x7F del caso estatico va tras una etiqueta comun (`plano`) y por rama
  * quedan solo las sentencias que el original tambien emite una vez por rama (`pos[1]`, la lectura de
@@ -301,20 +295,21 @@ void func_80019364(s32* a0)
  * en cada rama (`lhu v1,0x198(s0)`, 0x8001BE74 y 0x8001BE98) y se almacena al final de la cola, tras los dos
  * almacenes de ceros (`sh v1,0(s3)`, 0x8001BEAC). Por eso la clase pasa por la local `clase_plano`, asignada
  * en cada rama y almacenada en la cola, y las banderas se escriben en cada rama; escribir la clase directa en
- * cada rama la deja antes de los ceros y la puntuacion pasa de 120 a 145.
+ * cada rama la deja antes de los ceros y la puntuacion es 25.
  * La sentencia `clase_plano = w->celdas[0];` esta repetida en las dos ramas y no genera codigo propio: la cola
  * ya es comun desde el fuente por la etiqueta, de modo que el compilador no tiene nada que fundir y el
- * ensamblador generado conserva una sola carga por rama y una sola cola, sin instrucciones de mas. Lo que decide
- * la copia por rama es la planificacion posterior al reparto de registros (volcado `-dR`): con la sentencia en
- * cada rama la carga `lhu` queda en el bloque de su rama, en `v1`, y el valor cruza el salto hasta el almacen
- * final, como en el original; con una sola copia tras la etiqueta la carga pasa a la cola, el planificador la
- * deja despues del almacen de las banderas y la toma en `v0`, y la puntuacion pasa de 120 a 425. Se supone,
- * sin verificar, que con las banderas escritas por rama el pseudo de la clase, que cruza el salto, es el unico
- * pseudo que puede recibir `v1` al asignarse despues de los pseudos locales de cada rama.
+ * ensamblador generado conserva una sola carga por rama y una sola cola, sin instrucciones de mas. Con una
+ * sola copia tras la etiqueta la puntuacion es 305. Se supone, sin verificar en un volcado del estado final, que
+ * con la sentencia en cada rama la carga `lhu` queda en el bloque de su rama, en `v1`, y el valor cruza el salto
+ * hasta el almacen final, como en el original, mientras que con una sola copia la carga pasa a la cola, el
+ * planificador la deja despues del almacen de las banderas y la toma en `v0`; y que con las banderas escritas
+ * por rama el pseudo de la clase, que cruza el salto, es el unico pseudo que puede recibir `v1` al asignarse
+ * despues de los pseudos locales de cada rama.
  * La forma del fuente original que producia este reparto se desconoce.
  */
-s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* w)
+s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* area_trabajo)
 {
+    TrabajoRecorrido* w;
     ZonaColision* zona;
     ZonaColision* cur;
     u16 grupo;
@@ -328,6 +323,7 @@ s32 BarrerTerreno(s32* pos, s32* desp, ResultadoBaldosa* res, TrabajoRecorrido* 
     s32 px;
     s32 pz;
 
+    w = area_trabajo;
     if (0x1F8003FFU < (u32)w + 0x1C8) {
         for (;;) { }
     }
@@ -908,9 +904,6 @@ plano:
 fin:
     ;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/colision_y_terreno", BarrerTerreno);
-#endif
 
 /*
  * Busca la zona que contiene el punto (x, y, z): primero entre las del grupo indicado (si es
