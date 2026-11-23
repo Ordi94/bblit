@@ -447,8 +447,11 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2080 con la configuracion versionada (g = 8 del archivo; ejes 125 de operandos, 0 de lineas
- * reordenadas y 280 de lineas insertadas o borradas). El flujo, las macros vectoriales y
+ * Pendiente: puntuacion 1960 con la configuracion versionada (g = 8 del archivo; ejes 125 de operandos, 0 de lineas
+ * reordenadas y 276 de lineas insertadas o borradas). La resta `i = n - 10` del final de la funcion se escribe antes
+ * de la prueba de zonas y no dentro de ella: el original la calcula en el hueco de retardo del primer `beq`
+ * (`addiu s0,s1,-0xa` en 0x80034D94) y escrita dentro de la prueba sale en el hueco del `bnez` siguiente (2080 con la
+ * resta dentro). El flujo, las macros vectoriales y
  * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
  * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
  * los bucles de las ocho sondas (modo de apuntado y seguimiento libre) coinciden con `i++` escrito DESPUES de la
@@ -464,8 +467,8 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * planificador adelanta la carga; el original la deja tras el almacen. Se supone, sin verificar, que el original
  * almacena las banderas por un puntero que el planificador no puede separar del acceso por `$gp`; medido: escribir
  * el almacen por `cam->` empeora, en una o en las dos ramas, y hacerlo por un puntero `u16*` local o escribir `k`
- * antes que `c` dejan la cifra en 3340; escribirlo por `ec` tras asignarle `&D_8006D928` deja 2080, se supone, sin
- * verificar, que porque el CSE pliega la constante en la direccion y el almacen sigue siendo de simbolo); la carga
+ * antes que `c` dejan la cifra en 3340; escribirlo por `ec` tras asignarle `&D_8006D928` no cambia la cifra, se supone,
+ * sin verificar, que porque el CSE pliega la constante en la direccion y el almacen sigue siendo de simbolo); la carga
  * de `D_8006D928.vpy` del modo de transicion (0x11d0..0x11ec), adelantada aqui sobre tres almacenes de `v30`
  * (escribirla por `cam->` empeora); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el
  * original lo guarda en `s1`, el registro del puntero `&w->dir` que muere en la preparacion de los argumentos de la
@@ -966,7 +969,7 @@ fin_giro:
         /*
          * El original carga la posicion x del objeto (`lw v1,0xE4(s4)`, 0x8003453C) junto con la altura
          * del punto de vista, antes del primer almacen a `v70` (0x80034540); sin la local el
-         * planificador la carga tras ese almacen y la cifra sube de 2080 a 2590.
+         * planificador la carga tras ese almacen y la cifra sube de 1960 a 2470.
          */
         pos_x = o->param.trans.vx;
         w->v70.vy = D_8006D928.vpy;
@@ -1126,8 +1129,8 @@ fin_giro:
     w->zona_ant = w->res.zona;
     n = w->res.suelo;
     func_8001C134((s32*)&w->v30.vx, &w->res, area);
+    i = n - 10;
     if (w->zona_ant != w->res.zona && (w->res.flags & 6) != 0 && (s16)w->res.grupo != -1) {
-        i = n - 10;
         if (w->res.zona->y_max >= n - 0x262) {
             D_8006D928.vpy = D_8006D928.vpy + ((i - D_8006D928.vpy) >> 3);
         } else {
