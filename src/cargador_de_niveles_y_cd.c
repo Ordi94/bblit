@@ -404,13 +404,13 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 5128 con la configuracion versionada (g = 8 del archivo; ejes 290 de
- * operandos, 3 de lineas reordenadas y 557 de lineas insertadas o borradas). La cifra incluye
+ * Pendiente: puntuacion 4993 con la configuracion versionada (g = 8 del archivo; ejes 288 de
+ * operandos, 5 de lineas reordenadas y 542 de lineas insertadas o borradas). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
- * caso del de su tabla. Medido: el codigo generado tiene 2950 instrucciones y el original 2955; la
- * diferencia son cinco copias de registro (`move`) que el original conserva y el C no emite
- * (0x80041CDC, 0x800424E0, 0x80042F20, 0x80042F78 y 0x8004367C). La llamada a `func_80044664` de la
+ * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones y el original 2955; la
+ * diferencia son cuatro copias de registro (`move`) que el original conserva y el C no emite
+ * (0x80041CDC, 0x80042F20, 0x80042F78 y 0x8004367C). La llamada a `func_80044664` de la
  * apertura del anillo (de 0x80041A04 a 0x80041A18) la comparte la lectura de las listas, que salta
  * hacia ella desde 0x800420C8, como en el original (ver mas abajo). Los cuerpos de los casos de los cinco `switch` y del
  * despacho de primer nivel van en el orden de direcciones de las tablas de saltos del original: el
@@ -494,7 +494,7 @@ typedef struct {
  * 0x80043110, y `lw a1,0x18(s4)`, 0x80043128) tras los almacenes a `D_80069660`, `D_80069670` y
  * `D_8006955C` (0x8004310C, 0x80043118 y 0x80043124) y antes de los demas, y las escribe al final
  * (`sw v1,D_8006954C`, 0x8004316C, y `sw a1,D_80069678`, 0x80043174); con la local de `d18` y la
- * lectura de `d10` dentro de la asignacion final la cifra es 5293 y con las dos locales 5128. En el
+ * lectura de `d10` dentro de la asignacion final la cifra es 5158 y con las dos locales 4993. En el
  * chunk 0x36 el segundo entero va por miembro (`ETQ(w, campos, 1)`) y se almacena despues del puntero
  * de zonas, como el original (`addu` en 0x80042FA8 antes del `sw` a 0x180($gp) en 0x80042FAC); con el almacen del
  * entero primero, o por puntero, la cifra sube.
@@ -533,7 +533,7 @@ typedef struct {
  * Residuo por causas (cada fila insertada o borrada pesa unos 100 puntos): (1) el chunk 0x3E, donde el
  * original deja tres cargas (0x10, 0x14 y 0x18 de las etiquetas) intercaladas entre los almacenes; el C
  * adelanta las de 0x10 y 0x18 con locales y deja la de 0x14 junto a su almacen (guardada tambien en una
- * local de 32 bits la cifra es 7518); (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
+ * local de 32 bits la cifra es 7383); (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
  * la carga de `D_80069678`, que el original iza a a0 (0x80041D70) y el C deja junto a su uso, con
  * `D_8006954C` izada en su lugar (una fila y dos de operandos); (4) el orden de tres tramos del
  * comienzo: el original deja `sb zero,0x1c0(sp)` entre los almacenes de las banderas (0x80041668)
@@ -543,9 +543,9 @@ typedef struct {
  * (0x800416FC y 0x80041700) antes del `sll` del indice y el C al reves; y la suma `datos + 0xA000`
  * la hace el original en `v0` tras las cargas (0x80041778 y 0x80041784) y el C en `a1` antes de
  * ellas; (5) el reparto de
- * `v0` y `v1` entre la lectura de `campos + 4` y la suma `datos + desp_campo` en la etiqueta 0x25, y la
- * copia `move a0,v0` de la cabecera del modelo (0x800424DC) que el C no emite; (6) nombres de registro
- * (unas 150 filas de 5 puntos).
+ * `v0` y `v1` entre la lectura de `campos + 4` y la suma `datos + desp_campo` en la etiqueta 0x25
+ * (0x800424C0 a 0x800424D0), con el orden de sus almacenes (el original guarda `D_800694A0` antes del
+ * `li` de 0x800424CC y `lista + 8` despues); (6) nombres de registro (unas 150 filas de 5 puntos).
  *
  * Llamada compartida de la apertura del anillo y las listas: el original deja el `jal` de
  * `func_80044664` en 0x80041A0C (la apertura) y la lectura de las listas salta hacia el
@@ -554,9 +554,9 @@ typedef struct {
  * epilogo y funde su cola con la de otro salto igual. Medido en los volcados de cc1 (pases de
  * planificacion y de saltos): con la salida del caso 0x4B escrita como un bloque `return 1;` propio
  * la cola que desaparece es la de la apertura y el `jal` queda en la lectura de las listas (la cifra
- * es 5958); con la salida del caso 0x4B escrita como salto a la etiqueta `fallo_lectura`, que es la
+ * es 5823); con la salida del caso 0x4B escrita como salto a la etiqueta `fallo_lectura`, que es la
  * salida de la primera lectura del anillo, desaparece la de las listas y el `jal` queda en la
- * apertura, como en el original, y el caso 0x4B sale con `beqz v0` directo (5128). Se supone, sin
+ * apertura, como en el original, y el caso 0x4B sale con `beqz v0` directo (4993). Se supone, sin
  * verificar, que el orden en que el pase recorre los saltos al epilogo depende de que la salida del
  * 0x4B sea un bloque `li`/`j` propio.
  *
@@ -580,7 +580,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 6706 y con ella 5128. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 6571 y con ella 4993. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -1101,17 +1101,19 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(u8*, lista, 8) = datos + desp_campo;
                             D_800694A0 = compensacion;
                             EN(u16, nodo, 0xA) = 4;
-                            /* Los almacenes van en el orden del original: la media palabra de `cab + 2` se lee antes
-                             * de escribir `lista + 8` (`lhu` en 0x800424E4 delante del `sw` de 0x800424EC), y el
-                             * primer almacen a `lista + 8` (0x800424EC), aunque se sobrescribe en 0x80042500,
-                             * existe en el original y se conserva. */
+                            /* El original lee la cabecera del modelo dos veces: la primera (`lw v0,8(a1)`, 0x800424D8)
+                             * alimenta la media palabra de `cab + 2` (`lhu v1,2(v0)`, 0x800424E4) y se copia a `cab`
+                             * (`move a0,v0`, 0x800424E0); `cab` avanza en su sitio (`addiu a0,a0,8`, 0x800424FC) y la
+                             * ultima lectura va por `cab` ya avanzado (0x80042508). La media palabra se lee antes de
+                             * escribir `lista + 8` (`sw` de 0x800424EC) y el primer almacen a `lista + 8` se conserva
+                             * aunque se sobrescribe en 0x80042500. */
+                            EN(u16, lista, 0x12) = EN(u16, EN(u8*, lista, 8), 2) >> 1;
                             cab = EN(u8*, lista, 8);
-                            EN(u16, lista, 0x12) = EN(u16, cab, 2) >> 1;
                             EN(u8*, lista, 8) = cab + 4;
                             EN(u16, lista, 0xE) = EN(u16, cab, 4);
-                            EN(u8*, lista, 8) = cab + 8;
+                            EN(u8*, lista, 8) = cab += 8;
                             cursor += 8;
-                            EN(u16, lista, 0x10) = EN(u16, cab + 8, 4);
+                            EN(u16, lista, 0x10) = EN(u16, cab, 4);
                             break;
                         }
                         case 0x3F:
