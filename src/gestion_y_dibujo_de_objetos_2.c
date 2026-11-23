@@ -884,21 +884,20 @@ void func_80038E84(s32 idx, s32 paso)
  * Pendiente: puntuacion 490 con la configuracion versionada (g = 8 del archivo; ejes 73 de
  * operando, 0 reordenadas, 166 insertadas o borradas). Coinciden la
  * estructura, los desplazamientos y los simbolos; las barras 3 y 7, los cuatro temporizadores y las
- * pruebas del prologo coinciden en instrucciones y registros (quedan solo las marcas de operando por
- * nombre de simbolo). Difiere en: (1) el reparto de registros de
- * la barra 0 (el original deja la base de 0x80010000 en a1 y copia el valor mostrado a a0 con
- * `move a0,v1` en el hueco de retardo de 0x800390F4; el C copia la base a a1 en esa posicion y compara con v1,
- * de modo que el valor mostrado no tiene copia propia; en el volcado `.cse` el valor mostrado y la
- * primera lectura son el mismo valor y el compilador usa la lectura en toda comparacion posterior);
- * (2) el brillo de la barra 0 (`beqz` de 0x800391EC): la segunda lectura de D_80010043 se escribe como
- * miembro del arreglo D_80010040 (`D_80010040[3]`): asi no se une con la primera lectura, el compilador
- * separa su `lui` de la carga y el original lo deja en el hueco de retardo del `beqz` (0x8003915C) con
- * `li a1,0xc8` en una cola propia tras un salto, como el C. Escrita por el puntero al estado
- * (`ESTADO_PRINCIPAL->r[0x03]`) la cifra sube de 490 a 565 y escrita por el simbolo D_80010043 se une con
- * la primera y sube a 680. Queda el reparto de registros de ese bloque: el original carga el primer
- * operando en v0 con la base en a0 y el segundo en v1; el C da v1 con la base en v0 y v0 (se supone, sin
- * verificar, que el original tiene vivo el `lui` de la base mientras se carga el segundo operando). Si la
- * condicion tambien lee D_80010040[3] las dos lecturas se unen y la cifra sube a 1480.
+ * pruebas del prologo coinciden en instrucciones y registros (quedan las marcas de operando por nombre
+ * de simbolo). Difiere solo el reparto de registros de dos bloques de la barra 0:
+ * (1) tras la comparacion con el valor de la vida: el original deja la base de 0x80010000 en a1 y copia
+ * el valor mostrado a a0 con `move a0,v1` en el hueco de retardo de 0x800390F4; el C copia la base a a0
+ * en esa posicion y compara con v1, de modo que el valor mostrado no tiene copia propia (en el volcado
+ * `.cse` el valor mostrado y la primera lectura son el mismo valor y el compilador usa la lectura en toda
+ * comparacion posterior);
+ * (2) el brillo (`beqz` de 0x800391EC): el original carga el primer operando en v0 con la base en a0 y
+ * el segundo en v1; el C da v1 con la base en v0 y v0 (se supone, sin verificar, que el original tiene
+ * vivo el `lui` de la base mientras se carga el segundo operando).
+ * La segunda lectura de D_80010043 del brillo se escribe como miembro del arreglo D_80010040
+ * (`D_80010040[3]`): asi no se une con la primera lectura, el compilador separa su `lui` de la carga y
+ * el original lo deja en el hueco de retardo del `beqz` (0x8003915C) con `li a1,0xc8` en una cola propia
+ * tras un salto, como el C (por el puntero al estado la cifra es 565).
  * El byte D_8006AA7C (pausa) se lee en el prologo y en los cuatro temporizadores como miembro del banco
  * D_8006AA70 (`D_8006AA70[0xC]`): el compilador separa entonces el `lui` de la carga y el original lo
  * deja en el hueco de retardo de las ramas contiguas (0x800390C4, 0x800394E0, 0x800395E0, 0x800396E0 y
@@ -929,12 +928,11 @@ void func_80038E84(s32 idx, s32 paso)
  * 99 es el puntero de la rama de la vida y el 95 la base del cuerpo; solo se comprobo en el ensamblador el
  * registro de la base. La forma del fuente original que producia este reparto se desconoce.
  *
- * Residuo vigente (490): el original copia el valor mostrado de la barra 0 (`move a0,v1`, 0x800390F4);
- * el C no tiene esa copia porque el optimizador propaga cualquier local que se copie de `mostrado` y usa
- * v1 directamente. Por eso `mostrado` es una sola local `u8` compartida por todas las barras y la barra
- * 0 no lleva una copia propia: con ella la cifra empeora. Se supone, sin verificar, que la copia del original no es una copia vista por el optimizador sino una segunda
- * lectura convertida en copia tras la asignacion de registros, y que para ello la segunda lectura no debe
- * quedar unida a la primera en el optimizador.
+ * El valor mostrado es una sola local `u8` (`mostrado`) compartida por todas las barras: el optimizador
+ * propaga cualquier local que se copie de ella y usa v1 directamente, por lo que la copia de a0 del
+ * original (`move a0,v1`, 0x800390F4) no aparece. Se supone, sin verificar, que la copia del original no
+ * es una copia vista por el optimizador sino una segunda lectura convertida en copia tras la asignacion de
+ * registros, y que para ello la segunda lectura no debe quedar unida a la primera en el optimizador.
  */
 /*
  * Una vez por cuadro de juego, con el estado principal distinto de 3, sin pantalla pedida
