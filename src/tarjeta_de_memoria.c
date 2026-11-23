@@ -506,7 +506,6 @@ void SondearTarjeta(void)
     s32 tam;
     s32 j;
     s32 i;
-    s32 n;
     s32 fila;
     s32 fila_busqueda;
     s32 fila_relleno;
@@ -693,12 +692,12 @@ void SondearTarjeta(void)
                         *bloques = cuenta_previa + completos;
                     }
                 }
-                n = 0;
-                if (n < D_80069358[0]) {
-                    grupo = n;
+                i = 0;
+                if (i < D_80069358[0]) {
+                    grupo = i;
                     directorio = D_800697B0;
                     sistema = D_800697B0 + 0x24;
-                    fila = n;
+                    fila = i;
                 siguiente_entrada:
                     j = 0;
                     fila_busqueda = fila;
@@ -721,8 +720,8 @@ void SondearTarjeta(void)
                     entrada->cabeza = 0;
                     *(s32*)(sistema + (fila + grupo * 120)) = 0;
                     fila += 0x28;
-                    n++;
-                    if (n < D_80069358[0]) {
+                    i++;
+                    if (i < D_80069358[0]) {
                         goto siguiente_entrada;
                     }
                 }
