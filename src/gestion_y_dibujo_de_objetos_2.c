@@ -920,7 +920,7 @@ void func_80038E84(s32 idx, s32 paso)
  * La segunda lectura de D_80010043 del brillo se escribe como miembro del arreglo D_80010040
  * (`D_80010040[3]`): asi no se une con la primera lectura, el compilador separa su `lui` de la carga y
  * el original lo deja en el hueco de retardo del `beqz` (0x8003915C) con `li a1,0xc8` en una cola propia
- * tras un salto, como el C (por el puntero al estado la cifra es 565).
+ * tras un salto, como el C (por el puntero al estado la cifra es 450).
  * El byte D_8006AA7C (pausa) se lee en el prologo y en los cuatro temporizadores como miembro del banco
  * D_8006AA70 (`D_8006AA70[0xC]`): el compilador separa entonces el `lui` de la carga y el original lo
  * deja en el hueco de retardo de las ramas contiguas (0x800390C4, 0x800394E0, 0x800395E0, 0x800396E0 y
@@ -930,9 +930,9 @@ void func_80038E84(s32 idx, s32 paso)
  * llamada) en lugar de los compartidos `g` y `f` deja las bases de las barras 3 y 7 en v0 como el original
  * (se supone, sin verificar, que un pseudo compartido une las vidas de todas las barras y toma el mismo
  * registro en todas). Leer el estado principal en una copia propia de la rama de la barra 0
- * (`e_rama`, en lugar de reutilizar la local del cuerpo) baja la cifra de 795 a 490; las barras 3 y 7
+ * (`e_rama`, en lugar de reutilizar la local del cuerpo) baja la cifra de 680 a 375; las barras 3 y 7
  * se escriben con `modo = 0` en la rama contraria de la prueba `== 0xFF` (con `modo = 0` antes de la
- * prueba la cifra es 715), como el original, que rellena el hueco de retardo del `bne` con la comparacion
+ * prueba la cifra es 600), como el original, que rellena el hueco de retardo del `bne` con la comparacion
  * y no con `move a2,zero` (ver la cabecera de abajo).
  * En cada uno de los cuatro temporizadores de poderes el original deja el resultado `n` en v0 (`li v0,1` en el
  * hueco de retardo del `beq` de la comparacion con -1 y `sll v0,v0,1` al final del producto por 30). Con
@@ -945,9 +945,9 @@ void func_80038E84(s32 idx, s32 paso)
  * Segunda envoltura `do { } while (0)`, alrededor del almacen que limita la vida a 0x63 (`e->r[0x03] = 0x63;`),
  * tampoco genera codigo. Causa medida (volcado `-dl` y `-dg` del estado final, con y sin ella): el pseudo 99
  * pasa de 3 a 4 usos sobre 18 instrucciones de vida (prioridad floor_log2(R) * R / L de 1 * 3 / 18 = 0,167 a
- * 2 * 4 / 18 = 0,444) y se asigna por delante del pseudo 95 (4 usos sobre 42 instrucciones, 2 * 4 / 42 = 0,190);
+ * 2 * 4 / 18 = 0,444) y se asigna por delante del pseudo 95 (4 usos sobre 44 instrucciones, 2 * 4 / 44 = 0,182);
  * los dos intercambian registro (99 de a1 a a0 y 95 de a0 a a1) y la base de 0x80010000 pasa a `a1` como en el
- * original (`lui a1` en 0x80039098), lo que baja la cifra de 505 a 490. Se supone, sin verificar, que el pseudo
+ * original (`lui a1` en 0x80039098), lo que baja la cifra de 390 a 375. Se supone, sin verificar, que el pseudo
  * 99 es el puntero de la rama de la vida y el 95 la base del cuerpo; solo se comprobo en el ensamblador el
  * registro de la base. La forma del fuente original que producia este reparto se desconoce.
  *
@@ -972,16 +972,16 @@ void func_80038E84(s32 idx, s32 paso)
  * pondera por un nivel mas las referencias que contiene, y el volcado de cc1 del estado final (.lreg
  * y .greg), con y sin la envoltura, lo muestra. Las prioridades son floor_log2(R) * R / L. `valor` (la
  * lectura de un byte de la barra, pseudo 83) pasa de 11 a 14 usos sobre 22 instrucciones de vida: de
- * 3 * 11 / 22 = 1,5 a 3 * 14 / 22 = 1,909. Su contendiente por el registro es el pseudo 181, el byte
- * extendido que se compara con `beq` contra el pseudo 180 (insn 381 de .cse; se supone, sin verificar,
- * que es la comparacion de la relectura de la barra 7 o la del contador de golpes), que pasa de 3 a 6
- * usos sobre 6 instrucciones: de 1 * 3 / 6 = 0,5 a 2 * 6 / 6 = 2,0. Con la envoltura el pseudo 181 va
+ * 3 * 11 / 22 = 1,5 a 3 * 14 / 22 = 1,909. Su contendiente por el registro es el pseudo 184, el byte
+ * extendido que se compara con `beq` contra el pseudo 180 (se supone, sin verificar, que es la
+ * comparacion de la relectura de la barra 7 o la del contador de golpes), que pasa de 3 a 6
+ * usos sobre 6 instrucciones: de 1 * 3 / 6 = 0,5 a 2 * 6 / 6 = 2,0. Con la envoltura el pseudo 184 va
  * delante (2,0 frente a 1,909) y toma v1, de modo que `valor` se asigna despues y toma a0, como en el
  * original (lbu a0 sobre D_80010040 mas el indice). Sin la envoltura `valor` va delante (1,5 frente a
- * 0,5), toma v1 y el pseudo 181 cae en a0: la cifra sube de 490 a 575. El margen de 0,09 entre ambos
+ * 0,5), toma v1 y el pseudo 184 cae en a0: la cifra sube de 375 a 460. El margen de 0,09 entre ambos
  * pseudos (2,0 frente a 1,909) es corto: con `modo = 1` al final de la rama de la barra 3 la vida de
- * `valor` baja de 22 a 21 instrucciones, su prioridad pasa a 3 * 14 / 21 = 2,0, empata con el pseudo 181
- * y `valor` (de menor numero) se asigna primero: 575 medido. El resto de pseudos de la region tambien
+ * `valor` baja de 22 a 21 instrucciones, su prioridad pasa a 3 * 14 / 21 = 2,0, empata con el pseudo 184
+ * y `valor` (de menor numero) se asigna primero: 460 medido. El resto de pseudos de la region tambien
  * cambia de orden en el volcado; solo se comprobo en el ensamblador el registro de `valor`. La forma del
  * fuente original que producia este reparto se desconoce.
  *
@@ -1022,7 +1022,7 @@ void func_80039094(void)
         if (e->r[0x03] != D_80069525) {
             mostrado = D_80069525;
             /* Copia propia del estado para las comparaciones de esta rama: con la local del cuerpo
-             * la puntuacion sube de 490 a 795. */
+             * la puntuacion sube de 375 a 680. */
             e_rama = e;
             if (e->r[0x03] >= 0x64) {
                 do {
@@ -1069,7 +1069,7 @@ void func_80039094(void)
                 /* El orden de estas tres sentencias fija la vida de valor (22 instrucciones con `modo = 1`
                  * primero, 21 con `modo = 1` al final) y, con ella, su prioridad frente al byte extendido
                  * de la barra 7 (ver la cabecera): `modo = 1` al final o la actualizacion del valor
-                 * mostrado antes de preparar nuevo dan 575 en vez de 490. */
+                 * mostrado antes de preparar nuevo dan 460 en vez de 375. */
                 modo = 1;
                 nuevo = valor;
                 D_80069574 = valor;
