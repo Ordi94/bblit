@@ -211,8 +211,11 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
  * coloca el `sll` en 0x8003AF1C, entre la carga del punto 6 (0x8003AF18) y su almacen, con el resultado en v1;
  * aqui el temporal del desplazamiento cae en v0 (el segundo, ademas, sale tras el ultimo almacen del paquete y deja
  * un `nop` antes) y la carga del punto 8 toma v1. Medido en el volcado del primer planificador: el `sll` queda al
- * final del bloque, despues de la ultima carga. Se supone, sin verificar, que en el original queda antes del ultimo
- * par carga-almacen y que por eso su temporal no puede usar v0.
+ * final del bloque, despues de la ultima carga, porque su destino es un registro virtual de una sola asignacion (el
+ * planificador de ese pase lo acerca a su consumidor). Se supone, sin verificar, que en el original el desplazamiento
+ * se asigna a una variable que despues se reasigna con el resultado, de modo que el `sll` no es un temporal y se queda
+ * antes del ultimo par carga-almacen con v1 de destino; escribirlo asi parte la operacion en dos asignaciones y no se
+ * admite.
  */
 /*
  * Encola en la lista de ordenacion activa un primitivo de 0x18 bytes (codigo 0x05000000, un
@@ -231,20 +234,19 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
     s32 enlace_o_limite;
 
     func_80039CD0(D_80076188);
-    actual = D_80076188;
-    /* `cursor` guarda tres contenidos sucesivos: la copia de `actual`, el enlace de 24 bits del primer
-     * paquete y la relectura final del anillo; sin la copia la puntuacion es 820 en lugar de 335. */
-    cursor = actual;
+    /* `cursor` guarda tres contenidos sucesivos: la direccion del primer paquete, su enlace de 24 bits y
+     * la relectura final del anillo; es la variable global que toma v1 como el original. */
+    cursor = D_80076188;
     tabla = (u32*)D_8006AEA0[D_8006967C].org;
     /* El original lee la palabra de la tabla y le aplica la constante `0x05000000` como segundo
      * operando del `or` (`or v0, v0, a3`); esta forma del OR reproduce ese orden de operandos. */
-    *(u32*)actual = *tabla | 0x05000000;
-    ((u32*)actual)[1] = 1;
+    *(u32*)cursor = *tabla | 0x05000000;
+    ((u32*)cursor)[1] = 1;
     ((u32*)cursor)[2] = 0x80000000;
-    ((u32*)actual)[3] = puntos[3];
-    ((u32*)actual)[4] = puntos[5];
-    ((u32*)actual)[5] = puntos[7];
-    cursor = (actual << 8) >> 8;
+    ((u32*)cursor)[3] = puntos[3];
+    ((u32*)cursor)[4] = puntos[5];
+    ((u32*)cursor)[5] = puntos[7];
+    cursor = (cursor << 8) >> 8;
     *tabla = cursor;
     actual = D_80076188;
     siguiente = actual + 0x18;
