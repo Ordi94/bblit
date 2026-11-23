@@ -404,16 +404,15 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 5958 con la configuracion versionada (g = 8 del archivo; ejes 285 de
- * operandos, 3 de lineas reordenadas y 580 de lineas insertadas o borradas). La cifra incluye
+ * Pendiente: puntuacion 5128 con la configuracion versionada (g = 8 del archivo; ejes 290 de
+ * operandos, 3 de lineas reordenadas y 557 de lineas insertadas o borradas). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
- * caso del de su tabla. Medido: el codigo generado tiene 2948 instrucciones y el original 2955. La
- * llamada a `func_80044664` de la apertura del anillo la tiene entera el original (`lui a2,0x1f80`,
- * `jal`, `nop`, `bnez` y `li`, de 0x80041A04 a 0x80041A18) y el C la fusiona con la de la lectura de
- * las listas y solo conserva un `lui a2,0x1f80` tras el salto (causa 4 del residuo, mas abajo); el
- * resto de la diferencia son cinco copias de registro (`move`) que el original conserva y el C no
- * emite (0x80041CDC, 0x800424E0, 0x80042F20, 0x80042F78 y 0x8004367C). Los cuerpos de los casos de los cinco `switch` y del
+ * caso del de su tabla. Medido: el codigo generado tiene 2950 instrucciones y el original 2955; la
+ * diferencia son cinco copias de registro (`move`) que el original conserva y el C no emite
+ * (0x80041CDC, 0x800424E0, 0x80042F20, 0x80042F78 y 0x8004367C). La llamada a `func_80044664` de la
+ * apertura del anillo (de 0x80041A04 a 0x80041A18) la comparte la lectura de las listas, que salta
+ * hacia ella desde 0x800420C8, como en el original (ver mas abajo). Los cuerpos de los casos de los cinco `switch` y del
  * despacho de primer nivel van en el orden de direcciones de las tablas de saltos del original: el
  * orden del fuente decide el orden de emision, por eso los casos no van en orden numerico.
  *
@@ -495,7 +494,7 @@ typedef struct {
  * 0x80043110, y `lw a1,0x18(s4)`, 0x80043128) tras los almacenes a `D_80069660`, `D_80069670` y
  * `D_8006955C` (0x8004310C, 0x80043118 y 0x80043124) y antes de los demas, y las escribe al final
  * (`sw v1,D_8006954C`, 0x8004316C, y `sw a1,D_80069678`, 0x80043174); con la local de `d18` y la
- * lectura de `d10` dentro de la asignacion final la cifra es 6123 y con las dos locales 5958. En el
+ * lectura de `d10` dentro de la asignacion final la cifra es 5293 y con las dos locales 5128. En el
  * chunk 0x36 el segundo entero va por miembro (`ETQ(w, campos, 1)`) y se almacena despues del puntero
  * de zonas, como el original (`addu` en 0x80042FA8 antes del `sw` a 0x180($gp) en 0x80042FAC); con el almacen del
  * entero primero, o por puntero, la cifra sube.
@@ -534,26 +533,32 @@ typedef struct {
  * Residuo por causas (cada fila insertada o borrada pesa unos 100 puntos): (1) el chunk 0x3E, donde el
  * original deja tres cargas (0x10, 0x14 y 0x18 de las etiquetas) intercaladas entre los almacenes; el C
  * adelanta las de 0x10 y 0x18 con locales y deja la de 0x14 junto a su almacen (guardada tambien en una
- * local de 32 bits la cifra es 8348); (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
+ * local de 32 bits la cifra es 7518); (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
  * la carga de `D_80069678`, que el original iza a a0 (0x80041D70) y el C deja junto a su uso, con
- * `D_8006954C` izada en su lugar (una fila y dos de operandos); (4) la llamada a `func_80044664` que
- * comparten la apertura del anillo (suma de 0x1D000 a `datos`) y la lectura de las listas: el
- * original deja el `jal` en 0x80041A0C y es la copia posterior la que salta hacia atras; el C deja
- * el `jal` en la copia posterior y es la apertura la que salta hacia delante (el compilador fusiona
- * las dos colas porque las dos llegan al mismo bucle de ordenes sin asignar `campos`), y el hueco
- * de retardo del `bgtz` inicial, que el planificador de saltos llena distinto; (5) el reparto de
+ * `D_8006954C` izada en su lugar (una fila y dos de operandos); (4) el orden de tres tramos del
+ * comienzo: el original deja `sb zero,0x1c0(sp)` entre los almacenes de las banderas (0x80041668)
+ * y el C lo deja en el hueco de retardo del `bgtz` de 0x800416C8 (volcado de la planificacion previa
+ * al reparto: baja ese almacen por encima de las tres llamadas hasta el hueco de la carga `lbu` de
+ * 0x800416BC); el original calcula la direccion de `registro` con `lui` y `addiu` de `D_8005F200`
+ * (0x800416FC y 0x80041700) antes del `sll` del indice y el C al reves; y la suma `datos + 0xA000`
+ * la hace el original en `v0` tras las cargas (0x80041778 y 0x80041784) y el C en `a1` antes de
+ * ellas; (5) el reparto de
  * `v0` y `v1` entre la lectura de `campos + 4` y la suma `datos + desp_campo` en la etiqueta 0x25, y la
  * copia `move a0,v0` de la cabecera del modelo (0x800424DC) que el C no emite; (6) nombres de registro
  * (unas 150 filas de 5 puntos).
  *
- * Fusion de las llamadas de la causa 4 (medido en los volcados de saltos): al empezar el ultimo pase
- * de saltos la prueba de la llamada de la apertura (`ne` a la copia de la prueba del principio del
- * bucle de ordenes) y la de la lectura de las listas (`ne` a la prueba del final del bucle) apuntan
- * a etiquetas distintas; tras ese pase la apertura sale con un salto a una etiqueta nueva delante
- * del `jal` de las listas y el volcado conserva cuatro llamadas. Escribir la cola una sola vez con
- * `goto` desde las listas hacia una etiqueta delante del `jal` de la apertura sube la cifra. Se supone, sin
- * verificar, que el optimizador de saltos recorre los saltos en el orden de aparicion y redirige el primero, y que
- * el original llega a ese pase con las dos continuaciones ya iguales por otra estructura de los saltos de retorno.
+ * Llamada compartida de la apertura del anillo y las listas: el original deja el `jal` de
+ * `func_80044664` en 0x80041A0C (la apertura) y la lectura de las listas salta hacia el
+ * (`j` en 0x800420C8); la lectura del caso 0x4B conserva la suya y sale con `beqz v0` directo al
+ * epilogo (0x80042264). En el ultimo pase de saltos el compilador recorre cada salto incondicional al
+ * epilogo y funde su cola con la de otro salto igual. Medido en los volcados de cc1 (pases de
+ * planificacion y de saltos): con la salida del caso 0x4B escrita como un bloque `return 1;` propio
+ * la cola que desaparece es la de la apertura y el `jal` queda en la lectura de las listas (la cifra
+ * es 5958); con la salida del caso 0x4B escrita como salto a la etiqueta `fallo_lectura`, que es la
+ * salida de la primera lectura del anillo, desaparece la de las listas y el `jal` queda en la
+ * apertura, como en el original, y el caso 0x4B sale con `beqz v0` directo (5128). Se supone, sin
+ * verificar, que el orden en que el pase recorre los saltos al epilogo depende de que la salida del
+ * 0x4B sea un bloque `li`/`j` propio.
  *
  * Bucles de etiquetas del chunk 0x05 (causa 2): escrito como `while (*cursor != 0x2E)` el
  * compilador iza la constante a s0 (`move s0,t3` como el original y `li s1,6`) pero deja la salida del
@@ -575,7 +580,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 7531 y con ella 5958. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 6706 y con ella 5128. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -747,6 +752,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         D_80069498 = (u32)datos;
         D_8006949C = D_80069490 + 0x800;
         if (func_80044664((u8*)D_8006949C, datos, (void*)0x1F800000) == 0) {
+        fallo_lectura:
             return 1;
         }
         cursor = datos;
@@ -989,7 +995,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             IniciarLecturaContinua((CdlLOC*)D_8006A928);
             if (D_80069494 != 0) {
                 if (func_80044664((u8*)D_8006949C, (u8*)D_80069498, (void*)0x1F800000) == 0) {
-                    return 1;
+                    goto fallo_lectura;
                 }
             } else {
                 while (D_8006955E != 0) {
