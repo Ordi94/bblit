@@ -374,9 +374,10 @@ typedef struct CabeceraPrimitiva {
  * anchura s7 y altura s8). Tres envolturas `do { } while (0)` no generan codigo y suben la prioridad
  * (R usos ponderados, L vida, prioridad floor_log2(R) * R / L) de los pseudos que se disputaban los registros.
  * Medido en el volcado del estado final: x 8/47 = 0,511, y 9/55 = 0,491, u y v 8/52 = 0,462, entrada `e` 11/95 =
- * 0,347, contador 9/94 = 0,287, anchura 6/46 = 0,261 y altura 7/56 = 0,250. Sin ninguna envoltura serian y 8/55 =
- * 0,436, altura 6/56 = 0,214, `e` 9/95 = 0,284 y contador 7/94 = 0,149. (1) `p->y3 = y + h;` sube y de 8 a 9 (por delante de u y v) y la altura de 6 a 7: sin
- * ella la cifra es 390. (2) `e++;` sube `e` de 9 a 11 usos, por delante del contador: sin ella 363 (el contador toma
+ * 0,347, contador 9/94 = 0,287, anchura 6/46 = 0,261 y altura 7/56 = 0,250. Sin las envolturas de `e` y del
+ * contador serian `e` 9/95 = 0,284 y contador 7/94 = 0,149. (1) `p->y3 = y + h;` sube y a 9 usos (por delante de
+ * u y v, que tienen 8/52 = 0,462; se supone, sin verificar en el estado final, que sin ella y tiene 8 usos, 0,436)
+ * y la altura a 7: sin ella la cifra es 390. (2) `e++;` sube `e` de 9 a 11 usos, por delante del contador: sin ella 363 (el contador toma
  * s5 y `e` s6). (3) `i++;` sube el contador de 7 a 9, por delante de la anchura y la altura: sin ella 381. Con `u`
  * declarada antes que `v` (los empates de prioridad se deciden por el numero de pseudo) x, y, u y v quedan en s0 a
  * s3 como el original y el planificador no mueve ninguna suma. Las notas de bucle de una envoltura son barrera de
