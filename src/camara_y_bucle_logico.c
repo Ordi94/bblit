@@ -478,7 +478,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * `d = raiz - i * 200`): con la raiz guardada en `d`, que se asigna dos veces, el copiado del resultado de la llamada
  * salia delante de los movimientos de argumentos y el resultado tomaba `s2` en lugar de `s1`, el registro del
  * puntero `&w->dir` que muere en `move a1,s1` (los dos pseudos coincidian en vida un instante); con `raiz` el
- * copiado `move s1,v0` queda tras los argumentos como en el original (1960 a 1705 con solo esa variable). Se supone, sin verificar con
+ * copiado `move s1,v0` queda tras los argumentos como en el original (1605 sin ella, 1350 con ella). Se supone, sin verificar con
  * el volcado de planificacion, que una variable de una sola asignacion se hunde hasta su primer consumidor y una
  * de dos asignaciones queda donde esta escrita; escribir los almacenes de `dir` antes de la llamada o reutilizar
  * `r` en lugar de `d` empeoraba la cifra; el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx`
