@@ -733,7 +733,8 @@ void SondearTarjeta(void)
                         }
                     }
                     D_8006AA70[0x1B] = 0xE;
-                    if ((D_8006D060.mascara & 0x3F) != 0) {
+                    j = D_8006D060.mascara & 0x3F;
+                    if (j != 0) {
                         goto con_partidas;
                     }
                     D_8006AA70[0x24] = 2;
