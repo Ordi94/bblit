@@ -279,14 +279,14 @@ void func_80040430(s8* contador, u16 mascara)
  * Los bytes del bufer de la BIOS (D_8006CFF1, D_8006CFF2, D_8006CFF3, D_8006CFF6 y D_8006CFF7) se declaran como
  * estructuras de un solo campo y se leen por ese campo: con bytes sueltos el planificador sube la lectura del
  * identificador (D_8006CFF1) por encima de los almacenes a los campos del estado (el original la deja tras el
- * almacen de 0x8001000C, 0x80040664) y como miembro de estructura la deja detras de ellos. La cifra es 1525 con
- * bytes sueltos y 1325 con el campo (medido antes de leer D_8006AA7C como elemento del banco). Se declaran uno por uno y no como una sola estructura desde D_8006CFF1: con una
+ * almacen de 0x8001000C, 0x80040664) y como miembro de estructura la deja detras de ellos. Se declaran uno por uno y no como una sola estructura desde D_8006CFF1: con una
  * sola las referencias salen como `D_8006CFF1+n`, que el ensamblador del original no escribe asi, y el compilador
  * comparte la direccion de dos lecturas (una `addiu` mas). Se supone, sin verificar, que la diferencia es la marca
  * de miembro de estructura de la direccion de memoria.
  *
  * El resultado de las dos restas de `eje_y` se convierte a `s16` antes del almacen (el campo es de 16 bits): sin las
- * conversiones la cifra es 1350 y con ellas 1325.
+ * conversiones la cifra es 835 y con ellas 800. En la rama de abajo la suma lleva `(u32)` sobre `eje`: sin la
+ * conversion el compilador reasocia `centro - (eje + 1)` y la cifra es 820.
  *
  * Una sola variable (`bits`) guarda los botones de direccion en la rama de grabacion y en la de lectura de la BIOS:
  * el original usa el mismo registro (s1) en las dos (`lhu s1` en 0x80040668 y `move s1,s2` en 0x8004074C), y con dos
@@ -314,9 +314,9 @@ void func_80040430(s8* contador, u16 mascara)
  * `D_8006AA70[0xC]` (el banco es un arreglo sin tamano): con el escalar `D_8006AA7C` (u8 de un byte, dentro del
  * umbral -G8) el compilador emite `lbu $2,D_8006AA7C` como una sola instruccion de macro, el `lui` lo crea el
  * ensamblador y no puede ocupar un hueco; con el arreglo sin tamano el `lui` es una instruccion propia y el relleno
- * coincide. La cifra baja de 1325 a 965 con solo ese cambio; el desensamblado muestra el simbolo como
+ * coincide. La cifra es 1355 con el escalar y 800 con el arreglo; el desensamblado muestra el simbolo como
  * `D_8006AA70+0xc`. La base del estado en la prueba de pausa se lee por `est` (0x76(s0), como el original en
- * 0x80040A24): con la constante absoluta la cifra era 965 y con `est` 860.
+ * 0x80040A24): con la constante absoluta la cifra es 905 y con `est` 800.
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
  * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0);
