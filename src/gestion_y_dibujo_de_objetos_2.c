@@ -904,47 +904,52 @@ void func_80038E84(s32 idx, s32 paso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1285 con la configuracion versionada (g = 8 del archivo; ejes 67 de
- * operando, 0 reordenadas, 159 insertadas o borradas). Coinciden la
- * estructura, los desplazamientos y los simbolos; difiere en el reparto de registros de la barra 0
- * (el original deja la base de 0x80010000 en a1 y copia el valor mostrado a a0 con `move a0,v1` en el
- * hueco de retardo de 0x5c; el C copia la base a a1 en esa posicion y compara con v1, de modo que el
- * valor mostrado no tiene copia propia), en el orden de dos copias y tres huecos de retardo de la barra 0
- * y de la barra 3, y en el hueco de retardo del `beqz` del contador de cuadros de los tres ultimos
- * temporizadores: el original lo rellena con el `lui` de D_8006AA7C y el compilador lo rellena con la
- * carga de la base del temporizador siguiente (`li $4,0x80010000` en la salida de `cc1`), lo que anade
- * un `lui` por temporizador. Un puntero propio por barra (g3 y g7 para el indice y el valor, f3 y f7 para
- * la relectura tras la llamada) en lugar de los compartidos `g` y `f` deja las bases de las barras 3 y 7
- * en v0 como el original: 1465 a 1435 con g3 y g7 y a 1415 con f3 y f7 (se supone, sin verificar, que un
- * pseudo compartido une las vidas de todas las barras y toma el mismo registro en todas). La segunda
- * lectura de D_80010043 en el brillo de la barra 0 (`lui a0` y `lbu v0,0x43(a0)` en 0x800391F0) no
- * reutiliza la de la comparacion. Medido: el original relee el octeto (dos cargas, la segunda en
- * 0x800391F0) y, escrita por el puntero al estado (`ESTADO_PRINCIPAL->r[0x03]`), la segunda lectura no
- * se une con la primera y la cifra baja de 1415 a 1300 (el original toma a0 para esa base y el C toma
- * v0, con un `li a1,0xc8` adelantado al hueco de retardo del `beqz`). En el ensamblador original las
- * dos lecturas tienen la misma forma (`lui` mas `lbu` con el desplazamiento del simbolo); se supone,
- * sin verificar, que el autor del original escribio la segunda por un puntero distinto de la primera.
- * Leer el estado principal en una
- * copia propia de la rama de la barra 0 (en lugar de reutilizar la local del cuerpo) baja de 1950 a 1745;
- * la envoltura del medidor y del contador de golpes junto con el orden de la actualizacion del valor
- * mostrado en las barras 3 y 7 lo bajan de 1745 a 1525 (ver la cabecera de abajo).
+ * Pendiente: puntuacion 1060 con la configuracion versionada (g = 8 del archivo; ejes 68 de
+ * operando, 0 reordenadas, 152 insertadas o borradas). Coinciden la
+ * estructura, los desplazamientos y los simbolos; las barras 3 y 7 coinciden en instrucciones y registros
+ * (quedan solo las marcas de operando por nombre de simbolo). Difiere en: (1) el reparto de registros de
+ * la barra 0 (el original deja la base de 0x80010000 en a1 y copia el valor mostrado a a0 con
+ * `move a0,v1` en el hueco de retardo de 0x800390F4; el C copia la base a a1 en esa posicion y compara con v1,
+ * de modo que el valor mostrado no tiene copia propia; en el volcado `.cse` el valor mostrado y la
+ * primera lectura son el mismo valor y el compilador usa la lectura en toda comparacion posterior);
+ * (2) el hueco de retardo del `beqz` del contador de cuadros de los cuatro temporizadores: el
+ * original lo rellena con el `lui` de D_8006AA7C (0x800394E0, 0x800395E0, 0x800396E0 y 0x800397DC) y el
+ * compilador lo rellena con la carga de la base del temporizador siguiente (`li $4,0x80010000` en la
+ * salida de `cc1`) en los tres primeros y con un `nop` en el cuarto; (3) un `nop` en el hueco del `bnez` de
+ * 0x800390C0, que el original rellena con el mismo `lui` de D_8006AA7C (0x800390C4);
+ * (4) el brillo de la barra 0 (`beqz` de 0x800391EC): el original deja `li a1,0xc8` en una cola propia tras un salto
+ * y rellena el hueco de retardo del `beqz` con el `lui a0` de la segunda lectura de D_80010043
+ * (0x8003915C); el C adelanta el `li a1,0xc8` a ese hueco y la segunda lectura toma `lui v0` (el
+ * ensamblador la expande con el destino de la carga como base). Se supone, sin verificar, que el
+ * `lui a0` del original viene de una forma simbolica que el C no reproduce. La segunda lectura de
+ * D_80010043 escrita por el puntero al estado (`ESTADO_PRINCIPAL->r[0x03]`) no se une con la primera,
+ * como en el original; escrita por el simbolo D_80010043 se une y la cifra sube de 1060 a 1175.
+ * Un puntero propio por barra (g3 y g7 para el indice y el valor, f3 y f7 para la relectura tras la
+ * llamada) en lugar de los compartidos `g` y `f` deja las bases de las barras 3 y 7 en v0 como el original
+ * (se supone, sin verificar, que un pseudo compartido une las vidas de todas las barras y toma el mismo
+ * registro en todas). Leer el estado principal en una copia propia de la rama de la barra 0
+ * (`e_rama`, en lugar de reutilizar la local del cuerpo) baja la cifra de 1365 a 1060; las barras 3 y 7
+ * se escriben con `modo = 0` en la rama contraria de la prueba `== 0xFF` (con `modo = 0` antes de la
+ * prueba la cifra es 1285), como el original, que rellena el hueco de retardo del `bne` con la comparacion
+ * y no con `move a2,zero` (ver la cabecera de abajo).
  * En cada uno de los cuatro temporizadores de poderes el original deja el resultado `n` en v0 (`li v0,1` en el
  * hueco de retardo del `beq` de la comparacion con -1 y `sll v0,v0,1` al final del producto por 30). Con
  * `n = 1;` antes de la comparacion el pseudo de `n` vive durante el temporal de la comparacion (ocupa v0 hasta
- * el salto) y el volcado de `global-alloc` lo da en conflicto con v0 y v1, de modo que cae en a1 (1525); con
- * la forma `if (== -1) { n = 1; } else { n = producto; }` en los cuatro temporizadores `n` no vive durante la
- * comparacion y toma v0 como el original (1465). Con la nueva forma en un solo temporizador la cifra no cambia
- * (1525): `n` es un solo pseudo compartido y los otros tres siguen en conflicto.
+ * el salto) y, se supone, sin verificar en el estado final, que el volcado de `global-alloc` lo da en
+ * conflicto con v0 y v1, de modo que cae en a1; con la forma `if (== -1) { n = 1; } else { n = producto; }`
+ * en los cuatro temporizadores `n` no vive durante la comparacion y toma v0 como el original. Se supone,
+ * sin verificar, que con la forma nueva en un solo temporizador la cifra no cambia: `n` es un solo pseudo
+ * compartido y los otros tres siguen en conflicto.
  * Segunda envoltura `do { } while (0)`, alrededor del almacen que limita la vida a 0x63 (`e->r[0x03] = 0x63;`),
  * tampoco genera codigo. Causa medida (volcado `-dl` y `-dg` del estado final, con y sin ella): el pseudo 99
  * pasa de 3 a 4 usos sobre 18 instrucciones de vida (prioridad floor_log2(R) * R / L de 1 * 3 / 18 = 0,167 a
  * 2 * 4 / 18 = 0,444) y se asigna por delante del pseudo 95 (4 usos sobre 42 instrucciones, 2 * 4 / 42 = 0,190);
  * los dos intercambian registro (99 de a1 a a0 y 95 de a0 a a1) y la base de 0x80010000 pasa a `a1` como en el
- * original (`lui a1` en 0x80039098), lo que baja la cifra de 1300 a 1285. Se supone, sin verificar, que el pseudo
+ * original (`lui a1` en 0x80039098), lo que baja la cifra de 1075 a 1060. Se supone, sin verificar, que el pseudo
  * 99 es el puntero de la rama de la vida y el 95 la base del cuerpo; solo se comprobo en el ensamblador el
  * registro de la base. La forma del fuente original que producia este reparto se desconoce.
  *
- * Residuo vigente (1285): el original copia el valor mostrado de la barra 0 (`move a0,v1`, 0x800390F4);
+ * Residuo vigente (1060): el original copia el valor mostrado de la barra 0 (`move a0,v1`, 0x800390F4);
  * el C no tiene esa copia porque el optimizador propaga cualquier local que se copie de `mostrado` y usa
  * v1 directamente. Por eso `mostrado` es una sola local `u8` compartida por todas las barras y la barra
  * 0 no lleva una copia propia: con ella la cifra empeora. Se supone, sin verificar, que la copia del original no es una copia vista por el optimizador sino una segunda
@@ -972,14 +977,12 @@ void func_80038E84(s32 idx, s32 paso)
  * usos sobre 6 instrucciones: de 1 * 3 / 6 = 0,5 a 2 * 6 / 6 = 2,0. Con la envoltura el pseudo 181 va
  * delante (2,0 frente a 1,909) y toma v1, de modo que `valor` se asigna despues y toma a0, como en el
  * original (lbu a0 sobre D_80010040 mas el indice). Sin la envoltura `valor` va delante (1,5 frente a
- * 0,5), toma v1 y el pseudo 181 cae en a0: la cifra sube de 1300 a 1520. Las prioridades de la base
- * 0x80010000 y del otro pseudo que se citaban antes (12 sobre 18 y 20 sobre 42) ya no aparecen en el
- * volcado final: el puntero propio por barra las cambio. El margen de 0,09 entre ambos pseudos (2,0
- * frente a 1,909) es corto: un uso mas de `valor` (3 * 15 / 22 = 2,05) o dos instrucciones menos de
- * vida (3 * 14 / 20 = 2,1) lo invierten (por calculo, sin remedir: con la actualizacion del valor
- * mostrado antes de preparar `nuevo` la vida baja de 22 a 20 instrucciones). El resto de pseudos de la region tambien cambia de orden en el volcado; solo se comprobo en
- * el ensamblador el registro de `valor`. La forma del fuente original que producia este reparto se
- * desconoce.
+ * 0,5), toma v1 y el pseudo 181 cae en a0: la cifra sube de 1060 a 1145. El margen de 0,09 entre ambos
+ * pseudos (2,0 frente a 1,909) es corto: con `modo = 1` al final de la rama de la barra 3 la vida de
+ * `valor` baja de 22 a 21 instrucciones, su prioridad pasa a 3 * 14 / 21 = 2,0, empata con el pseudo 181
+ * y `valor` (de menor numero) se asigna primero: 1145 medido. El resto de pseudos de la region tambien
+ * cambia de orden en el volcado; solo se comprobo en el ensamblador el registro de `valor`. La forma del
+ * fuente original que producia este reparto se desconoce.
  *
  * Los campos del estado principal se leen por la vista EstadoPrincipal (arranque.h) con un
  * puntero local a 0x80010000 para que el compilador comparta la parte alta de la direccion,
@@ -1016,7 +1019,7 @@ void func_80039094(void)
         if (e->r[0x03] != D_80069525) {
             mostrado = D_80069525;
             /* Copia propia del estado para las comparaciones de esta rama: con la local del cuerpo
-             * la puntuacion sube de 1745 a 1950. */
+             * la puntuacion sube de 1060 a 1365. */
             e_rama = e;
             if (e->r[0x03] >= 0x64) {
                 do {
@@ -1057,17 +1060,21 @@ void func_80039094(void)
         idx = g3->r[0xB6];
         valor = g3->r[idx];
         if (valor != D_80069574) {
-            modo = 0;
             if (D_80069574 == 0xFF) {
-                /* El orden de estas tres sentencias fija la vida de valor en esta barra: con la actualizacion
-                 * del valor mostrado antes de preparar nuevo la puntuacion sube de 1525 a 1745. */
+                /* El orden de estas tres sentencias fija la vida de valor (22 instrucciones con `modo = 1`
+                 * primero, 21 con `modo = 1` al final) y, con ella, su prioridad frente al byte extendido
+                 * de la barra 7 (ver la cabecera): `modo = 1` al final o la actualizacion del valor
+                 * mostrado antes de preparar nuevo dan 1145 en vez de 1060. */
+                modo = 1;
                 nuevo = valor;
                 D_80069574 = valor;
-                modo = 1;
-            } else if (D_80069574 < valor) {
-                nuevo = D_80069574 + 1;
             } else {
-                nuevo = D_80069574 - 1;
+                modo = 0;
+                if (D_80069574 < valor) {
+                    nuevo = D_80069574 + 1;
+                } else {
+                    nuevo = D_80069574 - 1;
+                }
             }
             if (func_80038C2C(3, nuevo, modo) != 0) {
                 mostrado = D_80069574;
