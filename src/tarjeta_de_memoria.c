@@ -450,25 +450,21 @@ s32 func_800151FC(void)
  * `sll 4 ; subu ; sll 3` en 0x80015CC0, 0x80015D10 y 0x80015D40) y tiene como registros propios la base del directorio (t1)
  * y la base mas 0x24 (t2). El bucle exterior se escribe con etiqueta y salto hacia atras (`siguiente_entrada`): el optimizador
  * de bucles (`-dL`) no lo recorre, de modo que las tres cadenas de `grupo * 120` quedan en el cuerpo y no se izan como
- * invariantes (solo se recorren los bucles interiores, el de relleno y el de bloques). La fila y el contador son variables de
- * bucle propias (`fila += 0x28; n++;`), las dos bases viven en locales (`directorio`, `sistema`) y las inicializaciones del
- * bucle van dentro de la guardia (`n < D_80069358[0]`), la de `fila` tras la de las bases, como el preludio del original
+ * invariantes (solo se recorren los bucles interiores, el de relleno y el de bloques). La fila es una variable de bucle propia
+ * (`fila += 0x28; i++;`) y el contador es el mismo `i` de los bucles anteriores (el original usa a1 como contador de los tres
+ * bucles y tambien lo toma aqui); las dos bases viven en locales (`directorio`, `sistema`) y las inicializaciones del
+ * bucle van dentro de la guardia (`i < D_80069358[0]`), la de `fila` tras la de las bases, como el preludio del original
  * (0x80015CA4 a 0x80015CB8). El relleno de 0x96 palabras avanza un puntero (`*palabras++ = 0;`): la base se carga antes de
  * `move a1,zero`, como en el original (0x80015BAC a 0x80015BB4).
  * La busqueda del final del nombre y el relleno de ceros leen la fila por copias propias (`fila_busqueda`, asignada antes de la
  * guardia de la busqueda, y `fila_relleno`, asignada dentro de la guardia del relleno): el compilador no las propaga a los
  * bucles y deja un `move` en el preludio de cada uno, como los `move a3,a2` del original (0x80015CE0 y 0x80015D14), con lo
- * que `fila` queda en a2 y la cadena en a0. Las dos direcciones se suman como `(j + fila) + grupo * 120` y despues la base, el
+ * que la cadena queda en a0. Las dos direcciones se suman como `(j + fila) + grupo * 120` y despues la base, el
  * mismo orden de sumas del original.
- * Queda el reparto de registros de las variables del bucle exterior: `n` cae en t0 (en a1 en el original), `grupo` en t1 (t0),
- * la base en a3 (t1) y las copias de la fila en a1 (a3). Volcado `-dg`: `n` tiene 5 referencias sobre 51 instrucciones de vida,
- * la fila 7 sobre 46 y cada copia 3 sobre 9 y 11, de modo que el asignador las toma en el orden copias, fila, base, contador,
- * grupo, y el original en el orden contador, fila, copias, grupo, base.
- * Contador propio del bucle del directorio (`n`): el contador `i` vive desde el bucle de relleno de
- * 0x96 palabras hasta el del directorio y cruza la llamada de MemCardGetDirentry, que usa a1 como argumento, de modo que
- * no puede tomar a1 (volcado `-dg`: el pseudo de `i`, 23 usos sobre 88 instrucciones, cae en t0); el original tiene a1
- * como contador de cada bucle, con vidas cortas separadas por la llamada, y con `n` el del directorio sale de ese
- * reparto. El bucle de entradas (el que calcula los bloques) conserva el contador `i`.
+ * Queda el reparto de registros de las variables del bucle exterior: la fila cae en a3 (a2 en el original), las copias de la
+ * fila en a2 (a3), la base en t0 (t1) y `grupo` en t1 (t0). Volcado `-dg`: la fila tiene 7 referencias ponderadas sobre 46
+ * instrucciones de vida y cada copia 3 sobre 9 y 11 (3 * 1 / 9 frente a 7 * 2 / 46), de modo que el asignador toma una copia
+ * antes que la fila; la base (8 sobre 96) se toma antes que `grupo` (7 sobre 100).
  * Suma de la entrada del directorio: el original suma primero la fila y el desplazamiento del grupo y
  * despues las dos bases (`addu v0,a2,v0` en 0x80015D4C y `addu v1,v0,t1` y `addu v0,v0,t2` tras ella), de modo que
  * la entrada y la palabra de 0x24 se escriben como `base + (fila + grupo * 120)`. El `move a1,v0 ; bnez a1` de la llamada de
