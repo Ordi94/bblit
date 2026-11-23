@@ -705,8 +705,12 @@ void SondearTarjeta(void)
                             j++;
                         } while (directorio[j + fila_busqueda + grupo * 120] != 0);
                     }
-                    for (; j < 0x14; j++) {
-                        directorio[j + fila_busqueda + grupo * 120] = 0;
+                    if (j < 0x14) {
+                        fila_busqueda = fila;
+                        do {
+                            directorio[j + fila_busqueda + grupo * 120] = 0;
+                            j++;
+                        } while (j < 0x14);
                     }
                     entrada = (EntradaDirectorio*)(directorio + (fila + grupo * 120));
                     entrada->attr = 0;
