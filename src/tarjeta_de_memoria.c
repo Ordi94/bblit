@@ -442,8 +442,8 @@ s32 func_800151FC(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 885 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
- * 216 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
+ * Pendiente: puntuacion 825 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
+ * 214 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y el recorrido del directorio.
  * Recorrido del directorio: el original recalcula en cada uso el desplazamiento de la ranura (tres cadenas
@@ -453,7 +453,8 @@ s32 func_800151FC(void)
  * con etiqueta y salto hacia atras (`siguiente_entrada`), con la fila y el contador como variables de bucle propias
  * (`fila += 0x28; n++;`) y las dos bases en locales (`directorio`, `sistema`): en el volcado `-dL` el optimizador ya no
  * recorre ese bucle (solo quedan los bucles interiores y los de relleno y de bloques), las tres cadenas quedan en el cuerpo y
- * la cifra baja a 885. Las inicializaciones del bucle van dentro de la guardia (`n < D_80069358[0]`) y la de `fila` tras la de
+ * la cifra baja a 885; con el relleno de 0x96 palabras escrito con un puntero que avanza (`*palabras++ = 0;`) la base se
+ * carga antes de `move a1,zero`, como en el original (0x80015BAC a 0x80015BB4), y baja a 825. Las inicializaciones del bucle van dentro de la guardia (`n < D_80069358[0]`) y la de `fila` tras la de
  * las bases, como el preludio del original (0x80015CA4 a 0x80015CB8).
  * Queda: el original copia la fila (`move a3,a2` en 0x80015CE0 y 0x80015D14) en el preludio de cada bucle interior y el C no
  * (se supone, sin verificar, que la copia nace de la sustitucion de `n * 0x28` por el puntero inducido del bucle exterior,
@@ -481,7 +482,7 @@ s32 func_800151FC(void)
  * El argumento que pasa main se ignora.
  *
  * Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es
- * 0x30; la cifra medida sin la local es 1087 y con ella 885. La funcion es pendiente: con la local la
+ * 0x30; la cifra medida sin la local es 1027 y con ella 825. La funcion es pendiente: con la local la
  * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)
@@ -495,6 +496,7 @@ void SondearTarjeta(void)
     s32 grupo;
     s8* directorio;
     s8* sistema;
+    s32* palabras;
     s32 salvado;
     u8 valor_salvado_a6;
     s32 partida;
@@ -666,8 +668,9 @@ void SondearTarjeta(void)
             case 0:
             case 3:
                 D_8006935C = 1;
+                palabras = (s32*)D_800697B0;
                 for (i = 0; i < 0x96U; i++) {
-                    ((s32*)D_800697B0)[i] = 0;
+                    *palabras++ = 0;
                 }
                 MemCardGetDirentry(ranura, D_80069324, &D_800697B0[ranura * 0x258], &D_80069358[ranura], 0, 15);
                 bloques = &D_8006935E[ranura];
