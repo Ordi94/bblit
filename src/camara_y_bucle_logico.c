@@ -447,10 +447,10 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1960 con la configuracion versionada (g = 8 del archivo; ejes 125 de operandos, 0 de lineas
- * reordenadas y 276 de lineas insertadas o borradas). La resta `i = n - 10` del final de la funcion se escribe antes
+ * Pendiente: puntuacion 1705 con la configuracion versionada (g = 8 del archivo; ejes 125 de operandos, 0 de lineas
+ * reordenadas y 258 de lineas insertadas o borradas). La resta `i = n - 10` del final de la funcion se escribe antes
  * de la prueba de zonas y no dentro de ella: el original la calcula en el hueco de retardo del primer `beq`
- * (`addiu s0,s1,-0xa` en 0x80034D94) y escrita dentro de la prueba sale en el hueco del `bnez` siguiente (2080 con la
+ * (`addiu s0,s1,-0xa` en 0x80034D94) y escrita dentro de la prueba sale en el hueco del `bnez` siguiente (1825 con la
  * resta dentro). El flujo, las macros vectoriales y
  * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
  * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
@@ -460,24 +460,25 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * despues, 0x498 y 0x49c), y el bloque de las posiciones de la camara (0x17b0..0x1868) coincide en el orden de las
  * lecturas y almacenes con los tres almacenes de `v30` escritos tras el de `vpz`, en el orden `vx`, `vy`, `vz`;
  * queda: la prueba de los dos bits de la direccion del ajuste de altura (0xba0..0xbb8), que carga la mascara antes
- * que la bandera (con el orden de operandos del `or` invertido el reparto no cambia y la cifra sube a 1965); el par
+ * que la bandera (con el orden de operandos del `or` invertido el reparto no cambia y la cifra sube a 1710); el par
  * de modificaciones de banderas (0xcc4..0xd30), donde el original carga el contador tras el almacen de las banderas y aqui el planificador lo
  * adelanta (el volcado `.sched` de la rama del giro a la izquierda muestra el orden `li`, carga de `D_80069402`,
  * `ori`, `sh` sin ninguna arista de dependencia entre la carga del simbolo y el almacen a `0x80(reg)`, de modo que el
  * planificador adelanta la carga; el original la deja tras el almacen. Se supone, sin verificar, que el original
  * almacena las banderas por un puntero que el planificador no puede separar del acceso por `$gp`; medido: escribir
- * el almacen por `cam->` empeora (2120 en la rama izquierda); por un puntero `u16*` local en las dos ramas, por `ec`
- * tras asignarle `&D_8006D928` o con `k` escrito antes que `c` la cifra no cambia (1960), se supone, sin verificar,
+ * el almacen por `cam->` empeora en la rama izquierda; por un puntero `u16*` local en las dos ramas, por `ec`
+ * tras asignarle `&D_8006D928` o con `k` escrito antes que `c` la cifra no cambia, se supone, sin verificar,
  * que porque el CSE pliega la constante en la direccion y el almacen sigue siendo de simbolo); la carga
  * de `D_8006D928.vpy` del modo de transicion (0x11d0..0x11ec), adelantada aqui sobre tres almacenes de `v30`
- * (escribirla por `cam->` da 2295); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el
- * original lo guarda en `s1`, el registro del puntero `&w->dir` que muere en la preparacion de los argumentos de la
- * llamada siguiente (el volcado `.greg` muestra `s2 = v0` justo tras la llamada y los movimientos de argumentos
- * despues, con el registro `s1` del puntero muriendo en `move a1,s1`: los dos pseudos coinciden en vida un
- * instante y por eso el resultado no puede tomar `s1`; el original emite `move s1,v0` tras los argumentos; se
- * supone, sin verificar, que la causa es la prioridad de planificacion que le da su cadena posterior, el cociente
- * `d / 200`; escribir los almacenes de `dir` antes de la llamada lo empeora y reutilizar `r` en lugar de `d`
- * tambien); el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx`
+ * (escribirla por `cam->` empeora la cifra); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en una
+ * variable propia, `raiz`, que se asigna una sola vez y de la que salen el cociente y el resto (`i = raiz / 200`,
+ * `d = raiz - i * 200`): con la raiz guardada en `d`, que se asigna dos veces, el copiado del resultado de la llamada
+ * salia delante de los movimientos de argumentos y el resultado tomaba `s2` en lugar de `s1`, el registro del
+ * puntero `&w->dir` que muere en `move a1,s1` (los dos pseudos coincidian en vida un instante); con `raiz` el
+ * copiado `move s1,v0` queda tras los argumentos como en el original (1960 a 1705). Se supone, sin verificar con
+ * el volcado de planificacion, que una variable de una sola asignacion se hunde hasta su primer consumidor y una
+ * de dos asignaciones queda donde esta escrita; escribir los almacenes de `dir` antes de la llamada o reutilizar
+ * `r` en lugar de `d` empeoraba la cifra; el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx`
  * como el original al escribir el almacen de `flags80` ANTES de calcular el cuadrado (la relectura la
  * provoca el almacen intermedio a un global que el CSE no distingue de `w->v90`; con el orden de los operandos
  * del `or` invertido la cifra sube); en el bloque de alturas el par `ec`/p4 sale en `a2`/`a3` y
@@ -492,11 +493,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * `.sched`) desaparece del almacen y la carga de `D_80069402` sigue delante de el; se supone, sin verificar,
  * que es porque la base del almacen es un pseudo que el planificador resuelve al simbolo `D_8006D928`, de
  * modo que los dos accesos no se solapan. Con la mascara de la prueba de bits en una local propia
- * (0xba0..0xbb8) y con la raiz de la distancia en otra local (0x1324..0x13a8) la cifra empeora, igual que
- * copiar `d` a `i` antes del cociente o escribir los tres almacenes de `dir` antes de la llamada a SquareRoot0 (el
- * copiado del resultado sigue saliendo antes de los movimientos de argumentos). Residuo de esa zona: se supone, sin
- * verificar con el volcado, que el planificador deja el copiado del resultado de la llamada delante de los
- * movimientos de argumentos porque ambos tienen la misma prioridad y gana el de menor orden en el fuente.
+ * (0xba0..0xbb8) la cifra empeora, igual que copiar `d` a `i` antes del cociente.
  */
 /*
  * Acerca la altura del punto de vista a la banda [base - 0x64, base + 0x64] desplazada por p4: si queda por encima
@@ -552,6 +549,7 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
     s32 n;
     s32 ang;
     s32 d;
+    s32 raiz;
     s32 hit;
     s32 r;
     u16 c;
@@ -969,7 +967,7 @@ fin_giro:
         /*
          * El original carga la posicion x del objeto (`lw v1,0xE4(s4)`, 0x8003453C) junto con la altura
          * del punto de vista, antes del primer almacen a `v70` (0x80034540); sin la local el
-         * planificador la carga tras ese almacen y la cifra sube de 1960 a 2470.
+         * planificador la carga tras ese almacen y la cifra sube de 1705 a 2215.
          */
         pos_x = o->param.trans.vx;
         w->v70.vy = D_8006D928.vpy;
@@ -1000,15 +998,15 @@ fin_giro:
     w->v70.vz = o->param.trans.vz;
     w->res.grupo = -1;
     BarrerTerreno(&w->v70, &w->v30, &w->res, area);
-    d = SquareRoot0(w->v30.vx * w->v30.vx + w->v30.vz * w->v30.vz);
+    raiz = SquareRoot0(w->v30.vx * w->v30.vx + w->v30.vz * w->v30.vz);
     w->dir.vy = 0;
     w->dir.vx = 0;
     w->dir.vz = 200;
     ApplyMatrix(&w->m, &w->dir, &w->v40);
     GEO_CERO_W(&w->v50);
-    i = d / 200;
+    i = raiz / 200;
     if (i >= 0) {
-        d = d - i * 200;
+        d = raiz - i * 200;
         for (;;) {
             w->v70.vy = o->param.trans.vy - 0x1F4;
             if (i == 0) {
