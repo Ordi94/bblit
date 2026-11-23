@@ -233,9 +233,15 @@ void func_80032A24(void)
  * reparto de los registros salvados coinciden; difiere la posicion de una sola instruccion: el original coloca el
  * almacen de i58 (sw v0,0x58) tras la copia del objeto en curso (move v1,a1) y GCC lo deja antes, porque el do/while
  * que abre las escrituras de a48 impide subir la copia por encima del almacen. Medido en el volcado de la primera
- * planificacion (`-dS`, antes del reparto de registros): el almacen de i58 queda antes de la nota de inicio de bucle
- * de ese do/while y la lectura del objeto en curso (la copia) despues; se supone, sin verificar, que la nota impide
- * a la planificacion mover lecturas de memoria por encima de ella.
+ * planificacion (`-dS`, antes del reparto de registros): el almacen de i58 (insn 357) queda antes de la nota de
+ * inicio de bucle de ese do/while y la lectura del objeto en curso (insn 364, una carga `lw 0x64` nueva que la
+ * recarga posterior convierte en la copia `move v1,a1`) despues, con arista de dependencia hacia el almacen; se
+ * supone, sin verificar, que la nota impide a la planificacion mover lecturas de memoria por encima de ella.
+ * Con el almacen dentro del do/while el orden sale como el original (copia y luego almacen) y la cifra sigue en
+ * 60: el pseudo del objeto en curso (143, 14 usos sobre 25 insns, 1,68) pierde frente a max.vy (185, que pasa de 6
+ * a 7 usos sobre 8 insns, de 1,50 a 1,75) y los registros a1 y a2 se intercambian en toda la cadena de pruebas.
+ * Ampliar el tercer do/while para que cubra la lectura del objeto de RotMatrix no cambia los 14 usos del pseudo
+ * 143: esa lectura es posterior a las llamadas y es otro pseudo.
  *
  * El almacen de i58 se escribe fuera de ese do/while y no dentro porque dentro intercambia a1 y a2 en la cadena de
  * pruebas: el valor de max.vy pasa a 7 usos ponderados sobre 8 instrucciones (1,75) y supera al objeto en curso
@@ -457,7 +463,8 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * planificador adelanta la carga; el original la deja tras el almacen. Se supone, sin verificar, que el original
  * almacena las banderas por un puntero que el planificador no puede separar del acceso por `$gp`; medido: escribir
  * el almacen por `cam->` empeora, en una o en las dos ramas, y hacerlo por un puntero `u16*` local o escribir `k`
- * antes que `c` dejan la cifra en 3340); la carga
+ * antes que `c` dejan la cifra en 3340; escribirlo por `ec` tras asignarle `&D_8006D928` deja 2080, se supone, sin
+ * verificar, que porque el CSE pliega la constante en la direccion y el almacen sigue siendo de simbolo); la carga
  * de `D_8006D928.vpy` del modo de transicion (0x11d0..0x11ec), adelantada aqui sobre tres almacenes de `v30`
  * (escribirla por `cam->` empeora); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en `s2` y el
  * original lo guarda en `s1`, el registro del puntero `&w->dir` que muere en la preparacion de los argumentos de la
@@ -1338,7 +1345,9 @@ void func_80035244(void)
  * en s3 y puntero a `sx` en s4, como el original; (3) resuelta con una envoltura (mas abajo): el limite en a1 y el
  * puntero al objeto de la busqueda del modelo en a2, como el original; (4) el
  * byte D_8006AA7C que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc` (diferencia de forma
- * simbolica de los mismos bytes).
+ * simbolica de los mismos bytes). Leerlo por el simbolo D_8006AA7C en el prologo da el texto del original pero
+ * cambia el orden de los dos `lui` y de los registros v0 y v1 (565 en lugar de 345); guardarlo antes en una local
+ * deja la carga `lbu` justo tras su `lui` (495); en ambos casos el reparto es peor que con el miembro del banco.
  *
  * La atenuacion sigue el flujo del original: el original tiene una sola llamada a func_800351B4 (0x800358A4) y la
  * atenuacion por distancia y la de proyeccion saltan a ella tras recargar el objeto en `a0` (0x80035DCC), con la
@@ -1406,7 +1415,7 @@ void func_80035244(void)
  * causa por la que la recarga del puntero evita `a3`. Con `$7` en la lista la recarga evita `a3` (se supone, sin verificar, que porque otro punto de la funcion
  * lo escribe por asm; no se leyo el codigo de la recarga). La busqueda del
  * modelo copia el limite (`lim`) en una local propia dentro del bloque, como el original (`addu a1,v1,zero`); la
- * copia hecha antes de la comparacion se vuelve a fundir con `nmod`. El original rellena el hueco de la primera
+ * copia hecha antes de la comparacion se vuelve a fundir con `nmod` (470). El original rellena el hueco de la primera
  * comparacion con esa copia; aqui el hueco queda con un `nop` (se supone, sin verificar, que porque la carga del
  * puntero al objeto, que sale primero, no cabe en el hueco).
  *
