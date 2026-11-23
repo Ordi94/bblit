@@ -442,55 +442,34 @@ s32 func_800151FC(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1985 con la configuracion versionada (g = 8 del archivo; ejes 71 de operando, 0 reordenadas,
- * 231 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
+ * Pendiente: puntuacion 885 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
+ * 216 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
- * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
- * original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante.
- * Medido en el volcado del optimizador de bucles (`-dL`): el bucle del directorio tiene 72 instrucciones reales y el
- * optimizador iza tres cadenas de desplazamiento (pseudos 502 y 503 con ahorro 5 y 4, 510 a 512 con ahorro 6, 5 y 2, y las
- * de los bucles interiores de 17 y 20 instrucciones de vida), que el original deja dentro del cuerpo (tres cadenas
- * `sll 4 ; subu ; sll 3` por vuelta, en 0x80015CC0, 0x80015D10 y 0x80015D40); los bucles interiores de 12 y 16 instrucciones
- * no izan un incremento inducido (`giv of insn ... not worth while, 0 vs 12` y `0 vs 16`). El original recalcula la cadena
- * en cada uno de los tres usos del desplazamiento: la busqueda del final del nombre (0x80015CC0 a 0x80015CC8), el relleno
- * con ceros (0x80015D10 a 0x80015D1C, con el primer `sll` en el hueco del salto del bucle) y la entrada de directorio
- * (0x80015D40 a 0x80015D48). Causa del izado, medida en `-dL`: el optimizador detecta como movibles las dos primeras
- * instrucciones de la cadena (`sll 4`, pseudo 374, ahorro 6, y `subu`, pseudo 375, ahorro 3), empareja con ellas las de
- * los otros dos usos (las marca como hechas "matches") y las iza una sola vez al preludio del bucle del directorio. El
- * fuente escribe el producto `grupo * 120` en cada uso, en una sola expresion, que es lo que el documento admite: una
- * cadena partida en varias asignaciones sobre locales que se reescriben en cada uso evita el izado, pero es partir una
- * operacion en varias sentencias y no se admite. Con el producto en los tres usos la cifra es 1985; el compilador
- * conserva la cadena una vez en el preludio y el original la tiene tres veces dentro del cuerpo.
+ * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y el recorrido del directorio.
+ * Recorrido del directorio: el original recalcula en cada uso el desplazamiento de la ranura (tres cadenas
+ * `sll 4 ; subu ; sll 3` en 0x80015CC0, 0x80015D10 y 0x80015D40) y tiene como registros propios la base del directorio (t1)
+ * y la base mas 0x24 (t2). Con un `for` el optimizador de bucles (`-dL`) iza la cadena de `grupo * 120` como invariante
+ * (pseudos movibles con ahorro 6, 6 y 4, emparejados con los de los otros dos usos) y la cifra es 1985. El bucle exterior se escribe
+ * con etiqueta y salto hacia atras (`siguiente_entrada`), con la fila y el contador como variables de bucle propias
+ * (`fila += 0x28; n++;`) y las dos bases en locales (`directorio`, `sistema`): en el volcado `-dL` el optimizador ya no
+ * recorre ese bucle (solo quedan los bucles interiores y los de relleno y de bloques), las tres cadenas quedan en el cuerpo y
+ * la cifra baja a 885. Las inicializaciones del bucle van dentro de la guardia (`n < D_80069358[0]`) y la de `fila` tras la de
+ * las bases, como el preludio del original (0x80015CA4 a 0x80015CB8).
+ * Queda: el original copia la fila (`move a3,a2` en 0x80015CE0 y 0x80015D14) en el preludio de cada bucle interior y el C no
+ * (se supone, sin verificar, que la copia nace de la sustitucion de `n * 0x28` por el puntero inducido del bucle exterior,
+ * que aqui no se hace); `move v1,zero` de la cabecera del bucle queda en el hueco de retardo de la guardia; y el reparto de
+ * registros: `n` cae en a2 (en a1 en el original), `fila` en a0 (a2), la base en a3 (t1) y la cadena en a1 (a0).
  * Contador propio del bucle del directorio (`n`): el contador `i` vive desde el bucle de relleno de
  * 0x96 palabras hasta el del directorio y cruza la llamada de MemCardGetDirentry, que usa a1 como argumento, de modo que
  * no puede tomar a1 (volcado `-dg`: el pseudo de `i`, 23 usos sobre 88 instrucciones, cae en t0); el original tiene a1
  * como contador de cada bucle, con vidas cortas separadas por la llamada, y con `n` el del directorio sale de ese
  * reparto. El bucle de entradas (el que calcula los bloques) conserva el contador `i`.
- * Desplazamiento de la fila (`fila = n * 0x28;` al inicio de cada vuelta del directorio y usada en los cuatro accesos):
- * el original conserva un solo valor de la fila en toda la vuelta (`move a3,a2` en 0x80015CE0 y
- * 0x80015D14 copia la misma base) en lugar de recalcular `n * 0x28` en cada acceso.
  * Suma de la entrada del directorio: el original suma primero la fila y el desplazamiento del grupo y
  * despues las dos bases (`addu v0,a2,v0` en 0x80015D4C y `addu v1,v0,t1` y `addu v0,v0,t2` tras ella), de modo que
- * la entrada y la palabra de 0x24 se escriben como `base + (fila + grupo * 120)`; con la suma escrita de
- * izquierda a derecha el compilador suma la base al desplazamiento y despues la fila. La fila no se copia en una
- * local: el CSE funde la copia cuando solo la usa el bucle de relleno (el original usa t1 ya cargado en la busqueda y
- * aqui el compilador calcula la direccion del simbolo en el preludio).
- * Queda el reparto de registros del directorio: `n` cae en a3 (en a1 en el original), `fila` en a1 (a2), el contador de
- * los bucles interiores en a0 (v1) y la cadena de desplazamientos en v1 (a0), y el bucle de busqueda del final del nombre
- * calcula la direccion del simbolo de la tabla en su preludio (`lui` y `addiu a2`) mientras el original usa t1 ya
- * cargado. La copia `move a3,a2` del original (0x80015CE0 y 0x80015D14, en el preludio de cada bucle interior, tras su
- * guardia) sale al escribir `n * 0x28` en el indice de los dos bucles interiores en lugar de la local `fila`, pero
- * entonces el compilador calcula la direccion de la tabla (`lui` y `addiu`) en el preludio de cada bucle interior en
- * lugar de compartir un unico registro como el original, y la cifra sube; con la direccion guardada en una local
- * previa al bucle el registro unico aparece, el compilador anade copias de la base para la parte final y la cifra
- * tambien sube. Se supone, sin verificar, que el original comparte la direccion porque la usa tambien la parte final
- * del cuerpo del bucle exterior, y que el compilador crea la copia al sustituir el producto por el puntero inducido
- * del bucle exterior. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
- * del resultado que despues compara con 1) se reproduce guardando el resultado en la local `rc`, compartida con la del
- * sondeo. El indice del bucle de busqueda se escribe `j + fila + grupo * 120` y el relleno con ceros se escribe por el
- * campo `nombre` de la entrada (`((EntradaDirectorio*)(base + (fila + grupo * 120)))->nombre[j]`, el mismo
- * desplazamiento que la entrada de directorio, abajo): con el indice en bytes `base[j + (fila + grupo * 120)]` la
- * cifra es 2060 y con el acceso por el campo 1985. La busqueda del final del nombre se
+ * la entrada y la palabra de 0x24 se escriben como `base + (fila + grupo * 120)`. El `move a1,v0 ; bnez a1` de la llamada de
+ * formateo (el original comprueba una copia del resultado que despues compara con 1) se reproduce guardando el resultado en
+ * la local `rc`, compartida con la del sondeo. El relleno con ceros se escribe por el campo `nombre` de la entrada
+ * (`((EntradaDirectorio*)(base + (fila + grupo * 120)))->nombre[j]`). La busqueda del final del nombre se
  * escribe con guardia (`j = 0; if (nombre[j] != 0) { do { j++; } while (nombre[j] != 0); }`) como el original
  * (`beqz` a 0x80015D08 tras la primera lectura, 0x80015CDC, y el `addiu` de `j` ya en el cuerpo).
  *
@@ -502,7 +481,7 @@ s32 func_800151FC(void)
  * El argumento que pasa main se ignora.
  *
  * Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es
- * 0x30; la cifra medida sin la local es 2187 y con ella 1985. La funcion es pendiente: con la local la
+ * 0x30; la cifra medida sin la local es 1087 y con ella 885. La funcion es pendiente: con la local la
  * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)
@@ -514,6 +493,8 @@ void SondearTarjeta(void)
     EntradaDirectorio* entrada;
     s16* bloques;
     s32 grupo;
+    s8* directorio;
+    s8* sistema;
     s32 salvado;
     u8 valor_salvado_a6;
     s32 partida;
@@ -705,24 +686,32 @@ void SondearTarjeta(void)
                     }
                 }
                 n = 0;
-                grupo = n;
-                for (; n < D_80069358[0]; n++) {
-                    fila = n * 0x28;
+                if (n < D_80069358[0]) {
+                    grupo = n;
+                    directorio = D_800697B0;
+                    sistema = D_800697B0 + 0x24;
+                    fila = n;
+                siguiente_entrada:
                     j = 0;
-                    if (D_800697B0[j + fila + grupo * 120] != 0) {
+                    if (directorio[j + fila + grupo * 120] != 0) {
                         do {
                             j++;
-                        } while (D_800697B0[j + fila + grupo * 120] != 0);
+                        } while (directorio[j + fila + grupo * 120] != 0);
                     }
                     for (; j < 0x14; j++) {
-                        ((EntradaDirectorio*)(D_800697B0 + (fila + grupo * 120)))->nombre[j] = 0;
+                        ((EntradaDirectorio*)(directorio + (fila + grupo * 120)))->nombre[j] = 0;
                     }
-                    entrada = (EntradaDirectorio*)(D_800697B0 + (fila + grupo * 120));
+                    entrada = (EntradaDirectorio*)(directorio + (fila + grupo * 120));
                     entrada->attr = 0;
                     entrada->tam = 0;
                     entrada->sig = 0;
                     entrada->cabeza = 0;
-                    *(s32*)(D_800697B0 + 0x24 + (fila + grupo * 120)) = 0;
+                    *(s32*)(sistema + (fila + grupo * 120)) = 0;
+                    fila += 0x28;
+                    n++;
+                    if (n < D_80069358[0]) {
+                        goto siguiente_entrada;
+                    }
                 }
                 D_8006936C = func_80014AC4(ranura);
                 if (D_8006936C >= 0) {
