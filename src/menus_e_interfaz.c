@@ -300,14 +300,14 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 235 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
+ * Pendiente: puntuacion 40 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
  * 14 insertadas o borradas). Dos causas. (1) El recorte de la direccion del primitivo a 24 bits se escribe en una sola
  * sentencia (`p = (u32*)(((s32)p << 8) >> 8)`): el original emite `sll` y `sra` consecutivos sobre a1 (0x8003B218 y
- * 0x8003B21C), tras los almacenes de la palabra de ordenacion (0x8003B210) y del color (0x8003B214); aqui el temporal
- * del `sll` cae en v0 y el planificador lo coloca delante de esos almacenes (una instruccion de mas y otra de menos).
- * Se supone, sin verificar, que en el original el recorte es una reasignacion de la propia direccion, de modo que su
- * `sll` escribe en a1 y no puede subir por delante de los almacenes que la leen; escribirlo asi exigiria partir la
- * operacion en dos sentencias. (2) El reparto de registros de la cola: el original deja la bandera de transparencia en
+ * 0x8003B21C), tras los almacenes de la palabra de ordenacion (0x8003B210) y del color (0x8003B214); aqui el `sll` queda
+ * detras de los almacenes, como el original, pero su temporal cae en v0 y el `sra` escribe en a1 desde v0 (tres lineas de
+ * operando). Se supone, sin verificar, que en el original el recorte es una reasignacion de la propia direccion, de modo
+ * que su `sll` escribe en a1; escribirlo asi exigiria partir la operacion en dos sentencias. (2) El reparto de
+ * registros de la cola: el original deja la bandera de transparencia en
  * v1 y la palabra de ordenacion en a2; aqui la bandera cae en a2 y la palabra en v1. El brillo, el color acumulado, el
  * desplazamiento, el puntero, la direccion de las palabras, la de la lista de ordenacion y la de la ranura ya
  * coinciden con el original (a3, a3, a2, a1 y a0 las tres). Medido en el volcado de la asignacion global: el
@@ -319,24 +319,28 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
  *
  * Decisiones de escritura vigentes (cifra con la forma contraria): la direccion de las palabras, la de la lista y la
  * ranura comparten una variable `base_trabajo`; la bandera de transparencia reutiliza la variable del desplazamiento
- * (235; con variable propia 650); la palabra de ordenacion se calcula antes del salto de la bandera y se almacena tras
- * la union de las ramas (235; almacenada antes del salto 830); la cola acumula sobre el propio color y repite el `or`
- * con 0x2C000000 tras la union de las ramas, como el original en 0x8003B208 y 0x8003B20C (235; sin la repeticion 435);
- * el brillo se calcula en el propio color (235; en `base_trabajo` 255).
+ * (40; con variable propia 460); la palabra de ordenacion se calcula antes del salto de la bandera y se almacena tras
+ * la union de las ramas (40; almacenada antes del salto 635); la cola acumula sobre el propio color y repite el `or`
+ * con 0x2C000000 tras la union de las ramas, como el original en 0x8003B208 y 0x8003B20C (40; sin la repeticion 240);
+ * el brillo se calcula en el propio color (40; en `base_trabajo` 60).
  */
 /*
  * Encola un sprite de ocho palabras en la lista de ordenacion segun la profundidad del objeto: calcula el color y
  * el desplazamiento de la textura, copia las palabras del sprite al primitivo del anillo (D_80076188), lo enlaza en
  * la lista elegida por la profundidad y avanza el cursor.
  *
- * Las dos envolturas `do { } while (0)` (el almacen de la palabra 3 del primitivo, que suma el desplazamiento, y la
- * puesta a cero del desplazamiento)
- * no generan codigo. Disputa del volcado de la asignacion global entre el desplazamiento (pseudo 86) y el color (pseudo
- * 83, que guarda tambien el brillo): sin ellas el desplazamiento cuenta 5 usos sobre 29 instrucciones (0,345) y el color
- * 15 sobre 103 (0,437), el color se asigna primero y toma a2 con el desplazamiento en a3 (325); con ellas el
- * desplazamiento cuenta 7 usos ponderados sobre 30 (0,467), se asigna antes que el color y toma a2, el color a3 como el
- * original (235). El puntero (15 usos sobre 79, 0,57) y la direccion de la palabras (16 sobre 41, 1,56) siguen por
- * delante de los dos. La forma del fuente original que producia este reparto se desconoce.
+ * Las tres envolturas `do { } while (0)` no generan codigo. Dos de ellas (el almacen de la palabra 3 del primitivo, que
+ * suma el desplazamiento, y la puesta a cero del desplazamiento) resuelven una disputa del volcado de la asignacion
+ * global entre el desplazamiento (pseudo 86) y el color (pseudo 83, que guarda tambien el brillo): sin ellas el
+ * desplazamiento cuenta 5 usos sobre 29 instrucciones (0,345) y el color 15 sobre 103 (0,437), el color se asigna
+ * primero y toma a2 con el desplazamiento en a3 (325); con ellas el desplazamiento cuenta 7 usos ponderados sobre 30
+ * (0,467), se asigna antes que el color y toma a2, el color a3 como el original; quitando solo una de las dos la
+ * puntuacion es 130. La tercera envuelve el recorte de la direccion del primitivo: las notas de bucle que deja el
+ * analizador actuan como frontera del planificador, de modo que el `sll` no sube por delante de los dos almacenes
+ * anteriores (sin ella 235, con las otras dos). El puntero (17 usos ponderados sobre 79, 0,86) y la direccion de las
+ * palabras (16 sobre 41, 1,56) siguen por delante de los dos. Se supone, sin verificar, que la frontera del
+ * planificador es la causa de la posicion del `sll`. La forma del fuente original que producia este reparto se
+ * desconoce.
  */
 void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
 {
@@ -423,7 +427,10 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         color |= 0x2C000000;
         *p = palabra;
         p[1] = color;
-        p = (u32*)(((s32)p << 8) >> 8);
+        /* Envoltura sin codigo: mantiene el `sll` detras de los dos almacenes (ver la cabecera). */
+        do {
+            p = (u32*)(((s32)p << 8) >> 8);
+        } while (0);
         *(u32*)base_trabajo = (u32)p;
         D_80076188 += 0x28;
         if (ctx->limite < D_80076188) {
