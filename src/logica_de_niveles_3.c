@@ -434,8 +434,8 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1175 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 5 reordenadas,
- * 229 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
+ * Pendiente: puntuacion 970 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
+ * 225 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
  * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
  * reproduce la carga del original del hijo y baja de 2625 a 2605. La resta de la X del portador en el barrido se
  * escribe directa (`o->param.trans.vx - o->p70->param.trans.vx`): con una local previa (`x_portador`) la cifra es 1915.
@@ -464,8 +464,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * secuencia con una forma de la macro (operandos y orden de sus instrucciones) que aqui se desconoce; la causa esta
  * en include/ y no se aplica. Una local de bloque para el jugador en el bloque del hijo no cambia el codigo (el CSE funde la copia).
  * Residuo en tramos de 1 a 6 instrucciones: orden de las cargas del contador de andadura (0x194(s3)) y de las
- * alturas, el hueco de retardo de la llamada compartida a func_8001CFCC, la rama invertida del bucle de busqueda del
- * objetivo (0x1c18) y el temporal de mflo (a1 en lugar de t7), la suma de `p30.vy` (v0 y v1 intercambiados, 0x1ca4), el
+ * alturas, el hueco de retardo de la llamada compartida a func_8001CFCC, el temporal de mflo (a1 en lugar de t7), la suma de `p30.vy` (v0 y v1 intercambiados, 0x1ca4), el
  * ida y vuelta por memoria del contador 0x17c(s3) del final (sh y lhu en el original, andi 0xffff aqui, 0x47e4), el
  * orden de un sw a 0x14(s3) y 0xec(s3) (0x36a8) y la constante 0x1000 en t7 frente a t4 en los tres bloques de escala.
  * Medido con `diff` (51 tramos que no son solo de forma simbolica; el reparto de t7 y t4 para la constante 0x1000
@@ -507,12 +506,13 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * lectura del portador. Es la mayor causa (una linea sobrante, una faltante y tres de registro). (b) relectura de
  * `t->w114` en 0x8002B928: aqui el compilador reutiliza a0 en lugar de recargar; una referencia con indice
  * constante a D_800693C0 como elemento de arreglo (referencia dentro de estructura) tampoco la recarga. (c) el destino
- * de la suma de la secuencia en 0x8002B870 (v0 aqui, v1 en el original) y la rama invertida del bucle de busqueda
- * (0x80028C04): el C vigente no las reproduce. En esa busqueda el original sale del bucle por `beqz v0,0x80028C04`
- * directo a la rama comun (0x80028FD0) y vuelve al cuerpo con `j`, sin repetir la prueba del bucle; con el bucle
- * escrito con la salida nula explicita dentro del cuerpo (`if (t->aux == 0) goto mover_con_colision;` tras avanzar)
- * o como `do { } while`, el compilador duplica el cuerpo de la prueba tras la primera vuelta y la puntuacion sube a
- * 2495; con `while` y `break` la cifra no cambia (1175).
+ * de la suma de la secuencia en 0x8002B870 (v0 aqui, v1 en el original): el C vigente no la reproduce. El bucle de
+ * busqueda del objetivo (0x80028BD0 a 0x80028C0C) se escribe con la rama de avance dentro de la condicion de
+ * continuar (`if (id distinto || marcado) { avanzar; if (nulo) goto mover_con_colision; continue; } break;`): el
+ * original sale por `beqz v0,0x80028FD0` directo a la rama comun y vuelve al cuerpo con `j`, sin repetir la prueba;
+ * con la prueba escrita como condicion de salida (`if (coincide) break;` y el avance al final) el compilador copia el
+ * cuerpo de la prueba tras la primera vuelta (2495), y con el bucle `for (; t->aux != 0; ...)` el salto de vuelta
+ * queda como `bnez` hacia atras con la salida por `j` (1175).
  */
 /*
  * Las cuatro sentencias replicadas son `t->w114 = banda_alta;` y `t->w118 = banda_baja;` escritas en la rama del
@@ -523,7 +523,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * (0x80027EE8). Causa medida en los volcados de `cc1` (`.lreg`, `.greg` y el ensamblador de salida) y con `diff`: con
  * la pareja en cada rama los valores son pseudos locales del bloque (603 y 604 en el bloque 127, 627 y 628 en el 133,
  * 2 usos sobre 2 insns cada uno) que toman v0 y v1 y se almacenan al final de su camino, igual que el original (la
- * puntuacion es 1175); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
+ * puntuacion es 970); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
  * los valores pasan a ser pseudos globales (la banda alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6
  * usos sobre 14 insns, 0,86) que reciben a1 y v1, los dos almacenes suben tras la etiqueta de union y aparece un
  * `move v0,a1` antes de la prueba de histeresis (la cifra empeora). La forma del fuente original que producia este reparto se
@@ -537,7 +537,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
  * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
  * bloque de union y el planificador la deja en el hueco de retardo de la llamada (en el original ese hueco es un
- * `nop`). Con las dos llamadas la cifra es 1175; con una sola llamada tras la etiqueta empeora. Se supone, sin
+ * `nop`). Con las dos llamadas la cifra es 970; con una sola llamada tras la etiqueta empeora. Se supone, sin
  * verificar, que en la rama de la comprobacion de apoyo el original reparte `a0` al puntero del portador y despues al
  * argumento, y que aqui la preparacion del argumento sube tras la llamada a BarrerTerreno y empuja ese puntero a `a1`.
  * La forma del fuente original que producia este reparto se desconoce.
@@ -1295,10 +1295,15 @@ avance_por_banderas:
         if (t->aux == 0) {
             goto mover_con_colision;
         }
-        for (; t->aux != 0; t->aux = t->aux->siguiente) {
-            if (t->aux->w1C == (s16)t->fot->w16 && !(t->aux->flags14 & 0x100)) {
-                break;
+        for (;;) {
+            if (t->aux->w1C != (s16)t->fot->w16 || (t->aux->flags14 & 0x100)) {
+                t->aux = t->aux->siguiente;
+                if (t->aux == 0) {
+                    goto mover_con_colision;
+                }
+                continue;
             }
+            break;
         }
     } else {
         t->aux = D_80069698;
