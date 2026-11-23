@@ -259,9 +259,9 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1560 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
- * lineas reordenadas y 271 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
- * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1634 y con ella 1560. El
+ * Pendiente: puntuacion 1515 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
+ * lineas reordenadas y 261 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1589 y con ella 1515. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
@@ -273,6 +273,12 @@ void func_80040430(s8* contador, u16 mascara)
  * (`lbu v0,0xc(s1)` en 0x80040520 y el almacen en 0x80040528), y la base de `est` se calcula tras las tres
  * llamadas de borrado, donde el original repite `lui s0` (0x80040564). Con la lectura en una local de un solo
  * uso, o sin ella, el compilador vuelve a colocar la carga tras el almacen.
+ *
+ * El resultado de las dos restas de `eje_y` se convierte a `s16` antes del almacen (el campo es de 16 bits): sin las
+ * conversiones la cifra es 1550 y con ellas 1515. El tope izquierdo del eje X (-0x80) se guarda en la local
+ * `tope_izquierda` antes de su almacen en la rama de la grabacion y en la de la BIOS: sin ella la cifra es 1525 y con
+ * ella 1515 (se supone, sin verificar, que el valor deja de ser una constante de la rama y cambia el reparto del
+ * registro temporal del almacen).
  *
  * Una sola variable (`bits`) guarda los botones de direccion en la rama de grabacion y en la de lectura de la BIOS:
  * el original usa el mismo registro (s1) en las dos (`lhu s1` en 0x80040668 y `move s1,s2` en 0x8004074C), y con dos
@@ -325,14 +331,16 @@ void func_8004048C(void)
     u16 a;
     u16 b;
     u16 c;
-    u16* grab;
     u32 id;
     u32 v;
     s32 bits;
+    u8* banco;
     s32 hi;
     s32 centro;
     s32 eje;
+    u16* grab;
     s32 lo;
+    s32 tope_izquierda;
     u32 cf2;
     u32 cf3;
     u32 cfd;
@@ -340,7 +348,6 @@ void func_8004048C(void)
     u32 eje_x_crudo;
     u32 eje_y_crudo;
     EstadoPrincipal* est;
-    u8* banco;
     /* Reserva de pila: local sin uso que completa el marco del original. */
     s32 reserva[2];
 
@@ -407,7 +414,8 @@ normal:
         ESTADO_PRINCIPAL->mando.eje_x = 0;
         ESTADO_PRINCIPAL->mando.eje_y = 0;
         if (bits & 0x8000) {
-            ESTADO_PRINCIPAL->mando.eje_x = -0x80;
+            tope_izquierda = -0x80;
+            ESTADO_PRINCIPAL->mando.eje_x = tope_izquierda;
         } else if (bits & 0x2000) {
             ESTADO_PRINCIPAL->mando.eje_x = 0x7F;
         }
@@ -452,7 +460,8 @@ normal:
             ESTADO_PRINCIPAL->mando.w3E = prev;
             ESTADO_PRINCIPAL->mando.botones_a = prev;
             if (hi & 0x8000) {
-                ESTADO_PRINCIPAL->mando.eje_x = -0x80;
+                tope_izquierda = -0x80;
+                ESTADO_PRINCIPAL->mando.eje_x = tope_izquierda;
             } else if (hi & 0x2000) {
                 ESTADO_PRINCIPAL->mando.eje_x = 0x7F;
             }
@@ -491,17 +500,17 @@ normal:
         } else {
             ESTADO_PRINCIPAL->mando.eje_x = 0;
         }
-        centro = ESTADO_PRINCIPAL->mando.centro_y;
         eje_y_crudo = D_8006CFF7;
+        centro = ESTADO_PRINCIPAL->mando.centro_y;
         eje = eje_y_crudo & 0xFF;
         if (eje < centro - D_8006952C) {
-            ESTADO_PRINCIPAL->mando.eje_y = centro - ((u8)eje_y_crudo + 1);
+            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - ((u8)eje_y_crudo + 1));
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x1000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x1000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x1000;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x1000;
-        } else if (centro + D_8006952C < eje) {
-            ESTADO_PRINCIPAL->mando.eje_y = centro - (eje_y_crudo + 1);
+        } else if (eje > centro + D_8006952C) {
+            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - (eje_y_crudo + 1));
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x4000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x4000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x4000;
