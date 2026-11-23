@@ -283,33 +283,32 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 565 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
- * 60 insertadas o borradas). El recorte de la direccion del primitivo a 24 bits se escribe en una sola sentencia
- * (`p = (u32*)(((s32)p << 8) >> 8)`): el original emite `sll` y `sra` consecutivos sobre a1 (0x8003B218 y 0x8003B21C),
- * tras los almacenes del color, y aqui el `sll` cae en v0 antes del almacen del color, de modo que la direccion y la
- * ranura toman otros registros. Las dos ramas que recortan el nivel de la lista coinciden: el nivel se guarda dentro de
- * cada rama, antes de leer la lista, y el original las funde en una cola comun que empieza por ese almacen (con una
- * variable `n` y un solo almacen tras la union la puntuacion sube de 360 a 575). La cola del color coincide en forma
- * (`or ; lui 0x2c00 ; or`) y el color cae en a3 como en el original. Difiere el reparto de registros del resto: el
- * original deja el desplazamiento de la textura en a2, la direccion de las palabras del sprite, la base de la lista y
- * la ranura en a0 y la bandera de transparencia en v1, y aqui caen en a0, v1, v1, a2 y a0; el brillo y el color
- * acumulado de la cola caen en a0 y v1 en lugar de a3, y el original guarda la palabra de ordenacion despues del salto
- * de la bandera de transparencia, junto al color, y aqui sale antes.
+ * 60 insertadas o borradas). Dos causas. (1) El recorte de la direccion del primitivo a 24 bits se escribe en una sola
+ * sentencia (`p = (u32*)(((s32)p << 8) >> 8)`): el original emite `sll` y `sra` consecutivos sobre a1 (0x8003B218 y
+ * 0x8003B21C), tras los almacenes de la palabra de ordenacion (0x8003B210) y del color (0x8003B214); aqui el `sll`
+ * cae en v0 antes del almacen del color y la palabra de ordenacion se almacena antes del salto de la bandera de
+ * transparencia. Con la palabra en una variable y su almacen tras la union (como el original) la puntuacion sube a 640:
+ * la palabra toma a2 y la constante 0x09000000 pasa a a0 con la bandera en v1 (como el original), pero el color pasa a
+ * t0 y la ranura a a3. (2) El reparto de registros: el original deja el desplazamiento de la textura en a2, la
+ * direccion de las palabras del sprite, la base de la lista y la ranura en a0, la bandera de transparencia en v1 y el
+ * brillo y el color acumulado de la cola en a3 (el mismo registro del color); aqui caen en a0, v1, v1, a2, a0 y a0. La
+ * cola de dos ramas que recortan el nivel de la lista guarda el nivel dentro de cada rama, antes de leer la lista,
+ * como el original, que las funde en una cola comun que empieza por ese almacen.
  *
- * La direccion de las palabras (local de bloque) toma v1 aunque a0 esta libre en su vida y el desplazamiento de la
- * textura (global, prioridad 0,136) toma a0; se supone, sin verificar, que el original deja v1 ocupado durante esa vida
- * por otra local de bloque, de modo que la direccion toma a0 y el desplazamiento a2.
- * Medido en el volcado de la asignacion local y global: la bandera de transparencia es una local de un solo bloque (2 usos
- * sobre 4 instrucciones) y la asigna la fase local antes que la global; toma a0 porque la constante 0x09000000 ocupa v1
- * durante su vida, y entonces la lista de ordenacion (global, 4 usos sobre 8 instrucciones) cae en v1 y la ranura en a2. El
- * original tiene la bandera en v1 y la lista y la ranura en a0. Con la palabra de ordenacion en una variable global
- * (almacen tras la union) la constante pasa a a0 y la bandera a v1, pero la lista sigue en v1 y la planificacion sube el
- * `lui` por encima de la carga de la bandera; cambiar el orden de las dos sentencias en el fuente no cambia la
- * planificacion.
- * Con la palabra en una variable el color cae en t0 y la direccion de la ranura en a3 (en el original a3 y a0). El C
- * escribe variables propias para la direccion de las palabras, la lista y la ranura; fundirlas en una sola no cambia
- * el reparto, porque el compilador ya las funde y el reparto de a0 no depende de cuantas variables se escriban. Se
- * supone, sin verificar, que el original deja la direccion de las palabras en a0 porque v1 esta ocupado en la
- * asignacion local.
+ * Medido en el volcado de la asignacion local y global: el desplazamiento de la textura (3 usos sobre 22 instrucciones,
+ * prioridad 0,136) toma a0 porque la direccion de las palabras (local de un bloque, 8 usos sobre 15) ya tomo v1 en la
+ * fase local; el color (6 usos sobre 95) toma a3. La bandera de transparencia es una local de un solo bloque (2 usos
+ * sobre 4 instrucciones), toma a0 porque la constante 0x09000000 ocupa v1 durante su vida, y entonces la lista de
+ * ordenacion (global, 4 usos sobre 8 instrucciones) cae en v1 y la ranura en a2. Se supone, sin verificar, que en el
+ * original la direccion de las palabras es un pseudo global que toma a0 por conflicto con v0 y v1, de modo que el
+ * desplazamiento toma a2 y el color a3.
+ *
+ * Decisiones de escritura vigentes (cifra con la forma contraria): el brillo comparte variable con el color
+ * acumulado de la cola (565; con una variable propia 575); la cola repite el `or` con 0x2C000000 tras la union de las
+ * ramas, como el original en 0x8003B208 y 0x8003B20C (565; sin la repeticion 760); la cola acumula en una
+ * variable distinta del color (565; sobre el propio color 610); la bandera de transparencia se lee despues de calcular
+ * la ranura (565; antes de elegir la lista de ordenacion 860); la palabra de ordenacion se almacena antes del salto
+ * de la bandera (565; tras la union 640).
  */
 /*
  * Encola un sprite de ocho palabras en la lista de ordenacion segun la profundidad del objeto: calcula el color y
@@ -335,7 +334,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     func_80039CD0(D_80076188);
     if (sprite->banderas & 0x10) {
         if (D_8006966A != 0) {
-            /* El brillo comparte variable con el color acumulado de la cola (360; con una variable propia 370). */
+            /* El brillo comparte variable con el color acumulado de la cola (565; con una variable propia 575). */
             tinte = 0x80 - ((s16)D_800694E2 >> 5);
             /* La suma agrupa primero los dos desplazamientos y luego el componente bajo: con otro orden de sumandos el compilador cambia el reparto de a2 y a3. */
             color = tinte + ((tinte << 16) + (tinte << 8));
@@ -381,16 +380,15 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         }
         ranura = orden + ctx->estado.s4;
         /* La bandera de transparencia se lee despues de calcular la ranura: leida antes de elegir la lista de
-         * ordenacion la puntuacion sube de 360 a 655. */
+         * ordenacion la puntuacion sube de 565 a 860. */
         semitransparente = sprite->semitransparente;
         /* La palabra de ordenacion se guarda antes del salto de la bandera: con la palabra en una variable y su
-         * almacen tras la union de las ramas la puntuacion sube de 360 a 435. */
+         * almacen tras la union de las ramas la puntuacion sube de 565 a 640. */
         *p = *ranura | 0x09000000;
-        /* Cada rama acumula la constante en una variable propia y la union repite el `or` con 0x2C000000 (0x8003B208 y
-         * 0x8003B20C del original, tras `or a3,a3,v0` en 0x8003B204): la segunda mascara no cambia el valor porque
-         * 0x2E000000 ya la contiene, pero el original la emite y sin ella la puntuacion sube a 550. Acumulando sobre el
-         * propio color sube a 405 (el color gana prioridad frente al desplazamiento y toma a2), con la expresion del
-         * color escrita en cada rama a 560 y con una variable para la constante a 905. */
+        /* Cada rama acumula la constante en una variable distinta del color y la union repite el `or` con 0x2C000000
+         * (0x8003B208 y 0x8003B20C del original, tras `or a3,a3,v0` en 0x8003B204): la segunda mascara no cambia el
+         * valor porque 0x2E000000 ya la contiene, pero el original la emite y sin ella la puntuacion sube a 760.
+         * Acumulando sobre el propio color sube a 610 (el color gana prioridad frente al desplazamiento y toma a2). */
         if (semitransparente != 0) {
             tinte = color | 0x2E000000;
         } else {
