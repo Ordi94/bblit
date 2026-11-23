@@ -129,37 +129,38 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * bits) y fija la anchura de la textura y el modo del sprite.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 775 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas,
- * 38 insertadas o borradas). Mismos accesos y almacenes que el original. Original: copia el objeto a a3 al entrar
- * (0x0); lee el puntero del sprite en v0 tras la aritmetica del fotograma (`lw v0,0x78(a3)` en 0x78); carga el campo
- * 0x0E en a3, el registro que el objeto libera en esa lectura (0x7C); y calcula el puntero al sprite en v1
- * (`addiu v1,v0,0xc`, 0x80) antes del primer almacen, que sale por el puntero crudo (`sh a0,0xc(v0)`, 0x84). El C
- * reproduce esa lectura tardia y ese reparto del puntero crudo (v0) y del puntero al sprite (v1). Lo que queda,
- * medido en `diff`: (1) la tabla de fotogramas se lee antes de la rama (`lw t1,0x20(t3)` en 0xDC) y el original la
- * lee tras la reunion (0x30); el `sll` del indice se copia a cada rama (0xF4 y 0x110) y la reunion empieza por el
- * `addu` (0x114), mientras que el original lo deja en la reunion (0x34) y un `nop` en el hueco del `j` (0x18); con
- * la tabla leida tras la reunion la puntuacion es 1000; (2) el campo 0x0E sale con las cargas del fotograma
- * (`lhu a3,0xe(t1)` en 0x12C), el objeto pasa a t4 y tras el `lw` del puntero crudo queda un `nop` (0x15C) donde el
- * original carga el campo (0x7C); (3) las cargas de u (+8), de la anchura (+0xC) y de v (+9) salen en otro orden
- * (0x120 a 0x128 frente a 0x44 a 0x4C) y con otros registros. Se supone, sin verificar, que (2) y (3) vienen del
- * desempate de la segunda planificacion entre cargas sin predecesores.
+/* Pendiente: puntuacion 415 con la configuracion versionada (g = 8 del archivo; ejes 4 de operando, 0 reordenadas,
+ * 64 insertadas o borradas). Mismos accesos y almacenes que el original. La tabla se lee tras la reunion de las ramas
+ * (`lw v1,0x20(t3)` en 0x30, con `nop` en el hueco del `j`), el puntero crudo se lee tarde, en v0, y la suma del
+ * puntero al sprite precede al primer almacen, como en el original. Original: copia el objeto a a3 al entrar (0x0);
+ * lee el puntero del sprite en v0 tras la aritmetica del fotograma (`lw v0,0x78(a3)` en 0x78); carga el campo 0x0E en
+ * a3, el registro que el objeto libera en esa lectura (0x7C); y calcula el puntero al sprite en v1
+ * (`addiu v1,v0,0xc`, 0x80) antes del primer almacen, que sale por el puntero crudo (`sh a0,0xc(v0)`, 0x84). Lo que
+ * queda, medido en `diff`: (1) la carga de la anchura (+0xC) sale antes que la de la pagina (`lhu a3,0xc(a0)` en
+ * 0x114) en vez de al final del grupo de cargas (0x4C), y las cargas de u (+8) y de v (+9) salen en el orden
+ * contrario (u en 0x120 y v en 0x124 frente a v en 0x44 y u en 0x48); (2) registros: la tabla de fotogramas toma a0
+ * (t1 en el original), el objeto t1 (a3), el puntero al sprite t1 (v1) y el campo 0x0E v1 (a3). Se supone, sin
+ * verificar, que (1) viene de que la lectura de la anchura es la primera instruccion tras la nota de la envoltura de
+ * la tabla y que (2) sigue de ese orden.
  *
- * La `do { } while (0);` del puntero al sprite no genera codigo: el ensamblador es el que saldria sin ella, pero
- * las notas de bucle que deja el parser actuan como limite de la primera planificacion. Causa medida con `-ds` y
- * `-dg` sobre el pseudo 123 (puntero crudo: 3 usos y vida de 7 instrucciones sin la envoltura, 5 usos y vida de 3
- * con ella), el 84 (puntero al sprite: 16 usos sobre 32 instrucciones sin ella, 17 sobre 33 con ella) y el 85
- * (valor de +0: vida de 2 instrucciones sin la envoltura y de 10 con ella): sin la envoltura (1255) la primera
- * planificacion pone la lectura del crudo antes de la suma final del valor de +0, el crudo vive entre los
- * temporales de v0 de esa suma, toma a3 (`123 in 7`) y el puntero al sprite hereda a3 (`84 preferences: 7`) porque
- * el crudo muere en la suma que lo crea; la segunda planificacion deja entonces el almacen antes de la suma
- * (`sh a0,0xc(a3)` y despues `addiu a3,a3,0xc`). Con la envoltura la nota LOOP_BEG queda tras la suma del valor de
- * +0 y la nota LOOP_END tras la suma del puntero al sprite en `.sched`, la lectura del crudo no sube sobre la
- * aritmetica, el crudo toma v0 (`123 in 2`), el puntero v1 (`84 in 3`) y el campo 0x0E a3 (`92 in 7`), como el
- * original. El valor de +0 se calcula antes de la envoltura en `coordenada_u`: con el valor dentro de la
- * sentencia del almacen la puntuacion es 2825 (se supone, sin verificar, que la aritmetica queda entonces tras las
- * notas). El cuerpo de la envoltura es la sentencia real del puntero, sin `break` ni `continue`. Se supone, sin
- * verificar, que el original no lleva ninguna envoltura y que lo que fija ese orden en el es otra construccion que
- * el volcado no distingue. La forma del fuente original que producia este reparto se desconoce. */
+ * Las dos `do { } while (0);` no generan codigo: el ensamblador es el que saldria sin ellas, pero las notas de bucle
+ * que deja el parser actuan como limite de la primera planificacion. Envoltura del puntero al sprite y del campo
+ * 0x0E: causa medida con `-ds` y `-dg` sobre el pseudo 124 (puntero crudo: 3 usos y vida de 8 instrucciones sin la
+ * envoltura, 5 usos y vida de 4 con ella), el 84 (puntero al sprite: 16 usos sobre 32 instrucciones sin ella, 17
+ * sobre 33 con ella) y el 85 (valor de +0: vida de 2 instrucciones sin la envoltura y de 9 con ella): sin la
+ * envoltura (870) la primera planificacion pone la lectura del crudo antes de la suma final del valor de +0, el
+ * crudo vive entre los temporales de v0 de esa suma, toma a3 (`124 in 7`) y el puntero al sprite hereda a3
+ * (`84 preferences: 7`) porque el crudo muere en la suma que lo crea; con la envoltura la nota LOOP_BEG queda tras la
+ * aritmetica del fotograma y la nota LOOP_END tras la suma del puntero al sprite en `.sched`, la lectura del crudo no
+ * sube sobre la aritmetica y el crudo toma v0 (`124 in 2`). El valor de +0 se calcula antes de ella en
+ * `coordenada_u`: con el valor dentro de la sentencia del almacen la puntuacion es 1680 (se supone, sin verificar,
+ * que la aritmetica queda entonces tras las notas). Envoltura de la tabla de fotogramas: la nota LOOP_BEG queda justo
+ * tras la etiqueta de la reunion en `.sched` y la lectura de la tabla es la primera instruccion del bloque (en el
+ * volcado va antes que el `sll` del indice); sin ella (770) el `sll` se copia a cada rama (0xF0 y 0x10C) en vez de
+ * quedar tras la lectura de la tabla. El cuerpo de cada envoltura es codigo real de la funcion, sin `break` ni
+ * `continue`. Se supone, sin verificar, que el original no lleva ninguna envoltura y que lo que fija ese orden en el
+ * es otra construccion que el volcado no distingue. La forma del fuente original que producia este reparto se
+ * desconoce. */
 void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     SpriteEscalado* p;
@@ -176,25 +177,24 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
      * almacen en 0x8001E6A4). */
     u16 campo_0e;
 
-    /* La tabla se lee antes de elegir el cuadro: el original la lee tras la reunion de las dos ramas
-     * (0x8001E630); leerla tras la reunion da 1000 (ver la cabecera). */
-    fotogramas = c->fotogramas;
     /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
     if (modo & 1) {
         indice = (u16)c->cuadro;
     } else {
         indice = (c->duraciones + (u16)c->cuadro)->indice;
     }
-    /* El mismo puntero recorre la tabla y apunta luego al cuadro elegido. */
-    fotogramas = fotogramas + indice;
+    /* La tabla se lee tras la reunion de las dos ramas (0x8001E630), como el original (ver la cabecera). */
+    do {
+        fotogramas = c->fotogramas + indice;
+    } while (0);
     ancho_cuadro = fotogramas->w0C;
     desplazamiento_color = 2 - ((fotogramas->pagina >> 7) & 3);
     /* Los valores de +0 y +2 se calculan antes de la envoltura (ver la cabecera). */
     coordenada_u = (fotogramas->u >> desplazamiento_color) + ((fotogramas->pagina & 0xF) << 6);
     v_pagina = fotogramas->v + (0x100 & (fotogramas->pagina << 4));
-    campo_0e = fotogramas->w0E;
     do {
         p = (SpriteEscalado*)(0xC + (u8*)o->u78.p);
+        campo_0e = fotogramas->w0E;
     } while (0);
     p->s00 = coordenada_u;
     p->s02 = v_pagina;
