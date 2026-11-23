@@ -447,10 +447,10 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1600 con la configuracion versionada (g = 8 del archivo; ejes 125 de operandos, 0 de lineas
- * reordenadas y 228 de lineas insertadas o borradas). La resta `i = n - 10` del final de la funcion se escribe antes
+ * Pendiente: puntuacion 1590 con la configuracion versionada (g = 8 del archivo; ejes 125 de operandos, 0 de lineas
+ * reordenadas y 226 de lineas insertadas o borradas). La resta `i = n - 10` del final de la funcion se escribe antes
  * de la prueba de zonas y no dentro de ella: el original la calcula en el hueco de retardo del primer `beq`
- * (`addiu s0,s1,-0xa` en 0x80034D94) y escrita dentro de la prueba sale en el hueco del `bnez` siguiente (1720 con la
+ * (`addiu s0,s1,-0xa` en 0x80034D94) y escrita dentro de la prueba sale en el hueco del `bnez` siguiente (1710 con la
  * resta dentro). El flujo, las macros vectoriales y
  * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
  * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
@@ -460,7 +460,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * despues, 0x498 y 0x49c), y el bloque de las posiciones de la camara (0x17b0..0x1868) coincide en el orden de las
  * lecturas y almacenes con los tres almacenes de `v30` escritos tras el de `vpz`, en el orden `vx`, `vy`, `vz`;
  * queda: la prueba de los dos bits de la direccion del ajuste de altura (0xba0..0xbb8), que carga la mascara antes
- * que la bandera (con el orden de operandos del `or` invertido el reparto no cambia y la cifra sube a 1605); el par
+ * que la bandera (con el orden de operandos del `or` invertido el reparto no cambia y la cifra sube a 1595); el par
  * de modificaciones de banderas (0xcc4..0xd30), donde el original carga el contador tras el almacen de las banderas y aqui el planificador lo
  * adelanta (el volcado `.sched` de la rama del giro a la izquierda muestra el orden `li`, carga de `D_80069402`,
  * `ori`, `sh` sin ninguna arista de dependencia entre la carga del simbolo y el almacen a `0x80(reg)`, de modo que el
@@ -482,7 +482,11 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * como el original al escribir el almacen de `flags80` ANTES de calcular el cuadrado (la relectura la
  * provoca el almacen intermedio a un global que el CSE no distingue de `w->v90`; con el orden de los operandos
  * del `or` invertido la cifra sube); el bloque de alturas coincide con `ec` y `vp` locales de cada copia (ver su
- * comentario). La direccion de
+ * comentario). El valor de 16 bits que el original guarda en registros distintos segun la zona (el giro hacia el
+ * objeto de seguimiento, `a0` en 0xc14; el giro por boton, `v0`; la cuenta del giro suavizado, `v1` en 0xeb0; el rumbo)
+ * se guarda en cuatro variables, `cgiro`, `c`, `cuenta` y `crumbo`: con una sola variable la cuenta del giro tomaba
+ * `a0` en 0xeb0 (se supone, sin verificar, que una variable que abarca las cuatro zonas suma las referencias de
+ * todas y por eso toma el mismo registro en todas). La direccion de
  * acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos. La prueba del giro tras el
  * bloque de la cuenta de espera (0xed4..0xfd8) coincide con una sola cola `w->rot.vy = D_80069402` y dos
  * `goto` (la forma `if (f2 & 2 || byte)` tras el bloque empeora la cifra: el
@@ -558,6 +562,9 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
     s32 hit;
     s32 r;
     u16 c;
+    u16 cgiro;
+    u16 cuenta;
+    u16 crumbo;
     u16 c8;
     u16 c6;
     u16 f;
@@ -812,7 +819,7 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
             if (i < 0) {
                 i = i + 0x1000;
             }
-            c = D_80069402;
+            cgiro = D_80069402;
             r = (s16)(D_80069402 % 0x1000);
             if (r < 0) {
                 r = r + 0x1000;
@@ -824,7 +831,7 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
             if (i > 0x800) {
                 i = i - 0x1000;
             }
-            D_80069402 = c + (i >> 4);
+            D_80069402 = cgiro + (i >> 4);
             D_8006D928.flags80 = D_8006D928.flags80 | 2;
             if (D_8006961C < 0x5DC) {
                 w->p0 = 0x5DC;
@@ -879,9 +886,9 @@ aplicar_giro:
     if (reiniciar != 0) {
         D_800693F4 = 0x3C;
     }
-    c = D_800693F4;
+    cuenta = D_800693F4;
     if (D_800693F4 > 0) {
-        D_800693F4 = c - 1;
+        D_800693F4 = cuenta - 1;
     }
     f2 = D_8006D928.flags80;
     if ((f2 & 2) == 0) {
@@ -891,8 +898,8 @@ aplicar_giro:
             if (i < 0) {
                 i = i + 0x1000;
             }
-            c = w->rot.vy;
-            r = (s16)((s16)c % 0x1000);
+            crumbo = w->rot.vy;
+            r = (s16)((s16)crumbo % 0x1000);
             if (r < 0) {
                 r = r + 0x1000;
             }
@@ -905,7 +912,7 @@ aplicar_giro:
             }
             i = (i * 30) >> 11;
             if (i != 0) {
-                w->rot.vy = c + i;
+                w->rot.vy = crumbo + i;
             } else {
                 D_8006D928.flags80 = f2 | 2;
             }
@@ -970,7 +977,7 @@ fin_giro:
         /*
          * El original carga la posicion x del objeto (`lw v1,0xE4(s4)`, 0x8003453C) junto con la altura
          * del punto de vista, antes del primer almacen a `v70` (0x80034540); sin la local el
-         * planificador la carga tras ese almacen y la cifra sube de 1600 a 2110.
+         * planificador la carga tras ese almacen y la cifra sube de 1590 a 2100.
          */
         pos_x = o->param.trans.vx;
         w->v70.vy = D_8006D928.vpy;
