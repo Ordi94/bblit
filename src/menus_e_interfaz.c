@@ -229,8 +229,8 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
  * tres temporales de los puntos (2 usos sobre 4 a 6 instrucciones cada uno) quedan con el temporal del ultimo punto en
  * a0, el `sll` sube por delante de esa carga y el recorte no queda sobre el registro del paquete. Con ella el paquete
  * cuenta 11 usos sobre 16 instrucciones y cada temporal 4 usos sobre 4: los tres toman v0, el paquete v1 y el `sll`
- * queda en sitio detras de los almacenes (en el listado tras los planificadores, sin la envoltura el recorte precede al
- * ultimo almacen de los puntos y con ella lo sigue, detras de la nota de fin de bucle). Se supone, sin verificar, que
+ * queda en sitio detras de los almacenes (en el listado tras el primer planificador, sin la envoltura el recorte precede
+ * al ultimo almacen de los puntos y con ella lo sigue, detras de la nota de fin de bucle). Se supone, sin verificar, que
  * la causa de los registros es la prioridad relativa de esos pseudos en la asignacion local. La forma del fuente
  * original que producia este reparto se desconoce.
  */
