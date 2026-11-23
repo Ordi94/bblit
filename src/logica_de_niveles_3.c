@@ -38,15 +38,17 @@ extern void func_80039094(void);
  */
 /*
  * Formas que fijan el reparto de registros: el limite bajo del bloque de limites y el temporal de la lectura de la
- * rama negativa usan variables ya existentes de la funcion (`sentido` y `empuje`) porque son pseudos globales: se
- * asignan despues de los locales del bloque y comparten v1 como el original; el paso de los limites va en `num`, la
- * variable de toda la funcion, que toma a0 (con una local propia para el paso el pseudo global del paso, mas denso
- * que el del limite bajo, se asigna antes y toma v1, y el limite bajo cae en a0); la altura del recorrido por tramos
- * y la del descenso son variables distintas; el producto del seno de la oscilacion (0x648) se escribe sin variable
- * para que sea un temporal local; la fase del modo 0x20 se enmascara antes de la llamada, como el original, que
- * lleva el `sh` en el hueco de retardo del `jal`; la lista de disparadores se prueba sobre el campo y el puntero
- * se relee, porque el original prueba en v0 y copia a s0 tras el salto; y las tres escrituras del vector del modo
- * 0x400 van en el orden `vx`, `vz`, `vy`.
+ * rama negativa usan variables ya existentes de la funcion (`sentido` y `empuje`): son pseudos de la funcion y se
+ * supone, sin verificar, que se asignan despues de los locales del bloque; con ellas el bloque toma v0 y v1 como el
+ * original; el paso de los limites va en `num`, la variable de toda la funcion, que toma a0 (con una local propia para
+ * el paso el pseudo del paso, 4 usos sobre 7 instrucciones, se asigna antes que el limite bajo, 3 usos sobre 7, y toma
+ * v1, y el limite bajo cae en a0); el producto del seno de la oscilacion (0x648) se escribe sin variable para que sea
+ * un temporal local (con la variable `num` el producto cae en a0 y no en t0). Las formas siguientes son anteriores a
+ * la ultima bajada y no se han remedido: la altura del recorrido por tramos y la del descenso son variables
+ * distintas; la fase del modo 0x20 se enmascara antes de la llamada, como el original, que lleva el `sh` en el hueco
+ * de retardo del `jal`; la lista de disparadores se prueba sobre el campo y el puntero se relee, porque el original
+ * prueba en v0 y copia a s0 tras el salto; y las tres escrituras del vector del modo 0x400 van en el orden `vx`,
+ * `vz`, `vy`.
  */
 /*
  * Las sentencias replicadas son dos parejas que no generan codigo propio. (a) La llamada
@@ -438,25 +440,26 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 840 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
- * 179 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
- * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
- * reproduce la carga del original del hijo y baja de 2625 a 2605. La resta de la X del portador en el barrido se
- * escribe directa (`o->param.trans.vx - o->p70->param.trans.vx`): con una local previa (`x_portador`) la cifra es 1915.
- * La traslacion en Z de la rama de la comprobacion de apoyo usa dos locales propias (`vz_portador` y `vz_barrido`) en
- * lugar de las temporales compartidas `arg_giro` y `giro`, y se suman en el orden del original (portador y despues
- * barrido, `addu a1,a1,a2`). Los registros
- * guardados ya coinciden con el original. Los temporales de 32 bits compartidos entre bloques son pseudos globales
- * que el reparto global asigna a a0 y a1, mientras que el original deja en v0 y v1 los valores de un solo bloque:
- * medido en el volcado de reparto para las dos bandas de altura del vuelo (ver la cabecera de la funcion); para el
- * resto de tramos se supone, sin verificar con el volcado. Medido en `diff`, una local propia para cada bloque
- * reproduce el reparto del original en estos tramos: las dos bandas de altura del vuelo con locales `altura_jugador`,
- * `banda_alta` y `banda_baja` (2590 a 2505; la banda de la rama final con `suelo_bajo` y los almacenes en el orden alta y baja, 2505 a 2290), el
- * giro en reposo con `giro_reposo` (2290 a 2280), el giro directo con `giro_directo` y `pr_directo` (2280 a 2250), la
- * prueba del barrido con `f14_barrido` (2250 a 2235) y el vaciado de los giros del portado como asignacion encadenada
- * `u.x = u.z = 0` (2235 a 2225, el original almacena 0xe0 antes que 0xdc) y la prueba de desfase `d.vx | d.vy` con
- * `desfase_xy` (2225 a 2185). Sin bajada: una local propia para el giro en Z del portador al soltarlo (2325); sumar
- * primero la altura y despues la maxima en `p30.vy` carga las dos en otro orden (2455); el temporal t4 de la constante
- * 0x1000 de los bloques de escala no sale del reparto de registros: el cuerpo de la macro GEO_RELLENAR_1000
+ * 179 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Formas con efecto propio vigentes
+ * (medidas en estados anteriores de la funcion, sin remedir en el estado final; se supone, sin verificar, que cada
+ * una sigue bajando la cifra): leer la altura del objeto en una local antes de la histeresis baja; la copia local del
+ * hijo antes de soltarlo (`hijo_soltado`), que reproduce la carga del original del hijo; la resta de la X del portador
+ * en el barrido escrita directa (`o->param.trans.vx - o->p70->param.trans.vx`), sin local previa; la traslacion en Z
+ * de la rama de la comprobacion de apoyo con dos locales propias (`vz_portador` y `vz_barrido`) en lugar de las
+ * temporales compartidas `arg_giro` y `giro`, sumadas en el orden del original (portador y despues barrido,
+ * `addu a1,a1,a2`). Los registros guardados ya
+ * coinciden con el original. Los temporales de 32 bits compartidos entre bloques son pseudos globales que el reparto
+ * global asigna a a0 y a1, mientras que el original deja en v0 y v1 los valores de un solo bloque: medido en el
+ * volcado de reparto para las dos bandas de altura del vuelo; para el resto de tramos se supone, sin verificar con el
+ * volcado. Una local propia para cada bloque reproduce el reparto del original en estos tramos (medido en `diff` en
+ * estados anteriores): las dos bandas de altura del vuelo con locales `altura_jugador`, `banda_alta` y `banda_baja`
+ * (la banda de la rama final con `suelo_bajo` y los almacenes en el orden alta y baja), el giro en reposo con
+ * `giro_reposo`, el giro directo con `giro_directo` y `pr_directo`, la prueba del barrido con `f14_barrido`, el
+ * vaciado de los giros del portado como asignacion encadenada `u.x = u.z = 0` (el original almacena 0xe0 antes que
+ * 0xdc) y la prueba de desfase `d.vx | d.vy` con `desfase_xy`. Sin bajada en estados anteriores: una local propia
+ * para el giro en Z del portador al soltarlo; sumar primero la altura y despues la maxima en `p30.vy`, que carga las
+ * dos en otro orden; el temporal t4 de la constante 0x1000 de los bloques de escala no sale del reparto de
+ * registros: el cuerpo de la macro GEO_RELLENAR_1000
  * (include/geometria.h) escribe `$12` (t4) por nombre y lo declara destruido, de modo que el asignador nunca elige
  * ese registro y el volcado de salida de `cc1` lo trae literal (`addiu $12,$0,0x1000` dentro del bloque de
  * ensamblador). Medido en una redefinicion temporal de la macro que no se conserva (la constante pasada como
@@ -486,28 +489,39 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * modo que el `sh` se planifica tras el `mult`. La local `producto_andadura` (el producto, calculado con la suma
  * leida con `(u16)` para que la carga sea `lhu`, antes del almacen del contador, y escrito despues de el en
  * `t->w118`) reproduce ese bloque entero; sin la local, con el producto escrito directo en `t->w118` tras el
- * almacen del contador, la cifra es 1395, porque la suma y el desplazamiento comparten v0 y el `sh` debe ir
- * antes del desplazamiento (se supone, sin verificar con el volcado, que el pseudo de la suma recibe a0 solo si su
- * vida se alarga hasta el almacen posterior al producto). (3) la perdida de la lectura repetida de `t->w114` tras
- * el almacen a D_800693C0 (0x8002B928): el original relee la memoria antes del almacen a D_800693B4; con el almacen en cada rama
- * (`D_800693B4 = t->w114;` en una y `D_800693B4 = giro;` en la otra) el compilador reutiliza el registro, no funde
- * las colas y la cifra sube a 1745; se supone, sin verificar, que el original trata el almacen a D_800693C0 como
- * posible alias de la memoria del scratchpad. (4) La altura de la sonda sobre el apoyo se calcula con la local
+ * almacen del contador, la cifra sube (estado anterior, sin remedir), porque la suma y el desplazamiento comparten
+ * v0 y el `sh` debe ir antes del desplazamiento (se supone, sin verificar con el volcado, que el pseudo de la suma
+ * recibe a0 solo si su vida se alarga hasta el almacen posterior al producto). (3) la perdida de la lectura repetida
+ * de `t->w114` tras el almacen a D_800693C0 (0x8002B928): el original relee la memoria antes del almacen a
+ * D_800693B4. Medido en el diff: con el almacen tras la union leyendo `t->w114` el compilador relee la memoria en
+ * los dos caminos y la cifra sube; con el campo recien almacenado leido de nuevo en el camino del almacen a
+ * D_800693C0, sobre un acceso con forma de arreglo a ese dato, el compilador reutiliza el registro y la cifra sube
+ * (reparto de v0 y v1 intercambiado). Se supone, sin verificar, que el original accede a ese dato
+ * por un puntero basado en `$gp` (el ensamblador original lo escribe como `0xa0(gp)`), de modo que el almacen se
+ * trata como posible alias de la memoria del scratchpad y la lectura no se reutiliza. (4) La altura de la sonda sobre el apoyo se calcula con la local
  * `altura_apoyo` (la altura del apoyo mas 0x32, sumada despues a la altura maxima): el original carga la altura
  * del apoyo antes que la maxima y suma en ese orden (`addu v0,v0,v1`); escrita en una sola expresion el reparto de
  * v0 y v1 de la suma sale intercambiado. La local `aux_previo` guarda el puntero al apoyo antes del almacen de
  * `o->p70` y se usa en la resta de X de la rama sin bit 0x1000000: el original relee `t->aux` tras ese almacen solo
  * para la prueba de la bandera (`lw v0,0xa8(s2)`) y conserva en a0 el puntero anterior para la resta (0x80029498);
  * sin la local la lectura repetida ocupa a0.
- * Composicion del residuo, medida sobre el `diff` con esta cifra: 49 lineas con marca de registro y 62 con marca de
- * operando, 61 de ellas por simbolos (`%gp_rel(D_...)`, `%lo(D_1F800030)`) frente a la direccion numerica del
- * ensamblador original, que ninguna forma del C cambia; 42 de las 49 lineas de registro son los tres bloques de escala
- * (macros de include/, que no se tocan). Las otras causas, con el volcado de `cc1`: (a) argumento de la llamada
- * compartida en 0x8002A668: tras la primera planificacion el `addiu a0,s3,0x7c` ocupa la segunda posicion del bloque
- * (el insn 7744 del volcado `.sched`, a continuacion de la primera lectura del portador) y el pseudo 2178, el puntero
- * del portador releido para la Z, recibe a1 en `.greg`; en el original lo recibe a0 y el `addiu` va despues de
- * `lw a1,0xec(a0)` (0x8002A664 y 0x8002A668), de modo que el rango del registro duro a0 empieza despues de la ultima
- * lectura del portador. Es la mayor causa (una linea sobrante, una faltante y tres de registro). (b) relectura de
+ * Composicion del residuo, medida sobre el `diff` con esta cifra: 30 lineas con marca de registro, 57 con marca de
+ * operando y 4 insertadas, borradas o movidas. Las 57 de operando son por simbolos (`%gp_rel(D_...)`,
+ * `%lo(D_1F800030)`, `%hi(D_80010012)`) frente a la direccion numerica del ensamblador original, que ninguna forma del
+ * C cambia. De las 30 de registro, 12 son la constante 0x1000 de los tres bloques de escala (macros de include/, que
+ * no se tocan), 12 son los dos bloques que cargan la constante -1 y el valor de D_80069608 (en el volcado de reparto
+ * la constante, 2 usos sobre 4 instrucciones, 0,5, recibe v1 y el valor, un pseudo con 4 usos, v0, al reves que el
+ * original; una envoltura sobre el almacen de la constante la deja en v0 pero el planificador sube el `sh` sobre la
+ * carga del valor y la cifra empeora), 2 son el operando de la macro de distancia (a2 en lugar de a1; se supone, sin
+ * verificar, que porque la lista de destruidos de la macro incluye `$5`), 2 la suma de la secuencia y 3 el puntero
+ * del portador de la rama de la comprobacion de apoyo.
+ * Las otras causas, con el volcado de `cc1`: (a) argumento de la llamada compartida en 0x8002A668: tras la primera
+ * planificacion el `addiu a0,s3,0x7c` ocupa la segunda posicion del bloque, a continuacion de la primera lectura
+ * del portador, y el puntero del portador releido para la Z recibe a1 en `.greg`; en el original lo recibe a0 y el
+ * `addiu` va despues de `lw a1,0xec(a0)` (0x8002A664 y 0x8002A668), de modo que el rango del registro duro a0
+ * empieza despues de la ultima lectura del portador. Leer la segunda Z del barrido despues de los almacenes del
+ * portador o despues de `o->coord.param` recoloca la preparacion del argumento pero mueve otras instrucciones y la
+ * cifra empeora. Es la mayor causa (una linea sobrante, una faltante y tres de registro). (b) relectura de
  * `t->w114` en 0x8002B928: aqui el compilador reutiliza a0 en lugar de recargar; una referencia con indice
  * constante a D_800693C0 como elemento de arreglo (referencia dentro de estructura) tampoco la recarga. (c) el destino
  * de la suma de la secuencia en 0x8002B870 (v0 aqui, v1 en el original): el C vigente no la reproduce. El bucle de
