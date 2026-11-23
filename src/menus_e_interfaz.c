@@ -203,14 +203,16 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 505 con la configuracion versionada (ejes 2 de operando, 0 reordenadas, 65 insertadas o
+ * Pendiente: puntuacion 335 con la configuracion versionada (ejes 2 de operando, 0 reordenadas, 15 insertadas o
  * borradas). El enlace de 24 bits de cada paquete se escribe en una sola sentencia, `(x << 8) >> 8` con `x` de
- * tipo `s32` (el original emite `sll` y `sra`). Difiere el segundo paquete: el original calcula el `sll` del enlace en
- * 0x8003AF1C, antes del almacen de la palabra 4 (0x8003AF20), y deja el paquete en a0 y la ranura de la tabla en a1;
- * aqui el `sll` sale una instruccion despues, tras ese almacen, y el paquete y la ranura toman a1 y a2, con lo que la
- * relectura del anillo de la cola cae en a0 en lugar de v1. Se supone, sin verificar en el volcado, que el original
- * conserva el desplazado en un pseudo distinto del paquete y que con la expresion de una sola sentencia el
- * compilador lo funde con el paquete y cambia el orden de asignacion de los registros.
+ * tipo `s32` (el original emite `sll` y `sra`). El paquete, la ranura de la tabla, la direccion del segundo paquete y
+ * la relectura del anillo ya toman los registros del original (v1, a1, a2, a0 y v1). Queda el desplazamiento: el
+ * original lo calcula sobre el propio registro del paquete (`sll v1,v1,8` en 0x8003AE9C) y, en el segundo paquete,
+ * coloca el `sll` en 0x8003AF1C, entre la carga del punto 6 (0x8003AF18) y su almacen, con el resultado en v1;
+ * aqui el temporal del desplazamiento cae en v0 (el segundo, ademas, sale tras el ultimo almacen del paquete y deja
+ * un `nop` antes) y la carga del punto 8 toma v1. Medido en el volcado del primer planificador: el `sll` queda al
+ * final del bloque, despues de la ultima carga. Se supone, sin verificar, que en el original queda antes del ultimo
+ * par carga-almacen y que por eso su temporal no puede usar v0.
  */
 /*
  * Encola en la lista de ordenacion activa un primitivo de 0x18 bytes (codigo 0x05000000, un
@@ -227,12 +229,13 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
     u32* datos;
     s32 actual;
     s32 siguiente;
+    s32 enlace_o_limite;
 
     /* Copia local del parametro de puntos: sin ella el reparto de registros empeora de 605 a 943. */
     datos = puntos;
     func_80039CD0(D_80076188);
     actual = D_80076188;
-    /* `cursor` guarda tres contenidos sucesivos: la copia de `actual`, el enlace de 24 bits de cada
+    /* `cursor` guarda tres contenidos sucesivos: la copia de `actual`, el enlace de 24 bits del primer
      * paquete y la relectura final del anillo. */
     cursor = actual;
     tabla = (u32*)D_8006AEA0[D_8006967C].org;
@@ -260,14 +263,18 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
         ((u32*)siguiente)[3] = datos[4];
         ((u32*)siguiente)[4] = datos[6];
         ((u32*)siguiente)[5] = datos[8];
-        cursor = (siguiente << 8) >> 8;
-        *tabla = cursor;
+        enlace_o_limite = (siguiente << 8) >> 8;
+        *tabla = enlace_o_limite;
         D_80076188 += 0x18;
     }
+    /* El limite se lee primero en `siguiente` y se copia a la local que ya guardo el enlace del segundo
+     * paquete (335); leerlo directamente en ella deja el limite cargado antes que el cursor (555). */
+    siguiente = ctx->limite;
     cursor = D_80076188;
+    enlace_o_limite = siguiente;
     /* El original carga el cursor, luego el limite, y emite `slt limite, cursor`; la comparacion
      * escrita como `cursor > limite` produce ese orden de operandos. */
-    if (cursor > ctx->limite) {
+    if (cursor > enlace_o_limite) {
         D_80076188 = ctx->inicio;
     }
     return 0;
