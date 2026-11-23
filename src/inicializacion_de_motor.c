@@ -348,8 +348,9 @@ typedef struct CabeceraPrimitiva {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 300 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
- * reordenadas, 3 insertadas o borradas: la unica causa es la copia del puntero a la primitiva, (d)). La
+ * Pendiente: puntuacion 320 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
+ * reordenadas, 9 insertadas o borradas: la causa mayor es la copia del puntero a la primitiva, (d), y ademas la
+ * lectura de D_80069652 sale en a2 en lugar de v0 por compartir `color`). La
  * intensidad y el color empaquetado comparten la local `color`, como en el original, donde la intensidad
  * (`subu a2,v1,v0`, 0x800451F4) y el color (`addu a2,a2,a0`, 0x80045210) viven en el mismo registro: con una
  * local para cada uno el compilador deja la intensidad en a0 y el color en a2 y la puntuacion es 510. La suma se
@@ -376,17 +377,18 @@ typedef struct CabeceraPrimitiva {
  * Medido en el volcado del estado final: x 8/47 = 0,511, y 9/55 = 0,491, u y v 8/52 = 0,462, entrada `e` 11/95 =
  * 0,347, contador 9/94 = 0,287, anchura 6/46 = 0,261 y altura 7/56 = 0,250. Sin las envolturas de `e` y del
  * contador serian `e` 9/95 = 0,284 y contador 7/94 = 0,149. (1) `p->y3 = y + h;` sube y a 9 usos (por delante de
- * u y v, que tienen 8/52 = 0,462; se supone, sin verificar en el estado final, que sin ella y tiene 8 usos, 0,436)
- * y la altura a 7: sin ella la cifra es 390. (2) `e++;` sube `e` de 9 a 11 usos, por delante del contador: sin ella 363 (el contador toma
- * s5 y `e` s6). (3) `i++;` sube el contador de 7 a 9, por delante de la anchura y la altura: sin ella 381. Con `u`
- * declarada antes que `v` (los empates de prioridad se deciden por el numero de pseudo) x, y, u y v quedan en s0 a
- * s3 como el original y el planificador no mueve ninguna suma. Las notas de bucle de una envoltura son barrera de
- * planificacion: `e++` va antes de la lectura de D_80069652 para que el incremento de la direccion derivada
- * (`addiu s4,s4,8`, 0x8004531C) quede antes del `lui` como en el original, y la lectura se guarda en `cantidad`
- * antes de `i++` porque el original carga D_80069652 (`lui`/`lh`, 0x80045320 y 0x80045324) antes de incrementar
- * el contador (`addiu s6,s6,1`, 0x80045328); sin la local (la prueba sobre D_80069652 directamente) la cifra es
- * 460 (el `addiu` queda antes del `lui` y el retardo del `lh` es un `nop`). Se supone, sin verificar, que el
- * original tiene en cada uno de esos pseudos una referencia ponderada mas que no deja instruccion.
+ * u y v, que tienen 8/52 = 0,462; se supone, sin verificar, que sin ella y tiene 8 usos, 0,436) y la altura a 7.
+ * (2) `e++;` sube `e` de 9 a 11 usos, por delante del contador. (3) `i++;` sube el contador de 7 a 9, por delante
+ * de la anchura y la altura. Con `u` declarada antes que `v` (los empates de prioridad se deciden por el numero
+ * de pseudo) x, y, u y v quedan en s0 a s3 como el original y el planificador no mueve ninguna suma. Las notas de
+ * bucle de una envoltura son barrera de planificacion: `e++` va antes de la lectura de D_80069652 para que el
+ * incremento de la direccion derivada (`addiu s4,s4,8`, 0x8004531C) quede antes del `lui` como en el original, y
+ * la lectura se guarda en `color`, cuya vida termina con los almacenes de la cabecera, antes de `i++` porque el
+ * original carga D_80069652 (`lui`/`lh`, 0x80045320 y 0x80045324) antes de incrementar el contador (`addiu
+ * s6,s6,1`, 0x80045328); con la prueba directa sobre D_80069652 la cifra es 460 (el `addiu` queda antes del `lui`
+ * y el retardo del `lh` es un `nop`). Con la lectura en `color` la carga y la comparacion salen en a2 en lugar de
+ * v0 (tres operandos de la cifra pendiente). Se supone, sin verificar, que el original tiene en cada uno de esos
+ * pseudos una referencia ponderada mas que no deja instruccion.
  * La forma del fuente original que producia este reparto se desconoce.
  *
  * Difiere en:
@@ -417,7 +419,6 @@ void func_80045150(EntradaLista* e)
     s32 h;
     s32 color;
     u32* cabeza;
-    s32 cantidad;
 
     /* El orden de las lecturas del glifo y del elemento, la anchura y la altura menos uno en 32 bits, la
      * suma del color con la base al final y D_80076188 sumado tras escribir el indice de paleta son los
@@ -471,11 +472,12 @@ void func_80045150(EntradaLista* e)
             do {
                 e++;
             } while (0);
-            cantidad = D_80069652;
+            /* `color` ya no se lee en esta vuelta: guarda la cantidad de elementos para que su carga quede antes de `i++`. */
+            color = D_80069652;
             do {
                 i++;
             } while (0);
-        } while (i < cantidad);
+        } while (i < color);
     }
 }
 #else
