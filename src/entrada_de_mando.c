@@ -262,8 +262,8 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 860 con la configuracion versionada (g = 8 del archivo). Reserva de pila: el original reserva 0x28 (`addiu sp`
- * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 934 y con ella 860. El
+ * Pendiente: puntuacion 800 con la configuracion versionada (g = 8 del archivo). Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 874 y con ella 800. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
@@ -320,8 +320,9 @@ void func_80040430(s8* contador, u16 mascara)
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
  * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0);
- * el `andi 0xff` que el original repite sobre la lectura de cada eje en las ramas de la izquierda y de arriba
- * (0x80040880 y 0x80040908; ver mas abajo);
+ * el reparto de registros de los ejes: el original guarda el byte crudo en v1 y `eje` en a2 (0x80040830 y 0x8004084C)
+ * y aqui el byte cae en t0 y `eje` en v1; se supone, sin verificar, que `eje`, que el original no
+ * usa en las ramas derecha y abajo (alli lee el byte sin `andi`), pesa mas aqui y se asigna antes;
  * el almacen de `lo` en el campo de botones (0x10) que el original conserva antes del almacen de
  * `lo | hi` (0x80040760 y 0x80040768) y que aqui desaparece entre `.cse` y `.combine` (se supone, sin verificar,
  * que lo borra el analisis de vida al ver dos almacenes seguidos a la misma direccion); y la forma simbolica de
@@ -360,9 +361,9 @@ void func_8004048C(void)
     u32 cf2;
     u32 cf3;
     u32 cfd;
-    /* Lecturas sin centrar de los ejes X e Y del mando: el original lee cada una una sola vez (0x80040830 y 0x800408E4). */
-    u32 eje_x_crudo;
-    u32 eje_y_crudo;
+    /* Lecturas sin centrar de los ejes X e Y del mando, de 8 bits: el original lee cada una una sola vez (0x80040830 y 0x800408E4). */
+    u8 eje_x_crudo;
+    u8 eje_y_crudo;
     EstadoPrincipal* est;
     /* Reserva de pila: local sin uso que completa el marco del original. */
     s32 reserva[2];
@@ -490,12 +491,13 @@ normal:
         func_80040158(&ESTADO_PRINCIPAL->mando);
         centro = ESTADO_PRINCIPAL->mando.centro_x;
         mascara = ESTADO_PRINCIPAL->mando.botones_c;
-        /* Cada eje se lee una sola vez (0x80040830 y 0x800408E4) y las ramas reutilizan el valor tras los almacenes;
-           el original repite `andi 0xff` sobre la lectura en las ramas de la izquierda y de arriba (0x80040880 y
-           0x80040908) y la conversion a u8 no lo emite (el compilador la da por redundante tras `lbu`); escribirla
-           como `& 0xFF` lo funde con la comparacion y la cifra sube en los dos ejes. */
+        /* Cada eje se lee una sola vez (0x80040830 y 0x800408E4) y las ramas reutilizan el valor tras los almacenes.
+           El original repite `andi 0xff` sobre la lectura en las ramas de la izquierda y de arriba (0x80040880 y
+           0x80040908) y no en las otras dos: el byte vive en una local de 8 bits (en una de 32 el combinador da por
+           redundante la conversion tras `lbu` y no emite el `andi`), la rama que lo repite lo usa por su nombre y las
+           otras dos usan `eje`, la copia de 32 bits que ya lleva la mascara. */
         eje_x_crudo = D_8006CFF6.valor;
-        eje = eje_x_crudo & 0xFF;
+        eje = eje_x_crudo;
         prev = mascara & ~ESTADO_PRINCIPAL->mando.botones_e;
         ESTADO_PRINCIPAL->mando.w3E = prev;
         ESTADO_PRINCIPAL->mando.botones_a = prev;
@@ -503,28 +505,28 @@ normal:
             ESTADO_PRINCIPAL->mando.botones_a = prev | 0x8000;
             ESTADO_PRINCIPAL->mando.w3E = prev | 0x8000;
             ESTADO_PRINCIPAL->mando.botones_c = mascara | 0x8000;
-            ESTADO_PRINCIPAL->mando.eje_x = (u8)eje_x_crudo - centro;
+            ESTADO_PRINCIPAL->mando.eje_x = eje_x_crudo - centro;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x8000;
         } else if (centro + D_8006952C < eje) {
             ESTADO_PRINCIPAL->mando.botones_a = prev | 0x2000;
             ESTADO_PRINCIPAL->mando.w3E = prev | 0x2000;
             ESTADO_PRINCIPAL->mando.botones_c = mascara | 0x2000;
-            ESTADO_PRINCIPAL->mando.eje_x = eje_x_crudo - centro;
+            ESTADO_PRINCIPAL->mando.eje_x = eje - centro;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x2000;
         } else {
             ESTADO_PRINCIPAL->mando.eje_x = 0;
         }
         eje_y_crudo = D_8006CFF7.valor;
         centro = ESTADO_PRINCIPAL->mando.centro_y;
-        eje = eje_y_crudo & 0xFF;
+        eje = eje_y_crudo;
         if (eje < centro - D_8006952C) {
-            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - ((u8)eje_y_crudo + 1));
+            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - (eje_y_crudo + 1));
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x1000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x1000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x1000;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x1000;
         } else if (eje > centro + D_8006952C) {
-            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - (eje_y_crudo + 1));
+            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - ((u32)eje + 1));
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x4000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x4000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x4000;
