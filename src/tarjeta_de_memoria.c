@@ -442,8 +442,8 @@ s32 func_800151FC(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2060 con la configuracion versionada (g = 8 del archivo; ejes 71 de operando, 0 reordenadas,
- * 230 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
+ * Pendiente: puntuacion 1985 con la configuracion versionada (g = 8 del archivo; ejes 71 de operando, 0 reordenadas,
+ * 231 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
  * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
  * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y, sobre todo, el segundo bucle del directorio: el
  * original recalcula en cada uso el desplazamiento de la ranura (ranura * 120) y GCC lo iza del bucle como invariante.
@@ -459,7 +459,7 @@ s32 func_800151FC(void)
  * los otros dos usos (las marca como hechas "matches") y las iza una sola vez al preludio del bucle del directorio. El
  * fuente escribe el producto `grupo * 120` en cada uso, en una sola expresion, que es lo que el documento admite: una
  * cadena partida en varias asignaciones sobre locales que se reescriben en cada uso evita el izado, pero es partir una
- * operacion en varias sentencias y no se admite. Con el producto en los tres usos la cifra es 2060; el compilador
+ * operacion en varias sentencias y no se admite. Con el producto en los tres usos la cifra es 1985; el compilador
  * conserva la cadena una vez en el preludio y el original la tiene tres veces dentro del cuerpo.
  * Contador propio del bucle del directorio (`n`): el contador `i` vive desde el bucle de relleno de
  * 0x96 palabras hasta el del directorio y cruza la llamada de MemCardGetDirentry, que usa a1 como argumento, de modo que
@@ -487,12 +487,12 @@ s32 func_800151FC(void)
  * del cuerpo del bucle exterior, y que el compilador crea la copia al sustituir el producto por el puntero inducido
  * del bucle exterior. El `move a1,v0 ; bnez a1` de la llamada de formateo (el original comprueba una copia
  * del resultado que despues compara con 1) se reproduce guardando el resultado en la local `rc`, compartida con la del
- * sondeo. El indice del bucle de busqueda se escribe `j + fila + grupo * 120` y el del relleno
- * `j + (fila + grupo * 120)`: con la suma del relleno de izquierda a derecha la cifra es 2265 y con el
- * parentesis 2060 (mismo reparto que la entrada de directorio, abajo). La busqueda del final del nombre se
+ * sondeo. El indice del bucle de busqueda se escribe `j + fila + grupo * 120` y el relleno con ceros se escribe por el
+ * campo `nombre` de la entrada (`((EntradaDirectorio*)(base + (fila + grupo * 120)))->nombre[j]`, el mismo
+ * desplazamiento que la entrada de directorio, abajo): con el indice en bytes `base[j + (fila + grupo * 120)]` la
+ * cifra es 2060 y con el acceso por el campo 1985. La busqueda del final del nombre se
  * escribe con guardia (`j = 0; if (nombre[j] != 0) { do { j++; } while (nombre[j] != 0); }`) como el original
- * (`beqz` a 0x80015D08 tras la primera lectura, 0x80015CDC, y el `addiu` de `j` ya en el cuerpo): con un
- * `for` sin guardia la cifra es 2625.
+ * (`beqz` a 0x80015D08 tras la primera lectura, 0x80015CDC, y el `addiu` de `j` ya en el cuerpo).
  *
  * Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de registros (D_8006AA70[0xA]: 1 aceptar,
  * 2 formatear, 3 crear el archivo, 4 grabar con sonido, 5 cargar, 6 grabar) y la limpia; despues sondea con MemCardSync(1) la ultima
@@ -502,7 +502,7 @@ s32 func_800151FC(void)
  * El argumento que pasa main se ignora.
  *
  * Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es
- * 0x30; la cifra medida sin la local es 2262 y con ella 2060. La funcion es pendiente: con la local la
+ * 0x30; la cifra medida sin la local es 2187 y con ella 1985. La funcion es pendiente: con la local la
  * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)
@@ -715,7 +715,7 @@ void SondearTarjeta(void)
                         } while (D_800697B0[j + fila + grupo * 120] != 0);
                     }
                     for (; j < 0x14; j++) {
-                        D_800697B0[j + (fila + grupo * 120)] = 0;
+                        ((EntradaDirectorio*)(D_800697B0 + (fila + grupo * 120)))->nombre[j] = 0;
                     }
                     entrada = (EntradaDirectorio*)(D_800697B0 + (fila + grupo * 120));
                     entrada->attr = 0;
