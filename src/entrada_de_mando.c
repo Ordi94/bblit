@@ -262,9 +262,8 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1325 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
- * lineas reordenadas y 256 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
- * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1399 y con ella 1325. El
+ * Pendiente: puntuacion 860 con la configuracion versionada (g = 8 del archivo). Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 934 y con ella 860. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
@@ -281,7 +280,7 @@ void func_80040430(s8* contador, u16 mascara)
  * estructuras de un solo campo y se leen por ese campo: con bytes sueltos el planificador sube la lectura del
  * identificador (D_8006CFF1) por encima de los almacenes a los campos del estado (el original la deja tras el
  * almacen de 0x8001000C, 0x80040664) y como miembro de estructura la deja detras de ellos. La cifra es 1525 con
- * bytes sueltos y 1325 con el campo. Se declaran uno por uno y no como una sola estructura desde D_8006CFF1: con una
+ * bytes sueltos y 1325 con el campo (medido antes de leer D_8006AA7C como elemento del banco). Se declaran uno por uno y no como una sola estructura desde D_8006CFF1: con una
  * sola las referencias salen como `D_8006CFF1+n`, que el ensamblador del original no escribe asi, y el compilador
  * comparte la direccion de dos lecturas (una `addiu` mas). Se supone, sin verificar, que la diferencia es la marca
  * de miembro de estructura de la direccion de memoria.
@@ -311,15 +310,16 @@ void func_80040430(s8* contador, u16 mascara)
  * predecesor de caida.
  *
  * Cola de la rama por defecto: el original deja en el hueco de retardo de las cuatro bifurcaciones del bloque de
- * la prueba (0x800409EC, 0x80040A00, 0x80040A18 y 0x80040A28) el `lui` de D_8006AA7C y mantiene en el flujo el
- * `lui` de D_8006D9A8 y el `li` del 5 tras la lectura de `botones_a`; aqui el compilador rellena el hueco del
- * segundo salto con el `lui` de D_8006D9A8 y el del cuarto con el `li` del 5, y el del primero y el tercero
- * quedan en `nop`. Se supone, sin verificar, que es una diferencia de relleno de huecos de retardo y no de reparto
- * de registros: las lecturas de D_8006AA7C y D_8006966A salen como instrucciones de macro (`lbu $2,D_8006AA7C`) y
- * no son elegibles para un hueco, mientras que la de D_8006D9A8 (arreglo de 10 bytes) se divide en `lui` y `lw`.
+ * la prueba (0x800409EC, 0x80040A00, 0x80040A18 y 0x80040A28) el `lui` de D_8006AA7C. Esa lectura se escribe como
+ * `D_8006AA70[0xC]` (el banco es un arreglo sin tamano): con el escalar `D_8006AA7C` (u8 de un byte, dentro del
+ * umbral -G8) el compilador emite `lbu $2,D_8006AA7C` como una sola instruccion de macro, el `lui` lo crea el
+ * ensamblador y no puede ocupar un hueco; con el arreglo sin tamano el `lui` es una instruccion propia y el relleno
+ * coincide. La cifra baja de 1325 a 965 con solo ese cambio; el desensamblado muestra el simbolo como
+ * `D_8006AA70+0xc`. La base del estado en la prueba de pausa se lee por `est` (0x76(s0), como el original en
+ * 0x80040A24): con la constante absoluta la cifra era 965 y con `est` 860.
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
- * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0); la cola de la rama por defecto de arriba;
+ * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0);
  * el `andi 0xff` que el original repite sobre la lectura de cada eje en las ramas de la izquierda y de arriba
  * (0x80040880 y 0x80040908; ver mas abajo);
  * el almacen de `lo` en el campo de botones (0x10) que el original conserva antes del almacen de
@@ -543,9 +543,10 @@ normal:
             }
         } else if (D_80069672 >= 5) {
             /* El original carga D_8006D9A8 entera con lw; globales.h la declara u16[5] por el resto de usos. */
-            /* El original emite antes el bloque de la prueba de D_8006AA7C (0x80040A2C) que el de la rearme: la condicion va invertida. */
-            if (banco[0] != 0 || D_8006966A != 0 || (*(u32*)D_8006D9A8 & 0x301) != 1 || ESTADO_PRINCIPAL->r[BANCO_PAUSA] != 0) {
-                if (D_8006AA7C == 0) {
+            /* El original emite antes el bloque de la prueba de D_8006AA7C (0x80040A2C) que el de la rearme: la condicion va invertida.
+               D_8006AA7C se lee como banco D_8006AA70 + 0xC para que su `lui` sea una instruccion propia (ver la cabecera). */
+            if (banco[0] != 0 || D_8006966A != 0 || (*(u32*)D_8006D9A8 & 0x301) != 1 || est->r[BANCO_PAUSA] != 0) {
+                if (D_8006AA70[0xC] == 0) {
                     D_80069672 = 3;
                 }
             } else {
