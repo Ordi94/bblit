@@ -605,15 +605,19 @@ condiciones a la vez: (1) el original almacena el dato con `sw` y lo vuelve a ca
 por la misma base (o por el mismo símbolo con su `lui`), sin ningún almacén a ese dato ni llamada entre ambas
 instrucciones, en lugar de reutilizar el registro; (2) el molde tiene el mismo tipo, ancho y signo que el dato, de
 modo que el valor leído es el mismo; (3) un comentario junto a la sentencia, o la cabecera de la función, cita las
-direcciones del almacén y de la relectura; (4) la cifra sin el molde está medida y es peor que con él. Hay un uso,
+direcciones del almacén y de la relectura; (4) la cifra sin el molde está medida y es peor que con él. Hay dos usos,
 y ninguno más se admite sin cumplir las cuatro condiciones. Cada uso lleva su fila en esta tabla y, junto a su
 sentencia, un comentario que cita exactamente las dos direcciones de su fila:
 
 | Función | Archivo | Dirección del `sw` | Dirección del `lw` | Cifra sin el molde | Cifra con el molde |
 |---|---|---|---|---:|---:|
 | `ActualizarCamaraSeguimiento` | `src/camara_y_bucle_logico.c` | `0x80033408` | `0x80033410` | 2510 | 2080 |
+| `func_80020B90` | `src/logica_de_niveles.c` | `0x800223FC` | `0x8002240C` | 960 | 815 |
 
 - `ActualizarCamaraSeguimiento`: la relectura de `D_800695B8` (`zp = *(u16* volatile*)&D_800695B8;`).
+- `func_80020B90`: la relectura de `desp.x` de la suma con `D_80069D40[0]` (`*(volatile s32*)&sc->desp.x`), dentro de la
+  envoltura de la tabla de referencias sin código; el `sw 0x20` de `desp.z` se interpone entre el almacén y la relectura de
+  `desp.x`, sin almacenar en el propio dato.
 
 Barreras vacías, sentencias partidas, `register __asm__("$N")` locales, `"+r"`, `volatile` fuera de la lectura
 respaldada descrita arriba y registros destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE_ASM` con su comentario. Las únicas
@@ -795,7 +799,8 @@ escribe la cabecera).
 | `func_80018664` | `src/graficos_y_gte.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x28 (`addiu sp` en 0x80018664) y sin la local el marco es 0x20; la cifra medida sin la local es 58 y con ella 0. |
 | `func_80014E24` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x220 (`addiu sp` en 0x80014E24) y sin la local el marco es 0x20; la cifra medida sin la local es 4131 y con ella 0. |
 | `SondearTarjeta` | `src/tarjeta_de_memoria.c` | reserva de pila | 1 | NON_MATCHING 2060 | Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es 0x30; la cifra medida sin la local es 2262 y con ella 2060. |
-| `func_80020B90` | `src/logica_de_niveles.c` | reserva de pila | 1 | NON_MATCHING 1015 | Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es 0x40; la cifra medida sin la local es 1169 y con ella 1015. |
+| `func_80020B90` | `src/logica_de_niveles.c` | envoltura | 1 | coincide | Orden de los almacenes `sw 0x18` y `sw 0x20` de `desp` y de las relecturas respecto a las cargas de `D_80069D40`: la nota de inicio de bucle que deja la envoltura es una barrera de memoria del planificador (volcado `.sched`, `NOTE_INSN_LOOP_BEG` tras `sw 0x20`); sin ella la cifra es 1055 y con ella, con el molde `volatile` de la relectura de `desp.x`, 815 (puntuacion de asm-differ con las 163 referencias en forma numerica; la herramienta informa 0 al coincidir en bytes) |
+| `func_80020B90` | `src/logica_de_niveles.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es 0x40; la cifra medida sin la local es 969 y con ella 0. |
 | `func_8004048C` | `src/entrada_de_mando.c` | reserva de pila | 1 | NON_MATCHING 1560 | Reserva de pila: el original reserva 0x28 (`addiu sp` en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1634 y con ella 1560. |
 | `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 2 | NON_MATCHING 7138 | Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es 0x200; la cifra medida sin la local es 8687 y con ella 7138. La reserva son 2 arreglos de 8 bytes: uno antes de `tamanos` y otro tras `campos_mem`. |
 
