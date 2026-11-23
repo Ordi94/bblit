@@ -429,14 +429,14 @@ void func_80037FB8(NodoLista* n)
  * difiere el reparto de registros salvados de los grupos de los contadores 0xB6 (0x800382D8 a
  * 0x800383A0) y 0xBA (0x80038508 a 0x800385C4), y las marcas de operando por nombre de simbolo (el
  * original lleva D_8001013C y D_80010047 donde el C genera 0x13c(v0) y 0x47(v0), y los desplazamientos
- * D_800100F6 a D_800100FA sobre una base compartida con el puntero de estado). En esos dos grupos el original guarda el puntero
- * a 0x80010000 en s3, la direccion de la pila en s4 y la base de D_8006AB70 en s5; el C los reparte en
- * s4, s5 y s4 (la base de D_8006AB70 reutiliza el s4 del puntero, que ya murio). El volcado de asignacion
- * (`-dl`) muestra el pseudo de `e` (88) con 11 usos sobre 76 instrucciones y 3 llamadas cruzadas (prioridad
- * floor_log2(R) * R / L de 3 * 11 / 76 = 0,43, por detras del puntero a la pila del grupo 0xB8: 3 * 9 / 50 =
- * 0,54, que toma s3 y deja s4 a `e`). Se
- * supone, sin verificar, que el original tiene un pseudo de `e` para los grupos 0xB6 y 0xBA (s3) y otro
- * para el 0xB8 (s4), y que el C, que comparte un solo `e`, lo fuerza a un solo registro.
+ * D_800100F6 a D_800100FA sobre una base compartida con el puntero de estado). En esos dos grupos el
+ * original guarda el puntero a 0x80010000 en s3, la direccion de la pila en s4 y la base de D_8006AB70 en
+ * s5; el C los reparte en s4, s5 y s4 (la base de D_8006AB70 reutiliza el s4 del puntero, que ya murio).
+ * El volcado de asignacion (`-dl`) muestra el pseudo de `e` (88) con 11 usos sobre 76 instrucciones y 3
+ * llamadas cruzadas (prioridad floor_log2(R) * R / L de 3 * 11 / 76 = 0,43, por detras del puntero a la
+ * pila del grupo 0xB8: 3 * 9 / 50 = 0,54, que toma s3 y deja s4 a `e`). Se supone, sin verificar, que el
+ * original tiene un pseudo de `e` para los grupos 0xB6 y 0xBA (s3) y otro para el 0xB8 (s4), y que el C,
+ * que comparte un solo `e`, lo fuerza a un solo registro.
  * Forma vigente del C: `e = ESTADO_PRINCIPAL` se escribe antes del `if` de los grupos 0xB6 y 0xBA (dentro
  * del `if` el CSE sustituye `e` por su valor constante en las lecturas con desplazamiento y el compilador
  * rematerializa la base con un `lui` propio en cada una). Los tres bytes del contador de porcentaje se
@@ -448,7 +448,9 @@ void func_80037FB8(NodoLista* n)
  * `pos` que comparten los demas grupos: el pseudo compartido vive entre bloques, recibe a2 y la base de
  * D_8005E8F8 queda en a2; el propio, local a un bloque, recibe v1 como el original (0x80038474,
  * 0x8003847C y 0x80038494). La rama `else` de la prueba `D_800100F7` del grupo 0xB8 pasa `ids[i]`
- * directo a la llamada.
+ * directo a la llamada. Los elementos D_8005E836, D_8005E83E y D_8005E858 de D_8005E830 se leen por su
+ * propio simbolo, declarado como arreglo incompleto (ver las tablas de arriba): el `lui` queda separado
+ * de la carga y el operando lleva el nombre del ensamblador; no cambia los bytes generados.
  *
  * La funcion no lleva ninguna referencia sin codigo.
  *
