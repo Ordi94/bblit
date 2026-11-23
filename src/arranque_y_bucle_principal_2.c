@@ -233,38 +233,33 @@ void func_800163E4(void)
     func_8003F3F0(D_8006967C);
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 200 con la configuracion versionada (g = 8 del archivo; ejes 48 de operando,
- * 0 reordenadas, 80 insertadas o borradas). El flujo y los tipos coinciden (pausa y demostracion son
- * s16, el contador de cuadros D_80069676 es volatile u16); el estado principal y los registros del mando
- * se acceden por su direccion sin variable local). La unica instruccion que difiere es la copia del
- * cero del contador de ocioso: el original emite `move s4,zero` y el C `move s4,s5` (el cero de
- * `pausa`). Las demas lineas marcadas son los accesos al estado principal que el ensamblador muestra con
- * la forma simbolica (`lui s1,%hi(D_80010000)` y `%lo(D_8001004F)(s1)`) y que el C compila por direccion
- * constante (`lui s1,0x8001` y `0x4f(s1)`): misma instruccion y mismos registros. La base se escribe como
- * direccion constante porque con `&D_80010000` el `lui` deja de compartirse (un `lui at` por acceso) y la
- * puntuacion sube a 2650.
+ * Tipos de las variables de control: `pausa` es s8, `ocioso` y `demo` son s16 y el contador de cuadros
+ * D_80069676 es volatile u16. `pausa` va en 8 bits porque el original emite `move s4,zero` para el
+ * cero de `ocioso`: con `pausa` de 16 bits el volcado de `cc1` da `(set (reg:HI 20) (const_int 0))`
+ * tras la asignacion global y `(set (reg:HI 20) (reg:HI 21))` tras la segunda planificacion, es decir
+ * `move s4,s5` (puntuacion 200). Se supone, sin verificar, que la sustitucion la hace la propagacion de
+ * valores posterior a la recarga y que solo copia entre registros del mismo modo; con `pausa` de 8 bits
+ * con signo el cero de cada variable queda en su `move` desde zero y la prueba de `pausa` sigue siendo
+ * `move v0,s5` (con 8 bits sin signo saldria un `andi v0,s5,0xff` por prueba).
  *
- * Copia del cero: en el volcado de `cc1` la instruccion es `(set (reg:HI 20) (const_int 0))` tras la
- * asignacion global y `(set (reg:HI 20) (reg:HI 21))` tras la segunda planificacion, de modo que la
- * sustitucion ocurre entre ambos pasos; se supone, sin verificar, que la hace la propagacion de valores
- * posterior a la recarga, que solo sustituye entre registros del mismo modo: con `ocioso` de 32 bits el
- * cero de `ocioso` sale `move s4,zero` pero el argumento `DrawSyncCallback(0)` pasa a `move a0,s4`, y con
- * `pausa` de 8 bits desaparecen las dos copias pero cada prueba de `pausa` anade `andi v0,s5,0xff`.
+ * El estado principal y los registros del mando se acceden por su direccion constante, sin variable
+ * local de puntero: el ensamblador los muestra con la forma simbolica (`lui s1,%hi(D_80010000)` y
+ * `%lo(D_8001004F)(s1)`) y las dos escrituras producen los mismos bytes; con `&D_80010000` como base
+ * el `lui` deja de compartirse (un `lui at` por acceso) y la puntuacion es 2650.
  *
  * La primera envoltura do/while (0), la de la lectura del tiempo inicial del cuadro, no genera codigo:
  * pondera por un nivel mas la referencia a la tabla de tiempos D_8006CF68 que contiene (de 5 a 6 usos
  * ponderados sobre una vida de 564: prioridad floor_log2(R) * R / L de 2 * 5 / 564 = 0,0177 a
  * 2 * 6 / 564 = 0,0213), que pasa por encima de la constante 3 (6 usos sobre 640: 2 * 6 / 640 = 0,0188)
  * en el orden de global-alloc. Con la envoltura la tabla toma s7 y la constante 3 toma s8, como el
- * original; sin ella la puntuacion es 230. La forma del fuente original que producia este reparto se
+ * original; sin ella la puntuacion es 225. La forma del fuente original que producia este reparto se
  * desconoce.
  *
  * La segunda envoltura, la de la lectura de la pila de botones de la demostracion, tampoco genera codigo:
  * el valor de D_800695B0 (pseudo 326, bloque 60 de local-alloc, cuatro lecturas con decremento) pasa de
  * 22 a 33 usos ponderados sobre 16 instrucciones (el logaritmo entero de los usos pasa de 4 a 5) y su
- * registro pasa de v1 a v0, como el original; sin ella la puntuacion es 315. Se supone, sin verificar,
+ * registro pasa de v1 a v0, como el original; sin ella la puntuacion es 310. Se supone, sin verificar,
  * que el orden de asignacion dentro del bloque sigue la prioridad de local-alloc con esos usos. La forma
  * del fuente original que producia este reparto se desconoce.
  *
@@ -279,7 +274,7 @@ s32 main(void)
     s16 contador;
     s16 ocioso;
     s16 demo;
-    s16 pausa;
+    s8 pausa;
 
     func_80044D44();
     func_80044E58();
@@ -476,6 +471,3 @@ s32 main(void)
         D_80069676 += 1;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", main);
-#endif
