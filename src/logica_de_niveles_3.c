@@ -434,13 +434,14 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 970 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
- * 225 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
+ * Pendiente: puntuacion 960 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
+ * 223 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
  * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
  * reproduce la carga del original del hijo y baja de 2625 a 2605. La resta de la X del portador en el barrido se
  * escribe directa (`o->param.trans.vx - o->p70->param.trans.vx`): con una local previa (`x_portador`) la cifra es 1915.
  * La traslacion en Z de la rama de la comprobacion de apoyo usa dos locales propias (`vz_portador` y `vz_barrido`) en
- * lugar de las temporales compartidas `arg_giro` y `giro`, con la suma conmutada: sin ellas 2030. Los registros
+ * lugar de las temporales compartidas `arg_giro` y `giro`, y se suman en el orden del original (portador y despues
+ * barrido, `addu a1,a1,a2`): 960. Los registros
  * guardados ya coinciden con el original. Los temporales de 32 bits compartidos entre bloques son pseudos globales
  * que el reparto global asigna a a0 y a1, mientras que el original deja en v0 y v1 los valores de un solo bloque:
  * medido en el volcado de reparto para las dos bandas de altura del vuelo (ver la cabecera de la funcion); para el
@@ -523,7 +524,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * (0x80027EE8). Causa medida en los volcados de `cc1` (`.lreg`, `.greg` y el ensamblador de salida) y con `diff`: con
  * la pareja en cada rama los valores son pseudos locales del bloque (603 y 604 en el bloque 127, 627 y 628 en el 133,
  * 2 usos sobre 2 insns cada uno) que toman v0 y v1 y se almacenan al final de su camino, igual que el original (la
- * puntuacion es 970); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
+ * puntuacion es 960); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
  * los valores pasan a ser pseudos globales (la banda alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6
  * usos sobre 14 insns, 0,86) que reciben a1 y v1, los dos almacenes suben tras la etiqueta de union y aparece un
  * `move v0,a1` antes de la prueba de histeresis (la cifra empeora). La forma del fuente original que producia este reparto se
@@ -537,7 +538,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
  * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
  * bloque de union y el planificador la deja en el hueco de retardo de la llamada (en el original ese hueco es un
- * `nop`). Con las dos llamadas la cifra es 970; con una sola llamada tras la etiqueta empeora. Se supone, sin
+ * `nop`). Con las dos llamadas la cifra es 960; con una sola llamada tras la etiqueta empeora. Se supone, sin
  * verificar, que en la rama de la comprobacion de apoyo el original reparte `a0` al puntero del portador y despues al
  * argumento, y que aqui la preparacion del argumento sube tras la llamada a BarrerTerreno y empuja ese puntero a `a1`.
  * La forma del fuente original que producia este reparto se desconoce.
@@ -1906,7 +1907,7 @@ componer_con_portador:
             o->coord.super = 0;
             o->p70 = 0;
             o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x200;
-            o->param.trans.vz = vz_barrido + vz_portador;
+            o->param.trans.vz = vz_portador + vz_barrido;
             /* Sentencia replicada: es la misma que la de las otras ramas. */
             func_8001CFCC(&o->coord);
         }
