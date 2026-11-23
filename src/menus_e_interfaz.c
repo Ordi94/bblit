@@ -203,19 +203,19 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 335 con la configuracion versionada (ejes 2 de operando, 0 reordenadas, 15 insertadas o
- * borradas). El enlace de 24 bits de cada paquete se escribe en una sola sentencia, `(x << 8) >> 8` con `x` de
- * tipo `s32` (el original emite `sll` y `sra`). El paquete, la ranura de la tabla, la direccion del segundo paquete y
- * la relectura del anillo ya toman los registros del original (v1, a1, a2, a0 y v1). Queda el desplazamiento: el
- * original lo calcula sobre el propio registro del paquete (`sll v1,v1,8` en 0x8003AE9C) y, en el segundo paquete,
- * coloca el `sll` en 0x8003AF1C, entre la carga del punto 6 (0x8003AF18) y su almacen, con el resultado en v1;
- * aqui el temporal del desplazamiento cae en v0 (el segundo, ademas, sale tras el ultimo almacen del paquete y deja
- * un `nop` antes) y la carga del punto 8 toma v1. Medido en el volcado del primer planificador: el `sll` queda al
- * final del bloque, despues de la ultima carga, porque su destino es un registro virtual de una sola asignacion (el
- * planificador de ese pase lo acerca a su consumidor). Se supone, sin verificar, que en el original el desplazamiento
- * se asigna a una variable que despues se reasigna con el resultado, de modo que el `sll` no es un temporal y se queda
- * antes del ultimo par carga-almacen con v1 de destino; escribirlo asi parte la operacion en dos asignaciones y no se
- * admite.
+ * Pendiente: puntuacion 50 con la configuracion versionada (ejes 2 de operando, 0 reordenadas, 18 insertadas o
+ * borradas); solo queda el nombre de dos registros. El enlace de 24 bits de cada paquete se escribe en una sola
+ * sentencia, `(x << 8) >> 8` con `x` de tipo `s32` (el original emite `sll` y `sra`). Las instrucciones salen en el
+ * orden del original (en el segundo paquete el `sll` va entre la carga del punto 6, 0x8003AF18, y su almacen) y el
+ * paquete, la ranura de la tabla, la direccion del segundo paquete y la relectura del anillo toman los registros del
+ * original (v1, a1, a2, a0 y v1). Queda el reparto de v0 y v1: (1) en el primer paquete el original calcula el recorte
+ * sobre el propio registro del paquete (`sll v1,v1,8` en 0x8003AE9C) y aqui el temporal del `sll` cae en v0; (2) en el
+ * segundo paquete el original carga los puntos 6 y 8 en v0 y deja el temporal del `sll` y el enlace en v1 (0x8003AF1C a
+ * 0x8003AF28), y aqui las cargas toman v1 y el temporal y el enlace v0. Medido en el volcado de la asignacion: el
+ * temporal del `sll` (2 usos sobre 4 instrucciones) es un pseudo local y toma v0 en la fase local; la variable `punto`
+ * (4 usos sobre 6 instrucciones) muere en dos sitios, la asigna el asignador global, que va despues, y toma v1. Se
+ * supone, sin verificar, que en el original las cargas son locales y una de ellas coincide en vida con el temporal del
+ * `sll` y ocupa v0.
  */
 /*
  * Encola en la lista de ordenacion activa un primitivo de 0x18 bytes (codigo 0x05000000, un
@@ -232,6 +232,7 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
     s32 actual;
     s32 siguiente;
     s32 enlace_o_limite;
+    u32 punto;
 
     func_80039CD0(D_80076188);
     /* `cursor` guarda tres contenidos sucesivos: la direccion del primer paquete, su enlace de 24 bits y
@@ -252,7 +253,7 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
     siguiente = actual + 0x18;
     D_80076188 = siguiente;
     /* La palabra 8 de los puntos (`puntos[8]`) se lee por su desplazamiento en bytes sobre el mismo
-     * parametro: como indice del arreglo la puntuacion es 455 frente a 335 con la lectura por
+     * parametro: como indice del arreglo la puntuacion es 310 frente a 50 con la lectura por
      * desplazamiento. */
     if (*(u32*)((u8*)puntos + 0x20) != 0) {
         tabla = (u32*)D_8006AEA0[D_8006967C].org;
@@ -260,14 +261,19 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
         ((u32*)siguiente)[1] = 1;
         ((u32*)siguiente)[2] = 0x80000000;
         ((u32*)siguiente)[3] = puntos[4];
-        ((u32*)siguiente)[4] = puntos[6];
-        ((u32*)siguiente)[5] = puntos[8];
+        /* Los puntos 6 y 8 pasan por una misma variable: con varias asignaciones el primer planificador no acerca
+         * sus cargas al almacen y el `sll` del enlace queda entre la carga del punto 6 y su almacen, como el
+         * original (sin la variable la puntuacion es 335; solo con el punto 6, 335; con el punto 4 tambien, 60). */
+        punto = puntos[6];
+        ((u32*)siguiente)[4] = punto;
+        punto = puntos[8];
+        ((u32*)siguiente)[5] = punto;
         enlace_o_limite = (siguiente << 8) >> 8;
         *tabla = enlace_o_limite;
         D_80076188 += 0x18;
     }
     /* El limite se lee primero en `siguiente` y se copia a la local que ya guardo el enlace del segundo
-     * paquete (335); leerlo directamente en ella deja el limite cargado antes que el cursor (555). */
+     * paquete; leerlo directamente en ella deja el limite cargado antes que el cursor (270 en lugar de 50). */
     siguiente = ctx->limite;
     cursor = D_80076188;
     enlace_o_limite = siguiente;
