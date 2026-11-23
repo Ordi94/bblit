@@ -400,8 +400,8 @@ void func_80037FB8(NodoLista* n)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 925 con la configuracion versionada (g = 8 del archivo; ejes 16 de
- * operando, 0 reordenadas, 75 insertadas o borradas). Difiere en: reparto de registros de los dos
+ * Pendiente: puntuacion 815 con la configuracion versionada (g = 8 del archivo; ejes 16 de
+ * operando, 0 reordenadas, 73 insertadas o borradas). Difiere en: reparto de registros de los dos
  * ultimos grupos. Los cuatro primeros grupos coinciden en codigo (quedan solo las marcas de operando
  * por nombre de simbolo: el original lleva D_8005E836 y D_8005E858 donde el C genera
  * D_8005E830+6 y D_8005E830+0x28, y D_8001013C o D_80010047 donde el C genera 0x13c(v0) o 0x47(v0)).
@@ -430,12 +430,19 @@ void func_80037FB8(NodoLista* n)
  * Causa medida del residuo del ultimo grupo (los contadores 0xBA y 0x04): no es la prioridad del asignador
  * global. El volcado `-dg` da el mismo registro a los pseudos `bcd` (84), `e` (88) y al 83 (en el 5, en el 19 y
  * en el 18) aunque se les sumen usos ponderados, de modo que ninguna referencia sin codigo sobre ellos cambia el
- * reparto; lo que cambia con esas referencias es la planificacion (tres notas `LOOP` mas en `.sched`, de 24 a 27:
- * el `move s2,zero` y el `addiu` de la pila se colocan tras la llamada). Por eso la funcion no lleva ninguna
- * referencia sin codigo. Se supone, sin verificar, que la causa es el limite de planificacion de las lecturas
- * de memoria que rodean al grupo.
- */
-/*
+ * reparto; lo que cambia con esas referencias es la planificacion.
+ *
+ * La envoltura `do { } while (0)` del bloque que prepara los tres primeros identificadores del ultimo grupo
+ * (desde `e = ESTADO_PRINCIPAL` hasta `ids[2]`) no genera codigo. Causa medida (volcados `-dg` y `-dS` del estado
+ * final, con y sin ella): la disposicion de registros de todos los pseudos de la funcion es identica (los 655
+ * campos de `Register dispositions` coinciden); solo cambia el orden de la lista `regs to allocate` (el pseudo 84
+ * pasa tras el 533 y el 527) y la planificacion, porque la envoltura anade tres notas `LOOP` a `.sched` (de 24 a 27,
+ * de ellas una `LOOP_BEG` mas, de 6 a 7) que cierran la region de planificacion: el `lui` de `D_8005E830`, el `move s2,zero`, el `addiu s4,sp,0x10`
+ * y la lectura del byte del contador 0xBA (0x80038560 en el original) cambian de lugar respecto a la copia sin
+ * envoltura, y el `.s` generado difiere solo en la colocacion de esas instrucciones. La cifra es 925 sin la envoltura y 815 con ella. Se supone, sin verificar, que la causa del resto
+ * es el limite de planificacion de las lecturas de memoria que rodean al grupo. La forma del fuente original que
+ * producia este reparto se desconoce.
+ *
  * Crea los objetos de los indicadores de la interfaz al entrar en un nivel: reinicia los
  * grupos de tres y cuatro digitos a partir de los contadores del estado principal (cada
  * valor se convierte a BCD con func_80037D3C y cada digito elige su plantilla en D_8005E81C)
@@ -548,11 +555,13 @@ void func_80037FE8(void* lista)
     }
 
     if (D_800100FA != 0) {
-        e = ESTADO_PRINCIPAL;
-        bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0x04]);
-        ids[0] = D_8005E830[0x18];
-        ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
-        ids[2] = D_8005E81C[bcd & 0xF];
+        do {
+            e = ESTADO_PRINCIPAL;
+            bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0x04]);
+            ids[0] = D_8005E830[0x18];
+            ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
+            ids[2] = D_8005E81C[bcd & 0xF];
+        } while (0);
         i = 0;
         bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0xBA]);
         ids[3] = D_8005E830[0x19];
