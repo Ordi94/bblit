@@ -349,14 +349,13 @@ typedef struct CabeceraPrimitiva {
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 300 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
- * reordenadas, 3 insertadas o borradas: la unica causa es la copia del puntero a la primitiva, (d)). La intensidad y el color empaquetado comparten la local `color`, como
- * en el original, donde la intensidad (`subu a2,v1,v0`, 0x800451F4) y el color (`addu a2,a2,a0`, 0x80045210) viven
- * en el mismo registro: con una local para cada uno el compilador deja la intensidad en a0 y el color en a2
- * y la puntuacion es 626 (421 con la local unica). La suma se escribe `color + (0x2C000000 + (color << 16) + (color << 8))`, que da el
- * arbol del original (`addu v0,v0,v1`, `addu a0,a0,v0` y `addu a2,a2,a0`, 0x80045204 a 0x80045210); con la
- * base al final y sin el parentesis (`K + (c << 16) + (c << 8) + c`) el compilador reasocia la constante. El
- * orden de lectura del glifo y del elemento, la copia de la cabeza de la lista a una local y el orden de los
- * operandos de `y2` no cambian la cifra (medido).
+ * reordenadas, 3 insertadas o borradas: la unica causa es la copia del puntero a la primitiva, (d)). La
+ * intensidad y el color empaquetado comparten la local `color`, como en el original, donde la intensidad
+ * (`subu a2,v1,v0`, 0x800451F4) y el color (`addu a2,a2,a0`, 0x80045210) viven en el mismo registro: con una
+ * local para cada uno el compilador deja la intensidad en a0 y el color en a2 y la puntuacion es 510. La suma se
+ * escribe `color + (0x2C000000 + (color << 16) + (color << 8))`, que da el arbol del original (`addu v0,v0,v1`,
+ * `addu a0,a0,v0` y `addu a2,a2,a0`, 0x80045204 a 0x80045210); con la base al final y sin el parentesis
+ * (`K + (c << 16) + (c << 8) + c`) el compilador reasocia la constante.
  *
  * La primitiva se escribe por miembros de POLY_FT4: el compilador marca un acceso por miembro como
  * acceso a estructura y no lo trata como posible alias de los globales escalares (D_80076188,
@@ -396,11 +395,13 @@ typedef struct CabeceraPrimitiva {
  * la copia) porque el almacen a la lista de cabezas, que no es un acceso por miembro, impide reutilizar
  * el valor ya cargado. Se supone, sin verificar, que el original obtiene la copia porque la segunda
  * lectura se convierte en copia al volver a pasar el optimizador tras la asignacion de registros y que
- * para eso el almacen intermedio no debe invalidar el registro. Una local que se copia de la lectura se
- * propaga y no deja copia (551); una local reescrita en sitio para el enlace si la deja y quita la
- * relectura, pero toma a1 y deja la cabeza de la lista en a0, el almacen del enlace antes de la copia y
- * la suma de la anchura sobre el almacen final, y la cifra sube a 556. Mover la lectura de `y` tras la de `h` no cambia
- * el codigo: el orden de las lecturas lo fija el planificador.
+ * para eso el almacen intermedio no debe invalidar el registro. Una local reescrita en sitio para el enlace
+ * (`direccion = D_80076188; ...; p = (POLY_FT4*)direccion; direccion = (direccion << 8) >> 8;`) deja la copia y
+ * quita la relectura, pero toma a1 y deja la cabeza de la lista en a0 y el planificador coloca la copia tras el
+ * almacen del enlace (en el volcado de planificacion la copia depende solo de la carga y el almacen del enlace
+ * precede a los almacenes de la primitiva): la cifra sube a 340. Con la copia antes de los almacenes de la
+ * cabecera el CSE la funde con la lectura y no queda copia (470), y con la cabeza de la lista como
+ * `CabeceraPrimitiva*` el almacen por miembro no invalida la lectura, el CSE la funde y tampoco queda copia (470).
  */
 void func_80045150(EntradaLista* e)
 {
