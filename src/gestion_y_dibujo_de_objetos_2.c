@@ -50,9 +50,15 @@ extern u8 D_800100D0;
 
 /*
  * Tablas del archivo: identificadores de plantilla de los grupos de objetos (D_8005E830), de los
- * digitos 0 a 9 (D_8005E81C) y posiciones (x, y) de cada objeto de cada grupo.
+ * digitos 0 a 9 (D_8005E81C) y posiciones (x, y) de cada objeto de cada grupo. D_8005E836,
+ * D_8005E83E y D_8005E858 son elementos de D_8005E830 que func_80037FE8 lee una sola vez cada uno
+ * por su propio simbolo: se declaran como arreglo incompleto para que el compilador separe el `lui`
+ * de la carga (como un arreglo y no como un escalar) y el operando lleve el nombre del ensamblador.
  */
 extern s16 D_8005E830[];
+extern s16 D_8005E836[];
+extern s16 D_8005E83E[];
+extern s16 D_8005E858[];
 extern s16 D_8005E81C[];
 extern s16 D_8005E86C[][2];
 extern s16 D_8005E928[][2];
@@ -401,12 +407,12 @@ void func_80037FB8(NodoLista* n)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 215 con la configuracion versionada (g = 8 del archivo; ejes 16 de
- * operando, 0 reordenadas, 70 insertadas o borradas). Todos los grupos coinciden en instrucciones;
+ * Pendiente: puntuacion 185 con la configuracion versionada (g = 8 del archivo; ejes 16 de
+ * operando, 0 reordenadas, 58 insertadas o borradas). Todos los grupos coinciden en instrucciones;
  * difiere el reparto de registros salvados de los grupos de los contadores 0xB6 (0x800382D8 a
  * 0x800383A0) y 0xBA (0x80038508 a 0x800385C4), y las marcas de operando por nombre de simbolo (el
- * original lleva D_8005E836 y D_8005E858 donde el C genera D_8005E830+6 y D_8005E830+0x28, y D_8001013C
- * o D_80010047 donde el C genera 0x13c(v0) o 0x47(v0)). En esos dos grupos el original guarda el puntero
+ * original lleva D_8001013C y D_80010047 donde el C genera 0x13c(v0) y 0x47(v0), y los desplazamientos
+ * D_800100F6 a D_800100FA sobre una base compartida con el puntero de estado). En esos dos grupos el original guarda el puntero
  * a 0x80010000 en s3, la direccion de la pila en s4 y la base de D_8006AB70 en s5; el C los reparte en
  * s4, s5 y s4 (la base de D_8006AB70 reutiliza el s4 del puntero, que ya murio). El volcado de asignacion
  * (`-dl`) muestra el pseudo de `e` (87) con 11 usos sobre 76 instrucciones y 3 llamadas cruzadas. Se
@@ -448,7 +454,7 @@ void func_80037FE8(void* lista)
     func_80038884(0xE, 1);
 
     bcd = ((DigitosSinConversion)func_80037D3C)((ESTADO_PRINCIPAL->r[0xFC] << 8) | ESTADO_PRINCIPAL->r[0x07]);
-    ids[0] = D_8005E830[3];
+    ids[0] = D_8005E836[0];
     ids[1] = D_8005E81C[(bcd & 0xF00) >> 8];
     ids[2] = D_8005E81C[(bcd & 0xF0) >> 4];
     pos = D_8005E928;
@@ -459,7 +465,7 @@ void func_80037FE8(void* lista)
 
     i = 0;
     bcd = ((DigitosSinConversion)func_80037D3C)(D_80010045);
-    ids[0] = D_8005E830[7];
+    ids[0] = D_8005E83E[0];
     ids[1] = D_8005E81C[(bcd & 0xF00) >> 8];
     ids[2] = D_8005E81C[(bcd & 0xF0) >> 4];
     ids[3] = D_8005E81C[bcd & 0xF];
@@ -474,7 +480,7 @@ void func_80037FE8(void* lista)
     ids[0] = D_8005E81C[(bcd & 0xF00) >> 8];
     ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
     ids[2] = D_8005E81C[bcd & 0xF];
-    ids[3] = D_8005E830[0x14];
+    ids[3] = D_8005E858[0];
     pos = D_8005E8BC;
     for (; i < 4; i++) {
         if (i == 0) {
