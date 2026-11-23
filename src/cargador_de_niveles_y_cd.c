@@ -759,6 +759,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         D_80069498 = (u32)datos;
         D_8006949C = D_80069490 + 0x800;
         if (func_80044664((u8*)D_8006949C, datos, (void*)0x1F800000) == 0) {
+            /* Salida de error de las lecturas por anillo: tambien la usa la lectura del caso 0x4B. */
         fallo_lectura:
             return 1;
         }
@@ -1002,6 +1003,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             IniciarLecturaContinua((CdlLOC*)D_8006A928);
             if (D_80069494 != 0) {
                 if (func_80044664((u8*)D_8006949C, (u8*)D_80069498, (void*)0x1F800000) == 0) {
+                    /* Mismo retorno que la apertura: el original sale de aqui con `beqz v0` directo (0x80042264). */
                     goto fallo_lectura;
                 }
             } else {
