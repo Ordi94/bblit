@@ -529,10 +529,10 @@ void SondearTarjeta(void)
             MemCardAccept(0);
         } else if (orden == 2) {
             MemCardSync(0, &D_80069360, &D_80069368);
-            rc = MemCardFormat(0);
-            if (rc == 0) {
+            i = MemCardFormat(0);
+            if (i == 0) {
                 D_8006AA70[0x1B] = 0xB;
-            } else if (rc == 1) {
+            } else if (i == 1) {
                 D_8006AA70[0x1B] = 0xC;
             }
         } else if (orden == 3) {
