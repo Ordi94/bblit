@@ -437,8 +437,8 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 940 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
- * 215 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
+ * Pendiente: puntuacion 840 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
+ * 179 insertadas o borradas). Difiere en: orden de cargas y reparto de temporales. Leer la altura del objeto en una
  * local antes de la histeresis baja de 2655 a 2625; la copia local del hijo antes de soltarlo (`hijo_soltado`)
  * reproduce la carga del original del hijo y baja de 2625 a 2605. La resta de la X del portador en el barrido se
  * escribe directa (`o->param.trans.vx - o->p70->param.trans.vx`): con una local previa (`x_portador`) la cifra es 1915.
@@ -527,7 +527,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * (0x80027EE8). Causa medida en los volcados de `cc1` (`.lreg`, `.greg` y el ensamblador de salida) y con `diff`: con
  * la pareja en cada rama los valores son pseudos locales del bloque (603 y 604 en el bloque 127, 627 y 628 en el 133,
  * 2 usos sobre 2 insns cada uno) que toman v0 y v1 y se almacenan al final de su camino, igual que el original (la
- * puntuacion es 940); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
+ * puntuacion es 840); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
  * los valores pasan a ser pseudos globales (la banda alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6
  * usos sobre 14 insns, 0,86) que reciben a1 y v1, los dos almacenes suben tras la etiqueta de union y aparece un
  * `move v0,a1` antes de la prueba de histeresis (la cifra empeora). La forma del fuente original que producia este reparto se
@@ -541,7 +541,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
  * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
  * bloque de union y el planificador la deja en el hueco de retardo de la llamada (en el original ese hueco es un
- * `nop`). Con las dos llamadas la cifra es 940; con una sola llamada tras la etiqueta empeora. Se supone, sin
+ * `nop`). Con las dos llamadas la cifra es 840; con una sola llamada tras la etiqueta empeora. Se supone, sin
  * verificar, que en la rama de la comprobacion de apoyo el original reparte `a0` al puntero del portador y despues al
  * argumento, y que aqui la preparacion del argumento sube tras la llamada a BarrerTerreno y empuja ese puntero a `a1`.
  * La forma del fuente original que producia este reparto se desconoce.
@@ -551,6 +551,18 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * `jal` en 0x8002A4B0, lee `flags14` y escribe el 0x200 a continuacion y salta a 0x8002A6A8, de modo que no pasa por la
  * llamada compartida de 0x8002A6A0 y una sola copia tras la reunion de los caminos colocaria la llamada detras de ese
  * almacen.
+ *
+ * Los dos do/while (0) de `t->hijo->coord.super = &D_80069698->coord;` (el bloque del hijo con el bit 0x80, copia del
+ * jugador, y el de la rama de disparadores que busca el hijo por identificador) no generan codigo: el optimizador de
+ * bucles pondera por un nivel mas las referencias de su cuerpo, y el ensamblador generado tiene las mismas 3848
+ * instrucciones con ellos y sin ellos. Medido en el volcado de reparto (`.lreg`) del bloque que copia el jugador al
+ * hijo (el segundo bloque se supone igual, sin verificar el volcado): el puntero al jugador (4 usos sobre 18
+ * instrucciones, prioridad 0,44) se asigna antes que las relecturas de `t->hijo` (2 usos sobre 6 instrucciones, 0,33 la
+ * primera y la segunda) y toma v1, y esas dos relecturas caen en a0; con la envoltura la primera relectura pasa a 4 usos ponderados sobre 6 (1,33) y se asigna
+ * antes, el puntero a 6 usos sobre 18 (0,67) toma a0 y la primera y la segunda relectura v1, como el original
+ * (0x8002AE5C a 0x8002AE9C y 0x8002B104 a 0x8002B144). La puntuacion es 940 sin ninguna, 890 con la del primer bloque
+ * y 840 con las dos. Una segunda envoltura sobre la sentencia siguiente (`t->hijo->w26 = D_80069698->w26;`) no cambia
+ * la cifra. La forma del fuente original que producia este reparto se desconoce.
  *
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
@@ -2117,7 +2129,9 @@ accion_del_disparador:
                     D_80069608 |= 1;
                 }
                 if (t->banderas & 0x1000) {
-                    t->hijo->coord.super = &D_80069698->coord;
+                    do {
+                        t->hijo->coord.super = &D_80069698->coord;
+                    } while (0);
                     t->hijo->w26 = D_80069698->w26;
                     t->hijo->p70 = D_80069698;
                 } else {
@@ -2177,7 +2191,9 @@ accion_del_disparador:
                 o->flags14 &= 0xFFFFFFEB;
             }
             if (t->banderas & 0x1000) {
-                t->hijo->coord.super = &D_80069698->coord;
+                do {
+                    t->hijo->coord.super = &D_80069698->coord;
+                } while (0);
                 t->hijo->w26 = D_80069698->w26;
                 t->hijo->p70 = D_80069698;
             } else {
