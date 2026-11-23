@@ -525,12 +525,12 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * los valores como temporales de ese camino (0x80027E40 y 0x80027E48 en la banda del jugador, 0x80027EA0 a 0x80027EC0
  * en la intermedia y 0x80027EE0 y 0x80027EE4 en la final) y todos los caminos saltan a la prueba de histeresis
  * (0x80027EE8). Causa medida en los volcados de `cc1` (`.lreg`, `.greg` y el ensamblador de salida) y con `diff`: con
- * la pareja en cada rama los valores son pseudos locales del bloque (603 y 604 en el bloque 127, 627 y 628 en el 133,
- * 2 usos sobre 2 insns cada uno) que toman v0 y v1 y se almacenan al final de su camino, igual que el original (la
- * puntuacion es 840); con una sola pareja tras la union, asignando las mismas dos variables en las tres ramas,
- * los valores pasan a ser pseudos globales (la banda alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6
+ * la pareja en cada rama los valores son pseudos locales del bloque (2 usos sobre 2 insns cada uno) que toman v0 y
+ * v1 y se almacenan al final de su camino, igual que el original (la puntuacion es 840); con una sola pareja tras la
+ * union, asignando las mismas dos variables en las tres ramas, los valores pasan a ser pseudos globales (medido en un
+ * volcado anterior a la ultima bajada, sin remedir: la banda alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6
  * usos sobre 14 insns, 0,86) que reciben a1 y v1, los dos almacenes suben tras la etiqueta de union y aparece un
- * `move v0,a1` antes de la prueba de histeresis (la cifra empeora). La forma del fuente original que producia este reparto se
+ * `move v0,a1` antes de la prueba de histeresis (la cifra sube a 2720). La forma del fuente original que producia este reparto se
  * desconoce.
  *
  * Las dos sentencias replicadas `func_8001CFCC(&o->coord);` son la llamada de cierre de la composicion con el portador,
@@ -541,7 +541,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
  * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
  * bloque de union y el planificador la deja en el hueco de retardo de la llamada (en el original ese hueco es un
- * `nop`). Con las dos llamadas la cifra es 840; con una sola llamada tras la etiqueta empeora. Se supone, sin
+ * `nop`). Con las dos llamadas la cifra es 840; con una sola llamada tras la etiqueta sube a 1060. Se supone, sin
  * verificar, que en la rama de la comprobacion de apoyo el original reparte `a0` al puntero del portador y despues al
  * argumento, y que aqui la preparacion del argumento sube tras la llamada a BarrerTerreno y empuja ese puntero a `a1`.
  * La forma del fuente original que producia este reparto se desconoce.
