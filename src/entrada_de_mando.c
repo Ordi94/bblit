@@ -262,8 +262,8 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 700 con la configuracion versionada (g = 8 del archivo). Reserva de pila: el original reserva 0x28 (`addiu sp`
- * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 774 y con ella 700. El
+ * Pendiente: puntuacion 575 con la configuracion versionada (g = 8 del archivo). Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 649 y con ella 575. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (se supone, sin verificar, que el original tenia una llamada con seis palabras de argumentos que el
@@ -285,15 +285,23 @@ void func_80040430(s8* contador, u16 mascara)
  * de miembro de estructura de la direccion de memoria.
  *
  * El resultado de las dos restas de `eje_y` se convierte a `s16` antes del almacen (el campo es de 16 bits): sin las
- * conversiones la cifra es 935 y con ellas 700. En la rama de abajo la suma lleva `(u32)` sobre `eje`: sin la
- * conversion el compilador reasocia `centro - (eje + 1)` y la cifra es 720.
+ * conversiones la cifra es 810 y con ellas 575.
  *
  * En la rama de arriba del eje Y la resta de `eje_y` va despues del almacen a botones_a. El original conserva el
  * `andi 0xff` del byte antes de la suma (0x80040908) y la resta es la primera instruccion del bloque; mientras no
  * haya un almacen entre la lectura del byte y la suma, el combinador pliega el `andi` sobre el registro del byte
  * (`addiu` con el byte sin extender). Con el almacen delante el `andi` se conserva, y el planificador deja la resta
- * antes de los almacenes como el original. Con la resta primero la cifra es 800. En el eje X los almacenes a w3E y
+ * antes de los almacenes como el original. Con la resta primero la cifra es 680. En el eje X los almacenes a w3E y
  * botones_a ya quedan entre la lectura y la rama de la izquierda.
+ *
+ * El byte crudo de los dos ejes vive en una sola local de 8 bits (`eje_crudo`) y todas las ramas la usan por su
+ * nombre: el original lee cada eje una vez (0x80040830 y 0x800408E4), compara una copia enmascarada (a2) y repite
+ * `andi 0xff` sobre la lectura en las ramas de la izquierda y de arriba (0x80040880 y 0x80040908), mientras que las
+ * ramas de la derecha y de abajo usan el registro del byte (v1) sin extender. Con una local de 8 bits compartida
+ * el reparto de registros de los ejes coincide con el original (crudo v1, `centro` a1, copia enmascarada a2, umbral
+ * a3 y `botones_c` t0) y el planificador deja la lectura del eje X la primera del bloque. Se supone, sin verificar,
+ * que el `andi` de las ramas derecha y abajo lo elimina la limpieza posterior a la asignacion de registros al
+ * quedar la copia en el mismo registro que el byte. Con una local por eje la cifra es 2435.
  *
  * Una sola variable (`bits`) guarda los botones de direccion en la rama de grabacion y en la de lectura de la BIOS:
  * el original usa el mismo registro (s1) en las dos (`lhu s1` en 0x80040668 y `move s1,s2` en 0x8004074C), y con dos
@@ -305,14 +313,6 @@ void func_80040430(s8* contador, u16 mascara)
  * valor y un almacen tras la etiqueta, el compilador sacaba las lecturas de D_8006CFF2/D_8006CFF3 por encima del
  * `sb` y el valor caia en `v1`.
  *
- * Reparto de registros en la rama de los ejes (volcados `-dl` y `-dg`; prioridad = floor_log2(R) * R / L con R usos y
- * L vida): `eje` 8 usos y vida 28 (0,857), `centro` 10 y 45 (0,667), umbral del eje Y 3 y 6 (0,500), byte crudo del
- * eje Y 3 y 7 (0,429), `botones_c` 4 y 19 (0,421), umbral del eje X 3 y 8 (0,375) y byte crudo del eje X 3 y 18
- * (0,167). Por eso se asigna primero `eje` (v1) y el byte crudo queda el ultimo (t0 en X, a3 en Y). El original lo
- * reparte como crudo v1, `centro` a1, `eje` a2, umbral a3 y `botones_c` t0 (0x80040830, 0x8004083C y 0x8004084C),
- * que es el orden de la formula si el byte crudo pesa mas que `centro` y `eje` menos; se supone, sin verificar, que
- * el original lee el byte sin `andi` en las ramas derecha y abajo y por eso suma cuatro usos por eje.
- *
  * En la rama por defecto el primer byte del banco se lee por `banco` (0(s1)): leerlo por el simbolo no comparte el
  * `lui` de s2, el compilador repite el `lui` en ese bloque (el volcado `-ds` deja dos instrucciones `high` del
  * mismo pseudo, una por bloque).
@@ -322,18 +322,17 @@ void func_80040430(s8* contador, u16 mascara)
  * `D_8006AA70[0xC]` (el banco es un arreglo sin tamano): con el escalar `D_8006AA7C` (u8 de un byte, dentro del
  * umbral -G8) el compilador emite `lbu $2,D_8006AA7C` como una sola instruccion de macro, el `lui` lo crea el
  * ensamblador y no puede ocupar un hueco; con el arreglo sin tamano el `lui` es una instruccion propia y el relleno
- * coincide. La cifra es 1255 con el escalar y 700 con el arreglo; el desensamblado muestra el simbolo como
+ * coincide. La cifra es 1130 con el escalar y 575 con el arreglo; el desensamblado muestra el simbolo como
  * `D_8006AA70+0xc`. La base del estado en la prueba de pausa se lee por `est` (0x76(s0), como el original en
- * 0x80040A24): con la constante absoluta la cifra es 805 y con `est` 700.
+ * 0x80040A24): con la constante absoluta la cifra es 680 y con `est` 575.
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
  * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0 y la lectura usa 0(s1)). El compilador solo
  * comparte ese `lui` con la rama por defecto cuando esta es el destino de un salto condicional de la cadena de
  * comparaciones; con las del original (saltos condicionales hacia los casos y un salto incondicional hacia la rama
  * por defecto, 0x80040264 a 0x80040278) no lo comparte, y escribir la cadena con el salto condicional hacia la rama
- * por defecto cambia el orden de los bloques;
- * el reparto de registros de los ejes (arriba), unas veinte lineas `r`; y la forma simbolica de los campos de
- * 0x80010000.
+ * por defecto cambia el orden de los bloques. Son las cinco lineas `r` que quedan; ademas, la forma simbolica de
+ * los campos de 0x80010000.
  *
  * El xor del byte invertido se hace sobre una local de 32 bits (cf2, cf3, cfd): con el byte
  * leido directamente el analizador de tipos del front end estrecha el xor a un byte (sale
@@ -359,15 +358,13 @@ void func_8004048C(void)
     u8* banco;
     s32 hi;
     s32 centro;
-    s32 eje;
     u16* grab;
     s32 lo;
     u32 cf2;
     u32 cf3;
     u32 cfd;
-    /* Lecturas sin centrar de los ejes X e Y del mando, de 8 bits: el original lee cada una una sola vez (0x80040830 y 0x800408E4). */
-    u8 eje_x_crudo;
-    u8 eje_y_crudo;
+    /* Lectura sin centrar de cada eje del mando, de 8 bits y compartida por los dos ejes: el original lee cada una una sola vez (0x80040830 y 0x800408E4). */
+    u8 eje_crudo;
     EstadoPrincipal* est;
     /* Reserva de pila: local sin uso que completa el marco del original. */
     s32 reserva[2];
@@ -495,42 +492,38 @@ normal:
         func_80040158(&ESTADO_PRINCIPAL->mando);
         centro = ESTADO_PRINCIPAL->mando.centro_x;
         mascara = ESTADO_PRINCIPAL->mando.botones_c;
-        /* Cada eje se lee una sola vez (0x80040830 y 0x800408E4) y las ramas reutilizan el valor tras los almacenes.
-           El original repite `andi 0xff` sobre la lectura en las ramas de la izquierda y de arriba (0x80040880 y
-           0x80040908) y no en las otras dos: el byte vive en una local de 8 bits (en una de 32 el combinador da por
-           redundante la conversion tras `lbu` y no emite el `andi`), la rama que lo repite lo usa por su nombre y las
-           otras dos usan `eje`, la copia de 32 bits que ya lleva la mascara. */
-        eje_x_crudo = D_8006CFF6.valor;
-        eje = eje_x_crudo;
+        /* Cada eje se lee una sola vez (0x80040830 y 0x800408E4) en la misma local de 8 bits y las ramas la usan por su
+           nombre: el `andi 0xff` de la izquierda y de arriba (0x80040880 y 0x80040908) sale por ser de 8 bits (en una de
+           32 el combinador da por redundante la conversion tras `lbu`). */
+        eje_crudo = D_8006CFF6.valor;
         prev = mascara & ~ESTADO_PRINCIPAL->mando.botones_e;
         ESTADO_PRINCIPAL->mando.w3E = prev;
         ESTADO_PRINCIPAL->mando.botones_a = prev;
-        if (eje < centro - D_8006952C) {
+        if (eje_crudo < centro - D_8006952C) {
             ESTADO_PRINCIPAL->mando.botones_a = prev | 0x8000;
             ESTADO_PRINCIPAL->mando.w3E = prev | 0x8000;
             ESTADO_PRINCIPAL->mando.botones_c = mascara | 0x8000;
-            ESTADO_PRINCIPAL->mando.eje_x = eje_x_crudo - centro;
+            ESTADO_PRINCIPAL->mando.eje_x = eje_crudo - centro;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x8000;
-        } else if (centro + D_8006952C < eje) {
+        } else if (centro + D_8006952C < eje_crudo) {
             ESTADO_PRINCIPAL->mando.botones_a = prev | 0x2000;
             ESTADO_PRINCIPAL->mando.w3E = prev | 0x2000;
             ESTADO_PRINCIPAL->mando.botones_c = mascara | 0x2000;
-            ESTADO_PRINCIPAL->mando.eje_x = eje - centro;
+            ESTADO_PRINCIPAL->mando.eje_x = eje_crudo - centro;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x2000;
         } else {
             ESTADO_PRINCIPAL->mando.eje_x = 0;
         }
-        eje_y_crudo = D_8006CFF7.valor;
+        eje_crudo = D_8006CFF7.valor;
         centro = ESTADO_PRINCIPAL->mando.centro_y;
-        eje = eje_y_crudo;
-        if (eje < centro - D_8006952C) {
+        if (eje_crudo < centro - D_8006952C) {
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x1000;
-            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - (eje_y_crudo + 1));
+            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - (eje_crudo + 1));
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x1000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x1000;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x1000;
-        } else if (eje > centro + D_8006952C) {
-            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - ((u32)eje + 1));
+        } else if (eje_crudo > centro + D_8006952C) {
+            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - (eje_crudo + 1));
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x4000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x4000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x4000;
