@@ -401,33 +401,29 @@ void func_80037FB8(NodoLista* n)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 230 con la configuracion versionada (g = 8 del archivo; ejes 16 de
- * operando, 0 reordenadas, 76 insertadas o borradas). Todos los grupos coinciden en instrucciones;
- * difiere solo el reparto de registros salvados (y las marcas de operando por nombre de simbolo: el
+ * Pendiente: puntuacion 215 con la configuracion versionada (g = 8 del archivo; ejes 16 de
+ * operando, 0 reordenadas, 70 insertadas o borradas). Todos los grupos coinciden en instrucciones;
+ * difiere el reparto de registros salvados de los grupos de los contadores 0xB6 (0x800382D8 a
+ * 0x800383A0) y 0xBA (0x80038508 a 0x800385C4), y las marcas de operando por nombre de simbolo (el
  * original lleva D_8005E836 y D_8005E858 donde el C genera D_8005E830+6 y D_8005E830+0x28, y D_8001013C
- * o D_80010047 donde el C genera 0x13c(v0) o 0x47(v0)). Residuo medido en la comparacion: (1) grupos de
- * los contadores 0xB6 (0x800382D8 a 0x800383A0) y 0xBA (0x80038508 a 0x800385C4): el original guarda el
- * puntero a 0x80010000 en s3, la direccion de la pila en s4 y la base de D_8006AB70 en s5; el C los
- * reparte en s4, s5 y s4 (la base de D_8006AB70 reutiliza el s4 del puntero, que ya murio); (2) grupo del
- * contador 0xB8: la base de D_8005E8F8 cae en a2 en vez de v1 (0x80038474, 0x8003847C y 0x80038494).
- * Medido en el volcado de asignacion (`-dl`) con y sin la forma vigente: con `e = ESTADO_PRINCIPAL`
- * escrito dentro de cada `if` el ultimo grupo no usa el pseudo de `e` (87; 11 usos sobre 50 instrucciones,
- * cruza 2 llamadas), porque el CSE sustituye `e` por su valor constante en las dos lecturas y el
- * compilador rematerializa la base con un `lui` propio en cada una (cifra 945); con la asignacion escrita
- * antes del `if` de los grupos 0xB6 y 0xBA, las lecturas de los desplazamientos 68 y 250 conservan el
- * pseudo 87 (11 usos sobre 76 instrucciones, cruza 3 llamadas) y la base vive en un registro salvado a
- * traves de la primera conversion BCD, como en el original (cifra 230). Se supone, sin verificar, que
- * el original tiene un pseudo propio de `e` por grupo (s3, s4 y s3) y que el C, que comparte un solo `e`,
- * lo fuerza a un solo registro. El C no lee los dos bytes del ultimo grupo por los externos D_80010044 y
- * D_800100FA: los simbolos son expresiones distintas, el optimizador no comparte su `lui` y la base comun
- * del original no viene de una lectura por nombre de simbolo.
- * Forma vigente del C: los tres bytes del contador de porcentaje se leen con ESTADO_PRINCIPAL directo
- * (sin una local `e` que abarque el grupo) en una sola expresion, con `r[7] + r[5]` sumado antes de
- * sumarlo al byte alto desplazado (asi el `lui` compartido y la suma coinciden con 0x1b8..0x1d0); los
- * ids del porcentaje se escriben en orden de indices 2 y 3 (el valor BCD pasa a a1 como en el
- * original); y la prueba `i == 1` es un `if` independiente y no un `else if`, porque el original cae
- * del bloque `i == 0` a esa prueba. La rama `else` de la prueba `D_800100F7` del grupo 0xB8 pasa
- * `ids[i]` directo a la llamada (con una local intermedia para el valor la cifra sube de 230 a 250).
+ * o D_80010047 donde el C genera 0x13c(v0) o 0x47(v0)). En esos dos grupos el original guarda el puntero
+ * a 0x80010000 en s3, la direccion de la pila en s4 y la base de D_8006AB70 en s5; el C los reparte en
+ * s4, s5 y s4 (la base de D_8006AB70 reutiliza el s4 del puntero, que ya murio). El volcado de asignacion
+ * (`-dl`) muestra el pseudo de `e` (87) con 11 usos sobre 76 instrucciones y 3 llamadas cruzadas. Se
+ * supone, sin verificar, que el original tiene un pseudo de `e` para los grupos 0xB6 y 0xBA (s3) y otro
+ * para el 0xB8 (s4), y que el C, que comparte un solo `e`, lo fuerza a un solo registro.
+ * Forma vigente del C: `e = ESTADO_PRINCIPAL` se escribe antes del `if` de los grupos 0xB6 y 0xBA (dentro
+ * del `if` el CSE sustituye `e` por su valor constante en las lecturas con desplazamiento y el compilador
+ * rematerializa la base con un `lui` propio en cada una). Los tres bytes del contador de porcentaje se
+ * leen con ESTADO_PRINCIPAL directo en una sola expresion, con `r[7] + r[5]` sumado antes de sumarlo al
+ * byte alto desplazado (asi el `lui` compartido y la suma coinciden con 0x1b8..0x1d0); los ids del
+ * porcentaje se escriben en orden de indices 2 y 3 (el valor BCD pasa a a1 como en el original); y la
+ * prueba `i == 1` es un `if` independiente y no un `else if`, porque el original cae del bloque `i == 0`
+ * a esa prueba. El grupo 0xB8 lee la tabla de posiciones por un puntero propio (`pos_b8`) y no por el
+ * `pos` que comparten los demas grupos: el pseudo compartido vive entre bloques, recibe a2 y la base de
+ * D_8005E8F8 queda en a2; el propio, local a un bloque, recibe v1 como el original (0x80038474,
+ * 0x8003847C y 0x80038494). La rama `else` de la prueba `D_800100F7` del grupo 0xB8 pasa `ids[i]`
+ * directo a la llamada.
  *
  * La funcion no lleva ninguna referencia sin codigo.
  *
@@ -445,6 +441,7 @@ void func_80037FE8(void* lista)
     s32 pct;
     Objeto* o;
     s16 (*tpos)[2];
+    s16 (*pos_b8)[2];
     EstadoPrincipal* e;
 
     func_80038C2C(0, D_80010043, 1);
@@ -522,13 +519,13 @@ void func_80037FE8(void* lista)
         bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0xB9]);
         ids[3] = D_8005E830[0x19];
         ids[4] = D_8005E81C[(bcd & 0xF0) >> 4];
-        pos = D_8005E8F8;
+        pos_b8 = D_8005E8F8;
         ids[5] = D_8005E81C[bcd & 0xF];
         tpos = D_8005E8F8 - 6;
         for (; i < 6; i++) {
             o = D_8006AB70[35 + i];
             if (D_800100F7 != 0) {
-                ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], pos[i], 1);
+                ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], pos_b8[i], 1);
             } else {
                 ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], tpos[i], 1);
             }
