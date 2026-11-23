@@ -442,26 +442,28 @@ s32 func_800151FC(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 725 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
- * 217 insertadas o borradas). Flujo y distribucion de bloques iguales al original;
- * quedan permutaciones de registros temporales (v0/v1, a0/a1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
- * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y el recorrido del directorio.
+ * Pendiente: puntuacion 605 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas,
+ * 214 insertadas o borradas). Flujo, orden de instrucciones y distribucion de bloques iguales al original;
+ * quedan permutaciones de registros temporales (v0/v1) en el resultado de MemCardFormat, en la mascara de ranuras y en el
+ * bloque de tarjeta sin formato, el reparto de la suma de bloques por 0x2000 y el reparto de registros del recorrido del directorio.
  * Recorrido del directorio: el original recalcula en cada uso el desplazamiento de la ranura (tres cadenas
  * `sll 4 ; subu ; sll 3` en 0x80015CC0, 0x80015D10 y 0x80015D40) y tiene como registros propios la base del directorio (t1)
- * y la base mas 0x24 (t2). Con un `for` el optimizador de bucles (`-dL`) iza la cadena de `grupo * 120` como invariante
- * (pseudos movibles con ahorro 6, 6 y 4, emparejados con los de los otros dos usos) y la cifra es 1985. El bucle exterior se escribe
- * con etiqueta y salto hacia atras (`siguiente_entrada`), con la fila y el contador como variables de bucle propias
- * (`fila += 0x28; n++;`) y las dos bases en locales (`directorio`, `sistema`): en el volcado `-dL` el optimizador ya no
- * recorre ese bucle (solo quedan los bucles interiores y los de relleno y de bloques), las tres cadenas quedan en el cuerpo y
- * la cifra baja a 885; con el relleno de 0x96 palabras escrito con un puntero que avanza (`*palabras++ = 0;`) la base se
- * carga antes de `move a1,zero`, como en el original (0x80015BAC a 0x80015BB4), y baja a 825. Las inicializaciones del bucle van dentro de la guardia (`n < D_80069358[0]`) y la de `fila` tras la de
- * las bases, como el preludio del original (0x80015CA4 a 0x80015CB8).
- * La busqueda del final del nombre lee la fila por una copia (`fila_busqueda = fila;` antes de la guardia): el compilador
- * no la propaga al bucle y deja `move a0,a2` en el preludio del bucle, como el `move a3,a2` del original (0x80015CE0), con
- * lo que `fila` queda en a2 y `move v1,zero` en la cabecera del bucle; con `fila` directa la cifra es 825.
- * Queda: el original copia la fila tambien en el preludio del bucle de relleno (`move a3,a2`, 0x80015D14) y el C no (con
- * una segunda copia asignada antes del bucle el compilador la propaga y la cifra no cambia); y el reparto de registros:
- * `n` cae en a3 (en a1 en el original), `grupo` en t1 (t0), la base en t0 (t1) y la cadena en a1 (a0).
+ * y la base mas 0x24 (t2). El bucle exterior se escribe con etiqueta y salto hacia atras (`siguiente_entrada`): el optimizador
+ * de bucles (`-dL`) no lo recorre, de modo que las tres cadenas de `grupo * 120` quedan en el cuerpo y no se izan como
+ * invariantes (solo se recorren los bucles interiores, el de relleno y el de bloques). La fila y el contador son variables de
+ * bucle propias (`fila += 0x28; n++;`), las dos bases viven en locales (`directorio`, `sistema`) y las inicializaciones del
+ * bucle van dentro de la guardia (`n < D_80069358[0]`), la de `fila` tras la de las bases, como el preludio del original
+ * (0x80015CA4 a 0x80015CB8). El relleno de 0x96 palabras avanza un puntero (`*palabras++ = 0;`): la base se carga antes de
+ * `move a1,zero`, como en el original (0x80015BAC a 0x80015BB4).
+ * La busqueda del final del nombre y el relleno de ceros leen la fila por copias propias (`fila_busqueda`, asignada antes de la
+ * guardia de la busqueda, y `fila_relleno`, asignada dentro de la guardia del relleno): el compilador no las propaga a los
+ * bucles y deja un `move` en el preludio de cada uno, como los `move a3,a2` del original (0x80015CE0 y 0x80015D14), con lo
+ * que `fila` queda en a2 y la cadena en a0. Las dos direcciones se suman como `(j + fila) + grupo * 120` y despues la base, el
+ * mismo orden de sumas del original.
+ * Queda el reparto de registros de las variables del bucle exterior: `n` cae en t0 (en a1 en el original), `grupo` en t1 (t0),
+ * la base en a3 (t1) y las copias de la fila en a1 (a3). Volcado `-dg`: `n` tiene 5 referencias sobre 51 instrucciones de vida,
+ * la fila 7 sobre 46 y cada copia 3 sobre 9 y 11, de modo que el asignador las toma en el orden copias, fila, base, contador,
+ * grupo, y el original en el orden contador, fila, copias, grupo, base.
  * Contador propio del bucle del directorio (`n`): el contador `i` vive desde el bucle de relleno de
  * 0x96 palabras hasta el del directorio y cruza la llamada de MemCardGetDirentry, que usa a1 como argumento, de modo que
  * no puede tomar a1 (volcado `-dg`: el pseudo de `i`, 23 usos sobre 88 instrucciones, cae en t0); el original tiene a1
@@ -471,8 +473,7 @@ s32 func_800151FC(void)
  * despues las dos bases (`addu v0,a2,v0` en 0x80015D4C y `addu v1,v0,t1` y `addu v0,v0,t2` tras ella), de modo que
  * la entrada y la palabra de 0x24 se escriben como `base + (fila + grupo * 120)`. El `move a1,v0 ; bnez a1` de la llamada de
  * formateo (el original comprueba una copia del resultado que despues compara con 1) se reproduce guardando el resultado en
- * la local `rc`, compartida con la del sondeo. El relleno con ceros se escribe por el campo `nombre` de la entrada
- * (`((EntradaDirectorio*)(base + (fila + grupo * 120)))->nombre[j]`). La busqueda del final del nombre se
+ * la local `rc`, compartida con la del sondeo. La busqueda del final del nombre se
  * escribe con guardia (`j = 0; if (nombre[j] != 0) { do { j++; } while (nombre[j] != 0); }`) como el original
  * (`beqz` a 0x80015D08 tras la primera lectura, 0x80015CDC, y el `addiu` de `j` ya en el cuerpo).
  *
@@ -484,7 +485,7 @@ s32 func_800151FC(void)
  * El argumento que pasa main se ignora.
  *
  * Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es
- * 0x30; la cifra medida sin la local es 927 y con ella 725. La funcion es pendiente: con la local la
+ * 0x30; la cifra medida sin la local es 807 y con ella 605. La funcion es pendiente: con la local la
  * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)
