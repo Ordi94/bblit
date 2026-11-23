@@ -61,6 +61,23 @@ extern s16 D_8005E83E[];
 extern s16 D_8005E858[];
 extern s16 D_8005E81C[];
 extern s16 D_8005E86C[][2];
+
+/*
+ * Elementos de D_8005E830 (D_8005E864, D_8005E866 y D_8005E868), de D_8005E86C (D_8005E8D4, D_8005E8D8
+ * y D_8005E8DC) y de D_8006AB70 (D_8006ABD8, D_8006ABDC y D_8006ABE0) que func_80039094 usa una sola vez
+ * cada uno al crear los tres iconos de estado, por su propio simbolo: se declaran como arreglo
+ * incompleto para que el compilador separe el `lui` de la carga (como un arreglo y no como un escalar) y
+ * el operando lleve el nombre del ensamblador.
+ */
+extern s16 D_8005E864[];
+extern s16 D_8005E866[];
+extern s16 D_8005E868[];
+extern s16 D_8005E8D4[2];
+extern s16 D_8005E8D8[2];
+extern s16 D_8005E8DC[2];
+extern Objeto* D_8006ABD8[];
+extern Objeto* D_8006ABDC[];
+extern Objeto* D_8006ABE0[];
 extern s16 D_8005E928[][2];
 extern s16 D_8005E938[][2];
 extern s16 D_8005E8BC[][2];
@@ -887,8 +904,8 @@ void func_80038E84(s32 idx, s32 paso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 490 con la configuracion versionada (g = 8 del archivo; ejes 73 de
- * operando, 0 reordenadas, 166 insertadas o borradas). Coinciden la
+ * Pendiente: puntuacion 375 con la configuracion versionada (g = 8 del archivo; ejes 73 de
+ * operando, 0 reordenadas, 120 insertadas o borradas). Coinciden la
  * estructura, los desplazamientos y los simbolos; las barras 3 y 7, los cuatro temporizadores y las
  * pruebas del prologo coinciden en instrucciones y registros (quedan las marcas de operando por nombre
  * de simbolo). Difiere solo el reparto de registros de dos bloques de la barra 0:
@@ -1224,26 +1241,26 @@ void func_80039094(void)
             }
         }
 
-        ob = D_8006AB70[26];
+        ob = D_8006ABD8[0];
         if (D_80010048 & 0x80) {
             if (!(ob->flags04 & 2)) {
-                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E830[26], D_8005E86C[26], 1);
+                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E864[0], D_8005E8D4, 1);
             }
         } else {
             ob->flags04 &= ~2;
         }
-        ob = D_8006AB70[28];
+        ob = D_8006ABE0[0];
         if (D_8001006D & 2) {
             if (!(ob->flags04 & 2)) {
-                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E830[28], D_8005E86C[28], 1);
+                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E868[0], D_8005E8DC, 1);
             }
         } else {
             ob->flags04 &= ~2;
         }
-        ob = D_8006AB70[27];
+        ob = D_8006ABDC[0];
         if (D_8001006D & 4) {
             if (!(ob->flags04 & 2)) {
-                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E830[27], D_8005E86C[27], 1);
+                ((ReiniciarSinConversion)func_80037DB4)(ob, D_8005E866[0], D_8005E8D8, 1);
             }
         } else {
             ob->flags04 &= ~2;
