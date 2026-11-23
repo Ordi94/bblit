@@ -549,8 +549,9 @@ typedef struct {
  * 0x800418D4), por eso `D_800694A0` y `posicion += 2` van antes de `datos += 0xA000`.
  *
  * Residuo por causas (cada fila insertada o borrada pesa unos 100 puntos): (1) el chunk 0x3E, donde el
- * original deja tres cargas (0x10, 0x14 y 0x18 de las etiquetas) intercaladas entre los almacenes y
- * el C las deja al final, tras el ultimo almacen de la serie; (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
+ * original deja tres cargas (0x10, 0x14 y 0x18 de las etiquetas) intercaladas entre los almacenes; el C
+ * adelanta las de 0x10 y 0x18 con locales y deja la de 0x14 junto a su almacen (guardada tambien en una
+ * local la cifra sube a 9363); (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
  * la carga de `D_80069678`, que el original iza a a0 (0x80041D70) y el C deja junto a su uso, con
  * `D_8006954C` izada en su lugar (una fila y dos de operandos); (4) la llamada a `func_80044664` que
  * comparten la apertura del anillo (suma de 0x1D000 a `datos`) y la lectura de las listas: el
