@@ -262,8 +262,8 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 800 con la configuracion versionada (g = 8 del archivo). Reserva de pila: el original reserva 0x28 (`addiu sp`
- * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 874 y con ella 800. El
+ * Pendiente: puntuacion 700 con la configuracion versionada (g = 8 del archivo). Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 774 y con ella 700. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (se supone, sin verificar, que el original tenia una llamada con seis palabras de argumentos que el
@@ -285,8 +285,15 @@ void func_80040430(s8* contador, u16 mascara)
  * de miembro de estructura de la direccion de memoria.
  *
  * El resultado de las dos restas de `eje_y` se convierte a `s16` antes del almacen (el campo es de 16 bits): sin las
- * conversiones la cifra es 835 y con ellas 800. En la rama de abajo la suma lleva `(u32)` sobre `eje`: sin la
- * conversion el compilador reasocia `centro - (eje + 1)` y la cifra es 820.
+ * conversiones la cifra es 935 y con ellas 700. En la rama de abajo la suma lleva `(u32)` sobre `eje`: sin la
+ * conversion el compilador reasocia `centro - (eje + 1)` y la cifra es 720.
+ *
+ * En la rama de arriba del eje Y la resta de `eje_y` va despues del almacen a botones_a. El original conserva el
+ * `andi 0xff` del byte antes de la suma (0x80040908) y la resta es la primera instruccion del bloque; mientras no
+ * haya un almacen entre la lectura del byte y la suma, el combinador pliega el `andi` sobre el registro del byte
+ * (`addiu` con el byte sin extender). Con el almacen delante el `andi` se conserva, y el planificador deja la resta
+ * antes de los almacenes como el original. Con la resta primero la cifra es 800. En el eje X los almacenes a w3E y
+ * botones_a ya quedan entre la lectura y la rama de la izquierda.
  *
  * Una sola variable (`bits`) guarda los botones de direccion en la rama de grabacion y en la de lectura de la BIOS:
  * el original usa el mismo registro (s1) en las dos (`lhu s1` en 0x80040668 y `move s1,s2` en 0x8004074C), y con dos
@@ -317,9 +324,9 @@ void func_80040430(s8* contador, u16 mascara)
  * `D_8006AA70[0xC]` (el banco es un arreglo sin tamano): con el escalar `D_8006AA7C` (u8 de un byte, dentro del
  * umbral -G8) el compilador emite `lbu $2,D_8006AA7C` como una sola instruccion de macro, el `lui` lo crea el
  * ensamblador y no puede ocupar un hueco; con el arreglo sin tamano el `lui` es una instruccion propia y el relleno
- * coincide. La cifra es 1355 con el escalar y 800 con el arreglo; el desensamblado muestra el simbolo como
+ * coincide. La cifra es 1255 con el escalar y 700 con el arreglo; el desensamblado muestra el simbolo como
  * `D_8006AA70+0xc`. La base del estado en la prueba de pausa se lee por `est` (0x76(s0), como el original en
- * 0x80040A24): con la constante absoluta la cifra es 905 y con `est` 800.
+ * 0x80040A24): con la constante absoluta la cifra es 805 y con `est` 700.
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
  * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0 y la lectura usa 0(s1)). El compilador solo
@@ -327,10 +334,8 @@ void func_80040430(s8* contador, u16 mascara)
  * comparaciones; con las del original (saltos condicionales hacia los casos y un salto incondicional hacia la rama
  * por defecto, 0x80040264 a 0x80040278) no lo comparte, y escribir la cadena con el salto condicional hacia la rama
  * por defecto cambia el orden de los bloques;
- * el reparto de registros de los ejes (arriba) y el `andi 0xff` de la rama de arriba (0x80040908), que aqui el
- * combinador pliega sobre la suma `crudo + 1`: con el byte en una local de 8 bits el pliegue ocurre mientras no haya
- * un almacen entre la lectura y la rama (en el eje X los almacenes a w3E y botones_a lo impiden, en el eje Y no hay
- * ninguno); y la forma simbolica de los campos de 0x80010000.
+ * el reparto de registros de los ejes (arriba), unas veinte lineas `r`; y la forma simbolica de los campos de
+ * 0x80010000.
  *
  * El xor del byte invertido se hace sobre una local de 32 bits (cf2, cf3, cfd): con el byte
  * leido directamente el analizador de tipos del front end estrecha el xor a un byte (sale
@@ -521,8 +526,8 @@ normal:
         centro = ESTADO_PRINCIPAL->mando.centro_y;
         eje = eje_y_crudo;
         if (eje < centro - D_8006952C) {
-            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - (eje_y_crudo + 1));
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x1000;
+            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - (eje_y_crudo + 1));
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x1000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x1000;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x1000;
