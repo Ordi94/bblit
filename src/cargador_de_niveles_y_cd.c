@@ -408,11 +408,12 @@ typedef struct {
  * operandos, 3 de lineas reordenadas y 580 de lineas insertadas o borradas). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
- * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones y el original 2955; la
- * diferencia de cuatro es la llamada a `func_80044664` de la apertura del anillo: el original la
- * tiene entera (`lui a2,0x1f80`, `jal`, `nop`, `bnez` y `li`, de 0x80041A04 a 0x80041A18) y el C la
- * fusiona con la de la lectura de las listas y solo conserva un `lui a2,0x1f80` tras el salto
- * (causa 4 del residuo, mas abajo). Los cuerpos de los casos de los cinco `switch` y del
+ * caso del de su tabla. Medido: el codigo generado tiene 2948 instrucciones y el original 2955. La
+ * llamada a `func_80044664` de la apertura del anillo la tiene entera el original (`lui a2,0x1f80`,
+ * `jal`, `nop`, `bnez` y `li`, de 0x80041A04 a 0x80041A18) y el C la fusiona con la de la lectura de
+ * las listas y solo conserva un `lui a2,0x1f80` tras el salto (causa 4 del residuo, mas abajo); el
+ * resto de la diferencia son cinco copias de registro (`move`) que el original conserva y el C no
+ * emite (0x80041CDC, 0x800424E0, 0x80042F20, 0x80042F78 y 0x8004367C). Los cuerpos de los casos de los cinco `switch` y del
  * despacho de primer nivel van en el orden de direcciones de las tablas de saltos del original: el
  * orden del fuente decide el orden de emision, por eso los casos no van en orden numerico.
  *
@@ -518,7 +519,7 @@ typedef struct {
  * tras el almacen y adelanta el almacen al global (se supone, sin verificar, que un acceso por puntero no se
  * da por independiente de un almacen a otro objeto). Por eso la lectura se guarda en la local `compensacion`
  * y se almacena despues, como ya hacia el chunk 0x3F: la local fija la carga antes del almacen intermedio, como
- * el original, y la cifra sin ella en las cuatro etiquetas es 8963.
+ * el original.
  *
  * Tipo de `orden` y `tipo`: son enteros de 32 bits (`orden` con signo, como pide el `slti` del
  * despacho de primer nivel en 0x80041C94; `tipo` sin signo, `sltiu` en 0x80042300). Con 8 bits el
@@ -533,7 +534,7 @@ typedef struct {
  * Residuo por causas (cada fila insertada o borrada pesa unos 100 puntos): (1) el chunk 0x3E, donde el
  * original deja tres cargas (0x10, 0x14 y 0x18 de las etiquetas) intercaladas entre los almacenes; el C
  * adelanta las de 0x10 y 0x18 con locales y deja la de 0x14 junto a su almacen (guardada tambien en una
- * local la cifra sube a 9363); (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
+ * local de 32 bits la cifra es 8348); (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
  * la carga de `D_80069678`, que el original iza a a0 (0x80041D70) y el C deja junto a su uso, con
  * `D_8006954C` izada en su lugar (una fila y dos de operandos); (4) la llamada a `func_80044664` que
  * comparten la apertura del anillo (suma de 0x1D000 a `datos`) y la lectura de las listas: el
