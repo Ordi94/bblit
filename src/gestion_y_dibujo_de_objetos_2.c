@@ -911,9 +911,9 @@ void func_80038E84(s32 idx, s32 paso)
  * llamada) en lugar de los compartidos `g` y `f` deja las bases de las barras 3 y 7 en v0 como el original
  * (se supone, sin verificar, que un pseudo compartido une las vidas de todas las barras y toma el mismo
  * registro en todas). Leer el estado principal en una copia propia de la rama de la barra 0
- * (`e_rama`, en lugar de reutilizar la local del cuerpo) baja la cifra de 870 a 565; las barras 3 y 7
+ * (`e_rama`, en lugar de reutilizar la local del cuerpo) baja la cifra de 795 a 490; las barras 3 y 7
  * se escriben con `modo = 0` en la rama contraria de la prueba `== 0xFF` (con `modo = 0` antes de la
- * prueba la cifra es 790), como el original, que rellena el hueco de retardo del `bne` con la comparacion
+ * prueba la cifra es 715), como el original, que rellena el hueco de retardo del `bne` con la comparacion
  * y no con `move a2,zero` (ver la cabecera de abajo).
  * En cada uno de los cuatro temporizadores de poderes el original deja el resultado `n` en v0 (`li v0,1` en el
  * hueco de retardo del `beq` de la comparacion con -1 y `sll v0,v0,1` al final del producto por 30). Con
@@ -928,11 +928,11 @@ void func_80038E84(s32 idx, s32 paso)
  * pasa de 3 a 4 usos sobre 18 instrucciones de vida (prioridad floor_log2(R) * R / L de 1 * 3 / 18 = 0,167 a
  * 2 * 4 / 18 = 0,444) y se asigna por delante del pseudo 95 (4 usos sobre 42 instrucciones, 2 * 4 / 42 = 0,190);
  * los dos intercambian registro (99 de a1 a a0 y 95 de a0 a a1) y la base de 0x80010000 pasa a `a1` como en el
- * original (`lui a1` en 0x80039098), lo que baja la cifra de 580 a 565. Se supone, sin verificar, que el pseudo
+ * original (`lui a1` en 0x80039098), lo que baja la cifra de 505 a 490. Se supone, sin verificar, que el pseudo
  * 99 es el puntero de la rama de la vida y el 95 la base del cuerpo; solo se comprobo en el ensamblador el
  * registro de la base. La forma del fuente original que producia este reparto se desconoce.
  *
- * Residuo vigente (565): el original copia el valor mostrado de la barra 0 (`move a0,v1`, 0x800390F4);
+ * Residuo vigente (490): el original copia el valor mostrado de la barra 0 (`move a0,v1`, 0x800390F4);
  * el C no tiene esa copia porque el optimizador propaga cualquier local que se copie de `mostrado` y usa
  * v1 directamente. Por eso `mostrado` es una sola local `u8` compartida por todas las barras y la barra
  * 0 no lleva una copia propia: con ella la cifra empeora. Se supone, sin verificar, que la copia del original no es una copia vista por el optimizador sino una segunda
@@ -960,10 +960,10 @@ void func_80038E84(s32 idx, s32 paso)
  * usos sobre 6 instrucciones: de 1 * 3 / 6 = 0,5 a 2 * 6 / 6 = 2,0. Con la envoltura el pseudo 181 va
  * delante (2,0 frente a 1,909) y toma v1, de modo que `valor` se asigna despues y toma a0, como en el
  * original (lbu a0 sobre D_80010040 mas el indice). Sin la envoltura `valor` va delante (1,5 frente a
- * 0,5), toma v1 y el pseudo 181 cae en a0: la cifra sube de 565 a 650. El margen de 0,09 entre ambos
+ * 0,5), toma v1 y el pseudo 181 cae en a0: la cifra sube de 490 a 575. El margen de 0,09 entre ambos
  * pseudos (2,0 frente a 1,909) es corto: con `modo = 1` al final de la rama de la barra 3 la vida de
  * `valor` baja de 22 a 21 instrucciones, su prioridad pasa a 3 * 14 / 21 = 2,0, empata con el pseudo 181
- * y `valor` (de menor numero) se asigna primero: 650 medido. El resto de pseudos de la region tambien
+ * y `valor` (de menor numero) se asigna primero: 575 medido. El resto de pseudos de la region tambien
  * cambia de orden en el volcado; solo se comprobo en el ensamblador el registro de `valor`. La forma del
  * fuente original que producia este reparto se desconoce.
  *
@@ -1004,7 +1004,7 @@ void func_80039094(void)
         if (e->r[0x03] != D_80069525) {
             mostrado = D_80069525;
             /* Copia propia del estado para las comparaciones de esta rama: con la local del cuerpo
-             * la puntuacion sube de 565 a 870. */
+             * la puntuacion sube de 490 a 795. */
             e_rama = e;
             if (e->r[0x03] >= 0x64) {
                 do {
@@ -1051,7 +1051,7 @@ void func_80039094(void)
                 /* El orden de estas tres sentencias fija la vida de valor (22 instrucciones con `modo = 1`
                  * primero, 21 con `modo = 1` al final) y, con ella, su prioridad frente al byte extendido
                  * de la barra 7 (ver la cabecera): `modo = 1` al final o la actualizacion del valor
-                 * mostrado antes de preparar nuevo dan 650 en vez de 565. */
+                 * mostrado antes de preparar nuevo dan 575 en vez de 490. */
                 modo = 1;
                 nuevo = valor;
                 D_80069574 = valor;
