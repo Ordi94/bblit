@@ -348,13 +348,15 @@ typedef struct CabeceraPrimitiva {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 626 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
- * reordenadas, 54 insertadas o borradas). El color se escribe en una sola sentencia, `0x2C000000 + (c << 16) + (c <<
- * 8) + c`, con la base `c` sumada la ultima: es la agrupacion de una sola sentencia que menos puntuacion da (626
- * contra 641 con la base al principio). La que sigue el arbol de sumas del original (`addu a0,a0,v0` y
- * `addu a2,a2,a0`, 0x80045208 y 0x80045210) da una puntuacion mayor porque el compilador reasocia la constante
- * con `c << 16`. Partir el color en dos sentencias queda fuera. El orden de lectura del glifo y del elemento, la
- * copia de la cabeza de la lista a una local y el orden de los operandos de `y2` no cambian la cifra (medido).
+ * Pendiente: puntuacion 421 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
+ * reordenadas, 39 insertadas o borradas). La intensidad y el color empaquetado comparten la local `color`, como
+ * en el original, donde la intensidad (`subu a2,v1,v0`, 0x800451F4) y el color (`addu a2,a2,a0`, 0x80045210) viven
+ * en el mismo registro: con una local para cada uno el compilador deja la intensidad en a0 y el color en a2
+ * y la puntuacion es 626. La suma se escribe `color + (0x2C000000 + (color << 16) + (color << 8))`, que da el
+ * arbol del original (`addu v0,v0,v1`, `addu a0,a0,v0` y `addu a2,a2,a0`, 0x80045204 a 0x80045210); con la
+ * base al final y sin el parentesis (`K + (c << 16) + (c << 8) + c`) el compilador reasocia la constante. El
+ * orden de lectura del glifo y del elemento, la copia de la cabeza de la lista a una local y el orden de los
+ * operandos de `y2` no cambian la cifra (medido).
  *
  * La primitiva se escribe por miembros de POLY_FT4: el compilador marca un acceso por miembro como
  * acceso a estructura y no lo trata como posible alias de los globales escalares (D_80076188,
@@ -384,8 +386,6 @@ typedef struct CabeceraPrimitiva {
  * (b) El contador debe ir antes que la anchura y la altura, lo que exige una prioridad entre 0,267 y
  * 0,287 que ningun R entero da con L = 93 (R = 9 da 0,290, por delante de `e`); una condicion vacia
  * sobre ellos no cambia la cifra porque el salto vacio se elimina antes de contar las referencias.
- * (c) El orden de los dos desplazamientos del color: el original calcula c << 16 antes que c << 8; el C
- * los escribe en el orden contrario porque ese orden da menos diferencias.
  * (d) El original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el
  * enlace con `sll v0,v0,8` sobre el propio v0 y escribe el resto de la primitiva por v1 (el color y la
  * palabra de enlace salen por v0); el C relee D_80076188 (`lui` y `lw`, dos instrucciones en lugar de
@@ -408,7 +408,6 @@ void func_80045150(EntradaLista* e)
     u8 u;
     s32 i;
     s32 h;
-    s32 c;
     s32 color;
     u32* cabeza;
 
@@ -427,8 +426,8 @@ void func_80045150(EntradaLista* e)
             h = g->h - 1;
             func_80039CD0(D_80076188);
             if (D_8006966A != 0) {
-                c = 0x80 - ((s16)D_800694E2 >> 5);
-                color = 0x2C000000 + (c << 16) + (c << 8) + c;
+                color = 0x80 - ((s16)D_800694E2 >> 5);
+                color = color + (0x2C000000 + (color << 16) + (color << 8));
             } else {
                 color = 0x2C808080;
             }
