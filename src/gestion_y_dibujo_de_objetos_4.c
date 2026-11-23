@@ -353,8 +353,28 @@ typedef struct CuerpoSombra {
 extern void func_8003753C(void* m);
 extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* estado, VistaDibujo* vista);
 
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 235 con la configuracion versionada (g = 8 del archivo; ejes 22 de operando, 0 reordenadas, 16 insertadas o borradas). Dos causas, de mayor a menor. (1) Cierre del bucle de nodos: el original deja `bnez a0,0x1e8` y `j 0x394` (0x374 y 0x37C) y aqui sale `beqz` de salida y `j` hacia atras. Medido en `.jump2` y `.dbr`: el ultimo pase de saltos deja el mismo par que el original (`bnez` a la cabecera y `j` de salida, ambos con el hueco vacio) y el relleno de huecos lo invierte. Se supone, sin verificar, que la inversion se evita solo cuando el primer insn del destino de salida puede copiarse al hueco, cosa que aqui no pasa porque el destino empieza por una carga (`lhu`). (2) Seis simbolos `D_1F8000xx` del original (0x114, 0x1FC, 0x200, 0x230, 0x2D4 y 0x354) frente a constantes: los bytes coinciden y la herramienta de comparacion los puntua por el nombre del operando. La direccion de la caja de relleno, que el original deriva de la base del scratchpad (`ori a0,s0,0x38`), se toma del propio contexto, `&c->caja`: con la constante `(GsBOXF*)0x1F800038` salen `move a0,s0` y `ori a0,a0,0x38` y la cifra es 930. El prologo coincide con el original: el orden de las sentencias del ayudante del contexto (`siguiente`, `flags8`, `pcoord`) deja la constante 2 viva a la vez que el valor de `pcoord`, de modo que la constante toma v1 y la lectura sin signo de D_80069532 toma a1 en lugar de v1 (con el orden `pcoord`, `siguiente`, `flags8` la cifra es 825). */
+/*
+ * Dibuja la sombra de cada objeto de la lista `objetos` sobre el contexto del scratchpad
+ * (ContextoSombras, 0x1F800000) y, si D_80069600 es cero, rellena antes la pantalla con una caja
+ * negra. Tres decisiones de forma reproducen el original byte a byte:
+ *
+ * - Orden de las sentencias del ayudante del contexto (`siguiente`, `flags8`, `pcoord`): la constante
+ *   2 queda viva a la vez que el valor de `pcoord` y toma v1; la lectura sin signo de D_80069532
+ *   (`total`, 0xB4) toma entonces a1 y la de la condicion (0xAC) a2. Con el orden `pcoord`,
+ *   `siguiente`, `flags8` la cifra es 620. Se supone, sin verificar, que la constante 2 toma v1 porque
+ *   su vida solapa la del valor de `pcoord`.
+ * - El bucle de objetos es un `while` cuya prueba usa `(s16)`: la prueba duplicada a la entrada se
+ *   pliega en `blez a2` (0xF8) y el cierre del bucle de nodos queda como en el original, `bnez a0,0x1e8`
+ *   y `j 0x394` (0x374 y 0x37C). Con `if (D_80069532 > 0)` y `do`/`while` ese cierre sale `beqz` de
+ *   salida y `j` hacia atras y la cifra es 235. Medido en `.jump2`: el par `bnez`/`j` llega igual al
+ *   relleno de huecos en los dos casos; con `while` la etiqueta de salida del bucle de nodos (la prueba
+ *   del bucle de objetos) va seguida de la marca de cabecera de bucle (NOTE_INSN_LOOP_VTOP) y con
+ *   `do`/`while` va seguida directamente del primer insn de la prueba. Se supone, sin verificar, que
+ *   por eso el relleno de huecos, que predice como tomado un salto a una etiqueta con esa marca,
+ *   invierte el par dos veces con `while` y una sola vez con `do`/`while`.
+ * - La direccion de la caja de relleno, que el original deriva de la base del scratchpad
+ *   (`ori a0,s0,0x38`), se toma del propio contexto, `&c->caja`.
+ */
 void DibujarSombras(Objeto** objetos)
 {
     ContextoSombras* c;
@@ -388,68 +408,66 @@ void DibujarSombras(Objeto** objetos)
         c->modelo.coord.sub = 0;
         c->indice = 0;
         c->total = D_80069532;
-        if (D_80069532 > 0) {
+        while ((s16)c->indice < (s16)c->total) {
             mat = (MATRIX*)0x1F800048;
             mod = (Ayuda*)0x1F800090;
-            do {
-                i = c->indice;
-                c->indice = i + 1;
-                c->obj = objetos[(s16)i];
-                if (func_8003A3D0(c->obj, (SalidaSonda*)&c->param, area) != 0) {
-                    if ((s16)c->obj->w26 == (s16)D_80069698->w26) {
-                        if (c->obj->flags14 & 0x10) {
-                            c->estado.s6 = (s32)(c->obj->w28 << 16) >> 17;
-                        } else {
-                            c->estado.s6 = c->obj->w28;
-                        }
+            i = c->indice;
+            c->indice = i + 1;
+            c->obj = objetos[(s16)i];
+            if (func_8003A3D0(c->obj, (SalidaSonda*)&c->param, area) != 0) {
+                if ((s16)c->obj->w26 == (s16)D_80069698->w26) {
+                    if (c->obj->flags14 & 0x10) {
+                        c->estado.s6 = (s32)(c->obj->w28 << 16) >> 17;
                     } else {
-                        c->estado.s6 = 0;
+                        c->estado.s6 = c->obj->w28;
                     }
-                    t = D_80069504;
-                    c->estado.s6 -= 0x80;
-                    c->id = c->obj->w3A;
-                    while (t != 0) {
-                        if (t->w1C == c->id) {
-                            n = t->lista;
-                            for (; n != 0; n = n->sig) {
-                                    if (n->def->tipo == 6) {
-                                        q = (CuerpoSombra*)((u8*)c + 0x9C);
-                                        q->coord.param = PARAMETROS_SDK(c);
-                                        q->w14 = (s32)n->def->tabla;
-                                        p = c->obj->p70;
-                                        if (p != 0 && ((p->flags08 & 8) || (p->flags0C & 0x2000))) {
-                                            c->escala = (c->obj->param.trans.vy - c->param.trans.vy) * 4 + 0x1000;
-                                            if ((s16)c->escala < 0x800) {
-                                                c->escala = 0x800;
-                                            }
-                                            c->param.escala.vy = 0x1000;
-                                            c->param.escala.vx = (s16)c->escala;
-                                            c->param.escala.vz = (s16)c->escala;
-                                            GEO_CARGAR_WH(&c->obj->p70->param.giro);
-                                            GEO_GUARDAR_WH(&c->param.giro);
-                                            c->estado.s6 += c->obj->p70->w28;
-                                        } else {
-                                            s = OrientarSombraSobreSuperficie(c->obj, &c->param, 8, (SondaSombra*)area);
-                                            c->hallado = s;
-                                            if (s != 0) {
-                                                c->estado.s6 += s->w28;
-                                            }
-                                        }
-                                        func_8001CFCC(&q->coord);
-                                        ComponerMatrizMundo(q->pcoord, mat, area);
-                                        c->estado.b0 = 0;
-                                        func_8003753C(mat);
-                                        func_8003BDD0(mod);
-                                        func_8003C014(c->obj, (ModeloDibujo*)mod, &c->estado, (VistaDibujo*)area);
-                                        break;
-                                    }
-                            }
-                            break;
-                        }
-                        t = t->siguiente;
-                    }
+                } else {
+                    c->estado.s6 = 0;
                 }
-            } while ((c->indice << 16) < (c->total << 16));
+                t = D_80069504;
+                c->estado.s6 -= 0x80;
+                c->id = c->obj->w3A;
+                while (t != 0) {
+                    if (t->w1C == c->id) {
+                        n = t->lista;
+                        for (; n != 0; n = n->sig) {
+                            if (n->def->tipo == 6) {
+                                q = (CuerpoSombra*)((u8*)c + 0x9C);
+                                q->coord.param = PARAMETROS_SDK(c);
+                                q->w14 = (s32)n->def->tabla;
+                                p = c->obj->p70;
+                                if (p != 0 && ((p->flags08 & 8) || (p->flags0C & 0x2000))) {
+                                    c->escala = (c->obj->param.trans.vy - c->param.trans.vy) * 4 + 0x1000;
+                                    if ((s16)c->escala < 0x800) {
+                                        c->escala = 0x800;
+                                    }
+                                    c->param.escala.vy = 0x1000;
+                                    c->param.escala.vx = (s16)c->escala;
+                                    c->param.escala.vz = (s16)c->escala;
+                                    GEO_CARGAR_WH(&c->obj->p70->param.giro);
+                                    GEO_GUARDAR_WH(&c->param.giro);
+                                    c->estado.s6 += c->obj->p70->w28;
+                                } else {
+                                    s = OrientarSombraSobreSuperficie(c->obj, &c->param, 8, (SondaSombra*)area);
+                                    c->hallado = s;
+                                    if (s != 0) {
+                                        c->estado.s6 += s->w28;
+                                    }
+                                }
+                                func_8001CFCC(&q->coord);
+                                ComponerMatrizMundo(q->pcoord, mat, area);
+                                c->estado.b0 = 0;
+                                func_8003753C(mat);
+                                func_8003BDD0(mod);
+                                func_8003C014(c->obj, (ModeloDibujo*)mod, &c->estado, (VistaDibujo*)area);
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                    t = t->siguiente;
+                }
+            }
         }
     }
     if (D_80069600 == 0) {
@@ -467,6 +485,3 @@ void DibujarSombras(Objeto** objetos)
         D_80076188 = D_80069680;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/gestion_y_dibujo_de_objetos_4", DibujarSombras);
-#endif
