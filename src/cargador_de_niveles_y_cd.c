@@ -424,8 +424,8 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 7138 con la configuracion versionada (g = 8 del archivo; ejes 283 de
- * operandos, 5 de lineas reordenadas y 626 de lineas insertadas o borradas). La cifra incluye
+ * Pendiente: puntuacion 6973 con la configuracion versionada (g = 8 del archivo; ejes 283 de
+ * operandos, 5 de lineas reordenadas y 620 de lineas insertadas o borradas). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones y el original 2955; la
@@ -506,12 +506,13 @@ typedef struct {
  * cambia con el acceso por miembro y se deja el acceso por puntero. Se supone, sin verificar, que la
  * causa es que el compilador no da por afectado un miembro de un agregado por un almacen a un global
  * escalar, y que si lo hace con un puntero. En el chunk 0x3E las lecturas de 0x10 y 0x18 van por
- * miembro (`d10`, `d18`) y la de 0x14 por puntero: la ultima por miembro empeora la cifra. La de
- * 0x18 se guarda ademas en la local `d18_etiqueta` justo tras la copia: el original la carga en `a1`
- * (`lw a1,0x18(s4)`, 0x80043128) tras los almacenes a `D_80069660`, `D_80069670` y `D_8006955C`
- * (0x8004310C, 0x80043118 y 0x80043124) y antes de los demas, y la escribe al final
- * (`sw a1,D_80069678`, 0x80043174); con la lectura dentro de la asignacion final la cifra es 7643 y con
- * la local 7138 (la local de `d10` no cambia la cifra y no se escribe). En el
+ * miembro (`d10`, `d18`) y la de 0x14 por puntero: la ultima por miembro empeora la cifra. Las de
+ * 0x10 y 0x18 se guardan ademas en las locales `d10_etiqueta` (ya enmascarada con `~7`) y
+ * `d18_etiqueta` justo tras la copia: el original las carga en `v1` y `a1` (`lw v1,0x10(s4)`,
+ * 0x80043110, y `lw a1,0x18(s4)`, 0x80043128) tras los almacenes a `D_80069660`, `D_80069670` y
+ * `D_8006955C` (0x8004310C, 0x80043118 y 0x80043124) y antes de los demas, y las escribe al final
+ * (`sw v1,D_8006954C`, 0x8004316C, y `sw a1,D_80069678`, 0x80043174); con la local de `d18` y la
+ * lectura de `d10` dentro de la asignacion final la cifra es 7138 y con las dos locales 6973. En el
  * chunk 0x36 el segundo entero va por miembro (`ETQ(w, campos, 1)`) y se almacena despues del puntero
  * de zonas, como el original (`addu` en 0x80042FA8 antes del `sw` a 0x180($gp) en 0x80042FAC); con el almacen del
  * entero primero, o por puntero, la cifra sube.
@@ -589,7 +590,7 @@ typedef struct {
  * variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 8687 y con ella 7138. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 8522 y con ella 6973. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -665,6 +666,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     u8 etiqueta;
     EstadoPrincipal* estado;
     s32 d18_etiqueta;
+    s32 d10_etiqueta;
 
     /* Memoria de trabajo del cargador: el destino recibe primero el contenido y luego la memoria libre. */
     libre = datos;
@@ -1464,6 +1466,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x3E:
                             CopiarBytes(cursor, campos, 0x1C);
+                            d10_etiqueta = ((EtiquetasListas*)campos)->d10 & ~7;
                             d18_etiqueta = ((EtiquetasListas*)campos)->d18;
                             pools_listos = 1;
                             D_80069670 = ((EtiquetasListas*)campos_mem)->w00;
@@ -1474,7 +1477,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             D_800695C2 = ((EtiquetasListas*)campos)->w0A;
                             D_80069548 = ((EtiquetasListas*)campos)->d0C;
                             D_8006952E = *(u16*)(campos + 0x14);
-                            D_8006954C = ((EtiquetasListas*)campos)->d10 & ~7;
+                            D_8006954C = d10_etiqueta;
                             D_80069678 = d18_etiqueta;
                             if (D_8006952E < 0x12C) {
                                 D_8006952E = 0x12C;
