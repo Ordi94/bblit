@@ -37,11 +37,14 @@ extern void func_8005A21C(s32 modo);
 /* Estado auxiliar del mando (zona 0x80069xxx y bufer de la BIOS). */
 extern u16 D_800695EA;
 extern s16 D_80069672;
-extern u8 D_8006CFF1;
-extern u8 D_8006CFF2;
-extern u8 D_8006CFF3;
-extern u8 D_8006CFF6;
-extern u8 D_8006CFF7;
+typedef struct {
+    u8 valor;
+} ByteBufferMando;
+extern ByteBufferMando D_8006CFF1;
+extern ByteBufferMando D_8006CFF2;
+extern ByteBufferMando D_8006CFF3;
+extern ByteBufferMando D_8006CFF6;
+extern ByteBufferMando D_8006CFF7;
 
 /* Registro absoluto del eje Y: lo escribe el original por direccion, sin base compartida. */
 #define W14 (*(s16*)0x80010014)
@@ -184,7 +187,7 @@ void func_80040240(void)
 
     estado = PadGetState(0);
     if (estado == 0) {
-        D_8006CFF1 = 0;
+        D_8006CFF1.valor = 0;
         return;
     }
     if (PadInfoMode(0, 1, 0) == 7) {
@@ -259,9 +262,9 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 1515 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
- * lineas reordenadas y 261 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
- * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1589 y con ella 1515. El
+ * Pendiente: puntuacion 1315 con la configuracion versionada (g = 8 del archivo): 52 diferencias de operando, 0
+ * lineas reordenadas y 252 insertadas o borradas. Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 1389 y con ella 1315. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
@@ -273,6 +276,14 @@ void func_80040430(s8* contador, u16 mascara)
  * (`lbu v0,0xc(s1)` en 0x80040520 y el almacen en 0x80040528), y la base de `est` se calcula tras las tres
  * llamadas de borrado, donde el original repite `lui s0` (0x80040564). Con la lectura en una local de un solo
  * uso, o sin ella, el compilador vuelve a colocar la carga tras el almacen.
+ *
+ * Los bytes del bufer de la BIOS (D_8006CFF1, D_8006CFF2, D_8006CFF3, D_8006CFF6 y D_8006CFF7) se declaran como
+ * estructuras de un solo campo y se leen por ese campo: con bytes sueltos el planificador sube la lectura del
+ * identificador (D_8006CFF1) por encima de los almacenes a los campos del estado (el original la deja tras el
+ * almacen de 0x8001000C, 0x80040664) y como miembro de estructura la deja detras de ellos. La cifra es 1515 con
+ * bytes sueltos y 1315 con el campo; con una sola estructura de siete bytes desde D_8006CFF1 baja a 1470, pero las
+ * referencias salen como `D_8006CFF1+n` y el compilador comparte la direccion de dos lecturas (una `addiu` mas).
+ * Se supone, sin verificar, que la diferencia es la marca de miembro de estructura de la direccion de memoria.
  *
  * El resultado de las dos restas de `eje_y` se convierte a `s16` antes del almacen (el campo es de 16 bits): sin las
  * conversiones la cifra es 1550 y con ellas 1515. El tope izquierdo del eje X (-0x80) se guarda en la local
@@ -401,11 +412,11 @@ normal:
         b = grab[2];
         ESTADO_PRINCIPAL->mando.botones_c = b;
         c = grab[3];
-        id = D_8006CFF1 & 0x7F;
+        id = D_8006CFF1.valor & 0x7F;
         D_800695B0 = grab + 4;
         ESTADO_PRINCIPAL->mando.botones = c;
         /* La lectura de D_8006CFF2 va dentro de la condicion: sacarla antes del `if` la carga siempre y sube la cifra (6644 a 6964). */
-        if ((id == 0x41 || id == 0x73) && ((cfd = D_8006CFF2, ((cfd ^ 0xFF) << 8) & 0x800)) && ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
+        if ((id == 0x41 || id == 0x73) && ((cfd = D_8006CFF2.valor, ((cfd ^ 0xFF) << 8) & 0x800)) && ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
             ESTADO_PRINCIPAL->mando.botones_a = a | 0x100;
             ESTADO_PRINCIPAL->mando.botones_c = b | 0x100;
             ESTADO_PRINCIPAL->mando.botones = c | 0x100;
@@ -430,17 +441,17 @@ normal:
         return;
     }
     func_80040240();
-    switch (D_8006CFF1 & 0x7F) {
+    switch (D_8006CFF1.valor & 0x7F) {
     case 0x41:
         est->r[BANCO_VIBRACION] &= 0x7F;
         goto aplicar;
     case 0x73:
         est->r[BANCO_VIBRACION] |= 0x80;
     aplicar:
-        cf2 = D_8006CFF2;
+        cf2 = D_8006CFF2.valor;
         hi = (cf2 ^ 0xFF) << 8;
         bits = hi;
-        cf3 = D_8006CFF3;
+        cf3 = D_8006CFF3.valor;
         lo = cf3 ^ 0xFF;
         b = lo | hi;
         ESTADO_PRINCIPAL->mando.botones_c = lo;
@@ -449,7 +460,7 @@ normal:
            es 1655 y tras los dos primeros almacenes de `botones` 1560: el planificador lo adelanta solo. */
         D_80069672 = 0;
         ESTADO_PRINCIPAL->mando.botones = b;
-        if ((hi & 0xF000) != 0 || (D_8006CFF1 & 0x7F) == 0x41) {
+        if ((hi & 0xF000) != 0 || (D_8006CFF1.valor & 0x7F) == 0x41) {
             ESTADO_PRINCIPAL->mando.botones_c = b;
             func_80040158(&ESTADO_PRINCIPAL->mando);
             ESTADO_PRINCIPAL->mando.eje_x = 0;
@@ -480,7 +491,7 @@ normal:
            el original repite `andi 0xff` sobre la lectura en las ramas de la izquierda y de arriba (0x80040880 y
            0x80040908) y la conversion a u8 no lo emite (el compilador la da por redundante tras `lbu`); escribirla
            como `& 0xFF` lo funde con la comparacion y la cifra sube (1560 a 1610 en el eje x y a 1605 en el y). */
-        eje_x_crudo = D_8006CFF6;
+        eje_x_crudo = D_8006CFF6.valor;
         eje = eje_x_crudo & 0xFF;
         prev = mascara & ~ESTADO_PRINCIPAL->mando.botones_e;
         ESTADO_PRINCIPAL->mando.w3E = prev;
@@ -500,7 +511,7 @@ normal:
         } else {
             ESTADO_PRINCIPAL->mando.eje_x = 0;
         }
-        eje_y_crudo = D_8006CFF7;
+        eje_y_crudo = D_8006CFF7.valor;
         centro = ESTADO_PRINCIPAL->mando.centro_y;
         eje = eje_y_crudo & 0xFF;
         if (eje < centro - D_8006952C) {
