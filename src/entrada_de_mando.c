@@ -266,8 +266,8 @@ void func_80040430(s8* contador, u16 mascara)
  * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 874 y con ella 800. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
- * (en una copia de diagnostico fuera de la rama, una llamada eliminada con seis palabras de argumentos da el
- * mismo marco: se supone, sin verificar, que el compilador no reduce el area de argumentos tras eliminarla).
+ * (se supone, sin verificar, que el original tenia una llamada con seis palabras de argumentos que el
+ * compilador elimino y que no reduce el area de argumentos tras eliminarla).
  *
  * Forma del fuente que baja el residuo: el banco D_8006AA70 se lee por un puntero local (`banco`), que el
  * compilador mantiene en s1 hasta la rama por defecto como el original (el original usa `0xc(s1)` y `0x17(s1)` en
@@ -322,13 +322,15 @@ void func_80040430(s8* contador, u16 mascara)
  * 0x80040A24): con la constante absoluta la cifra es 905 y con `est` 800.
  *
  * Queda: el `lui` de D_8006AA70 en s2 con el puntero en s1 (el original lo conserva en s2 para la lectura
- * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0);
+ * `%lo(D_8006AA70)(s2)` de la rama por defecto; aqui el `lui` va a v0 y la lectura usa 0(s1)). El compilador solo
+ * comparte ese `lui` con la rama por defecto cuando esta es el destino de un salto condicional de la cadena de
+ * comparaciones; con las del original (saltos condicionales hacia los casos y un salto incondicional hacia la rama
+ * por defecto, 0x80040264 a 0x80040278) no lo comparte, y escribir la cadena con el salto condicional hacia la rama
+ * por defecto cambia el orden de los bloques;
  * el reparto de registros de los ejes (arriba) y el `andi 0xff` de la rama de arriba (0x80040908), que aqui el
- * combinador pliega sobre la suma `crudo + 1`;
- * el almacen de `lo` en el campo de botones (0x10) que el original conserva antes del almacen de
- * `lo | hi` (0x80040760 y 0x80040768) y que aqui desaparece entre `.cse` y `.combine` (se supone, sin verificar,
- * que lo borra el analisis de vida al ver dos almacenes seguidos a la misma direccion); y la forma simbolica de
- * los campos de 0x80010000.
+ * combinador pliega sobre la suma `crudo + 1`: con el byte en una local de 8 bits el pliegue ocurre mientras no haya
+ * un almacen entre la lectura y la rama (en el eje X los almacenes a w3E y botones_a lo impiden, en el eje Y no hay
+ * ninguno); y la forma simbolica de los campos de 0x80010000.
  *
  * El xor del byte invertido se hace sobre una local de 32 bits (cf2, cf3, cfd): con el byte
  * leido directamente el analizador de tipos del front end estrecha el xor a un byte (sale
@@ -339,10 +341,7 @@ void func_80040430(s8* contador, u16 mascara)
  * entidad con el bit 24) borra el estado y sale. En reproduccion de demo (0x8001004F) toma
  * los cuatro registros del cuadro de la grabacion; si no, convierte el bufer de la BIOS
  * (D_8006CFF1..7: id, botones invertidos y ejes) en botones logicos y ejes de +/-0x7F.
- * Se usa un switch con goto (la formulacion mas cercana): la estructura de saltos y casi todo el cuerpo
- * coinciden; difieren el reparto de registros de la rama de grabacion y la copia s1 = s2 del valor de los
- * botones de direccion (en el original va antes del `or`, 0x2c0). Sin bajada: if/else en lugar de switch,
- * orden de declaracion de las copias, copia con la expresion repetida.
+ * Se usa un switch con goto: la estructura de saltos y el cuerpo coinciden salvo lo que dice la linea Pendiente.
  */
 void func_8004048C(void)
 {
