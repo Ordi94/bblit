@@ -33,6 +33,7 @@ extern u8 D_800100FA;
  * (D_80010048 bit 7; D_8001006D bits 1 y 2), medidor del grupo 0xB, y por cada temporizador de
  * poderes el registro de peticion (cuadros/30 o -1 = indefinido) y el de salida (segundos).
  */
+extern u8 D_80010040[];
 extern u8 D_80010048;
 extern u8 D_80010049;
 extern u8 D_8001004A;
@@ -883,8 +884,8 @@ void func_80038E84(s32 idx, s32 paso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 565 con la configuracion versionada (g = 8 del archivo; ejes 71 de
- * operando, 0 reordenadas, 155 insertadas o borradas). Coinciden la
+ * Pendiente: puntuacion 490 con la configuracion versionada (g = 8 del archivo; ejes 73 de
+ * operando, 0 reordenadas, 166 insertadas o borradas). Coinciden la
  * estructura, los desplazamientos y los simbolos; las barras 3 y 7, los cuatro temporizadores y las
  * pruebas del prologo coinciden en instrucciones y registros (quedan solo las marcas de operando por
  * nombre de simbolo). Difiere en: (1) el reparto de registros de
@@ -892,18 +893,20 @@ void func_80038E84(s32 idx, s32 paso)
  * `move a0,v1` en el hueco de retardo de 0x800390F4; el C copia la base a a1 en esa posicion y compara con v1,
  * de modo que el valor mostrado no tiene copia propia; en el volcado `.cse` el valor mostrado y la
  * primera lectura son el mismo valor y el compilador usa la lectura en toda comparacion posterior);
- * (2) el brillo de la barra 0 (`beqz` de 0x800391EC): el original deja `li a1,0xc8` en una cola propia tras un salto
- * y rellena el hueco de retardo del `beqz` con el `lui a0` de la segunda lectura de D_80010043
- * (0x8003915C); el C adelanta el `li a1,0xc8` a ese hueco y la segunda lectura toma `lui v0` (el
- * ensamblador la expande con el destino de la carga como base). Se supone, sin verificar, que el
- * `lui a0` del original viene de una forma simbolica que el C no reproduce. La segunda lectura de
- * D_80010043 escrita por el puntero al estado (`ESTADO_PRINCIPAL->r[0x03]`) no se une con la primera,
- * como en el original; escrita por el simbolo D_80010043 se une y la cifra sube de 565 a 680.
+ * (2) el brillo de la barra 0 (`beqz` de 0x800391EC): la segunda lectura de D_80010043 se escribe como
+ * miembro del arreglo D_80010040 (`D_80010040[3]`): asi no se une con la primera lectura, el compilador
+ * separa su `lui` de la carga y el original lo deja en el hueco de retardo del `beqz` (0x8003915C) con
+ * `li a1,0xc8` en una cola propia tras un salto, como el C. Escrita por el puntero al estado
+ * (`ESTADO_PRINCIPAL->r[0x03]`) la cifra sube de 490 a 565 y escrita por el simbolo D_80010043 se une con
+ * la primera y sube a 680. Queda el reparto de registros de ese bloque: el original carga el primer
+ * operando en v0 con la base en a0 y el segundo en v1; el C da v1 con la base en v0 y v0 (se supone, sin
+ * verificar, que el original tiene vivo el `lui` de la base mientras se carga el segundo operando). Si la
+ * condicion tambien lee D_80010040[3] las dos lecturas se unen y la cifra sube a 1480.
  * El byte D_8006AA7C (pausa) se lee en el prologo y en los cuatro temporizadores como miembro del banco
  * D_8006AA70 (`D_8006AA70[0xC]`): el compilador separa entonces el `lui` de la carga y el original lo
  * deja en el hueco de retardo de las ramas contiguas (0x800390C4, 0x800394E0, 0x800395E0, 0x800396E0 y
  * 0x800397DC); con el simbolo suelto el `lui` no se separa de la carga y el hueco queda en `nop` o con la
- * base del temporizador siguiente (cifra 1060 con el simbolo suelto).
+ * base del temporizador siguiente (visto en el ensamblador generado con el simbolo suelto).
  * Un puntero propio por barra (g3 y g7 para el indice y el valor, f3 y f7 para la relectura tras la
  * llamada) en lugar de los compartidos `g` y `f` deja las bases de las barras 3 y 7 en v0 como el original
  * (se supone, sin verificar, que un pseudo compartido une las vidas de todas las barras y toma el mismo
@@ -1036,7 +1039,9 @@ void func_80039094(void)
                 }
             }
         }
-        func_80038E84(0, D_80069525 < D_80010043 ? (ESTADO_PRINCIPAL->r[0x03] - D_80069525) * 0xC8 : 0xC8);
+        /* D_80010040[3] es el byte D_80010043 leido como miembro del arreglo: no se une con la lectura
+         * de la condicion y su `lui` queda separado de la carga. */
+        func_80038E84(0, D_80069525 < D_80010043 ? (D_80010040[3] - D_80069525) * 0xC8 : 0xC8);
 
         g3 = ESTADO_PRINCIPAL;
         idx = g3->r[0xB6];
