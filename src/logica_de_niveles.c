@@ -62,7 +62,7 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 1025 con la configuracion versionada (g = 8 del archivo). La logica coincide. El almacen de
+/* Pendiente: puntuacion 1015 con la configuracion versionada (g = 8 del archivo). La logica coincide. El almacen de
    `o->param.giro.u.z = 0` va antes del de `o->coord.param` en la rama de la superficie de apoyo (la cifra con el
    orden contrario no se remidio sobre este estado). Decisiones de
    escritura del C (la cifra que acompana a una decision es la que da la escritura contraria, medida sobre este estado): (e) el almacen de la altura
@@ -127,10 +127,13 @@ s16* D_800693DC;
    `vy` de D_80069D60 y dos de `flags14`) se escriben por desplazamiento en bytes; con los seis accesos por nombre la cifra
    sube mucho (se supone, sin verificar con el volcado, que el planificador los reordena con los almacenes a D_8006965A,
    D_8006965B y D_8006965E).
-   Residuo sin resolver: (4) el orden del `sw 0x20` respecto a la direccion de `D_80069D40`, descrito en (a);
-   (5) el reparto de v0/v1 en la prueba de mascara de 0x800211F4 (`lui v1,0x8000 ; lw a1,0x14(s4) ; and v1,a1,v1` en el
-   original frente a la mascara en v0 aqui): el resultado de la prueba se reutiliza en la segunda prueba de la
-   misma condicion (0x80021234) y escribir el operando de la mascara primero no lo cambia; (6) en el prologo el original copia el valor de `flags14` (`move
+   (4) el orden del `sw 0x20` respecto a la direccion de `D_80069D40` queda sin resolver, descrito en (a);
+   (5) la prueba de signo de `flags10` de 0x800211F0 (`bltz v0` con `lui v1,0x8000` en el hueco de retardo, 0x800211F4,
+   y `and v1,a1,v1` en 0x80021200) se escribe `!(sc->reg->flags10 & 0x80000000)`: con `flags10 >= 0` el pseudo de la
+   mascara de la prueba siguiente se crea despues del salto, es local de su bloque y el volcado `.lreg` le da `v0`; con la
+   mascara en la prueba de signo la constante (`set` del pseudo 328) se crea antes del salto, el compilador la comparte con
+   la prueba siguiente de la misma condicion (0x80021234), no es local de un bloque y toma `v1`, que es el registro del
+   original. Cifra 1025 con `>= 0` y 1015 con la mascara; (6) en el prologo el original copia el valor de `flags14` (`move
    v0,v1`, 0x80020BF4) antes de aplicar la mascara: se reproduce leyendo el campo dos veces, una para el almacen a
    `D_800693D4` y otra para la mascara; (7) en los bloques que reparten registros entre punteros de objeto, el original usa un registro
    distinto del que da la variable compartida, y cada uno se escribe en su propia variable: el angulo del bloque de
@@ -158,7 +161,7 @@ s16* D_800693DC;
    `sc->paso_y` queda en una sola copia que alcanzan los dos; con una variable `vs` que reuna los dos valores la
    mascara de 0x80024004 cae en `v0` (se supone, sin verificar, y sin cifra remedida sobre el estado final).
    Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es
-   0x40; la cifra medida sin la local es 1179 y con ella 1025. La funcion es pendiente: con la local la
+   0x40; la cifra medida sin la local es 1169 y con ella 1015. La funcion es pendiente: con la local la
    cifra es menor que sin ella.
    El bucle de puesta a cero del scratchpad (0x80020BD0..0x80020BE4) usa su propio puntero (`cursor_cero`): con el
    puntero `p` de la guarda de D_80069D30 el mismo pseudo vive en las dos zonas, el volcado de `cc1` le da conflicto con
@@ -166,11 +169,10 @@ s16* D_800693DC;
    se declara sin tamano: con 6 bytes la direccion entra al planificador como una sola instruccion (`symbol_ref`) y la
    carga de `D_8006ACE0` sale antes del `lui t7`; sin tamano el volcado `.sched2` la muestra partida en `high` y
    `lo_sum`, el `lui t7` precede a la carga como en el original (0x80025858) y la cifra baja de 1085 a 1025.
-   Residuo vigente (1025; la herramienta da 306 lineas de operando, 7 reordenadas y 345 insertadas o borradas): la
-   mascara de 0x800211F4 (`lui v1,0x8000` en el original, `v0` aqui: el pseudo de la mascara es local del bloque y el
-   volcado `.lreg` le da `v0`; una variable propia con la mascara definida antes de la comparacion de `flags10` da la
-   misma cifra); y el `sw 0x20` de 0x80022400, que aqui sale despues de `lui` y `addiu` de `D_80069D40` (se supone, sin
-   verificar, que el planificador prefiere la cadena de `D_80069D40` porque es la mas larga del bloque). */
+   Residuo vigente (1015; la herramienta da 306 lineas de operando, 7 reordenadas y 341 insertadas o borradas): el
+   `sw 0x20` de 0x80022400, que aqui sale despues de `lui` y `addiu` de `D_80069D40`, y la relectura de `desp.z`
+   (`lw v1,0x20(s3)`, 0x80022414), que aqui no existe (se supone, sin verificar, que el planificador prefiere la cadena
+   de `D_80069D40` porque es la mas larga del bloque). */
 void func_80020B90(Objeto* o)
 {
     ScratchJugador* sc;
@@ -353,7 +355,7 @@ void func_80020B90(Objeto* o)
     } else {
         o->flags18 &= ~4;
     }
-    if (sc->reg->flags10 >= 0) {
+    if (!(sc->reg->flags10 & 0x80000000)) {
         if (!(o->flags14 & 0x80000000) || ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
             if ((sc->reg->flags0C & 2) && (!(o->flags14 & 0x80000000) || ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0)) {
                 if ((o->flags14 & 0x209) == 0) {
