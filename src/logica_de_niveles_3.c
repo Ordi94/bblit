@@ -28,7 +28,8 @@ extern void func_80039094(void);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 20 con la configuracion versionada (g = 8 del archivo). Residuo medido: (1) en la rama del paso
+ * Pendiente: puntuacion 20 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 6
+ * insertadas o borradas). Residuo medido: (1) en la rama del paso
  * negativo del bloque de limites el original lee el campo en v0 (0x1bc), lo copia con `move v1,v0` (0x1c4) y suma sobre
  * la copia, y aqui el orden de las dos lecturas es el contrario (la primera cae en v1 y la copia en v0): en el volcado de
  * planificacion (`-dS`) la lectura que alimenta la suma queda antes que la lectura del limite alto, se supone, sin
