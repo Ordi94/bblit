@@ -257,12 +257,16 @@ void func_80019364(s32* a0)
  * Pendiente: puntuacion 120 con la configuracion versionada (g = 0 del archivo; ejes 216 de operando,
  * 0 reordenadas, 4 insertadas o borradas). Queda un solo tramo: el original coloca `sw s0,0x10(sp)` (0x80019498)
  * y `move s0,a3` (0x8001949C) tras el `lui`/`ori` (0x80019490, 0x80019494) de la guarda del area de trabajo y aqui
- * van antes de ellos; con la suma del desplazamiento escrita en otra forma (`(u32)w + 0x1C8 > 0x1F8003FF`,
- * o en una local) el codigo generado es el mismo. Volcado de la planificacion posterior al reparto (`-dR`): las
- * copias de los parametros (`move s7,a0` a `move s0,a3`) son los cuatro primeros insns del bloque y la carga de
- * la constante de la guarda (`lui`/`ori`) llega despues de ellos y la copia de `a3` queda antes de la constante;
- * en el original la constante va antes de esa copia. Se supone, sin verificar, que el planificador desempata
- * por el orden de entrada y que en el original la constante ya precedia a la copia de `a3` en esa entrada.
+ * van antes de ellos. Con la guarda escrita `(u32)w + 0x1C8 > 0x1F8003FF`, con la constante en una local propia
+ * y con la suma en una local propia la puntuacion sigue en 120 y el codigo generado es el mismo. Volcado de la
+ * primera planificacion (`-dS`): las copias de los cuatro parametros (insns 4, 6, 8 y 10) no figuran entre los
+ * insns planificados; `k = 0`, la suma y la comparacion llevan la prioridad elevada de los pseudos asignados una
+ * vez y el par `lui`/`ori` (pseudo asignado dos veces) no la lleva, de modo que sale el primero. Volcado de la
+ * segunda (`-dR`): todos los insns del bloque tienen prioridad 1 y la lista de listos se ordena de mayor a menor
+ * numero de orden; elegida la suma, `ori` precede en la lista a la copia de `a3` (insn 10) y despues sale `lui`,
+ * de modo que la copia queda delante de la constante; en el original va detras. Se supone, sin verificar, que en
+ * el original la copia de `a3` no estaba entre las de entrada que la primera planificacion deja fuera y por eso
+ * se planificaba detras de la constante.
  * El reparto a2/a3 del producto `dsz_x * dsz_x` del recorrido de zona (`mflo`, 0x8001A0BC) coincide: el original
  * lo deja en a2 porque la lectura de `acc_z` para `ant_z` queda acabada antes del producto; con `ant_z` copiado
  * despues de `dsz_z` el producto empezaba antes de acabar esa copia y tomaba a3. La copia de `ant_z` va por eso
