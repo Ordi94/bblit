@@ -25,91 +25,53 @@ extern void func_80039094(void);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 165 con la configuracion versionada (g = 8 del archivo; ejes 112 de operando, 4 reordenadas,
- * 23 insertadas o borradas). Residuo medido en tres trozos: (1) bloque de limites del movil: el original deja el paso
- * en a0, el limite alto en v0 y el bajo en v1 y conserva la copia `move v1,v0` tambien en la rama del paso negativo
- * (0x1c4), mientras aqui el paso cae en v0, el limite alto en a0 y la suma de la rama negativa se pliega sin copia
- * (la escritura directa de cada limite con su propia lectura del campo da el reparto del original en la rama
- * positiva pero invierte v0 y v1 en la negativa, y entonces el salto cruzado no funde los almacenes: 480 con la
- * lectura propia en las dos ramas y el limite alto primero, 465 con el bajo primero. Medido en el volcado de reparto
- * de la rama negativa con lectura propia: el pseudo de la suma (2 usos sobre 2 instrucciones, 1,0) se asigna antes
- * que las dos lecturas (2 usos sobre 6, 0,333) y toma v0, de modo que la primera lectura, que el original deja en v0
- * y guarda en el limite alto, cae en v1; el original deja el limite alto vivo hasta despues de la suma (cola comun
- * `sw` en 0x1cc), mientras que en el volcado de planificacion el almacen queda aqui por encima de la suma. La
- * copia `move v1,v0` no se conserva con una variable copiada (`sentido = num; sentido += ritmo` da 170 y 485 con
- * `sentido` declarado antes que `num`: en las dos la suma sale sin copia; se supone, sin verificar, que el CSE la
- * pliega). Medido despues en el volcado de la primera pasada de cse (`.cse`) y en una copia reducida del bloque:
- * en la rama positiva la copia solo sobrevive si el almacen del limite bajo se escribe antes que el del alto (el
- * pseudo del alto vive mas); con el alto primero cse reescribe la carga hacia el pseudo de la copia y la copia
- * desaparece. Con el paso en `num` (la variable de toda la funcion, que toma a0 como en el original) y los dos
- * limites en locales propias del bloque, el reparto del bloque es el del original (paso a0, alto v0, bajo v1) y con
- * el bajo primero la rama positiva coincide instruccion por instruccion; el C vigente conserva el alto primero y las
- * variables actuales porque el bajo primero cambia la cola comun: el almacen del bajo ya no pasa a la ranura de
- * retardo de la guarda 0x40 (se supone, sin verificar, que el planificador de ranuras no puede mover un almacen por
- * encima de otro) y la rama negativa sigue sin copia. La copia `move v1,v0` de la rama negativa SI se reproduce
- * leyendo el campo dos veces con el almacen del limite alto entre ambas (`MOVIL_LIMITE_ALTO(o) = o->param.trans.vy;
- * MOVIL_LIMITE_BAJO(o) = o->param.trans.vy + ritmo;`, sin local intermedia): el cse no comparte dos lecturas
- * separadas por un almacen y el paso posterior al reparto convierte la segunda en `move`. Con esa forma las dos
- * ramas dejan de fundir su cola de almacenes porque en la negativa la primera lectura recibe v1 y la segunda v0
- * (en el original, v0 y v1), y la puntuacion sube por encima de la vigente; con el limite bajo escrito primero en
- * esa rama la copia sigue, pero la suma cae sobre la primera lectura. Se supone, sin verificar, que la segunda
- * lectura, mas corta, se asigna antes que la primera, que vive hasta el almacen; (2) producto del seno de la
- * oscilacion (0x648): el original lo deja en t0 y aqui cae en a0, que es el registro de `num`; quitar `num` de esa
- * rama invierte el reparto del modo 0x40 y sube la puntuacion a 770; guardar el producto en otra local de la funcion
- * (`altura`, `descenso`, `empuje` o `desplaza`) sube la puntuacion por encima de 800 porque cambia el reparto de esa
- * variable en el resto de la funcion, y el producto cae en a0 o a1, no en t0; (3) en el camino 0x400 el `sw zero,0x1c(sp)`
- * sale una instruccion antes que en el original (0x954). El balancin (paso en a0, empuje en v1, desplazamiento en v1,
- * productos y divisores), el modo 0x40, el modo 0x20 y la lista de disparadores coinciden.
+ * Pendiente: puntuacion 20 con la configuracion versionada (g = 8 del archivo). Residuo medido: (1) en la rama del paso
+ * negativo del bloque de limites el original lee el campo en v0 (0x1bc), lo copia con `move v1,v0` (0x1c4) y suma sobre
+ * la copia, y aqui el orden de las dos lecturas es el contrario (la primera cae en v1 y la copia en v0): en el volcado de
+ * planificacion (`-dS`) la lectura que alimenta la suma queda antes que la lectura del limite alto, se supone, sin
+ * verificar, porque las dos tienen la misma prioridad (2 usos y el mismo recorrido hasta el final del bloque) y el
+ * desempate favorece a la de uid mayor; (2) operando simbolico `D_1F800010` del original frente a la constante 0x10 en
+ * 0x6d8, mismo codigo maquina.
  */
 /*
- * Variables propias por uso, medidas en el volcado de reparto (`.lreg`): con una sola `altura` para los dos sentidos
- * del recorrido por tramos el pseudo de la altura tiene 6 usos sobre 16 instrucciones (prioridad 0,75) y el de la
- * lectura de las banderas 5 sobre 15 (0,667): la altura se asigna antes y toma v1; el original deja las banderas en
- * v1 y la altura en a1. Con `descenso` aparte para el sentido de bajada cada pseudo queda en 3 usos sobre 7 (0,429)
- * y las banderas se asignan antes (753 a 668). Tres formas con codigo completan la bajada hasta 165: la fase del modo
- * 0x20 se enmascara antes de la llamada, como el original, que lleva el `sh` en el hueco de retardo del `jal`
- * (664 a 484); la lista de disparadores se prueba sobre el campo y el puntero se relee, porque el original prueba en
- * v0 y copia a s0 tras el salto, 0xb48 a 0xb58 (484 a 225; se supone, sin verificar, que son dos lecturas que el CSE
- * une); y las tres escrituras del vector del modo 0x400 van en el orden `vx`, `vz`, `vy` (con `vx`, `vy`, `vz` 668 a 664
- * y, ya con las otras dos formas, `vx`, `vz`, `vy` da 225 a 165).
+ * Formas que fijan el reparto de registros: el limite bajo del bloque de limites y el temporal de la lectura de la
+ * rama negativa usan variables ya existentes de la funcion (`sentido` y `empuje`) porque son pseudos globales: se
+ * asignan despues de los locales del bloque y comparten v1 como el original; el paso de los limites va en `num`, la
+ * variable de toda la funcion, que toma a0 (con una local propia para el paso el pseudo global del paso, mas denso
+ * que el del limite bajo, se asigna antes y toma v1, y el limite bajo cae en a0); la altura del recorrido por tramos
+ * y la del descenso son variables distintas; el producto del seno de la oscilacion (0x648) se escribe sin variable
+ * para que sea un temporal local; la fase del modo 0x20 se enmascara antes de la llamada, como el original, que
+ * lleva el `sh` en el hueco de retardo del `jal`; la lista de disparadores se prueba sobre el campo y el puntero
+ * se relee, porque el original prueba en v0 y copia a s0 tras el salto; y las tres escrituras del vector del modo
+ * 0x400 van en el orden `vx`, `vz`, `vy`.
  */
 /*
- * Las sentencias replicadas son cuatro parejas que no generan codigo propio. (a) Los dos almacenes de los limites,
- * `MOVIL_LIMITE_ALTO(o) = num;` y `MOVIL_LIMITE_BAJO(o) = sentido;`, en cada rama del signo del paso: el original
- * escribe los dos limites en una sola cola tras el signo del paso y el salto cruzado del compilador funde las dos
- * copias en una (en el ensamblador generado queda un solo `sw` de cada limite junto al `andi` de la mascara). Causa
- * medida en el volcado de planificacion posterior al reparto (`-dR`): con los almacenes en cada rama quedan en dos
- * bloques, cada uno al final de su rama, y la comprobacion `andi` de la mascara 0x40 sigue a los almacenes, como en el
- * original; con la pareja tras la union el planificador sube el `andi` por encima del almacen del limite alto
- * (puntuacion 425 frente a 165 en la medida de esa pareja). (b) La llamada `ApplyMatrixLV(&o->coord.coord, &v, &v)`
- * en la rama de la oscilacion (0x10) y en la del recorrido por tramos (0x400): el original prepara los tres argumentos
+ * Las sentencias replicadas son dos parejas que no generan codigo propio. (a) La llamada
+ * `ApplyMatrixLV(&o->coord.coord, &v, &v)` en la rama de la oscilacion (0x10) y en la del recorrido por tramos (0x400): el original prepara los tres argumentos
  * en cada camino (0x874 a 0x884 y 0x940 a 0x958) y comparte un solo `jal` (0x95c): el camino de la oscilacion carga
  * a0, a1 y a2 y salta con `j` (0x880) al `jal` del camino del recorrido por tramos. Causa medida con los
  * volcados de saltos de `cc1` (`-dj`, antes de la fusion de colas, y `-dJ`, despues) y con `diff`: con la llamada en
  * cada rama cada camino carga a0, a1 y a2 por su cuenta y termina en una llamada identica; el pase de saltos con
  * fusion de colas borra la primera de las dos llamadas, pone una etiqueta delante de la segunda y deja un salto del
  * camino 0x10 a ella (el ensamblador generado tiene tres `jal ApplyMatrixLV`, como el original, y los argumentos se
- * preparan por camino) y la puntuacion es 165. Con la llamada escrita una vez tras una etiqueta comun los dos caminos
+ * preparan por camino) y la puntuacion es 20. Con la llamada escrita una vez tras una etiqueta comun los dos caminos
  * se unen antes de preparar los argumentos: no hay cola identica que fundir (tres llamadas antes y despues del pase),
  * los tres argumentos se calculan una sola vez tras la union, el reparto y el orden de las instrucciones cambian y
- * la puntuacion es 1859 (ejes 107 de operando, 4 reordenadas, 62 insertadas o borradas). (c) La suma del
+ * la puntuacion es 1714. (b) La suma del
  * desplazamiento del balancin al jugador, `D_80069698->coord.param->trans.vx += desplaza;`, en las dos ramas del
  * signo del empuje, cada una con la variable propia de su desplazamiento (`desplaza` y `desplaza2`): el original
  * calcula el cociente con `mflo v1` y suma en v1 en una cola comun (0x3d8 a 0x3f0) con el puntero al jugador en a0.
  * Causa medida en el volcado de reparto (`.lreg` y `.greg`): con una sola suma tras la union y una variable
  * compartida el desplazamiento es un pseudo global (3 usos sobre 7 insns de vida, prioridad 0,429) que tiene
- * conflicto con v0 y v1 y recibe a0, de modo que el puntero al jugador, pseudo local del bloque, queda en v1 (245 con
- * una variable compartida y la suma tras la union, frente a 165);
+ * conflicto con v0 y v1 y recibe a0, de modo que el puntero al jugador, pseudo local del bloque, queda en v1 (100 con
+ * una variable compartida y la suma tras la union, frente a 20);
  * con la suma en cada rama y una variable propia por rama, el desplazamiento de cada rama es un pseudo local del
  * bloque (3 usos sobre 2 insns, registro v1) y el puntero otro (3 usos sobre 4 insns, registro a0), como en el
- * original, y el salto cruzado deja una sola copia de la suma (165). La forma del fuente original que producia este
+ * original, y el salto cruzado deja una sola copia de la suma. La forma del fuente original que producia este
  * reparto se desconoce.
  *
- * Variables aparte para cada uso (medido con `diff` y en el volcado `.greg`): la altura del recorrido por tramos
- * (`altura` y `descenso`), el empuje del balancin (`empuje`) y el paso de los limites (`ritmo`) son variables
- * propias. Con una sola `num`/`paso` el pseudo de `num` se asigna antes que el de `paso`, toma a0 y deja a `paso` en
- * a1 (medido en el volcado de la version anterior a las cifras de arriba, sin remedir en el estado final); el
- * original da a0 al paso y v1 al empuje.
+ * Variables aparte para cada uso: la altura del recorrido por tramos (`altura` y `descenso`) y el empuje del
+ * balancin (`empuje`) son variables propias; el original da a0 al paso y v1 al empuje.
  *
  * Manejador de los objetos moviles por mascara (clases 12, 13, 18, 19 y 22 a 29): una sola rutina
  * atiende doce modos, uno por bit de la mascara (balancin, giro, bajar o subir con el jugador,
@@ -127,7 +89,6 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
     s32 empuje;
     s32 altura;
     s32 descenso;
-    s32 ritmo;
     s32 sentido;
     s32 desplaza;
     s32 desplaza2;
@@ -175,28 +136,19 @@ void LogicaObjetoMovil(Objeto* o, u32 mascara)
             if (o->s1E == 0) {
                 o->s1E = 5;
             }
-            /* Los dos limites se escriben dentro de cada rama y no tras la union (causa medida en la
-             * cabecera de la funcion). La rama del paso no negativo va primero: medido, con la rama
-             * negativa primero la puntuacion sube; la causa de ese orden no esta medida. */
-            ritmo = (s16)o->w17C;
-            if (ritmo >= 0) {
-                num = o->param.trans.vy;
-                sentido = num;
-                num += ritmo;
-                /* Sentencia replicada: es la misma que la de las otras ramas. */
-                MOVIL_LIMITE_ALTO(o) = num;
-                /* Sentencia replicada: es la misma que la de las otras ramas. */
-                MOVIL_LIMITE_BAJO(o) = sentido;
+            /* El limite alto se escribe dentro de cada rama y el bajo tras la union, con el campo leido
+             * dos veces en cada rama (el almacen intermedio a un campo sin marca de estructura impide al
+             * cse compartir las dos lecturas): causa medida en la cabecera de la funcion. */
+            num = (s16)o->w17C;
+            if (num >= 0) {
+                MOVIL_LIMITE_ALTO(o) = o->param.trans.vy + num;
+                sentido = o->param.trans.vy;
             } else {
-                num = o->param.trans.vy;
-                /* Suma con el paso como primer operando: GCC la canoniza igual, pero cambia el orden de
-                 * creacion de los pseudos. */
-                sentido = ritmo + num;
-                /* Sentencia replicada: es la misma que la de las otras ramas. */
-                MOVIL_LIMITE_ALTO(o) = num;
-                /* Sentencia replicada: es la misma que la de las otras ramas. */
-                MOVIL_LIMITE_BAJO(o) = sentido;
+                MOVIL_LIMITE_ALTO(o) = o->param.trans.vy;
+                empuje = o->param.trans.vy;
+                sentido = empuje + num;
             }
+            MOVIL_LIMITE_BAJO(o) = sentido;
             if (mascara & 0x40) {
                 o->flags14 |= 0x2000;
             }
@@ -321,8 +273,7 @@ sube:
         }
     } else if (mascara & 8) {
         o->flags14 &= 0xFF9FFFFF;
-        num = rsin((s16)o->w17E) * (s16)o->w17C;
-        o->param.giro.u.z = num >> 12;
+        o->param.giro.u.z = (rsin((s16)o->w17E) * (s16)o->w17C) >> 12;
         /* El avance de la fase se escribe despues del giro: el orden contrario sube la puntuacion en 400. */
         o->w17E += o->s1E;
         if ((s16)o->w17E >= 0x1000) {
