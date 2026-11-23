@@ -226,17 +226,14 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 {
     s32 cursor;
     u32* tabla;
-    u32* datos;
     s32 actual;
     s32 siguiente;
     s32 enlace_o_limite;
 
-    /* Copia local del parametro de puntos: sin ella el reparto de registros empeora de 605 a 943. */
-    datos = puntos;
     func_80039CD0(D_80076188);
     actual = D_80076188;
     /* `cursor` guarda tres contenidos sucesivos: la copia de `actual`, el enlace de 24 bits del primer
-     * paquete y la relectura final del anillo. */
+     * paquete y la relectura final del anillo; sin la copia la puntuacion es 820 en lugar de 335. */
     cursor = actual;
     tabla = (u32*)D_8006AEA0[D_8006967C].org;
     /* El original lee la palabra de la tabla y le aplica la constante `0x05000000` como segundo
@@ -244,25 +241,25 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
     *(u32*)actual = *tabla | 0x05000000;
     ((u32*)actual)[1] = 1;
     ((u32*)cursor)[2] = 0x80000000;
-    ((u32*)actual)[3] = datos[3];
-    ((u32*)actual)[4] = datos[5];
-    ((u32*)actual)[5] = datos[7];
+    ((u32*)actual)[3] = puntos[3];
+    ((u32*)actual)[4] = puntos[5];
+    ((u32*)actual)[5] = puntos[7];
     cursor = (actual << 8) >> 8;
     *tabla = cursor;
     actual = D_80076188;
     siguiente = actual + 0x18;
     D_80076188 = siguiente;
-    /* La palabra 8 de los puntos se lee por su desplazamiento en bytes: como indice del arreglo el
-     * planificador sube la carga por encima del almacen del cursor (el original la deja despues); esa
-     * lectura como indice da una puntuacion de 260 frente a 0 con la lectura por desplazamiento. */
-    if (*(u32*)((u8*)datos + 0x20) != 0) {
+    /* La palabra 8 de los puntos (`puntos[8]`) se lee por su desplazamiento en bytes sobre el mismo
+     * parametro: como indice del arreglo la puntuacion es 455 frente a 335 con la lectura por
+     * desplazamiento. */
+    if (*(u32*)((u8*)puntos + 0x20) != 0) {
         tabla = (u32*)D_8006AEA0[D_8006967C].org;
         ((u32*)actual)[6] = *tabla | 0x05000000;
         ((u32*)siguiente)[1] = 1;
         ((u32*)siguiente)[2] = 0x80000000;
-        ((u32*)siguiente)[3] = datos[4];
-        ((u32*)siguiente)[4] = datos[6];
-        ((u32*)siguiente)[5] = datos[8];
+        ((u32*)siguiente)[3] = puntos[4];
+        ((u32*)siguiente)[4] = puntos[6];
+        ((u32*)siguiente)[5] = puntos[8];
         enlace_o_limite = (siguiente << 8) >> 8;
         *tabla = enlace_o_limite;
         D_80076188 += 0x18;
