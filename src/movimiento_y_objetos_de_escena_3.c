@@ -160,8 +160,8 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * volcado va antes que el `sll` del indice); sin ella (770) el `sll` se copia a cada rama (0xF0 y 0x10C) en vez de
  * quedar tras la lectura de la tabla. El cuerpo de cada envoltura es codigo real de la funcion, sin `break` ni
  * `continue`. Se supone, sin verificar, que el original no lleva ninguna envoltura y que lo que fija ese orden en el
- * es otra construccion que el volcado no distingue. La forma del fuente original que producia este reparto se
- * desconoce. */
+ * original es otra construccion que el volcado no distingue.
+ * La forma del fuente original que producia este reparto se desconoce. */
 void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     SpriteEscalado* p;
