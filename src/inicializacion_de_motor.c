@@ -348,8 +348,8 @@ typedef struct CabeceraPrimitiva {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 381 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
- * reordenadas, 27 insertadas o borradas). La intensidad y el color empaquetado comparten la local `color`, como
+ * Pendiente: puntuacion 300 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
+ * reordenadas, 3 insertadas o borradas: la unica causa es la copia del puntero a la primitiva, (d)). La intensidad y el color empaquetado comparten la local `color`, como
  * en el original, donde la intensidad (`subu a2,v1,v0`, 0x800451F4) y el color (`addu a2,a2,a0`, 0x80045210) viven
  * en el mismo registro: con una local para cada uno el compilador deja la intensidad en a0 y el color en a2
  * y la puntuacion es 626 (421 con la local unica). La suma se escribe `color + (0x2C000000 + (color << 16) + (color << 8))`, que da el
@@ -371,23 +371,25 @@ typedef struct CabeceraPrimitiva {
  * almacen a la lista de cabezas: asi los miembros salen por un registro propio, como en el original, y
  * no por el de la cabeza.
  *
- * Difiere en:
- * (a) Reparto de registros guardados: el original da s0 a x, s1 a y, s2 a u, s3 a v, s6 al contador, s7 a la
- * anchura y s8 a la altura; el C da s0 a x, s1 a y, s2 a u, s3 a v, s6 a la anchura, s7 a la altura y s8 al
- * contador. Medido en el volcado (R usos ponderados, L vida, prioridad floor_log2(R) * R / L): x 8/47 = 0,511,
- * y 9/55 = 0,491, u y v 8/52 = 0,462, anchura 6/46 = 0,261, altura 7/56 = 0,250, contador 7/94 = 0,149 y la
- * entrada `e` 9/95 = 0,284. La envoltura `do { } while (0)` de `p->y3 = y + h;` no genera codigo: sube y de 8 a 9
- * usos ponderados (de 0,436 a 0,491, por delante de u y v) y la altura de 6 a 7. Con `u` declarada antes que `v`
- * (los empates de prioridad se deciden por el numero de pseudo) x, y, u y v quedan en s0, s1, s2 y s3 como el
- * original y el planificador no mueve ninguna suma. La cifra medida sin la envoltura es 421 y con ella 381.
- * Se supone, sin verificar, que el original tiene en y una referencia ponderada mas que no deja instruccion.
+ * Reparto de registros guardados (coincide con el original: x s0, y s1, u s2, v s3, entrada `e` s5, contador s6,
+ * anchura s7 y altura s8). Tres envolturas `do { } while (0)` no generan codigo y suben la prioridad
+ * (R usos ponderados, L vida, prioridad floor_log2(R) * R / L) de los pseudos que se disputaban los registros.
+ * Medido en el volcado del estado final: x 8/47 = 0,511, y 9/55 = 0,491, u y v 8/52 = 0,462, entrada `e` 11/95 =
+ * 0,347, contador 9/94 = 0,287, anchura 6/46 = 0,261 y altura 7/56 = 0,250. Sin ninguna envoltura serian y 8/55 =
+ * 0,436, altura 6/56 = 0,214, `e` 9/95 = 0,284 y contador 7/94 = 0,149. (1) `p->y3 = y + h;` sube y de 8 a 9 (por delante de u y v) y la altura de 6 a 7: sin
+ * ella la cifra es 390. (2) `e++;` sube `e` de 9 a 11 usos, por delante del contador: sin ella 363 (el contador toma
+ * s5 y `e` s6). (3) `i++;` sube el contador de 7 a 9, por delante de la anchura y la altura: sin ella 381. Con `u`
+ * declarada antes que `v` (los empates de prioridad se deciden por el numero de pseudo) x, y, u y v quedan en s0 a
+ * s3 como el original y el planificador no mueve ninguna suma. Las notas de bucle de una envoltura son barrera de
+ * planificacion: `e++` va antes de la lectura de D_80069652 para que el incremento de la direccion derivada
+ * (`addiu s4,s4,8`, 0x8004531C) quede antes del `lui` como en el original, y la lectura se guarda en `cantidad`
+ * antes de `i++` porque el original carga D_80069652 (`lui`/`lh`, 0x80045320 y 0x80045324) antes de incrementar
+ * el contador (`addiu s6,s6,1`, 0x80045328); sin la local (la prueba sobre D_80069652 directamente) la cifra es
+ * 460 (el `addiu` queda antes del `lui` y el retardo del `lh` es un `nop`). Se supone, sin verificar, que el
+ * original tiene en cada uno de esos pseudos una referencia ponderada mas que no deja instruccion.
  * La forma del fuente original que producia este reparto se desconoce.
- * (b) El contador debe ir antes que la anchura y la altura, lo que exige una prioridad entre 0,261 y 0,284
- * (R = 8 da 0,255 y R = 9 da 0,287, por delante de `e`). Medido: la envoltura de `e++; i++;` da el reparto del
- * original, pero la nota de bucle impide que `addiu s6,s6,1` pase sobre la carga de D_80069652 y la cifra sube
- * de 381 a 460 (el `addiu` queda antes del `lui` y el retardo del `lh` es un `nop`); no se instala. Una
- * condicion vacia sobre el contador no cambia la cifra porque el salto vacio se elimina antes de contar las
- * referencias.
+ *
+ * Difiere en:
  * (d) El original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el
  * enlace con `sll v0,v0,8` sobre el propio v0 y escribe el resto de la primitiva por v1 (el color y la
  * palabra de enlace salen por v0); el C relee D_80076188 (`lui` y `lw`, dos instrucciones en lugar de
@@ -413,6 +415,7 @@ void func_80045150(EntradaLista* e)
     s32 h;
     s32 color;
     u32* cabeza;
+    s32 cantidad;
 
     /* El orden de las lecturas del glifo y del elemento, la anchura y la altura menos uno en 32 bits, la
      * suma del color con la base al final y D_80076188 sumado tras escribir el indice de paleta son los
@@ -463,9 +466,14 @@ void func_80045150(EntradaLista* e)
             if (D_8006958C < D_80076188) {
                 D_80076188 = D_80069680;
             }
-            e++;
-            i++;
-        } while (i < D_80069652);
+            do {
+                e++;
+            } while (0);
+            cantidad = D_80069652;
+            do {
+                i++;
+            } while (0);
+        } while (i < cantidad);
     }
 }
 #else
