@@ -229,23 +229,24 @@ void func_80032A24(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 60 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y el
- * reparto de los registros salvados coinciden; difiere la posicion de una sola instruccion: el original coloca el
- * almacen de i58 (sw v0,0x58) tras la copia del objeto en curso (move v1,a1) y GCC lo deja antes, porque el do/while
- * que abre las escrituras de a48 impide subir la copia por encima del almacen. Medido en el volcado de la primera
- * planificacion (`-dS`, antes del reparto de registros): el almacen de i58 (insn 357) queda antes de la nota de
- * inicio de bucle de ese do/while y la lectura del objeto en curso (insn 364, una carga `lw 0x64` nueva que la
- * recarga posterior convierte en la copia `move v1,a1`) despues, con arista de dependencia hacia el almacen; se
- * supone, sin verificar, que la nota impide a la planificacion mover lecturas de memoria por encima de ella.
- * Con el almacen dentro del do/while el orden sale como el original (copia y luego almacen) y la cifra sigue en
- * 60: el pseudo del objeto en curso (143, 14 usos sobre 25 insns, 1,68) pierde frente a max.vy (185, que pasa de 6
- * a 7 usos sobre 8 insns, de 1,50 a 1,75) y los registros a1 y a2 se intercambian en toda la cadena de pruebas.
- * Ampliar el tercer do/while para que cubra la lectura del objeto de RotMatrix no cambia los 14 usos del pseudo
- * 143: esa lectura es posterior a las llamadas y es otro pseudo.
+ * Pendiente: puntuacion 30 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y el
+ * reparto de los registros coinciden; difiere solo el orden de dos cargas contiguas de la cadena de pruebas: el original
+ * carga v28.vy (`lh a0,0x2a(s0)`, 0x80032E00) antes que max.vy (`lh a2,0x52(a1)`, 0x80032E04) y GCC las emite al reves.
+ * La prueba se escribe `max.vy < v28.vy` y no `v28.vy > max.vy`: con la segunda max.vy se carga despues de v28.vy
+ * (como el original) pero el valor pasa a 7 usos ponderados sobre 8 instrucciones (1,75), supera al objeto en curso
+ * (pseudo 143, 14 usos sobre 25 instrucciones, 1,68) y los registros a1 y a2 se intercambian en toda la cadena de
+ * pruebas (cifra 60); con `max.vy < v28.vy` la carga de max.vy se emite antes, su vida pasa a 9 instrucciones (1,56) y
+ * el objeto en curso conserva a1, pero las dos cargas salen en el orden contrario; se supone, sin verificar, que la
+ * segunda planificacion conserva el orden de emision de dos cargas de igual prioridad.
  *
- * El almacen de i58 se escribe fuera de ese do/while y no dentro porque dentro intercambia a1 y a2 en la cadena de
- * pruebas: el valor de max.vy pasa a 7 usos ponderados sobre 8 instrucciones (1,75) y supera al objeto en curso
- * (14 sobre 25, 1,68), de modo que toma a1 y el objeto a2, y el original da a1 al objeto.
+ * El almacen de i58 va como primera sentencia del do/while de a48. Medido en el volcado de la primera planificacion
+ * (`-dS`): la primera instruccion tras la nota de inicio de bucle depende de todo lo anterior y todo acceso a memoria
+ * posterior depende de ella. Con el almacen antes del do/while la primera instruccion de la nota es la lectura del
+ * objeto (una carga `lw 0x64` que la recarga convierte en `move v1,a1`) y queda despues del almacen; el original
+ * coloca la copia (`move v1,a1`, 0x80032E2C) antes del almacen (`sw v0,0x58(s0)`, 0x80032E30). Con la resta de i58
+ * dentro del do/while la primera instruccion tras la nota es la resta y la copia sale antes del almacen, como en el
+ * original. Ampliar el tercer do/while para que cubra la lectura del objeto de RotMatrix no cambia los 14 usos del
+ * pseudo 143: esa lectura es posterior a las llamadas y es otro pseudo.
  *
  * Los tres do/while (0) no generan codigo: ponderan por un nivel mas las referencias de su cuerpo para que la
  * prioridad de global-alloc ordene los punteros como el original (v28 en s3, rot en s4, a0 en s5, i58 en s6):
@@ -308,12 +309,12 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                             && w->cur->max.vx + w->i60 >= w->v28.vx
                             && w->v28.vz >= w->cur->min.vz - w->i60
                             && w->cur->max.vz + w->i60 >= w->v28.vz
-                            && w->v28.vy > w->cur->max.vy
+                            && w->cur->max.vy < w->v28.vy
                             && w->cur->min.vy >= w->v28.vy - 0xF0) {
-                            w->i58 = w->cur->max.vy - w->v28.vy;
                             /* Las tres escrituras de a48 son independientes; van en el orden x, z, y porque
                              * asi el almacen de cero baja a su sitio, como en el original. */
                             do {
+                                w->i58 = w->cur->max.vy - w->v28.vy;
                                 w->a48.vx =a0->x - w->cur->param.trans.vx;
                                 w->a48.vz = a0->z - w->cur->param.trans.vz;
                                 w->a48.vy = 0;
