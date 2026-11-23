@@ -348,11 +348,11 @@ typedef struct CabeceraPrimitiva {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 421 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
- * reordenadas, 39 insertadas o borradas). La intensidad y el color empaquetado comparten la local `color`, como
+ * Pendiente: puntuacion 381 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
+ * reordenadas, 27 insertadas o borradas). La intensidad y el color empaquetado comparten la local `color`, como
  * en el original, donde la intensidad (`subu a2,v1,v0`, 0x800451F4) y el color (`addu a2,a2,a0`, 0x80045210) viven
  * en el mismo registro: con una local para cada uno el compilador deja la intensidad en a0 y el color en a2
- * y la puntuacion es 626. La suma se escribe `color + (0x2C000000 + (color << 16) + (color << 8))`, que da el
+ * y la puntuacion es 626 (421 con la local unica). La suma se escribe `color + (0x2C000000 + (color << 16) + (color << 8))`, que da el
  * arbol del original (`addu v0,v0,v1`, `addu a0,a0,v0` y `addu a2,a2,a0`, 0x80045204 a 0x80045210); con la
  * base al final y sin el parentesis (`K + (c << 16) + (c << 8) + c`) el compilador reasocia la constante. El
  * orden de lectura del glifo y del elemento, la copia de la cabeza de la lista a una local y el orden de los
@@ -372,20 +372,22 @@ typedef struct CabeceraPrimitiva {
  * no por el de la cabeza.
  *
  * Difiere en:
- * (a) Reparto de registros guardados: el original da s0 a x, s1 a y, s2 a u, s3 a v, s6 al contador y
- * s7 y s8 a las dimensiones; el C da s3 a y, s1 a v, s8 al contador y s6 y s7 a las dimensiones.
- * Medido en el volcado (R usos ponderados, L vida, prioridad floor_log2(R) * R / L): x 8/46 = 0,522,
- * y 8/54 = 0,444, u y v 8/51 = 0,471, anchura 6/45 = 0,267, altura 6/55 = 0,218, contador 7/93 = 0,151
- * y la entrada `e` 9/94 = 0,287. Con R = 9 para y (0,500, entre x y u/v) se igualan x, y, u y v
- * (los pseudos de las locales se numeran por orden de declaracion y los empates de prioridad se
- * deciden por ese numero), pero esa forma hace que el planificador adelante la suma v + h (`addu` en
- * 0x80045290 del original frente a antes de los almacenes de u en el C) y no se deja. Medido: una envoltura
- * `do { } while (0)` sobre `p->y1 = y;` sube y a 9 usos (3 * 9 / 54 = 0,5) y, declarando `u` antes que `v`, x, y,
- * u y v quedan en s0, s1, s2 y s3 como el original, pero la cifra sube de 626 a 1001: el planificador adelanta las
- * sumas de la anchura y la altura y el almacen de x, y el color y el contador siguen sin coincidir. No se instala.
- * (b) El contador debe ir antes que la anchura y la altura, lo que exige una prioridad entre 0,267 y
- * 0,287 que ningun R entero da con L = 93 (R = 9 da 0,290, por delante de `e`); una condicion vacia
- * sobre ellos no cambia la cifra porque el salto vacio se elimina antes de contar las referencias.
+ * (a) Reparto de registros guardados: el original da s0 a x, s1 a y, s2 a u, s3 a v, s6 al contador, s7 a la
+ * anchura y s8 a la altura; el C da s0 a x, s1 a y, s2 a u, s3 a v, s6 a la anchura, s7 a la altura y s8 al
+ * contador. Medido en el volcado (R usos ponderados, L vida, prioridad floor_log2(R) * R / L): x 8/47 = 0,511,
+ * y 9/55 = 0,491, u y v 8/52 = 0,462, anchura 6/46 = 0,261, altura 7/56 = 0,250, contador 7/94 = 0,149 y la
+ * entrada `e` 9/95 = 0,284. La envoltura `do { } while (0)` de `p->y3 = y + h;` no genera codigo: sube y de 8 a 9
+ * usos ponderados (de 0,436 a 0,491, por delante de u y v) y la altura de 6 a 7. Con `u` declarada antes que `v`
+ * (los empates de prioridad se deciden por el numero de pseudo) x, y, u y v quedan en s0, s1, s2 y s3 como el
+ * original y el planificador no mueve ninguna suma. La cifra medida sin la envoltura es 421 y con ella 381.
+ * Se supone, sin verificar, que el original tiene en y una referencia ponderada mas que no deja instruccion.
+ * La forma del fuente original que producia este reparto se desconoce.
+ * (b) El contador debe ir antes que la anchura y la altura, lo que exige una prioridad entre 0,261 y 0,284
+ * (R = 8 da 0,255 y R = 9 da 0,287, por delante de `e`). Medido: la envoltura de `e++; i++;` da el reparto del
+ * original, pero la nota de bucle impide que `addiu s6,s6,1` pase sobre la carga de D_80069652 y la cifra sube
+ * de 381 a 460 (el `addiu` queda antes del `lui` y el retardo del `lh` es un `nop`); no se instala. Una
+ * condicion vacia sobre el contador no cambia la cifra porque el salto vacio se elimina antes de contar las
+ * referencias.
  * (d) El original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el
  * enlace con `sll v0,v0,8` sobre el propio v0 y escribe el resto de la primitiva por v1 (el color y la
  * palabra de enlace salen por v0); el C relee D_80076188 (`lui` y `lw`, dos instrucciones en lugar de
@@ -393,8 +395,9 @@ typedef struct CabeceraPrimitiva {
  * el valor ya cargado. Se supone, sin verificar, que el original obtiene la copia porque la segunda
  * lectura se convierte en copia al volver a pasar el optimizador tras la asignacion de registros y que
  * para eso el almacen intermedio no debe invalidar el registro. Una local que se copia de la lectura se
- * propaga y no deja copia; una local reescrita en sitio para el enlace si la deja, pero toma a1 y deja
- * la cabeza de la lista en a0, y la cifra no mejora. Mover la lectura de `y` tras la de `h` no cambia
+ * propaga y no deja copia (551); una local reescrita en sitio para el enlace si la deja y quita la
+ * relectura, pero toma a1 y deja la cabeza de la lista en a0, el almacen del enlace antes de la copia y
+ * la suma de la anchura sobre el almacen final, y la cifra sube a 556. Mover la lectura de `y` tras la de `h` no cambia
  * el codigo: el orden de las lecturas lo fija el planificador.
  */
 void func_80045150(EntradaLista* e)
@@ -403,9 +406,9 @@ void func_80045150(EntradaLista* e)
     s16 y;
     POLY_FT4* p;
     u16 x;
-    u8 v;
-    s32 w;
     u8 u;
+    s32 w;
+    u8 v;
     s32 i;
     s32 h;
     s32 color;
@@ -438,7 +441,9 @@ void func_80045150(EntradaLista* e)
             p = (POLY_FT4*)D_80076188;
             p->x1 = x + w;
             p->x3 = w + x;
-            p->y3 = y + h;
+            do {
+                p->y3 = y + h;
+            } while (0);
             p->y2 = y + h;
             p->u3 = u + w;
             p->u1 = u + w;
