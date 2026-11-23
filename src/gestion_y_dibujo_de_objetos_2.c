@@ -930,6 +930,9 @@ void func_80038E84(s32 idx, s32 paso)
  * deja en el hueco de retardo de las ramas contiguas (0x800390C4, 0x800394E0, 0x800395E0, 0x800396E0 y
  * 0x800397DC); con el simbolo suelto el `lui` no se separa de la carga y el hueco queda en `nop` o con la
  * base del temporizador siguiente (visto en el ensamblador que sale con el simbolo suelto).
+ * Los tres iconos de estado del final leen sus elementos de D_8006AB70, D_8005E830 y D_8005E86C por su
+ * propio simbolo, declarado como arreglo incompleto (ver las tablas de arriba): el `lui` queda separado
+ * de la carga y el operando lleva el nombre del ensamblador; no cambia los bytes generados.
  * Un puntero propio por barra (g3 y g7 para el indice y el valor, f3 y f7 para la relectura tras la
  * llamada) en lugar de los compartidos `g` y `f` deja las bases de las barras 3 y 7 en v0 como el original
  * (se supone, sin verificar, que un pseudo compartido une las vidas de todas las barras y toma el mismo
