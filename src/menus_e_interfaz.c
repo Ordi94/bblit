@@ -302,46 +302,35 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 40 con la configuracion versionada (g = 8 del archivo; ejes 13 de operando, 0 reordenadas,
- * 14 insertadas o borradas). Dos causas. (1) El recorte de la direccion del primitivo a 24 bits se escribe en una sola
- * sentencia (`p = (u32*)(((s32)p << 8) >> 8)`): el original emite `sll` y `sra` consecutivos sobre a1 (0x8003B218 y
- * 0x8003B21C), tras los almacenes de la palabra de ordenacion (0x8003B210) y del color (0x8003B214); aqui el `sll` queda
- * detras de los almacenes, como el original, pero su temporal cae en v0 y el `sra` escribe en a1 desde v0 (tres lineas de
- * operando). Se supone, sin verificar, que en el original el recorte es una reasignacion de la propia direccion, de modo
- * que su `sll` escribe en a1; escribirlo asi exigiria partir la operacion en dos sentencias. (2) El reparto de
- * registros de la cola: el original deja la bandera de transparencia en
- * v1 y la palabra de ordenacion en a2; aqui la bandera cae en a2 y la palabra en v1. El brillo, el color acumulado, el
- * desplazamiento, el puntero, la direccion de las palabras, la de la lista de ordenacion y la de la ranura ya
- * coinciden con el original (a3, a3, a2, a1 y a0 las tres). Medido en el volcado de la asignacion global: el
- * desplazamiento con la bandera (7 usos ponderados sobre 30 instrucciones) toma a2, y la palabra de ordenacion (2 usos
- * sobre 10) toma v1. Se supone, sin verificar, que en el original la palabra de ordenacion se carga directamente en la
- * variable que la acumula y comparte registro con el desplazamiento (a2) y que la bandera es un temporal local (v1);
- * con una sola sentencia la lectura es un temporal local que ocupa v1 junto a la constante, y una bandera como
- * temporal local deja tres temporales simultaneos en la cola, de los que el tercero ocupa a0.
+ * Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo; ejes 12 de operando, 0 reordenadas,
+ * 68 insertadas o borradas). El residuo es de nombres de registro. (1) El recorte de la direccion del primitivo a 24
+ * bits: el original emite `sll` y `sra` consecutivos sobre a1 (0x8003B218 y 0x8003B21C), tras los almacenes de la
+ * palabra de ordenacion (0x8003B210) y del color (0x8003B214); aqui el temporal del `sll` cae en v0 y el `sra` escribe
+ * en a1 desde v0. (2) El original tiene el brillo y el color en a3, el desplazamiento y la palabra de ordenacion en a2,
+ * las direcciones de las palabras, de la lista y de la ranura en a0 y la bandera en v1; aqui el brillo sale en v1, el
+ * color en a2, el desplazamiento y la bandera en a0, las direcciones de las palabras y de la lista en v1, la ranura en
+ * a3 y la palabra de ordenacion en v1. Medido en el volcado de la asignacion global: la direccion de las palabras y de
+ * la lista (pseudo 87, 12 usos sobre 25 instrucciones) toma v1, el desplazamiento con la bandera (pseudo 86, 5 sobre
+ * 29, prioridad 0,345) se asigna por delante del color (pseudo 83, 11 sobre 99, 0,333) y toma a0, el color toma a2, la
+ * ranura (pseudo 88, 3 sobre 17) toma a3 y la palabra (pseudo 90, 2 sobre 10) toma v1. La forma del fuente que daba el
+ * reparto del original se desconoce.
  *
- * Elecciones de escritura vigentes (cifra con la forma contraria): la direccion de las palabras, la de la lista y la
- * ranura comparten una variable `base_trabajo`; la bandera de transparencia reutiliza la variable del desplazamiento
- * (40; con variable propia 460); la palabra de ordenacion se calcula antes del salto de la bandera y se almacena tras
- * la union de las ramas (40; almacenada antes del salto 635); la cola acumula sobre el propio color y repite el `or`
- * con 0x2C000000 tras la union de las ramas, como el original en 0x8003B208 y 0x8003B20C (40; sin la repeticion 240);
- * el brillo se calcula en el propio color (40; en `base_trabajo` 60).
+ * Elecciones de escritura vigentes (cifra con la forma contraria): la bandera de transparencia reutiliza la variable
+ * del desplazamiento (210; con variable propia 465); la palabra de ordenacion se calcula antes del salto de la bandera
+ * y se almacena tras la union de las ramas (210; almacenada antes del salto 415); la cola acumula sobre el propio color
+ * y repite el `or` con 0x2C000000 tras la union de las ramas, como el original en 0x8003B208 y 0x8003B20C (210; sin la
+ * repeticion 400). El brillo y la ranura tienen cada uno su propia local.
  */
 /*
  * Encola un sprite de ocho palabras en la lista de ordenacion segun la profundidad del objeto: calcula el color y
  * el desplazamiento de la textura, copia las palabras del sprite al primitivo del anillo (D_80076188), lo enlaza en
  * la lista elegida por la profundidad y avanza el cursor.
  *
- * Las tres envolturas `do { } while (0)` no generan codigo. Dos de ellas (el almacen de la palabra 3 del primitivo, que
- * suma el desplazamiento, y la puesta a cero del desplazamiento) resuelven una disputa del volcado de la asignacion
- * global entre el desplazamiento (pseudo 86) y el color (pseudo 83, que guarda tambien el brillo): sin ellas el
- * desplazamiento cuenta 5 usos sobre 29 instrucciones (0,345) y el color 15 sobre 103 (0,437), el color se asigna
- * primero y toma a2 con el desplazamiento en a3 (325); con ellas el desplazamiento cuenta 7 usos ponderados sobre 30
- * (0,467), se asigna antes que el color y toma a2, el color a3 como el original; quitando solo una de las dos la
- * puntuacion es 130. La tercera envuelve el recorte de la direccion del primitivo: en el volcado del planificador
- * posterior al reparto de registros, sin ella el `sll` se coloca por delante de los dos almacenes anteriores y con ella
- * queda detras (las notas de bucle que deja la envoltura le cierran el paso); sin la tercera, con las otras dos, la
- * puntuacion es 235. El puntero (17 usos ponderados sobre 79, 0,86) y la direccion de las palabras (16 sobre 41, 1,56)
- * siguen por delante de los dos. La forma del fuente original que producia este reparto se desconoce.
+ * La envoltura `do { } while (0)` del recorte de la direccion del primitivo no genera codigo. En el volcado del
+ * planificador posterior al reparto de registros, sin ella el `sll` se coloca por delante de los almacenes de la
+ * palabra de ordenacion y del color y con ella queda detras, como en el original (las notas de bucle que deja la
+ * envoltura le cierran el paso); sin ella la puntuacion es 405. La forma del fuente original que producia este
+ * reparto se desconoce.
  */
 void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
 {
@@ -351,24 +340,23 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     ColorYDesplazamiento* par;
     s32 desplazamiento;
     u32 base_trabajo;
+    u32 ranura;
     VistaDibujo* vista_dibujo;
     u32 palabra;
+    u32 brillo;
 
     /* Copia del argumento de la vista para la llamada que calcula la proyeccion: cambia el recuento de usos y el reparto de los registros guardados. */
     vista_dibujo = vista;
     func_80039CD0(D_80076188);
     if (sprite->banderas & 0x10) {
         if (D_8006966A != 0) {
-            color = 0x80 - ((s16)D_800694E2 >> 5);
-            /* La suma agrupa primero los dos desplazamientos y luego el componente bajo: con otro orden de sumandos el compilador cambia el reparto de a2 y a3. */
-            color = color + ((color << 16) + (color << 8));
+            brillo = 0x80 - ((s16)D_800694E2 >> 5);
+            /* La suma agrupa primero los dos desplazamientos y luego el componente bajo, como el original. */
+            color = brillo + ((brillo << 16) + (brillo << 8));
         } else {
             color = 0x808080;
         }
-        /* Envoltura sin codigo: pondera los usos del desplazamiento (ver la cabecera). */
-        do {
-            desplazamiento = 0;
-        } while (0);
+        desplazamiento = 0;
         ctx->estado.s4 = 0;
     } else {
         if (ctx->objeto->coord.super != 0) {
@@ -387,18 +375,14 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         base_trabajo = (u32)sprite->palabras;
         p = (u32*)D_80076188;
         p[2] = sprite->palabras[0];
-        /* Envoltura sin codigo: pondera los usos del desplazamiento (ver la cabecera). */
-        do {
-            p[3] = ((u32*)base_trabajo)[1] + desplazamiento;
-        } while (0);
+        p[3] = ((u32*)base_trabajo)[1] + desplazamiento;
         p[4] = ((u32*)base_trabajo)[2];
         p[5] = ((u32*)base_trabajo)[3];
         p[6] = ((u32*)base_trabajo)[4];
         p[7] = ((u32*)base_trabajo)[5];
         p[8] = ((u32*)base_trabajo)[6];
         p[9] = ((u32*)base_trabajo)[7];
-        /* La direccion de la lista de ordenacion y la de la ranura reutilizan `base_trabajo`: la direccion de las
-         * palabras ya no se usa y las tres comparten a0 como el original. */
+        /* La direccion de la lista de ordenacion reutiliza `base_trabajo`: la direccion de las palabras ya no se usa. */
         if (ctx->estado.s4 < 0x200) {
             base_trabajo = (u32)D_8006AE20[D_8006967C].org;
         } else {
@@ -410,13 +394,13 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
                 base_trabajo = (u32)D_8006AEA0[D_8006967C].org;
             }
         }
-        base_trabajo = base_trabajo + (ctx->estado.s4 << 2);
-        /* La bandera de transparencia reutiliza la variable del desplazamiento, que ya no se usa: una variable
-         * global de pocos usos toma el registro que queda libre (a2) y no crea un tercer temporal local en la cola. */
+        ranura = base_trabajo + (ctx->estado.s4 << 2);
+        /* La bandera de transparencia reutiliza la variable del desplazamiento, que ya no se usa, y no crea un
+         * temporal local mas en la cola. */
         desplazamiento = sprite->semitransparente;
         /* La palabra de ordenacion se calcula aqui y se almacena tras la union de las ramas, como el original
          * (0x8003B210). */
-        palabra = *(u32*)base_trabajo | 0x09000000;
+        palabra = *(u32*)ranura | 0x09000000;
         /* Cada rama acumula la constante sobre el propio color y la union repite el `or` con 0x2C000000
          * (0x8003B208 y 0x8003B20C del original, tras `or a3,a3,v0` en 0x8003B204): la segunda mascara no cambia el
          * valor porque 0x2E000000 ya la contiene, pero el original la emite y sin ella la puntuacion sube. */
@@ -432,7 +416,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         do {
             p = (u32*)(((s32)p << 8) >> 8);
         } while (0);
-        *(u32*)base_trabajo = (u32)p;
+        *(u32*)ranura = (u32)p;
         D_80076188 += 0x28;
         if (ctx->limite < D_80076188) {
             D_80076188 = ctx->inicio;
