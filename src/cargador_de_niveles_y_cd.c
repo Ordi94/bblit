@@ -404,13 +404,13 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 4963 con la configuracion versionada (g = 8 del archivo; ejes 292 de
- * operandos, 8 de lineas reordenadas y 534 de lineas insertadas o borradas). La cifra incluye
+ * Pendiente: puntuacion 3888 con la configuracion versionada (g = 8 del archivo; ejes 306 de
+ * operandos, 2 de lineas reordenadas y 448 de lineas insertadas o borradas). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
- * caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones y el original 2955; la
- * diferencia son cuatro copias de registro (`move`) que el original conserva y el C no emite
- * (0x80041CDC, 0x80042F20, 0x80042F78 y 0x8004367C). La llamada a `func_80044664` de la
+ * caso del de su tabla. Medido: el codigo generado tiene 2953 instrucciones y el original 2955; la
+ * diferencia son dos copias de registro (`move`) que el original conserva delante de una prueba y
+ * el C no emite (0x80041CDC y 0x8004367C). La llamada a `func_80044664` de la
  * apertura del anillo (de 0x80041A04 a 0x80041A18) la comparte la lectura de las listas, que salta
  * hacia ella desde 0x800420C8, como en el original (ver mas abajo). Los cuerpos de los casos de los cinco `switch` y del
  * despacho de primer nivel van en el orden de direcciones de las tablas de saltos del original: el
@@ -494,7 +494,7 @@ typedef struct {
  * 0x80043110, y `lw a1,0x18(s4)`, 0x80043128) tras los almacenes a `D_80069660`, `D_80069670` y
  * `D_8006955C` (0x8004310C, 0x80043118 y 0x80043124) y antes de los demas, y las escribe al final
  * (`sw v1,D_8006954C`, 0x8004316C, y `sw a1,D_80069678`, 0x80043174); con la local de `d18` y la
- * lectura de `d10` dentro de la asignacion final la cifra es 5128 y con las dos locales 4963. En el
+ * lectura de `d10` dentro de la asignacion final la cifra es 4053 y con las dos locales 3888. En el
  * chunk 0x36 el segundo entero va por miembro (`ETQ(w, campos, 1)`) y se almacena despues del puntero
  * de zonas, como el original (`addu` en 0x80042FA8 antes del `sw` a 0x180($gp) en 0x80042FAC); con el almacen del
  * entero primero, o por puntero, la cifra sube.
@@ -533,7 +533,11 @@ typedef struct {
  * Residuo por causas (cada fila insertada o borrada pesa unos 100 puntos): (1) el chunk 0x3E, donde el
  * original deja tres cargas (0x10, 0x14 y 0x18 de las etiquetas) intercaladas entre los almacenes; el C
  * adelanta las de 0x10 y 0x18 con locales y deja la de 0x14 junto a su almacen (guardada tambien en una
- * local de 32 bits la cifra es 7353); (2) la constante 0x2E en s0 de dos bucles de etiquetas (dos filas); (3)
+ * local de 32 bits la cifra es 6463); (2) en los bucles de etiquetas de los chunks 0x05 y 0x36, la
+ * copia de 0x2E a s0 sale antes de la constante de la etiqueta y el original la pone despues
+ * (0x80042F1C y 0x80042F20, 0x80042F74 y 0x80042F78): en el volcado de la pasada de bucles la
+ * asignacion del fuente va delante de la constante que esa pasada saca del bucle, y las pasadas
+ * posteriores conservan ese orden; (3)
  * la carga de `D_80069678`, que el original iza a a0 (0x80041D70) y el C deja junto a su uso, con
  * `D_8006954C` izada en su lugar (una fila y dos de operandos); (4) el orden de tres tramos del
  * comienzo: el original deja `sb zero,0x1c0(sp)` entre los almacenes de las banderas (0x80041668)
@@ -554,22 +558,31 @@ typedef struct {
  * epilogo y funde su cola con la de otro salto igual. Medido en los volcados de cc1 (pases de
  * planificacion y de saltos): con la salida del caso 0x4B escrita como un bloque `return 1;` propio
  * la cola que desaparece es la de la apertura y el `jal` queda en la lectura de las listas (la cifra
- * es 5793); con la salida del caso 0x4B escrita como salto a la etiqueta `fallo_lectura`, que es la
+ * es 4718); con la salida del caso 0x4B escrita como salto a la etiqueta `fallo_lectura`, que es la
  * salida de la primera lectura del anillo, desaparece la de las listas y el `jal` queda en la
- * apertura, como en el original, y el caso 0x4B sale con `beqz v0` directo (4963). Se supone, sin
+ * apertura, como en el original, y el caso 0x4B sale con `beqz v0` directo (3888). Se supone, sin
  * verificar, que el orden en que el pase recorre los saltos al epilogo depende de que la salida del
  * 0x4B sea un bloque `li`/`j` propio.
  *
- * Bucles de etiquetas del chunk 0x05 (causa 2): escrito como `while (*cursor != 0x2E)` el
- * compilador iza la constante a s0 (`move s0,t3` como el original y `li s1,6`) pero deja la salida del
- * bucle como `beq` mas `j` y no recarga `*cursor` antes del bucle: la cifra sube.
+ * Marca de fin de chunk (`fin_chunk`, chunks 0x05 y 0x36): el original compara la salida del bucle
+ * con una copia de 0x2E en un registro guardado, tomada del registro de la prueba de entrada
+ * (`addu s0,t3,zero` en 0x80042F20 y `addu s0,t4,zero` en 0x80042F78). Con la constante literal, el
+ * volcado de la pasada de bucles muestra que la de la prueba de salida se saca primero del bucle
+ * interior y despues el bucle exterior la funde con las demas pruebas contra 0x2E: no queda copia,
+ * la salida se une con la prueba exterior y sale como `beq` mas `j`. La variable, asignada en los
+ * dos bucles, no entra en esa fusion. Es una sola para los dos: con una local por bloque la cifra
+ * sube. El bucle del chunk 0x47 compara con la constante, como el original.
+ *
+ * Entidades (chunks 0x07, 0x08 y 0x0A): la prueba de entrada del `while` de etiquetas salta a la
+ * llamada a `ResolverReferenciasContenedor` que sigue al bucle (`beq` en 0x800436E0 hacia
+ * 0x800442E4), con `es_jugador = 0` en el hueco de retardo.
  *
  * Etiqueta de los bucles de los chunks 0x05, 0x36 y 0x47: cada uno lleva una local de bloque
  * (`etiqueta_sonido`, `etiqueta_zona`, `etiqueta_demo`) en vez de la variable de la funcion que usan
  * los demas chunks. La variable de la funcion es un pseudo con varios usos que toma `v1` en esos
  * bucles; la local de bloque toma `v0`, el mismo registro que la lectura de la prueba de salida
  * (`lbu v0,0(s2)` en 0x80041984 y 0x800419B0 del chunk 0x05), como en el original. Con la variable de
- * la funcion en los tres la cifra es 4993.
+ * la funcion en los tres la cifra es 3918.
  *
  * El original conserva `libre += x` y `monton = libre` en dos instrucciones (`addu s6,s6,v0` en
  * 0x80041E44 y `move s5,s6` en 0x80041E58, con las cargas de `D_80069548` y `D_8006952E` entre
@@ -577,17 +590,13 @@ typedef struct {
  * `monton = libre` primero el compilador funde las dos sentencias en un solo `addu s5,s6,v0` y no
  * emite la copia.
  *
- * La constante 0x2E de las pruebas de fin de chunk no se iza a un registro guardado en ningun
- * bucle: hay 34 `li ...,46` en el codigo generado y 35 en el original. Lo que difiere es la forma
- * de los bucles de etiquetas (por ejemplo el del chunk 0x36, original 0x80042F68 a 0x80042FB8): el
- * original conserva el valor de la guarda en s0 (`addu s0,t4,zero` en 0x80042F78) y la etiqueta 0x37
- * en s1, y la prueba de salida del bucle compara con s0; aqui solo la etiqueta se iza (a s0) y la
- * prueba de salida recarga 0x2E con `li` en cada vuelta. `hijo_matriz` (pseudo 98, R 72, L 2297) vive
- * desde la entrada de la funcion porque se lee en algun camino sin asignacion previa; con la
- * variable compartida queda en la pila, como el original.
+ * Fuera de esos dos bucles las pruebas de fin de chunk cargan 0x2E en un temporal en cada sitio:
+ * hay 34 `li` de 0x2E en el codigo generado y 35 en el original. `hijo_matriz` (pseudo 98, R 72,
+ * L 2297) vive desde la entrada de la funcion porque se lee en algun camino sin asignacion previa;
+ * con la variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x200; la cifra medida sin la local es 6541 y con ella 4963. Las dos reservas de 8 bytes suman los
+ * 0x200; la cifra medida sin la local es 5466 y con ella 3888. Las dos reservas de 8 bytes suman los
  * 16 que faltan: la primera va antes de `tamanos` (que queda en 0xE8, como el original) y la segunda
  * tras `campos_mem`. Residuo: el original tiene entre `n_secciones` (0x1B0) y `es_jugador` (0x1B8) una
  * ranura de derrame de 4 bytes que ninguna instruccion usa y el C no; se supone, sin verificar, que es
@@ -648,6 +657,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
      */
     s32 desp_campo;
     s32 compensacion;
+    /* Marca de fin de chunk ('.') de los bucles de etiquetas de parametros de sonido y zonas. */
+    s32 fin_chunk;
     u32 n_secciones;
     u32 i;
     u16 es_jugador;
@@ -1003,7 +1014,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             IniciarLecturaContinua((CdlLOC*)D_8006A928);
             if (D_80069494 != 0) {
                 if (func_80044664((u8*)D_8006949C, (u8*)D_80069498, (void*)0x1F800000) == 0) {
-                    /* Mismo retorno que la apertura (`beqz v0` directo, 0x80042264); con `return 1;` la cifra es 5793. */
+                    /* Mismo retorno que la apertura (`beqz v0` directo, 0x80042264); con `return 1;` la cifra es 4718. */
                     goto fallo_lectura;
                 }
             } else {
@@ -1410,6 +1421,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
+                    fin_chunk = 0x2E;
                     do {
                         etiqueta_sonido = *cursor++;
                         if (etiqueta_sonido == 6) {
@@ -1417,7 +1429,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             func_8003EC3C(campos);
                             cursor += 3;
                         }
-                    } while (*cursor != 0x2E);
+                    } while (*cursor != fin_chunk);
                     break;
                 }
 
@@ -1428,6 +1440,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
+                    fin_chunk = 0x2E;
                     do {
                         etiqueta_zona = *cursor++;
                         if (etiqueta_zona == 0x37) {
@@ -1438,7 +1451,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             D_800694A0 = compensacion;
                             D_800694FC = datos + desp_campo;
                         }
-                    } while (*cursor != 0x2E);
+                    } while (*cursor != fin_chunk);
                     break;
                 }
 
@@ -1660,12 +1673,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     }
                     EN(u16, entidad, 0x108) = 0xA00;
                     EN(u8*, entidad, 0xC0) = entidad + 0xCC;
-                    EN(u16, entidad, 0x26) = 0xFFFF;
+                    EN(s16, entidad, 0x26) = -1;
                     es_jugador = 0;
-                    if (*cursor == 0x2E) {
-                        ResolverReferenciasContenedor((ContenedorCarga*)entidad);
-                        break;
-                    }
                     while (*cursor != 0x2E) {
                         switch (*cursor++) {
                         case 0x1F:
