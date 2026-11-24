@@ -359,7 +359,9 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     u32 brillo;
     s32 semitransparente;
 
-    /* Copia del argumento de la vista para la llamada que calcula la proyeccion: cambia el recuento de usos y el reparto de los registros guardados. */
+    /* Copia del argumento de la vista para la llamada que calcula la proyeccion: cambia el recuento de usos y el
+     * reparto de los registros guardados (pasando `vista` a la llamada, s1 y s2 salen intercambiados y la
+     * puntuacion es 93). */
     vista_dibujo = vista;
     func_80039CD0(D_80076188);
     if (sprite->banderas & 0x10) {
@@ -396,7 +398,8 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         p[7] = ((u32*)base_trabajo)[5];
         p[8] = ((u32*)base_trabajo)[6];
         p[9] = ((u32*)base_trabajo)[7];
-        /* La direccion de la lista de ordenacion reutiliza `base_trabajo`: la direccion de las palabras ya no se usa. */
+        /* La direccion de la lista de ordenacion reutiliza `base_trabajo`: la direccion de las palabras ya no se usa
+         * (con una local propia para la lista la puntuacion es 80). */
         if (ctx->estado.s4 < 0x200) {
             base_trabajo = (u32)D_8006AE20[D_8006967C].org;
         } else {
