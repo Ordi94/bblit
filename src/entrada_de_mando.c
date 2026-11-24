@@ -46,9 +46,6 @@ extern ByteBufferMando D_8006CFF3;
 extern ByteBufferMando D_8006CFF6;
 extern ByteBufferMando D_8006CFF7;
 
-/* Registro absoluto del eje Y: lo escribe el original por direccion, sin base compartida. */
-#define W14 (*(s16*)0x80010014)
-
 extern void func_80040430(s8* contador, u16 mascara);
 
 /*
@@ -292,14 +289,14 @@ void func_80040430(s8* contador, u16 mascara)
  * de retardo de las cuatro bifurcaciones del bloque de la prueba (0x800409EC, 0x80040A00, 0x80040A18 y
  * 0x80040A28) el `lui` de esa direccion: con el escalar (u8 de un byte, dentro del umbral -G8) el compilador emite
  * la lectura como una sola instruccion de macro, el `lui` lo crea el ensamblador y no puede ocupar un hueco; con el
- * arreglo sin tamano el `lui` es una instruccion propia. Con el escalar en la ultima prueba la cifra es 1100.
+ * arreglo sin tamano el `lui` es una instruccion propia.
  *
  * En la rama de arriba del eje Y la resta de `eje_y` va despues del almacen a botones_a. El original conserva el
  * `andi 0xff` del byte antes de la suma (0x80040908) y la resta es la primera instruccion del bloque; mientras no
  * haya un almacen entre la lectura del byte y la suma, el combinador pliega el `andi` sobre el registro del byte
  * (`addiu` con el byte sin extender). Con el almacen delante el `andi` se conserva, y el planificador deja la resta
- * antes de los almacenes como el original. Con la resta primero la cifra es 650. En el eje X los almacenes a w3E y
- * botones_a ya quedan entre la lectura y la rama de la izquierda.
+ * antes de los almacenes como el original. En el eje X los almacenes a w3E y botones_a ya quedan entre la lectura y
+ * la rama de la izquierda.
  *
  * El byte crudo de los dos ejes vive en una sola local de 8 bits (`eje_crudo`) y todas las ramas la usan por su
  * nombre: el original lee cada eje una vez (0x80040830 y 0x800408E4), compara una copia enmascarada (a2) y repite
@@ -413,9 +410,9 @@ normal:
             ESTADO_PRINCIPAL->mando.eje_x = 0x7F;
         }
         if (bits & 0x1000) {
-            W14 = 0x7F;
+            ESTADO_PRINCIPAL->mando.eje_y = 0x7F;
         } else if (bits & 0x4000) {
-            W14 = -0x80;
+            ESTADO_PRINCIPAL->mando.eje_y = -0x80;
         }
         D_8006965A = 0;
         D_80069659 = 0;
@@ -458,9 +455,9 @@ normal:
                 ESTADO_PRINCIPAL->mando.eje_x = 0x7F;
             }
             if (bits & 0x1000) {
-                W14 = 0x7F;
+                ESTADO_PRINCIPAL->mando.eje_y = 0x7F;
             } else if (bits & 0x4000) {
-                W14 = -0x80;
+                ESTADO_PRINCIPAL->mando.eje_y = -0x80;
             }
             return;
         }
