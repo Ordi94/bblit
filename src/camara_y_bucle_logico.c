@@ -1369,13 +1369,11 @@ void func_80035244(void)
  *
  * La cola de la lista usa una local propia (`cola`) porque `t` vive en varios bloques y pasa por el reparto global.
  *
- * Envoltura `do { } while (0)`: rodea la comparacion `if (idx < lim) goto buscar_modelo;` de la busqueda
- * del modelo y no genera codigo (el optimizador de saltos la elimina). Causa medida (volcado `-dl`, `-dg`, `-G8`):
- * el limite `lim` (pseudo 93, 14 instrucciones de vida) pasa de 4 a 5 usos ponderados y su prioridad de
- * 2 * 4 / 14 = 0,571 a 2 * 5 / 14 = 0,714, por delante del puntero al objeto `busca` (pseudo 94, 4 usos sobre 13
- * instrucciones, 2 * 4 / 13 = 0,615); el orden de asignacion los invierte y el limite toma `a1` y el puntero `a2`,
- * como el original, en lugar de `a2` y `a1` (sin la envoltura la cifra es 255 y con ella 235). La forma del fuente
- * original que producia este reparto se desconoce.
+ * En la busqueda del modelo `busca` se asigna antes que `lim`, y ese orden decide sus registros. Los dos pseudos
+ * tienen 4 usos ponderados y gana el de vida mas corta, que es el asignado en segundo lugar (volcados `.lreg` y
+ * `.greg`): `lim` (pseudo 93, 13 instrucciones, 2 * 4 / 13 = 0,615) toma `a1` y `busca` (pseudo 94, 14, 0,571)
+ * `a2`, como el original. Con `lim = nmod;` primero las vidas se intercambian, `lim` toma `a2` y `busca` `a1`, y la
+ * cifra es 255 en lugar de 235.
  *
  * Par `pz--; pz++;` antes de la sentencia `GUARDAR_MAC3(pz);` del recorrido de proyeccion de los ocho puntos (el
  * segundo, con `sc->i40 < 8`): no genera codigo (el combinador anula el par y el ensamblador tiene las mismas
@@ -1401,7 +1399,7 @@ void func_80035244(void)
  * La prueba de la bandera del modelo (`sc->i40 < D_80069588`) va dentro del bloque que entra en la busqueda: el
  * `beqz` de la primera comparacion (0x800357D0) salta a la prueba de indice no hallado (0x80035870), no a la de la
  * bandera (0x80035814). Con ella fuera del bloque el salto iba a esa segunda prueba y el hueco quedaba con un `nop`
- * (340 en lugar de 235). Con la entrada hallada se comprueba el bit 1 de la bandera y el bit 0x10000 de las
+ * (400 en lugar de 235). Con la entrada hallada se comprueba el bit 1 de la bandera y el bit 0x10000 de las
  * banderas del objeto, y sin el bit 1 se cae a la misma comparacion de indice que la rama de no hallado
  * (0x80035824 a 0x80035878).
  *
@@ -1531,18 +1529,16 @@ void func_800353B0(Objeto* a0)
                     nmod = D_80069588;
                     idx = sc->i40;
                     if (idx < nmod) {
-                        lim = nmod;
                         busca = sc->cur;
+                        lim = nmod;
 buscar_modelo:
                         if ((s16)busca->w26 != sc->tp3C->modelo) {
                             sc->i40 = idx + 1;
                             sc->tp3C++;
                             idx = sc->i40;
-                            do {
-                                if (idx < lim) {
-                                    goto buscar_modelo;
-                                }
-                            } while (0);
+                            if (idx < lim) {
+                                goto buscar_modelo;
+                            }
                         }
                         if (sc->i40 < D_80069588) {
                             if ((sc->tp3C->bandera & 1) != 0) {
