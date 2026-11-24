@@ -369,9 +369,10 @@ typedef struct CabeceraPrimitiva {
  * deja el almacen del indice de paleta en el hueco de retardo de la guarda final, como el original. La
  * lectura de D_80076188 va tras la direccion de la cabeza de la lista, como en el original, y la de la
  * cabeza (`lw a0,0(a1)`, 0x80045248) antes del almacen del color (`sw a2,4(v0)`, 0x80045250), que en
- * el original va antes del almacen de la palabra de enlace (`sw a0,0(v0)`, 0x8004525C); se supone, sin
- * verificar, que el almacen del color (un acceso por puntero, no por miembro) no puede pasar la lectura
- * de la cabeza. Las dos primeras palabras (enlace y color) se escriben por miembros de
+ * el original va antes del almacen de la palabra de enlace (`sw a0,0(v0)`, 0x8004525C). En el volcado de
+ * la primera planificacion (`-dS`) el almacen del color tiene una antidependencia sobre la lectura de la
+ * cabeza (los dos van a direcciones variables), de modo que no puede quedar delante de ella. Las dos
+ * primeras palabras (enlace y color) se escriben por miembros de
  * `CabeceraPrimitiva` y el puntero `p` a los miembros del poligono se lee de nuevo de D_80076188 tras el
  * almacen a la lista de cabezas: asi los miembros salen por un registro propio, como en el original, y
  * no por el de la cabeza.
