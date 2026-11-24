@@ -281,7 +281,8 @@ void func_80040430(s8* contador, u16 mascara)
  * estructuras de un solo campo y se leen por ese campo: con bytes sueltos el planificador sube la lectura del
  * identificador (D_8006CFF1) por encima de los almacenes a los campos del estado (el original la deja tras el
  * almacen de 0x8001000C, 0x80040664) y como miembro de estructura la deja detras de ellos. Se declaran uno por
- * uno y no como una sola estructura desde D_8006CFF1: con una sola las referencias salen como `D_8006CFF1+n`, que el ensamblador del original no escribe asi, y el compilador
+ * uno y no como una sola estructura desde D_8006CFF1: con una sola las referencias salen como `D_8006CFF1+n`, que
+ * el ensamblador del original no escribe asi, y el compilador
  * comparte la direccion de dos lecturas (una `addiu` mas). Se supone, sin verificar, que la diferencia es la marca
  * de miembro de estructura de la direccion de memoria.
  *

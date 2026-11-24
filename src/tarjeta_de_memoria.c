@@ -450,7 +450,8 @@ s32 func_800151FC(void)
  * `sll 4 ; subu ; sll 3` en 0x80015CC0, 0x80015D10 y 0x80015D40) y tiene como registros propios la base del directorio (t1)
  * y la base mas 0x24 (t2). El bucle exterior se escribe con etiqueta y salto hacia atras (`siguiente_entrada`): el optimizador
  * de bucles (`-dL`) no lo recorre, de modo que las tres cadenas de `grupo * 120` quedan en el cuerpo y no se izan como
- * invariantes (solo se recorren los bucles interiores, el de relleno y el de bloques). La fila es una variable de bucle propia
+ * invariantes (solo se recorren los bucles interiores, el de relleno y el de bloques); con `do`/`while` dentro de la
+ * guardia la puntuacion es 2155. La fila es una variable de bucle propia
  * (`fila += 0x28; i++;`) y el contador es el mismo `i` de los bucles anteriores (el original usa a1 como contador de los tres
  * bucles y tambien lo toma aqui); las dos bases viven en locales (`directorio`, `sistema`) y las inicializaciones del
  * bucle van dentro de la guardia (`i < D_80069358[0]`), la de `fila` tras la de las bases, como el preludio del original
