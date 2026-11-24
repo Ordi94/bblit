@@ -236,14 +236,15 @@ void func_80032A24(void)
  * Los dos do/while (0) no generan codigo: ponderan por un nivel mas las referencias de su cuerpo y con ese peso
  * global-alloc reparte los registros como el original. Medido en los volcados `.lreg` (usos ponderados y vida) y
  * `.greg` (orden de reparto y registro de cada pseudo):
- * - El que envuelve la ultima prueba de la cadena y el cuerpo del acierto: el objeto en curso (pseudo 143) pasa de 14
- *   a 15 usos sobre 25 instrucciones (1,68 a 1,80) y queda por delante de max.vy (pseudo 185, de 6 a 7 usos sobre 8:
- *   1,50 a 1,75), de modo que toma a1 y max.vy a2; a0 pasa de 8 a 10 usos sobre 244 (0,098 a 0,123) y queda por
- *   delante del puntero a i58 (pseudo 84, 5 usos sobre 94, 0,106): a0 en s5 y el puntero en s6; el puntero a v28
- *   (pseudo 134) pasa de 9 a 12 usos sobre 226 (0,119 a 0,159) y queda por delante del puntero a rot (pseudo 86,
- *   6 usos sobre 92, 0,130): s3 y s4. Sin el la puntuacion es 103.
+ * - El que envuelve la ultima prueba de la cadena y el cuerpo del acierto. El parametro a1 (pseudo 81) pasa de 16 a
+ *   22 usos sobre 504 instrucciones (0,127 a 0,175), el puntero a v28 (pseudo 133) de 9 a 12 sobre 226 (0,119 a
+ *   0,159) y a0 (pseudo 80) de 8 a 10 sobre 238 (0,101 a 0,126). Con ello a1, v28, el puntero a rot (pseudo 86, 6
+ *   sobre 92, 0,130), a0 y el puntero a i58 (pseudo 84, 5 sobre 94, 0,106) toman s2, s3, s4, s5 y s6, como el
+ *   original; sin el quedan, en ese orden de prioridad, rot, a1, v28, i58 y a0. En el acierto, el objeto en curso
+ *   (pseudo 142) pasa de 14 a 15 usos sobre 25 (1,68 a 1,80) y se mantiene por delante de max.vy (pseudo 184, que
+ *   pasa de 6 a 7 sobre 8: 1,50 a 1,75): a1 y a2. Sin el la puntuacion es 171.
  * - El del guardado de rot: el pseudo 86 pasa de 5 a 6 usos sobre 92 (0,109 a 0,130) y se mantiene por delante de a0
- *   (0,123): rot en s4 y a0 en s5. Sin el la puntuacion es 63.
+ *   (0,126): rot en s4 y a0 en s5. Sin el la puntuacion es 63.
  * La forma del fuente original que producia este reparto se desconoce.
  */
 s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
@@ -251,14 +252,10 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
     s32* p58;
     SVECTOR* pd30;
     SVECTOR* prot;
-    /* El original conserva el vector de salida en un registro salvado distinto del argumento:
-     * la copia local reproduce ese reparto. */
-    Vec3* salida;
 
-    salida = a1;
-    w->suma.vx = a0->x + salida->x;
-    w->suma.vy = a0->y + salida->y;
-    w->suma.vz = a0->z + salida->z;
+    w->suma.vx = a0->x + a1->x;
+    w->suma.vy = a0->y + a1->y;
+    w->suma.vz = a0->z + a1->z;
     w->cur = D_80069630;
     if (w->cur != NULL) {
         p58 = &w->i58;
@@ -312,9 +309,9 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                                     RotMatrixZYX(&w->rot, &w->m);
                                     ApplyMatrixSV(&w->m, &w->a48, &w->a50);
                                     w->i5C = ratan2(w->a50.vx, w->a50.vz);
-                                    w->v28.vx = salida->x;
-                                    w->v28.vy = salida->y;
-                                    w->v28.vz = salida->z;
+                                    w->v28.vx = a1->x;
+                                    w->v28.vy = a1->y;
+                                    w->v28.vz = a1->z;
                                     ApplyMatrixSV(&w->m, &w->v28, &w->v28);
                                     w->i60 = w->i60 + 2;
                                     if (w->i5C >= 0) {
@@ -341,9 +338,9 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                                     }
                                     RotMatrix(&w->cur->param.giro.rotate, &w->m);
                                     ApplyMatrixSV(&w->m, &w->v28, &w->v28);
-                                    salida->x = w->v28.vx;
-                                    salida->y = w->i58;
-                                    salida->z = w->v28.vz;
+                                    a1->x = w->v28.vx;
+                                    a1->y = w->i58;
+                                    a1->z = w->v28.vz;
                                     return (s32)w->cur;
                                 }
                             } while (0);
