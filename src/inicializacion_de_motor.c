@@ -348,15 +348,13 @@ typedef struct CabeceraPrimitiva {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 320 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
- * reordenadas, 9 insertadas o borradas: la causa mayor es la copia del puntero a la primitiva (ver Residuo), y ademas la
- * lectura de D_80069652 sale en a2 en lugar de v0 por compartir `color`). La
- * intensidad y el color empaquetado comparten la local `color`, como en el original, donde la intensidad
- * (`subu a2,v1,v0`, 0x800451F4) y el color (`addu a2,a2,a0`, 0x80045210) viven en el mismo registro: con una
- * local para cada uno el compilador deja la intensidad en a0 y el color en a2 y la puntuacion es 510. La suma se
- * escribe `color + (0x2C000000 + (color << 16) + (color << 8))`, que da el arbol del original (`addu v0,v0,v1`,
- * `addu a0,a0,v0` y `addu a2,a2,a0`, 0x80045204 a 0x80045210); con la base al final y sin el parentesis
- * (`K + (c << 16) + (c << 8) + c`) el compilador reasocia la constante.
+ * Pendiente: puntuacion 525 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
+ * reordenadas, 24 insertadas o borradas). Residuo: la copia del puntero a la primitiva (ver el ultimo
+ * parrafo); en el bloque del color, la intensidad sale en a0 y el original la tiene en el mismo registro que
+ * el color, a2 (`subu a2,v1,v0`, 0x800451F4, y `addu a2,a2,a0`, 0x80045210); y la lectura de D_80069652 sale
+ * en a2 en lugar de v0 por compartir `color`. La intensidad va en su propia local y el color se compone en
+ * una sola sentencia, con la base primero y la intensidad al final, que da el arbol de sumas del original
+ * (0x80045204 a 0x80045210).
  *
  * La primitiva se escribe por miembros de POLY_FT4: el compilador marca un acceso por miembro como
  * acceso a estructura y no lo trata como posible alias de los globales escalares (D_80076188,
@@ -377,18 +375,19 @@ typedef struct CabeceraPrimitiva {
  * Medido en el volcado del estado final: x 8/47 = 0,511, y 9/55 = 0,491, u y v 8/52 = 0,462, entrada `e` 11/95 =
  * 0,347, contador 9/94 = 0,287, anchura 6/46 = 0,261 y altura 7/56 = 0,250. Sin las envolturas de `e` y del
  * contador serian `e` 9/95 = 0,284 y contador 7/94 = 0,149. (1) `p->y3 = y + h;` sube y a 9 usos (por delante de
- * u y v, que tienen 8/52 = 0,462; se supone, sin verificar, que sin ella y tiene 8 usos, 0,436) y la altura a 7.
+ * u y v, que tienen 8/52 = 0,462; sin ella y tiene 8 usos, 8/55 = 0,436) y la altura de 6 a 7.
  * (2) `e++;` sube `e` de 9 a 11 usos, por delante del contador. (3) `i++;` sube el contador de 7 a 9, por delante
  * de la anchura y la altura. Con `u` declarada antes que `v` (los empates de prioridad se deciden por el numero
- * de pseudo) x, y, u y v quedan en s0 a s3 como el original y el planificador no mueve ninguna suma. Las notas de
+ * de pseudo) x, y, u y v quedan en s0 a s3 como el original y el planificador no mueve ninguna suma. Sin la
+ * envoltura (1) la puntuacion sube a 615, sin la (2) a 588 y sin la (3) a 606. Las notas de
  * bucle de una envoltura son barrera de planificacion: `e++` va antes de la lectura de D_80069652 para que el
  * incremento de la direccion derivada (`addiu s4,s4,8`, 0x8004531C) quede antes del `lui` como en el original, y
  * la lectura se guarda en `color`, cuya vida termina con los almacenes de la cabecera, antes de `i++` porque el
  * original carga D_80069652 (`lui`/`lh`, 0x80045320 y 0x80045324) antes de incrementar el contador (`addiu
- * s6,s6,1`, 0x80045328); con la prueba directa sobre D_80069652 la cifra es 460 (el `addiu` queda antes del `lui`
- * y el retardo del `lh` es un `nop`). Con la lectura en `color` la carga y la comparacion salen en a2 en lugar de
- * v0 (tres operandos de la cifra pendiente). Se supone, sin verificar, que el original tiene en cada uno de esos
- * pseudos una referencia ponderada mas que no deja instruccion.
+ * s6,s6,1`, 0x80045328). La puntuacion es la misma, 525, con la prueba directa sobre D_80069652, que pone el
+ * `addiu` antes del `lui` y deja un `nop` en el retardo del `lh`; con la lectura en `color` el orden es el del
+ * original y la carga y la comparacion salen en a2 en lugar de v0. Se supone, sin verificar, que el original
+ * tiene en cada uno de esos pseudos una referencia ponderada mas que no deja instruccion.
  * La forma del fuente original que producia este reparto se desconoce.
  *
  * Residuo: el original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el
@@ -412,11 +411,12 @@ void func_80045150(EntradaLista* e)
     s32 i;
     s32 h;
     s32 color;
+    s32 intensidad;
     u32* cabeza;
 
-    /* El orden de las lecturas del glifo y del elemento, la anchura y la altura menos uno en 32 bits, la
-     * suma del color con la base al final y D_80076188 sumado tras escribir el indice de paleta son los
-     * que acercan el reparto de registros guardados al original. */
+    /* El orden de las lecturas del glifo y del elemento, la anchura y la altura menos uno en 32 bits y
+     * D_80076188 sumado tras escribir el indice de paleta son los que acercan el reparto de registros
+     * guardados al original. */
     i = 0;
     if (D_80069652 > 0) {
         do {
@@ -429,8 +429,8 @@ void func_80045150(EntradaLista* e)
             h = g->h - 1;
             func_80039CD0(D_80076188);
             if (D_8006966A != 0) {
-                color = 0x80 - ((s16)D_800694E2 >> 5);
-                color = color + (0x2C000000 + (color << 16) + (color << 8));
+                intensidad = 0x80 - ((s16)D_800694E2 >> 5);
+                color = 0x2C000000 + (intensidad << 16) + (intensidad << 8) + intensidad;
             } else {
                 color = 0x2C808080;
             }
