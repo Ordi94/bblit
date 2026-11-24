@@ -260,7 +260,10 @@ void func_800163E4(void)
  * La envoltura do/while (0) del cuerpo del `if` de la demostracion no genera codigo: pondera por un
  * nivel mas los pseudos del bloque y cambia el orden de local-alloc (`-dl`, bloque 60), que asigna
  * antes la cantidad de mayor floor_log2(R) * R / L (L en instrucciones desde que nace hasta que muere
- * en el orden de la primera planificacion). El puntero de la pila de botones (pseudo 326) forma una sola
+ * en el orden de la primera planificacion, contadas sobre el volcado; no es la cifra `across` que este
+ * imprime, 2 para el pseudo 330, con la que la comparacion no daria el reparto observado. Se supone, sin
+ * verificar en el fuente del compilador, que esa es la longitud que compara: con ella salen los registros
+ * de los dos casos). El puntero de la pila de botones (pseudo 326) forma una sola
  * cantidad con su ultimo derivado (338, el puntero menos 6, que se calcula cuando 326 muere), y los
  * derivados intermedios (330 y 334) solo viven desde su calculo hasta el almacen en D_800695B0. Sin la
  * envoltura la cantidad del puntero tiene 22 + 4 usos sobre 16 (4 * 26 / 16 = 6,5) y 330 tiene 4 sobre 1
