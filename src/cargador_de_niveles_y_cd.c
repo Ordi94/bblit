@@ -420,7 +420,7 @@ typedef struct {
  * a `libre` las referencias que le faltaban para tomar s6; con la copia `monton = libre` escrita
  * como el original (ver abajo) el par ya no cambia la cifra y no se escribe. El
  * nodo de los chunks de recursos y modelos (pseudo 95, R 340, L 528, 5,152) supera al cursor del
- * script (pseudo 91, R 1074, L 2087, 5,146) sin ninguna referencia anadida (el cursor ya no se
+ * script (pseudo 91, R 1074, L 2088, 5,144) sin ninguna referencia anadida (el cursor ya no se
  * reasigna desde `datos` al abrir el script), de modo que tampoco hace falta un par `nodo--;
  * nodo++;`.
  *
@@ -569,9 +569,10 @@ typedef struct {
  * (`addu s0,t3,zero` en 0x80042F20 y `addu s0,t4,zero` en 0x80042F78). Con la constante literal, el
  * volcado de la pasada de bucles muestra que la de la prueba de salida se saca primero del bucle
  * interior y despues el bucle exterior la funde con las demas pruebas contra 0x2E: no queda copia,
- * la salida se une con la prueba exterior y sale como `beq` mas `j`. La variable, asignada en los
- * dos bucles, no entra en esa fusion. Es una sola para los dos: con una local por bloque la cifra
- * sube. El bucle del chunk 0x47 compara con la constante, como el original.
+ * la salida se une con la prueba exterior y sale como `beq` mas `j`. Con la variable la copia se
+ * conserva (volcado de la planificacion posterior al reparto); se supone, sin verificar, que no
+ * entra en la fusion por tener mas de una asignacion. El bucle del chunk 0x47 compara con la
+ * constante, como el original.
  *
  * Entidades (chunks 0x07, 0x08 y 0x0A): la prueba de entrada del `while` de etiquetas salta a la
  * llamada a `ResolverReferenciasContenedor` que sigue al bucle (`beq` en 0x800436E0 hacia
@@ -592,7 +593,7 @@ typedef struct {
  *
  * Fuera de esos dos bucles las pruebas de fin de chunk cargan 0x2E en un temporal en cada sitio:
  * hay 34 `li` de 0x2E en el codigo generado y 35 en el original. `hijo_matriz` (pseudo 98, R 72,
- * L 2297) vive desde la entrada de la funcion porque se lee en algun camino sin asignacion previa;
+ * L 2298) vive desde la entrada de la funcion porque se lee en algun camino sin asignacion previa;
  * con la variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
