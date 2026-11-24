@@ -262,9 +262,9 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 575 con la configuracion versionada (g = 8 del archivo; ejes 53 de operando, 0 reordenadas,
- * 228 insertadas o borradas). Reserva de pila: el original reserva 0x28 (`addiu sp`
- * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 649 y con ella 575. El
+ * Pendiente: puntuacion 565 con la configuracion versionada (g = 8 del archivo; ejes 53 de operando, 0 reordenadas,
+ * 224 insertadas o borradas). Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 639 y con ella 565. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
  * (se supone, sin verificar, que el original tenia una llamada con seis palabras de argumentos que el
@@ -285,9 +285,6 @@ void func_80040430(s8* contador, u16 mascara)
  * el ensamblador del original no escribe asi, y el compilador
  * comparte la direccion de dos lecturas (una `addiu` mas). Se supone, sin verificar, que la diferencia es la marca
  * de miembro de estructura de la direccion de memoria.
- *
- * El resultado de las dos restas de `eje_y` se convierte a `s16` antes del almacen (el campo es de 16 bits): sin las
- * conversiones la cifra es 810 y con ellas 575.
  *
  * En la rama de arriba del eje Y la resta de `eje_y` va despues del almacen a botones_a. El original conserva el
  * `andi 0xff` del byte antes de la suma (0x80040908) y la resta es la primera instruccion del bloque; mientras no
@@ -523,12 +520,12 @@ normal:
         centro = ESTADO_PRINCIPAL->mando.centro_y;
         if (eje_crudo < centro - D_8006952C) {
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x1000;
-            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - (eje_crudo + 1));
+            ESTADO_PRINCIPAL->mando.eje_y = centro - (eje_crudo + 1);
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x1000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x1000;
             ESTADO_PRINCIPAL->mando.botones = ESTADO_PRINCIPAL->mando.botones | 0x1000;
         } else if (eje_crudo > centro + D_8006952C) {
-            ESTADO_PRINCIPAL->mando.eje_y = (s16)(centro - (eje_crudo + 1));
+            ESTADO_PRINCIPAL->mando.eje_y = centro - (eje_crudo + 1);
             ESTADO_PRINCIPAL->mando.botones_a = ESTADO_PRINCIPAL->mando.botones_a | 0x4000;
             ESTADO_PRINCIPAL->mando.w3E = ESTADO_PRINCIPAL->mando.w3E | 0x4000;
             ESTADO_PRINCIPAL->mando.botones_c = ESTADO_PRINCIPAL->mando.botones_c | 0x4000;

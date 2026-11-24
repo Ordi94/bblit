@@ -22,9 +22,8 @@
  *   eventos solo lo escribe.
  * - botones_a, botones_c, botones_e y botones (u16): la pausa lee botones_a con lhu; el mando
  *   escribe los cuatro con sh y el interprete lee botones con lhu.
- * - eje_x y eje_y (u16): el mando solo los escribe (sh). El interprete multiplica eje_x por el
- *   avance con lh (func_80031794 y func_800317FC) y lo lee con un cast (s16) local: declararlos s16 sube
- *   func_8004048C de 7264 a 8229 puntos.
+ * - eje_x y eje_y (s16): el mando almacena -0x80 en eje_x con `addiu` (0x80040680 y 0x800407C8, valor
+ *   con signo) y el interprete multiplica eje_x por el avance con lh (func_80031794 y func_800317FC).
  * - f16..f1E y centro_y (s16): func_80015EC0 los inicia con sh; el mando carga centro_x y
  *   centro_y como s16 (lh) para restarlos del valor crudo del analogico.
  * - r[] (u8 x 0x100): banco de registros de 8 bits de 0x80010040 que leen y escriben los eventos
@@ -40,8 +39,8 @@ typedef struct Mando {
     u16 botones_c;                 /* 0x0C: botones del cuadro que lee func_80040158 */
     u16 botones_e;                 /* 0x0E: botones del cuadro anterior, enmascarados */
     u16 botones;                   /* 0x10: botones pulsados (cero = mando ocioso) */
-    u16 eje_x;                     /* 0x12: desviacion del analogico en X (el interprete lo lee como s16) */
-    u16 eje_y;                     /* 0x14: desviacion del analogico en Y */
+    s16 eje_x;                     /* 0x12: desviacion del analogico en X (el interprete lo lee como s16) */
+    s16 eje_y;                    /* 0x14: desviacion del analogico en Y */
     s16 f16;                       /* 0x16..0x20: seis valores de 16 bits que func_80015EC0 inicia */
     s16 f18;
     s16 centro_x;                  /* 0x1A: centro del analogico en X */
