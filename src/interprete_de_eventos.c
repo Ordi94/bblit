@@ -842,7 +842,7 @@ void func_80031794(Objeto* a0, Accion* a1)
 {
     GsCOORD2PARAM* p;
     p = a0->coord.param;
-    *(u16*)((u8*)p + 0x12) += (u32)(((ACC_W4(a1) << 4) + a1->w6) * D_80069694 * (s16)ESTADO_PRINCIPAL->mando.eje_x) >> 7;
+    *(u16*)((u8*)p + 0x12) += (u32)(((ACC_W4(a1) << 4) + a1->w6) * D_80069694 * ESTADO_PRINCIPAL->mando.eje_x) >> 7;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
 
@@ -851,7 +851,7 @@ void func_800317FC(Objeto* a0, Accion* a1)
 {
     GsCOORD2PARAM* p;
     p = a0->coord.param;
-    *(u16*)((u8*)p + 0x12) += (u32)((s8)D_8006AA70[a1->w6] * D_80069694 * (s16)ESTADO_PRINCIPAL->mando.eje_x) >> 7;
+    *(u16*)((u8*)p + 0x12) += (u32)((s8)D_8006AA70[a1->w6] * D_80069694 * ESTADO_PRINCIPAL->mando.eje_x) >> 7;
     func_8001CFCC((u8*)a0 + 0x7C);
 }
 

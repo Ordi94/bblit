@@ -709,8 +709,8 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
         w->local.vx = 0;
         w->local.vy = 0;
         w->local.vz = -150;
-        D_800693E8 = D_800693E8 + (((s16)ESTADO_PRINCIPAL->mando.eje_y * 5) >> 4);
-        D_800693EA = D_800693EA + (((s16)ESTADO_PRINCIPAL->mando.eje_x * 5) >> 4);
+        D_800693E8 = D_800693E8 + ((ESTADO_PRINCIPAL->mando.eje_y * 5) >> 4);
+        D_800693EA = D_800693EA + ((ESTADO_PRINCIPAL->mando.eje_x * 5) >> 4);
         if (D_800693EA < -0x14A) {
             D_800693EA = -0x14A;
         }

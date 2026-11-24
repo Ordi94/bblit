@@ -361,8 +361,8 @@ void func_80020B90(Objeto* o)
                 if ((o->flags14 & 0x209) == 0) {
                     D_800694F4 = ratan2(D_8006D928.x - D_8006D928.vpx, D_8006D928.z - D_8006D928.vpz);
                 }
-                if ((s16)ESTADO_PRINCIPAL->mando.eje_x != 0 || ESTADO_PRINCIPAL->mando.eje_y != 0) {
-                    a = ((s16)SquareRoot0((s16)ESTADO_PRINCIPAL->mando.eje_x * (s16)ESTADO_PRINCIPAL->mando.eje_x + (s16)ESTADO_PRINCIPAL->mando.eje_y * (s16)ESTADO_PRINCIPAL->mando.eje_y) - D_8006952C) * (0x80 / D_8006952C);
+                if (ESTADO_PRINCIPAL->mando.eje_x != 0 || ESTADO_PRINCIPAL->mando.eje_y != 0) {
+                    a = ((s16)SquareRoot0(ESTADO_PRINCIPAL->mando.eje_x * ESTADO_PRINCIPAL->mando.eje_x + ESTADO_PRINCIPAL->mando.eje_y * ESTADO_PRINCIPAL->mando.eje_y) -D_8006952C) * (0x80 / D_8006952C);
                     if (a > 0x80) {
                         a = 0x80;
                     }
@@ -398,7 +398,7 @@ void func_80020B90(Objeto* o)
                         }
                         sc->tmp = ratan2((s16)sc->tmp_sv.vx, (s16)sc->tmp_sv.vz);
                         o->param.giro.u.y = sc->tmp;
-                        ang = D_800694F4 + ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
+                        ang = D_800694F4 + ratan2(ESTADO_PRINCIPAL->mando.eje_x, ESTADO_PRINCIPAL->mando.eje_y);
                         sc->tmp = sc->tmp - ang % 0x1000;
                         if (sc->tmp > 0x800) {
                             sc->tmp -= 0x1000;
@@ -414,7 +414,7 @@ void func_80020B90(Objeto* o)
                         sc->vel.z = sc->vel.z + ((sc->tmp * a) >> 11);
                     } else {
                         sc->tmp = a;
-                        a = ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
+                        a = ratan2(ESTADO_PRINCIPAL->mando.eje_x, ESTADO_PRINCIPAL->mando.eje_y);
                         if (!(sc->reg->flags0C & 0x8000)) {
                             a = (u16)D_800694F4 + a;
                         }
@@ -501,8 +501,8 @@ void func_80020B90(Objeto* o)
                 }
             }
         }
-        if ((sc->reg->flags0C & 0xC00) && ((s16)ESTADO_PRINCIPAL->mando.eje_x != 0 || ESTADO_PRINCIPAL->mando.eje_y != 0)) {
-            a = SquareRoot0((s16)ESTADO_PRINCIPAL->mando.eje_x * (s16)ESTADO_PRINCIPAL->mando.eje_x + (s16)ESTADO_PRINCIPAL->mando.eje_y * (s16)ESTADO_PRINCIPAL->mando.eje_y);
+        if ((sc->reg->flags0C & 0xC00) && (ESTADO_PRINCIPAL->mando.eje_x != 0 || ESTADO_PRINCIPAL->mando.eje_y != 0)) {
+            a = SquareRoot0(ESTADO_PRINCIPAL->mando.eje_x * ESTADO_PRINCIPAL->mando.eje_x + ESTADO_PRINCIPAL->mando.eje_y * ESTADO_PRINCIPAL->mando.eje_y);
             if (a > 0x7F) {
                 a = 0x7F;
             }

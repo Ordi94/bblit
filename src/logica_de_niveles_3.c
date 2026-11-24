@@ -1103,11 +1103,11 @@ control_por_mando:
 
 orientar_al_mando:
     t->w118 = ratan2(D_8006D928.x - D_8006D928.vpx, D_8006D928.z - D_8006D928.vpz);
-    if ((s16)ESTADO_PRINCIPAL->mando.eje_x == 0 && ESTADO_PRINCIPAL->mando.eje_y == 0) {
+    if (ESTADO_PRINCIPAL->mando.eje_x == 0 && ESTADO_PRINCIPAL->mando.eje_y == 0) {
         goto mando_en_reposo;
     }
-    t->w114 = SquareRoot0((s16)ESTADO_PRINCIPAL->mando.eje_x * (s16)ESTADO_PRINCIPAL->mando.eje_x
-                          + (s16)ESTADO_PRINCIPAL->mando.eje_y * (s16)ESTADO_PRINCIPAL->mando.eje_y);
+    t->w114 = SquareRoot0(ESTADO_PRINCIPAL->mando.eje_x * ESTADO_PRINCIPAL->mando.eje_x
+                          + ESTADO_PRINCIPAL->mando.eje_y * ESTADO_PRINCIPAL->mando.eje_y);
     t->w114 = (t->w114 - D_8006952C) * (0x80 / D_8006952C);
     if (t->w114 > 0x80) {
         t->w114 = 0x80;
@@ -1135,7 +1135,7 @@ orientar_al_mando:
     }
     t->w_a0 = ratan2(t->sE8.vx, t->sE8.vz);
     o->param.giro.u.y = t->w_a0;
-    t->w_a0 -= (t->w118 + ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y)) % 0x1000;
+    t->w_a0 -= (t->w118 + ratan2(ESTADO_PRINCIPAL->mando.eje_x, ESTADO_PRINCIPAL->mando.eje_y)) % 0x1000;
     if (t->w_a0 > 0x800) {
         t->w_a0 -= 0x1000;
     }
@@ -1166,7 +1166,7 @@ orientar_al_mando:
 giro_sin_ayudante:
     /* seguimiento sin ayudante: el giro del propio objeto converge al rumbo del mando */
     /* El original almacena el campo tres veces: el rumbo en 0x80028764, la suma en 0x80028774 y el resto en 0x80028790. */
-    t->w_a0 = ratan2((s16)ESTADO_PRINCIPAL->mando.eje_x, (s16)ESTADO_PRINCIPAL->mando.eje_y);
+    t->w_a0 = ratan2(ESTADO_PRINCIPAL->mando.eje_x, ESTADO_PRINCIPAL->mando.eje_y);
     t->w_a0 = t->w_a0 + t->w118;
     t->w_a0 = t->w_a0 % 0x1000;
     if (t->w_a0 > 0x800) {

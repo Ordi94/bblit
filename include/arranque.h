@@ -39,8 +39,8 @@ typedef struct Mando {
     u16 botones_c;                 /* 0x0C: botones del cuadro que lee func_80040158 */
     u16 botones_e;                 /* 0x0E: botones del cuadro anterior, enmascarados */
     u16 botones;                   /* 0x10: botones pulsados (cero = mando ocioso) */
-    s16 eje_x;                     /* 0x12: desviacion del analogico en X (el interprete lo lee como s16) */
-    s16 eje_y;                    /* 0x14: desviacion del analogico en Y */
+    s16 eje_x;                     /* 0x12: desviacion del analogico en X */
+    s16 eje_y;                     /* 0x14: desviacion del analogico en Y */
     s16 f16;                       /* 0x16..0x20: seis valores de 16 bits que func_80015EC0 inicia */
     s16 f18;
     s16 centro_x;                  /* 0x1A: centro del analogico en X */
