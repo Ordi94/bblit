@@ -28,11 +28,12 @@ extern void func_80039094(void);
  * Pendiente: puntuacion 20 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 6
  * insertadas o borradas). Residuo medido: (1) en la rama del paso
  * negativo del bloque de limites el original lee el campo en v0 (0x1bc), lo copia con `move v1,v0` (0x1c4) y suma sobre
- * la copia, y aqui el orden de las dos lecturas es el contrario (la primera cae en v1 y la copia en v0): en el volcado de
- * planificacion (`-dS`) la lectura que alimenta la suma queda antes que la lectura del limite alto, se supone, sin
- * verificar, porque las dos tienen la misma prioridad (2 usos y el mismo recorrido hasta el final del bloque) y el
- * desempate favorece a la de uid mayor; (2) operando simbolico `D_1F800010` del original frente a la constante 0x10 en
- * 0x6d8, mismo codigo maquina.
+ * la copia, y aqui el orden de las dos lecturas es el contrario (la primera cae en v1 y la copia en v0). Causa medida
+ * en el volcado de la primera planificacion (`-dS`): el planificador ordena el bloque de abajo arriba; el almacen del
+ * limite alto y la suma empatan en prioridad 2, el almacen gana el ultimo lugar por mayor riesgo de unidad de memoria
+ * y la suma queda delante; con eso la lectura del limite alto esta disponible un ciclo antes que la de la suma, se
+ * coloca junto a la suma y la lectura de la suma queda la primera. (2) operando simbolico `D_1F800010` del original
+ * frente a la constante 0x10 en 0x6d8, mismo codigo maquina.
  */
 /*
  * Razones de la escritura: el limite bajo del bloque de limites y el temporal de la lectura de la rama negativa usan
