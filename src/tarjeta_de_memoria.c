@@ -453,7 +453,8 @@ s32 func_800151FC(void)
  * (0x80015CCC, 0x80015CEC y 0x80015D24). Por eso el desplazamiento se pide a `DesplazamientoRanura` (en linea) y no
  * se escribe `grupo * 120` en cada direccion: el volcado `-dr` muestra que con la expresion la suma sale con el
  * producto como primer operando, `(plus 380 381)`, y con la funcion el producto llega en un registro y queda de
- * segundo, `(plus 382 377)`. En las sumas de la base (0x80015CD0, 0x80015CF0, 0x80015D28, 0x80015D50 y 0x80015D54)
+ * segundo, `(plus 382 377)`. En la entrada y en la palabra de 0x24 las dos escrituras dan la misma cifra; usan la
+ * funcion para que el desplazamiento se escriba de una sola forma. En las sumas de la base (0x80015CD0, 0x80015CF0, 0x80015D28, 0x80015D50 y 0x80015D54)
  * el original pone la suma delante de la base y aqui la base sigue delante.
  * Recorrido del directorio: el original recalcula en cada uso el desplazamiento de la ranura (tres cadenas
  * `sll 4 ; subu ; sll 3` en 0x80015CC0, 0x80015D10 y 0x80015D40) y tiene como registros propios la base del directorio (t1)
