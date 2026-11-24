@@ -21,6 +21,7 @@ typedef struct AyudaCuerpo {
 
 /* Contadores de la interfaz del estado principal (bytes sueltos de 0x80010000). */
 extern u8 D_80010042;
+extern u8 D_80010043;
 extern u8 D_80010044;
 extern u8 D_80010045;
 extern u8 D_800100F7;
@@ -422,8 +423,8 @@ void func_80037FB8(NodoLista* n)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 195 con la configuracion versionada (g = 8 del archivo; ejes 16 de
- * operando, 0 reordenadas, 62 insertadas o borradas). Todos los grupos coinciden en instrucciones;
+ * Pendiente: puntuacion 185 con la configuracion versionada (g = 8 del archivo; ejes 16 de
+ * operando, 0 reordenadas, 58 insertadas o borradas). Todos los grupos coinciden en instrucciones;
  * difiere el reparto de registros salvados de los grupos de los contadores 0xB6 (0x800382D8 a
  * 0x800383A0) y 0xBA (0x80038508 a 0x800385C4), y las marcas de operando por nombre de simbolo (el
  * original lleva D_8001013C y D_80010047 donde el C genera 0x13c(v0) y 0x47(v0), y los desplazamientos
@@ -433,12 +434,8 @@ void func_80037FB8(NodoLista* n)
  * El volcado de asignacion (`-dl`) muestra el pseudo de `e` (88) con 11 usos sobre 76 instrucciones y 3
  * llamadas cruzadas (prioridad floor_log2(R) * R / L de 3 * 11 / 76 = 0,43, por detras del puntero a la
  * pila del grupo 0xB8: 3 * 9 / 50 = 0,54, que toma s3 y deja s4 a `e`). Se supone, sin verificar, que el
- * original tiene un puntero para los grupos 0xB6 y 0xBA (s3) y otro para el 0xB8 (s4), y que el C,
- * que comparte un solo `e`, lo fuerza a un solo registro. El grupo 0xB8 exige ademas que el compilador
- * no conozca el valor de su puntero: en el volcado `-dS` la carga de 0xF9 hecha por `e` (insn 721)
- * depende de los almacenes de `ids` en la pila (665, 685, 704 y 719) porque `e` se asigna mas de una
- * vez y su valor no se da por constante, y de esa dependencia sale el orden del original (0x80038454 a
- * 0x80038464). La forma del fuente que daba dos punteros con ese orden se desconoce.
+ * original tiene un pseudo de `e` para los grupos 0xB6 y 0xBA (s3) y otro para el 0xB8 (s4), y que el C,
+ * que comparte un solo `e`, lo fuerza a un solo registro.
  * Forma vigente del C: `e = ESTADO_PRINCIPAL` se escribe antes del `if` de los grupos 0xB6 y 0xBA (dentro
  * del `if` el CSE sustituye `e` por su valor constante en las lecturas con desplazamiento y el compilador
  * rematerializa la base con un `lui` propio en cada una). Los tres bytes del contador de porcentaje se
@@ -453,11 +450,6 @@ void func_80037FB8(NodoLista* n)
  * directo a la llamada. Los elementos D_8005E836, D_8005E83E y D_8005E858 de D_8005E830 se leen por su
  * propio simbolo, declarado como arreglo incompleto (ver las tablas de arriba): el `lui` queda separado
  * de la carga y el operando lleva el nombre del ensamblador; las instrucciones del `diff` son las mismas.
- *
- * El byte de la vida que recibe la primera llamada se nombra como en el resto del archivo, por el
- * miembro `r[0x03]` del estado principal: dos de las marcas por nombre de simbolo (la carga de
- * D_80010043 antes de la primera llamada) salen de ahi; con un simbolo escalar propio la cifra de esta
- * funcion es 185, pero func_80039094 necesita el miembro (ver su cabecera).
  *
  * La funcion no lleva ninguna referencia sin codigo.
  *
@@ -478,7 +470,7 @@ void func_80037FE8(void* lista)
     s16 (*pos_b8)[2];
     EstadoPrincipal* e;
 
-    func_80038C2C(0, ESTADO_PRINCIPAL->r[0x03], 1);
+    func_80038C2C(0, D_80010043, 1);
     func_80038884(0xE, 1);
 
     bcd = ((DigitosSinConversion)func_80037D3C)((ESTADO_PRINCIPAL->r[0xFC] << 8) | ESTADO_PRINCIPAL->r[0x07]);
@@ -924,7 +916,7 @@ void func_80038E84(s32 idx, s32 paso)
  * una copia de la primera lectura y las comparaciones posteriores usan la lectura. El original, ademas
  * de esa copia, vuelve a leer D_80069525 en las tres ramas (0x80039134, 0x80039150 y 0x80039160). La
  * forma del fuente que daba la copia junto con las tres relecturas se desconoce.
- * El byte de la vida se nombra siempre como miembro del banco (`r[0x03]`, direccion 0x80010043). En el
+ * En esta funcion el byte de la vida se nombra siempre como miembro del banco (`r[0x03]`, direccion 0x80010043). En el
  * brillo el original lo carga dos veces (0x800391E0 y 0x800391F4, con `lui a0` en el hueco de retardo de
  * 0x800391F0). Leido por un simbolo escalar propio, las dos cargas son el mismo operando de memoria:
  * llegan separadas hasta el volcado `.greg` y en `.jump2` la segunda ya es una copia de registro (la
