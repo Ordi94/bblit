@@ -460,8 +460,8 @@ s32 func_800151FC(void)
  * bucle van dentro de la guardia (`i < D_80069358[0]`), la de `fila` tras la de las bases, como el preludio del original
  * (0x80015CA4 a 0x80015CB8). El relleno de 0x96 palabras avanza un puntero (`*palabras++ = 0;`): la base se carga antes de
  * `move a1,zero`, como en el original (0x80015BAC a 0x80015BB4).
- * La busqueda del final del nombre y el relleno de ceros leen la fila por copias propias (`fila_busqueda`, asignada antes de la
- * guardia de la busqueda, y `fila_relleno`, asignada dentro de la guardia del relleno): el compilador no las propaga a los
+ * La busqueda del final del nombre y el relleno de ceros leen la fila por copias propias (`fila_busqueda`, asignada antes del
+ * bucle de la busqueda, y `fila_relleno`, asignada dentro de la guardia del relleno): el compilador no las propaga a los
  * bucles y deja un `move` en el preludio de cada uno, como los `move a3,a2` del original (0x80015CE0 y 0x80015D14), con lo
  * que la cadena queda en a0. El desplazamiento de la ranura (120 bytes por indice) se escribe como
  * `grupo * 15 << 3`: las direcciones de la busqueda y del relleno suman `(j + fila)` y despues el
@@ -481,9 +481,9 @@ s32 func_800151FC(void)
  * la entrada y la palabra de 0x24 se escriben como `base + (fila + desplazamiento)`. El `move a1,v0 ; bnez a1` de la llamada de
  * formateo (el original comprueba una copia del resultado que despues compara con 1) se reproduce guardando el resultado en
  * el contador `i`, que ya vive en a1 en los bucles; la prueba de la mascara de ranuras del final del sondeo pasa por `j`
- * (v1 en el recorrido), con lo que `lw` y `andi` salen en v1 y la constante 0xE en v0. La busqueda del final del nombre se
- * escribe con guardia (`j = 0; if (nombre[j] != 0) { do { j++; } while (nombre[j] != 0); }`) como el original
- * (`beqz` a 0x80015D08 tras la primera lectura, 0x80015CDC, y el `addiu` de `j` ya en el cuerpo).
+ * (v1 en el recorrido), con lo que `lw` y `andi` salen en v1 y la constante 0xE en v0. La busqueda del final del nombre es
+ * un `while`: el compilador separa la primera prueba como guardia, igual que el original (`beqz` a 0x80015D08 tras la
+ * primera lectura, 0x80015CDC, y el `addiu` de `j` ya en el cuerpo).
  *
  * Sondeo por cuadro de la tarjeta de memoria. Primero atiende la orden pendiente del banco de registros (D_8006AA70[0xA]: 1 aceptar,
  * 2 formatear, 3 crear el archivo, 4 grabar con sonido, 5 cargar, 6 grabar) y la limpia; despues sondea con MemCardSync(1) la ultima
@@ -711,10 +711,8 @@ void SondearTarjeta(void)
                 siguiente_entrada:
                     j = 0;
                     fila_busqueda = fila;
-                    if (directorio[j + fila + (grupo * 15 << 3)] != 0) {
-                        do {
-                            j++;
-                        } while (directorio[j + fila_busqueda + (grupo * 15 << 3)] != 0);
+                    while (directorio[j + fila_busqueda + (grupo * 15 << 3)] != 0) {
+                        j++;
                     }
                     if (j < 0x14) {
                         fila_relleno = fila;
