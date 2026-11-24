@@ -250,7 +250,8 @@ void func_80032A24(void)
  *
  * Los tres do/while (0) no generan codigo: ponderan por un nivel mas las referencias de su cuerpo para que la
  * prioridad de global-alloc ordene los punteros como el original (v28 en s3, rot en s4, a0 en s5, i58 en s6):
- * v28 pasa a 11 usos ponderados (0,146), rot a 6 (0,130) y a0 a 10 (0,122), todos por encima de i58 (0,106).
+ * v28 queda con 10 usos ponderados (pseudo 134, 0,133), rot con 6 (0,130) y a0 con 10 (0,123), todos por encima de
+ * i58 (0,106); medido en los volcados `.lreg` y `.greg`.
  * La forma del fuente original que producia este reparto se desconoce.
  *
  * Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la
