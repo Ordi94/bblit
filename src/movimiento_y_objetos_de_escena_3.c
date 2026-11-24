@@ -193,7 +193,8 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
         /* Sentencia replicada: es la misma que la de las otras ramas. */
         fotogramas = c->fotogramas + dato_cuadro;
     }
-    /* v se lee antes que u y que la anchura, como el original (lbu 0x9 en 0x8001E644, lbu 0x8 en 0x8001E648). */
+    /* La coordenada v pasa por `dato_cuadro` para que su carga quede antes que la de u, como el original (lbu 0x9 en
+     * 0x8001E644, lbu 0x8 en 0x8001E648; ver la cabecera). */
     dato_cuadro = fotogramas->v;
     ancho_cuadro = fotogramas->w0C;
     desplazamiento_color = 2 - ((fotogramas->pagina >> 7) & 3);
