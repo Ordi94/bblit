@@ -442,19 +442,22 @@ s32 func_800151FC(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 535 con la configuracion versionada (g = 8 del archivo; ejes 76 de operando, 0 reordenadas,
- * 194 insertadas o borradas). Flujo, orden de instrucciones y distribucion de bloques iguales al original;
- * quedan el reparto de registros del recorrido del directorio, el orden de los dos operandos en las sumas de la base
- * (0x80015CD0, 0x80015CF0, 0x80015D28, 0x80015D50 y 0x80015D54: el original pone la suma delante de la base) y, en el
- * caso 4 del resultado del sondeo (`D_8006AA70[0x1B] = 5`, 0x80015E64 a 0x80015E70, y su `lui` en 0x80015B98), el
- * intercambio de v0 y v1. En ese bloque el volcado `-dg` da v0 a la base (pseudo 473, 3 referencias, con su parte alta
- * 474, 2) y v1 a la constante 5 (475, 2); el original los tiene al reves.
+ * Pendiente: puntuacion 560 con la configuracion versionada (g = 8 del archivo; ejes 76 de operando, 0 reordenadas,
+ * 198 insertadas o borradas). Flujo, orden de instrucciones y distribucion de bloques iguales al original;
+ * quedan el reparto de registros del recorrido del directorio, el orden de los dos operandos en las sumas de direccion
+ * del recorrido y, en el caso 4 del resultado del sondeo (`D_8006AA70[0x1B] = 5`, 0x80015E64 a 0x80015E70, y su `lui`
+ * en 0x80015B98), el intercambio de v0 y v1. En ese bloque el volcado `-dg` da v0 a la base (pseudo 463, 3
+ * referencias, con su parte alta 464, 2) y v1 a la constante 5 (465, 2); el original los tiene al reves.
+ * Orden de las sumas: en la busqueda y en el relleno el original suma `(j + fila)` o la fila con el desplazamiento
+ * detras (0x80015CCC, 0x80015CEC y 0x80015D24) y aqui el desplazamiento va delante; el volcado `-dr` muestra que con
+ * `grupo * 120` la suma sale con el producto como primer operando, `(plus 380 381)`. En las sumas de la base
+ * (0x80015CD0, 0x80015CF0, 0x80015D28, 0x80015D50 y 0x80015D54) el original pone la suma delante de la base.
  * Recorrido del directorio: el original recalcula en cada uso el desplazamiento de la ranura (tres cadenas
  * `sll 4 ; subu ; sll 3` en 0x80015CC0, 0x80015D10 y 0x80015D40) y tiene como registros propios la base del directorio (t1)
  * y la base mas 0x24 (t2). El bucle exterior se escribe con etiqueta y salto hacia atras (`siguiente_entrada`): el optimizador
  * de bucles (`-dL`) no lo recorre, de modo que las tres cadenas del desplazamiento quedan en el cuerpo y no se izan como
  * invariantes (solo se recorren los bucles interiores, el de relleno y el de bloques); con `do`/`while` dentro de la
- * guardia la puntuacion es 2145. La fila es una variable de bucle propia
+ * guardia la puntuacion es 2215. La fila es una variable de bucle propia
  * (`fila += 0x28; i++;`) y el contador es el mismo `i` de los bucles anteriores (el original usa a1 como contador de los tres
  * bucles y tambien lo toma aqui); las dos bases viven en locales (`directorio`, `sistema`) y las inicializaciones del
  * bucle van dentro de la guardia (`i < D_80069358[0]`), la de `fila` tras la de las bases, como el preludio del original
@@ -463,12 +466,7 @@ s32 func_800151FC(void)
  * La busqueda del final del nombre y el relleno de ceros leen la fila por copias propias (`fila_busqueda`, asignada antes del
  * bucle de la busqueda, y `fila_relleno`, asignada dentro de la guardia del relleno): el compilador no las propaga a los
  * bucles y deja un `move` en el preludio de cada uno, como los `move a3,a2` del original (0x80015CE0 y 0x80015D14), con lo
- * que la cadena queda en a0. El desplazamiento de la ranura (120 bytes por indice) se escribe como
- * `grupo * 15 << 3`: las direcciones de la busqueda y del relleno suman `(j + fila)` y despues el
- * desplazamiento, como en el original (0x80015CCC, 0x80015CEC y 0x80015D24). El volcado `-dr` muestra la causa: con
- * `grupo * 120` la suma sale con el producto delante, `(plus 380 381)`, y con el desplazamiento escrito como
- * corrimiento sale `(plus 381 380)`; las instrucciones de la cadena son las mismas. Con `grupo * 120` en las cinco
- * direcciones la puntuacion es 560.
+ * que la cadena queda en a0. El desplazamiento de la ranura es `grupo * 120` (120 bytes por indice) en cada uso.
  * Queda el reparto de registros de las variables del bucle exterior: la fila cae en a3 (a2 en el original), las copias de la
  * fila en a2 (a3), la base en t0 (t1) y `grupo` en t1 (t0). Volcado `-dg`: la fila tiene 7 referencias ponderadas sobre 46
  * instrucciones de vida y cada copia 3 sobre 9 y 11 (3 * 1 / 9 frente a 7 * 2 / 46), de modo que el asignador toma una copia
@@ -478,7 +476,7 @@ s32 func_800151FC(void)
  * formula del asignador.
  * Suma de la entrada del directorio: el original suma primero la fila y el desplazamiento del grupo y
  * despues las dos bases (`addu v0,a2,v0` en 0x80015D4C y `addu v1,v0,t1` y `addu v0,v0,t2` tras ella), de modo que
- * la entrada y la palabra de 0x24 se escriben como `base + (fila + desplazamiento)`. El `move a1,v0 ; bnez a1` de la llamada de
+ * la entrada y la palabra de 0x24 se escriben como `base + (fila + grupo * 120)`. El `move a1,v0 ; bnez a1` de la llamada de
  * formateo (el original comprueba una copia del resultado que despues compara con 1) se reproduce guardando el resultado en
  * el contador `i`, que ya vive en a1 en los bucles; la prueba de la mascara de ranuras del final del sondeo pasa por `j`
  * (v1 en el recorrido), con lo que `lw` y `andi` salen en v1 y la constante 0xE en v0. La busqueda del final del nombre es
@@ -493,7 +491,7 @@ s32 func_800151FC(void)
  * El argumento que pasa main se ignora.
  *
  * Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es
- * 0x30; la cifra medida sin la local es 737 y con ella 535. La funcion es pendiente: con la local la
+ * 0x30; la cifra medida sin la local es 762 y con ella 560. La funcion es pendiente: con la local la
  * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)
