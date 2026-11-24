@@ -445,20 +445,14 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
     return 0;
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 555 con la configuracion versionada (g = 8 del archivo; ejes 127 de operandos, 0 de lineas
- * reordenadas y 218 de lineas insertadas o borradas). El flujo, las macros vectoriales y las constantes coinciden.
- * Residuo: en el bloque del giro por boton `g` y `pulsado` salen con los registros intercambiados (el original tiene
- * `g` en a2 y `pulsado` en a1; ver el ultimo tramo de esta nota). El resto de diferencias es de forma simbolica, sin
- * diferencia de bytes: los accesos por `$gp` del original frente al simbolo y las dos lecturas del byte de pausa, que
- * salen como `D_8006AA70+0xc`. Ese byte se nombra en toda la funcion como miembro del banco (`D_8006AA70[0xC]`,
- * como en el prologo de func_800353B0): con el simbolo suelto cambia el reparto de la prueba de los dos bits de la
- * direccion del ajuste de altura.
+ * Notas de la camara de seguimiento. El byte de pausa se nombra en toda la funcion como miembro del banco
+ * (`D_8006AA70[0xC]`, como en el prologo de func_800353B0): con el simbolo suelto cambia el reparto de la prueba de
+ * los dos bits de la direccion del ajuste de altura.
  *
  * Razones de la escritura, con desplazamientos desde 0x80033358. La resta `i = n - 10` del final de la funcion se
  * escribe antes de la prueba de zonas: el original la calcula en el hueco de retardo del primer `beq`
- * (`addiu s0,s1,-0xa` en 0x80034D94); escrita dentro de la prueba la cifra es 675. En los bucles de las ocho sondas
+ * (`addiu s0,s1,-0xa` en 0x80034D94); escrita dentro de la prueba la cifra es 760. En los bucles de las ocho sondas
  * (modo de apuntado y seguimiento libre) `i++` va despues de la llamada a BarrerTerreno porque el original emite el
  * incremento del contador y del puntero despues de preparar los argumentos (0x498 y 0x49c). En el bloque de las
  * posiciones de la camara (0x17b0..0x1868) los tres almacenes de `v30` van tras el de `vpz`, en el orden `vx`, `vy`,
@@ -468,7 +462,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * describe la cabecera de la funcion.
  * El resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en una variable propia, `raiz`, que se asigna
  * una sola vez y de la que salen el cociente y el resto (`i = raiz / 200`, `d = raiz - i * 200`): el copiado
- * `move s1,v0` queda tras los argumentos, como en el original (con la raiz guardada en `d` la cifra es 810). Se
+ * `move s1,v0` queda tras los argumentos, como en el original (con la raiz guardada en `d` la cifra es 745). Se
  * supone, sin verificar con el volcado de planificacion, que una variable de una sola asignacion se hunde hasta su
  * primer consumidor y una de dos asignaciones queda donde esta escrita. El cuadrado de la velocidad
  * (0x15b8..0x15c4) relee `v90.vx` como el original porque el almacen de `flags80` va ANTES de calcular el cuadrado
@@ -483,10 +477,12 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * bloque de la cuenta de espera (0xed4..0xfd8) coincide con una sola cola `w->rot.vy = D_80069402` y dos
  * `goto`, como el original.
  *
- * Reparto de `g` y `pulsado` (el residuo): con el orden de instrucciones del original `g` cuenta 7 usos sobre 30
- * instrucciones (0,467), por encima de `pulsado` (4 usos sobre 18, 0,444), y `g` toma `a1` y `pulsado` `a2`, al
- * reves que el original. Se supone, sin verificar, que el original tiene una referencia ponderada mas sobre
- * `pulsado`. La forma del fuente original que producia este reparto se desconoce.
+ * Las banderas de la camara se leen en una sola variable, `banderas`, en el giro por boton y en la prueba del giro
+ * suavizado (`lhu a2,0x80(a3)` en 0x80034220): son dos valores de vida disjunta del mismo campo y el original usa
+ * `a2` en los dos (`andi a2,a0,0xffef` en 0x80033B2C). Volcado `.lreg`: con la variable compartida son 10 usos sobre
+ * 71 instrucciones (0,423), por debajo de `pulsado` (4 usos sobre 18, 0,444), de modo que `pulsado` toma `a1` y
+ * `banderas` `a2`. Con una variable para cada tramo la del giro por boton tiene 7 usos sobre 30 (0,467), se reparte
+ * antes que `pulsado` y los dos registros salen intercambiados (555).
  */
 /*
  * Acerca la altura del punto de vista a la banda [base - 0x64, base + 0x64] desplazada por p4: si queda por encima
@@ -497,9 +493,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * `w->p4` (`lw a0,0xe8(s4)` y `lw a2,0xc4(s3)`, 0x80034C40 y 0x80034C44), y escrita como variable de la funcion,
  * compartida por las tres copias y asignada tres veces, la carga de `vp` salia la primera (se supone, sin
  * verificar con el volcado de planificacion, que una variable de una sola asignacion se carga junto a su primer
- * consumidor). Con `ec` compartida el volcado de reparto (`.lreg`) daba 12 usos ponderados sobre 57 instrucciones
- * (0,62), por encima de `w->p4` (3 usos sobre 7, 0,43), y `ec` tomaba `a2` y `w->p4` `a3`, al reves que el original;
- * con `ec` local de cada copia son 4 usos sobre 38 instrucciones (0,21), `w->p4` toma `a2` y `ec` `a3`. Las tres
+ * consumidor). Con `ec` local de cada copia `w->p4` toma `a2` y `ec` `a3`, como el original. Las tres
  * copias reciben los mismos registros y el compilador sigue fundiendo la cola comun (`sra`, `addu`, `sw` en
  * 0x80034CDC) y la segunda mitad de la comprobacion (desde `subu` en 0x80034CCC): el tamano de la funcion no cambia.
  */
@@ -538,18 +532,17 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * planificador reordena, y la primera instruccion que la sigue pasa a depender de las anteriores. `c` es el pseudo
  * 97 y el almacen de las banderas es el `sh` a `0x80` del puntero a la camara.
  * (1) Carga `c = D_80069402;` de la rama del paso 0x26. Volcado `-dS`: sin la envoltura la carga no tiene ninguna
- * dependencia y se emite por encima del `ori` de las banderas (pseudo 925 = `g | 0x82`) y de su `sh`; con ella
+ * dependencia y se emite por encima del `ori` de las banderas (pseudo 924 = `banderas | 0x82`) y de su `sh`; con ella
  * depende del `ori`, tiene una antidependencia con el `sh` y queda detras, como en el original (875 sin ella). En
- * `.greg` cambian con ella `c`, de a0 a v0, y `g` y `pulsado` (pseudos 106 y 107), de a2 y a1 a a1 y a2.
- * (2) La misma carga en la rama del paso -0x26: sin la envoltura sube por encima del `ori` (pseudo 944) y del `sh`;
- * con ella queda detras con las mismas dos dependencias (855 sin ella; 1160 sin las envolturas 1 y 2). En `.greg`
- * cambian con ella `c`, de a0 a v0, el puntero a la camara (pseudo 926), de a2 a a0, y la lectura de las banderas
- * (pseudo 936), de a1 a v1.
+ * `.greg` cambia con ella `c`, de a0 a v0.
+ * (2) La misma carga en la rama del paso -0x26: sin la envoltura sube por encima del `ori` (pseudo 943) y del `sh`;
+ * con ella queda detras con las mismas dos dependencias (790 sin ella; 1160 sin las envolturas 1 y 2). En `.greg`
+ * cambia con ella `c`, de a0 a v0.
  * (3) Almacen `D_80069408 = k;` de la cola comun. El orden de `-dS` es el mismo con y sin la envoltura; el que
  * cambia es el de `-dR`: sin ella la suma `c + k` (`addu v0,v0,v1`, pseudo 946) se emite por encima del `sw` de `k`
  * (`sw v1,D_80069408`), porque las dos solo leen v1 y no hay dependencia entre ellas; con ella la suma tiene una
- * antidependencia con el `sw` y queda detras, como en el original (620 sin ella). `.greg` no cambia.
- * Con las tres la cifra es 555. La forma del fuente original que producia este reparto se desconoce.
+ * antidependencia con el `sw` y queda detras, como en el original (555 sin ella). `.greg` no cambia.
+ * Con las tres la funcion coincide. La forma del fuente original que producia este reparto se desconoce.
  */
 void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
 {
@@ -576,8 +569,7 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
     u16 c6;
     u16 f;
     u16 f1;
-    u16 f2;
-    s32 g;
+    s32 banderas;
     u16 pulsado;
     s32 pos_x;
 
@@ -743,12 +735,12 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
         return;
     }
     f = D_8006D928.flags80;
-    g = f & 0xFFEF;
+    banderas = f & 0xFFEF;
     D_800693EA = 0;
     D_800693E8 = 0;
     D_8006940C = 0;
     D_80069608 = D_80069608 & ~2;
-    D_8006D928.flags80 = g;
+    D_8006D928.flags80 = banderas;
     if ((f & 0xC00) != 0) {
         if ((f & 0x800) != 0) {
             D_8006D928.x = D_8006D928.x - ((D_8006D928.x - D_8006D928.destino_mira_x) >> 2);
@@ -814,8 +806,8 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
         func_80032A24();
         return;
     }
-    g = g & 0xA3E7;
-    D_8006D928.flags80 = g;
+    banderas = banderas & 0xA3E7;
+    D_8006D928.flags80 = banderas;
     D_80069408 = 0;
     pulsado = D_8001000A;
     /* Mismo byte que D_8006AA7C, leido como miembro del banco D_8006AA70 igual que en el prologo de func_800353B0. */
@@ -848,8 +840,8 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
             }
             D_8006D9B8[0] = NULL;
         } else {
-            if ((pulsado & 1) != 0 && (pulsado & 2) == 0 && (g & 0x8000) == 0) {
-                D_8006D928.flags80 = g | 0x82;
+            if ((pulsado & 1) != 0 && (pulsado & 2) == 0 && (banderas & 0x8000) == 0) {
+                D_8006D928.flags80 = banderas | 0x82;
                 do {
                     c = D_80069402;
                 } while (0);
@@ -904,8 +896,8 @@ aplicar_giro:
     if (D_800693F4 > 0) {
         D_800693F4 = cuenta - 1;
     }
-    f2 = D_8006D928.flags80;
-    if ((f2 & 2) == 0) {
+    banderas = D_8006D928.flags80;
+    if ((banderas & 2) == 0) {
         if (D_800693F4 == 0 || reiniciar != 0) {
             ang = o->param.giro.rotate.vy + 0x800;
             i = ang % 0x1000;
@@ -928,7 +920,7 @@ aplicar_giro:
             if (i != 0) {
                 w->rot.vy = crumbo + i;
             } else {
-                D_8006D928.flags80 = f2 | 2;
+                D_8006D928.flags80 = banderas | 2;
             }
         }
         if ((D_8006D9A8[0] & 2) == 0) {
@@ -936,14 +928,15 @@ aplicar_giro:
         }
     }
     /*
-     * Una sola copia de la lectura del giro, alcanzada por dos caminos: la prueba de f2 antes del bloque
+     * Una sola copia de la lectura del giro, alcanzada por dos caminos: la prueba de `banderas` antes del bloque
      * (el original salta a ella con `bnez` en 0x8003422C hacia 0x80034318, sin recalcular el bit) y el final
      * del bloque cuando el byte D_8006D9A8 lo tiene (`beqz` en 0x80034310 hacia la escritura contraria, que
-     * queda tras la lectura). `f2` es el valor de las banderas previo al bloque: el bloque escribe
+     * queda tras la lectura). `banderas` es el valor previo al bloque: el bloque escribe
      * `D_8006D928.flags80` sin actualizarlo, de modo que la cola compartida es equivalente a la condicion
-     * compuesta en las cuatro combinaciones de `f2 & 2` y del byte (con `f2 & 2` activo se salta el bloque y se
+     * compuesta en las cuatro combinaciones del bit 2 y del byte (con el bit activo se salta el bloque y se
      * llega a la lectura igual que con el byte activo; con ambos inactivos el bloque termina en `guardar_giro`).
-     * Escrito como `if ((f2 & 2) != 0 || byte) {...} else {...}` el compilador vuelve a calcular `f2 & 2` en la union y emite una prueba de mas por cada camino del bloque.
+     * Escrito como `if ((banderas & 2) != 0 || byte) {...} else {...}` el compilador vuelve a calcular la mascara en
+     * la union y emite una prueba de mas por cada camino del bloque.
      */
     w->rot.vy = D_80069402;
     goto fin_giro;
@@ -991,7 +984,7 @@ fin_giro:
         /*
          * El original carga la posicion x del objeto (`lw v1,0xE4(s4)`, 0x8003453C) junto con la altura
          * del punto de vista, antes del primer almacen a `v70` (0x80034540); sin la local el
-         * planificador la carga tras ese almacen y la cifra sube de 555 a 1065.
+         * planificador la carga tras ese almacen y la cifra es 1000.
          */
         pos_x = o->param.trans.vx;
         w->v70.vy = D_8006D928.vpy;
@@ -1170,9 +1163,6 @@ fin_giro:
     D_8006D928.flags80 = D_8006D928.flags80 & 0xFF7F;
 }
 #undef ALTURA_CAMARA
-#else
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", ActualizarCamaraSeguimiento);
-#endif
 
 /* Al dar de baja un objeto, libera a los que lo tenian como padre (p70) y deshace los enlaces cruzados. */
 void func_80034E7C(Objeto* o)
