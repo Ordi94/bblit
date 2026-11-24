@@ -149,7 +149,7 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * con `-dS`: sin ella la carga del puntero crudo (pseudo 128, insn 99) y la del campo 0x0E (insn 104) suben por
  * delante de la suma de +0 (insn 79, pseudo 84), de la que no dependen; con ella las dos (insn 103 y 108) quedan
  * detras, y la carga del campo queda delante de la suma de +2 (insn 98, pseudo 127). En `-dl` y `-dg`, sin y con la
- * envoltura: el crudo pasa de 3 usos sobre 8 instrucciones, en a3, a 6 sobre 6, en v0; el campo (pseudo 91), de t0 a
+ * envoltura: el crudo pasa de 3 usos ponderados, en a3, a 6, en v0; el campo (pseudo 91), de t0 a
  * a3; la constante 2 (pseudo 113), de t1 a t0; y el puntero al sprite (pseudo 83), de a3 a v1; los cuatro como el
  * original. Sin la envoltura la puntuacion es 870. El primer almacen va dentro de ella: con el detras la puntuacion
  * es 270. El cuerpo es codigo real de la funcion, sin `break` ni `continue`. Se supone, sin verificar, que lo que
