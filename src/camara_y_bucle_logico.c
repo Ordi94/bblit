@@ -1387,12 +1387,14 @@ void func_80035244(void)
  * 0x80035540 y `addiu s4` en 0x8003553C, con -3 en s3). Sin el par la cifra es 280 y con el 235. La forma del
  * fuente original que producia este reparto se desconoce.
  *
- * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
- * asigna el reparto global a `a0` y la recarga lo mueve despues a `t7` ("Spilling reg 15" para esa insn en el
- * volcado de la recarga); el original lo tiene en `a3`. Es la unica diferencia de bytes que queda, y es el registro
- * de recarga: se supone, sin verificar en el fuente del compilador, que la recarga evita los registros nombrados en
- * la lista de destruidos de `GEO_DISTANCIA_APROX_A`. El cuerpo de la macro escribe `$7` (`addu $7,$10,$0`), de modo
- * que la lista completa se conserva. La busqueda del modelo copia el limite (`lim`) en una local propia dentro del
+ * La diferencia de bytes que queda es el registro de recarga: el original usa `a3` y aqui sale `t7`. En el volcado
+ * `.lreg` el operando de la macro de SetRotMatrix del prologo (insn 91) es la constante `D_80076130`, sin pseudo; en
+ * `.greg` la recarga pide un registro para esa insn ("Need 1 reg of class GR_REGS", "Spilling reg 15") y la carga en
+ * `t7` con las insns que ella misma anade. En esta funcion el RTL solo nombra `$7` en la lista de destruidos de
+ * `GEO_DISTANCIA_APROX_A`: se supone, sin verificar en el fuente del compilador, que por eso la recarga no elige
+ * `a3`. El cuerpo de la macro escribe `$7` (`addu $7,$10,$0`), de modo que la lista completa se conserva.
+ *
+ * La busqueda del modelo copia el limite (`lim`) en una local propia dentro del
  * bloque, como el original, que rellena con esa copia el hueco del `beqz` de la primera comparacion
  * (`addu a1,v1,zero` en 0x800357D4); sin `lim` la cifra es 375.
  *
