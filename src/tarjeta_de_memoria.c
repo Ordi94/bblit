@@ -474,7 +474,10 @@ s32 func_800151FC(void)
  * Queda el reparto de registros de las variables del bucle exterior: la fila cae en a3 (a2 en el original), las copias de la
  * fila en a2 (a3), la base en t0 (t1) y `grupo` en t1 (t0). Volcado `-dg`: la fila tiene 7 referencias ponderadas sobre 46
  * instrucciones de vida y cada copia 3 sobre 9 y 11 (3 * 1 / 9 frente a 7 * 2 / 46), de modo que el asignador toma una copia
- * antes que la fila; la base (8 sobre 96) se toma antes que `grupo` (7 sobre 100). La copia de la busqueda va delante
+ * antes que la fila; la base (8 sobre 96) se toma antes que `grupo` (7 sobre 100). Esas dos vidas estan duplicadas: el
+ * volcado `-df` da 54 y 52 instrucciones y `.lreg` 100 y 96, porque `local-alloc` dobla la vida de un pseudo asignado
+ * una sola vez con un valor invariante (`grupo` recibe 0 y la base, un simbolo). Segun la formula, con la mitad de vida
+ * `grupo` (7 sobre 50) pasaria delante de la base; no se conoce la forma del fuente que lo producia. La copia de la busqueda va delante
  * de la primera lectura del nombre hasta el combinador (`.combine`) y el primer planificador (`.sched`) la deja
  * detras, con 9 instrucciones de vida; con 10, su prioridad (0,300) quedaria bajo la de la fila (0,304), segun la
  * formula del asignador.
