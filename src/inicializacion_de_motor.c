@@ -406,6 +406,7 @@ void func_80045150(EntradaLista* e)
     s32 h;
     s32 color;
     s32 intensidad;
+    s32 cantidad;
     u32* cabeza;
 
     /* El orden de las lecturas del glifo y del elemento, la anchura y la altura menos uno en 32 bits y
@@ -460,10 +461,11 @@ void func_80045150(EntradaLista* e)
             do {
                 e++;
             } while (0);
+            cantidad = D_80069652;
             do {
                 i++;
             } while (0);
-        } while (i < D_80069652);
+        } while (i < cantidad);
     }
 }
 #else
