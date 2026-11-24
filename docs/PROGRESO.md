@@ -9,30 +9,30 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 418 | 140172 |
+| Código del juego | 450 | 201416 | 422 | 151072 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 140172 de 201416 (69.59 %).
-Funciones marcadas `NON_MATCHING`: 15.
-Coherencia con el ensamblador: correcta (684 `glabel` en `asm/` + 418 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 151072 de 201416 (75.00 %).
+Funciones marcadas `NON_MATCHING`: 11.
+Coherencia con el ensamblador: correcta (680 `glabel` en `asm/` + 422 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
 | Subsistema | Archivos | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |
 |---|---:|---:|---:|---:|---:|---:|
-| arranque_y_bucle_principal | 1 | 9 | 1 | 0 | 1364 | 3404 |
+| arranque_y_bucle_principal | 1 | 10 | 0 | 0 | 3404 | 3404 |
 | audio_xa_y_spu | 1 | 37 | 0 | 0 | 8220 | 8220 |
-| camara_y_bucle_logico | 1 | 8 | 3 | 0 | 2712 | 14576 |
+| camara_y_bucle_logico | 1 | 9 | 2 | 0 | 9660 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 8 | 1 | 2 | 1772 | 14264 |
 | colision_y_terreno | 1 | 4 | 0 | 0 | 12480 | 12480 |
-| entrada_de_mando | 1 | 5 | 1 | 0 | 1260 | 2784 |
+| entrada_de_mando | 1 | 6 | 0 | 0 | 2784 | 2784 |
 | gestion_y_dibujo_de_objetos | 4 | 32 | 2 | 8 | 12652 | 18624 |
 | graficos_y_gte | 3 | 19 | 0 | 0 | 11812 | 11812 |
 | inicializacion_de_motor | 1 | 11 | 1 | 4 | 4484 | 5276 |
 | interprete_de_eventos | 1 | 195 | 0 | 2 | 11788 | 11900 |
 | logica_de_niveles | 3 | 19 | 2 | 0 | 38144 | 60648 |
 | manejadores_por_tabla | 1 | 12 | 0 | 0 | 384 | 384 |
-| menus_e_interfaz | 1 | 24 | 2 | 1 | 11940 | 13644 |
+| menus_e_interfaz | 1 | 25 | 1 | 1 | 12328 | 13644 |
 | movimiento_y_objetos_de_escena | 3 | 26 | 1 | 0 | 17996 | 18284 |
 | tarjeta_de_memoria | 1 | 9 | 1 | 0 | 3164 | 5116 |
 
@@ -40,13 +40,13 @@ Coherencia con el ensamblador: correcta (684 `glabel` en `asm/` + 418 en C = 110
 
 | Archivo | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |
 |---|---:|---:|---:|---:|---:|
-| `src/arranque_y_bucle_principal_2.c` | 9 | 1 | 0 | 1364 | 3404 |
+| `src/arranque_y_bucle_principal_2.c` | 10 | 0 | 0 | 3404 | 3404 |
 | `src/audio_xa_y_spu.c` | 37 | 0 | 0 | 8220 | 8220 |
-| `src/camara_y_bucle_logico.c` | 8 | 3 | 0 | 2712 | 14576 |
+| `src/camara_y_bucle_logico.c` | 9 | 2 | 0 | 9660 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 8 | 1 | 0 | 1772 | 13592 |
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 0 | 2 | 0 | 672 |
 | `src/colision_y_terreno.c` | 4 | 0 | 0 | 12480 | 12480 |
-| `src/entrada_de_mando.c` | 5 | 1 | 0 | 1260 | 2784 |
+| `src/entrada_de_mando.c` | 6 | 0 | 0 | 2784 | 2784 |
 | `src/gestion_y_dibujo_de_objetos.c` | 15 | 0 | 0 | 3812 | 3812 |
 | `src/gestion_y_dibujo_de_objetos_2.c` | 10 | 2 | 8 | 4632 | 10604 |
 | `src/gestion_y_dibujo_de_objetos_3.c` | 1 | 0 | 0 | 564 | 564 |
@@ -60,7 +60,7 @@ Coherencia con el ensamblador: correcta (684 `glabel` en `asm/` + 418 en C = 110
 | `src/logica_de_niveles_2.c` | 3 | 0 | 0 | 2016 | 2016 |
 | `src/logica_de_niveles_3.c` | 15 | 2 | 0 | 16248 | 38752 |
 | `src/manejadores_por_tabla.c` | 12 | 0 | 0 | 384 | 384 |
-| `src/menus_e_interfaz.c` | 24 | 2 | 1 | 11940 | 13644 |
+| `src/menus_e_interfaz.c` | 25 | 1 | 1 | 12328 | 13644 |
 | `src/movimiento_y_objetos_de_escena.c` | 4 | 0 | 0 | 2116 | 2116 |
 | `src/movimiento_y_objetos_de_escena_2.c` | 15 | 0 | 0 | 6336 | 6336 |
 | `src/movimiento_y_objetos_de_escena_3.c` | 7 | 1 | 0 | 9544 | 9832 |
@@ -68,21 +68,17 @@ Coherencia con el ensamblador: correcta (684 `glabel` en `asm/` + 418 en C = 110
 
 ## Funciones `NON_MATCHING`
 
-- `ActualizarCamaraSeguimiento`: Pendiente: puntuacion 555 con la configuracion versionada (g = 8 del archivo; ejes 127 de operandos, 0 de lineas reordenadas y 218 de lineas insertadas o borradas). El flujo, las macros vectoriales y las constantes coinciden. Residuo: en el bloque del giro por boton `g` y `pulsado` salen con los registros intercambiados (el original tiene `g` en a2 y `pulsado` en a1; ver el ultimo tramo de esta nota). El resto de diferencias es de forma simbolica, sin diferencia de bytes: los accesos por `$gp` del original frente al simbolo y las dos lecturas del byte de pausa, que salen como `D_8006AA70+0xc`.
-- `CargarContenedor`: Pendiente: puntuacion 4963 con la configuracion versionada (g = 8 del archivo; ejes 292 de operandos, 8 de lineas reordenadas y 534 de lineas insertadas o borradas). La cifra incluye palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de caso del de su tabla. Medido: el codigo generado tiene 2951 instrucciones y el original 2955; la diferencia son cuatro copias de registro (`move`) que el original conserva y el C no emite (0x80041CDC, 0x80042F20, 0x80042F78 y
-- `LogicaObjetoMovil`: Pendiente: puntuacion 20 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 6 insertadas o borradas). Residuo medido: (1) en la rama del paso negativo del bloque de limites el original lee el campo en v0 (0x1bc), lo copia con `move v1,v0` (0x1c4) y suma sobre la copia, y aqui el orden de las dos lecturas es el contrario (la primera cae en v1 y la copia en v0): en el volcado de planificacion (`-dS`) la lectura que alimenta la suma queda antes que la lectura del limite alto, se supone, sin verificar, porque las dos tienen la misma prioridad (2 usos y el mismo 
-- `SondearTarjeta`: Pendiente: puntuacion 560 con la configuracion versionada (g = 8 del archivo; ejes 76 de operando, 0 reordenadas, 198 insertadas o borradas). Flujo, orden de instrucciones y distribucion de bloques iguales al original; quedan permutaciones de registros temporales (v0/v1) en el bloque de la orden de grabar con sonido (base de D_8006AA70 y constante 5 del caso 4 del sondeo) y el reparto de registros del recorrido del directorio. Recorrido del directorio: el original recalcula en cada uso el desplazamiento de la ranura (tres cadenas `sll 4 ; subu ; sll 3` en 0x80015CC0, 0x80015D10 y 0x80015D40) y
-- `func_8001E600`: Pendiente: puntuacion 190 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 60 insertadas o borradas). Mismos accesos y almacenes que el original. Ya igual al original: la cabecera (tabla de fotogramas leida en la reunion de las ramas, `lw v1,0x20(t3)` en 0x30 con `nop` en el hueco del `j`), la constante 2 al abrir el grupo de lecturas (`li t0,2`, 0x3c), la pagina en v1 y el orden de las cadenas aritmeticas, la lectura tardia del puntero crudo en v0 con el campo 0x0E entre ella y la suma del puntero al sprite, esa suma antes del primer almacen, las cadenas 
+- `CargarContenedor`: Pendiente: puntuacion 3888 con la configuracion versionada (g = 8 del archivo; ejes 306 de operandos, 2 de lineas reordenadas y 448 de lineas insertadas o borradas). La cifra incluye palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de caso del de su tabla. Medido: el codigo generado tiene 2953 instrucciones y el original 2955; la diferencia son dos copias de registro (`move`) que el original conserva delante de una prueba y el C no emite (0x80041CDC y 0x80
+- `LogicaObjetoMovil`: Pendiente: puntuacion 20 con la configuracion versionada (g = 8 del archivo; ejes 0 de operando, 0 reordenadas, 6 insertadas o borradas). Residuo medido: (1) en la rama del paso negativo del bloque de limites el original lee el campo en v0 (0x1bc), lo copia con `move v1,v0` (0x1c4) y suma sobre la copia, y aqui el orden de las dos lecturas es el contrario (la primera cae en v1 y la copia en v0). Causa medida en el volcado de la primera planificacion (`-dS`): el planificador ordena el bloque de abajo arriba; el almacen del limite alto y la suma empatan en prioridad 2, el almacen gana el ultimo 
+- `SondearTarjeta`: Pendiente: puntuacion 535 con la configuracion versionada (g = 8 del archivo; ejes 76 de operando, 0 reordenadas, 194 insertadas o borradas). Flujo, orden de instrucciones y distribucion de bloques iguales al original; quedan el reparto de registros del recorrido del directorio, el orden de los dos operandos en las sumas de la base (0x80015CD0, 0x80015CF0, 0x80015D28, 0x80015D50 y 0x80015D54: el original pone la suma delante de la base) y, en el caso 4 del resultado del sondeo (`D_8006AA70[0x1B] = 5`, 0x80015E64 a 0x80015E70, y su `lui` en 0x80015B98), el intercambio de v0 y v1. En ese bloque 
+- `func_8001E600`: Pendiente: puntuacion 140 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas, 52 insertadas o borradas). Mismos accesos y almacenes que el original y las instrucciones en su mismo orden: lo que queda son nombres de registro. (1) El numero de cuadro toma a2 en 0x8001E610, 0x8001E62C y 0x8001E634 (v0 en el original). (2) La constante 2 toma a3 (t0 en el original), el objeto t0 (a3), el puntero al sprite t0 (v1), el campo 0x0E a2 (a3) y la suma de +2 v1 (a2). Causa medida con `-dl` y `-dg`: el pseudo de `dato_cuadro` (86) es global y la asignacion local, que va 
 - `func_80026FEC`: Pendiente: puntuacion 780 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas, 167 insertadas o borradas). Los registros guardados coinciden con el original. Aparte de las diferencias de operando de forma simbolica (`%gp_rel(D_...)`, `%lo(D_1F800030)`, `%hi(D_80010012)` y `%lo(D_8006AA70+0x1)` en los dos almacenes que el ensamblador del original nombra D_8006AA71, 0x80027134 y 0x8002A82C: mismo codigo maquina), el residuo son cinco causas. (1) La constante 0x1000 de los tres bloques de escala sale en t4 y el original la tiene en t7, y en el almacen posterior
 - `func_80032B2C`: Pendiente: puntuacion 30 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y el reparto de los registros coinciden; difiere solo el orden de dos cargas contiguas de la cadena de pruebas: el original carga v28.vy (`lh a0,0x2a(s0)`, 0x80032E00) antes que max.vy (`lh a2,0x52(a1)`, 0x80032E04) y GCC las emite al reves. La prueba se escribe `max.vy < v28.vy` y no `v28.vy > max.vy`: con la segunda max.vy se carga despues de v28.vy (como el original) pero el valor pasa a 7 usos ponderados sobre 8 instrucciones (1,75), supera al objeto en curso (pseudo 143, 14 usos 
-- `func_800353B0`: Pendiente: puntuacion 345 con la configuracion versionada (g = 8 del archivo): 91 diferencias de operando, 0 lineas reordenadas y 95 insertadas o borradas. El flujo coincide salvo el `nop` del hueco de retardo de 0x800357D4 (la copia del limite de la busqueda del modelo, ver abajo). Quedan diferencias de registros y de forma simbolica: (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las diferencias). La lista de destruidos de `GEO_DISTANCIA_APROX` declara `$7`, que su cuerpo escribe; la lista es completa y se conserva. Se supone, sin verificar, que por eso la recar
+- `func_800353B0`: Pendiente: puntuacion 235 con la configuracion versionada (g = 8 del archivo): 93 diferencias de operando, 0 lineas reordenadas y 88 insertadas o borradas. El flujo coincide. Quedan diferencias de registros y de forma simbolica: (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las diferencias); (2) el byte D_8006AA7C que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc`, y las direcciones del scratchpad que el desensamblado del original nombra como simbolos (los mismos bytes). La atenuacion sigue el flujo del original: el original tiene una sola llama
 - `func_80037FE8`: Pendiente: puntuacion 185 con la configuracion versionada (g = 8 del archivo; ejes 16 de operando, 0 reordenadas, 58 insertadas o borradas). Todos los grupos coinciden en instrucciones; difiere el reparto de registros salvados de los grupos de los contadores 0xB6 (0x800382D8 a 0x800383A0) y 0xBA (0x80038508 a 0x800385C4), y las marcas de operando por nombre de simbolo (el original lleva D_8001013C y D_80010047 donde el C genera 0x13c(v0) y 0x47(v0), y los desplazamientos D_800100F6 a D_800100FA sobre una base compartida con el puntero de estado). En esos dos grupos el original guarda el punter
-- `func_80039094`: Pendiente: puntuacion 565 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas, 103 insertadas o borradas). Coinciden la estructura, los desplazamientos y los simbolos; las barras 3 y 7, los cuatro temporizadores y las pruebas del prologo coinciden en instrucciones y registros (quedan las marcas de operando por nombre de simbolo). Difiere solo el reparto de registros de dos bloques de la barra 0: (1) tras la comparacion con el valor de la vida: el original deja la base de 0x80010000 en a1 y copia el valor mostrado a a0 con `move a0,v1` en el hueco de retardo d
-- `func_8003AE08`: Pendiente: puntuacion 300 con la configuracion versionada (ejes 2 de operando, 0 reordenadas, 18 insertadas o borradas). Dos causas. (1) La carga de `puntos[8]` de la guarda del segundo paquete sale por delante del avance del cursor, en el hueco que el original deja vacio tras releer D_80076188; el original la hace despues de almacenar el cursor (`lw v0,0x20(s0)`, 0x8003AEC0). Se supone, sin verificar, que el planificador la adelanta porque no considera que el acceso indexado pueda ser alias del escalar D_80076188. (2) El reparto de v0 y v1 del segundo paquete: el original carga los puntos 6 y
-- `func_8003AF8C`: Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo; ejes 12 de operando, 0 reordenadas, 68 insertadas o borradas). El residuo es de nombres de registro. (1) El recorte de la direccion del primitivo a 24 bits: el original emite `sll` y `sra` consecutivos sobre a1 (0x8003B218 y 0x8003B21C), tras los almacenes de la palabra de ordenacion (0x8003B210) y del color (0x8003B214); aqui el temporal del `sll` cae en v0 y el `sra` escribe en a1 desde v0. (2) El original tiene el brillo y el color en a3, el desplazamiento y la palabra de ordenacion en a2, las direcciones de las p
-- `func_8004048C`: Pendiente: puntuacion 575 con la configuracion versionada (g = 8 del archivo; ejes 53 de operando, 0 reordenadas, 228 insertadas o borradas). Reserva de pila: el original reserva 0x28 (`addiu sp` en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 649 y con ella 575. El original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio (se supone, sin verificar, que el original tenia una llamada con seis palabras de argumentos
-- `func_80045150`: Pendiente: puntuacion 525 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0 reordenadas, 21 insertadas o borradas). Residuo: la copia del puntero a la primitiva (ver el ultimo parrafo); en el bloque del color, la intensidad sale en a0 y el original la tiene en el mismo registro que el color, a2 (`subu a2,v1,v0`, 0x800451F4, y `addu a2,a2,a0`, 0x80045210); y en la cola del bucle el original llena el hueco de retardo de la carga de D_80069652 (`lh`, 0x80045324) con el incremento del contador (`addiu s6,s6,1`, 0x80045328), mientras este C lo emite antes del `lui` y deja un
-- `main`: Pendiente: puntuacion 310 con la configuracion versionada (g = 8 del archivo; ejes 48 de operando, 0 reordenadas, 106 insertadas o borradas). Difieren en bytes los registros de las cuatro lecturas con decremento de la pila de botones del ciclo de demostracion: el original lleva el puntero en v0 (`lw v0` en 0x80016B50) y el primer valor en v1 (`lhu v1,0(v0)` en 0x80016B58), y este C los intercambia en toda la cadena; el orden de las instrucciones es el del original. En el volcado de local-alloc (`-dl`, bloque 60) el puntero (pseudo 326, 22 usos sobre 16 instrucciones) toma v1 y el primer valor 
+- `func_80039094`: Pendiente: puntuacion 295 con la configuracion versionada (g = 8 del archivo; ejes 73 de operando, 0 reordenadas, 112 insertadas o borradas). Todas las instrucciones coinciden en numero; quedan las marcas de operando por nombre de simbolo y siete lineas de registro en un bloque de la barra 0, tras la comparacion con el valor de la vida: el original deja la base de 0x80010000 en a1 y copia el valor mostrado a a0 con `move a0,v1` en el hueco de retardo de 0x800390F4; el C copia la base a a0 en esa posicion y compara con v1. En el volcado `.cse` la asignacion `mostrado = D_80069525` es una copia 
+- `func_8003AF8C`: Pendiente: puntuacion 40 con la configuracion versionada (g = 8 del archivo; ejes 14 de operando, 0 reordenadas, 14 insertadas o borradas). El residuo es de nombres de registro, en dos puntos. (1) El brillo: el original lo calcula en a3, el registro del color (`subu a3,v1,v0`, 0x8003AFF4, y `addu a3,a3,v0`, 0x8003B008); aqui es un pseudo local de su bloque (4 usos sobre 5 instrucciones) y toma v1. Se supone, sin verificar, que en el original no era un pseudo local. (2) El recorte de la direccion del primitivo a 24 bits: el original emite `sll` y `sra` sobre a1 (0x8003B218 y 0x8003B21C) y aqui 
+- `func_80045150`: Pendiente: puntuacion 505 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0 reordenadas, 18 insertadas o borradas). Residuo: la copia del puntero a la primitiva (ver el ultimo parrafo) y el bloque del color, donde la constante 0x80 y la intensidad salen las dos en a0 y el original carga la constante en v1 y deja la intensidad en el mismo registro que el color, a2 (`subu a2,v1,v0`, 0x800451F4, y `addu a2,a2,a0`, 0x80045210). En el volcado de reparto (`-dl`, `-dg`) la intensidad es un pseudo local de la rama, atado al de la constante, y el color un pseudo global que toma 
 
 ## Rutinas manuscritas (siguen en ensamblador por diseño)
 
