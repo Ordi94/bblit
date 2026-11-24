@@ -348,14 +348,20 @@ typedef struct CabeceraPrimitiva {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 525 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
- * reordenadas, 21 insertadas o borradas). Residuo: la copia del puntero a la primitiva (ver el ultimo
- * parrafo); en el bloque del color, la intensidad sale en a0 y el original la tiene en el mismo registro que
- * el color, a2 (`subu a2,v1,v0`, 0x800451F4, y `addu a2,a2,a0`, 0x80045210); y en la cola del bucle el
- * original llena el hueco de retardo de la carga de D_80069652 (`lh`, 0x80045324) con el incremento del
- * contador (`addiu s6,s6,1`, 0x80045328), mientras este C lo emite antes del `lui` y deja un `nop`. La
+ * Pendiente: puntuacion 505 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
+ * reordenadas, 18 insertadas o borradas). Residuo: la copia del puntero a la primitiva (ver el ultimo
+ * parrafo) y el bloque del color, donde la constante 0x80 y la intensidad salen las dos en a0 y el original
+ * carga la constante en v1 y deja la intensidad en el mismo registro que el color, a2 (`subu a2,v1,v0`,
+ * 0x800451F4, y `addu a2,a2,a0`, 0x80045210). En el volcado de reparto (`-dl`, `-dg`) la intensidad es un
+ * pseudo local de la rama, atado al de la constante, y el color un pseudo global que toma a2. La
  * intensidad va en su propia local y el color se compone en una sola sentencia, con la base primero y la
- * intensidad al final, que da el arbol de sumas del original (0x80045204 a 0x80045210).
+ * intensidad al final (0x80045204 a 0x80045210).
+ *
+ * La cuenta de entradas se lee en `cantidad` antes de incrementar el contador: el original llena el hueco
+ * de retardo de la carga de D_80069652 (`lh`, 0x80045324) con `addiu s6,s6,1` (0x80045328). Con la
+ * comparacion escrita directamente contra el global, el volcado de la segunda planificacion (`-dR`) muestra
+ * que la carga depende del incremento a traves de la nota de bucle de la envoltura de `i++` y no puede
+ * quedar delante; la puntuacion sube entonces a 525.
  *
  * La primitiva se escribe por miembros de POLY_FT4: el compilador marca un acceso por miembro como
  * acceso a estructura y no lo trata como posible alias de los globales escalares (D_80076188,
@@ -373,15 +379,13 @@ typedef struct CabeceraPrimitiva {
  * Reparto de registros guardados (coincide con el original: x s0, y s1, u s2, v s3, entrada `e` s5, contador s6,
  * anchura s7 y altura s8). Tres envolturas `do { } while (0)` no generan codigo y suben la prioridad
  * (R usos ponderados, L vida, prioridad floor_log2(R) * R / L) de los pseudos que se disputaban los registros.
- * Medido en el volcado del estado final: x 8/47 = 0,511, y 9/55 = 0,491, u y v 8/52 = 0,462, entrada `e` 11/95 =
- * 0,347, contador 9/94 = 0,287, anchura 6/46 = 0,261 y altura 7/56 = 0,250. Sin las envolturas de `e` y del
- * contador serian `e` 9/95 = 0,284 y contador 7/94 = 0,149. (1) `p->y3 = y + h;` sube y a 9 usos (por delante de
- * u y v, que tienen 8/52 = 0,462; sin ella y tiene 8 usos, 8/55 = 0,436) y la altura de 6 a 7.
- * (2) `e++;` sube `e` de 9 a 11 usos, por delante del contador. (3) `i++;` sube el contador de 7 a 9, por delante
- * de la anchura y la altura. Con `u` declarada antes que `v` (los empates de prioridad se deciden por el numero
- * de pseudo) x, y, u y v quedan en s0 a s3 como el original y el planificador no mueve ninguna suma. Sin la
- * envoltura (1) la puntuacion sube a 615, sin la (2) a 718 y sin la (3) a 736. Se supone, sin verificar,
- * que el original tiene en cada uno de esos pseudos una referencia ponderada mas que no deja instruccion.
+ * Medido en el volcado de reparto del estado final: x 8/48 = 0,500, y 9/55 = 0,491, u 8/51 = 0,471, v 8/52 =
+ * 0,462, entrada `e` 11/95 = 0,347, contador 9/94 = 0,287, anchura 6/46 = 0,261 y altura 7/56 = 0,250.
+ * (1) `p->y3 = y + h;` sube y a 9 usos, por delante de u y v (sin ella y tiene 8/55 = 0,436), y la altura de
+ * 6 a 7. (2) `e++;` sube `e` de 9 a 11 usos, por delante del contador (sin ella 9/95 = 0,284). (3) `i++;` sube
+ * el contador de 7 a 9, por delante de la anchura y la altura (sin ella 7/94 = 0,149). Sin la envoltura (1)
+ * la puntuacion sube a 595, sin la (2) a 568 y sin la (3) a 586. Se supone, sin verificar, que el original
+ * tiene en cada uno de esos pseudos una referencia ponderada mas que no deja instruccion.
  * La forma del fuente original que producia este reparto se desconoce.
  *
  * Residuo: el original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el
