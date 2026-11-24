@@ -1361,97 +1361,71 @@ void func_80035244(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 345 con la configuracion versionada (g = 8 del archivo): 91 diferencias de operando, 0 lineas
- * reordenadas y 95 insertadas o borradas. El flujo coincide salvo el `nop` del hueco de
- * retardo de 0x800357D4 (la copia del limite de la busqueda del modelo, ver abajo). Quedan diferencias de registros
- * y de forma simbolica: (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las
- * diferencias). La lista de destruidos de `GEO_DISTANCIA_APROX` declara `$7`, que su cuerpo escribe; la lista es
- * completa y se conserva. Se supone, sin verificar, que por eso la recarga evita `a3`;
- * (2) resuelta con un par `pz--; pz++;` que no genera codigo (mas abajo): puntero a la proyeccion en s2, constante -3
- * en s3 y puntero a `sx` en s4, como el original; (3) resuelta con una envoltura (mas abajo): el limite en a1 y el
- * puntero al objeto de la busqueda del modelo en a2, como el original; (4) el
- * byte D_8006AA7C que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc` (diferencia de forma
- * simbolica de los mismos bytes). Leerlo por el simbolo D_8006AA7C en el prologo da el texto del original pero
- * cambia el orden de los dos `lui` y de los registros v0 y v1 (565 en lugar de 345); guardarlo antes en una local
- * deja la carga `lbu` justo tras su `lui` (495); en ambos casos el reparto es peor que con el miembro del banco.
+ * Pendiente: puntuacion 240 con la configuracion versionada (g = 8 del archivo): 92 diferencias de operando, 0 lineas
+ * reordenadas y 92 insertadas o borradas. El flujo coincide. Quedan diferencias de registros y de forma simbolica:
+ * (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las diferencias); (2) el byte
+ * D_8006AA7C que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc`, y las direcciones del
+ * scratchpad que el desensamblado del original nombra como simbolos (los mismos bytes).
  *
  * La atenuacion sigue el flujo del original: el original tiene una sola llamada a func_800351B4 (0x800358A4) y la
  * atenuacion por distancia y la de proyeccion saltan a ella tras recargar el objeto en `a0` (0x80035DCC), con la
  * `jal` en el sitio de la busqueda del modelo. Aqui las dos atenuaciones comparten la recarga (`recargar`, con la
- * asignacion de `t` desde `sc->cur` tras el almacen) y saltan a la llamada de la busqueda del modelo (`llamar`):
- * con tres llamadas escritas salian dos `jal` (820); la forma actual deja una sola `jal` en 0x800358A4.
+ * asignacion de `t` desde `sc->cur` tras el almacen) y saltan a la llamada de la busqueda del modelo (`llamar`).
  *
  * Copias de `t`. El puntero al objeto en curso se copia en la local `t` con `t = sc->cur;` escrita cinco veces:
  * antes de las pruebas de la bandera 0x10000 de la busqueda del modelo, en `modelo_hallado`, tras la proyeccion de
  * un objeto simple, en `tras_proyeccion` (proyeccion de volumen) y en `recargar`. Es la sentencia duplicada en
  * caminos que se reunen (en `llamar` y en las pruebas de `atenuar`): una sola copia tras la union serviria
  * igual, pero el original carga `sc->cur` en `a0` en cada camino (0x8003584C y 0x80035888 en la busqueda del
- * modelo) y las copias no generan codigo mas alla de esa carga, que el original tambien tiene. Medido quitando una
- * a una (con `sc->cur->` en su lugar o con una sola asignacion en el punto de reunion), la funcion mide: sin la
- * de la busqueda del modelo 425; sin la de la proyeccion de un objeto simple 834; sin la de `tras_proyeccion`
- * 580; sin la de `recargar` 500; con una sola asignacion al comienzo del cuerpo del bucle 1840, en el bloque de
- * la busqueda del modelo 1005 y en la rama de proyeccion 1400; y con las etiquetas de union tras la copia 620.
+ * modelo) y las copias no generan codigo mas alla de esa carga, que el original tambien tiene. Con una sola
+ * asignacion en cada punto de reunion la cifra es 745 (una tras `atenuar` en lugar de las dos copias de las
+ * proyecciones) y 505 (una tras `llamar` en lugar de las otras tres).
  * Volcado de `cc1` (`-dl` y `-dg`, `-G8`): `t` es un solo pseudo de usuario (84) con cinco asignaciones, las cinco
- * cargas de `sc->cur` (insn 560, 600, 786, 1164 y 1193), 30 usos sobre 31 insns, sin cruzar llamadas y con
- * preferencia por `a0` (es el argumento de `func_800351B4`): prioridad 3,871, quinto del orden del reparto global,
- * y toma `a0`, como el original en 0x8003584C, 0x80035888, 0x80035A24, 0x80035D88 y 0x80035DCC. Con una sola
- * asignacion antes de la prueba del modelo y `sc->cur->` en el resto (1380), `t` baja a 6 usos sobre 15 insns
- * (0,800) y las cargas de la proyeccion simple y de `tras_proyeccion` pasan a dos pseudos nuevos (332 y 412, 6
- * usos sobre 5 insns, 2,4) que toman `v1` en lugar de `a0`; los demas pseudos conservan su registro. La forma del
- * fuente original que producia este reparto se desconoce.
+ * cargas de `sc->cur`, 30 usos sobre 31 insns, sin cruzar llamadas y con preferencia por `a0` (es el argumento de
+ * `func_800351B4`): prioridad 3,871, quinto del orden del reparto global, y toma `a0`, como el original en
+ * 0x8003584C, 0x80035888, 0x80035A24, 0x80035D88 y 0x80035DCC. La forma del fuente original que producia este
+ * reparto se desconoce.
  *
- * La cola de la lista usa una local propia (`cola`) porque con `t`, que vive en varios bloques, el reparto
- * global la pone en `a0` y `a1` en lugar de `v0` y `v1` (460 a 410). Reparto (2): la prioridad del reparto
- * global de los tres punteros fijos es 3 * 11 / 790 = 0,042 para la constante -3 y 2 * 6 / 393 = 0,031 para
- * cada puntero del contexto (volcado `.lreg`), de modo que sin el par la constante se asigna primero y toma s2;
- * el original asigna primero el puntero a la proyeccion (s2), despues la constante (s3) y por ultimo el puntero a
- * `sx` (s4). Mover la asignacion de la constante tras las de los punteros o escribirla como literal en cada uso no
- * cambia ese reparto. Reparto (3): asignar el puntero al objeto antes de copiar el limite da la asignacion
- * del original pero la carga queda antes del `move`, de modo que el limite se copia primero; con la envoltura
- * (mas abajo) el reparto sale como el del original sin cambiar el orden de las sentencias.
+ * La cola de la lista usa una local propia (`cola`) porque `t` vive en varios bloques y pasa por el reparto global.
  *
  * Envoltura `do { } while (0)`: rodea la comparacion `if (idx < lim) goto buscar_modelo;` de la busqueda
  * del modelo y no genera codigo (el optimizador de saltos la elimina). Causa medida (volcado `-dl`, `-dg`, `-G8`):
  * el limite `lim` (pseudo 93, 14 instrucciones de vida) pasa de 4 a 5 usos ponderados y su prioridad de
  * 2 * 4 / 14 = 0,571 a 2 * 5 / 14 = 0,714, por delante del puntero al objeto `busca` (pseudo 94, 4 usos sobre 13
  * instrucciones, 2 * 4 / 13 = 0,615); el orden de asignacion los invierte y el limite toma `a1` y el puntero `a2`,
- * como el original, en lugar de `a2` y `a1` (365 a 345). La forma del fuente original que producia este reparto se
- * desconoce.
+ * como el original, en lugar de `a2` y `a1` (sin la envoltura la cifra es 260 y con ella 240). La forma del fuente
+ * original que producia este reparto se desconoce.
  *
  * Par `pz--; pz++;` antes de la sentencia `GUARDAR_MAC3(pz);` del recorrido de proyeccion de los ocho puntos (el
  * segundo, con `sc->i40 < 8`): no genera codigo (el combinador anula el par y el ensamblador tiene las mismas
  * instrucciones que sin el). Causa medida (volcado `-dl`, `-dg`, `-G8`): el par suma cuatro referencias ponderadas
  * por la profundidad del bucle, de modo que el puntero `pz` (pseudo 89, 393 instrucciones de vida y 394 con el par)
  * pasa de 6 a 18 usos y su prioridad de 2 * 6 / 393 = 0,031 a 4 * 18 / 394 = 0,183, por delante de la constante
- * -3 (pseudo 90, 3 * 11 / 792 = 0,042) y del puntero a `sx` (pseudo 87, 0,030); el orden de asignacion pasa a
- * ser `pz` en s2, constante en s3 y `sx` en s4, que es el del original (`addiu s2` en 0x80035540 y `addiu s4`
- * en 0x8003553C, con -3 en s3). Sin el par la cifra es 390 y con el 345. La forma del fuente original que
- * producia este reparto se desconoce.
+ * -3 (pseudo 90, 3 * 11 / 792 = 0,042) y del puntero a `sx` (pseudo 88, 2 * 6 / 395 = 0,030); el orden de
+ * asignacion pasa a ser `pz` en s2, constante en s3 y `sx` en s4, que es el del original (`addiu s2` en
+ * 0x80035540 y `addiu s4` en 0x8003553C, con -3 en s3). Sin el par la cifra es 285 y con el 240. La forma del
+ * fuente original que producia este reparto se desconoce.
  *
  * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
  * asigna el reparto global a `a0` y la recarga lo mueve despues a `t7` ("Spilling reg 15" para esa insn en el
  * volcado de la recarga); el original lo tiene en `a3`. Se supone, sin verificar, que la recarga evita `a3` porque
  * la lista de destruidos de las macros de distancia aproximada declara `$7`; el cuerpo lo escribe
  * (`addu $7,$10,$0`), de modo que la lista completa se conserva. La busqueda del
- * modelo copia el limite (`lim`) en una local propia dentro del bloque, como el original (`addu a1,v1,zero`); la
- * copia hecha antes de la comparacion se vuelve a fundir con `nmod` (470). El original rellena con esa copia el hueco
- * del `beqz` de la primera comparacion (`addu a1,v1,zero` en 0x800357D4); aqui el hueco queda con un `nop`. Medido
- * en la salida de `cc1`: ese salto no lleva relleno y el `nop` lo anade el ensamblador de `maspsx`; la copia sigue al
- * salto y el volcado de la primera pasada de CSE muestra que la comparacion pasa a usar el registro de la copia
- * cuando esta se hace antes de ella. Se supone, sin verificar, que el relleno de huecos no toma una copia de registro
- * de la rama que cae (si toma un `addu` con inmediato en el salto siguiente). La forma del fuente que rellenaba ese
- * hueco se desconoce.
+ * modelo copia el limite (`lim`) en una local propia dentro del bloque, como el original, que rellena con esa copia
+ * el hueco del `beqz` de la primera comparacion (`addu a1,v1,zero` en 0x800357D4); sin `lim` la cifra es 380.
  *
- * La prueba tras la busqueda del modelo sigue la estructura del original: con la entrada hallada se
- * comprueba el bit 1 de la bandera y el bit 0x10000 de las banderas del objeto, y sin el bit 1 se cae a la
- * misma comparacion de indice que la rama de no hallado (0x80035824 a 0x80035878); antes de corregirlo el C
- * saltaba al bloque siguiente en ese caso (1250 a 940).
+ * La prueba de la bandera del modelo (`sc->i40 < D_80069588`) va dentro del bloque que entra en la busqueda: el
+ * `beqz` de la primera comparacion (0x800357D0) salta a la prueba de indice no hallado (0x80035870), no a la de la
+ * bandera (0x80035814). Con ella fuera del bloque el salto iba a esa segunda prueba y el hueco quedaba con un `nop`
+ * (345 en lugar de 240). Con la entrada hallada se comprueba el bit 1 de la bandera y el bit 0x10000 de las
+ * banderas del objeto, y sin el bit 1 se cae a la misma comparacion de indice que la rama de no hallado
+ * (0x80035824 a 0x80035878).
  *
  * El bucle final copia el objeto en curso a `o` una sola vez, tras las rutinas de logica y antes de avanzar a la
  * lista siguiente: el original tiene `move a0,s0` en los huecos de retardo de los saltos al final del cuerpo
- * (0x800360B8 y 0x800360D4), no una copia viva durante las llamadas (2465 a 1715); y la direccion de la camara se
+ * (0x800360B8 y 0x800360D4), no una copia viva durante las llamadas; y la direccion de la camara se
  * asigna dentro del cuerpo, despues de la llamada, para que el optimizador de bucles saque las tres direcciones en
- * el orden del original (D_8006AA70, D_8005E35C, D_8006D928; 1715 a 1470). Con la asignacion antes del bucle la
+ * el orden del original (D_8006AA70, D_8005E35C, D_8006D928). Con la asignacion antes del bucle la
  * direccion de la camara se calcula antes de las otras dos; sin variable (el simbolo en el cuerpo) no se iza.
  *
  * La distancia aproximada usa GEO_DISTANCIA_APROX_A con la base y el destino del propio vector (desplazamiento
@@ -1459,16 +1433,16 @@ void func_80035244(void)
  * la tercera `bgez` y su `.set noreorder` va con un espacio, que maspsx no reconoce (solo `.set<tab>noreorder`):
  * maspsx sigue en modo de reordenacion y anade otro `nop` tras esas dos saltos (medido sobre una copia del bloque:
  * 2 `nop` anadidos con el espacio, 0 con el tabulador, y quitando los dos `nop` explicitos sale `bgez; nop; sub`
- * como el original). Con la forma sin sufijo la funcion puntua 4388 frente a 4188 con la de sufijo. Arreglar
+ * como el original). Arreglar
  * `GEO_DISTANCIA_APROX` exigiria cambiar la macro compartida, que no se toca aqui. La forma con sufijo depende del
  * espaciado de la directiva de la macro: si `maspsx` llegara a reconocer `.set noreorder` con espacio, se supone, sin
  * verificar, que el `sub` pasaria al hueco de la `bgez` y se invertiria el signo del valor absoluto.
  *
  * La busqueda del modelo guarda el indice leido en la condicion (`idx`) y lo reutiliza en el incremento, como el
  * original (`lw a0,0x40(s1)` en 0x800357B8 y `addiu v0,a0,1` en 0x800357F0 del original), en lugar de leer el
- * campo otra vez (4188 a 3608). La direccion del scratchpad se asigna despues de la llamada a la camara y no al
+ * campo otra vez. La direccion del scratchpad se asigna despues de la llamada a la camara y no al
  * principio: con la asignacion inicial el compilador la calcula en el hueco de retardo del primer salto y
- * desplaza el resto del prologo; el original calcula `lui s1,0x1f80` mas tarde (3608 a 2465).
+ * desplaza el resto del prologo; el original calcula `lui s1,0x1f80` mas tarde.
  *
  * Los dos recorridos de la rama de volumen (los nodos de coordenadas y la busqueda del modelo) se escriben con
  * salto hacia atras en lugar de `do { } while`: con el bucle natural el optimizador de bucles saca de ambos la
@@ -1476,8 +1450,7 @@ void func_80035244(void)
  * recorrido principal con vida de 51 y 52 instrucciones), ocupan s5 y s6 y el marco sube de 0x28 a 0x30; el
  * original calcula esas direcciones en el sitio. El volcado confirma el efecto; se supone, sin verificar, que el
  * original tampoco tenia notas de bucle en esos dos recorridos. El resultado de la ultima comprobacion de
- * proyeccion se lee de los campos (sc->sx, sc->sy) donde el original los relee, no de locales (7961 a 4388 con
- * las tres formas juntas).
+ * proyeccion se lee de los campos (sc->sx, sc->sy) donde el original los relee, no de locales.
  *
  * Lista de comprobaciones del cuadro: recorre los objetos de escena, los clasifica en cuatro listas
  * (segun sus indicadores) con la memoria de trabajo del scratchpad en 0x1F800000, los vuelve a enlazar en
@@ -1587,15 +1560,15 @@ buscar_modelo:
                                 }
                             } while (0);
                         }
-                    }
-                    if (sc->i40 < D_80069588) {
-                        if ((sc->tp3C->bandera & 1) != 0) {
-                            /* Sentencia replicada: es la misma que la de las otras ramas. */
-                            t = sc->cur;
-                            if ((t->flags08 & 0x10000) != 0) {
-                                goto sigue2;
+                        if (sc->i40 < D_80069588) {
+                            if ((sc->tp3C->bandera & 1) != 0) {
+                                /* Sentencia replicada: es la misma que la de las otras ramas. */
+                                t = sc->cur;
+                                if ((t->flags08 & 0x10000) != 0) {
+                                    goto sigue2;
+                                }
+                                goto modelo_hallado;
                             }
-                            goto modelo_hallado;
                         }
                     }
                     if (D_80069588 != sc->i40) {
