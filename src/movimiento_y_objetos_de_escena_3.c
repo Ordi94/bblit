@@ -139,10 +139,12 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * 0x8001E674): se supone, sin verificar, que v y esa suma son alli una misma cantidad local, que ocupa a2 mientras
  * vive el campo 0x0E.
  *
- * `dato_cuadro` guarda primero el numero de cuadro y despues la coordenada v. Con tres asignaciones, la primera
- * planificacion no empuja la carga de v hacia su unico uso: en `-dS` queda detras de la carga de la pagina y delante
- * de la de u (0x8001E644 y 0x8001E648), como el original. Leida dentro de la suma de +2, la carga queda detras de la
- * mascara de esa suma, las cargas de u y v salen en el orden contrario y la puntuacion es 190. La forma del fuente
+ * `dato_cuadro` guarda primero el numero de cuadro y despues la coordenada v. La lectura del byte
+ * (`lbu a2,0x9(t1)`, 0x8001E644) y la suma de +2 (`addu a2,a2,v1`, 0x8001E674) son dos instrucciones separadas del
+ * original. Con tres asignaciones, la primera planificacion no empuja la carga de v hacia su unico uso: en `-dS`
+ * queda detras de la carga de la pagina y delante de la de u (0x8001E644 y 0x8001E648), como el original. Con una
+ * local propia para v, o con la lectura y la suma en una sola sentencia, la puntuacion es 190: en esta ultima la
+ * carga queda detras de la mascara de esa suma y las cargas de u y v salen en el orden contrario. La forma del fuente
  * original que producia este orden se desconoce.
  *
  * La sentencia `fotogramas = c->fotogramas + dato_cuadro;` esta escrita en cada rama del indice y no genera codigo distinto
