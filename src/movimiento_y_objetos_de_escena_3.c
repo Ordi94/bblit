@@ -129,42 +129,50 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * bits) y fija la anchura de la textura y el modo del sprite.
  */
 #ifdef NON_MATCHING
-/* Pendiente: puntuacion 190 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas,
- * 60 insertadas o borradas). Mismos accesos y almacenes que el original. Ya igual al original: la cabecera (tabla de
- * fotogramas leida en la reunion de las ramas, `lw v1,0x20(t3)` en 0x30 con `nop` en el hueco del `j`), la constante 2
- * al abrir el grupo de lecturas (`li t0,2`, 0x3c), la pagina en v1 y el orden de las cadenas aritmeticas, la lectura
- * tardia del puntero crudo en v0 con el campo 0x0E entre ella y la suma del puntero al sprite, esa suma antes del
- * primer almacen, las cadenas de +0 y +2, la tabla de saltos y la cola. Lo que queda, medido en `diff`: (1) las cargas
- * de u (+8) y de v (+9) salen en el orden contrario (u en 0x120 y v en 0x124 frente a v en 0x44 y u en 0x48); (2)
- * registros: la constante 2 toma a3 (t0 en el original), el objeto t0 (a3), el puntero al sprite t0 (v1), el campo
- * 0x0E v1 (a3), y u, v y la anchura toman a1, a0 y a2 (a0, a2 y a1).
+/* Pendiente: puntuacion 140 con la configuracion versionada (g = 8 del archivo; ejes 3 de operando, 0 reordenadas,
+ * 52 insertadas o borradas). Mismos accesos y almacenes que el original y las instrucciones en su mismo orden: lo que
+ * queda son nombres de registro. (1) El numero de cuadro toma a2 en 0x8001E610, 0x8001E62C y 0x8001E634 (v0 en el
+ * original). (2) La constante 2 toma a3 (t0 en el original), el objeto t0 (a3), el puntero al sprite t0 (v1), el campo
+ * 0x0E a2 (a3) y la suma de +2 v1 (a2). Causa medida con `-dl` y `-dg`: el pseudo de `dato_cuadro` (86) es global y la
+ * asignacion local, que va antes, no lo ve, asi que el campo 0x0E (pseudo 91) toma a2 y la constante 2 (pseudo 111)
+ * toma a3, que el objeto ya no puede usar. En el original la suma de +2 escribe en el registro de v (`addu a2,a2,v1`,
+ * 0x8001E674): se supone, sin verificar, que v y esa suma son alli una misma cantidad local, que ocupa a2 mientras
+ * vive el campo 0x0E.
  *
- * La sentencia `fotogramas = c->fotogramas + indice;` esta escrita en cada rama del indice y no genera codigo distinto
+ * `dato_cuadro` guarda primero el numero de cuadro y despues la coordenada v. Con tres asignaciones, la primera
+ * planificacion no empuja la carga de v hacia su unico uso: en `-dS` queda detras de la carga de la pagina y delante
+ * de la de u (0x8001E644 y 0x8001E648), como el original. Leida dentro de la suma de +2, la carga queda detras de la
+ * mascara de esa suma, las cargas de u y v salen en el orden contrario y la puntuacion es 190. La forma del fuente
+ * original que producia este orden se desconoce.
+ *
+ * La sentencia `fotogramas = c->fotogramas + dato_cuadro;` esta escrita en cada rama del indice y no genera codigo distinto
  * del original: el salto cruzado funde las dos colas en una (`lw`, `sll` y `addu` de la reunion, 0x30 a 0x38; `-dJ`:
  * dos lecturas de +0x20 hasta la segunda pasada de saltos y una despues). Causa medida con `-dl` y `-dg`: con la
- * sentencia una sola vez tras la reunion el puntero al fotograma (pseudo 90) es un pseudo local del bloque y toma a0 en
- * la asignacion local, antes que las lecturas del fotograma; con una copia en cada rama el pseudo se asigna en dos
- * bloques, pasa a global (pseudo 89: 10 usos sobre 35 instrucciones, 0,857), se reparte despues de los locales y toma
- * t1, como el original, y deja a0 libre para las lecturas. Con la sentencia una sola vez tras la reunion la
- * puntuacion es 770. La forma del fuente original que producia este reparto se desconoce.
+ * sentencia una sola vez tras la reunion el puntero al fotograma (pseudo 89) es un pseudo local del bloque (9 usos
+ * sobre 33 instrucciones) y toma a0 en la asignacion local, antes que las lecturas del fotograma; con una copia en cada
+ * rama el pseudo se asigna en dos bloques, pasa a global (10 usos sobre 35 instrucciones, 0,857), se reparte despues
+ * de los locales y toma t1, como el original, y deja a0 libre para las lecturas. Con la sentencia una sola vez tras la
+ * reunion la puntuacion es 775. La forma del fuente original que producia este reparto se desconoce.
  *
  * La `do { } while (0);` no genera codigo: el ensamblador es el que saldria sin ella, pero las notas de bucle que deja
  * el parser actuan como limite de la primera planificacion. Cubre la suma del puntero al sprite y la lectura del campo
- * 0x0E. Causa medida con `-ds` y `-dl` sobre el pseudo 126 (puntero crudo): sin la envoltura tiene 3 usos y una vida de
- * 8 instrucciones (prioridad `floor_log2(R) * R / L` de 0,375) y la lectura sube sobre la aritmetica del fotograma; con
- * ella tiene 5 usos y una vida de 4 (2,5), la lectura queda tras la aritmetica y el crudo toma v0 (`126 in 2`). Con ella
- * el objeto (pseudo 80: 3 usos sobre 62 instrucciones) no puede tomar a3 porque la constante 2 (pseudo 111: 3 usos
- * sobre 72 instrucciones) ya lo ocupa en la asignacion local; sin ella el objeto toma a3 pero el crudo y la suma suben
- * sobre la aritmetica. Sin la envoltura la puntuacion es 875. Los valores de +0 y +2 se calculan antes de la envoltura, en `coordenada_u` y `v_pagina`, para
- * que su aritmetica quede antes de la nota. El cuerpo de la envoltura es codigo real de la funcion, sin `break` ni
- * `continue`. Se supone, sin verificar, que el original no lleva envoltura y que lo que fija ese orden es otra
- * construccion que el volcado no distingue. La forma del fuente original que producia este reparto se desconoce. */
+ * 0x0E. Causa medida con `-dS`: sin ella la carga del puntero crudo (pseudo 126, insn 101) y la del campo 0x0E sube
+ * por delante de la suma de +0 (insn 81, pseudo 84) y de la suma de +2 (insn 96, pseudo 125), de las que no depende;
+ * con ella la carga del crudo (insn 105) queda detras de las dos, como en el original (0x8001E678, despues de
+ * `addu a2,a2,v1`). En `-dl` y `-dg` el crudo pasa de 3 usos sobre 8 instrucciones, en a2, a 5 usos sobre 4, en v0
+ * (`126 in 2`). Sin la envoltura la puntuacion es 655. Los valores de +0 y +2 se calculan antes de la envoltura, en
+ * `coordenada_u` y `v_pagina`, para que su aritmetica quede antes de la nota. El cuerpo de la envoltura es codigo real
+ * de la funcion, sin `break` ni `continue`. Se supone, sin verificar, que el original no lleva envoltura y que lo que
+ * fija ese orden es otra construccion que el volcado no distingue. La forma del fuente original que producia este
+ * reparto se desconoce. */
 void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     SpriteEscalado* p;
     s32 coordenada_u;
     s32 desplazamiento_color;
-    s32 indice;
+    /* Dos datos de vida disjunta: el numero de cuadro con el que se indexa la tabla y, despues, la coordenada v
+     * del cuadro (ver la cabecera). */
+    s32 dato_cuadro;
     s32 ancho_cuadro;
     /* El campo 0x2E del contexto se lee antes del almacen de `s10`, como el original (carga en 0x8001E698,
      * almacen en 0x8001E6A8). */
@@ -177,19 +185,21 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 
     /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
     if (modo & 1) {
-        indice = (u16)c->cuadro;
+        dato_cuadro = (u16)c->cuadro;
         /* Sentencia replicada: es la misma que la de las otras ramas. */
-        fotogramas = c->fotogramas + indice;
+        fotogramas = c->fotogramas + dato_cuadro;
     } else {
-        indice = (c->duraciones + (u16)c->cuadro)->indice;
+        dato_cuadro = (c->duraciones + (u16)c->cuadro)->indice;
         /* Sentencia replicada: es la misma que la de las otras ramas. */
-        fotogramas = c->fotogramas + indice;
+        fotogramas = c->fotogramas + dato_cuadro;
     }
+    /* v se lee antes que u y que la anchura, como el original (lbu 0x9 en 0x8001E644, lbu 0x8 en 0x8001E648). */
+    dato_cuadro = fotogramas->v;
     ancho_cuadro = fotogramas->w0C;
     desplazamiento_color = 2 - ((fotogramas->pagina >> 7) & 3);
     /* Los valores de +0 y +2 se calculan antes de la envoltura (ver la cabecera). */
     coordenada_u = (fotogramas->u >> desplazamiento_color) + ((fotogramas->pagina & 0xF) << 6);
-    v_pagina = fotogramas->v + (0x100 & (fotogramas->pagina << 4));
+    v_pagina = dato_cuadro + (0x100 & (fotogramas->pagina << 4));
     do {
         p = (SpriteEscalado*)(0xC + (u8*)o->u78.p);
         campo_0e = fotogramas->w0E;
