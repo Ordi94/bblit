@@ -233,26 +233,16 @@ void func_800163E4(void)
     func_8003F3F0(D_8006967C);
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 310 con la configuracion versionada (g = 8 del archivo; ejes 48 de operando,
- * 0 reordenadas, 106 insertadas o borradas). Difieren en bytes los registros de las cuatro lecturas con
- * decremento de la pila de botones del ciclo de demostracion: el original lleva el puntero en v0
- * (`lw v0` en 0x80016B50) y el primer valor en v1 (`lhu v1,0(v0)` en 0x80016B58), y este C los
- * intercambia en toda la cadena; el orden de las instrucciones es el del original. En el volcado de
- * local-alloc (`-dl`, bloque 60) el puntero (pseudo 326, 22 usos sobre 16 instrucciones) toma v1 y el
- * primer valor (pseudo 327, 4 usos sobre 4) toma v0. Se desconoce que forma del fuente produce el reparto
- * del original. Las demas filas que marca `diff` son de texto (`%lo(D_800100xx)` en el original frente
- * al desplazamiento numerico del acceso por direccion constante).
- *
  * Tipos de las variables de control: `pausa` es s8, `ocioso` y `demo` son s16 y el contador de cuadros
  * D_80069676 es volatile u16. `pausa` va en 8 bits porque el original emite `move s4,zero` para el
  * cero de `ocioso`: con `pausa` de 16 bits el volcado de `cc1` da `(set (reg:HI 20) (const_int 0))`
  * tras la asignacion global y `(set (reg:HI 20) (reg:HI 21))` tras la segunda planificacion, es decir
- * `move s4,s5` (puntuacion 315 frente a 310). Se supone, sin verificar, que la sustitucion la hace la
+ * `move s4,s5` (puntuacion 200 frente a 0). Se supone, sin verificar, que la sustitucion la hace la
  * propagacion de valores posterior a la recarga y que solo copia entre registros del mismo modo; con
- * `pausa` de 8 bits con signo el cero de cada variable queda en su `move` desde zero y la prueba de `pausa` sigue siendo
- * `move v0,s5` (con 8 bits sin signo saldria un `andi v0,s5,0xff` por prueba).
+ * `pausa` de 8 bits con signo el cero de cada variable queda en su `move` desde zero y la prueba de
+ * `pausa` sigue siendo `move v0,s5` (con 8 bits sin signo cada una de las dos pruebas lleva
+ * `andi v0,s5,0xff`).
  *
  * El estado principal y los registros del mando se acceden por su direccion constante, sin variable
  * local de puntero: el ensamblador los muestra con la forma simbolica (`lui s1,%hi(D_80010000)` y
@@ -264,8 +254,24 @@ void func_800163E4(void)
  * ponderados sobre una vida de 564: prioridad floor_log2(R) * R / L de 2 * 5 / 564 = 0,0177 a
  * 2 * 6 / 564 = 0,0213), que pasa por encima de la constante 3 (6 usos sobre 640: 2 * 6 / 640 = 0,0188)
  * en el orden de global-alloc. Con la envoltura la tabla toma s7 y la constante 3 toma s8, como el
- * original; sin ella la puntuacion es 340 y con ella 310. La forma del fuente original que producia este
+ * original; sin ella la puntuacion es 225 y con ella 0. La forma del fuente original que producia este
  * reparto se desconoce.
+ *
+ * La envoltura do/while (0) del cuerpo del `if` de la demostracion no genera codigo: pondera por un
+ * nivel mas los pseudos del bloque y cambia el orden de local-alloc (`-dl`, bloque 60), que asigna
+ * antes la cantidad de mayor floor_log2(R) * R / L (L en instrucciones desde que nace hasta que muere
+ * en el orden de la primera planificacion). El puntero de la pila de botones (pseudo 326) forma una sola
+ * cantidad con su ultimo derivado (338, el puntero menos 6, que se calcula cuando 326 muere), y los
+ * derivados intermedios (330 y 334) solo viven desde su calculo hasta el almacen en D_800695B0. Sin la
+ * envoltura la cantidad del puntero tiene 22 + 4 usos sobre 16 (4 * 26 / 16 = 6,5) y 330 tiene 4 sobre 1
+ * (2 * 4 / 1 = 8,0): 330 y 334 toman v0 y el puntero v1. Con ella quedan en 33 + 6 sobre 16
+ * (5 * 39 / 16 = 12,19) y 6 sobre 1 (2 * 6 / 1 = 12,0): el puntero se asigna antes y toma v0 (`lw v0`
+ * en 0x80016B50) y 330, 334 y el primer valor toman v1 (`lhu v1,0(v0)` en 0x80016B58), como el
+ * original. La secuencia de instrucciones, el orden de `regs to allocate` y las disposiciones de
+ * global-alloc no cambian. La envoltura abarca todo el cuerpo: limitada a las cuatro lecturas, la carga
+ * de D_80069662 queda tras el ultimo almacen en D_800695B0 (el original la adelanta, `lh a0` en
+ * 0x80016B9C) y la puntuacion es 940. Sin la envoltura la puntuacion es 310 y con ella 0. La forma del
+ * fuente original que producia este reparto se desconoce.
  *
  * Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta
  * del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la
@@ -456,14 +462,17 @@ s32 main(void)
             D_80069662 += 1;
         }
         if (ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0 && (ESTADO_PRINCIPAL->mando.botones & 0x100)) {
-            ESTADO_PRINCIPAL->mando.botones_a = *D_800695B0--;
-            ESTADO_PRINCIPAL->mando.botones_e = *D_800695B0--;
-            ESTADO_PRINCIPAL->mando.botones_c = *D_800695B0--;
-            ESTADO_PRINCIPAL->mando.botones = *D_800695B0--;
-            if (D_80069662 == 0) {
-                D_80069662 = 1;
-                ESTADO_PRINCIPAL->nivel = 0;
-            }
+            /* Envoltura sin codigo: pondera el puntero de la pila de botones (ver la cabecera). */
+            do {
+                ESTADO_PRINCIPAL->mando.botones_a = *D_800695B0--;
+                ESTADO_PRINCIPAL->mando.botones_e = *D_800695B0--;
+                ESTADO_PRINCIPAL->mando.botones_c = *D_800695B0--;
+                ESTADO_PRINCIPAL->mando.botones = *D_800695B0--;
+                if (D_80069662 == 0) {
+                    D_80069662 = 1;
+                    ESTADO_PRINCIPAL->nivel = 0;
+                }
+            } while (0);
         }
         if (D_8006AA70[0xC] == 0) {
             func_800163E4();
@@ -472,6 +481,3 @@ s32 main(void)
         D_80069676 += 1;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/arranque_y_bucle_principal_2", main);
-#endif
