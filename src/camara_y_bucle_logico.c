@@ -540,7 +540,7 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * con ella queda detras con las mismas dos dependencias (790 sin ella; 1160 sin las envolturas 1 y 2). En `.greg`
  * cambia con ella `c`, de a0 a v0.
  * (3) Almacen `D_80069408 = k;` de la cola comun. El orden de `-dS` es el mismo con y sin la envoltura; el que
- * cambia es el de `-dR`: sin ella la suma `c + k` (`addu v0,v0,v1`, pseudo 946) se emite por encima del `sw` de `k`
+ * cambia es el de `-dR`: sin ella la suma `c + k` (`addu v0,v0,v1`, pseudo 945) se emite por encima del `sw` de `k`
  * (`sw v1,D_80069408`), porque las dos solo leen v1 y no hay dependencia entre ellas; con ella la suma tiene una
  * antidependencia con el `sw` y queda detras, como en el original (555 sin ella). `.greg` no cambia.
  * Con las tres la funcion coincide. La forma del fuente original que producia este reparto se desconoce.
