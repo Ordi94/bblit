@@ -454,8 +454,8 @@ s32 func_800151FC(void)
  * se escribe `grupo * 120` en cada direccion: el volcado `-dr` muestra que con la expresion la suma sale con el
  * producto como primer operando, `(plus 380 381)`, y con la funcion el producto llega en un registro y queda de
  * segundo, `(plus 382 377)`. En la entrada y en la palabra de 0x24 las dos escrituras dan la misma cifra; usan la
- * funcion para que el desplazamiento se escriba de una sola forma. En las sumas de la base (0x80015CD0, 0x80015CF0, 0x80015D28, 0x80015D50 y 0x80015D54)
- * el original pone la suma delante de la base y aqui la base sigue delante.
+ * funcion para que el desplazamiento se escriba de una sola forma. En las sumas de la base (0x80015CD0, 0x80015CF0,
+ * 0x80015D28, 0x80015D50 y 0x80015D54) el original pone la suma delante de la base y aqui la base sigue delante.
  * Recorrido del directorio: el original recalcula en cada uso el desplazamiento de la ranura (tres cadenas
  * `sll 4 ; subu ; sll 3` en 0x80015CC0, 0x80015D10 y 0x80015D40) y tiene como registros propios la base del directorio (t1)
  * y la base mas 0x24 (t2). El bucle exterior se escribe con etiqueta y salto hacia atras (`siguiente_entrada`): el optimizador
@@ -477,8 +477,8 @@ s32 func_800151FC(void)
  * antes que la fila; la base (8 sobre 96) se toma antes que `grupo` (7 sobre 100). Esas dos vidas estan duplicadas: el
  * volcado `-df` da 54 y 52 instrucciones y `.lreg` 100 y 96, porque `local-alloc` dobla la vida de un pseudo asignado
  * una sola vez con un valor invariante (`grupo` recibe 0 y la base, un simbolo). Segun la formula, con la mitad de vida
- * `grupo` (7 sobre 50) pasaria delante de la base; no se conoce la forma del fuente que lo producia. La copia de la busqueda va delante
- * de la primera lectura del nombre hasta el combinador (`.combine`) y el primer planificador (`.sched`) la deja
+ * `grupo` (7 sobre 50) pasaria delante de la base; no se conoce la forma del fuente que lo producia.
+ * La copia de la busqueda va delante de la primera lectura del nombre hasta el combinador (`.combine`) y el primer planificador (`.sched`) la deja
  * detras, con 9 instrucciones de vida; con 10, su prioridad (0,300) quedaria bajo la de la fila (0,304), segun la
  * formula del asignador.
  * Suma de la entrada del directorio: el original suma primero la fila y el desplazamiento del grupo y
