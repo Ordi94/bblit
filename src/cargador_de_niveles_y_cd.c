@@ -571,8 +571,9 @@ typedef struct {
  * interior y despues el bucle exterior la funde con las demas pruebas contra 0x2E: no queda copia,
  * la salida se une con la prueba exterior y sale como `beq` mas `j`. Con la variable la copia se
  * conserva (volcado de la planificacion posterior al reparto); se supone, sin verificar, que no
- * entra en la fusion por tener mas de una asignacion. El bucle del chunk 0x47 compara con la
- * constante, como el original.
+ * entra en la fusion por tener mas de una asignacion. Con la constante en las dos comparaciones la
+ * cifra es 4958 y con la variable 3888. El bucle del chunk 0x47 compara con la constante, como el
+ * original.
  *
  * Entidades (chunks 0x07, 0x08 y 0x0A): la prueba de entrada del `while` de etiquetas salta a la
  * llamada a `ResolverReferenciasContenedor` que sigue al bucle (`beq` en 0x800436E0 hacia
@@ -1674,6 +1675,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                     }
                     EN(u16, entidad, 0x108) = 0xA00;
                     EN(u8*, entidad, 0xC0) = entidad + 0xCC;
+                    /* El original guarda la constante con signo (`li v0,-1` y `sh v0,0x26`, 0x800436D0). */
                     EN(s16, entidad, 0x26) = -1;
                     es_jugador = 0;
                     while (*cursor != 0x2E) {
