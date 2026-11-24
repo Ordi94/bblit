@@ -711,22 +711,22 @@ void SondearTarjeta(void)
                 siguiente_entrada:
                     j = 0;
                     fila_busqueda = fila;
-                    while (directorio[j + fila_busqueda + (grupo * 15 << 3)] != 0) {
+                    while (directorio[j + fila_busqueda + grupo * 120] != 0) {
                         j++;
                     }
                     if (j < 0x14) {
                         fila_relleno = fila;
                         do {
-                            directorio[j + fila_relleno + (grupo * 15 << 3)] = 0;
+                            directorio[j + fila_relleno + grupo * 120] = 0;
                             j++;
                         } while (j < 0x14);
                     }
-                    entrada = (EntradaDirectorio*)(directorio + (fila + (grupo * 15 << 3)));
+                    entrada = (EntradaDirectorio*)(directorio + (fila + grupo * 120));
                     entrada->attr = 0;
                     entrada->tam = 0;
                     entrada->sig = 0;
                     entrada->cabeza = 0;
-                    *(s32*)(sistema + (fila + (grupo * 15 << 3))) = 0;
+                    *(s32*)(sistema + (fila + grupo * 120)) = 0;
                     fila += 0x28;
                     i++;
                     if (i < D_80069358[0]) {
