@@ -1400,8 +1400,9 @@ void func_80035244(void)
  *
  * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
  * asigna el reparto global a `a0` y la recarga lo mueve despues a `t7` ("Spilling reg 15" para esa insn en el
- * volcado de la recarga); el original lo tiene en `a3`. Se supone, sin verificar, que la recarga evita `a3` porque
- * la lista de destruidos de las macros de distancia aproximada declara `$7`; el cuerpo lo escribe
+ * volcado de la recarga); el original lo tiene en `a3`. Es la unica diferencia de bytes que queda: con la lista de
+ * destruidos de `GEO_DISTANCIA_APROX_A` sin `$7` la funcion da 0 (medido; se supone, sin verificar en el fuente del
+ * compilador, que la recarga evita los registros nombrados en la lista). El cuerpo de la macro escribe `$7`
  * (`addu $7,$10,$0`), de modo que la lista completa se conserva. La busqueda del
  * modelo copia el limite (`lim`) en una local propia dentro del bloque, como el original, que rellena con esa copia
  * el hueco del `beqz` de la primera comparacion (`addu a1,v1,zero` en 0x800357D4); sin `lim` la cifra es 375.
