@@ -136,8 +136,7 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * pegada a el, detras de la de u (insn 71), que va junto a su desplazamiento. (2) v toma a1 y la anchura a2; en el
  * original, a2 y a1 (0x8001E644 y 0x8001E64C). Nace en la asignacion local (`-dl`): la cantidad de v y su suma
  * (pseudos 86 y 127, 6 usos) se reparte antes que la de la anchura y su desplazamiento (pseudos 87 y 130, 4 usos).
- * Se supone, sin verificar, que con la carga de v delante de la de u su vida se alarga lo bastante para que la
- * anchura se reparta primero.
+ * No se conoce una escritura que adelante la carga de v ni que invierta ese reparto.
  *
  * El puntero al fotograma se calcula en cada rama, cada una con su indice, como en func_8001E528: el salto cruzado
  * funde despues del reparto la lectura de +0x20, el desplazamiento y la suma (0x30 a 0x38 desde el inicio). Con el
