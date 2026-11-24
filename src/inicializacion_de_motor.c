@@ -409,18 +409,15 @@ void func_80045150(EntradaLista* e)
     s32 cantidad;
     u32* cabeza;
 
-    /* El orden de las lecturas del glifo y del elemento, la anchura y la altura menos uno en 32 bits y
-     * D_80076188 sumado tras escribir el indice de paleta son los que acercan el reparto de registros
-     * guardados al original. */
     i = 0;
     if (D_80069652 > 0) {
         do {
             g = e->glifo;
-            u = g->u;
             x = e->x;
-            w = g->w - 1;
-            v = g->v;
             y = (s8)e->y;
+            u = g->u;
+            v = g->v;
+            w = g->w - 1;
             h = g->h - 1;
             func_80039CD0(D_80076188);
             if (D_8006966A != 0) {
@@ -435,7 +432,7 @@ void func_80045150(EntradaLista* e)
             *cabeza = ((s32)D_80076188 << 8) >> 8;
             p = (POLY_FT4*)D_80076188;
             p->x1 = x + w;
-            p->x3 = w + x;
+            p->x3 = x + w;
             do {
                 p->y3 = y + h;
             } while (0);
