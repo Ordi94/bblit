@@ -201,28 +201,17 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
     D_80069416 = D_80069402;
 }
 
-#ifdef NON_MATCHING
-/*
- * Pendiente: puntuacion 40 con la configuracion versionada (ejes 2 de operando, 0 reordenadas, 14 insertadas o
- * borradas). Residuo: el reparto de v0 y v1 del
- * segundo paquete. El original carga los puntos 6 y 8 en v0 y deja el temporal del `sll` y el enlace en v1
- * (0x8003AF1C a 0x8003AF28), y aqui las cargas toman v1 y el temporal y el enlace v0. Medido en el volcado de la
- * asignacion: el temporal del `sll` es un pseudo local y toma v0 en la fase local; la variable `punto` (4 usos sobre 6
- * instrucciones) muere en dos sitios, la asigna el asignador global, que va despues, y toma v1. Se supone, sin
- * verificar, que en el original las cargas son locales y una de ellas coincide en vida con el temporal del `sll` y
- * ocupa v0. El enlace de 24 bits de cada paquete se escribe en una sola sentencia, `(x << 8) >> 8` con `x` de tipo
- * `s32` (el original emite `sll` y `sra`).
- */
 /*
  * Encola en la lista de ordenacion activa un primitivo de 0x18 bytes (codigo 0x05000000, un
  * solo dato por vertice) con los puntos 3, 5 y 7 de la lista recibida y, si el punto 8 no es
  * cero, un segundo primitivo con los puntos 4, 6 y 8 encadenado tras el primero. El cursor del
  * anillo de primitivas (D_80076188) avanza 0x18 por primitivo y vuelve al inicio del buffer
  * cuando supera el limite del contexto. Devuelve siempre 0. El tercer parametro no se lee: el
- * llamador (func_8003B5AC) pasa la vista en a2 y el original conserva esa carga.
+ * llamador (func_8003B5AC) pasa la vista en a2 y el original conserva esa carga. El enlace de 24 bits de cada paquete
+ * se escribe en una sola sentencia, `(x << 8) >> 8` con `x` de tipo `s32` (el original emite `sll` y `sra`).
  *
  * La envoltura `do { } while (0)` de los tres ultimos almacenes del primer paquete no genera codigo. Sin ella la
- * puntuacion es 630: el paquete (`primero`, 8 usos sobre 17 instrucciones en el volcado de la asignacion local) y los
+ * puntuacion es 590: el paquete (`primero`, 8 usos sobre 17 instrucciones en el volcado de la asignacion local) y los
  * tres temporales de los puntos (2 usos sobre 4 a 6 instrucciones cada uno) quedan con el temporal del ultimo punto en
  * a0, el `sll` sube por delante de esa carga y el recorte no queda sobre el registro del paquete. Con ella el paquete
  * cuenta 11 usos sobre 16 instrucciones y cada temporal 4 usos sobre 4: los tres toman v0, el paquete v1 y el `sll`
@@ -236,9 +225,19 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
  * son el almacen del primer enlace en la lista y dos instrucciones anteriores) y sale por delante del avance del cursor
  * y del almacen; con ella la carga depende del almacen, que queda tras la nota de comienzo de bucle, y sale detras,
  * como el original (`sw a0` en 0x8003AEBC y `lw v0,0x20(s0)` en 0x8003AEC0). El reparto del volcado de la asignacion
- * global es el mismo con y sin ella. Sin ella la puntuacion es 300. Se supone, sin verificar en el fuente del
+ * global es el mismo con y sin ella. Sin ella la puntuacion es 260. Se supone, sin verificar en el fuente del
  * compilador, que sin la nota no hay dependencia porque no considera que el acceso indexado pueda ser alias del escalar
  * D_80076188. La forma del fuente original que producia este orden se desconoce.
+ *
+ * La envoltura `do { } while (0)` del enlace y de los dos ultimos puntos del segundo paquete no genera codigo. En el
+ * listado del primer planificador, sin ella el `sll` del enlace (pseudo 127) sale detras del almacen del punto 8,
+ * pegado a su `sra`, y no coincide en vida con las cargas de los puntos: el temporal y el enlace toman v0. Con ella el
+ * `sll` es la primera instruccion tras la nota de comienzo de bucle y queda entre la carga del punto 6 y su almacen
+ * (`lw v0,0x18(s0)`, `sll v1,a0,8` y `sw v0,0x10(a0)`, 0x8003AF18 a 0x8003AF20), y el `sra` tras la carga del punto
+ * 8: el temporal (de 2 usos sobre 2 instrucciones a 4 ponderados sobre 5, en el volcado de la asignacion local) vive
+ * mientras se cargan los dos puntos y toma v1, y las cargas v0, como el original. La carga del punto 6 pasa por la
+ * variable `punto_6` para que quede delante de la nota (con la carga dentro de la envoltura la puntuacion es 160).
+ * Sin la envoltura la puntuacion es 605. La forma del fuente original que producia este orden se desconoce.
  */
 s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 {
@@ -247,8 +246,8 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
     u32* tabla;
     s32 actual;
     s32 siguiente;
-    s32 enlace_o_limite;
-    u32 punto;
+    s32 enlace;
+    u32 punto_6;
 
     func_80039CD0(D_80076188);
     /* `cursor` guarda el enlace de 24 bits del primer paquete y la relectura final del anillo; es la variable
@@ -281,30 +280,23 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
         ((u32*)siguiente)[1] = 1;
         ((u32*)siguiente)[2] = 0x80000000;
         ((u32*)siguiente)[3] = puntos[4];
-        /* Los puntos 6 y 8 pasan por una misma variable: con varias asignaciones el primer planificador no acerca
-         * sus cargas al almacen y el `sll` del enlace queda entre la carga del punto 6 y su almacen, como el
-         * original (sin la variable la puntuacion es 325). */
-        punto = puntos[6];
-        ((u32*)siguiente)[4] = punto;
-        punto = puntos[8];
-        ((u32*)siguiente)[5] = punto;
-        enlace_o_limite = (siguiente << 8) >> 8;
-        *tabla = enlace_o_limite;
+        punto_6 = puntos[6];
+        /* Envoltura sin codigo: deja el `sll` del enlace entre la carga del punto 6 y su almacen (ver la
+         * cabecera). */
+        do {
+            enlace = (siguiente << 8) >> 8;
+            ((u32*)siguiente)[4] = punto_6;
+            ((u32*)siguiente)[5] = puntos[8];
+            *tabla = enlace;
+        } while (0);
         D_80076188 += 0x18;
     }
-    /* El limite se lee primero en `siguiente` y se copia a la local que ya guardo el enlace del segundo
-     * paquete; leerlo directamente en ella deja el limite cargado antes que el cursor (260 en lugar de 40). */
-    siguiente = ctx->limite;
     cursor = D_80076188;
-    enlace_o_limite = siguiente;
-    if (cursor > enlace_o_limite) {
+    if (cursor > ctx->limite) {
         D_80076188 = ctx->inicio;
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
-#endif
 
 #ifdef NON_MATCHING
 /*
