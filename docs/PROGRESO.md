@@ -9,18 +9,18 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 419 | 142212 |
+| Código del juego | 450 | 201416 | 418 | 140172 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 142212 de 201416 (70.61 %).
-Funciones marcadas `NON_MATCHING`: 14.
-Coherencia con el ensamblador: correcta (683 `glabel` en `asm/` + 419 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 140172 de 201416 (69.59 %).
+Funciones marcadas `NON_MATCHING`: 15.
+Coherencia con el ensamblador: correcta (684 `glabel` en `asm/` + 418 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
 | Subsistema | Archivos | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |
 |---|---:|---:|---:|---:|---:|---:|
-| arranque_y_bucle_principal | 1 | 10 | 0 | 0 | 3404 | 3404 |
+| arranque_y_bucle_principal | 1 | 9 | 1 | 0 | 1364 | 3404 |
 | audio_xa_y_spu | 1 | 37 | 0 | 0 | 8220 | 8220 |
 | camara_y_bucle_logico | 1 | 8 | 3 | 0 | 2712 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 8 | 1 | 2 | 1772 | 14264 |
@@ -40,7 +40,7 @@ Coherencia con el ensamblador: correcta (683 `glabel` en `asm/` + 419 en C = 110
 
 | Archivo | En C | `NON_MATCHING` | En ensamblador | Bytes en C | Bytes totales |
 |---|---:|---:|---:|---:|---:|
-| `src/arranque_y_bucle_principal_2.c` | 10 | 0 | 0 | 3404 | 3404 |
+| `src/arranque_y_bucle_principal_2.c` | 9 | 1 | 0 | 1364 | 3404 |
 | `src/audio_xa_y_spu.c` | 37 | 0 | 0 | 8220 | 8220 |
 | `src/camara_y_bucle_logico.c` | 8 | 3 | 0 | 2712 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 8 | 1 | 0 | 1772 | 13592 |
@@ -81,7 +81,8 @@ Coherencia con el ensamblador: correcta (683 `glabel` en `asm/` + 419 en C = 110
 - `func_8003AE08`: Pendiente: puntuacion 300 con la configuracion versionada (ejes 2 de operando, 0 reordenadas, 18 insertadas o borradas). Dos causas. (1) La carga de `puntos[8]` de la guarda del segundo paquete sale por delante del avance del cursor, en el hueco que el original deja vacio tras releer D_80076188; el original la hace despues de almacenar el cursor (`lw v0,0x20(s0)`, 0x8003AEC0). Se supone, sin verificar, que el planificador la adelanta porque no considera que el acceso indexado pueda ser alias del escalar D_80076188. (2) El reparto de v0 y v1 del segundo paquete: el original carga los puntos 6 y
 - `func_8003AF8C`: Pendiente: puntuacion 210 con la configuracion versionada (g = 8 del archivo; ejes 12 de operando, 0 reordenadas, 68 insertadas o borradas). El residuo es de nombres de registro. (1) El recorte de la direccion del primitivo a 24 bits: el original emite `sll` y `sra` consecutivos sobre a1 (0x8003B218 y 0x8003B21C), tras los almacenes de la palabra de ordenacion (0x8003B210) y del color (0x8003B214); aqui el temporal del `sll` cae en v0 y el `sra` escribe en a1 desde v0. (2) El original tiene el brillo y el color en a3, el desplazamiento y la palabra de ordenacion en a2, las direcciones de las p
 - `func_8004048C`: Pendiente: puntuacion 575 con la configuracion versionada (g = 8 del archivo; ejes 53 de operando, 0 reordenadas, 228 insertadas o borradas). Reserva de pila: el original reserva 0x28 (`addiu sp` en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 649 y con ella 575. El original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio (se supone, sin verificar, que el original tenia una llamada con seis palabras de argumentos
-- `func_80045150`: Pendiente: puntuacion 525 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0 reordenadas, 24 insertadas o borradas). Residuo: la copia del puntero a la primitiva (ver el ultimo parrafo); en el bloque del color, la intensidad sale en a0 y el original la tiene en el mismo registro que el color, a2 (`subu a2,v1,v0`, 0x800451F4, y `addu a2,a2,a0`, 0x80045210); y la lectura de D_80069652 sale en a2 en lugar de v0 por compartir `color`. La intensidad va en su propia local y el color se compone en una sola sentencia, con la base primero y la intensidad al final, que da el arbol
+- `func_80045150`: Pendiente: puntuacion 525 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0 reordenadas, 21 insertadas o borradas). Residuo: la copia del puntero a la primitiva (ver el ultimo parrafo); en el bloque del color, la intensidad sale en a0 y el original la tiene en el mismo registro que el color, a2 (`subu a2,v1,v0`, 0x800451F4, y `addu a2,a2,a0`, 0x80045210); y en la cola del bucle el original llena el hueco de retardo de la carga de D_80069652 (`lh`, 0x80045324) con el incremento del contador (`addiu s6,s6,1`, 0x80045328), mientras este C lo emite antes del `lui` y deja un
+- `main`: Pendiente: puntuacion 310 con la configuracion versionada (g = 8 del archivo; ejes 48 de operando, 0 reordenadas, 106 insertadas o borradas). Difieren en bytes los registros de las cuatro lecturas con decremento de la pila de botones del ciclo de demostracion: el original lleva el puntero en v0 (`lw v0` en 0x80016B50) y el primer valor en v1 (`lhu v1,0(v0)` en 0x80016B58), y este C los intercambia en toda la cadena; el orden de las instrucciones es el del original. En el volcado de local-alloc (`-dl`, bloque 60) el puntero (pseudo 326, 22 usos sobre 16 instrucciones) toma v1 y el primer valor 
 
 ## Rutinas manuscritas (siguen en ensamblador por diseño)
 

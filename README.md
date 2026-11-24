@@ -8,18 +8,18 @@ estudiarlo y portarlo a plataformas modernas.
 <!-- progreso:inicio -->
 ## Progreso
 
-Medido el 2026-11-24 sobre el commit `50c8cbb`. Generado por `python tools/build.py progreso`;
+Medido el 2026-11-24 sobre el commit `dd06fe1`. Generado por `python tools/build.py progreso`;
 no se edita a mano.
 
 | Estado | Cifra |
 |---|---:|
 | Funciones del juego | 450 |
-| Coincidentes byte a byte | 419 |
-| En C, pendientes de afinar (`NON_MATCHING`) | 14 |
+| Coincidentes byte a byte | 418 |
+| En C, pendientes de afinar (`NON_MATCHING`) | 15 |
 | Escritas a mano, conservadas en ensamblador | 16 |
 | Sin traducir | 1 |
-| Bytes coincidentes | 142212 de 201416 |
-| Porcentaje de bytes coincidentes | 70.61 % |
+| Bytes coincidentes | 140172 de 201416 |
+| Porcentaje de bytes coincidentes | 69.59 % |
 
 Para reproducirlo (hace falta una copia propia del disco en `BBLIT_DISC`):
 
