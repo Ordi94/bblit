@@ -145,7 +145,8 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * sentencia una sola vez tras la reunion el puntero al fotograma (pseudo 90) es un pseudo local del bloque y toma a0 en
  * la asignacion local, antes que las lecturas del fotograma; con una copia en cada rama el pseudo se asigna en dos
  * bloques, pasa a global (pseudo 89: 10 usos sobre 35 instrucciones, 0,857), se reparte despues de los locales y toma
- * t1, como el original, y deja a0 libre para las lecturas.
+ * t1, como el original, y deja a0 libre para las lecturas. Con la sentencia una sola vez tras la reunion la
+ * puntuacion es 770. La forma del fuente original que producia este reparto se desconoce.
  *
  * La `do { } while (0);` no genera codigo: el ensamblador es el que saldria sin ella, pero las notas de bucle que deja
  * el parser actuan como limite de la primera planificacion. Cubre la suma del puntero al sprite y la lectura del campo
@@ -154,7 +155,7 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * ella tiene 5 usos y una vida de 4 (2,5), la lectura queda tras la aritmetica y el crudo toma v0 (`126 in 2`). Con ella
  * el objeto (pseudo 80: 3 usos sobre 62 instrucciones) no puede tomar a3 porque la constante 2 (pseudo 111: 3 usos
  * sobre 72 instrucciones) ya lo ocupa en la asignacion local; sin ella el objeto toma a3 pero el crudo y la suma suben
- * sobre la aritmetica. Los valores de +0 y +2 se calculan antes de la envoltura, en `coordenada_u` y `v_pagina`, para
+ * sobre la aritmetica. Sin la envoltura la puntuacion es 875. Los valores de +0 y +2 se calculan antes de la envoltura, en `coordenada_u` y `v_pagina`, para
  * que su aritmetica quede antes de la nota. El cuerpo de la envoltura es codigo real de la funcion, sin `break` ni
  * `continue`. Se supone, sin verificar, que el original no lleva envoltura y que lo que fija ese orden es otra
  * construccion que el volcado no distingue. La forma del fuente original que producia este reparto se desconoce. */
