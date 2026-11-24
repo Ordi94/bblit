@@ -1373,8 +1373,8 @@ void func_80035244(void)
  * su copia: el salto desde la proyeccion simple llega con el objeto ya en `a0`, como el `j` de 0x80035A54, que
  * salta la carga y entra en 0x80035D8C (con la etiqueta antes de la copia la cifra es 240).
  * Volcado de `cc1` (`-dl` y `-dg`, `-G8`): `t` es un solo pseudo de usuario (84) con cinco asignaciones, las cinco
- * cargas de `sc->cur`, 30 usos sobre 31 insns, sin cruzar llamadas y con preferencia por `a0` (es el argumento de
- * `func_800351B4`): prioridad 3,871, quinto del orden del reparto global, y toma `a0`, como el original en
+ * cargas de `sc->cur`, 30 usos sobre 32 insns, sin cruzar llamadas y con preferencia por `a0` (es el argumento de
+ * `func_800351B4`): prioridad 3,750, quinto del orden del reparto global, y toma `a0`, como el original en
  * 0x8003584C, 0x80035888, 0x80035A24, 0x80035D88 y 0x80035DCC. La forma del fuente original que producia este
  * reparto se desconoce.
  *
