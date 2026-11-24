@@ -448,15 +448,17 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * (2) El operando de la macro de distancia (a2 en lugar de a1, 0x80028CCC). Se supone, sin verificar, que es porque
  * la lista de destruidos de la macro incluye `$5`.
  * (3) El argumento de la llamada compartida (0x8002A668): tras la primera planificacion el `addiu a0,s3,0x7c` ocupa
- * la segunda posicion del bloque, a continuacion de la primera lectura del portador, y el puntero del portador
- * releido para la Z recibe a1 en `.greg`; en el original lo recibe a0 y el `addiu` va despues de `lw a1,0xec(a0)`
- * (0x8002A664 y 0x8002A668), de modo que el rango del registro duro a0 empieza despues de la ultima lectura del
- * portador.
- * (4) El destino de la suma de la direccion de la secuencia (0x8002B870): v0 aqui y v1 en el original.
- * (5) La relectura de `t->w114` tras el almacen a D_800693C0 (0x8002B928): aqui el compilador reutiliza el
- * registro. Se supone, sin verificar, que el original accede a ese dato por un puntero basado en `$gp` (su
- * ensamblador lo escribe como `0xa0(gp)`), de modo que el almacen se trata como posible alias de la memoria del
- * scratchpad.
+ * la segunda posicion del bloque, a continuacion de la primera lectura del portador (`-dS`: ordenando de abajo arriba,
+ * mientras esa lectura espera el ciclo de latencia de su uso el `addiu` es lo unico disponible), y el puntero del
+ * portador releido para la Z recibe a1 en `.greg`; en el original lo recibe a0 y el `addiu` va despues de
+ * `lw a1,0xec(a0)` (0x8002A664 y 0x8002A668), de modo que el rango del registro duro a0 empieza despues de la ultima
+ * lectura del portador.
+ * (4) El destino de la suma de la direccion de la secuencia (0x8002B870): v0 aqui y v1 en el original. En el volcado
+ * de reparto (`.lreg`) la suma tiene como primer operando el indice desplazado y como segundo el nodo; se supone,
+ * sin verificar, que el destino queda atado al registro del primer operando.
+ * (5) La relectura de `t->w114` en el bloque del contador de cuadros: el original almacena el campo en 0x8002B908 y
+ * lo vuelve a cargar en 0x8002B928, sin almacen ni llamada entre ambas instrucciones, y aqui el compilador reutiliza
+ * el registro. La forma del fuente original que producia esa carga se desconoce.
  *
  * Razones de la escritura. Los temporales de 32 bits compartidos entre bloques son pseudos globales que el reparto
  * global asigna a a0 y a1, mientras que el original deja en v0 y v1 los valores de un solo bloque: medido en el
