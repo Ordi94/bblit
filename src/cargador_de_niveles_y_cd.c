@@ -1003,7 +1003,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             IniciarLecturaContinua((CdlLOC*)D_8006A928);
             if (D_80069494 != 0) {
                 if (func_80044664((u8*)D_8006949C, (u8*)D_80069498, (void*)0x1F800000) == 0) {
-                    /* Mismo retorno que la apertura: el original sale de aqui con `beqz v0` directo (0x80042264). */
+                    /* Mismo retorno que la apertura (`beqz v0` directo, 0x80042264); con `return 1;` la cifra es 5793. */
                     goto fallo_lectura;
                 }
             } else {
@@ -1060,9 +1060,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                              * El original tiene un cuerpo por etiqueta (dos entradas de la tabla de saltos:
                              * 0x800423E8 para 0x24 y 0x80042424 para 0x40) que comparten solo la cola del
                              * almacen de la clase en 0x8004245C; por eso el C repite el cuerpo y no es una
-                             * sentencia replicada. Unidos en un solo cuerpo con la clase elegida por la
-                             * etiqueta la cifra sube a 30877. El modelo se usa solo hasta la llamada: un
-                             * temporal propio, no `aux`.
+                             * sentencia replicada. El modelo se usa solo hasta la llamada: un temporal
+                             * propio, no `aux`.
                              */
                             u8* modelo_gs;
                             CopiarBytes(cursor, campos, 8);
