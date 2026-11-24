@@ -349,12 +349,13 @@ typedef struct CabeceraPrimitiva {
 #ifdef NON_MATCHING
 /*
  * Pendiente: puntuacion 525 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
- * reordenadas, 24 insertadas o borradas). Residuo: la copia del puntero a la primitiva (ver el ultimo
+ * reordenadas, 21 insertadas o borradas). Residuo: la copia del puntero a la primitiva (ver el ultimo
  * parrafo); en el bloque del color, la intensidad sale en a0 y el original la tiene en el mismo registro que
- * el color, a2 (`subu a2,v1,v0`, 0x800451F4, y `addu a2,a2,a0`, 0x80045210); y la lectura de D_80069652 sale
- * en a2 en lugar de v0 por compartir `color`. La intensidad va en su propia local y el color se compone en
- * una sola sentencia, con la base primero y la intensidad al final, que da el arbol de sumas del original
- * (0x80045204 a 0x80045210).
+ * el color, a2 (`subu a2,v1,v0`, 0x800451F4, y `addu a2,a2,a0`, 0x80045210); y en la cola del bucle el
+ * original llena el hueco de retardo de la carga de D_80069652 (`lh`, 0x80045324) con el incremento del
+ * contador (`addiu s6,s6,1`, 0x80045328), mientras este C lo emite antes del `lui` y deja un `nop`. La
+ * intensidad va en su propia local y el color se compone en una sola sentencia, con la base primero y la
+ * intensidad al final, que da el arbol de sumas del original (0x80045204 a 0x80045210).
  *
  * La primitiva se escribe por miembros de POLY_FT4: el compilador marca un acceso por miembro como
  * acceso a estructura y no lo trata como posible alias de los globales escalares (D_80076188,
@@ -379,15 +380,8 @@ typedef struct CabeceraPrimitiva {
  * (2) `e++;` sube `e` de 9 a 11 usos, por delante del contador. (3) `i++;` sube el contador de 7 a 9, por delante
  * de la anchura y la altura. Con `u` declarada antes que `v` (los empates de prioridad se deciden por el numero
  * de pseudo) x, y, u y v quedan en s0 a s3 como el original y el planificador no mueve ninguna suma. Sin la
- * envoltura (1) la puntuacion sube a 615, sin la (2) a 588 y sin la (3) a 606. Las notas de
- * bucle de una envoltura son barrera de planificacion: `e++` va antes de la lectura de D_80069652 para que el
- * incremento de la direccion derivada (`addiu s4,s4,8`, 0x8004531C) quede antes del `lui` como en el original, y
- * la lectura se guarda en `color`, cuya vida termina con los almacenes de la cabecera, antes de `i++` porque el
- * original carga D_80069652 (`lui`/`lh`, 0x80045320 y 0x80045324) antes de incrementar el contador (`addiu
- * s6,s6,1`, 0x80045328). La puntuacion es la misma, 525, con la prueba directa sobre D_80069652, que pone el
- * `addiu` antes del `lui` y deja un `nop` en el retardo del `lh`; con la lectura en `color` el orden es el del
- * original y la carga y la comparacion salen en a2 en lugar de v0. Se supone, sin verificar, que el original
- * tiene en cada uno de esos pseudos una referencia ponderada mas que no deja instruccion.
+ * envoltura (1) la puntuacion sube a 615, sin la (2) a 718 y sin la (3) a 736. Se supone, sin verificar,
+ * que el original tiene en cada uno de esos pseudos una referencia ponderada mas que no deja instruccion.
  * La forma del fuente original que producia este reparto se desconoce.
  *
  * Residuo: el original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el
@@ -466,13 +460,10 @@ void func_80045150(EntradaLista* e)
             do {
                 e++;
             } while (0);
-            /* `color` ya no se lee en esta vuelta: guarda la cantidad de elementos para que su carga
-             * quede antes de `i++`. */
-            color = D_80069652;
             do {
                 i++;
             } while (0);
-        } while (i < color);
+        } while (i < D_80069652);
     }
 }
 #else
