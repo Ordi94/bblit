@@ -535,10 +535,10 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * (1) Carga `c = D_80069402;` de la rama del paso 0x26. Volcado `-dS`: sin la envoltura la carga no tiene ninguna
  * dependencia y se emite por encima del `ori` de las banderas (pseudo 924 = `banderas | 0x82`) y de su `sh`; con ella
  * depende del `ori`, tiene una antidependencia con el `sh` y queda detras, como en el original (875 sin ella). En
- * `.greg` cambia con ella `c`, de a0 a v0.
+ * `.greg` cambia con ella solo `c`, de a0 a v0.
  * (2) La misma carga en la rama del paso -0x26: sin la envoltura sube por encima del `ori` (pseudo 943) y del `sh`;
  * con ella queda detras con las mismas dos dependencias (790 sin ella; 1160 sin las envolturas 1 y 2). En `.greg`
- * cambia con ella `c`, de a0 a v0.
+ * cambian con ella `c`, de a0 a v0, el pseudo 925, de a2 a a0, y el pseudo 935, de a1 a v1.
  * (3) Almacen `D_80069408 = k;` de la cola comun. El orden de `-dS` es el mismo con y sin la envoltura; el que
  * cambia es el de `-dR`: sin ella la suma `c + k` (`addu v0,v0,v1`, pseudo 945) se emite por encima del `sw` de `k`
  * (`sw v1,D_80069408`), porque las dos solo leen v1 y no hay dependencia entre ellas; con ella la suma tiene una
@@ -1401,12 +1401,12 @@ void func_80035244(void)
  *
  * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
  * asigna el reparto global a `a0` y la recarga lo mueve despues a `t7` ("Spilling reg 15" para esa insn en el
- * volcado de la recarga); el original lo tiene en `a3`. Es la unica diferencia de bytes que queda: con la lista de
- * destruidos de `GEO_DISTANCIA_APROX_A` sin `$7` la funcion da 0 (medido; se supone, sin verificar en el fuente del
- * compilador, que la recarga evita los registros nombrados en la lista). El cuerpo de la macro escribe `$7`
- * (`addu $7,$10,$0`), de modo que la lista completa se conserva. La busqueda del
- * modelo copia el limite (`lim`) en una local propia dentro del bloque, como el original, que rellena con esa copia
- * el hueco del `beqz` de la primera comparacion (`addu a1,v1,zero` en 0x800357D4); sin `lim` la cifra es 375.
+ * volcado de la recarga); el original lo tiene en `a3`. Es la unica diferencia de bytes que queda, y es el registro
+ * de recarga: se supone, sin verificar en el fuente del compilador, que la recarga evita los registros nombrados en
+ * la lista de destruidos de `GEO_DISTANCIA_APROX_A`. El cuerpo de la macro escribe `$7` (`addu $7,$10,$0`), de modo
+ * que la lista completa se conserva. La busqueda del modelo copia el limite (`lim`) en una local propia dentro del
+ * bloque, como el original, que rellena con esa copia el hueco del `beqz` de la primera comparacion
+ * (`addu a1,v1,zero` en 0x800357D4); sin `lim` la cifra es 375.
  *
  * La prueba de la bandera del modelo (`sc->i40 < D_80069588`) va dentro del bloque que entra en la busqueda: el
  * `beqz` de la primera comparacion (0x800357D0) salta a la prueba de indice no hallado (0x80035870), no a la de la
