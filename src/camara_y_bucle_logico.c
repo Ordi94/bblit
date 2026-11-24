@@ -227,37 +227,24 @@ void func_80032A24(void)
     }
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 30 con la configuracion versionada (g = 8 del archivo). El flujo, las macros vectoriales y el
- * reparto de los registros coinciden; difiere solo el orden de dos cargas contiguas de la cadena de pruebas: el original
- * carga v28.vy (`lh a0,0x2a(s0)`, 0x80032E00) antes que max.vy (`lh a2,0x52(a1)`, 0x80032E04) y GCC las emite al reves.
- * La prueba se escribe `max.vy < v28.vy` y no `v28.vy > max.vy`: con la segunda max.vy se carga despues de v28.vy
- * (como el original) pero el valor pasa a 7 usos ponderados sobre 8 instrucciones (1,75), supera al objeto en curso
- * (pseudo 143, 14 usos sobre 25 instrucciones, 1,68) y los registros a1 y a2 se intercambian en toda la cadena de
- * pruebas (cifra 60); con `max.vy < v28.vy` la carga de max.vy se emite antes, su vida pasa a 9 instrucciones (1,56) y
- * el objeto en curso conserva a1, pero las dos cargas salen en el orden contrario; se supone, sin verificar, que la
- * segunda planificacion conserva el orden de emision de dos cargas de igual prioridad.
- *
- * El almacen de i58 va como primera sentencia del do/while de a48. Medido en el volcado de la primera planificacion
- * (`-dS`): la primera instruccion tras la nota de inicio de bucle depende de todo lo anterior y todo acceso a memoria
- * posterior depende de ella. Con el almacen antes del do/while la primera instruccion de la nota es la lectura del
- * objeto (una carga `lw 0x64` que la recarga convierte en `move v1,a1`) y queda despues del almacen; el original
- * coloca la copia (`move v1,a1`, 0x80032E2C) antes del almacen (`sw v0,0x58(s0)`, 0x80032E30). Con la resta de i58
- * dentro del do/while la primera instruccion tras la nota es la resta y la copia sale antes del almacen, como en el
- * original. Ampliar el tercer do/while para que cubra la lectura del objeto de RotMatrix no cambia los 14 usos del
- * pseudo 143: esa lectura es posterior a las llamadas y es otro pseudo.
- *
- * Los tres do/while (0) no generan codigo: ponderan por un nivel mas las referencias de su cuerpo para que la
- * prioridad de global-alloc ordene los punteros como el original (v28 en s3, rot en s4, a0 en s5, i58 en s6):
- * v28 queda con 10 usos ponderados (pseudo 134, 0,133), rot con 6 (0,130) y a0 con 10 (0,123), todos por encima de
- * i58 (0,106); medido en los volcados `.lreg` y `.greg`.
- * La forma del fuente original que producia este reparto se desconoce.
- *
  * Rayo de camara contra la lista de objetos solidos D_80069630: para cada objeto cuyos indicadores casan con la
  * mascara y cuya caja esta a menos de su alcance, lleva la posicion al sistema local del objeto, comprueba la caja
  * ensanchada por el radio y, si el punto cae sobre el objeto, desplaza el vector de salida a la cara mas cercana
  * (cuatro rectas de la caja segun el angulo ratan2) y lo devuelve al sistema global; retorna el objeto o 0.
+ *
+ * Los dos do/while (0) no generan codigo: ponderan por un nivel mas las referencias de su cuerpo y con ese peso
+ * global-alloc reparte los registros como el original. Medido en los volcados `.lreg` (usos ponderados y vida) y
+ * `.greg` (orden de reparto y registro de cada pseudo):
+ * - El que envuelve la ultima prueba de la cadena y el cuerpo del acierto: el objeto en curso (pseudo 143) pasa de 14
+ *   a 15 usos sobre 25 instrucciones (1,68 a 1,80) y queda por delante de max.vy (pseudo 185, de 6 a 7 usos sobre 8:
+ *   1,50 a 1,75), de modo que toma a1 y max.vy a2; a0 pasa de 8 a 10 usos sobre 244 (0,098 a 0,123) y queda por
+ *   delante del puntero a i58 (pseudo 84, 5 usos sobre 94, 0,106): a0 en s5 y el puntero en s6; el puntero a v28
+ *   (pseudo 134) pasa de 9 a 12 usos sobre 226 (0,119 a 0,159) y queda por delante del puntero a rot (pseudo 86,
+ *   6 usos sobre 92, 0,130): s3 y s4. Sin el la puntuacion es 103.
+ * - El del guardado de rot: el pseudo 86 pasa de 5 a 6 usos sobre 92 (0,109 a 0,130) y se mantiene por delante de a0
+ *   (0,123): rot en s4 y a0 en s5. Sin el la puntuacion es 63.
+ * La forma del fuente original que producia este reparto se desconoce.
  */
 s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
 {
@@ -310,52 +297,56 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
                             && w->cur->max.vx + w->i60 >= w->v28.vx
                             && w->v28.vz >= w->cur->min.vz - w->i60
                             && w->cur->max.vz + w->i60 >= w->v28.vz
-                            && w->cur->max.vy < w->v28.vy
-                            && w->cur->min.vy >= w->v28.vy - 0xF0) {
-                            /* Las tres escrituras de a48 son independientes; van en el orden x, z, y porque
-                             * asi el almacen de cero baja a su sitio, como en el original. */
+                            && w->v28.vy > w->cur->max.vy) {
                             do {
-                                w->i58 = w->cur->max.vy - w->v28.vy;
-                                w->a48.vx =a0->x - w->cur->param.trans.vx;
-                                w->a48.vz = a0->z - w->cur->param.trans.vz;
-                                w->a48.vy = 0;
-                                /* Aqui el original calcula la direccion de la rotacion con un addiu propio en
-                                 * lugar de reutilizar el puntero local, que queda para las otras dos llamadas. */
-                                RotMatrixZYX(&w->rot, &w->m);
-                            } while (0);
-                            ApplyMatrixSV(&w->m, &w->a48, &w->a50);
-                            w->i5C = ratan2(w->a50.vx, w->a50.vz);
-                            w->v28.vx = salida->x;
-                            w->v28.vy = salida->y;
-                            w->v28.vz = salida->z;
-                            ApplyMatrixSV(&w->m, &w->v28, &w->v28);
-                            w->i60 = w->i60 + 2;
-                            if (w->i5C >= 0) {
-                                if (w->i5C < ratan2(w->cur->max.vx + w->i60, w->cur->max.vz + w->i60)) {
-                                    w->v28.vz = (u16)w->cur->max.vz + (u16)w->i60 - (u16)w->a50.vz;
-                                } else if (w->i5C < ratan2(w->cur->max.vx + w->i60, w->cur->min.vz - w->i60)) {
-                                    w->v28.vx = (u16)w->cur->max.vx + (u16)w->i60 - (u16)w->a50.vx;
-                                } else {
-                                    w->v28.vz = (u16)w->cur->min.vz - (u16)w->i60 - (u16)w->a50.vz;
+                                if (w->cur->min.vy >= w->v28.vy - 0xF0) {
+                                    /* Las tres escrituras de a48 son independientes; van en el orden x, z, y
+                                     * porque asi el almacen de cero baja a su sitio, como en el original. */
+                                    w->i58 = w->cur->max.vy - w->v28.vy;
+                                    w->a48.vx = a0->x - w->cur->param.trans.vx;
+                                    w->a48.vz = a0->z - w->cur->param.trans.vz;
+                                    w->a48.vy = 0;
+                                    /* Aqui el original calcula la direccion de la rotacion con un addiu propio
+                                     * en lugar de reutilizar el puntero local, que queda para las otras dos
+                                     * llamadas. */
+                                    RotMatrixZYX(&w->rot, &w->m);
+                                    ApplyMatrixSV(&w->m, &w->a48, &w->a50);
+                                    w->i5C = ratan2(w->a50.vx, w->a50.vz);
+                                    w->v28.vx = salida->x;
+                                    w->v28.vy = salida->y;
+                                    w->v28.vz = salida->z;
+                                    ApplyMatrixSV(&w->m, &w->v28, &w->v28);
+                                    w->i60 = w->i60 + 2;
+                                    if (w->i5C >= 0) {
+                                        if (w->i5C < ratan2(w->cur->max.vx + w->i60, w->cur->max.vz + w->i60)) {
+                                            w->v28.vz = (u16)w->cur->max.vz + (u16)w->i60 - (u16)w->a50.vz;
+                                        } else if (w->i5C
+                                                   < ratan2(w->cur->max.vx + w->i60, w->cur->min.vz - w->i60)) {
+                                            w->v28.vx = (u16)w->cur->max.vx + (u16)w->i60 - (u16)w->a50.vx;
+                                        } else {
+                                            w->v28.vz = (u16)w->cur->min.vz - (u16)w->i60 - (u16)w->a50.vz;
+                                        }
+                                    } else {
+                                        w->i5C = -w->i5C;
+                                        if (w->i5C
+                                            < -ratan2(w->cur->min.vx - w->i60, w->cur->max.vz + w->i60)) {
+                                            w->v28.vz = (u16)w->cur->max.vz + (u16)w->i60 - (u16)w->a50.vz;
+                                        } else if (w->i5C
+                                                   < -ratan2(w->cur->min.vx - w->i60,
+                                                             w->cur->min.vz - w->i60)) {
+                                            w->v28.vx = (u16)w->cur->min.vx - (u16)w->i60 - (u16)w->a50.vx;
+                                        } else {
+                                            w->v28.vz = (u16)w->cur->min.vz - (u16)w->i60 - (u16)w->a50.vz;
+                                        }
+                                    }
+                                    RotMatrix(&w->cur->param.giro.rotate, &w->m);
+                                    ApplyMatrixSV(&w->m, &w->v28, &w->v28);
+                                    salida->x = w->v28.vx;
+                                    salida->y = w->i58;
+                                    salida->z = w->v28.vz;
+                                    return (s32)w->cur;
                                 }
-                            } else {
-                                w->i5C = -w->i5C;
-                                if (w->i5C < -ratan2(w->cur->min.vx - w->i60, w->cur->max.vz + w->i60)) {
-                                    w->v28.vz = (u16)w->cur->max.vz + (u16)w->i60 - (u16)w->a50.vz;
-                                } else if (w->i5C < -ratan2(w->cur->min.vx - w->i60, w->cur->min.vz - w->i60)) {
-                                    w->v28.vx = (u16)w->cur->min.vx - (u16)w->i60 - (u16)w->a50.vx;
-                                } else {
-                                    w->v28.vz = (u16)w->cur->min.vz - (u16)w->i60 - (u16)w->a50.vz;
-                                }
-                            }
-                            RotMatrix(&w->cur->param.giro.rotate, &w->m);
-                            do {
-                                ApplyMatrixSV(&w->m, &w->v28, &w->v28);
                             } while (0);
-                            salida->x = w->v28.vx;
-                            salida->y = w->i58;
-                            salida->z = w->v28.vz;
-                            return (s32)w->cur;
                         }
                     }
                 }
@@ -365,9 +356,6 @@ s32 func_80032B2C(Vec3* a0, Vec3* a1, RayoCamara* w, u32 mascara)
     }
     return 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_80032B2C);
-#endif
 
 /*
  * Busca un giro en Y para el que la sonda de colision avance libre: prueba hasta 25 giros de la
