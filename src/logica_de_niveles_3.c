@@ -462,9 +462,8 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * volcado de reparto para las dos bandas de altura del vuelo; para el resto de tramos se supone, sin verificar. Por
  * eso llevan local propia las bandas de altura (`altura_jugador`, `suelo_bajo`, `banda_alta` y `banda_baja`, con los
  * almacenes en el orden alta y baja), el giro en reposo (`giro_reposo`), el giro directo (`giro_directo` y
- * `pr_directo`), la prueba del barrido (`f14_barrido`), la prueba de desfase `d.vx | d.vy` (`desfase_xy`) y la
- * traslacion en Z de la rama de la comprobacion de apoyo (`vz_portador` y `vz_barrido`, sumadas en el orden del
- * original, `addu a1,a1,a2`). La altura del objeto se lee en una local antes de la histeresis, el hijo se copia en
+ * `pr_directo`), la prueba del barrido (`f14_barrido`) y la prueba de desfase `d.vx | d.vy` (`desfase_xy`). La
+ * altura del objeto se lee en una local antes de la histeresis, el hijo se copia en
  * `hijo_soltado` antes de soltarlo, la resta de la X del portador en el barrido va directa y los giros del portado
  * se vacian con la asignacion encadenada `u.x = u.z = 0` (el original almacena 0xe0 antes que 0xdc). Se supone, sin
  * verificar, que cada una de estas escrituras acerca el codigo al original.
@@ -587,8 +586,6 @@ void func_80026FEC(Objeto* o)
     RegistroAnim* registro_actual;
     s32 altura_objeto;
     Objeto* hijo_soltado;
-    s32 vz_portador;
-    s32 vz_barrido;
 
     t = (TrabajoPersonaje*)0x1F800000;
     area = (void*)0x1F800128;
@@ -1888,14 +1885,12 @@ componer_con_portador:
             t->res.grupo = o->w26;
             BarrerTerreno(&t->pF0, &t->p30, &t->res, area);
             o->param.trans.vx = o->p70->param.trans.vx + t->p30.vx;
-            vz_portador = o->p70->param.trans.vz;
-            vz_barrido = t->p30.vz;
+            o->param.trans.vz = o->p70->param.trans.vz + t->p30.vz;
             o->coord.param = PARAMETROS_SDK(o);
             o->param.giro.u.z = 0;
             o->coord.super = 0;
             o->p70 = 0;
             o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x200;
-            o->param.trans.vz = vz_portador + vz_barrido;
             /* Sentencia replicada: es la misma que la de las otras ramas. */
             func_8001CFCC(&o->coord);
         }
