@@ -447,69 +447,52 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 545 con la configuracion versionada (g = 8 del archivo; ejes 127 de operandos, 0 de lineas
- * reordenadas y 214 de lineas insertadas o borradas). La resta `i = n - 10` del final de la funcion se escribe antes
- * de la prueba de zonas y no dentro de ella: el original la calcula en el hueco de retardo del primer `beq`
- * (`addiu s0,s1,-0xa` en 0x80034D94) y escrita dentro de la prueba sale en el hueco del `bnez` siguiente (665 con la
- * resta dentro). El flujo, las macros vectoriales y
- * las constantes coinciden. Por tramos, con desplazamientos desde 0x80033358 (la puntuacion cuenta como diferencia
- * cada acceso por `$gp` del original frente al simbolo del actual, unas 97 lineas que no son diferencia de bytes):
- * los bucles de las ocho sondas (modo de apuntado y seguimiento libre) coinciden con `i++` escrito DESPUES de la
- * llamada a BarrerTerreno (con `i++` justo tras la llamada de colision, o tras la asignacion de `v30.vy`, el
- * incremento del contador y del puntero sale antes de preparar los argumentos de la llamada y el original lo emite
- * despues, 0x498 y 0x49c), y el bloque de las posiciones de la camara (0x17b0..0x1868) coincide en el orden de las
- * lecturas y almacenes con los tres almacenes de `v30` escritos tras el de `vpz`, en el orden `vx`, `vy`, `vz`;
- * la prueba de los dos bits de la direccion del ajuste de altura (0xba0..0xbb8) coincide leyendo el byte D_8006AA7C
- * como miembro del banco D_8006AA70 (`D_8006AA70[0xC]`, el mismo byte, como en el prologo de func_800353B0) y con la
- * bandera enmascarada como primer operando del `or`: con el simbolo suelto la mascara tomaba v0 y el byte a0 (785
- * con la bandera enmascarada segundo y 790 con ella primera); con el miembro del banco y la bandera enmascarada
- * segunda la cifra es 580; el texto del ensamblador cambia (`%lo(D_8006AA70+0xc)` frente a `%lo(D_8006AA7C)`) sin
- * cambiar los bytes; el par de modificaciones de banderas del giro (0xcc4..0xd30) coincide en el orden (almacen de
+ * Pendiente: puntuacion 555 con la configuracion versionada (g = 8 del archivo; ejes 127 de operandos, 0 de lineas
+ * reordenadas y 218 de lineas insertadas o borradas). El flujo, las macros vectoriales y las constantes coinciden.
+ * Residuo: en el bloque del giro por boton `g` y `pulsado` salen con los registros intercambiados (el original tiene
+ * `g` en a2 y `pulsado` en a1; ver el ultimo tramo de esta nota). El resto de diferencias es de forma simbolica, sin
+ * diferencia de bytes: los accesos por `$gp` del original frente al simbolo y las dos lecturas del byte de pausa, que
+ * salen como `D_8006AA70+0xc`. Ese byte se nombra en toda la funcion como miembro del banco (`D_8006AA70[0xC]`,
+ * como en el prologo de func_800353B0): con el simbolo suelto cambia el reparto de la prueba de los dos bits de la
+ * direccion del ajuste de altura.
+ *
+ * Razones de la escritura, con desplazamientos desde 0x80033358. La resta `i = n - 10` del final de la funcion se
+ * escribe antes de la prueba de zonas: el original la calcula en el hueco de retardo del primer `beq`
+ * (`addiu s0,s1,-0xa` en 0x80034D94); escrita dentro de la prueba la cifra es 675. En los bucles de las ocho sondas
+ * (modo de apuntado y seguimiento libre) `i++` va despues de la llamada a BarrerTerreno porque el original emite el
+ * incremento del contador y del puntero despues de preparar los argumentos (0x498 y 0x49c). En el bloque de las
+ * posiciones de la camara (0x17b0..0x1868) los tres almacenes de `v30` van tras el de `vpz`, en el orden `vx`, `vy`,
+ * `vz`. En la prueba de los dos bits de la direccion (0xba0..0xbb8) la bandera enmascarada es el primer operando del
+ * `or`. El par de modificaciones de banderas del giro (0xcc4..0xd30) coincide en el orden (almacen de
  * las banderas, carga del contador `D_80069402`, constante del paso) con la carga `c = D_80069402;` de cada rama dentro
  * de una envoltura `do { } while (0);` que no genera codigo: sin ella el planificador adelantaba la carga sobre el
  * almacen (el volcado `.sched` mostraba la carga sin ninguna arista de dependencia con el almacen a `0x80(reg)`: el
  * almacen es un miembro de estructura y la carga un escalar de direccion constante, y la prueba de alias no los
  * relaciona); con la envoltura la nota de inicio de bucle hace que la carga, que es la primera instruccion tras
  * ella, dependa de todo lo anterior, y el volcado muestra la carga con una arista al `ori` y otra, de antidependencia,
- * al `sh`. Medido (con la tercera envoltura, la del almacen de la cola comun): 1150 sin las dos de las cargas,
- * 845 solo con la de la primera rama (paso 0x26), 865 solo con la de la segunda (paso -0x26) y 545 con las tres.
- * Queda de ese tramo el reparto de `g` y `pulsado`: con el orden de instrucciones del original la vida de `g` baja
- * de 32 a 30 instrucciones y su prioridad de 0,44 a 0,47 (7 usos), por encima de la de `pulsado` (4 usos sobre 18
- * instrucciones, 0,44), y `g` toma `a1` y `pulsado` `a2`, al reves que el original; se supone, sin verificar, que
- * el original tiene una referencia ponderada mas sobre `pulsado`. La forma del fuente original que producia este reparto
- * se desconoce. Medido sobre la carga: escribir el almacen por `cam->` empeora en la rama izquierda; por un puntero
- * `u16*` local en las dos ramas, por `ec` tras asignarle `&D_8006D928` o con `k` escrito antes que `c` la cifra no
- * cambiaba (sin la envoltura), se supone, sin verificar, que porque el CSE pliega la constante en la direccion y el
- * almacen sigue siendo de simbolo; con la envoltura en `pulsado = D_8001000A;` la cifra empeora; la carga
- * de `D_8006D928.vpy` del modo de transicion (0x11d0..0x11ec), adelantada aqui sobre tres almacenes de `v30`
- * (escribirla por `cam->` empeora la cifra); el resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en una
- * variable propia, `raiz`, que se asigna una sola vez y de la que salen el cociente y el resto (`i = raiz / 200`,
- * `d = raiz - i * 200`): con la raiz guardada en `d`, que se asigna dos veces, el copiado del resultado de la llamada
- * salia delante de los movimientos de argumentos y el resultado tomaba `s2` en lugar de `s1`, el registro del
- * puntero `&w->dir` que muere en `move a1,s1` (los dos pseudos coincidian en vida un instante); con `raiz` el
- * copiado `move s1,v0` queda tras los argumentos como en el original (800 sin ella, 545 con ella). Se supone, sin verificar con
- * el volcado de planificacion, que una variable de una sola asignacion se hunde hasta su primer consumidor y una
- * de dos asignaciones queda donde esta escrita; escribir los almacenes de `dir` antes de la llamada o reutilizar
- * `r` en lugar de `d` empeoraba la cifra; el cuadrado de la velocidad (0x15b8..0x15c4) relee `v90.vx`
- * como el original al escribir el almacen de `flags80` ANTES de calcular el cuadrado (la relectura la
- * provoca el almacen intermedio a un global que el CSE no distingue de `w->v90`; con el orden de los operandos
- * del `or` invertido la cifra sube); el bloque de alturas coincide con `ec` y `vp` locales de cada copia (ver su
- * comentario). El valor de 16 bits que el original guarda en registros distintos segun la zona (el giro hacia el
+ * al `sh`. Puntuaciones: 1160 sin las dos envolturas de las cargas, 855 solo con la de la primera rama (paso 0x26),
+ * 875 solo con la de la segunda (paso -0x26) y 555 con las tres (la tercera es la del almacen de la cola comun).
+ * El resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en una variable propia, `raiz`, que se asigna
+ * una sola vez y de la que salen el cociente y el resto (`i = raiz / 200`, `d = raiz - i * 200`): el copiado
+ * `move s1,v0` queda tras los argumentos, como en el original (con la raiz guardada en `d` la cifra es 810). Se
+ * supone, sin verificar con el volcado de planificacion, que una variable de una sola asignacion se hunde hasta su
+ * primer consumidor y una de dos asignaciones queda donde esta escrita. El cuadrado de la velocidad
+ * (0x15b8..0x15c4) relee `v90.vx` como el original porque el almacen de `flags80` va ANTES de calcular el cuadrado
+ * (la relectura la provoca el almacen intermedio a un global que el CSE no distingue de `w->v90`). El bloque de
+ * alturas usa `ec` y `vp` locales de cada copia (ver su comentario). El valor de 16 bits que el original guarda en
+ * registros distintos segun la zona (el giro hacia el
  * objeto de seguimiento, `a0` en 0xc14; el giro por boton, `v0`; la cuenta del giro suavizado, `v1` en 0xeb0; el rumbo)
  * se guarda en cuatro variables, `cgiro`, `c`, `cuenta` y `crumbo`: con una sola variable la cuenta del giro tomaba
  * `a0` en 0xeb0 (se supone, sin verificar, que una variable que abarca las cuatro zonas suma las referencias de
  * todas y por eso toma el mismo registro en todas). La direccion de
  * acercamiento (0x990..0x9c4) coincide al leer `w->dist` en los tres productos. La prueba del giro tras el
  * bloque de la cuenta de espera (0xed4..0xfd8) coincide con una sola cola `w->rot.vy = D_80069402` y dos
- * `goto` (la forma `if (f2 & 2 || byte)` tras el bloque empeora la cifra: el
- * compilador conservaba una prueba de mas por cada camino del bloque; con el bit guardado en una local la
- * prueba se reutilizaba pero no se enhebraba, y con la prueba del byte repetida en cada rama y la cola
- * replicada la cola sobrevivia en el otro extremo). Medido sin la envoltura sobre el almacen de banderas del giro
- * (0xcc4..0xd30): con el almacen por un puntero `u16*` la marca de campo de estructura (`/s` en el volcado
- * `.sched`) desaparece del almacen y la carga de `D_80069402` sigue delante de el; se supone, sin verificar,
- * que es porque la base del almacen es un pseudo que el planificador resuelve al simbolo `D_8006D928`, de
- * modo que los dos accesos no se solapan. Con la mascara de la prueba de bits en una local propia
- * (0xba0..0xbb8) la cifra empeora, igual que copiar `d` a `i` antes del cociente.
+ * `goto`, como el original.
+ *
+ * Reparto de `g` y `pulsado` (el residuo): con el orden de instrucciones del original `g` cuenta 7 usos sobre 30
+ * instrucciones (0,467), por encima de `pulsado` (4 usos sobre 18, 0,444), y `g` toma `a1` y `pulsado` `a2`, al
+ * reves que el original. Se supone, sin verificar, que el original tiene una referencia ponderada mas sobre
+ * `pulsado`. La forma del fuente original que producia este reparto se desconoce.
  */
 /*
  * Acerca la altura del punto de vista a la banda [base - 0x64, base + 0x64] desplazada por p4: si queda por encima
@@ -559,10 +542,10 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * La carga `c = D_80069402;` de cada una de las dos ramas del giro por boton va en una envoltura
  * `do { } while (0);` que no genera codigo: la nota de inicio de bucle que deja el analizador hace de barrera de
  * planificacion, la carga pasa a depender del almacen de las banderas (`ori` y `sh` anteriores) y sale tras el
- * como en el original, en lugar de subir sobre el (1150 sin las dos envolturas de las cargas, 545 con las tres; el volcado
+ * como en el original, en lugar de subir sobre el (1160 sin las dos envolturas de las cargas, 555 con las tres; el volcado
  * `.sched` muestra las aristas de dependencia, ver la linea Pendiente). El almacen `D_80069408 = k;` de la cola
  * comun del paso va en otra envoltura que no genera codigo: sin ella el `addu` de la cola salia delante del `sw` y
- * con ella sale detras, como en el original (610 sin ella, 545 con las tres). La forma del fuente original que
+ * con ella sale detras, como en el original (620 sin ella, 555 con las tres). La forma del fuente original que
  * producia este reparto se desconoce.
  */
 void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
@@ -680,7 +663,7 @@ void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
     }
     e = ESTADO_PRINCIPAL;
     if ((e->mando.botones_a & 0x10) != 0 && D_80069690 == 0 && (o->flags14 & 0x1015609) == 0
-        && (o->flags18 & 4) == 0 && (D_8006D928.flags80 & 0x2000) == 0 && D_8006AA7C == 0
+        && (o->flags18 & 4) == 0 && (D_8006D928.flags80 & 0x2000) == 0 && D_8006AA70[0xC] == 0
         && ((o->flags14 & 0x10000000) == 0 || reiniciar == 0) && e->r[BANCO_PAUSA] == 0
         && (D_8006D928.flags80 & 0x10) == 0) {
         o->flags14 = o->flags14 | 0x80000000;
@@ -1005,7 +988,7 @@ fin_giro:
         /*
          * El original carga la posicion x del objeto (`lw v1,0xE4(s4)`, 0x8003453C) junto con la altura
          * del punto de vista, antes del primer almacen a `v70` (0x80034540); sin la local el
-         * planificador la carga tras ese almacen y la cifra sube de 545 a 1055.
+         * planificador la carga tras ese almacen y la cifra sube de 555 a 1065.
          */
         pos_x = o->param.trans.vx;
         w->v70.vy = D_8006D928.vpy;
@@ -1379,8 +1362,8 @@ void func_80035244(void)
  * reordenadas y 95 insertadas o borradas. El flujo coincide salvo el `nop` del hueco de
  * retardo de 0x800357D4 (la copia del limite de la busqueda del modelo, ver abajo). Quedan diferencias de registros
  * y de forma simbolica: (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las
- * diferencias; causa medida: la lista de destruidos de la macro de distancia aproximada declara `$7`, que su
- * cuerpo escribe, y con ella la recarga evita `a3`; sin `$7` en la lista la funcion mide 155);
+ * diferencias). La lista de destruidos de `GEO_DISTANCIA_APROX` declara `$7`, que su cuerpo escribe; la lista es
+ * completa y se conserva. Se supone, sin verificar, que por eso la recarga evita `a3`;
  * (2) resuelta con un par `pz--; pz++;` que no genera codigo (mas abajo): puntero a la proyeccion en s2, constante -3
  * en s3 y puntero a `sx` en s4, como el original; (3) resuelta con una envoltura (mas abajo): el limite en a1 y el
  * puntero al objeto de la busqueda del modelo en a2, como el original; (4) el
@@ -1444,23 +1427,17 @@ void func_80035244(void)
  *
  * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
  * asigna el reparto global a `a0` y la recarga lo mueve despues a `t7` ("Spilling reg 15" para esa insn en el
- * volcado de la recarga); el original lo tiene en `a3`. Con `$7` retirado de la lista de destruidos de
- * `GEO_DISTANCIA_APROX` y `GEO_DISTANCIA_APROX_A` (el cuerpo de ambas escribe `$7`: `addu $7,$10,$0`, y la lista
- * declarada es la completa) la recarga elige `a3` en los tres puntos del prologo y de la rama de volumen, y la
- * funcion pasa de 345 a 155 (91 diferencias de operando y 25 lineas insertadas o borradas). La lista de registros
- * destruidos de una macro declara todo registro que su cuerpo escribe, y el cuerpo escribe `$7`; con la lista sin
- * `$7` el compilador creeria libre un registro que la macro modifica, de modo que la lista queda completa y la
- * diferencia (155 con la lista sin `$7`) es la causa por la que la recarga del puntero evita `a3`. Con `$7` en la lista la recarga evita `a3` (se supone, sin verificar, que porque otro punto de la funcion
- * lo escribe por asm; no se leyo el codigo de la recarga). La busqueda del
+ * volcado de la recarga); el original lo tiene en `a3`. Se supone, sin verificar, que la recarga evita `a3` porque
+ * la lista de destruidos de las macros de distancia aproximada declara `$7`; el cuerpo lo escribe
+ * (`addu $7,$10,$0`), de modo que la lista completa se conserva. La busqueda del
  * modelo copia el limite (`lim`) en una local propia dentro del bloque, como el original (`addu a1,v1,zero`); la
  * copia hecha antes de la comparacion se vuelve a fundir con `nmod` (470). El original rellena con esa copia el hueco
  * del `beqz` de la primera comparacion (`addu a1,v1,zero` en 0x800357D4); aqui el hueco queda con un `nop`. Medido
  * en la salida de `cc1`: ese salto no lleva relleno y el `nop` lo anade el ensamblador de `maspsx`; la copia sigue al
  * salto y el volcado de la primera pasada de CSE muestra que la comparacion pasa a usar el registro de la copia
  * cuando esta se hace antes de ella. Se supone, sin verificar, que el relleno de huecos no toma una copia de registro
- * de la rama que cae (si toma un `addu` con inmediato en el salto siguiente) y que el original la tenia antes de la
- * comparacion con la comparacion sobre el registro cargado, forma que solo da un resultado de comparacion guardado
- * en una variable y probado despues (una operacion partida en dos sentencias, que no se instala).
+ * de la rama que cae (si toma un `addu` con inmediato en el salto siguiente). La forma del fuente que rellenaba ese
+ * hueco se desconoce.
  *
  * La prueba tras la busqueda del modelo sigue la estructura del original: con la entrada hallada se
  * comprueba el bit 1 de la bandera y el bit 0x10000 de las banderas del objeto, y sin el bit 1 se cae a la
