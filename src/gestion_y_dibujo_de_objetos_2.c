@@ -912,20 +912,30 @@ void func_80038E84(s32 idx, s32 paso)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 295 con la configuracion versionada (g = 8 del archivo; ejes 73 de
- * operando, 0 reordenadas, 112 insertadas o borradas). Todas las instrucciones coinciden en numero;
- * quedan las marcas de operando por nombre de simbolo y siete lineas de registro en un bloque de la
- * barra 0, tras la comparacion con el valor de la vida: el original deja la base de 0x80010000 en a1 y
- * copia el valor mostrado a a0 con `move a0,v1` en el hueco de retardo de 0x800390F4; el C copia la base
- * a a0 en esa posicion y compara con v1. En el volcado `.cse` la asignacion `mostrado = D_80069525` es
- * una copia de la primera lectura y las comparaciones posteriores usan la lectura. El original, ademas
- * de esa copia, vuelve a leer D_80069525 en las tres ramas (0x80039134, 0x80039150 y 0x80039160). La
- * forma del fuente que daba la copia junto con las tres relecturas se desconoce.
+ * Pendiente: puntuacion 260 con la configuracion versionada (g = 8 del archivo; ejes 75 de
+ * operando, 0 reordenadas, 104 insertadas o borradas). Todas las instrucciones coinciden en numero;
+ * quedan las marcas de operando por nombre de simbolo y una sola linea de registro, la comparacion
+ * `<` de la barra 0 antes de la llamada (0x80039144): el original compara el byte leido, que sigue en
+ * v1 (`sltu v0,v1,v0`), y el C compara la copia ancha que esta en a0 (`sltu v0,a0,v0`). En el volcado
+ * `.cse` ese `<`, escrito sobre `leido`, usa ya el pseudo de `mostrado`: el optimizador sustituye la
+ * extension del byte por la copia que ya la tiene. La forma del fuente que conserva v1 en esa
+ * comparacion se desconoce.
+ *
+ * Valor mostrado de la barra 0: el original tiene dos registros con el mismo valor, el byte leido en v1
+ * y una copia en a0 (`move a0,v1`, 0x800390F4) que usan las comparaciones, mientras la suma y la resta
+ * de despues de la llamada parten del byte (0x80039180 a 0x800391B0, `andi a0,v1,0xff`). El C lo
+ * escribe con `leido` (`u8`, el byte de D_80069525 o de D_80069574) y `mostrado` (`u32`, su valor
+ * para comparar). La copia anterior a la llamada solo sobrevive si `mostrado` se vuelve a usar fuera
+ * de ese bloque: sin la copia de despues de la llamada la cifra es 500. La igualdad con la vida se
+ * escribe entre los dos bytes (`leido == e->r[0x03]`), que conserva el `andi` de la vida
+ * (0x80039128); sobre `mostrado` la cifra es 375. La rama que inicia la barra (valor mostrado 0xFF)
+ * copia la vida al valor mostrado y toma de el `nuevo`, sin pasar por `valor`: con `valor` esa local
+ * se reparte en v1 en toda la funcion y la cifra es 360.
  * En esta funcion el byte de la vida se nombra siempre como miembro del banco (`r[0x03]`, direccion 0x80010043). En el
  * brillo el original lo carga dos veces (0x800391E0 y 0x800391F4, con `lui a0` en el hueco de retardo de
  * 0x800391F0). Leido por un simbolo escalar propio, las dos cargas son el mismo operando de memoria:
  * llegan separadas hasta el volcado `.greg` y en `.jump2` la segunda ya es una copia de registro (la
- * reutilizacion de valores posterior al reparto), y la cifra es 565. Con la direccion constante la
+ * reutilizacion de valores posterior al reparto). Con la direccion constante la
  * segunda carga se hace sobre un registro base propio y se conserva, como en el original.
  * El byte D_8006AA7C (pausa) se lee en el prologo y en los cuatro temporizadores como miembro del banco
  * D_8006AA70 (`D_8006AA70[0xC]`): el compilador separa entonces el `lui` de la carga y el original lo
@@ -938,11 +948,9 @@ void func_80038E84(s32 idx, s32 paso)
  * Un puntero propio por barra (g3 y g7 para el indice y el valor, f3 y f7 para la relectura tras la
  * llamada) en lugar de los compartidos `g` y `f` deja las bases de las barras 3 y 7 en v0 como el original
  * (se supone, sin verificar, que un pseudo compartido une las vidas de todas las barras y toma el mismo
- * registro en todas). Leer el estado principal en una copia propia de la rama de la barra 0
- * (`e_rama`, en lugar de reutilizar la local del cuerpo) deja la cifra en 295; sin la copia es 600. La
- * barra 3 se escribe con `modo = 0` en la rama contraria de la prueba `== 0xFF` (con `modo = 0` antes de
- * la prueba la cifra es 520), como el original, que rellena el hueco de retardo del `bne` con la
- * comparacion y no con `move a2,zero`.
+ * registro en todas). La barra 3 se escribe con `modo = 0` en la rama contraria de la prueba `== 0xFF`
+ * (con `modo = 0` antes de la prueba la cifra es 485), como el original, que rellena el hueco de retardo
+ * del `bne` con la comparacion y no con `move a2,zero`.
  * En cada uno de los cuatro temporizadores de poderes el original deja el resultado `n` en v0 (`li v0,1` en el
  * hueco de retardo del `beq` de la comparacion con -1 y `sll v0,v0,1` al final del producto por 30). Con
  * `n = 1;` antes de la comparacion el pseudo de `n` vive durante el temporal de la comparacion (ocupa v0 hasta
@@ -951,20 +959,6 @@ void func_80038E84(s32 idx, s32 paso)
  * en los cuatro temporizadores `n` no vive durante la comparacion y toma v0 como el original. Se supone,
  * sin verificar, que con la forma nueva en un solo temporizador la cifra no cambia: `n` es un solo pseudo
  * compartido y los otros tres siguen en conflicto.
- * Segunda envoltura `do { } while (0)`, alrededor del almacen que limita la vida a 0x63 (`e->r[0x03] = 0x63;`),
- * tampoco genera codigo. Causa medida (volcado `-dl` y `-dg` del estado final, con y sin ella): el pseudo 99
- * pasa de 3 a 4 usos sobre 18 instrucciones de vida (prioridad floor_log2(R) * R / L de 1 * 3 / 18 = 0,167 a
- * 2 * 4 / 18 = 0,444) y se asigna por delante del pseudo 95 (4 usos sobre 44 instrucciones, 2 * 4 / 44 = 0,182);
- * los dos intercambian registro (99 de a1 a a0 y 95 de a0 a a1) y la base de 0x80010000 pasa a `a1` como en el
- * original (`lui a1` en 0x80039098); sin ella la cifra es 310 frente a 295. Se supone, sin verificar, que el pseudo
- * 99 es el puntero de la rama de la vida y el 95 la base del cuerpo; solo se comprobo en el ensamblador el
- * registro de la base. La forma del fuente original que producia este reparto se desconoce.
- *
- * El valor mostrado es una sola local `u8` (`mostrado`) compartida por todas las barras: el optimizador
- * propaga cualquier local que se copie de ella y usa v1 directamente, por lo que la copia de a0 del
- * original (`move a0,v1`, 0x800390F4) no aparece. Se supone, sin verificar, que la copia del original no
- * es una copia vista por el optimizador sino una segunda lectura convertida en copia tras la asignacion de
- * registros, y que para ello la segunda lectura no debe quedar unida a la primera en el optimizador.
  */
 /*
  * Una vez por cuadro de juego, con el estado principal distinto de 3, sin pantalla pedida
@@ -980,14 +974,14 @@ void func_80038E84(s32 idx, s32 paso)
  * La envoltura do/while (0) del medidor del grupo 0xB y del contador de golpes no genera codigo:
  * pondera por un nivel mas las referencias que contiene, y el volcado de cc1 del estado final (.lreg
  * y .greg), con y sin la envoltura, lo muestra. Las prioridades son floor_log2(R) * R / L. `valor` (la
- * lectura de un byte de la barra, pseudo 83) pasa de 11 a 14 usos sobre 22 instrucciones de vida: de
- * 3 * 11 / 22 = 1,5 a 3 * 14 / 22 = 1,909. Su contendiente por el registro es el pseudo 185, el byte
+ * lectura de un byte de la barra, pseudo 84) pasa de 8 a 11 usos sobre 17 instrucciones de vida: de
+ * 3 * 8 / 17 = 1,41 a 3 * 11 / 17 = 1,94. Su contendiente por el registro es el pseudo 182, el byte
  * extendido de D_80069514 que se compara con `beq` en la barra 7, que pasa de 3 a 6
- * usos sobre 6 instrucciones: de 1 * 3 / 6 = 0,5 a 2 * 6 / 6 = 2,0. Con la envoltura el pseudo 185 va
- * delante (2,0 frente a 1,909) y toma v1, de modo que `valor` se asigna despues y toma a0, como en el
- * original (lbu a0 sobre D_80010040 mas el indice). Sin la envoltura `valor` va delante (1,5 frente a
- * 0,5), toma v1 y el pseudo 185 cae en a0: la cifra sube de 295 a 380. El margen de 0,09 entre ambos
- * pseudos (2,0 frente a 1,909) es corto. El resto de pseudos de la region tambien cambia de orden en el
+ * usos sobre 6 instrucciones: de 1 * 3 / 6 = 0,5 a 2 * 6 / 6 = 2,0. Con la envoltura el pseudo 182 va
+ * delante (2,0 frente a 1,94) y toma v1, de modo que `valor` se asigna despues y toma a0, como en el
+ * original (lbu a0 sobre D_80010040 mas el indice). Sin la envoltura `valor` va delante (1,41 frente a
+ * 0,5), toma v1 y el pseudo 182 cae en a0: la cifra sube de 260 a 345. El margen de 0,06 entre ambos
+ * pseudos (2,0 frente a 1,94) es corto. El resto de pseudos de la region tambien cambia de orden en el
  * volcado; solo se comprobo en el ensamblador el registro de `valor`. La forma del fuente original que
  * producia este reparto se desconoce.
  *
@@ -1000,7 +994,8 @@ void func_80038E84(s32 idx, s32 paso)
  */
 void func_80039094(void)
 {
-    u8 mostrado;
+    u32 mostrado;
+    u8 leido;
     s32 nuevo;
     u8 vida;
     u8 valor;
@@ -1018,46 +1013,43 @@ void func_80039094(void)
     EstadoPrincipal* f;
     EstadoPrincipal* f3;
     EstadoPrincipal* f7;
-    EstadoPrincipal* e_rama;
 
     e = ESTADO_PRINCIPAL;
     /* D_8006AA70[0xC] es el byte D_8006AA7C (pausa), leido como miembro del banco igual que en los
      * cuatro temporizadores: asi el `lui` de la base queda separado de la carga. */
     if (e->nivel != 3 && D_80069662 == 0 && D_8006AA70[0xC] == 0) {
         if (e->r[0x03] != D_80069525) {
-            mostrado = D_80069525;
-            /* Copia propia del estado para las comparaciones de esta rama (cifras en la cabecera). */
-            e_rama = e;
+            /* El original guarda el byte leido y una copia ancha en otro registro (ver la cabecera). */
+            leido = D_80069525;
+            mostrado = leido;
             if (e->r[0x03] >= 0x64) {
-                do {
-                    e->r[0x03] = 0x63;
-                } while (0);
+                e->r[0x03] = 0x63;
             }
             modo = 1;
             if (mostrado == 0xFF) {
-                valor = e->r[0x03];
-                D_80069525 = valor;
-                nuevo = valor;
+                D_80069525 = e->r[0x03];
+                nuevo = D_80069525;
             } else {
                 modo = 0;
-                if (mostrado == e_rama->r[0x03]) {
+                if (leido == e->r[0x03]) {
                     nuevo = D_80069525;
-                } else if (mostrado < e_rama->r[0x03]) {
+                } else if (leido < e->r[0x03]) {
                     nuevo = D_80069525 + 1;
                 } else {
                     nuevo = D_80069525 - 1;
                 }
             }
             if (func_80038C2C(0, nuevo, modo) != 0) {
-                mostrado = D_80069525;
+                leido = D_80069525;
+                mostrado = leido;
                 vida = ESTADO_PRINCIPAL->r[0x03];
                 if (mostrado < vida) {
-                    D_80069525 = mostrado + 1;
-                    if ((u8)(mostrado + 1) >= 0x64) {
+                    D_80069525 = leido + 1;
+                    if ((u8)(leido + 1) >= 0x64) {
                         D_80069525 = 0x63;
                     }
                 } else if (vida < mostrado) {
-                    D_80069525 = mostrado - 1;
+                    D_80069525 = leido - 1;
                 }
             }
         }
@@ -1068,12 +1060,9 @@ void func_80039094(void)
         valor = g3->r[idx];
         if (valor != D_80069574) {
             if (D_80069574 == 0xFF) {
-                /* El orden de estas tres sentencias influye en la vida de valor y, con ella, en su prioridad
-                 * frente al byte extendido de la barra 7 (ver la cabecera): con `modo = 1` al final la
-                 * puntuacion es 380 en vez de 295. */
-                modo = 1;
-                nuevo = valor;
                 D_80069574 = valor;
+                nuevo = valor;
+                modo = 1;
             } else {
                 modo = 0;
                 if (D_80069574 < valor) {
@@ -1083,13 +1072,13 @@ void func_80039094(void)
                 }
             }
             if (func_80038C2C(3, nuevo, modo) != 0) {
-                mostrado = D_80069574;
+                leido = D_80069574;
                 f3 = ESTADO_PRINCIPAL;
                 valor = f3->r[idx];
-                if (mostrado < valor) {
-                    D_80069574 = mostrado + 1;
-                } else if (valor < mostrado) {
-                    D_80069574 = mostrado - 1;
+                if (leido < valor) {
+                    D_80069574 = leido + 1;
+                } else if (valor < leido) {
+                    D_80069574 = leido - 1;
                 }
             }
         }
@@ -1104,8 +1093,8 @@ void func_80039094(void)
                 if (D_80069514 == 0xFF) {
                     modo = 1;
                     nuevo = valor;
-                    /* La actualizacion del valor mostrado va despues de preparar nuevo: alarga la vida de valor
-                     * y con ella baja su prioridad de asignacion (ver la cabecera). */
+                    /* La actualizacion del valor mostrado va despues de preparar nuevo: con ella en primer
+                     * lugar la puntuacion es 345 en vez de 260. */
                     D_80069514 = valor;
                 } else {
                     nuevo = D_80069514 + 1;
