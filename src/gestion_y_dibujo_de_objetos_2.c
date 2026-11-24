@@ -434,8 +434,13 @@ void func_80037FB8(NodoLista* n)
  * El volcado de asignacion (`-dl`) muestra el pseudo de `e` (88) con 11 usos sobre 76 instrucciones y 3
  * llamadas cruzadas (prioridad floor_log2(R) * R / L de 3 * 11 / 76 = 0,43, por detras del puntero a la
  * pila del grupo 0xB8: 3 * 9 / 50 = 0,54, que toma s3 y deja s4 a `e`). Se supone, sin verificar, que el
- * original tiene un pseudo de `e` para los grupos 0xB6 y 0xBA (s3) y otro para el 0xB8 (s4), y que el C,
- * que comparte un solo `e`, lo fuerza a un solo registro.
+ * original tiene un puntero para los grupos 0xB6 y 0xBA (s3) y otro para el 0xB8 (s4), y que el C, que
+ * comparte un solo `e`, lo fuerza a un solo registro. El grupo 0xB8 exige ademas que la carga del byte 0xF9
+ * hecha por su puntero quede detras del ultimo almacen de `ids`, como en el original (`sw v0,0x18(sp)` en
+ * 0x80038440 y `lbu a0` en 0x80038444): en el volcado `-dS` la carga hecha por `e` depende de los tres
+ * almacenes de `ids` en la pila. Se supone, sin verificar en el fuente del compilador, que la dependencia
+ * existe porque `e` se asigna mas de una vez y su valor no se da por constante. La forma del fuente que daba
+ * dos punteros con ese orden se desconoce.
  * Forma vigente del C: `e = ESTADO_PRINCIPAL` se escribe antes del `if` de los grupos 0xB6 y 0xBA (dentro
  * del `if` el CSE sustituye `e` por su valor constante en las lecturas con desplazamiento y el compilador
  * rematerializa la base con un `lui` propio en cada una). Los tres bytes del contador de porcentaje se
