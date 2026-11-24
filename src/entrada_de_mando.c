@@ -262,7 +262,8 @@ void func_80040430(s8* contador, u16 mascara)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 575 con la configuracion versionada (g = 8 del archivo). Reserva de pila: el original reserva 0x28 (`addiu sp`
+ * Pendiente: puntuacion 575 con la configuracion versionada (g = 8 del archivo; ejes 53 de operando, 0 reordenadas,
+ * 228 insertadas o borradas). Reserva de pila: el original reserva 0x28 (`addiu sp`
  * en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 649 y con ella 575. El
  * original no usa 0x10(sp) ni 0x14(sp) y guarda ra, s0, s1 y s2 en 0x24, 0x18, 0x1c y 0x20; el volcado del
  * reparto no deja ningun pseudo sin registro, de modo que se desconoce que local del original desaparecio
@@ -279,8 +280,8 @@ void func_80040430(s8* contador, u16 mascara)
  * Los bytes del bufer de la BIOS (D_8006CFF1, D_8006CFF2, D_8006CFF3, D_8006CFF6 y D_8006CFF7) se declaran como
  * estructuras de un solo campo y se leen por ese campo: con bytes sueltos el planificador sube la lectura del
  * identificador (D_8006CFF1) por encima de los almacenes a los campos del estado (el original la deja tras el
- * almacen de 0x8001000C, 0x80040664) y como miembro de estructura la deja detras de ellos. Se declaran uno por uno y no como una sola estructura desde D_8006CFF1: con una
- * sola las referencias salen como `D_8006CFF1+n`, que el ensamblador del original no escribe asi, y el compilador
+ * almacen de 0x8001000C, 0x80040664) y como miembro de estructura la deja detras de ellos. Se declaran uno por
+ * uno y no como una sola estructura desde D_8006CFF1: con una sola las referencias salen como `D_8006CFF1+n`, que el ensamblador del original no escribe asi, y el compilador
  * comparte la direccion de dos lecturas (una `addiu` mas). Se supone, sin verificar, que la diferencia es la marca
  * de miembro de estructura de la direccion de memoria.
  *
@@ -363,7 +364,8 @@ void func_8004048C(void)
     u32 cf2;
     u32 cf3;
     u32 cfd;
-    /* Lectura sin centrar de cada eje del mando, de 8 bits y compartida por los dos ejes: el original lee cada una una sola vez (0x80040830 y 0x800408E4). */
+    /* Lectura sin centrar de cada eje del mando, de 8 bits y compartida por los dos ejes: el original lee cada una
+     * una sola vez (0x80040830 y 0x800408E4). */
     u8 eje_crudo;
     EstadoPrincipal* est;
     /* Reserva de pila: local sin uso que completa el marco del original. */
@@ -422,8 +424,10 @@ normal:
         id = D_8006CFF1.valor & 0x7F;
         D_800695B0 = grab + 4;
         ESTADO_PRINCIPAL->mando.botones = c;
-        /* La lectura de D_8006CFF2 va dentro de la condicion: sacarla antes del `if` la carga siempre y la cifra sube mucho. */
-        if ((id == 0x41 || id == 0x73) && ((cfd = D_8006CFF2.valor, ((cfd ^ 0xFF) << 8) & 0x800)) && ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
+        /* La lectura de D_8006CFF2 va dentro de la condicion: sacarla antes del `if` la carga siempre y la cifra
+         * sube mucho. */
+        if ((id == 0x41 || id == 0x73) && ((cfd = D_8006CFF2.valor, ((cfd ^ 0xFF) << 8) & 0x800)) &&
+            ESTADO_PRINCIPAL->r[BANCO_DEMO] != 0) {
             ESTADO_PRINCIPAL->mando.botones_a = a | 0x100;
             ESTADO_PRINCIPAL->mando.botones_c = b | 0x100;
             ESTADO_PRINCIPAL->mando.botones = c | 0x100;
@@ -493,8 +497,8 @@ normal:
         centro = ESTADO_PRINCIPAL->mando.centro_x;
         mascara = ESTADO_PRINCIPAL->mando.botones_c;
         /* Cada eje se lee una sola vez (0x80040830 y 0x800408E4) en la misma local de 8 bits y las ramas la usan por su
-           nombre: el `andi 0xff` de la izquierda y de arriba (0x80040880 y 0x80040908) sale por ser de 8 bits (en una de
-           32 el combinador da por redundante la conversion tras `lbu`). */
+           nombre: el `andi 0xff` de la izquierda y de arriba (0x80040880 y 0x80040908) sale por ser de 8 bits (en una
+           de 32 el combinador da por redundante la conversion tras `lbu`). */
         eje_crudo = D_8006CFF6.valor;
         prev = mascara & ~ESTADO_PRINCIPAL->mando.botones_e;
         ESTADO_PRINCIPAL->mando.w3E = prev;
@@ -542,8 +546,9 @@ normal:
             }
         } else if (D_80069672 >= 5) {
             /* El original carga D_8006D9A8 entera con lw; globales.h la declara u16[5] por el resto de usos. */
-            /* El original emite antes el bloque de la prueba de D_8006AA7C (0x80040A2C) que el de la rearme: la condicion va invertida.
-               D_8006AA7C se lee como banco D_8006AA70 + 0xC para que su `lui` sea una instruccion propia (ver la cabecera). */
+            /* El original emite antes el bloque de la prueba de D_8006AA7C (0x80040A2C) que el de la rearme: la
+               condicion va invertida. D_8006AA7C se lee como banco D_8006AA70 + 0xC para que su `lui` sea una
+               instruccion propia (ver la cabecera). */
             if (banco[0] != 0 || D_8006966A != 0 || (*(u32*)D_8006D9A8 & 0x301) != 1 || est->r[BANCO_PAUSA] != 0) {
                 if (D_8006AA70[0xC] == 0) {
                     D_80069672 = 3;
