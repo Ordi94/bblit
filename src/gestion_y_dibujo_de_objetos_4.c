@@ -356,7 +356,7 @@ extern void func_8003C014(Objeto* entidad, ModeloDibujo* lista, EstadoDibujo* es
 /*
  * Dibuja la sombra de cada objeto de la lista `objetos` sobre el contexto del scratchpad
  * (ContextoSombras, 0x1F800000) y, si D_80069600 es cero, rellena antes la pantalla con una caja
- * negra. Tres decisiones de forma reproducen el original byte a byte:
+ * negra. Tres elecciones de forma reproducen el original byte a byte:
  *
  * - Orden de las sentencias del ayudante del contexto (`siguiente`, `flags8`, `pcoord`): la constante
  *   2 queda viva a la vez que el valor de `pcoord` y toma v1; la lectura sin signo de D_80069532

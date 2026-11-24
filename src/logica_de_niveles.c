@@ -62,8 +62,8 @@ u32 D_800693D4;
 s16* D_800693DC;
 
 /* Coincide en bytes con la configuracion versionada (g = 8 del archivo). El almacen de
-   `o->param.giro.u.z = 0` va antes del de `o->coord.param` en la rama de la superficie de apoyo. Decisiones de
-   escritura del C (la cifra que acompana a una decision es la que da la escritura contraria, medida sobre el estado
+   `o->param.giro.u.z = 0` va antes del de `o->coord.param` en la rama de la superficie de apoyo. Elecciones de
+   escritura del C (la cifra que acompana a una eleccion es la que da la escritura contraria, medida sobre el estado
    final con la puntuacion de asm-differ; la forma vigente da 815, que son las 163 referencias en forma numerica que
    la herramienta no cuenta como diferencia de bytes y por las que informa 0): (e) el almacen de la altura
    tras el contacto con el suelo (0x800256E4..0x800256F0 del original) se escribe como `D_8006AD70[1]`, el mismo
@@ -115,7 +115,7 @@ s16* D_800693DC;
    con el valor en v0; con el acceso por nombre la base se vuelve a cargar con `lui` en la cola comun, con
    `&D_80069D30[2]` como puntero la base cae en a1, y con la variable `lo` (que la funcion solo lee antes de este bloque) el
    valor cae en a0. La prueba de la espera (0x800255D0..) coincide en el orden de las operaciones con el producto calculado
-   antes de la prueba de `D_8006966A`, y el producto toma `s0` como en el original. Otras decisiones: (1) las consultas
+   antes de la prueba de `D_8006966A`, y el producto toma `s0` como en el original. Otras elecciones: (1) las consultas
    de terreno dejan &sc->tmp_v en s0, &sc->res en s1 y &sc->punto en s2, como el original; (2) el bloque de la base de la caja (0x800254E8..0x80025544) coincide en el orden de las multiplicaciones: el
    original emite `li v0,0x46 ; mult v0,v0` antes del almacen de max.vx, de modo que el producto sale del registro
    recien almacenado y no de una constante; se reproduce con `a = o->max.vx * o->max.vx + sum * sum;` escrito

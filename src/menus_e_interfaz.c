@@ -319,7 +319,7 @@ INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AE08);
  * con una sola sentencia la lectura es un temporal local que ocupa v1 junto a la constante, y una bandera como
  * temporal local deja tres temporales simultaneos en la cola, de los que el tercero ocupa a0.
  *
- * Decisiones de escritura vigentes (cifra con la forma contraria): la direccion de las palabras, la de la lista y la
+ * Elecciones de escritura vigentes (cifra con la forma contraria): la direccion de las palabras, la de la lista y la
  * ranura comparten una variable `base_trabajo`; la bandera de transparencia reutiliza la variable del desplazamiento
  * (40; con variable propia 460); la palabra de ordenacion se calcula antes del salto de la bandera y se almacena tras
  * la union de las ramas (40; almacenada antes del salto 635); la cola acumula sobre el propio color y repite el `or`
