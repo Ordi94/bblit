@@ -649,7 +649,10 @@ reserva de pila tiene las suyas, más abajo, y no lleva la oración fija):
    asignador, el umbral de izado del optimizador de bucles o el orden de dos instrucciones en el planificador) y la
    referencia la cambia de forma predecible. En el
    caso del asignador, el volcado da las cifras de la disputa (usos ponderados, longitud de vida y prioridad de cada
-   pseudo, antes y después de la referencia) y la referencia añadida la resuelve con `floor_log2(R) * R / L`. En el
+   pseudo, antes y después de la referencia) y la referencia añadida la resuelve con `floor_log2(R) * R / L`. En la
+   asignación local (`-dl`) la vida que entra en la fórmula es la distancia entre el nacimiento y la muerte del pseudo
+   contada en instrucciones del bloque, que se lee del listado del volcado; en la global (`-dg`) es la que el volcado
+   imprime. En el
    caso del optimizador de bucles, el volcado de bucles (`-dL`, `.loop`) da el pseudo que se iza (con su vida y su ahorro) y el
    número de instrucciones del bucle con el que se iza (`moved to`) o no (`not desirable`): la referencia cambia ese
    número y con él la decisión (`func_8001E1A4`: dos pares `x--; x++` llevan el bucle de 172 a 176 instrucciones, y

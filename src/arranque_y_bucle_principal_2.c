@@ -257,24 +257,23 @@ void func_800163E4(void)
  * original; sin ella la puntuacion es 225 y con ella 0. La forma del fuente original que producia este
  * reparto se desconoce.
  *
- * La envoltura do/while (0) del cuerpo del `if` de la demostracion no genera codigo: pondera por un
- * nivel mas los pseudos del bloque y cambia el orden de local-alloc (`-dl`, bloque 60), que asigna
- * antes la cantidad de mayor floor_log2(R) * R / L (L en instrucciones desde que nace hasta que muere
- * en el orden de la primera planificacion, contadas sobre el volcado; no es la cifra `across` que este
- * imprime, 2 para el pseudo 330, con la que la comparacion no daria el reparto observado. Se supone, sin
- * verificar en el fuente del compilador, que esa es la longitud que compara: con ella salen los registros
- * de los dos casos). El puntero de la pila de botones (pseudo 326) forma una sola
- * cantidad con su ultimo derivado (338, el puntero menos 6, que se calcula cuando 326 muere), y los
- * derivados intermedios (330 y 334) solo viven desde su calculo hasta el almacen en D_800695B0. Sin la
- * envoltura la cantidad del puntero tiene 22 + 4 usos sobre 16 (4 * 26 / 16 = 6,5) y 330 tiene 4 sobre 1
- * (2 * 4 / 1 = 8,0): 330 y 334 toman v0 y el puntero v1. Con ella quedan en 33 + 6 sobre 16
- * (5 * 39 / 16 = 12,19) y 6 sobre 1 (2 * 6 / 1 = 12,0): el puntero se asigna antes y toma v0 (`lw v0`
- * en 0x80016B50) y 330, 334 y el primer valor toman v1 (`lhu v1,0(v0)` en 0x80016B58), como el
- * original. La secuencia de instrucciones, el orden de `regs to allocate` y las disposiciones de
- * global-alloc no cambian. La envoltura abarca todo el cuerpo: limitada a las cuatro lecturas, la carga
- * de D_80069662 queda tras el ultimo almacen en D_800695B0 (el original la adelanta, `lh a0` en
- * 0x80016B9C) y la puntuacion es 940. Sin la envoltura la puntuacion es 310 y con ella 0. La forma del
- * fuente original que producia este reparto se desconoce.
+ * La envoltura do/while (0) del cuerpo del `if` de la demostracion no genera codigo: sus referencias pesan
+ * un nivel mas y cambian el orden de local-alloc. Esa pasada ordena las cantidades del bloque por
+ * floor_log2(R) * R / L (`QTY_CMP_PRI`, local-alloc.c de GCC 2.8.1): R es la suma de usos de los pseudos
+ * ligados en la cantidad y L va del nacimiento a la muerte contados por el orden de las instrucciones del
+ * bloque (no es la cifra `across` que imprime `-dl`). En el volcado `-dl`, bloque 60, el puntero de la pila
+ * de botones (pseudo 326) y su ultimo derivado (338, el puntero menos 6, calculado cuando 326 muere) forman
+ * una cantidad que va de la insn 1078, primera del bloque, a la 1135, decimoseptima (L = 16); los derivados
+ * 330 y 334 van de su calculo a su almacen en D_800695B0 (insn 1102 a 1103 y 1118 a 1119, L = 1). Los
+ * numeros de insn son los del volcado con la envoltura. Sin ella `-dl` da 22 y 4 usos a 326 y 338, y 4 a
+ * 330 y a 334: 4 * 26 / 16 = 6,5 frente a 2 * 4 / 1 = 8,0; 330 y 334 se asignan antes y toman v0, y el
+ * puntero v1. Con ella da 33 y 6, y 6: 5 * 39 / 16 = 12,19 frente a 2 * 6 / 1 = 12,0; el puntero se asigna
+ * antes y toma v0 (`lw v0` en 0x80016B50), y 330, 334 y el primer valor toman v1 (`lhu v1,0(v0)` en
+ * 0x80016B58), como el original. La secuencia de instrucciones y el orden de `regs to allocate` no cambian;
+ * en `.greg` solo cambian los registros de 326, 327, 330, 334, 338 y 339. La envoltura abarca todo el
+ * cuerpo: limitada a las cuatro lecturas, la carga de D_80069662 queda tras el ultimo almacen en D_800695B0
+ * (el original la adelanta, `lh a0` en 0x80016B9C) y la puntuacion es 940. Sin la envoltura la puntuacion
+ * es 310 y con ella 0. La forma del fuente original que producia este reparto se desconoce.
  *
  * Arranque y bucle principal. Tras iniciar el hardware y cargar el primer contenido, cada vuelta
  * del bucle sincroniza los tres buffers, actualiza el cuadro, atiende la tarjeta de memoria, la
