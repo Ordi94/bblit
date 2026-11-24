@@ -1361,8 +1361,8 @@ void func_80035244(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 240 con la configuracion versionada (g = 8 del archivo): 92 diferencias de operando, 0 lineas
- * reordenadas y 92 insertadas o borradas. El flujo coincide. Quedan diferencias de registros y de forma simbolica:
+ * Pendiente: puntuacion 235 con la configuracion versionada (g = 8 del archivo): 93 diferencias de operando, 0 lineas
+ * reordenadas y 88 insertadas o borradas. El flujo coincide. Quedan diferencias de registros y de forma simbolica:
  * (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las diferencias); (2) el byte
  * D_8006AA7C que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc`, y las direcciones del
  * scratchpad que el desensamblado del original nombra como simbolos (los mismos bytes).
@@ -1379,7 +1379,9 @@ void func_80035244(void)
  * igual, pero el original carga `sc->cur` en `a0` en cada camino (0x8003584C y 0x80035888 en la busqueda del
  * modelo) y las copias no generan codigo mas alla de esa carga, que el original tambien tiene. Con una sola
  * asignacion en cada punto de reunion la cifra es 745 (una tras `atenuar` en lugar de las dos copias de las
- * proyecciones) y 505 (una tras `llamar` en lugar de las otras tres).
+ * proyecciones) y 500 (una tras `llamar` en lugar de las otras tres). La etiqueta `tras_proyeccion` va despues de
+ * su copia: el salto desde la proyeccion simple llega con el objeto ya en `a0`, como el `j` de 0x80035A54, que
+ * salta la carga y entra en 0x80035D8C (con la etiqueta antes de la copia la cifra es 240).
  * Volcado de `cc1` (`-dl` y `-dg`, `-G8`): `t` es un solo pseudo de usuario (84) con cinco asignaciones, las cinco
  * cargas de `sc->cur`, 30 usos sobre 31 insns, sin cruzar llamadas y con preferencia por `a0` (es el argumento de
  * `func_800351B4`): prioridad 3,871, quinto del orden del reparto global, y toma `a0`, como el original en
@@ -1393,7 +1395,7 @@ void func_80035244(void)
  * el limite `lim` (pseudo 93, 14 instrucciones de vida) pasa de 4 a 5 usos ponderados y su prioridad de
  * 2 * 4 / 14 = 0,571 a 2 * 5 / 14 = 0,714, por delante del puntero al objeto `busca` (pseudo 94, 4 usos sobre 13
  * instrucciones, 2 * 4 / 13 = 0,615); el orden de asignacion los invierte y el limite toma `a1` y el puntero `a2`,
- * como el original, en lugar de `a2` y `a1` (sin la envoltura la cifra es 260 y con ella 240). La forma del fuente
+ * como el original, en lugar de `a2` y `a1` (sin la envoltura la cifra es 255 y con ella 235). La forma del fuente
  * original que producia este reparto se desconoce.
  *
  * Par `pz--; pz++;` antes de la sentencia `GUARDAR_MAC3(pz);` del recorrido de proyeccion de los ocho puntos (el
@@ -1403,7 +1405,7 @@ void func_80035244(void)
  * pasa de 6 a 18 usos y su prioridad de 2 * 6 / 393 = 0,031 a 4 * 18 / 394 = 0,183, por delante de la constante
  * -3 (pseudo 90, 3 * 11 / 792 = 0,042) y del puntero a `sx` (pseudo 88, 2 * 6 / 395 = 0,030); el orden de
  * asignacion pasa a ser `pz` en s2, constante en s3 y `sx` en s4, que es el del original (`addiu s2` en
- * 0x80035540 y `addiu s4` en 0x8003553C, con -3 en s3). Sin el par la cifra es 285 y con el 240. La forma del
+ * 0x80035540 y `addiu s4` en 0x8003553C, con -3 en s3). Sin el par la cifra es 280 y con el 235. La forma del
  * fuente original que producia este reparto se desconoce.
  *
  * El puntero de la matriz de rotacion del prologo (insn 91 del volcado de cc1, la macro de SetRotMatrix) lo
@@ -1412,12 +1414,12 @@ void func_80035244(void)
  * la lista de destruidos de las macros de distancia aproximada declara `$7`; el cuerpo lo escribe
  * (`addu $7,$10,$0`), de modo que la lista completa se conserva. La busqueda del
  * modelo copia el limite (`lim`) en una local propia dentro del bloque, como el original, que rellena con esa copia
- * el hueco del `beqz` de la primera comparacion (`addu a1,v1,zero` en 0x800357D4); sin `lim` la cifra es 380.
+ * el hueco del `beqz` de la primera comparacion (`addu a1,v1,zero` en 0x800357D4); sin `lim` la cifra es 375.
  *
  * La prueba de la bandera del modelo (`sc->i40 < D_80069588`) va dentro del bloque que entra en la busqueda: el
  * `beqz` de la primera comparacion (0x800357D0) salta a la prueba de indice no hallado (0x80035870), no a la de la
  * bandera (0x80035814). Con ella fuera del bloque el salto iba a esa segunda prueba y el hueco quedaba con un `nop`
- * (345 en lugar de 240). Con la entrada hallada se comprueba el bit 1 de la bandera y el bit 0x10000 de las
+ * (340 en lugar de 235). Con la entrada hallada se comprueba el bit 1 de la bandera y el bit 0x10000 de las
  * banderas del objeto, y sin el bit 1 se cae a la misma comparacion de indice que la rama de no hallado
  * (0x80035824 a 0x80035878).
  *
@@ -1664,9 +1666,9 @@ otro_nodo:
                             sc->cur->flags04 &= m3;
                             sc->cur->flags18 |= 0x100;
                         }
-tras_proyeccion:
                         /* Sentencia replicada: es la misma que la de las otras ramas. */
                         t = sc->cur;
+tras_proyeccion:
                         if ((t->flags04 & 2) == 0 && (t->w3C & 0xC0) == 0) {
 atenuar:
                             t->w24 = (0x400 - sc->i40) >> 7;
