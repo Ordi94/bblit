@@ -464,7 +464,7 @@ s32 func_800151FC(void)
  * guardia de la busqueda, y `fila_relleno`, asignada dentro de la guardia del relleno): el compilador no las propaga a los
  * bucles y deja un `move` en el preludio de cada uno, como los `move a3,a2` del original (0x80015CE0 y 0x80015D14), con lo
  * que la cadena queda en a0. El desplazamiento de la ranura (120 bytes por indice) se escribe como
- * `grupo * 15 << 3`: las dos direcciones de los bucles interiores se suman como `(j + fila)` y despues el
+ * `grupo * 15 << 3`: las direcciones de la busqueda y del relleno suman `(j + fila)` y despues el
  * desplazamiento, como en el original (0x80015CCC, 0x80015CEC y 0x80015D24). El volcado `-dr` muestra la causa: con
  * `grupo * 120` la suma sale con el producto delante, `(plus 380 381)`, y con el desplazamiento escrito como
  * corrimiento sale `(plus 381 380)`; las instrucciones de la cadena son las mismas. Con `grupo * 120` en las cinco
