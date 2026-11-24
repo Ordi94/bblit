@@ -211,33 +211,40 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
  * se escribe en una sola sentencia, `(x << 8) >> 8` con `x` de tipo `s32` (el original emite `sll` y `sra`).
  *
  * La envoltura `do { } while (0)` de los tres ultimos almacenes del primer paquete no genera codigo. Sin ella la
- * puntuacion es 590: el paquete (`primero`, 8 usos sobre 17 instrucciones en el volcado de la asignacion local) y los
- * tres temporales de los puntos (2 usos sobre 4 a 6 instrucciones cada uno) quedan con el temporal del ultimo punto en
- * a0, el `sll` sube por delante de esa carga y el recorte no queda sobre el registro del paquete. Con ella el paquete
- * cuenta 11 usos sobre 16 instrucciones y cada temporal 4 usos sobre 4: los tres toman v0, el paquete v1 y el `sll`
- * queda en sitio detras de los almacenes (en el listado tras el primer planificador, sin la envoltura el recorte precede
- * al ultimo almacen de los puntos y con ella lo sigue, detras de la nota de fin de bucle). Se supone, sin verificar, que
- * la causa de los registros es la prioridad relativa de esos pseudos en la asignacion local. La forma del fuente
- * original que producia este reparto se desconoce.
+ * puntuacion es 590: el paquete (`primero`, 8 usos sobre 17 instrucciones en el volcado de la asignacion local,
+ * `-dl`) y los tres temporales de los puntos (2 usos sobre 4 a 6 instrucciones cada uno) quedan con el temporal del
+ * ultimo punto en a0, el `sll` sube por delante de esa carga y el recorte no queda sobre el registro del paquete. Con
+ * ella el paquete cuenta 11 usos sobre 16 instrucciones y cada temporal 4 usos sobre 4: los tres toman v0, el paquete
+ * v1 y el `sll` queda en sitio detras de los almacenes. En el listado del primer planificador (`-dS`), sin la
+ * envoltura el `sll` del recorte (pseudo 109, insn 74) sale por delante del almacen del ultimo punto (pseudo 108,
+ * insn 72), sin dependencia entre ambos; con ella (insn 88) queda detras del almacen (insn 76) y de la nota de fin de
+ * bucle. En el volcado de la asignacion global (`-dg`), de sin a con la envoltura, el cursor (pseudo 83) pasa de a1
+ * a v1, la direccion de la entrada de la tabla (85) de a2 a a1, la copia del anillo (86) de a1 a a2, el temporal del
+ * ultimo punto (108) de a0 a v0 y el temporal del `sll` (109) de v0 a v1. Se supone, sin verificar, que la causa de
+ * los registros es la prioridad relativa de esos pseudos en la asignacion local. La forma del fuente original que
+ * producia este reparto se desconoce.
  *
  * La envoltura `do { } while (0)` del almacen del cursor (`D_80076188 = siguiente;`) no genera codigo. En el listado
- * del primer planificador, sin ella la carga de `puntos[8]` (pseudo 110) no depende de ese almacen (sus dependencias
- * son el almacen del primer enlace en la lista y dos instrucciones anteriores) y sale por delante del avance del cursor
- * y del almacen; con ella la carga depende del almacen, que queda tras la nota de comienzo de bucle, y sale detras,
- * como el original (`sw a0` en 0x8003AEBC y `lw v0,0x20(s0)` en 0x8003AEC0). El reparto del volcado de la asignacion
- * global es el mismo con y sin ella. Sin ella la puntuacion es 260. Se supone, sin verificar en el fuente del
- * compilador, que sin la nota no hay dependencia porque no considera que el acceso indexado pueda ser alias del escalar
- * D_80076188. La forma del fuente original que producia este orden se desconoce.
+ * del primer planificador (`-dS`), sin ella la carga de `puntos[8]` (pseudo 110, insn 104) no depende de ese almacen
+ * (insn 101; sus dependencias son el almacen del primer enlace en la lista y dos instrucciones anteriores) y sale por
+ * delante del avance del cursor y del almacen; con ella la carga (insn 118) depende del almacen (insn 105), que queda
+ * tras la nota de comienzo de bucle, y sale detras, como el original (`sw a0` en 0x8003AEBC y `lw v0,0x20(s0)` en
+ * 0x8003AEC0). El reparto del volcado de la asignacion global (`-dg`) es el mismo con y sin ella. Sin ella la
+ * puntuacion es 260. Se supone, sin verificar en el fuente del compilador, que sin la nota no hay dependencia porque
+ * no considera que el acceso indexado pueda ser alias del escalar D_80076188. La forma del fuente original que
+ * producia este orden se desconoce.
  *
  * La envoltura `do { } while (0)` del enlace y de los dos ultimos puntos del segundo paquete no genera codigo. En el
- * listado del primer planificador, sin ella el `sll` del enlace (pseudo 127) sale detras del almacen del punto 8,
- * pegado a su `sra`, y no coincide en vida con las cargas de los puntos: el temporal y el enlace toman v0. Con ella el
- * `sll` es la primera instruccion tras la nota de comienzo de bucle y queda entre la carga del punto 6 y su almacen
- * (`lw v0,0x18(s0)`, `sll v1,a0,8` y `sw v0,0x10(a0)`, 0x8003AF18 a 0x8003AF20), y el `sra` tras la carga del punto
- * 8: el temporal (de 2 usos sobre 2 instrucciones a 4 ponderados sobre 5, en el volcado de la asignacion local) vive
- * mientras se cargan los dos puntos y toma v1, y las cargas v0, como el original. La carga del punto 6 pasa por la
- * variable `punto_6` para que quede delante de la nota (con la carga dentro de la envoltura la puntuacion es 160).
- * Sin la envoltura la puntuacion es 605. La forma del fuente original que producia este orden se desconoce.
+ * listado del primer planificador (`-dS`), sin ella el `sll` del enlace (pseudo 127, insn 166) no depende de ningun
+ * almacen, sale detras del almacen del punto 8 (insn 175, que almacena el pseudo 128), pegado a su `sra`, y no
+ * coincide en vida con las cargas de los puntos: el temporal del `sll` y el enlace (pseudo 88) toman v0. Con ella el
+ * `sll` (insn 170) es la primera instruccion tras la nota de comienzo de bucle y queda entre la carga del punto 6
+ * (insn 164) y su almacen (insn 174), como en `lw v0,0x18(s0)`, `sll v1,a0,8` y `sw v0,0x10(a0)` (0x8003AF18 a
+ * 0x8003AF20), y el `sra` tras la carga del punto 8: el temporal (de 2 usos sobre 2 instrucciones a 4 ponderados sobre
+ * 5, en el volcado de la asignacion local, `-dl`) vive mientras se cargan los dos puntos y toma v1, y las cargas v0,
+ * como el original. Sin la envoltura la puntuacion es 605. La local `punto_6` deja la carga del punto 6 delante de la
+ * nota: sin ella, con la carga dentro de la envoltura, la puntuacion es 160. La forma del fuente original que
+ * producia este orden se desconoce.
  */
 s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 {
