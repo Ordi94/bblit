@@ -464,14 +464,8 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * posiciones de la camara (0x17b0..0x1868) los tres almacenes de `v30` van tras el de `vpz`, en el orden `vx`, `vy`,
  * `vz`. En la prueba de los dos bits de la direccion (0xba0..0xbb8) la bandera enmascarada es el primer operando del
  * `or`. El par de modificaciones de banderas del giro (0xcc4..0xd30) coincide en el orden (almacen de
- * las banderas, carga del contador `D_80069402`, constante del paso) con la carga `c = D_80069402;` de cada rama dentro
- * de una envoltura `do { } while (0);` que no genera codigo: sin ella el planificador adelantaba la carga sobre el
- * almacen (el volcado `.sched` mostraba la carga sin ninguna arista de dependencia con el almacen a `0x80(reg)`: el
- * almacen es un miembro de estructura y la carga un escalar de direccion constante, y la prueba de alias no los
- * relaciona); con la envoltura la nota de inicio de bucle hace que la carga, que es la primera instruccion tras
- * ella, dependa de todo lo anterior, y el volcado muestra la carga con una arista al `ori` y otra, de antidependencia,
- * al `sh`. Puntuaciones: 1160 sin las dos envolturas de las cargas, 855 solo con la de la primera rama (paso 0x26),
- * 875 solo con la de la segunda (paso -0x26) y 555 con las tres (la tercera es la del almacen de la cola comun).
+ * las banderas, carga del contador `D_80069402`, constante del paso) con las envolturas `do { } while (0);` que
+ * describe la cabecera de la funcion.
  * El resultado de la raiz de la distancia (0x1324..0x13a8) se guarda en una variable propia, `raiz`, que se asigna
  * una sola vez y de la que salen el cociente y el resto (`i = raiz / 200`, `d = raiz - i * 200`): el copiado
  * `move s1,v0` queda tras los argumentos, como en el original (con la raiz guardada en `d` la cifra es 810). Se
@@ -539,14 +533,23 @@ s32 func_800330AC(Giro* a0, Vec3* a1, Vec3* a2, SondaCamara* arg)
  * solidos), la transicion guiada (banderas 0xC00) y el seguimiento libre (giro por boton, distancia, rayo
  * por tramos contra los objetos y alturas contra el terreno). `reiniciar` suprime el suavizado.
  *
- * La carga `c = D_80069402;` de cada una de las dos ramas del giro por boton va en una envoltura
- * `do { } while (0);` que no genera codigo: la nota de inicio de bucle que deja el analizador hace de barrera de
- * planificacion, la carga pasa a depender del almacen de las banderas (`ori` y `sh` anteriores) y sale tras el
- * como en el original, en lugar de subir sobre el (1160 sin las dos envolturas de las cargas, 555 con las tres; el volcado
- * `.sched` muestra las aristas de dependencia, ver la linea Pendiente). El almacen `D_80069408 = k;` de la cola
- * comun del paso va en otra envoltura que no genera codigo: sin ella el `addu` de la cola salia delante del `sw` y
- * con ella sale detras, como en el original (620 sin ella, 555 con las tres). La forma del fuente original que
- * producia este reparto se desconoce.
+ * Las tres envolturas `do { } while (0);` del giro por boton no generan codigo (el ensamblador tiene las mismas
+ * instrucciones con y sin cada una): la nota de inicio de bucle que deja el analizador limita lo que el
+ * planificador reordena, y la primera instruccion que la sigue pasa a depender de las anteriores. `c` es el pseudo
+ * 97 y el almacen de las banderas es el `sh` a `0x80` del puntero a la camara.
+ * (1) Carga `c = D_80069402;` de la rama del paso 0x26. Volcado `-dS`: sin la envoltura la carga no tiene ninguna
+ * dependencia y se emite por encima del `ori` de las banderas (pseudo 925 = `g | 0x82`) y de su `sh`; con ella
+ * depende del `ori`, tiene una antidependencia con el `sh` y queda detras, como en el original (875 sin ella). En
+ * `.greg` cambian con ella `c`, de a0 a v0, y `g` y `pulsado` (pseudos 106 y 107), de a2 y a1 a a1 y a2.
+ * (2) La misma carga en la rama del paso -0x26: sin la envoltura sube por encima del `ori` (pseudo 944) y del `sh`;
+ * con ella queda detras con las mismas dos dependencias (855 sin ella; 1160 sin las envolturas 1 y 2). En `.greg`
+ * cambian con ella `c`, de a0 a v0, el puntero a la camara (pseudo 926), de a2 a a0, y la lectura de las banderas
+ * (pseudo 936), de a1 a v1.
+ * (3) Almacen `D_80069408 = k;` de la cola comun. El orden de `-dS` es el mismo con y sin la envoltura; el que
+ * cambia es el de `-dR`: sin ella la suma `c + k` (`addu v0,v0,v1`, pseudo 946) se emite por encima del `sw` de `k`
+ * (`sw v1,D_80069408`), porque las dos solo leen v1 y no hay dependencia entre ellas; con ella la suma tiene una
+ * antidependencia con el `sw` y queda detras, como en el original (620 sin ella). `.greg` no cambia.
+ * Con las tres la cifra es 555. La forma del fuente original que producia este reparto se desconoce.
  */
 void ActualizarCamaraSeguimiento(Objeto* o, u32 reiniciar)
 {

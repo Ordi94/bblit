@@ -85,13 +85,16 @@ s16* D_800693DC;
    dos almacenes (0x800223FC y 0x80022400) preceden al `lui` de `D_80069D40` (0x80022404) y las dos relecturas (0x8002240C y
    0x80022414) siguen a las cargas de `D_80069D40` en el orden campo, global, campo, global. Medido en los volcados de
    `cc1`: sin el molde, la pasada posterior al reparto de registros borra la relectura de `desp.x` (`v0` aun guarda el valor
-   almacenado; la de `desp.z` se conserva porque `lui v1` reescribe su registro) y la cifra es 960; sin la envoltura, el
-   volcado `.sched2` muestra el `sw 0x20` y las cargas de `D_80069D30` intercambiados y el `sw 0x18` despues de `lui` y `addiu` de
-   `D_80069D40`, y la cifra es 1055; con las dos formas la funcion coincide. La envoltura deja entre los almacenes y las sumas una
-   nota de inicio de bucle (`NOTE_INSN_LOOP_BEG`, visible en el volcado `.sched` justo despues de `sw 0x20`) que el
-   planificador trata como barrera de memoria: se supone, sin verificar con las prioridades del planificador, que con
-   ella los dos almacenes preceden por igual a todo lo que sigue y se emiten en el orden del fuente. No genera codigo. La
-   forma del fuente original que producia este reparto se desconoce. Con `pos = &sc->desp` la
+   almacenado; la de `desp.z` se conserva porque `lui v1` reescribe su registro) y la cifra es 960; con las dos formas la
+   funcion coincide.
+   La envoltura no genera codigo (el ensamblador tiene las mismas instrucciones con y sin ella) y `.greg` no cambia por
+   ella. Sin ella la cifra es 1055: en el volcado `-dR` el `sw v1,0x20(s3)` de `desp.z` (pseudo 1333) se emite por encima
+   del `sw v0,0x18(s3)` de `desp.x` (pseudo 1330), sin que haya dependencia entre los dos (misma base, otro
+   desplazamiento), y el `sw 0x18` queda detras del `lui` y el `addiu` de `D_80069D40`; ese `lui v1` depende de las dos
+   instrucciones que usan v1 (la carga de `D_80069D30[2]` y el `sw 0x20`) y no del `sw 0x18`. Con ella la nota de inicio
+   de bucle (`NOTE_INSN_LOOP_BEG`, justo despues del `sw 0x20`) limita lo que el planificador reordena: el `lui`, primera
+   instruccion que la sigue, tiene antidependencia con los dos almacenes, que salen en el orden `sw 0x18`, `sw 0x20` del
+   original. La forma del fuente original que producia este reparto se desconoce. Con `pos = &sc->desp` la
    base se materializa en `s0` (`addiu s0,s3,0x18`), que el original no tiene; (b) el almacen de `o->p180` va antes del de
    `o->trabajo.i14` en el bloque de entrada de la espera (0x80021020..0x80021050): el original lee `i14`, carga
    `sc->sec`, almacena a cero y escribe D_80069584 antes de la guarda de `o->p70`, con el almacen de `p180` en el hueco
