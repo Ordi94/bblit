@@ -411,7 +411,7 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     if ((ctx->objeto->flags04 & 2) && color != 0 && ctx->estado.s4 >= 0) {
         /* Direccion de las palabras durante las copias; despues, la profundidad que se compara (ver la cabecera). */
         trabajo = (s32)sprite->palabras;
-        p =(u32*)D_80076188;
+        p = (u32*)D_80076188;
         p[2] = sprite->palabras[0];
         p[3] = ((u32*)trabajo)[1] + desplazamiento;
         p[4] = ((u32*)trabajo)[2];
