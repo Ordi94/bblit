@@ -684,22 +684,31 @@ Partir una operación en dos sentencias sobre la misma variable (`x = A; x = x +
 `a = a << 8; *p = a >> 8;`) no se admite en general: es una forma de mover el reparto sin razón conocida. Hay una
 excepción acotada, que tiene causa en el compilador. Con `-O2`, la expansión a RTL de GCC 2.8.1 solo escribe en el
 pseudo de una variable el resultado de la operación de nivel superior de una sentencia; cada valor intermedio nace
-en un pseudo propio. Ese pseudo solo acaba en el registro de la variable si la asignación local los une, y eso solo
-ocurre cuando los dos nacen y mueren dentro de un mismo bloque. Si la variable vive en varios bloques o tiene otros
-usos, la reparte la asignación global, ninguna pasada posterior une los dos pseudos y el intermedio toma otro
-registro. Cuando el original tiene el intermedio en el registro de la variable, la única escritura que lo reproduce
-es una asignación propia a la variable por cada instrucción que opera sobre ese registro. Se admite solo si se
-cumplen las cuatro condiciones a la vez:
+en un pseudo propio. Ese pseudo solo acaba en el registro de la variable si la asignación local los une, y eso
+exige que los dos sean locales de un mismo bloque. La variable no lo es cuando vive en varios bloques, ni cuando en
+la escritura de una sentencia muere más de una vez dentro de su bloque: en los dos casos sale de la asignación local
+(`-dl`: «dies in 2 places» y sin registro local), la reparte la asignación global, ninguna pasada posterior une los
+dos pseudos y el intermedio toma otro registro. Lo segundo es lo que pasa al recortar una variable de un solo bloque
+con `a = (a << 8) >> 8;`: la variable muere en el `sll`, que la lee y escribe en el pseudo intermedio, vuelve a
+nacer en el `sra` y muere otra vez en su último uso; en dos sentencias el `sll` y el `sra` reescriben su propio
+pseudo, que muere una sola vez y sigue siendo local. Cuando el original tiene el intermedio en el registro de la
+variable, la escritura admitida que lo reproduce es una asignación propia a la variable por cada instrucción que
+opera sobre ese registro. Se admite solo si se cumplen las cuatro condiciones a la vez:
 
 1. En el ensamblador original el valor intermedio de la operación está en el mismo registro que la variable de
-   destino, y esa variable vive en varios bloques o tiene otros usos; se citan las instrucciones con su dirección.
+   destino, y esa variable vive en varios bloques o, además de la operación, el original la usa por ese mismo
+   registro (se cita la instrucción); las instrucciones se citan con su dirección.
 2. El volcado de la expansión (`-dr`) de la escritura en una sentencia muestra que el intermedio nace en un pseudo
    distinto del de la variable y el ensamblador generado los deja en registros distintos; con las dos sentencias el
    intermedio es el pseudo de la variable. Se citan los pseudos.
-3. La escritura en una sola sentencia está medida y no coincide, y con las dos sentencias la función mejora; se dan
-   las dos cifras.
+3. La escritura sin la partición está medida y no coincide, y con las dos sentencias la función mejora; se dan las
+   dos cifras. Cuando la operación usa el intermedio más de una vez no hay una sentencia única sin cambiar otra
+   cosa: se miden las DOS escrituras, la subexpresión repetida en una sola sentencia y una local propia para el
+   intermedio con la composición sobre la variable de destino; se dan ambas cifras y ninguna coincide.
 4. Las dos sentencias son contiguas, operan sobre una variable real de la función con nombre descriptivo, no añaden
    valores ni almacenes a memoria que el original no tenga, y la semántica es idéntica a la de la sentencia única.
+   Las dos sentencias son la que asigna el intermedio y la que lo consume; asignaciones en ramas anteriores a una
+   reunión no cuentan como la primera.
 
 Junto a cada uso va un comentario de una línea que empieza por «Operacion en dos sentencias:» y cita la instrucción
 del original; la cabecera de la función da las instrucciones, los pseudos y las cifras. No se admite una operación
@@ -708,31 +717,41 @@ una variable que reúne valores que el original guarda en registros distintos. H
 
 | Función | Archivo | Variable y sentencias | Instrucciones del original | Cifra en una sentencia | Con las dos |
 |---|---|---|---|---:|---|
-| `func_8003AE08` | `src/menus_e_interfaz.c` | (1) `paquete <<= 8; paquete >>= 8;` (2) `paquete = siguiente << 8; paquete >>= 8;` | (1) `sll v1,v1,8` en `0x8003AE9C` y `sra v1,v1,8` en `0x8003AEA0` (2) `sll v1,a0,8` en `0x8003AF1C` y `sra v1,v1,8` en `0x8003AF28` | (1) 10 (2) 505 | coincide |
-| `func_8003AF8C` | `src/menus_e_interfaz.c` | (1) `color = 0x80 - ...; color = color + (...);` (2) `trabajo = lista; trabajo = trabajo + (...);` (3) `palabra = *(u32*)trabajo; palabra \|= 0x09000000;` (4) `p = p << 8; p = p >> 8;` | (1) `subu a3,v1,v0` en `0x8003AFF4` y `addu a3,a3,v0` en `0x8003B008` (2) `lw a0,4(v1)` en `0x8003B170` y `addu a0,a0,v0` en `0x8003B1E8` (3) `lw a2,0(a0)` en `0x8003B1EC` y `or a2,a2,v0` en `0x8003B1F4` (4) `sll a1,a1,8` en `0x8003B218` y `sra a1,a1,8` en `0x8003B21C` | (1) 330 (2) 600 (3) 475 (4) 315 | coincide |
-| `func_80045150` | `src/inicializacion_de_motor.c` | (1) `color = 0x80 - ...; color = color + (...);` (2) `direccion <<= 8; direccion >>= 8;` | (1) `subu a2,v1,v0` en `0x800451F4` y `addu a2,a2,a0` en `0x80045210` (2) `sll v0,v0,8` en `0x80045260` y `sra v0,v0,8` en `0x80045264` | (1) 740 (2) 340 | coincide |
+| `func_8003AE08` | `src/menus_e_interfaz.c` | (1) `paquete <<= 8; paquete >>= 8;` (2) `paquete = siguiente << 8; paquete >>= 8;` | (1) `sll v1,v1,8` en `0x8003AE9C` y `sra v1,v1,8` en `0x8003AEA0` (2) `sll v1,a0,8` en `0x8003AF1C` y `sra v1,v1,8` en `0x8003AF28` | (1) 10 (2) 485 | coincide |
+| `func_8003AF8C` | `src/menus_e_interfaz.c` | (1) `color = 0x80 - ...; color = color + (...);` (2) `palabra = *(u32*)trabajo; palabra \|= 0x09000000;` (3) `primitivo = primitivo << 8; primitivo = primitivo >> 8;` | (1) `subu a3,v1,v0` en `0x8003AFF4` y `addu a3,a3,v0` en `0x8003B008` (2) `lw a2,0(a0)` en `0x8003B1EC` y `or a2,a2,v0` en `0x8003B1F4` (3) `sll a1,a1,8` en `0x8003B218` y `sra a1,a1,8` en `0x8003B21C` | (1) 330 / 30 (2) 475 (3) 315 | coincide |
+| `func_80045150` | `src/inicializacion_de_motor.c` | (1) `color = 0x80 - ...; color = color + (...);` (2) `direccion <<= 8; direccion >>= 8;` | (1) `subu a2,v1,v0` en `0x800451F4` y `addu a2,a2,a0` en `0x80045210` (2) `sll v0,v0,8` en `0x80045260` y `sra v0,v0,8` en `0x80045264` | (1) 740 / 210 (2) 340 | coincide |
 
-Cada cifra de la columna «en una sentencia» es la de la función con esa sola operación devuelta a una sentencia y
-las demás como están.
+Cada cifra de la columna «en una sentencia» es la de la función con solo esa operación reescrita y las demás como
+están. Donde el intermedio se usa más de una vez hay dos cifras: subexpresión repetida / local propia.
 
-- `func_8003AE08`: `paquete` es la dirección del primer paquete, su enlace de 24 bits, el enlace del segundo y la
-  relectura final del anillo, todos en `$v1` en el original (`lw v1` en `0x8003AE5C` y en `0x8003AF50`). (1) Con las
-  dos sentencias los dos desplazamientos escriben el pseudo 83 de la variable; en una, el `sll` escribe el pseudo 106
-  y salen `sll v0,v1,8` y `sra v1,v0,8`. (2) En una sentencia el `sll` escribe el pseudo 125, local de su bloque, y
+La prueba `tests/test_business_operacion_en_dos_sentencias.py` cruza esta tabla con `src/` en los dos sentidos:
+cada comentario «Operacion en dos sentencias:» está en una función con fila y en el archivo de la fila; cada fila
+tiene en su función tantos comentarios como operaciones numeradas hay en «Variable y sentencias», y las columnas de
+instrucciones y de cifras llevan esa misma numeración; cada comentario abre y cierra en la misma línea y cita una
+dirección que figura en su fila; una fila que dice «coincide» no puede ser de una función `NON_MATCHING`; y el número
+de funciones que anuncia el párrafo anterior a la tabla es el de sus filas. Las cifras no se comprueban.
+
+- `func_8003AE08`: `paquete` es la dirección del primer paquete, su enlace de 24 bits y el enlace del segundo, todos
+  en `$v1` en el original (`lw v1` en `0x8003AE5C`); con el enlace del segundo en una variable propia, escrito
+  también en dos sentencias, la cifra es 160. (1) Con las dos sentencias los dos desplazamientos escriben el
+  pseudo 83 de la variable; en una, el `sll` escribe el pseudo 106 y salen `sll v0,v1,8` y `sra v1,v0,8`. (2) En una sentencia el `sll` escribe el pseudo 125, local de su bloque, y
   salen `sll v0,a1,8` y `sra a0,v0,8`. Con las dos operaciones así escritas la función solo necesita la
   envoltura del almacén del cursor (tabla de [Referencias sin código](#referencias-sin-código)).
 - `func_8003AF8C`: (1) el brillo se calcula en `$a3`, el registro del color, que la otra rama carga con una
   constante (`lui a3` en `0x8003B00C`) y que se almacena al final (`0x8003B214`); en una sentencia la resta nace en
-  el pseudo 103 y toma `$v1`, con las dos escribe el 83 del color. (2) La lista elegida en cada rama y la ranura
-  están en `$a0`, que se usa hasta el almacén del enlace (`0x8003B220`); con la suma asignada a otra variable escribe
-  el pseudo 88, la lista toma `$v1` y la ranura `$a3`; con las dos escribe el 87. (3) La entrada de la ranura se
-  carga en `$a2`, el registro de la palabra, que se almacena tras la unión de las ramas de la bandera
-  (`0x8003B210`); en una sentencia la carga nace en el pseudo 186, con las dos en el 88. (4) El recorte se hace
-  sobre `$a1`, el puntero al primitivo; en una sentencia el `sll` escribe el pseudo 191 y salen `sll v0,a2,8` y
-  `sra a2,v0,8`, con las dos escribe el 84. Con las cuatro la función coincide sin ninguna envoltura.
+  el pseudo 103 y toma `$v1`, con las dos escribe el 83 del color; con la intensidad en una local propia la cifra
+  es 30. (2) La entrada de la ranura se carga en `$a2`, el registro de la palabra, que se almacena tras la unión de
+  las ramas de la bandera (`0x8003B210`); en una sentencia la carga nace en el pseudo 186, con las dos en el 88.
+  (3) El recorte se hace sobre `$a1`, el puntero al primitivo; en una sentencia el `sll` escribe el pseudo 191 y
+  salen `sll v0,a2,8` y `sra a2,v0,8`, con las dos escribe el 84. La lista elegida en cada rama y la ranura no son
+  una operación partida: son dos valores que el original lleva en `$a0` (`lw a0,4(v1)` en `0x8003B170`, `addu
+  a0,a0,v0` en `0x8003B1E8`, usado hasta `0x8003B220`) y comparten la variable `trabajo`; con la ranura en una
+  variable propia la cifra es 600 y con la lista y la ranura juntas en una variable propia, 295. Con las tres
+  operaciones y la variable compartida la función coincide sin ninguna envoltura.
 - `func_80045150`: (1) la intensidad se calcula en `$a2`, el registro del color, que la otra rama carga con una
   constante (`lui a2` en `0x80045214`) y que se almacena tras la unión (`0x80045250`); en una sentencia la resta nace
-  en el pseudo 112, con las dos en el 90 del color. (2) La dirección de la primitiva está en `$v0`, por el que se
+  en el pseudo 112, con las dos en el 90 del color; con la intensidad en una local propia la cifra es 210. (2) La
+  dirección de la primitiva está en `$v0`, por el que se
   almacenan el color y el enlace y del que se copia el puntero a los miembros (`addu v1,v0,zero` en `0x80045258`);
   en una sentencia el `sll` escribe el pseudo 131 y salen `sll v0,v1,8` y `sra a1,v0,8`, con las dos los dos
   desplazamientos escriben el 91 y la copia queda delante del `sll`, que reescribe el pseudo que ella lee.
