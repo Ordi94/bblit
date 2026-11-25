@@ -735,11 +735,12 @@ Cada cifra de la columna «en una sentencia» es la de la función con solo esa 
 están. Donde el intermedio se usa más de una vez hay dos cifras: subexpresión repetida / local propia.
 
 La prueba `tests/test_business_operacion_en_dos_sentencias.py` cruza esta tabla con `src/` en los dos sentidos:
-cada comentario «Operacion en dos sentencias:» está en una función con fila y en el archivo de la fila; cada fila
-tiene en su función tantos comentarios como operaciones numeradas hay en «Variable y sentencias», y las columnas de
-instrucciones y de cifras llevan esa misma numeración; cada comentario abre y cierra en la misma línea y cita una
-dirección que figura en su fila; una fila que dice «coincide» no puede ser de una función `NON_MATCHING`; y el número
-de funciones que anuncia el párrafo anterior a la tabla es el de sus filas. Las cifras no se comprueban.
+cada comentario «Operacion en dos sentencias:» está dentro del cuerpo de una función con fila y en el archivo de la
+fila; las columnas de instrucciones y de cifras llevan la numeración de «Variable y sentencias», y en la de
+instrucciones cada dirección va tras el número de su operación y no se repite en otra; cada operación numerada tiene
+exactamente un comentario, que abre y cierra en la misma línea y cita solo direcciones de esa operación; una fila que
+dice «coincide» no puede ser de una función `NON_MATCHING`; y el número de funciones que anuncia el párrafo anterior a
+la tabla es el de sus filas. Las cifras no se comprueban.
 
 - `func_8003AE08`: `paquete` es la dirección del primer paquete, su enlace de 24 bits y el enlace del segundo, todos
   en `$v1` en el original (`lw v1` en `0x8003AE5C`); con el enlace del segundo en una variable propia, escrito
