@@ -289,36 +289,41 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
  * las copias la profundidad que se compara con los limites de las listas (`lh a0,8(s0)`, 0x8003B140; `slti` en
  * 0x8003B148 y 0x8003B17C), despues la direccion de la lista elegida (`lw a0,4(v1)`, 0x8003B170, y `lw a0,4(v0)`,
  * 0x8003B1D8) y por ultimo la direccion de la ranura (`addu a0,a0,v0`, 0x8003B1E8): el original usa a0 para los
- * cuatro valores. La union de las ramas de la bandera repite el `or` con 0x2C000000, como el original en 0x8003B208
- * y 0x8003B20C.
+ * cuatro valores. La lista y la ranura comparten asi la variable y el registro: la lista se asigna en cada rama y
+ * `trabajo = trabajo + ...` suma sobre ella; la suma escribe el pseudo 87 de `trabajo` (insn 324) y a0 se usa hasta
+ * el almacen del enlace (`sw a1,0(a0)`, 0x8003B220). Con la ranura en una variable propia la puntuacion es 600
+ * (`addu a3,v1,v0`); con la lista y la ranura juntas en una variable propia, 295. La union de las ramas de la
+ * bandera repite el `or` con 0x2C000000, como el original en 0x8003B208 y 0x8003B20C.
  *
- * Cuatro operaciones van escritas en dos sentencias sobre la misma variable, porque el original tiene el valor
+ * Tres operaciones van escritas en dos sentencias sobre la misma variable, porque el original tiene el valor
  * intermedio en el registro de la variable y con `-O2` la expansion a RTL (`-dr`) solo escribe en el pseudo de una
- * variable el resultado de la operacion de nivel superior de una sentencia; el color, la ranura, la palabra y el
- * puntero viven en varios bloques, los reparte la asignacion global y esta no une su pseudo con el del intermedio.
+ * variable el resultado de la operacion de nivel superior de una sentencia; el color, la palabra y el puntero al
+ * primitivo viven en varios bloques, los reparte la asignacion global y esta no une su pseudo con el del
+ * intermedio.
  * (1) El brillo. El original lo calcula en a3 (`subu a3,v1,v0`, 0x8003AFF4), el registro en el que compone el color
  * (`addu a3,a3,v0`, 0x8003B008), que la otra rama carga con la constante (`lui a3`, 0x8003B00C) y que se almacena
  * al final (`sw a3,4(a1)`, 0x8003B214). Con las dos sentencias la resta escribe el pseudo 83 de `color` (insn 49).
- * Con la composicion en una sola sentencia la resta nace en el pseudo 103, que toma v1, y la puntuacion es 330.
- * (2) La ranura. El original suma el desplazamiento sobre el registro de la lista (`addu a0,a0,v0`, 0x8003B1E8) y
- * usa a0 hasta el almacen del enlace (`sw a1,0(a0)`, 0x8003B220). Con las dos sentencias (la lista asignada en cada
- * rama y `trabajo = trabajo + ...`) la suma escribe el pseudo 87 de `trabajo` (insn 324). Con la suma asignada a
- * otra variable escribe el pseudo 88, la lista toma v1 y la ranura a3 (`addu a3,v1,v0`), y la puntuacion es 600.
- * (3) La palabra de ordenacion. El original carga la entrada de la ranura en a2 (`lw a2,0(a0)`, 0x8003B1EC), le
+ * Con la composicion en una sola sentencia (la resta repetida en la expresion) la resta nace en el pseudo 103, que
+ * toma v1, y la puntuacion es 330. Con la intensidad en una local propia la puntuacion es 30.
+ * (2) La palabra de ordenacion. El original carga la entrada de la ranura en a2 (`lw a2,0(a0)`, 0x8003B1EC), le
  * aplica el codigo sobre el mismo registro (`or a2,a2,v0`, 0x8003B1F4) y la almacena tras la union de las ramas de
  * la bandera (`sw a2,0(a1)`, 0x8003B210). Con las dos sentencias la carga y el `or` escriben el pseudo 88 de
  * `palabra` (insns 327 y 331). Con `palabra = *(u32*)trabajo | 0x09000000;` la carga nace en el pseudo 186, local
  * del bloque junto a la bandera y la constante, y la puntuacion es 475.
- * (4) El recorte de la direccion del primitivo a 24 bits. El original desplaza sobre a1 (`sll a1,a1,8`, 0x8003B218,
+ * (3) El recorte de la direccion del primitivo a 24 bits. El original desplaza sobre a1 (`sll a1,a1,8`, 0x8003B218,
  * y `sra a1,a1,8`, 0x8003B21C), el registro por el que acaba de almacenar la palabra y el color (0x8003B210 y
- * 0x8003B214). Con las dos sentencias los dos desplazamientos escriben el pseudo 84 de `p` (insns 364 y 366). Con
- * `p = (u32*)(((s32)p << 8) >> 8);` el `sll` escribe el pseudo 191 y la puntuacion es 315.
+ * 0x8003B214). Con las dos sentencias los dos desplazamientos escriben el pseudo 84 de `primitivo` (insns 364 y
+ * 366). Con `primitivo = (u32*)(((s32)primitivo << 8) >> 8);` el `sll` escribe el pseudo 191 y la puntuacion es
+ * 315.
+ *
+ * El codigo de primitiva se aplica sobre `color` en cada rama de la bandera. Con la mascara en una local y un solo
+ * `or` la puntuacion es 570.
  */
 void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
 {
     u32 color;
     AcumuladorNodos pila;
-    u32* p;
+    u32* primitivo;
     ColorYDesplazamiento* par;
     s32 desplazamiento;
     s32 trabajo;
@@ -327,8 +332,8 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     func_80039CD0(D_80076188);
     if (sprite->banderas & 0x10) {
         if (D_8006966A != 0) {
-            /* Operacion en dos sentencias: la resta nace en el pseudo del color, como `subu a3,v1,v0` (0x8003AFF4).
-             * La suma agrupa primero los dos desplazamientos y luego el componente bajo, como el original. */
+            /* Operacion en dos sentencias: la resta nace en el pseudo del color, como `subu a3,v1,v0` (0x8003AFF4). */
+            /* La suma agrupa primero los dos desplazamientos y luego el componente bajo, como el original. */
             color = 0x80 - ((s16)D_800694E2 >> 5);
             color = color + ((color << 16) + (color << 8));
         } else {
@@ -353,15 +358,15 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
         /* Direccion de las palabras durante las copias; despues, la profundidad que se compara, la direccion de
          * la lista elegida y la de la ranura (ver la cabecera). */
         trabajo = (s32)sprite->palabras;
-        p = (u32*)D_80076188;
-        p[2] = sprite->palabras[0];
-        p[3] = ((u32*)trabajo)[1] + desplazamiento;
-        p[4] = ((u32*)trabajo)[2];
-        p[5] = ((u32*)trabajo)[3];
-        p[6] = ((u32*)trabajo)[4];
-        p[7] = ((u32*)trabajo)[5];
-        p[8] = ((u32*)trabajo)[6];
-        p[9] = ((u32*)trabajo)[7];
+        primitivo = (u32*)D_80076188;
+        primitivo[2] = sprite->palabras[0];
+        primitivo[3] = ((u32*)trabajo)[1] + desplazamiento;
+        primitivo[4] = ((u32*)trabajo)[2];
+        primitivo[5] = ((u32*)trabajo)[3];
+        primitivo[6] = ((u32*)trabajo)[4];
+        primitivo[7] = ((u32*)trabajo)[5];
+        primitivo[8] = ((u32*)trabajo)[6];
+        primitivo[9] = ((u32*)trabajo)[7];
         trabajo = ctx->estado.s4;
         if (trabajo < 0x200) {
             trabajo = (s32)D_8006AE20[D_8006967C].org;
@@ -374,11 +379,9 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
                 trabajo = (s32)D_8006AEA0[D_8006967C].org;
             }
         }
-        /* Operacion en dos sentencias: la suma escribe el pseudo que guarda la lista, como `addu a0,a0,v0`
-         * (0x8003B1E8); desde aqui `trabajo` es la direccion de la ranura. */
+        /* Lista y ranura comparten `a0` en el original (`lw a0,4(v1)`, 0x8003B170; `addu a0,a0,v0`, 0x8003B1E8). */
         trabajo = trabajo + (ctx->estado.s4 << 2);
-        /* Operacion en dos sentencias: la entrada se carga sobre el pseudo de la palabra, como `lw a2,0(a0)`
-         * (0x8003B1EC). La palabra de ordenacion se almacena tras la union de las ramas (0x8003B210). */
+        /* Operacion en dos sentencias: la carga escribe el pseudo de la palabra, como `lw a2,0(a0)` (0x8003B1EC). */
         palabra = *(u32*)trabajo;
         palabra |= 0x09000000;
         /* La bandera elige la mascara del codigo de primitiva y un solo `or` la aplica (`or a3,a3,v0`, 0x8003B204);
@@ -390,12 +393,12 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
             color |= 0x2C000000;
         }
         color |= 0x2C000000;
-        *p = palabra;
-        p[1] = color;
+        *primitivo = palabra;
+        primitivo[1] = color;
         /* Operacion en dos sentencias: el `sll` escribe el pseudo del puntero, como `sll a1,a1,8` (0x8003B218). */
-        p = (u32*)((s32)p << 8);
-        p = (u32*)((s32)p >> 8);
-        *(u32*)trabajo = (u32)p;
+        primitivo = (u32*)((s32)primitivo << 8);
+        primitivo = (u32*)((s32)primitivo >> 8);
+        *(u32*)trabajo = (u32)primitivo;
         D_80076188 += 0x28;
         if (ctx->limite < D_80076188) {
             D_80076188 = ctx->inicio;
