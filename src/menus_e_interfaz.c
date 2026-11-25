@@ -207,74 +207,53 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
  * cero, un segundo primitivo con los puntos 4, 6 y 8 encadenado tras el primero. El cursor del
  * anillo de primitivas (D_80076188) avanza 0x18 por primitivo y vuelve al inicio del buffer
  * cuando supera el limite del contexto. Devuelve siempre 0. El tercer parametro no se lee: el
- * llamador (func_8003B5AC) pasa la vista en a2 y el original conserva esa carga. El enlace de 24 bits de cada paquete
- * se escribe en una sola sentencia, `(x << 8) >> 8` con `x` de tipo `s32` (el original emite `sll` y `sra`).
+ * llamador (func_8003B5AC) pasa la vista en a2 y el original conserva esa carga.
  *
- * La envoltura `do { } while (0)` de los tres ultimos almacenes del primer paquete no genera codigo. Sin ella la
- * puntuacion es 590: el paquete (`primero`, 8 usos sobre 17 instrucciones en el volcado de la asignacion local,
- * `-dl`) y los tres temporales de los puntos (2 usos sobre 4 a 6 instrucciones cada uno) quedan con el temporal del
- * ultimo punto en a0, el `sll` sube por delante de esa carga y el recorte no queda sobre el registro del paquete. Con
- * ella el paquete cuenta 11 usos sobre 16 instrucciones y cada temporal 4 usos sobre 4: los tres toman v0, el paquete
- * v1 y el `sll` queda en sitio detras de los almacenes. En el listado del primer planificador (`-dS`), sin la
- * envoltura el `sll` del recorte (pseudo 109, insn 74) sale por delante del almacen del ultimo punto (pseudo 108,
- * insn 72), sin dependencia entre ambos; con ella (insn 88) queda detras del almacen (insn 76) y de la nota de fin de
- * bucle. En el volcado de la asignacion global (`-dg`), de sin a con la envoltura, el cursor (pseudo 83) pasa de a1
- * a v1, la direccion de la entrada de la tabla (85) de a2 a a1, la copia del anillo (86) de a1 a a2, el temporal del
- * ultimo punto (108) de a0 a v0 y el temporal del `sll` (109) de v0 a v1. Se supone, sin verificar, que la causa de
- * los registros es la prioridad relativa de esos pseudos en la asignacion local. La forma del fuente original que
- * producia este reparto se desconoce.
+ * La variable `paquete` guarda la direccion del primer paquete, su enlace de 24 bits, el enlace del segundo y la
+ * relectura final del anillo: el original usa v1 para los cuatro valores (`lw v1`, 0x8003AE5C; `sll v1,v1,8`,
+ * 0x8003AE9C; `sll v1,a0,8`, 0x8003AF1C; `lw v1`, 0x8003AF50). Los dos recortes van escritos en dos sentencias
+ * sobre ella, porque el original tiene el resultado del `sll` en el registro de la variable y con `-O2` la expansion
+ * a RTL (`-dr`) solo escribe en el pseudo de una variable el resultado de la operacion de nivel superior de una
+ * sentencia.
+ * (1) El primer recorte: `sll v1,v1,8` y `sra v1,v1,8` (0x8003AE9C y 0x8003AEA0) sobre el registro por el que se
+ * acaban de almacenar las seis palabras. Con las dos sentencias los dos desplazamientos escriben el pseudo 83 de
+ * `paquete` (insns 74 y 76). Con `paquete = (paquete << 8) >> 8;` el `sll` escribe el pseudo 106, salen `sll
+ * v0,v1,8` y `sra v1,v0,8` y la puntuacion es 10.
+ * (2) El enlace del segundo paquete: `sll v1,a0,8` (0x8003AF1C) y `sra v1,v1,8` (0x8003AF28), con las cargas y los
+ * almacenes de los puntos 6 y 8 entre los dos. Con las dos sentencias el `sll` y el `sra` escriben el pseudo 83
+ * (insns 160 y 162). Con `paquete = (siguiente << 8) >> 8;` el `sll` escribe el pseudo 125, que es local del bloque
+ * y toma v0 (`sll v0,a1,8` y `sra a0,v0,8`), y la puntuacion es 505.
  *
  * La envoltura `do { } while (0)` del almacen del cursor (`D_80076188 = siguiente;`) no genera codigo. En el listado
- * del primer planificador (`-dS`), sin ella la carga de `puntos[8]` (pseudo 110, insn 104) no depende de ese almacen
- * (insn 101; sus dependencias son el almacen del primer enlace en la lista y dos instrucciones anteriores) y sale por
- * delante del avance del cursor y del almacen; con ella la carga (insn 118) depende del almacen (insn 105), que queda
- * tras la nota de comienzo de bucle, y sale detras, como el original (`sw a0` en 0x8003AEBC y `lw v0,0x20(s0)` en
- * 0x8003AEC0). El reparto del volcado de la asignacion global (`-dg`) es el mismo con y sin ella. Sin ella la
- * puntuacion es 260. Se supone, sin verificar en el fuente del compilador, que sin la nota no hay dependencia porque
- * no considera que el acceso indexado pueda ser alias del escalar D_80076188. La forma del fuente original que
- * producia este orden se desconoce.
- *
- * La envoltura `do { } while (0)` del enlace y de los dos ultimos puntos del segundo paquete no genera codigo. En el
- * listado del primer planificador (`-dS`), sin ella el `sll` del enlace (pseudo 127, insn 166) no depende de ningun
- * almacen, sale detras del almacen del punto 8 (insn 175, que almacena el pseudo 128), pegado a su `sra`, y no
- * coincide en vida con las cargas de los puntos: el temporal del `sll` y el enlace (pseudo 88) toman v0. Con ella el
- * `sll` (insn 170) es la primera instruccion tras la nota de comienzo de bucle y queda entre la carga del punto 6
- * (insn 164) y su almacen (insn 174), como en `lw v0,0x18(s0)`, `sll v1,a0,8` y `sw v0,0x10(a0)` (0x8003AF18 a
- * 0x8003AF20), y el `sra` tras la carga del punto 8: el temporal (de 2 usos sobre 2 instrucciones a 4 ponderados sobre
- * 5, en el volcado de la asignacion local, `-dl`) vive mientras se cargan los dos puntos y toma v1, y las cargas v0,
- * como el original. Sin la envoltura la puntuacion es 605. La local `punto_6` deja la carga del punto 6 delante de la
- * nota: sin ella, con la carga dentro de la envoltura, la puntuacion es 160. La forma del fuente original que
- * producia este orden se desconoce.
+ * del primer planificador (`-dS`), sin ella la carga de `puntos[8]` (pseudo 106, insn 91) no depende de ese almacen
+ * (insn 88) y sale por delante del avance del cursor y del almacen; con ella la carga (insn 105) queda detras del
+ * almacen (insn 92), que va entre las notas de comienzo y de fin de bucle, como el original (`sw a0` en 0x8003AEBC y
+ * `lw v0,0x20(s0)` en 0x8003AEC0). Sin ella la puntuacion es 260. Se supone, sin verificar en el fuente del
+ * compilador, que sin la nota no hay dependencia porque no considera que el acceso indexado pueda ser alias del
+ * escalar D_80076188. La forma del fuente original que producia este reparto se desconoce.
  */
 s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
 {
-    s32 cursor;
-    u32* primero;
+    s32 paquete;
     u32* tabla;
     s32 actual;
     s32 siguiente;
-    s32 enlace;
-    u32 punto_6;
 
     func_80039CD0(D_80076188);
-    /* `cursor` guarda el enlace de 24 bits del primer paquete y la relectura final del anillo; es la variable
-     * global que toma v1 como el original. El paquete es una local de un solo bloque: su recorte sale sobre el
-     * propio registro. */
-    primero = (u32*)D_80076188;
+    paquete = D_80076188;
     tabla = (u32*)D_8006AEA0[D_8006967C].org;
     /* El original lee la palabra de la tabla y le aplica la constante `0x05000000` como segundo
      * operando del `or` (`or v0, v0, a3`); esta forma del OR reproduce ese orden de operandos. */
-    primero[0] = *tabla | 0x05000000;
-    primero[1] = 1;
-    primero[2] = 0x80000000;
-    /* Envoltura sin codigo: pondera los usos de los tres temporales de los puntos (ver la cabecera). */
-    do {
-        primero[3] = puntos[3];
-        primero[4] = puntos[5];
-        primero[5] = puntos[7];
-    } while (0);
-    cursor = ((s32)primero << 8) >> 8;
-    *tabla = cursor;
+    ((u32*)paquete)[0] = *tabla | 0x05000000;
+    ((u32*)paquete)[1] = 1;
+    ((u32*)paquete)[2] = 0x80000000;
+    ((u32*)paquete)[3] = puntos[3];
+    ((u32*)paquete)[4] = puntos[5];
+    ((u32*)paquete)[5] = puntos[7];
+    /* Operacion en dos sentencias: el `sll` escribe el pseudo del paquete, como `sll v1,v1,8` (0x8003AE9C). */
+    paquete <<= 8;
+    paquete >>= 8;
+    *tabla = paquete;
     actual = D_80076188;
     siguiente = actual + 0x18;
     /* Envoltura sin codigo: deja la carga de `puntos[8]` detras de este almacen (ver la cabecera). */
@@ -287,87 +266,54 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
         ((u32*)siguiente)[1] = 1;
         ((u32*)siguiente)[2] = 0x80000000;
         ((u32*)siguiente)[3] = puntos[4];
-        punto_6 = puntos[6];
-        /* Envoltura sin codigo: deja el `sll` del enlace entre la carga del punto 6 y su almacen (ver la
-         * cabecera). */
-        do {
-            enlace = (siguiente << 8) >> 8;
-            ((u32*)siguiente)[4] = punto_6;
-            ((u32*)siguiente)[5] = puntos[8];
-            *tabla = enlace;
-        } while (0);
+        ((u32*)siguiente)[4] = puntos[6];
+        ((u32*)siguiente)[5] = puntos[8];
+        /* Operacion en dos sentencias: el `sll` escribe el pseudo del enlace, como `sll v1,a0,8` (0x8003AF1C). */
+        paquete = siguiente << 8;
+        paquete >>= 8;
+        *tabla = paquete;
         D_80076188 += 0x18;
     }
-    cursor = D_80076188;
-    if (cursor > ctx->limite) {
+    paquete = D_80076188;
+    if (paquete > ctx->limite) {
         D_80076188 = ctx->inicio;
     }
     return 0;
 }
 
-#ifdef NON_MATCHING
-/*
- * Pendiente: puntuacion 75 con la configuracion versionada (g = 8 del archivo; ejes 14 de operando, 0 reordenadas,
- * 24 insertadas o borradas). El residuo es de nombres de registro, en tres puntos (doce instrucciones), y los tres
- * nacen en la expansion a RTL (`-dr`), donde un valor intermedio recibe un pseudo propio distinto del que recibe el
- * resultado. (1) El brillo: el original lo calcula en a3, el registro del color (`subu a3,v1,v0`, 0x8003AFF4, y
- * `addu a3,a3,v0`, 0x8003B008); aqui es un pseudo local de su bloque (4 usos sobre 5 instrucciones) y toma v1.
- * (2) La ranura, la entrada y la palabra: el original tiene la ranura en a0 (`addu a0,a0,v0`, 0x8003B1E8) y carga la
- * entrada en el registro de la palabra, a2 (`lw a2,0(a0)` y `or a2,a2,v0`, 0x8003B1EC y 0x8003B1F4). Aqui la lectura
- * de la entrada tiene su propio pseudo local (191), que toma a0; la ranura (pseudo 88) queda en a2 y la palabra
- * (pseudo 90) en a0. (3) El recorte de la direccion del primitivo a 24 bits: el original emite `sll` y `sra` sobre a1
- * (0x8003B218 y 0x8003B21C) y aqui el resultado del `sll` es un pseudo local que cae en v0 y el `sra` escribe en a1
- * desde v0. La causa es comun: con `-O2` la expansion no pasa el destino de la sentencia a sus operandos intermedios
- * y cada uno estrena pseudo; el intermedio solo acabaria en el registro del resultado si la asignacion local los
- * uniera, y no puede, porque el color, la palabra y el puntero viven en varios bloques y los reparte la asignacion
- * global. En (2) el bloque tiene ademas tres valores locales vivos a la vez, la bandera, la entrada y la constante
- * 0x09000000 (pseudos 92, 191 y 192), que ocupan v1, a0 y v0; el original solo tiene dos, en v1 y v0, y por eso su
- * ranura cabe en a0.
- *
- * Elecciones de escritura vigentes (cifra con la forma contraria): la union de las ramas de la bandera repite el
- * `or` con 0x2C000000, como el original en 0x8003B208 y 0x8003B20C (75; sin la repeticion 275). La variable
- * `trabajo` guarda primero la direccion de las palabras del sprite (`addiu a0,s2,0xc`, 0x8003B0D0), tras las copias
- * la profundidad que se compara con los limites de las listas (`lh a0,8(s0)`, 0x8003B140; `slti` en 0x8003B148 y
- * 0x8003B17C) y despues la direccion de la lista elegida (`lw a0,4(v1)`, 0x8003B170, y `lw a0,4(v0)`, 0x8003B1D8):
- * el original usa a0 para los tres valores. Asi vive hasta la suma de la ranura y convive con la bandera, que esta
- * en v1: su lista de conflictos de `.greg` trae v0 y v1 y toma a0 aunque se asigne antes que el valor sin signo de
- * 16 bits de la profundidad (pseudo 143), que toma v1 como el original (`lhu v1,8(s0)`, 0x8003B144). Con la lista en
- * una variable propia la puntuacion es 320.
- */
 /*
  * Encola un sprite de ocho palabras en la lista de ordenacion segun la profundidad del objeto: calcula el color y
  * el desplazamiento de la textura, copia las palabras del sprite al primitivo del anillo (D_80076188), lo enlaza en
  * la lista elegida por la profundidad y avanza el cursor.
  *
- * La envoltura `do { } while (0)` de la eleccion de la mascara no genera codigo (la funcion tiene 149 instrucciones
- * en la salida de `cc1` con ella y sin ella). En el volcado de la asignacion local (`-dl`), bloque de la cola, la
- * bandera (pseudo 92) nace en la carga de `sprite->semitransparente` y muere en el salto, seis instrucciones despues;
- * la entrada leida de la ranura (pseudo 191) nace en su carga y muere en el `or` de la palabra. Sin la envoltura la
- * bandera tiene 3 usos (prioridad 1 * 3 / 6 = 0,50) y la entrada 2 usos sobre 3 instrucciones (1 * 2 / 3 = 0,67): la
- * entrada se asigna antes y toma v1, y la bandera toma a0. Con ella la bandera cuenta 4 usos (2 * 4 / 6 = 1,33) y la
- * entrada 2 sobre 2 (1,00): la bandera se asigna antes y toma v1, como el original (`lw v1,0x2c(s2)`, 0x8003B1E0, y
- * `beqz v1`, 0x8003B1F8), y la entrada toma a0. En `.greg`, de sin a con la envoltura, `trabajo` (pseudo 87) pasa de
- * v1 a a0, el valor de 16 bits de la profundidad (143) de a0 a v1, el desplazamiento (86) de a0 a a2, la palabra (90)
- * de v1 a a0, la mascara (93) de a3 a v0 y el color (83) de t0 a a3. Sin ella la puntuacion es 750. La forma del
- * fuente original que producia este reparto se desconoce.
+ * La variable `trabajo` guarda primero la direccion de las palabras del sprite (`addiu a0,s2,0xc`, 0x8003B0D0), tras
+ * las copias la profundidad que se compara con los limites de las listas (`lh a0,8(s0)`, 0x8003B140; `slti` en
+ * 0x8003B148 y 0x8003B17C), despues la direccion de la lista elegida (`lw a0,4(v1)`, 0x8003B170, y `lw a0,4(v0)`,
+ * 0x8003B1D8) y por ultimo la direccion de la ranura (`addu a0,a0,v0`, 0x8003B1E8): el original usa a0 para los
+ * cuatro valores. La union de las ramas de la bandera repite el `or` con 0x2C000000, como el original en 0x8003B208
+ * y 0x8003B20C.
  *
- * La envoltura `do { } while (0)` del recorte de la direccion del primitivo no genera codigo. En el volcado del
- * planificador posterior al reparto de registros (`-dR`), sin ella el `sll` (insn 395) sale delante de los almacenes
- * de la palabra de ordenacion y del color (insns 390 y 393); con ella (insn 399) queda detras, como en el original
- * (0x8003B210 a 0x8003B218): las notas de bucle que deja la envoltura le cierran el paso. Las disposiciones de
- * `.greg` no cambian. Sin ella la puntuacion es 270. La forma del fuente original que producia este reparto se
- * desconoce.
- *
- * La envoltura `do { } while (0)` de la lectura de la bandera y del calculo de la ranura no genera codigo. En el
- * listado del primer planificador (`-dS`), sin ella la carga de `sprite->semitransparente` (pseudo 92, insn 322)
- * queda detras de la suma de la ranura (pseudo 88, insn 330), de la constante 0x09000000 (insn 335) y de la lectura
- * de la entrada (insn 333), sin dependencia con ninguna de las tres; con ella (insn 326) queda delante de la suma
- * (insn 334), como el original (0x8003B1E0 y 0x8003B1E8). La envoltura tambien pondera las referencias: la ranura
- * pasa de 3 a 4 usos, la bandera de 3 a 4 y `trabajo` de 15 a 16. En las disposiciones de `.greg`, de sin a con la
- * envoltura, el color (pseudo 83) pasa de a2 a a3, como el original (`or a3,a3,v0`, 0x8003B204), el desplazamiento
- * (86) de a0 a a2, `trabajo` de v1 a a0, la ranura de a3 a a2, el valor de 16 bits de la profundidad (143) de a0 a
- * v1, la entrada leida (191) de v0 a a0 y la constante 0x09000000 (192) de a0 a v0. Sin ella la puntuacion es 805.
- * La forma del fuente original que producia este reparto se desconoce.
+ * Cuatro operaciones van escritas en dos sentencias sobre la misma variable, porque el original tiene el valor
+ * intermedio en el registro de la variable y con `-O2` la expansion a RTL (`-dr`) solo escribe en el pseudo de una
+ * variable el resultado de la operacion de nivel superior de una sentencia; el color, la ranura, la palabra y el
+ * puntero viven en varios bloques, los reparte la asignacion global y esta no une su pseudo con el del intermedio.
+ * (1) El brillo. El original lo calcula en a3 (`subu a3,v1,v0`, 0x8003AFF4), el registro en el que compone el color
+ * (`addu a3,a3,v0`, 0x8003B008), que la otra rama carga con la constante (`lui a3`, 0x8003B00C) y que se almacena
+ * al final (`sw a3,4(a1)`, 0x8003B214). Con las dos sentencias la resta escribe el pseudo 83 de `color` (insn 49).
+ * Con la composicion en una sola sentencia la resta nace en el pseudo 103, que toma v1, y la puntuacion es 330.
+ * (2) La ranura. El original suma el desplazamiento sobre el registro de la lista (`addu a0,a0,v0`, 0x8003B1E8) y
+ * usa a0 hasta el almacen del enlace (`sw a1,0(a0)`, 0x8003B220). Con las dos sentencias (la lista asignada en cada
+ * rama y `trabajo = trabajo + ...`) la suma escribe el pseudo 87 de `trabajo` (insn 324). Con la suma asignada a
+ * otra variable escribe el pseudo 88, la lista toma v1 y la ranura a3 (`addu a3,v1,v0`), y la puntuacion es 600.
+ * (3) La palabra de ordenacion. El original carga la entrada de la ranura en a2 (`lw a2,0(a0)`, 0x8003B1EC), le
+ * aplica el codigo sobre el mismo registro (`or a2,a2,v0`, 0x8003B1F4) y la almacena tras la union de las ramas de
+ * la bandera (`sw a2,0(a1)`, 0x8003B210). Con las dos sentencias la carga y el `or` escriben el pseudo 88 de
+ * `palabra` (insns 327 y 331). Con `palabra = *(u32*)trabajo | 0x09000000;` la carga nace en el pseudo 186, local
+ * del bloque junto a la bandera y la constante, y la puntuacion es 475.
+ * (4) El recorte de la direccion del primitivo a 24 bits. El original desplaza sobre a1 (`sll a1,a1,8`, 0x8003B218,
+ * y `sra a1,a1,8`, 0x8003B21C), el registro por el que acaba de almacenar la palabra y el color (0x8003B210 y
+ * 0x8003B214). Con las dos sentencias los dos desplazamientos escriben el pseudo 84 de `p` (insns 364 y 366). Con
+ * `p = (u32*)(((s32)p << 8) >> 8);` el `sll` escribe el pseudo 191 y la puntuacion es 315.
  */
 void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
 {
@@ -377,23 +323,15 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
     ColorYDesplazamiento* par;
     s32 desplazamiento;
     s32 trabajo;
-    u32 ranura;
-    VistaDibujo* vista_dibujo;
     u32 palabra;
-    u32 brillo;
-    s32 semitransparente;
-    u32 mascara;
 
-    /* Copia del argumento de la vista para la llamada que calcula la proyeccion: cambia el recuento de usos y el
-     * reparto de los registros guardados (pasando `vista` a la llamada, s1 y s2 salen intercambiados y la
-     * puntuacion es 128). */
-    vista_dibujo = vista;
     func_80039CD0(D_80076188);
     if (sprite->banderas & 0x10) {
         if (D_8006966A != 0) {
-            brillo = 0x80 - ((s16)D_800694E2 >> 5);
-            /* La suma agrupa primero los dos desplazamientos y luego el componente bajo, como el original. */
-            color = brillo + ((brillo << 16) + (brillo << 8));
+            /* Operacion en dos sentencias: la resta nace en el pseudo del color, como `subu a3,v1,v0` (0x8003AFF4).
+             * La suma agrupa primero los dos desplazamientos y luego el componente bajo, como el original. */
+            color = 0x80 - ((s16)D_800694E2 >> 5);
+            color = color + ((color << 16) + (color << 8));
         } else {
             color = 0x808080;
         }
@@ -407,14 +345,14 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
             ctx->objeto->param.trans.vy = pila.acc.vy;
             ctx->objeto->param.trans.vz = pila.acc.vz;
         }
-        par = func_8001DF28(ctx->objeto, vista_dibujo);
+        par = func_8001DF28(ctx->objeto, vista);
         color = par->color;
         desplazamiento = par->desplazamiento;
         ctx->estado.s4 = (ctx->objeto->param.escala.vz >> 2) - ctx->estado.s6;
     }
     if ((ctx->objeto->flags04 & 2) && color != 0 && ctx->estado.s4 >= 0) {
-        /* Direccion de las palabras durante las copias; despues, la profundidad que se compara y la direccion de
-         * la lista elegida (ver la cabecera). */
+        /* Direccion de las palabras durante las copias; despues, la profundidad que se compara, la direccion de
+         * la lista elegida y la de la ranura (ver la cabecera). */
         trabajo = (s32)sprite->palabras;
         p = (u32*)D_80076188;
         p[2] = sprite->palabras[0];
@@ -437,43 +375,34 @@ void func_8003AF8C(SpriteDibujo* sprite, EscenaDibujo* ctx, VistaDibujo* vista)
                 trabajo = (s32)D_8006AEA0[D_8006967C].org;
             }
         }
-        /* Envoltura sin codigo: la bandera se lee antes de calcular la ranura y sigue viva en la suma (ver la
-         * cabecera). */
-        do {
-            semitransparente = sprite->semitransparente;
-            ranura = (u32)trabajo + (ctx->estado.s4 << 2);
-        } while (0);
-        /* La palabra de ordenacion se calcula aqui y se almacena tras la union de las ramas (0x8003B210). */
-        palabra = *(u32*)ranura | 0x09000000;
+        /* Operacion en dos sentencias: la suma escribe el pseudo que guarda la lista, como `addu a0,a0,v0`
+         * (0x8003B1E8); desde aqui `trabajo` es la direccion de la ranura. */
+        trabajo = trabajo + (ctx->estado.s4 << 2);
+        /* Operacion en dos sentencias: la entrada se carga sobre el pseudo de la palabra, como `lw a2,0(a0)`
+         * (0x8003B1EC). La palabra de ordenacion se almacena tras la union de las ramas (0x8003B210). */
+        palabra = *(u32*)trabajo;
+        palabra |= 0x09000000;
         /* La bandera elige la mascara del codigo de primitiva y un solo `or` la aplica (`or a3,a3,v0`, 0x8003B204);
          * despues el original repite el `or` con 0x2C000000 (0x8003B208 y 0x8003B20C): no cambia el valor, porque
-         * las dos mascaras ya la contienen, pero el original lo emite.
-         * Envoltura sin codigo: pondera el uso de la bandera (ver la cabecera). */
-        do {
-            if (semitransparente != 0) {
-                mascara = 0x2E000000;
-            } else {
-                mascara = 0x2C000000;
-            }
-            color |= mascara;
-        } while (0);
+         * las dos mascaras ya la contienen, pero el original lo emite. */
+        if (sprite->semitransparente != 0) {
+            color |= 0x2E000000;
+        } else {
+            color |= 0x2C000000;
+        }
         color |= 0x2C000000;
         *p = palabra;
         p[1] = color;
-        /* Envoltura sin codigo: mantiene el `sll` detras de los dos almacenes (ver la cabecera). */
-        do {
-            p = (u32*)(((s32)p << 8) >> 8);
-        } while (0);
-        *(u32*)ranura = (u32)p;
+        /* Operacion en dos sentencias: el `sll` escribe el pseudo del puntero, como `sll a1,a1,8` (0x8003B218). */
+        p = (u32*)((s32)p << 8);
+        p = (u32*)((s32)p >> 8);
+        *(u32*)trabajo = (u32)p;
         D_80076188 += 0x28;
         if (ctx->limite < D_80076188) {
             D_80076188 = ctx->inicio;
         }
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/menus_e_interfaz", func_8003AF8C);
-#endif
 
 void func_8003B26C(PedidoModelo* pedido, EscenaDibujo* escena, VistaDibujo* vista)
 {
