@@ -447,9 +447,10 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * original genera esa secuencia con otra forma de la macro.
  * (2) El operando de la macro de distancia (a2 en lugar de a1, 0x80028CCC). Se supone, sin verificar, que es porque
  * la lista de destruidos de la macro incluye `$5`.
- * (3) El destino de la suma de la direccion de la secuencia (0x8002B870): v0 aqui y v1 en el original. En el volcado
- * de reparto (`.lreg`) la suma tiene como primer operando el indice desplazado y como segundo el nodo; se supone,
- * sin verificar, que el destino queda atado al registro del primer operando.
+ * (3) El destino de la suma de la direccion de la secuencia (0x8002B870): v0 aqui y v1 en el original. Desde la
+ * generacion del RTL (`-dr`) la suma tiene como primer operando el indice desplazado y como segundo el nodo, con el
+ * desplazamiento de 6 octetos sumado aparte; se supone, sin verificar, que el destino queda atado al registro del
+ * primer operando.
  * (4) La relectura de `t->w114` en el bloque del contador de cuadros: el original almacena el campo en 0x8002B908 y
  * lo vuelve a cargar en 0x8002B928, sin almacen ni llamada entre ambas instrucciones, y aqui el compilador reutiliza
  * el registro. La forma del fuente original que producia esa carga se desconoce.
