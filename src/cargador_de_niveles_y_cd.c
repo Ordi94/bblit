@@ -477,9 +477,11 @@ typedef struct {
  * despues solo la almacena. Es una sola variable de la funcion (pseudo 101, volcado del reparto
  * global: 40 usos en 13 instrucciones, preferencia y registro a0). La preferencia nace en la
  * etiqueta 0x24 del chunk 0x22, donde el bloque es sumando del puntero que recibe
- * `GsMapModelingData` (`addu a0,s8,s7` y `addiu a0,a0,4`, 0x80042404 y 0x80042408); sin ese uso la
- * cifra es 3540 y con el 3480. Las otras dos etiquetas que llaman a `GsMapModelingData` no lo
- * necesitan y escriben la suma entera.
+ * `GsMapModelingData` (`addu a0,s8,s7` y `addiu a0,a0,4`, 0x80042404 y 0x80042408). Las otras dos
+ * etiquetas que llaman a `GsMapModelingData` no lo necesitan y escriben la suma entera. La cifra con
+ * `bloque` en los cinco sitios es 3480; escribiendo la suma entera solo en uno: 3540 en la etiqueta
+ * 0x24, 3710 en la 0x25, 3490 en la 0x3F, 3745 en la 0x37 y 3685 en la 0x48; sin la local en
+ * ninguno, 4190.
  *
  * Orden de las sentencias: el planificador emite las cargas en el orden del fuente y puede cruzar
  * los almacenes entre si; el orden de las cargas del original decide el del fuente (en el chunk que
@@ -1099,7 +1101,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             /* El bloque pasa a la llamada sumado con su palabra de cabecera (`addiu a0,a0,4`,
                              * 0x80042408): este uso es el que da a `bloque` la preferencia por a0 en todos
                              * sus sitios; sin ella las sumas que solo almacenan salen en v1. */
-                            modelo_gs = (bloque = datos + desp_campo) + 4;
+                            bloque = datos + desp_campo;
+                            modelo_gs = bloque + 4;
                             EN(u8*, nodo, 0x54) = modelo_gs;
                             GsMapModelingData((unsigned long*)modelo_gs);
                             EN(u16, nodo, 0xA) = 2;
@@ -1137,7 +1140,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             EN(u8*, nodo, 0x54) = lista;
                             desp_campo = *(s32*)aux;
                             D_800694A0 = *(s32*)(aux + 4);
-                            EN(u8*, lista, 8) = bloque = datos + desp_campo;
+                            bloque = datos + desp_campo;
+                            EN(u8*, lista, 8) = bloque;
                             EN(u16, nodo, 0xA) = 4;
                             /* El original lee la cabecera del modelo dos veces: la primera (`lw v0,8(a1)`, 0x800424D8)
                              * alimenta la media palabra de `cab + 2` (`lhu v1,2(v0)`, 0x800424E4) y se copia a `cab`
@@ -1159,7 +1163,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             desp_campo = *(s32*)(campos + 4);
                             compensacion = *(s32*)(campos + 8);
                             EN(u16, nodo, 0xA) = 1;
-                            EN(u8*, nodo, 0x54) = bloque = datos + desp_campo;
+                            bloque = datos + desp_campo;
+                            EN(u8*, nodo, 0x54) = bloque;
                             cursor += 0xC;
                             D_800694A0 = compensacion;
                             /* En el original el `sh` de 0x50 (0x80042550) ocupa el hueco del salto de salida, tras
@@ -1467,7 +1472,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             cursor += 8;
                             desp_campo = *(s32*)campos_mem;
                             D_800694A0 = ETQ(w, campos, 1);
-                            D_800694FC = bloque = datos + desp_campo;
+                            bloque = datos + desp_campo;
+                            D_800694FC = bloque;
                         }
                     } while (*cursor != fin_chunk);
                     break;
@@ -1488,7 +1494,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             desp_campo = *(s32*)campos_mem;
                             D_800694A0 = *(s32*)(campos + 4);
                             D_8001004F = 1;
-                            D_800695B0 = (u16*)(bloque = datos + desp_campo);
+                            bloque = datos + desp_campo;
+                            D_800695B0 = (u16*)bloque;
                         }
                     } while (*cursor != 0x2E);
                     break;
