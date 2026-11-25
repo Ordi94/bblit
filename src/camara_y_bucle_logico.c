@@ -1388,8 +1388,9 @@ void func_80035244(void)
  * memoria dentro del operando de la sentencia `asm` desde la primera pasada (`.rtl`), y el de SetRotMatrix del
  * prologo (insn 91 en `.lreg`) es la constante `D_80076130`. Los resuelve la recarga con un mismo registro (`.greg`:
  * "Need 1 reg of class GR_REGS (for insn 91)", "Spilling reg 15"). La recarga de este `cc1` descarta los registros
- * que alguna sentencia de la funcion nombra, tambien donde no estan ocupados: si estan todos nombrados no toma
- * ninguno y termina con "fixed or forbidden register was spilled". En el RTL de esta funcion `$7` solo aparece en
+ * que figuran en la lista de destruidos de alguna sentencia de la funcion, tambien donde no estan ocupados: si
+ * esas listas los nombran todos no toma ninguno y termina con "fixed or forbidden register was spilled". En el
+ * RTL de esta funcion `$7` solo aparece en
  * la lista de destruidos de `GEO_DISTANCIA_APROX_A` (insn 385, `.lreg`), y esa lista es correcta porque el cuerpo
  * de la macro escribe `$7` (`addu $7,$10,$0`).
  *
