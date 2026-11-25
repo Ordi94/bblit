@@ -937,9 +937,15 @@ void func_80038E84(s32 idx, s32 paso)
  * quedan las marcas de operando por nombre de simbolo y una sola linea de registro, la comparacion
  * `<` de la barra 0 antes de la llamada (0x80039144): el original compara el byte leido, que sigue en
  * v1 (`sltu v0,v1,v0`), y el C compara la copia ancha que esta en a0 (`sltu v0,a0,v0`). En el volcado
- * `.cse` ese `<`, escrito sobre `leido`, usa ya el pseudo de `mostrado`: el optimizador sustituye la
- * extension del byte por la copia que ya la tiene. La forma del fuente que conserva v1 en esa
- * comparacion se desconoce.
+ * `.cse` la copia ancha es una copia de registro de la extension de la primera carga (insn 44, pseudo 80
+ * a partir del 111): los dos pseudos quedan en la misma clase de equivalencia y esa pasada escribe con el
+ * 80 todos los usos posteriores de la clase, tambien el `<` escrito sobre `leido` (insn 102). El original
+ * usa a0 en las dos igualdades (0x80039104 y 0x8003912C) y v1 en el `<`: su copia y la extension de la
+ * primera carga no estaban en la misma clase en esa pasada, y aun asi la copia sale como `move a0,v1`
+ * (0x800390F4). Se supone, sin verificar, que la copia era el resultado de una simplificacion posterior
+ * (la extension de un recorte a un byte de ese mismo valor ancho, que el combinador reduce a una copia de
+ * registro cuando las dos instrucciones estan en el mismo bloque). La forma del fuente que la producia se
+ * desconoce.
  *
  * Valor mostrado de la barra 0: el original tiene dos registros con el mismo valor, el byte leido en v1
  * y una copia en a0 (`move a0,v1`, 0x800390F4) que usan las comparaciones, mientras la suma y la resta
