@@ -209,12 +209,12 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
  * cuando supera el limite del contexto. Devuelve siempre 0. El tercer parametro no se lee: el
  * llamador (func_8003B5AC) pasa la vista en a2 y el original conserva esa carga.
  *
- * La variable `paquete` guarda la direccion del primer paquete, su enlace de 24 bits, el enlace del segundo y la
- * relectura final del anillo: el original usa v1 para los cuatro valores (`lw v1`, 0x8003AE5C; `sll v1,v1,8`,
- * 0x8003AE9C; `sll v1,a0,8`, 0x8003AF1C; `lw v1`, 0x8003AF50). Los dos recortes van escritos en dos sentencias
- * sobre ella, porque el original tiene el resultado del `sll` en el registro de la variable y con `-O2` la expansion
- * a RTL (`-dr`) solo escribe en el pseudo de una variable el resultado de la operacion de nivel superior de una
- * sentencia.
+ * La variable `paquete` guarda la direccion del primer paquete, su enlace de 24 bits y el enlace del segundo: el
+ * original usa v1 para los tres valores (`lw v1`, 0x8003AE5C; `sll v1,v1,8`, 0x8003AE9C; `sll v1,a0,8`,
+ * 0x8003AF1C). Con el enlace del segundo paquete en una variable propia, escrito tambien en dos sentencias, la
+ * puntuacion es 160. Los dos recortes van escritos en dos sentencias sobre ella, porque el original tiene el
+ * resultado del `sll` en el registro de la variable y con `-O2` la expansion a RTL (`-dr`) solo escribe en el
+ * pseudo de una variable el resultado de la operacion de nivel superior de una sentencia.
  * (1) El primer recorte: `sll v1,v1,8` y `sra v1,v1,8` (0x8003AE9C y 0x8003AEA0) sobre el registro por el que se
  * acaban de almacenar las seis palabras. Con las dos sentencias los dos desplazamientos escriben el pseudo 83 de
  * `paquete` (insns 74 y 76). Con `paquete = (paquete << 8) >> 8;` el `sll` escribe el pseudo 106, salen `sll
@@ -222,7 +222,7 @@ void func_8003ACA8(ModeloDibujo* objeto, void* sin_uso, MATRIX* m)
  * (2) El enlace del segundo paquete: `sll v1,a0,8` (0x8003AF1C) y `sra v1,v1,8` (0x8003AF28), con las cargas y los
  * almacenes de los puntos 6 y 8 entre los dos. Con las dos sentencias el `sll` y el `sra` escriben el pseudo 83
  * (insns 160 y 162). Con `paquete = (siguiente << 8) >> 8;` el `sll` escribe el pseudo 125, que es local del bloque
- * y toma v0 (`sll v0,a1,8` y `sra a0,v0,8`), y la puntuacion es 505.
+ * y toma v0 (`sll v0,a1,8` y `sra a0,v0,8`), y la puntuacion es 485.
  *
  * La envoltura `do { } while (0)` del almacen del cursor (`D_80076188 = siguiente;`) no genera codigo. En el listado
  * del primer planificador (`-dS`), sin ella la carga de `puntos[8]` (pseudo 106, insn 91) no depende de ese almacen
@@ -274,8 +274,7 @@ s32 func_8003AE08(u32* puntos, EscenaDibujo* ctx, VistaDibujo* sin_uso)
         *tabla = paquete;
         D_80076188 += 0x18;
     }
-    paquete = D_80076188;
-    if (paquete > ctx->limite) {
+    if (D_80076188 > ctx->limite) {
         D_80076188 = ctx->inicio;
     }
     return 0;
