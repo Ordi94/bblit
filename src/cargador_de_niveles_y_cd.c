@@ -432,8 +432,8 @@ typedef struct {
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 2200 con la configuracion versionada (g = 8 del archivo; ejes 308 de
- * operandos, 1 de lineas reordenadas y 301 de lineas insertadas o borradas). La cifra incluye
+ * Pendiente: puntuacion 1155 con la configuracion versionada (g = 8 del archivo; ejes 310 de
+ * operandos, 1 de lineas reordenadas y 265 de lineas insertadas o borradas). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2954 instrucciones y el original 2955; la
@@ -451,16 +451,16 @@ typedef struct {
  * Contador del anillo (D_80069480): lo incrementa el retorno de llamada de lectura y se declara
  * volatile. Sin ello cc1 pone `posicion = 0` en el hueco de retardo del `jal` de
  * IniciarLecturaContinua (el original deja un `nop` en 0x80041808 y el `addu s1,zero,zero` en el
- * hueco del `bnez` de 0x80041814); la cifra es 2320 sin el volatile y 2200 con el.
+ * hueco del `bnez` de 0x80041814); la cifra es 1275 sin el volatile y 1155 con el.
  *
  * Direccion del registro de archivo: el original forma la direccion de D_8005F200 (`lui` y `addiu`
  * en 0x800416FC y 0x80041700) antes de extender y escalar el indice. `tabla_archivos` guarda la
  * base de la tabla antes de indexarla; con `&D_8005F200[archivo]` el compilador emite primero el
- * indice y la cifra es 2885.
+ * indice y la cifra es 1215.
  *
  * Tablas del nodo de recurso (`NodoRecurso`, etiquetas 0x28 y 0x0D del chunk 0x22): el original
  * suma la base del nodo antes que el indice escalado (`addu v0,s1,v0`). Como arreglos de estructura
- * se obtiene ese orden; sumando el indice a un puntero de bytes salen al reves y la cifra es 2330.
+ * se obtiene ese orden; sumando el indice a un puntero de bytes salen al reves.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
  * recibe, en vez de una variable por uso, el desplazamiento de los chunks (`lw s7,0x128($sp)` y
@@ -520,8 +520,7 @@ typedef struct {
  * global: 40 usos en 13 instrucciones, preferencia y registro a0). La preferencia nace en la
  * etiqueta 0x24 del chunk 0x22, donde el bloque es sumando del puntero que recibe
  * `GsMapModelingData` (`addu a0,s8,s7` y `addiu a0,a0,4`, 0x80042404 y 0x80042408). Las otras dos
- * etiquetas que llaman a `GsMapModelingData` no lo necesitan y escriben la suma entera. Escribiendo
- * la suma entera en los cinco sitios la cifra es 2910.
+ * etiquetas que llaman a `GsMapModelingData` no lo necesitan y escriben la suma entera.
  *
  * Orden de las sentencias: el planificador emite las cargas en el orden del fuente y puede cruzar
  * los almacenes entre si; el orden de las cargas del original decide el del fuente (en el chunk que
@@ -542,7 +541,7 @@ typedef struct {
  * 0x14 y 0x18 solo cuando quedan libres `v1`, `v0` y `a1` tras su almacen (0x80043110, 0x8004311C y
  * 0x80043128): son cargas que el planificador puede adelantar y que el reparto de registros
  * intercala entre los almacenes. `D_8006954C` se escribe en el fuente antes que `D_8006952E`; la
- * lectura de 0x14 por puntero no se adelanta a los almacenes y la cifra es 3115.
+ * lectura de 0x14 por puntero no se adelanta a los almacenes.
  *
  * Orden de las sentencias de dos chunks: en el caso que fija `audio_cargado` el original almacena
  * la bandera (`sb t3,0x1d0($sp)`, 0x80042C4C) antes de las dos lecturas del bufer, por eso
@@ -569,22 +568,49 @@ typedef struct {
  * antes de sumar 0xA000 a `datos` (el `ori` y el `addu` salen tras `addiu s1,s1,0x2`, 0x800418D0 y
  * 0x800418D4), por eso `D_800694A0` y `posicion += 2` van antes de `datos += 0xA000`.
  *
- * Residuo por causas (cada fila insertada o borrada pesa unos 100 puntos): (1) en el bucle de
- * etiquetas de los modelos jerarquicos, la direccion de la tabla de saltos que el C saca del bucle
- * (ver el turno de los registros de recarga, mas abajo); (2) la carga de `D_80069678`, que el
- * original iza a a0 (0x80041D70) y el C deja junto a su uso, con `D_8006954C` izada en su lugar
- * (una fila y dos de operandos); (3) el orden de dos tramos del comienzo: el
- * original deja `sb zero,0x1c0(sp)` entre los almacenes de las banderas (0x80041668) y el C lo deja
- * en el hueco de retardo del `bgtz` de 0x800416C8 (volcado de la planificacion previa al reparto:
- * baja ese almacen por encima de las tres llamadas hasta el hueco de la carga `lbu` de
- * 0x800416BC); y al copiar el registro de archivo el original forma la direccion de D_8006A928 en
- * s1 antes de la copia (`addiu s1` en 0x80041758) y suma `datos + 0xA000` en `v0` tras las cargas
- * (0x80041778 y 0x80041784), mientras el C suma en `a1` antes de ellas (en el volcado de la
- * planificacion previa al reparto la parte baja de la direccion, que nace tras la parte alta, queda
- * junto a su primer uso); (4) en el bucle del anillo, el avance del cursor (`addiu s2` en
- * 0x800419A0) sale antes que en el original; (5) la copia delante de la prueba de `banco_cargado`
- * y nombres de registro (unas 45 filas de 5 puntos), en parte por el turno de los registros de
- * recarga.
+ * Residuo por causas: (1) en el bucle de etiquetas de los modelos jerarquicos, la direccion de la
+ * tabla de saltos que el C saca del bucle (ver el turno de los registros de recarga, mas abajo);
+ * (2) la copia delante de la prueba de `banco_cargado` y los nombres de los registros de recarga
+ * entre esa prueba y el bucle anterior. El resto de la funcion coincide instruccion a instruccion;
+ * las demas filas del eje de operandos son direcciones absolutas desplazadas por la instruccion
+ * que falta.
+ *
+ * Direccion de la posicion de lectura (D_8006A928) en `posicion`: el original forma esa direccion
+ * en s1 antes de copiar el registro de archivo (`addiu s1,v0,%lo(D_8006A928)` en 0x80041758), la
+ * usa en las dos ordenes al CD y en `IniciarLecturaContinua` (`move a1,s1` en 0x800417D8, `move
+ * a0,s1` en 0x800417E0 y 0x80041A28) y reutiliza s1 para el indice de seccion (`addu s1,zero,zero`
+ * en 0x80041818 y 0x80041A60): es el mismo valor de registro, y por eso la misma variable. Medido
+ * en los volcados de la planificacion: escrita como subexpresion comun del simbolo, la direccion
+ * es un pseudo con una sola asignacion; la planificacion previa al reparto da prioridad maxima a
+ * las instrucciones que crean un pseudo asi y las baja hasta su primer uso, y ademas conoce su
+ * valor, de modo que el almacen de `tamano` no depende de los almacenes a los globales del anillo
+ * y queda detras de ellos (el `addiu s1` salia tras las cargas y la suma `datos + 0xA000` en a1).
+ * Con una variable de varias asignaciones la instruccion conserva su sitio y el almacen de 4(s1)
+ * depende de los siguientes: el bloque de 0x80041754 a 0x80041798 coincide, y la suma queda en v0,
+ * que la rama sin anillo copia a `datos` (`move s8,v0` en 0x80041A24).
+ *
+ * Memoria rapida (`bloc_notas`): la direccion 0x1F800000 que recibe `func_80044664` va en una local
+ * asignada una vez al comienzo. Medido en el volcado de la planificacion previa al reparto del
+ * primer bloque: sin ella, la instruccion lista de mayor orden cuando la carga `lbu` de 0x800416BC
+ * espera su ciclo es `pools_listos = 0`, que baja por encima de las tres llamadas hasta ese hueco
+ * (salia en el hueco de retardo del `bgtz` de 0x800416C8); con la local, la que ocupa el hueco es
+ * su asignacion, que despues desaparece porque el pseudo no recibe registro y equivale a una
+ * constante (cada llamada carga `lui a2,0x1f80` igual que con el literal), y el almacen de
+ * `pools_listos` queda entre los de las otras banderas (`sb zero,0x1c0(sp)` en 0x80041668).
+ *
+ * Avance del cursor en el bucle del anillo: `cursor++` va tras la llamada a `func_80044664`. El
+ * original lo emite despues del tercer argumento (`lui a2,0x1f80` en 0x8004199C, `addiu s2,s2,1`
+ * en 0x800419A0). En el volcado de la planificacion el incremento no depende de nada del bloque y
+ * se ordena por su posicion en el fuente: escrito antes de las cargas queda el primero tras
+ * `CopiarBytes`; escrito tras la llamada queda detras de la carga del tercer argumento.
+ *
+ * Tope del monton (`D_8006958C`): se escribe `D_8006959C + (D_8006954C - 0x400)`. El original
+ * resta 0x400 a la base ya cargada y suma despues el tamano (`addiu v0,v0,-0x400` y `addu
+ * v0,v0,v1`, 0x80041E98 y 0x80041E9C); al plegar la expresion el compilador pasa la constante
+ * del segundo sumando al primero y deja ese orden. Con `a + b - 0x400` suma primero los dos
+ * globales: la carga de `D_8006954C` queda entonces viva a la vez que `v1` y toma a0, sin
+ * dependencias, y la planificacion posterior al reparto la sube al comienzo del bloque en el
+ * lugar de la de `D_80069678` (0x80041D70 del original).
  *
  * Llamada compartida de la apertura del anillo y las listas: el original deja el `jal` de
  * `func_80044664` en 0x80041A0C (la apertura) y la lectura de las listas salta hacia el
@@ -593,9 +619,9 @@ typedef struct {
  * epilogo y funde su cola con la de otro salto igual. Medido en los volcados de cc1 (pases de
  * planificacion y de saltos): con la salida del caso 0x4B escrita como un bloque `return 1;` propio
  * la cola que desaparece es la de la apertura y el `jal` queda en la lectura de las listas (la cifra
- * es 3030); con la salida del caso 0x4B escrita como salto a la etiqueta `fallo_lectura`, que es la
+ * es 1985); con la salida del caso 0x4B escrita como salto a la etiqueta `fallo_lectura`, que es la
  * salida de la primera lectura del anillo, desaparece la de las listas y el `jal` queda en la
- * apertura, como en el original, y el caso 0x4B sale con `beqz v0` directo (2200). Se supone, sin
+ * apertura, como en el original, y el caso 0x4B sale con `beqz v0` directo (1155). Se supone, sin
  * verificar, que el orden en que el pase recorre los saltos al epilogo depende de que la salida del
  * 0x4B sea un bloque `li`/`j` propio.
  *
@@ -606,15 +632,14 @@ typedef struct {
  * interior y despues el bucle exterior la funde con las demas pruebas contra 0x2E: no queda copia,
  * la salida se une con la prueba exterior y sale como `beq` mas `j`. Con la variable la copia se
  * conserva (volcado de la planificacion posterior al reparto); se supone, sin verificar, que no
- * entra en la fusion por tener mas de una asignacion. Con la constante en las dos comparaciones la
- * cifra es 3410 y con la variable 2200. El bucle del chunk 0x47 compara con la constante, como el
- * original.
+ * entra en la fusion por tener mas de una asignacion. El bucle del chunk 0x47 compara con la
+ * constante, como el original.
  *
  * Marcas de etiqueta (`marca_parametros` y `marca_posicion`): el original carga la etiqueta que
  * busca cada bucle (`li s1,6` en 0x80042F1C y `li s1,0x37` en 0x80042F74) antes de copiar la marca
  * de fin a s0 (0x80042F20 y 0x80042F78). Por eso cada etiqueta va en una local asignada antes que
  * `fin_chunk`. Con las constantes en las comparaciones, la pasada de bucles las coloca detras de la
- * asignacion del fuente y la copia sale delante (la cifra es 2320).
+ * asignacion del fuente y la copia sale delante.
  *
  * Entidades (chunks 0x07, 0x08 y 0x0A): la prueba de entrada del `while` de etiquetas salta a la
  * llamada a `ResolverReferenciasContenedor` que sigue al bucle (`beq` en 0x800436E0 hacia
@@ -624,8 +649,7 @@ typedef struct {
  * (`etiqueta_sonido`, `etiqueta_zona`, `etiqueta_demo`) en vez de la variable de la funcion que usan
  * los demas chunks. La variable de la funcion es un pseudo con varios usos que toma `v1` en esos
  * bucles; la local de bloque toma `v0`, el mismo registro que la lectura de la prueba de salida
- * (`lbu v0,0(s2)` en 0x80041984 y 0x800419B0 del chunk 0x05), como en el original. Con la variable de
- * la funcion en los tres la cifra es 2230.
+ * (`lbu v0,0(s2)` en 0x80041984 y 0x800419B0 del chunk 0x05), como en el original.
  *
  * El original conserva `libre += x` y `monton = libre` en dos instrucciones (`addu s6,s6,v0` en
  * 0x80041E44 y `move s5,s6` en 0x80041E58, con las cargas de `D_80069548` y `D_8006952E` entre
@@ -635,11 +659,11 @@ typedef struct {
  *
  * Fuera de esos dos bucles las pruebas de fin de chunk cargan 0x2E en un temporal en cada sitio:
  * hay 34 `li` de 0x2E en el codigo generado y 35 en el original. `hijo_matriz` (pseudo 99, R 72,
- * L 2298) vive desde la entrada de la funcion porque se lee en algun camino sin asignacion previa;
+ * L 2299) vive desde la entrada de la funcion porque se lee en algun camino sin asignacion previa;
  * con la variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x208; la cifra medida sin la local es 3490 y con ella 2200. La reserva de 8 bytes va antes de
+ * 0x208; la cifra medida sin la local es 2313 y con ella 1155. La reserva de 8 bytes va antes de
  * `tamanos` (que queda en 0xE8, como el original); con ella las ranuras de derrame empiezan en 0x1A8,
  * justo tras `campos_mem`, como en el original.
  *
@@ -658,10 +682,13 @@ typedef struct {
  * en una recarga (se supone, sin verificar, que la de la copia que falta); en 0x800427D4 el
  * original calcula en el sitio la direccion de la tabla de saltos de las etiquetas de los modelos
  * jerarquicos (`lui v0` y `addiu v0`) y el C la saca del bucle y la recalcula en un registro de
- * recarga, lo que vuelve a emparejar el turno. En el volcado de la pasada de bucles ese bucle tiene 164 instrucciones y la direccion (vida 3, ahorro 2)
- * sale; en el mismo volcado un bucle de 229 instrucciones deja sin izar una direccion de tabla con la
- * misma vida y ahorro. Se supone, sin verificar, que el bucle del original contaba mas instrucciones
- * en esa pasada.
+ * recarga, lo que vuelve a emparejar el turno. En el volcado de la pasada de bucles ese bucle tiene
+ * 164 instrucciones y la direccion (vida 3, ahorro 2) sale: la pasada la saca cuando 29 por el
+ * ahorro por la vida (174) no es menor que el numero de instrucciones del bucle. En el mismo
+ * volcado un bucle de 229 instrucciones deja sin izar una direccion de tabla con la misma vida y
+ * ahorro, y la direccion de D_8006B568 (vida 4, ahorro 2, limite 232) sale en el original y en el
+ * C. El bucle del original tenia por tanto entre 175 y 232 instrucciones en esa pasada: al menos
+ * once mas que el del C, que desaparecen despues sin dejar codigo.
  *
  * Carga un contenedor de nivel o escena por su identificador (indice de D_8005F200) en `datos`.
  * Lee la cabecera del archivo, descomprime el script (seccion de tipo 1) y las secciones que sus
@@ -713,6 +740,11 @@ s32 CargarContenedor(s16 archivo, u8* datos)
      * 0x800424C4, 0x80042538, 0x80042814, 0x80042FA8 y 0x80043018), tambien donde solo se almacena.
      */
     u8* bloque;
+    /*
+     * Indice de la seccion en curso y, antes de abrir la lectura, direccion de la posicion de CD
+     * (D_8006A928): el original guarda los dos valores en s1 (`addiu s1,v0,%lo(D_8006A928)` en
+     * 0x80041758 y `addu s1,zero,zero` en 0x80041818).
+     */
     s32 posicion;
     /*
      * Desplazamiento leido de los campos de un chunk, desplazamiento del banco de idioma y resultado
@@ -738,9 +770,12 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     u32 tipo;
     u8 etiqueta;
     EstadoPrincipal* estado;
+    /* Memoria rapida de la consola (0x1F800000), que el descompresor usa como memoria de trabajo. */
+    u8* bloc_notas;
 
     /* Memoria de trabajo del cargador: el destino recibe primero el contenido y luego la memoria libre. */
     libre = datos;
+    bloc_notas = (u8*)0x1F800000;
     D_800695B4 = 1;
     memset(D_8006AA70, 0, 0x100);
     tam_extra = 0;
@@ -780,8 +815,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     D_800694D0 = 0x80;
     CdControlB(0xE, &D_800694D0, NULL);
     func_80040DDC();
-    *(CdlLOC*)D_8006A928 = *(CdlLOC*)registro->posicion;
-    *(u32*)(D_8006A928 + 4) = registro->tamano;
+    posicion = (s32)D_8006A928;
+    *(CdlLOC*)posicion = *(CdlLOC*)registro->posicion;
+    *(u32*)(posicion + 4) = registro->tamano;
     D_8006948C = (u32)datos;
     D_80069490 = (u32)datos;
     D_8006947C = (u32)datos + 0xA000;
@@ -833,7 +869,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         datos += 0xA000;
         D_80069498 = (u32)datos;
         D_8006949C = D_80069490 + 0x800;
-        if (func_80044664((u8*)D_8006949C, datos, (void*)0x1F800000) == 0) {
+        if (func_80044664((u8*)D_8006949C, datos, bloc_notas) == 0) {
             /* Salida de error de las lecturas por anillo: tambien la usa la lectura del caso 0x4B. */
         fallo_lectura:
             return 1;
@@ -847,12 +883,12 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         tipo = *cursor++;
                         if (tipo == 0x45) {
                             CopiarBytes(cursor, bufer_anillo, 1);
-                            cursor++;
                             destino_seccion = (u8*)D_80067E98[campos_mem[0]];
                             D_800694A0 += secciones[posicion].alineado;
                             posicion++;
-                            func_80044664((u8*)D_8006949C, destino_seccion, (void*)0x1F800000);
+                            func_80044664((u8*)D_8006949C, destino_seccion, bloc_notas);
                             *(u32*)destino_seccion = (u32)D_8006B2F8;
+                            cursor++;
                         }
                     } while (*cursor != 0x2E);
                 }
@@ -861,7 +897,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         }
         datos += 0x1D000;
         D_80069498 = (u32)datos;
-        if (func_80044664((u8*)D_8006949C, datos, (void*)0x1F800000) == 0) {
+        if (func_80044664((u8*)D_8006949C, datos, bloc_notas) == 0) {
             return 1;
         }
     } else {
@@ -992,7 +1028,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             libre += (s16)D_8006952E * 8;
             D_80076188 = D_8006959C;
             D_80069680 = D_8006959C;
-            D_8006958C = D_8006959C + D_8006954C - 0x400;
+            D_8006958C = D_8006959C + (D_8006954C - 0x400);
             D_80069610 = D_8006958C;
             D_80069614 = D_8006958C;
             if (D_80069678 != 0) {
@@ -1036,7 +1072,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             D_8006949C = D_80069490;
             IniciarLecturaContinua((CdlLOC*)D_8006A928);
             if (D_80069494 != 0) {
-                if (func_80044664((u8*)D_8006949C, (u8*)D_80069498, (void*)0x1F800000) == 0) {
+                if (func_80044664((u8*)D_8006949C, (u8*)D_80069498, bloc_notas) == 0) {
                     return 1;
                 }
             } else {
@@ -1077,7 +1113,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
             CdIntToPos(D_800694AC, (CdlLOC*)D_8006A928);
             IniciarLecturaContinua((CdlLOC*)D_8006A928);
             if (D_80069494 != 0) {
-                if (func_80044664((u8*)D_8006949C, (u8*)D_80069498, (void*)0x1F800000) == 0) {
+                if (func_80044664((u8*)D_8006949C, (u8*)D_80069498, bloc_notas) == 0) {
                     /* Mismo retorno que la apertura (`beqz v0` directo, 0x80042264); con `return 1;` la cifra es 4310. */
                     goto fallo_lectura;
                 }
