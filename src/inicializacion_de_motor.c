@@ -358,8 +358,9 @@ typedef struct CabeceraPrimitiva {
  * que despues compone el color (`addu a2,a2,a0`, 0x80045210), que la otra rama carga con la constante (`lui
  * a2`, 0x80045214) y que se almacena tras la union de las ramas (`sw a2,4(v0)`, 0x80045250). Con las dos
  * sentencias la resta es `(set (reg/v 90) (minus ...))` (insn 78), con 90 el pseudo de `color`. Escrita la
- * composicion en una sola sentencia, la resta nace en el pseudo 112, distinto del 90, el reparto no los une
- * y la puntuacion es 740.
+ * composicion en una sola sentencia (la resta repetida en la expresion), la resta nace en el pseudo 112,
+ * distinto del 90, el reparto no los une y la puntuacion es 740. Con la intensidad en una local propia la
+ * puntuacion es 210.
  * (2) El recorte de la direccion de la primitiva a 24 bits. El original lee la direccion en v0 (`lw v0`,
  * 0x80045244), almacena por ella el color y el enlace (0x80045250 y 0x8004525C), la copia a v1 (`addu
  * v1,v0,zero`, 0x80045258) y la desplaza sobre el propio v0 (`sll v0,v0,8`, 0x80045260, y `sra v0,v0,8`,
