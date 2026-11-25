@@ -1447,10 +1447,11 @@ void func_80035244(void)
  * el la direccion de v80 y la de c104 (volcado `-dL`: el recorrido tiene 42 instrucciones, regno 379 y 380 con
  * vida 1 "moved", y despues otra vez fuera del bucle principal con vida de 54 y 55 instrucciones), ocupan s5 y s6
  * y el marco sube de 0x28 a 0x30 (cifra 1388); el original calcula esas direcciones en el sitio. En el mismo
- * volcado el bucle principal, que tiene llamadas y 428 instrucciones, no saca asignaciones de vida 1 ni 2: se
- * supone, sin verificar en el fuente del compilador, que una asignacion invariante de vida 1 solo se queda en un
- * bucle sin llamadas si este pasa de unas 60 instrucciones, y que el original tampoco tenia notas de bucle en
- * ese recorrido. Con la busqueda del modelo como `do { } while (idx < lim)` y `break` la cifra es 1710. El
+ * volcado el bucle principal, que tiene llamadas y 428 instrucciones, no saca asignaciones de vida 1 ni 2. Se
+ * supone, por una copia minima de un bucle sin llamadas con una direccion invariante de vida 1 (con 58
+ * instrucciones se saca y con 60 no), que esa asignacion solo se queda en el bucle si este tiene 59 instrucciones
+ * o mas, y, sin verificar, que el original tampoco tenia notas de bucle en ese recorrido. Con la busqueda del
+ * modelo como `do { } while (idx < lim)` y `break` la cifra es 1710. El
  * resultado de la ultima comprobacion de proyeccion se lee de los campos (sc->sx, sc->sy) donde el original los
  * relee, no de locales.
  *
