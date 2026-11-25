@@ -442,12 +442,19 @@ s32 func_800151FC(void)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 560 con la configuracion versionada (g = 8 del archivo; ejes 76 de operando, 0 reordenadas,
- * 198 insertadas o borradas). Flujo, orden de instrucciones y distribucion de bloques iguales al original;
- * quedan el reparto de registros del recorrido del directorio, el orden de los dos operandos en las sumas de direccion
- * del recorrido y, en el caso 4 del resultado del sondeo (`D_8006AA70[0x1B] = 5`, 0x80015E64 a 0x80015E70, y su `lui`
- * en 0x80015B98), el intercambio de v0 y v1. En ese bloque el volcado `-dg` da v0 a la base (pseudo 463, 3
- * referencias, con su parte alta 464, 2) y v1 a la constante 5 (465, 2); el original los tiene al reves.
+ * Pendiente: puntuacion 525 con la configuracion versionada (g = 8 del archivo; ejes 76 de operando, 0 reordenadas,
+ * 188 insertadas o borradas). Flujo, orden de instrucciones y distribucion de bloques iguales al original;
+ * quedan el reparto de registros del recorrido del directorio y el orden de los dos operandos en las sumas de
+ * direccion del recorrido.
+ * Envoltura del caso 4 del resultado del sondeo: la `do { } while (0)` sobre `D_8006AA70[0x1B] = 5` no genera
+ * codigo (el ensamblador de `cc1` solo cambia en cinco lineas, de v0 por v1). Volcado `-dl`, bloque de ese caso:
+ * sin ella la parte alta de la direccion (pseudo 464, 2 referencias) y la direccion (463, 3) se unen en una
+ * cantidad de 5 referencias con 4 instrucciones entre su nacimiento y su muerte (2 * 5 / 4 = 2,5) y la
+ * constante 5 (465, 2 referencias, 1 instruccion) vale 1 * 2 / 1 = 2, de modo que la direccion se reparte
+ * primero y toma v0. Con la envoltura las cuatro instrucciones quedan dentro de las notas de bucle y las
+ * referencias pasan a 4 y 5 (cantidad 3 * 9 / 4 = 6,75) y 4 (constante 2 * 4 / 1 = 8): la constante toma v0 y la
+ * direccion v1, como el original (`lui v1` en 0x80015B98 y 0x80015E64 a 0x80015E70). Sin ella la puntuacion es 560.
+ * La forma del fuente original que producia este reparto se desconoce.
  * Orden de las sumas: en la busqueda y en el relleno el original suma `(j + fila)` o la fila con el desplazamiento
  * detras (0x80015CCC, 0x80015CEC y 0x80015D24) y aqui el desplazamiento va delante; el volcado `-dr` muestra que con
  * `grupo * 120` la suma sale con el producto como primer operando, `(plus 380 381)`. En las sumas de la base
@@ -494,7 +501,7 @@ s32 func_800151FC(void)
  * El argumento que pasa main se ignora.
  *
  * Reserva de pila: el original reserva 0x40 (`addiu sp` en 0x800156F4) y sin la local el marco es
- * 0x30; la cifra medida sin la local es 762 y con ella 560. La funcion es pendiente: con la local la
+ * 0x30; la cifra medida sin la local es 727 y con ella 525. La funcion es pendiente: con la local la
  * cifra es menor que sin ella.
  */
 void SondearTarjeta(void)
@@ -759,7 +766,11 @@ void SondearTarjeta(void)
                 }
                 break;
             case 4:
-                D_8006AA70[0x1B] = 5;
+                /* La envoltura sube el peso de la constante 5 para que tome v0 y la direccion de la
+                 * tabla quede en v1, como el original (0x80015E64 a 0x80015E70). */
+                do {
+                    D_8006AA70[0x1B] = 5;
+                } while (0);
                 D_8006AA70[0x1D] = 2;
                 break;
             }
