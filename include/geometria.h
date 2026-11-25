@@ -410,11 +410,21 @@ typedef struct TrabajoRecorrido {
  * GEO_DISTANCIA_APROX_A(v, base, off): misma distancia aproximada que GEO_DISTANCIA_APROX sobre el
  * vector de tres palabras de v, pero el resultado (con el bit 0 activo) va a la palabra base + off en
  * lugar de v + 0x44 (func_80026FEC, 0x80028CC8 a 0x80028D54: addiu $5, base, off con la base del
- * scratchpad en un registro guardado). Misma lista de registros destruidos y mismo calculo; el cuerpo
- * difiere de GEO_DISTANCIA_APROX en dos instrucciones: la primera y la tercera bgez no llevan el nop
- * explicito en el hueco de retardo, porque el original deja alli el sub del valor absoluto. Es posible
- * que la macro original duplique ese nop; no unificar las dos macros sin medir func_80026FEC y
- * func_800353B0.
+ * scratchpad en un registro guardado). Mismo calculo; el cuerpo difiere de GEO_DISTANCIA_APROX en dos
+ * instrucciones: la primera y la tercera bgez no llevan el nop explicito en el hueco de retardo,
+ * porque el original deja alli el sub del valor absoluto. Es posible que la macro original duplique
+ * ese nop; no unificar las dos macros sin medir func_80026FEC y func_800353B0.
+ *
+ * Lista de destruidos incompleta a proposito: la rutina SI escribe $7 (addu $7,$10,$0,
+ * addu $7,$2,$0 y srl $7,$7,2) y la lista lo omite porque el original lo omitia. Se ve en que en
+ * func_800353B0, que contiene la rutina (0x80035698 a 0x8003571C), el original usa $a3 como registro
+ * de recarga de las macros de la GTE (primera aparicion en 0x80035454), y el compilador solo lo
+ * elige si ninguna lista de la funcion lo nombra: con $7 declarado elige $t7 y la funcion difiere
+ * en 235 puntos.
+ *
+ * ADVERTENCIA: quien invoque esta macro no puede tener ningun valor vivo en $a3 a traves de ella;
+ * el compilador no lo protege. En sus usos actuales (func_800353B0 y func_80026FEC) el original no
+ * tiene ninguno. Antes de usarla en otra funcion hay que comprobarlo en el ensamblador generado.
  */
 #define GEO_DISTANCIA_APROX_A(v, base, off) \
     __asm__ volatile (".set push\n\t.set noreorder\n\t.set noat\n\t" \
@@ -429,7 +439,7 @@ typedef struct TrabajoRecorrido {
                       "5:\tsrl $3, $3, 2\n\tsrl $7, $7, 2\n\tadd $2, $2, $3\n\tadd $2, $2, $7\n\t" \
                       "ori $2, $2, 1\n\taddiu $5, %1, " #off "\n\taddu $4, $5, $0\n\tsw $2, 0($4)\n\t" \
                       ".set pop" \
-                      : : "r"(v), "r"(base) : "$1", "$2", "$3", "$4", "$5", "$7", "$8", "$9", "$10", "memory")
+                      : : "r"(v), "r"(base) : "$1", "$2", "$3", "$4", "$5", "$8", "$9", "$10", "memory")
 
 /* Area de trabajo de func_80018C68: matriz de rotacion inversa del objeto y vectores locales. */
 typedef struct ConsultaMatriz {

@@ -1335,14 +1335,10 @@ void func_80035244(void)
     }
 }
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 235 con la configuracion versionada (g = 8 del archivo): 93 diferencias de operando, 0 lineas
- * reordenadas y 88 insertadas o borradas. El flujo coincide. Quedan diferencias de registros y de forma simbolica:
- * (1) el registro de recarga de los punteros que las macros de la GTE leen de memoria o reciben como direccion
- * constante, t7 aqui y a3 en el original (35 lineas); (2) 9 lineas de forma simbolica con los mismos bytes: el byte
- * D_8006AA7C, que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc`, y las direcciones del
- * scratchpad que el desensamblado del original nombra como simbolos.
+ * Coincide byte a byte con la configuracion versionada (g = 8 del archivo). Las cifras de comparacion de esta
+ * cabecera son puntuaciones brutas de asm-differ, en las que la funcion coincidente da 45 (mismos bytes con
+ * distinto texto de operando).
  *
  * Llamada compartida. El original tiene una sola llamada a func_800351B4 (0x800358A4), en la busqueda del modelo:
  * la atenuacion por proyeccion recarga el objeto en `a0` y salta a ella (0x80035DCC y `j` de 0x80035DD0) y la
@@ -1355,7 +1351,7 @@ void func_80035244(void)
  * la bandera 0x40) y en `recargar`. Es la sentencia duplicada en caminos que se reunen en `llamar`: una sola copia
  * tras la union serviria igual, pero el original carga `sc->cur` en `a0` en cada camino (0x8003584C, 0x80035888 y
  * 0x80035DCC) y las copias no generan codigo mas alla de esa carga, que el original tambien tiene. Con una sola
- * asignacion tras `llamar` en lugar de las tres la cifra es 500.
+ * asignacion tras `llamar` en lugar de las tres la cifra es 310.
  * Volcado de `cc1` (`-dl` y `-dg`, `-G8`): `t` es un solo pseudo de usuario (84) con tres asignaciones, 16 usos
  * sobre 12 insns y sin cruzar llamadas: prioridad 4 * 16 / 12 = 5,33, segundo del orden del reparto global, y toma
  * `a0`, como el original. La forma del fuente original que producia este reparto se desconoce.
@@ -1370,7 +1366,7 @@ void func_80035244(void)
  * el original tambien ejecuta. La copia del almacen no genera codigo propio: el compilador la une con la comun y
  * deja el salto. Volcado (`-dl` y `-dg`): el objeto de cada prueba es un pseudo propio de su camino (329 y 419,
  * 8 usos sobre 12 insns cada uno), que choca con `v0` y `v1` y toma `a0`, como el original (`lw a0` en 0x80035A24
- * y 0x80035D88). Con una sola prueba, escrita tras las dos proyecciones, la cifra es 2785. La forma del fuente
+ * y 0x80035D88). Con una sola prueba, escrita tras las dos proyecciones, la cifra es 2595. La forma del fuente
  * original que producia este reparto se desconoce.
  *
  * La cola de la lista usa una local propia (`cola`) porque `t` vive en varios bloques y pasa por el reparto global.
@@ -1389,7 +1385,7 @@ void func_80035244(void)
  * posterior (0x80035814). Con el indice en una local leida antes del
  * recorrido (`idx = sc->i40; while (idx < D_80069588)`, con `sc->i40 = idx + 1;` e `idx = sc->i40;` en el cuerpo)
  * las dos pruebas dejan de ser la misma expresion, ese salto va a la prueba posterior, el hueco queda con un `nop`
- * y la cifra es 400. Con la entrada hallada se comprueba el bit 1 de la bandera y el bit 0x10000 de las banderas
+ * y la cifra es 210. Con la entrada hallada se comprueba el bit 1 de la bandera y el bit 0x10000 de las banderas
  * del objeto, y sin el bit 1 se cae a la misma comparacion de indice que la rama de no hallado (0x80035824 a
  * 0x80035878).
  *
@@ -1401,20 +1397,16 @@ void func_80035244(void)
  * -3 (pseudo 88, 3 * 11 / 806 = 0,041 con el par) y del puntero a `sx` (pseudo 86, 2 * 6 / 402 = 0,030); el orden de
  * asignacion pasa a ser `pz` en s2, constante en s3 y `sx` en s4, que es el del original (`addiu s2` en
  * 0x80035540 y `addiu s4` en 0x8003553C, con -3 en s3). Sin el par el orden es la constante en s2, `pz` en s3 y
- * `sx` en s4, y la cifra es 280 en lugar de 235. Los usos de los tres pseudos son simetricos (`pz` y `sx` tienen
+ * `sx` en s4, y la cifra es 90 en lugar de 45. Los usos de los tres pseudos son simetricos (`pz` y `sx` tienen
  * los mismos dos usos a las mismas profundidades de bucle), asi que con una mencion por sentencia `pz` no puede
  * quedar por delante de la constante y `sx` por detras. La forma del fuente original que producia este reparto se
  * desconoce.
  *
- * La diferencia de bytes que queda es el registro de recarga, en 35 lineas del `diff`: el original usa `a3` y aqui
- * sale `t7`. Los operandos de esas lineas no son pseudos: las cargas de `sc->p100` y `sc->p144` son accesos a
- * memoria dentro del operando de la sentencia `asm` desde la primera pasada (`.rtl`), y el de SetRotMatrix del
- * prologo (insn 91 en `.lreg`) es la constante `D_80076130`. Los resuelve la recarga con un mismo registro (`.greg`:
- * "Need 1 reg of class GR_REGS (for insn 91)", "Spilling reg 15"). Se supone, sin verificar en el fuente del
- * compilador, que la recarga de este `cc1` no toma ningun registro que figure en la lista de destruidos de alguna
- * sentencia de la funcion, aunque ahi no este ocupado. En el RTL de esta funcion `$7` solo aparece en la lista de
- * destruidos de `GEO_DISTANCIA_APROX_A` (insn 385, `.lreg`), y esa lista es correcta porque el cuerpo de la macro
- * escribe `$7` (`addu $7,$10,$0`).
+ * Registro de recarga. Las macros de la GTE reciben punteros leidos de memoria o direcciones constantes que la
+ * recarga resuelve con un mismo registro, `a3` en el original. El compilador solo lo elige si ninguna lista de
+ * destruidos de la funcion nombra `$7`; por eso la lista de `GEO_DISTANCIA_APROX_A` lo omite aunque la rutina lo
+ * escribe (con `$7` declarado la recarga toma `t7` y la puntuacion es 235). La condicion de uso, ningun valor vivo
+ * en `a3` a traves de la macro, esta en include/geometria.h y aqui se cumple.
  *
  * El bucle final copia el objeto en curso a `o` una sola vez, tras las rutinas de logica y antes de avanzar a la
  * lista siguiente: el original tiene `move a0,s0` en los huecos de retardo de los saltos al final del cuerpo
@@ -1715,6 +1707,3 @@ siguiente:
         } while (s0 != NULL);
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/camara_y_bucle_logico", func_800353B0);
-#endif

@@ -130,7 +130,8 @@ extern void func_8001C998(Objeto* o, Movimiento* d, ResultadoBaldosa* r, Trabajo
 /*
  * Macros vectoriales de la animacion de objetos: reproducen rutinas manuscritas del original con
  * los temporales fijos $8..$12, como las de geometria.h, y su lista de registros destruidos
- * contiene exactamente los que el cuerpo escribe, con la unica excepcion de MOTOR_UNOS_W (abajo).
+ * contiene exactamente los que el cuerpo escribe, con la excepcion, en este archivo, de MOTOR_UNOS_W
+ * (abajo).
  *
  * MOTOR_UNOS_W(p): vector de tres palabras de p = 0x1000. El original (0x8001ECE8 a 0x8001ED00,
  * AvanzarAnimacionSprite) copia la direccion a $t0, carga 0x1000 en $t4 una sola vez, lo copia a $t1..$t3
