@@ -919,8 +919,11 @@ extern u16 D_80069416;
 /* D_8006947C: accesos del ensamblador: sw(gp) x1, lw x1, lw(gp) x1 */
 extern u32 D_8006947C;
 
-/* D_80069480: accesos del ensamblador: sw(gp) x3, lw(gp) x3 */
-extern u32 D_80069480;
+/*
+ * D_80069480: accesos del ensamblador: sw(gp) x3, lw(gp) x3. Es volatile porque el retorno de llamada
+ * de lectura del CD lo incrementa mientras CargarContenedor lo consulta en bucle.
+ */
+extern volatile u32 D_80069480;
 
 /* D_80069490: accesos del ensamblador: sw(gp) x1, lw(gp) x5, lw x1 */
 extern u32 D_80069490;

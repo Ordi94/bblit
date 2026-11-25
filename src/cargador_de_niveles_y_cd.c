@@ -22,13 +22,15 @@
  * D_80069494 indica lectura comprimida por anillo, D_8006948C/D_80069498 son la posicion de
  * escritura (anillo o lineal), D_80069490/D_8006947C el inicio y el fin del anillo, D_80069480 los
  * bytes disponibles en el anillo, D_80069484/D_80069488 los bytes leidos y D_800694A0 los pedidos.
- * Los contadores D_80069484 y D_80069488 son volatile porque el retorno de llamada de CD los
- * modifica mientras el cargador los consulta; sin ello el compilador interpola las cargas de
- * ambos y el codigo ya no coincide con el original.
+ * Los contadores D_80069480, D_80069484 y D_80069488 son volatile porque el retorno de llamada de
+ * CD los modifica mientras el cargador los consulta. Sin ello en D_80069484 y D_80069488 el
+ * compilador interpola las cargas de ambos y el codigo ya no coincide con el original; sin ello en
+ * D_80069480, CargarContenedor deja `posicion = 0` en el hueco de retardo del `jal` de
+ * IniciarLecturaContinua, que el original deja con `nop` (0x80041804 y 0x80041808).
  */
 u32 D_80069478;
 u32 D_8006947C;
-u32 D_80069480;
+volatile u32 D_80069480;
 volatile s32 D_80069484;
 volatile s32 D_80069488;
 u32 D_8006948C;
@@ -402,10 +404,36 @@ typedef struct {
     s32 d18;
 } EtiquetasListas;
 
+/* Fotograma de un recurso (14 bytes): lo rellena la etiqueta 0x0D del chunk 0x22. */
+typedef struct {
+    u16 w00;
+    u16 w02;
+    u16 w04;
+    u8 b06;
+    u8 b07;
+    u8 b08;
+    u8 b09;
+    u16 w0A;
+    u16 w0C;
+} FotogramaRecurso;
+
+/*
+ * Vista de las tablas de un nodo de recurso (0x58 bytes): los colores de la etiqueta 0x28 (la
+ * cuenta va en 0x10) y los fotogramas de la 0x0D (la cuenta en 0x12). El original forma la direccion
+ * del elemento sumando primero la base del nodo y despues el indice escalado (`addu v0,s1,v0`).
+ * La longitud de `colores` es el hueco entre 0x14 y 0x24; se supone, sin verificar, que son cuatro.
+ * La longitud de `fotogramas` se desconoce.
+ */
+typedef struct {
+    u8 pad00[0x14];
+    CVECTOR colores[4];
+    FotogramaRecurso fotogramas[1];
+} NodoRecurso;
+
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 3480 con la configuracion versionada (g = 8 del archivo; ejes 308 de
- * operandos, 2 de lineas reordenadas y 363 de lineas insertadas o borradas). La cifra incluye
+ * Pendiente: puntuacion 2200 con la configuracion versionada (g = 8 del archivo; ejes 308 de
+ * operandos, 1 de lineas reordenadas y 301 de lineas insertadas o borradas). La cifra incluye
  * palabras con direcciones absolutas dentro del archivo (saltos y tablas de saltos), de modo que
  * depende del tamano de las funciones anteriores y de cuantas instrucciones separan cada cuerpo de
  * caso del de su tabla. Medido: el codigo generado tiene 2954 instrucciones y el original 2955; la
@@ -416,9 +444,23 @@ typedef struct {
  * despacho de primer nivel van en el orden de direcciones de las tablas de saltos del original: el
  * orden del fuente decide el orden de emision, por eso los casos no van en orden numerico.
  *
- * Reparto de registros: el nodo de los chunks de recursos y modelos (pseudo 95, R 352, L 541,
- * prioridad 5,205) queda por delante del cursor del script (pseudo 91, R 1074, L 2088, 5,144),
+ * Reparto de registros: el nodo de los chunks de recursos y modelos (pseudo 96, R 352, L 541,
+ * prioridad 5,205) queda por delante del cursor del script (pseudo 92, R 1074, L 2088, 5,144),
  * como en el original.
+ *
+ * Contador del anillo (D_80069480): lo incrementa el retorno de llamada de lectura y se declara
+ * volatile. Sin ello cc1 pone `posicion = 0` en el hueco de retardo del `jal` de
+ * IniciarLecturaContinua (el original deja un `nop` en 0x80041808 y el `addu s1,zero,zero` en el
+ * hueco del `bnez` de 0x80041814); la cifra es 2320 sin el volatile y 2200 con el.
+ *
+ * Direccion del registro de archivo: el original forma la direccion de D_8005F200 (`lui` y `addiu`
+ * en 0x800416FC y 0x80041700) antes de extender y escalar el indice. `tabla_archivos` guarda la
+ * base de la tabla antes de indexarla; con `&D_8005F200[archivo]` el compilador emite primero el
+ * indice y la cifra es 2885.
+ *
+ * Tablas del nodo de recurso (`NodoRecurso`, etiquetas 0x28 y 0x0D del chunk 0x22): el original
+ * suma la base del nodo antes que el indice escalado (`addu v0,s1,v0`). Como arreglos de estructura
+ * se obtiene ese orden; sumando el indice a un puntero de bytes salen al reves y la cifra es 2330.
  *
  * Variable compartida del desplazamiento: en el original el registro s7 lo ocupa un solo valor que
  * recibe, en vez de una variable por uso, el desplazamiento de los chunks (`lw s7,0x128($sp)` y
@@ -440,7 +482,7 @@ typedef struct {
  * campos por esa copia, carga la cabeza de la lista en un temporal y la copia al recorrido (`move
  * a0,v0`), que vive en un temporal. La copia es `aux`, la misma variable que en otros casos recibe
  * `campos` y se usa tras una llamada (casos 0x11 y los de dos llamadas): al cruzar llamadas toma el
- * primer registro guardado (pseudo 99, R 312, L 289, prioridad 8,64, s0); una variable propia de
+ * primer registro guardado (pseudo 100, R 312, L 289, prioridad 8,64, s0); una variable propia de
  * los casos de lista, de vida corta y sin llamadas, toma otro registro guardado y desplaza a los
  * demas pseudos. La copia se hace antes de la prueba de la cabeza: el CSE
  * solo la conserva si queda fuera del bloque de las lecturas, que ocurren tras la union de las dos
@@ -474,14 +516,12 @@ typedef struct {
  *
  * Direccion del bloque de una etiqueta (`bloque`): en las etiquetas 0x25 y 0x3F del chunk 0x22, la
  * 0x37 del chunk 0x36 y la 0x48 del chunk 0x47 el original forma `datos + desp_campo` en a0 aunque
- * despues solo la almacena. Es una sola variable de la funcion (pseudo 101, volcado del reparto
+ * despues solo la almacena. Es una sola variable de la funcion (pseudo 102, volcado del reparto
  * global: 40 usos en 13 instrucciones, preferencia y registro a0). La preferencia nace en la
  * etiqueta 0x24 del chunk 0x22, donde el bloque es sumando del puntero que recibe
  * `GsMapModelingData` (`addu a0,s8,s7` y `addiu a0,a0,4`, 0x80042404 y 0x80042408). Las otras dos
- * etiquetas que llaman a `GsMapModelingData` no lo necesitan y escriben la suma entera. La cifra con
- * `bloque` en los cinco sitios es 3480; escribiendo la suma entera solo en uno: 3540 en la etiqueta
- * 0x24, 3710 en la 0x25, 3490 en la 0x3F, 3745 en la 0x37 y 3685 en la 0x48; sin la local en
- * ninguno, 4190.
+ * etiquetas que llaman a `GsMapModelingData` no lo necesitan y escriben la suma entera. Escribiendo
+ * la suma entera en los cinco sitios la cifra es 2910.
  *
  * Orden de las sentencias: el planificador emite las cargas en el orden del fuente y puede cruzar
  * los almacenes entre si; el orden de las cargas del original decide el del fuente (en el chunk que
@@ -495,14 +535,14 @@ typedef struct {
  * miembro de un nodo (0x26, 0x3F, 0x27, 0x28, 0x0D) o el vector de punto de vista (0x2B) la cifra no
  * cambia con el acceso por miembro y se deja el acceso por puntero. Se supone, sin verificar, que la
  * causa es que el compilador no da por afectado un miembro de un agregado por un almacen a un global
- * escalar, y que si lo hace con un puntero. En el chunk 0x3E las lecturas de 0x10 y 0x18 van por
- * miembro (`d10`, `d18`) y la de 0x14 por puntero: la ultima por miembro empeora la cifra. Las de
- * 0x10 y 0x18 se guardan ademas en las locales `d10_etiqueta` (ya enmascarada con `~7`) y
- * `d18_etiqueta` justo tras la copia: el original las carga en `v1` y `a1` (`lw v1,0x10(s4)`,
- * 0x80043110, y `lw a1,0x18(s4)`, 0x80043128) tras los almacenes a `D_80069660`, `D_80069670` y
- * `D_8006955C` (0x8004310C, 0x80043118 y 0x80043124) y antes de los demas, y las escribe al final
- * (`sw v1,D_8006954C`, 0x8004316C, y `sw a1,D_80069678`, 0x80043174); con la local de `d18` y la
- * lectura de `d10` dentro de la asignacion final la cifra es 3645 y con las dos locales 3480.
+ * escalar, y que si lo hace con un puntero.
+ *
+ * Chunk 0x3E: las diez lecturas van por miembro, cada una dentro de su asignacion, y el bloque
+ * coincide. El original carga las siete primeras seguidas (0x800430E4 a 0x800430FC) y las de 0x10,
+ * 0x14 y 0x18 solo cuando quedan libres `v1`, `v0` y `a1` tras su almacen (0x80043110, 0x8004311C y
+ * 0x80043128): son cargas que el planificador puede adelantar y que el reparto de registros
+ * intercala entre los almacenes. `D_8006954C` se escribe en el fuente antes que `D_8006952E`; la
+ * lectura de 0x14 por puntero no se adelanta a los almacenes y la cifra es 3115.
  *
  * Orden de las sentencias de dos chunks: en el caso que fija `audio_cargado` el original almacena
  * la bandera (`sb t3,0x1d0($sp)`, 0x80042C4C) antes de las dos lecturas del bufer, por eso
@@ -529,24 +569,22 @@ typedef struct {
  * antes de sumar 0xA000 a `datos` (el `ori` y el `addu` salen tras `addiu s1,s1,0x2`, 0x800418D0 y
  * 0x800418D4), por eso `D_800694A0` y `posicion += 2` van antes de `datos += 0xA000`.
  *
- * Residuo por causas (cada fila insertada o borrada pesa unos 100 puntos): (1) el chunk 0x3E, donde el
- * original deja tres cargas (0x10, 0x14 y 0x18 de las etiquetas) intercaladas entre los almacenes; el C
- * adelanta las de 0x10 y 0x18 con locales y deja la de 0x14 junto a su almacen (guardada tambien en una
- * local de 32 bits la cifra es 6085); (2) en los bucles de etiquetas de los chunks 0x05 y 0x36, la
- * copia de 0x2E a s0 sale antes de la constante de la etiqueta y el original la pone despues
- * (0x80042F1C y 0x80042F20, 0x80042F74 y 0x80042F78): en el volcado de la pasada de bucles la
- * asignacion del fuente va delante de la constante que esa pasada saca del bucle, y las pasadas
- * posteriores conservan ese orden; (3)
- * la carga de `D_80069678`, que el original iza a a0 (0x80041D70) y el C deja junto a su uso, con
- * `D_8006954C` izada en su lugar (una fila y dos de operandos); (4) el orden de tres tramos del
- * comienzo: el original deja `sb zero,0x1c0(sp)` entre los almacenes de las banderas (0x80041668)
- * y el C lo deja en el hueco de retardo del `bgtz` de 0x800416C8 (volcado de la planificacion previa
- * al reparto: baja ese almacen por encima de las tres llamadas hasta el hueco de la carga `lbu` de
- * 0x800416BC); el original calcula la direccion de `registro` con `lui` y `addiu` de `D_8005F200`
- * (0x800416FC y 0x80041700) antes del `sll` del indice y el C al reves; y la suma `datos + 0xA000`
- * la hace el original en `v0` tras las cargas (0x80041778 y 0x80041784) y el C en `a1` antes de
- * ellas; (5) nombres de registro (unas 65 filas de
- * 5 puntos), en parte por el turno de los registros de recarga descrito arriba.
+ * Residuo por causas (cada fila insertada o borrada pesa unos 100 puntos): (1) en el bucle de
+ * etiquetas de los modelos jerarquicos, la direccion de la tabla de saltos que el C saca del bucle
+ * (ver el turno de los registros de recarga, mas abajo); (2) la carga de `D_80069678`, que el
+ * original iza a a0 (0x80041D70) y el C deja junto a su uso, con `D_8006954C` izada en su lugar
+ * (una fila y dos de operandos); (3) el orden de dos tramos del comienzo: el
+ * original deja `sb zero,0x1c0(sp)` entre los almacenes de las banderas (0x80041668) y el C lo deja
+ * en el hueco de retardo del `bgtz` de 0x800416C8 (volcado de la planificacion previa al reparto:
+ * baja ese almacen por encima de las tres llamadas hasta el hueco de la carga `lbu` de
+ * 0x800416BC); y al copiar el registro de archivo el original forma la direccion de D_8006A928 en
+ * s1 antes de la copia (`addiu s1` en 0x80041758) y suma `datos + 0xA000` en `v0` tras las cargas
+ * (0x80041778 y 0x80041784), mientras el C suma en `a1` antes de ellas (en el volcado de la
+ * planificacion previa al reparto la parte baja de la direccion, que nace tras la parte alta, queda
+ * junto a su primer uso); (4) en el bucle del anillo, el avance del cursor (`addiu s2` en
+ * 0x800419A0) sale antes que en el original; (5) la copia delante de la prueba de `banco_cargado`
+ * y nombres de registro (unas 45 filas de 5 puntos), en parte por el turno de los registros de
+ * recarga.
  *
  * Llamada compartida de la apertura del anillo y las listas: el original deja el `jal` de
  * `func_80044664` en 0x80041A0C (la apertura) y la lectura de las listas salta hacia el
@@ -555,9 +593,9 @@ typedef struct {
  * epilogo y funde su cola con la de otro salto igual. Medido en los volcados de cc1 (pases de
  * planificacion y de saltos): con la salida del caso 0x4B escrita como un bloque `return 1;` propio
  * la cola que desaparece es la de la apertura y el `jal` queda en la lectura de las listas (la cifra
- * es 4310); con la salida del caso 0x4B escrita como salto a la etiqueta `fallo_lectura`, que es la
+ * es 3030); con la salida del caso 0x4B escrita como salto a la etiqueta `fallo_lectura`, que es la
  * salida de la primera lectura del anillo, desaparece la de las listas y el `jal` queda en la
- * apertura, como en el original, y el caso 0x4B sale con `beqz v0` directo (3480). Se supone, sin
+ * apertura, como en el original, y el caso 0x4B sale con `beqz v0` directo (2200). Se supone, sin
  * verificar, que el orden en que el pase recorre los saltos al epilogo depende de que la salida del
  * 0x4B sea un bloque `li`/`j` propio.
  *
@@ -569,8 +607,14 @@ typedef struct {
  * la salida se une con la prueba exterior y sale como `beq` mas `j`. Con la variable la copia se
  * conserva (volcado de la planificacion posterior al reparto); se supone, sin verificar, que no
  * entra en la fusion por tener mas de una asignacion. Con la constante en las dos comparaciones la
- * cifra es 4570 y con la variable 3480. El bucle del chunk 0x47 compara con la constante, como el
+ * cifra es 3410 y con la variable 2200. El bucle del chunk 0x47 compara con la constante, como el
  * original.
+ *
+ * Marcas de etiqueta (`marca_parametros` y `marca_posicion`): el original carga la etiqueta que
+ * busca cada bucle (`li s1,6` en 0x80042F1C y `li s1,0x37` en 0x80042F74) antes de copiar la marca
+ * de fin a s0 (0x80042F20 y 0x80042F78). Por eso cada etiqueta va en una local asignada antes que
+ * `fin_chunk`. Con las constantes en las comparaciones, la pasada de bucles las coloca detras de la
+ * asignacion del fuente y la copia sale delante (la cifra es 2320).
  *
  * Entidades (chunks 0x07, 0x08 y 0x0A): la prueba de entrada del `while` de etiquetas salta a la
  * llamada a `ResolverReferenciasContenedor` que sigue al bucle (`beq` en 0x800436E0 hacia
@@ -581,7 +625,7 @@ typedef struct {
  * los demas chunks. La variable de la funcion es un pseudo con varios usos que toma `v1` en esos
  * bucles; la local de bloque toma `v0`, el mismo registro que la lectura de la prueba de salida
  * (`lbu v0,0(s2)` en 0x80041984 y 0x800419B0 del chunk 0x05), como en el original. Con la variable de
- * la funcion en los tres la cifra es 3510.
+ * la funcion en los tres la cifra es 2230.
  *
  * El original conserva `libre += x` y `monton = libre` en dos instrucciones (`addu s6,s6,v0` en
  * 0x80041E44 y `move s5,s6` en 0x80041E58, con las cargas de `D_80069548` y `D_8006952E` entre
@@ -590,12 +634,12 @@ typedef struct {
  * emite la copia.
  *
  * Fuera de esos dos bucles las pruebas de fin de chunk cargan 0x2E en un temporal en cada sitio:
- * hay 34 `li` de 0x2E en el codigo generado y 35 en el original. `hijo_matriz` (pseudo 98, R 72,
+ * hay 34 `li` de 0x2E en el codigo generado y 35 en el original. `hijo_matriz` (pseudo 99, R 72,
  * L 2298) vive desde la entrada de la funcion porque se lee en algun camino sin asignacion previa;
  * con la variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x208; la cifra medida sin la local es 4770 y con ella 3480. La reserva de 8 bytes va antes de
+ * 0x208; la cifra medida sin la local es 3490 y con ella 2200. La reserva de 8 bytes va antes de
  * `tamanos` (que queda en 0xE8, como el original); con ella las ranuras de derrame empiezan en 0x1A8,
  * justo tras `campos_mem`, como en el original.
  *
@@ -649,6 +693,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     u8* campos;
     u8* bufer_anillo;
     RegistroArchivo* registro;
+    /* Base de la tabla de registros: se forma antes que el indice, como en el original. */
+    RegistroArchivo* tabla_archivos;
     u8* cursor;
     /* Puntero de la lectura de la cabecera de secciones: el original lo guarda aparte del cursor del script. */
     u8* cabecera;
@@ -692,8 +738,6 @@ s32 CargarContenedor(s16 archivo, u8* datos)
     u32 tipo;
     u8 etiqueta;
     EstadoPrincipal* estado;
-    s32 d18_etiqueta;
-    s32 d10_etiqueta;
 
     /* Memoria de trabajo del cargador: el destino recibe primero el contenido y luego la memoria libre. */
     libre = datos;
@@ -728,7 +772,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
         estado->r[0x10] = 0;
     }
     estado->r[0xA6] = D_80069594;
-    registro = &D_8005F200[archivo];
+    tabla_archivos = D_8005F200;
+    registro = &tabla_archivos[archivo];
     if (registro->tamano == 0) {
         printf("BouzeID %d not found\n", archivo);
     }
@@ -1180,24 +1225,24 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x28:
                             CopiarBytes(cursor, campos, 3);
-                            EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x14) = campos_mem[0];
-                            EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x15) = campos[1];
-                            EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x16) = campos[2];
-                            EN(u8, nodo + EN(u16, nodo, 0x10) * 4, 0x17) = 0;
+                            ((NodoRecurso*)nodo)->colores[EN(u16, nodo, 0x10)].r = campos_mem[0];
+                            ((NodoRecurso*)nodo)->colores[EN(u16, nodo, 0x10)].g = campos[1];
+                            ((NodoRecurso*)nodo)->colores[EN(u16, nodo, 0x10)].b = campos[2];
+                            ((NodoRecurso*)nodo)->colores[EN(u16, nodo, 0x10)].cd = 0;
                             cursor += 3;
                             EN(u16, nodo, 0x10) = EN(u16, nodo, 0x10) + 1;
                             break;
                         case 0x0D:
                             CopiarBytes(cursor, campos, 0xC);
-                            EN(u16, nodo + EN(u16, nodo, 0x12) * 14, 0x24) = *(u16*)campos_mem;
-                            EN(u16, nodo + EN(u16, nodo, 0x12) * 14, 0x26) = *(u16*)(campos + 2);
-                            EN(u16, nodo + EN(u16, nodo, 0x12) * 14, 0x28) = *(u16*)(campos + 4);
-                            EN(u8, nodo + EN(u16, nodo, 0x12) * 14, 0x2D) = campos[9];
-                            EN(u8, nodo + EN(u16, nodo, 0x12) * 14, 0x2A) = campos[6];
-                            EN(u16, nodo + EN(u16, nodo, 0x12) * 14, 0x2E) = campos[10];
-                            EN(u16, nodo + EN(u16, nodo, 0x12) * 14, 0x30) = campos[11];
-                            EN(u8, nodo + EN(u16, nodo, 0x12) * 14, 0x2B) = campos[7];
-                            EN(u8, nodo + EN(u16, nodo, 0x12) * 14, 0x2C) = campos[8];
+                            ((NodoRecurso*)nodo)->fotogramas[EN(u16, nodo, 0x12)].w00 = *(u16*)campos_mem;
+                            ((NodoRecurso*)nodo)->fotogramas[EN(u16, nodo, 0x12)].w02 = *(u16*)(campos + 2);
+                            ((NodoRecurso*)nodo)->fotogramas[EN(u16, nodo, 0x12)].w04 = *(u16*)(campos + 4);
+                            ((NodoRecurso*)nodo)->fotogramas[EN(u16, nodo, 0x12)].b09 = campos[9];
+                            ((NodoRecurso*)nodo)->fotogramas[EN(u16, nodo, 0x12)].b06 = campos[6];
+                            ((NodoRecurso*)nodo)->fotogramas[EN(u16, nodo, 0x12)].w0A = campos[10];
+                            ((NodoRecurso*)nodo)->fotogramas[EN(u16, nodo, 0x12)].w0C = campos[11];
+                            ((NodoRecurso*)nodo)->fotogramas[EN(u16, nodo, 0x12)].b07 = campos[7];
+                            ((NodoRecurso*)nodo)->fotogramas[EN(u16, nodo, 0x12)].b08 = campos[8];
                             cursor += 0xC;
                             EN(u16, nodo, 0x12) = EN(u16, nodo, 0x12) + 1;
                             break;
@@ -1439,16 +1484,19 @@ s32 CargarContenedor(s16 archivo, u8* datos)
 
                 case 0x05: {
                     u8 etiqueta_sonido;
+                    /* Etiqueta que busca el bucle; se asigna antes que la marca de fin. */
+                    s32 marca_parametros;
 
                     /* Parametros de sonido: la etiqueta 6 lleva tres bytes. */
                     func_8003EB48();
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
+                    marca_parametros = 6;
                     fin_chunk = 0x2E;
                     do {
                         etiqueta_sonido = *cursor++;
-                        if (etiqueta_sonido == 6) {
+                        if (etiqueta_sonido == marca_parametros) {
                             CopiarBytes(cursor, campos, 3);
                             func_8003EC3C(campos);
                             cursor += 3;
@@ -1459,15 +1507,18 @@ s32 CargarContenedor(s16 archivo, u8* datos)
 
                 case 0x36: {
                     u8 etiqueta_zona;
+                    /* Etiqueta que busca el bucle; se asigna antes que la marca de fin. */
+                    s32 marca_posicion;
 
                     /* Zonas de colision del nivel: la etiqueta 0x37 da su posicion en la seccion. */
                     if (*cursor == 0x2E) {
                         goto fin_chunks;
                     }
+                    marca_posicion = 0x37;
                     fin_chunk = 0x2E;
                     do {
                         etiqueta_zona = *cursor++;
-                        if (etiqueta_zona == 0x37) {
+                        if (etiqueta_zona == marca_posicion) {
                             CopiarBytes(cursor, campos, 8);
                             cursor += 8;
                             desp_campo = *(s32*)campos_mem;
@@ -1517,8 +1568,6 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             break;
                         case 0x3E:
                             CopiarBytes(cursor, campos, 0x1C);
-                            d10_etiqueta = ((EtiquetasListas*)campos)->d10 & ~7;
-                            d18_etiqueta = ((EtiquetasListas*)campos)->d18;
                             pools_listos = 1;
                             D_80069670 = ((EtiquetasListas*)campos_mem)->w00;
                             D_80069660 = ((EtiquetasListas*)campos)->w02;
@@ -1527,9 +1576,9 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                             D_8006967E = ((EtiquetasListas*)campos)->w08;
                             D_800695C2 = ((EtiquetasListas*)campos)->w0A;
                             D_80069548 = ((EtiquetasListas*)campos)->d0C;
-                            D_8006952E = *(u16*)(campos + 0x14);
-                            D_8006954C = d10_etiqueta;
-                            D_80069678 = d18_etiqueta;
+                            D_8006954C = ((EtiquetasListas*)campos)->d10 & ~7;
+                            D_8006952E = ((EtiquetasListas*)campos)->w14;
+                            D_80069678 = ((EtiquetasListas*)campos)->d18;
                             if (D_8006952E < 0x12C) {
                                 D_8006952E = 0x12C;
                             }
