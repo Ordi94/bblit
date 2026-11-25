@@ -835,9 +835,8 @@ escribe la cabecera).
 - Está **`NON_MATCHING`** si su definición está bajo `#ifdef NON_MATCHING` y la rama normal usa
   `INCLUDE_ASM`.
 - Los bytes salen del tamaño declarado en `config/symbols.txt`.
-- Intentos pendientes hoy (`docs/PROGRESO.md` los lista con su motivo): `func_8002F990` (puntuación 350) y
-  `func_80035244` (puntuación 600 con `-G8`), entre otros: la lista completa está en
-  `docs/PROGRESO.md`.
+- Los intentos pendientes, con su puntuación y su motivo, se listan en la sección «Funciones
+  `NON_MATCHING`» de `docs/PROGRESO.md`; este documento no repite la lista.
 - Control de coherencia: los `glabel` de `asm/` más las funciones en C deben sumar las funciones
   de la tabla; si no, `progreso` termina con error y hay que ejecutar `split`.
 - Guardia de pendientes: todo bloque `#ifdef NON_MATCHING` debe llevar la línea `Pendiente: puntuacion N`
