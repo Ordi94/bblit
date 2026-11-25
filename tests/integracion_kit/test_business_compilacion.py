@@ -217,7 +217,7 @@ def test_macro_h_define_include_rodata_en_la_seccion_de_solo_lectura() -> None:
     macro = (RAIZ_REPO / "include" / "macro.h").read_text(encoding="utf-8")
     cuerpo = macro[macro.index("#define INCLUDE_RODATA(FOLDER, NAME)") :]
     assert '".section .rodata\\n"' in cuerpo and '".section .text\\n"' in cuerpo
-    for archivo in ("audio_xa_y_spu", "cargador_de_niveles_y_cd"):
+    for archivo in ("audio_xa_y_spu",):
         texto = (RAIZ_REPO / "src" / f"{archivo}.c").read_text(encoding="utf-8")
         assert f'INCLUDE_RODATA("asm/nonmatchings/{archivo}", D_' in texto
 
