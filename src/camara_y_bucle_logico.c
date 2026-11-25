@@ -1339,9 +1339,10 @@ void func_80035244(void)
 /*
  * Pendiente: puntuacion 235 con la configuracion versionada (g = 8 del archivo): 93 diferencias de operando, 0 lineas
  * reordenadas y 88 insertadas o borradas. El flujo coincide. Quedan diferencias de registros y de forma simbolica:
- * (1) un puntero del contexto GTE en t7 y el original en a3 (la mayor parte de las diferencias); (2) el byte
- * D_8006AA7C que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc`, y las direcciones del
- * scratchpad que el desensamblado del original nombra como simbolos (los mismos bytes).
+ * (1) el registro de recarga de los punteros que las macros de la GTE leen de memoria o reciben como direccion
+ * constante, t7 aqui y a3 en el original (35 lineas); (2) 9 lineas de forma simbolica con los mismos bytes: el byte
+ * D_8006AA7C, que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc`, y las direcciones del
+ * scratchpad que el desensamblado del original nombra como simbolos.
  *
  * La atenuacion sigue el flujo del original: el original tiene una sola llamada a func_800351B4 (0x800358A4) y la
  * atenuacion por distancia y la de proyeccion saltan a ella tras recargar el objeto en `a0` (0x80035DCC), con la
@@ -1382,12 +1383,15 @@ void func_80035244(void)
  * 0x80035540 y `addiu s4` en 0x8003553C, con -3 en s3). Sin el par la cifra es 280 y con el 235. La forma del
  * fuente original que producia este reparto se desconoce.
  *
- * La diferencia de bytes que queda es el registro de recarga: el original usa `a3` y aqui sale `t7`. En el volcado
- * `.lreg` el operando de la macro de SetRotMatrix del prologo (insn 91) es la constante `D_80076130`, sin pseudo; en
- * `.greg` la recarga pide un registro para esa insn ("Need 1 reg of class GR_REGS", "Spilling reg 15") y la carga en
- * `t7` con las insns que ella misma anade. En esta funcion el RTL solo nombra `$7` en la lista de destruidos de
- * `GEO_DISTANCIA_APROX_A`: se supone, sin verificar en el fuente del compilador, que por eso la recarga no elige
- * `a3`. El cuerpo de la macro escribe `$7` (`addu $7,$10,$0`), de modo que la lista completa se conserva.
+ * La diferencia de bytes que queda es el registro de recarga, en 35 lineas del `diff`: el original usa `a3` y aqui
+ * sale `t7`. Los operandos de esas lineas no son pseudos: las cargas de `sc->p100` y `sc->p144` son accesos a
+ * memoria dentro del operando de la sentencia `asm` desde la primera pasada (`.rtl`), y el de SetRotMatrix del
+ * prologo (insn 91 en `.lreg`) es la constante `D_80076130`. Los resuelve la recarga con un mismo registro (`.greg`:
+ * "Need 1 reg of class GR_REGS (for insn 91)", "Spilling reg 15"). La recarga de este `cc1` descarta los registros
+ * que alguna sentencia de la funcion nombra, tambien donde no estan ocupados: si estan todos nombrados no toma
+ * ninguno y termina con "fixed or forbidden register was spilled". En el RTL de esta funcion `$7` solo aparece en
+ * la lista de destruidos de `GEO_DISTANCIA_APROX_A` (insn 385, `.lreg`), y esa lista es correcta porque el cuerpo
+ * de la macro escribe `$7` (`addu $7,$10,$0`).
  *
  * La busqueda del modelo guarda el limite en una local propia (`lim`) dentro del bloque. El compilador no vuelve a
  * leer `D_80069588` para esa asignacion: copia el registro de la comparacion, y el original rellena con esa copia el
