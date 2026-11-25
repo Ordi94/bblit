@@ -921,7 +921,8 @@ extern u32 D_8006947C;
 
 /*
  * D_80069480: accesos del ensamblador: sw(gp) x3, lw(gp) x3. Es volatile porque el retorno de llamada
- * de lectura del CD lo incrementa mientras CargarContenedor lo consulta en bucle.
+ * de lectura del CD (CallbackSectorListo) lo incrementa mientras CargarContenedor lo consulta en bucle y
+ * func_80044854 lo sondea sin llamadas intermedias desde 0x8004485C.
  */
 extern volatile u32 D_80069480;
 

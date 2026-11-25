@@ -622,9 +622,60 @@ sentencia, un comentario que cita exactamente las dos direcciones de su fila:
   «Cifra con el molde» de esta fila es la puntuación bruta de asm-differ (815), que cuenta las referencias escritas en
   forma numérica; los bytes son iguales y la herramienta informa 0.
 
+**Calificador `volatile` en la declaración de un dato compartido con una rutina asíncrona.** Cuando un global cambia
+fuera del flujo de quien lo consulta, `volatile` es su declaración correcta en C, no una barrera: sin él el
+compilador puede suponer que entre dos accesos de una función nadie más escribe el dato. Va en la definición y en
+su `extern` de `include/` (nunca por molde ni para una sola función) y se admite solo si se cumplen las cuatro
+condiciones a la vez: (1) lo escribe una rutina que se ejecuta como retrollamada de interrupción o de la
+biblioteca del sistema, mientras otra función lo lee; se citan la rutina y la instrucción que escribe; (2) el
+original lo relee sin que medie una llamada, y se citan las direcciones; (3) todas las funciones en C que usan el
+dato coinciden byte a byte con el calificador; (4) la cifra sin él está medida en la función que lo necesita. No se
+admite sobre un dato que ninguna rutina asíncrona escribe. Hay un uso:
+
+| Dato | Declaración | Escritura asíncrona | Relectura sin llamada | Cifra sin el calificador | Con el calificador |
+|---|---|---|---|---:|---|
+| `D_80069480` | `include/globales.h` y su definición en `src/cargador_de_niveles_y_cd.c` | `CallbackSectorListo`, `sw` en `0x80041104` | `func_80044854`, desde `0x8004485C` | 540 (`CargarContenedor`) | coincide |
+
+- `D_80069480`: `CallbackSectorListo`, registrada con `CdReadyCallback`, lo incrementa (`lw` en `0x800410F8` y `sw`
+  en `0x80041104`). `func_80044854`, rutina manuscrita que se conserva en ensamblador, lo sondea en un bucle sin
+  llamadas desde `0x8004485C` (`lw` en `0x80044864`). Las dos funciones en C que lo usan, `CallbackSectorListo` y
+  `CargarContenedor`, coinciden con el calificador. Sin él `CargarContenedor` da 540: `move s1,zero` pasa de
+  `0x80041818` al hueco de retardo de la llamada en `0x80041808`, que el original deja con `nop`. En `diff` la
+  función coincidente da 420, la puntuación bruta de asm-differ (instrucciones iguales con distinto texto de
+  operando).
+
 Barreras vacías, sentencias partidas, `register __asm__("$N")` locales, `"+r"`, `volatile` fuera de la lectura
-respaldada descrita arriba y registros destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE_ASM` con su comentario. Las únicas
+respaldada y de la declaración descritas arriba y registros destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE_ASM` con su comentario. Las únicas
 referencias sin código admitidas son las de [Referencias sin código](#referencias-sin-código).
+
+## Asignación sin lectura en una rama de un `switch`
+
+Una asignación cuyo valor no se lee es en general un almacén muerto y no se admite. Hay una excepción acotada: la
+asignación a un puntero de recorrido sin lectura posterior en una rama de un `switch` cuyas demás ramas la tienen
+y la leen. Es la misma sentencia de una escritura uniforme del original, y en la rama que no lee su efecto se ve en
+el ensamblador. Se admite solo si se cumplen las cuatro condiciones a la vez:
+
+1. La misma sentencia (`aux = campos_mem;` tras la copia del búfer) aparece en todas las ramas hermanas del mismo
+   `switch`, y en ellas se lee.
+2. En la rama sin lectura, el original emite la instrucción correspondiente o su efecto en el reparto y en el
+   orden es visible en el ensamblador; se cita lo que se ve, con su dirección.
+3. No existe una escritura equivalente sin ella: se mide la misma sentencia colocada donde su valor sí se lee
+   (asignar antes de la llamada y pasarle el puntero) y da la misma cifra que quitarla.
+4. La cifra sin ella está medida y es peor que con ella.
+
+Junto a la sentencia va un comentario de una línea con la razón técnica y la oración «La forma del fuente original
+que producia este reparto se desconoce.» No se admite ninguna otra asignación sin lectura. Hay un uso:
+
+| Función | Archivo | Sentencia y rama | Efecto en el original | Cifra sin ella | Con ella |
+|---|---|---|---|---:|---|
+| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | `aux = campos_mem;` en `case 0x19` de las entidades | `move a1,s4` en `0x80043B98` | 620 | coincide |
+
+- `CargarContenedor`: la etiqueta `0x19` copia cuatro bytes y avanza el cursor sin leerlos; las demás ramas de su
+  `switch` que copian asignan `aux` y lo leen. La sentencia no deja instrucción propia (`0x80043B94` a `0x80043BA8`
+  son los tres argumentos, la llamada, el salto y el avance del cursor); su efecto está en el segundo argumento de
+  la llamada, que el original pasa desde un registro (`move a1,s4` en `0x80043B98`) y que sin la sentencia sale como
+  `addiu a1,sp,0x128`, la única línea que cambia en `diff` (620). Asignar antes de la llamada y pasarle `aux` también
+  da 620. Con la sentencia la función coincide (`diff` informa la puntuación bruta 420).
 
 ## Referencias sin código
 
@@ -728,9 +779,13 @@ La forma solo rellena el marco: no se usa para cambiar el reparto de registros, 
 propias condiciones.
 
 **Qué sigue sin admitirse.** Barreras `asm`, `register __asm__("$N")`, `volatile` sin el respaldo de una relectura
-del original (el apartado de la lectura con molde `volatile` de arriba; tampoco el `volatile` sin uso que reserva pila), partir una sentencia en varias, la sentencia duplicada que no es la misma
+del original (el apartado de la lectura con molde `volatile` de arriba; tampoco el `volatile` sin uso que reserva pila) ni
+calificar `volatile` una declaración fuera de las cuatro condiciones del dato compartido con una rutina asíncrona
+([Ensamblador en línea admitido](#ensamblador-en-línea-admitido)), partir una sentencia en varias, la sentencia duplicada que no es la misma
 sentencia real de la función (la duplicada solo para sumar referencias o en una rama que no la ejecuta), el molde de
-puntero a función contra la fusión de colas, los almacenes muertos, las lecturas muertas con una variable nueva, la
+puntero a función contra la fusión de colas, los almacenes muertos y las asignaciones sin lectura (salvo, únicamente, la
+del puntero de recorrido en las cuatro condiciones de
+[Asignación sin lectura en una rama de un `switch`](#asignación-sin-lectura-en-una-rama-de-un-switch)), las lecturas muertas con una variable nueva, la
 auto-referencia `u8 x = -x;` y la local sin inicializador y sin uso, salvo la reserva de pila regulada arriba.
 Tampoco se admiten las reservas que cambian el reparto de registros en vez del marco, ni cualquier local sin uso
 (del tipo y el tamaño que sea) que no cumpla las cinco condiciones: un arreglo de otro tipo que `s32`, un `SVECTOR`
@@ -821,7 +876,7 @@ escribe la cabecera).
 | `func_80020B90` | `src/logica_de_niveles.c` | envoltura | 1 | coincide | Planificador. Sin ella `-dR` emite `sw v1,0x20(s3)` (pseudo 1333) por encima de `sw v0,0x18(s3)` (pseudo 1330), sin dependencia entre los dos, y el `sw 0x18` queda tras el `lui` y el `addiu` de `D_80069D40`; con ella la nota de inicio de bucle tras el `sw 0x20` hace que ese `lui` tenga antidependencia con los dos almacenes, que salen en el orden del original. No genera instrucciones y `.greg` no cambia. Sin ella la cifra es 1055 y con ella, junto al molde `volatile` de la relectura de `desp.x`, la función coincide (0) |
 | `func_80020B90` | `src/logica_de_niveles.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es 0x40; la cifra medida sin la local es 969 y con ella 0. |
 | `func_8004048C` | `src/entrada_de_mando.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x28 (`addiu sp` en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 619 y con ella 0. |
-| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es 0x208; la cifra medida sin la local es 1158 y con ella 0 una vez descontadas las 420 que la comparacion da al codigo que ya coincide byte a byte (filas de las tablas de saltos y de los literales, que el objeto de comparacion coloca en otro desplazamiento de `.rodata`); las cifras directas son 1578 y 420. La reserva es 1 arreglo de 8 bytes antes de `tamanos`. |
+| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es 0x208; la cifra medida sin la local es 1158 y con ella 0. Son cifras netas: `diff` no compara esta funcion por bytes (el objeto de referencia pide el simbolo de datos `D_80067F18`, que el archivo ya no exporta al compilarse desde C la funcion y sus constantes) e informa 1578 y 420. Los 420 son 84 lineas en las que la instruccion es la misma y cambia el texto de un operando: 78 de datos pequenos (`%gp_rel(simbolo)` frente al desplazamiento numerico sobre `gp`) y 6 de los bytes `0x80010041`, `0x80010050` y `0x800100E6` (`%hi/%lo` frente a la constante). Las lineas de tablas de saltos y literales no puntuan. La funcion coincide byte a byte (`verify`): 11820 bytes de codigo y 1184 de datos de solo lectura. La reserva es 1 arreglo de 8 bytes antes de `tamanos`. |
 
 ## Medir el progreso
 

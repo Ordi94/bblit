@@ -468,10 +468,13 @@ typedef struct {
  * direccion fija del bufer, reutiliza la primera lectura (etiquetas 0x10 y 0x1C de las entidades,
  * 0x800439AC y 0x80043A34).
  *
- * Contador del anillo (D_80069480): lo incrementa el retorno de llamada de lectura y se declara
- * volatile. Sin ello cc1 pone `posicion = 0` en el hueco de retardo del `jal` de
- * IniciarLecturaContinua (el original deja un `nop` en 0x80041808 y el `addu s1,zero,zero` en el
- * hueco del `bnez` de 0x80041814).
+ * Contador del anillo (D_80069480): lo incrementa el retorno de llamada de lectura (`sw` en
+ * 0x80041104) y `func_80044854` lo sondea en un bucle sin llamadas desde 0x8004485C, por lo que se
+ * declara volatile en su definicion y en include/globales.h (docs/DESCOMPILACION.md, "Calificador
+ * `volatile` en la declaracion de un dato compartido con una rutina asincrona"). Sin ello la
+ * puntuacion de `diff` es 540 frente a 420: cc1 pone `posicion = 0` en el hueco de retardo del
+ * `jal` de IniciarLecturaContinua (el original deja un `nop` en 0x80041808 y el
+ * `addu s1,zero,zero` en el hueco del `bnez` de 0x80041814).
  *
  * Direccion del registro de archivo: el original forma la direccion de D_8005F200 (`lui` y `addiu`
  * en 0x800416FC y 0x80041700) antes de extender y escalar el indice. `tabla_archivos` guarda la
@@ -660,12 +663,24 @@ typedef struct {
  * previa; con la variable compartida queda en la pila, como el original.
  *
  * Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es
- * 0x208; la cifra medida sin la local es 1158 y con ella 0 una vez descontadas las 420 que la
- * comparacion da al codigo que ya coincide byte a byte (filas de las tablas de saltos y de los
- * literales, que el objeto de comparacion coloca en otro desplazamiento de `.rodata`); las cifras
- * directas son 1578 y 420. La reserva de 8 bytes va antes de `tamanos` (que queda en 0xE8, como
- * el original); con ella las ranuras de derrame empiezan en 0x1A8, justo tras `campos_mem`, como
- * en el original.
+ * 0x208; la cifra medida sin la local es 1158 y con ella 0. Son cifras netas: `diff` no compara
+ * esta funcion por bytes (el objeto de referencia pide el simbolo de datos D_80067F18, que el
+ * archivo ya no exporta al compilarse desde C la funcion y sus constantes) e informa 1578 y 420.
+ * Los 420 son 84 lineas en las que la instruccion es la misma y cambia el texto de un operando: 78
+ * de datos pequenos (`%gp_rel(simbolo)` frente al desplazamiento numerico sobre `gp`) y 6 de los
+ * bytes 0x80010041, 0x80010050 y 0x800100E6 (`%hi/%lo` frente a la constante). Las lineas de
+ * tablas de saltos y literales no puntuan. La funcion coincide byte a byte (`verify`): 11820 bytes
+ * de codigo y 1184 de datos de solo lectura. La reserva de 8 bytes va antes de `tamanos` (que
+ * queda en 0xE8, como el original); con ella las ranuras de derrame empiezan en 0x1A8, justo tras
+ * `campos_mem`, como en el original.
+ *
+ * Asignacion sin lectura en la etiqueta 0x19 de las entidades: `aux = campos_mem;` es la misma
+ * sentencia que sigue a las copias en las demas etiquetas de ese `switch`, que la leen. No deja
+ * instruccion propia, y con ella la llamada de la etiqueta pasa el bufer desde un registro
+ * (`move a1,s4` en 0x80043B98); sin ella, o asignando antes de la llamada y pasandole `aux`, la
+ * puntuacion de `diff` es 620 frente a 420, que es la de la funcion coincidente. Condiciones en
+ * docs/DESCOMPILACION.md, "Asignacion sin lectura en una rama de un `switch`". La forma del fuente
+ * original que producia este reparto se desconoce.
  *
  * Pruebas de `es_jugador` y de `banco_cargado` (`es_jugador & 1`, `(banco_cargado & 1) == 0`): el
  * original carga cada bandera en un registro de recarga y la copia antes de probarla (`lhu
@@ -1979,6 +1994,8 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         }
                         case 0x19:
                             CopiarBytes(cursor, campos_mem, 4);
+                            /* Sin lectura posterior: con ella la llamada de arriba sale como `move a1,s4` (0x80043B98).
+                               La forma del fuente original que producia este reparto se desconoce. */
                             aux = campos_mem;
                             cursor += 4;
                             break;
