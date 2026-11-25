@@ -435,11 +435,11 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 780 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
- * 167 insertadas o borradas). Los registros guardados coinciden con el original. Aparte de las diferencias de
+ * Pendiente: puntuacion 710 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
+ * 161 insertadas o borradas). Los registros guardados coinciden con el original. Aparte de las diferencias de
  * operando de forma simbolica (`%gp_rel(D_...)`, `%lo(D_1F800030)`, `%hi(D_80010012)` y `%lo(D_8006AA70+0x1)` en
  * los dos almacenes que el ensamblador del original nombra D_8006AA71, 0x80027134 y 0x8002A82C: mismo codigo
- * maquina), el residuo son cinco causas.
+ * maquina), el residuo son cuatro causas.
  * (1) La constante 0x1000 de los tres bloques de escala sale en t4 y el original la tiene en t7, y en el almacen
  * posterior de las tres escalas el original la reutiliza (`move v0,t7`) y aqui se recarga. El cuerpo de la macro
  * GEO_RELLENAR_1000 (include/geometria.h) escribe `$12` (t4) por nombre y lo declara destruido, de modo que el
@@ -447,16 +447,10 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * original genera esa secuencia con otra forma de la macro.
  * (2) El operando de la macro de distancia (a2 en lugar de a1, 0x80028CCC). Se supone, sin verificar, que es porque
  * la lista de destruidos de la macro incluye `$5`.
- * (3) El argumento de la llamada compartida (0x8002A668): tras la primera planificacion el `addiu a0,s3,0x7c` ocupa
- * la segunda posicion del bloque, a continuacion de la primera lectura del portador (`-dS`: ordenando de abajo arriba,
- * mientras esa lectura espera el ciclo de latencia de su uso el `addiu` es lo unico disponible), y el puntero del
- * portador releido para la Z recibe a1 en `.greg`; en el original lo recibe a0 y el `addiu` va despues de
- * `lw a1,0xec(a0)` (0x8002A664 y 0x8002A668), de modo que el rango del registro duro a0 empieza despues de la ultima
- * lectura del portador.
- * (4) El destino de la suma de la direccion de la secuencia (0x8002B870): v0 aqui y v1 en el original. En el volcado
+ * (3) El destino de la suma de la direccion de la secuencia (0x8002B870): v0 aqui y v1 en el original. En el volcado
  * de reparto (`.lreg`) la suma tiene como primer operando el indice desplazado y como segundo el nodo; se supone,
  * sin verificar, que el destino queda atado al registro del primer operando.
- * (5) La relectura de `t->w114` en el bloque del contador de cuadros: el original almacena el campo en 0x8002B908 y
+ * (4) La relectura de `t->w114` en el bloque del contador de cuadros: el original almacena el campo en 0x8002B908 y
  * lo vuelve a cargar en 0x8002B928, sin almacen ni llamada entre ambas instrucciones, y aqui el compilador reutiliza
  * el registro. La forma del fuente original que producia esa carga se desconoce.
  *
@@ -485,6 +479,15 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * El bucle de busqueda del objetivo (0x80028BD0 a 0x80028C0C) se escribe con la rama de avance dentro de la
  * condicion de continuar porque el original sale por `beqz v0,0x80028FD0` directo a la rama comun y vuelve al cuerpo
  * con `j`, sin repetir la prueba.
+ * En la rama de la comprobacion de apoyo del cierre con el portador `o->param.giro.u.z = 0` se escribe antes que
+ * `o->coord.param`, aunque el original almacena 0xc0 (0x8002A674) antes que 0xe0 (0x8002A680): la segunda
+ * planificacion devuelve los almacenes a ese orden. Medido en el volcado de la primera planificacion (`-dS`), que
+ * ordena el bloque de abajo arriba: tras colocar el `sh` de 0xe0, las dos lecturas de la Z esperan un ciclo por la
+ * unidad de memoria y lo unico disponible es el `addiu a0,s3,0x7c` de la llamada, que queda detras de ellas; el
+ * registro a0 esta libre mientras vive el puntero del portador, que lo recibe, como en 0x8002A658 a 0x8002A668.
+ * Con `o->coord.param` escrito primero, en ese turno esta disponible tambien el `addiu` de la direccion de los
+ * parametros, que se elige antes, el `addiu a0` sube junto a la primera lectura del portador, el puntero cae en a1
+ * y la puntuacion es 780.
  */
 /*
  * Las cuatro sentencias replicadas son `t->w114 = banda_alta;` y `t->w118 = banda_baja;` escritas en la rama del
@@ -494,11 +497,11 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * en la intermedia y 0x80027EE0 y 0x80027EE4 en la final) y todos los caminos saltan a la prueba de histeresis
  * (0x80027EE8). Causa medida en los volcados de `cc1` (`.lreg`, `.greg` y el ensamblador de salida) y con `diff`: con
  * la pareja en cada rama los valores son pseudos locales del bloque (2 usos sobre 2 insns cada uno) que toman v0 y
- * v1 y se almacenan al final de su camino, igual que el original (la puntuacion es 780); con una sola pareja tras la
+ * v1 y se almacenan al final de su camino, igual que el original (la puntuacion es 710); con una sola pareja tras la
  * union, asignando las mismas dos variables en las tres ramas, los valores pasan a ser pseudos globales (la banda
  * alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6 usos sobre 14 insns, 0,86) que reciben a1 y v1,
  * los dos almacenes suben tras la etiqueta de union y aparece un `move v0,a1` antes de la prueba de histeresis (la
- * cifra sube a 2660). La forma del fuente original que producia este reparto se desconoce.
+ * cifra sube a 2590). La forma del fuente original que producia este reparto se desconoce.
  *
  * Las dos sentencias replicadas `func_8001CFCC(&o->coord);` son la llamada de cierre de la composicion con el portador,
  * escrita al final de la rama que copia el giro del portador y al final de la rama de la comprobacion de apoyo. El
@@ -508,9 +511,7 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
  * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
  * bloque de union y el planificador la deja en el hueco de retardo de la llamada (en el original ese hueco es un
- * `nop`). Con las dos llamadas la cifra es 780; con una sola llamada tras la etiqueta sube a 1005. Se supone, sin
- * verificar, que en la rama de la comprobacion de apoyo el original reparte `a0` al puntero del portador y despues al
- * argumento, y que aqui la preparacion del argumento sube tras la llamada a BarrerTerreno y empuja ese puntero a `a1`.
+ * `nop`). Con las dos llamadas la cifra es 710; con una sola llamada tras la etiqueta sube a 1000.
  * La forma del fuente original que producia este reparto se desconoce.
  *
  * La tercera llamada `func_8001CFCC(&o->coord);` de la cadena, la de la rama que suelta al portador inactivo y que
@@ -526,8 +527,8 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * instrucciones, prioridad 0,44) se asigna antes que las relecturas de `t->hijo` (2 usos sobre 6 instrucciones, 0,33 la
  * primera y la segunda) y toma v1, y esas dos relecturas caen en a0; con la envoltura la primera relectura pasa a 4 usos ponderados sobre 6 (1,33) y se asigna
  * antes, el puntero a 6 usos sobre 18 (0,67) toma a0 y la primera y la segunda relectura v1, como el original
- * (0x8002AE5C a 0x8002AE9C y 0x8002B104 a 0x8002B144). La puntuacion es 780; sin una de estas dos, cualquiera de
- * ellas, 830; sin las dos, 880; y sin las cuatro envolturas de la funcion, 960. La forma del fuente original que
+ * (0x8002AE5C a 0x8002AE9C y 0x8002B104 a 0x8002B144). La puntuacion es 710; sin una de estas dos, cualquiera de
+ * ellas, 760; sin las dos, 810; y sin las cuatro envolturas de la funcion, 890. La forma del fuente original que
  * producia este reparto se desconoce.
  *
  * Los otros dos do/while (0) envuelven el par `D_800693B8 = -1; D_80069608 |= 1;` de cada uno de los dos bloques que
@@ -535,8 +536,8 @@ INCLUDE_ASM("asm/nonmatchings/logica_de_niveles_3", LogicaObjetoMovil);
  * Medido en el volcado de reparto (`.lreg`): la constante -1 (pseudo de 2 bytes) pasa de 2 usos sobre 4 instrucciones
  * a 4 usos ponderados sobre 4, y las dos referencias al valor de D_80069608 de 2 sobre 8 y 2 sobre 2 a 4 sobre 8 y
  * 4 sobre 2: el ponderado por un nivel de bucle cambia el orden de asignacion de la constante y del valor, de modo
- * que la constante toma v0 y el valor v1, como el original. La puntuacion es 780 con las dos, 820 sin una de ellas,
- * cualquiera, y 860 sin las dos. La cuenta exacta de prioridad de local-alloc (con el tamano del
+ * que la constante toma v0 y el valor v1, como el original. La puntuacion es 710 con las dos, 750 sin una de ellas,
+ * cualquiera, y 790 sin las dos. La cuenta exacta de prioridad de local-alloc (con el tamano del
  * pseudo de 2 bytes) no se verifico. La forma del fuente original que producia este reparto se desconoce.
  *
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
@@ -1889,8 +1890,8 @@ componer_con_portador:
             BarrerTerreno(&t->pF0, &t->p30, &t->res, area);
             o->param.trans.vx = o->p70->param.trans.vx + t->p30.vx;
             o->param.trans.vz = o->p70->param.trans.vz + t->p30.vz;
-            o->coord.param = PARAMETROS_SDK(o);
             o->param.giro.u.z = 0;
+            o->coord.param = PARAMETROS_SDK(o);
             o->coord.super = 0;
             o->p70 = 0;
             o->flags14 = (o->flags14 & 0xFFFFFFEB) | 0x200;
