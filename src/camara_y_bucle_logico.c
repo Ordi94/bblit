@@ -1354,11 +1354,11 @@ void func_80035244(void)
  * con esa forma).
  *
  * Copias de `t`. El puntero al objeto en curso se copia en la local `t` con `t = sc->cur;` escrita tres veces:
- * antes de la prueba de la bandera 0x10000 de la busqueda del modelo, en `modelo_hallado` y en `recargar`. Es la
- * sentencia duplicada en caminos que se reunen en `llamar`: una sola copia tras la union serviria igual, pero el
- * original carga `sc->cur` en `a0` en cada camino (0x8003584C, 0x80035888 y 0x80035DCC) y las copias no generan
- * codigo mas alla de esa carga, que el original tambien tiene. Con una sola asignacion tras `llamar` en lugar de
- * las tres la cifra es 500, y sin la copia de la prueba 0x10000 (leyendo `sc->cur->flags08`) 250.
+ * antes de la prueba de la bandera 0x10000 de la busqueda del modelo, tras esa busqueda (delante de la prueba de
+ * la bandera 0x40) y en `recargar`. Es la sentencia duplicada en caminos que se reunen en `llamar`: una sola copia
+ * tras la union serviria igual, pero el original carga `sc->cur` en `a0` en cada camino (0x8003584C, 0x80035888 y
+ * 0x80035DCC) y las copias no generan codigo mas alla de esa carga, que el original tambien tiene. Con una sola
+ * asignacion tras `llamar` en lugar de las tres la cifra es 500.
  * Volcado de `cc1` (`-dl` y `-dg`, `-G8`): `t` es un solo pseudo de usuario (84) con tres asignaciones, 16 usos
  * sobre 12 insns y sin cruzar llamadas: prioridad 4 * 16 / 12 = 5,33, segundo del orden del reparto global, y toma
  * `a0`, como el original. La forma del fuente original que producia este reparto se desconoce.
@@ -1371,18 +1371,30 @@ void func_80035244(void)
  * 0x80035DD8), el acierto de las dos salta al almacen comun (`beqz` de 0x80035A4C) y el fallo de la segunda entra
  * en la prueba comun pasada la carga del objeto (`j` de 0x80035A54 a 0x80035D8C), una repeticion de la prueba que
  * el original tambien ejecuta. La copia del almacen no genera codigo propio: el compilador la une con la comun y
- * deja el salto. Volcado (`-dl` y `-dg`): el objeto de cada prueba es un pseudo propio de su camino (332 y 422,
+ * deja el salto. Volcado (`-dl` y `-dg`): el objeto de cada prueba es un pseudo propio de su camino (329 y 419,
  * 8 usos sobre 12 insns cada uno), que choca con `v0` y `v1` y toma `a0`, como el original (`lw a0` en 0x80035A24
  * y 0x80035D88). Con una sola prueba, escrita tras las dos proyecciones, la cifra es 2785. La forma del fuente
  * original que producia este reparto se desconoce.
  *
  * La cola de la lista usa una local propia (`cola`) porque `t` vive en varios bloques y pasa por el reparto global.
  *
- * En la busqueda del modelo `busca` se asigna antes que `lim`, y ese orden decide sus registros. Los dos pseudos
- * tienen 4 usos ponderados y gana el de vida mas corta, que es el asignado en segundo lugar (volcados `.lreg` y
- * `.greg`): `lim` (pseudo 90, 13 instrucciones, 2 * 4 / 13 = 0,615) toma `a1` y `busca` (pseudo 91, 14, 0,571)
- * `a2`, como el original. Con la asignacion de `lim` primero las vidas se intercambian, `lim` toma `a2` y `busca`
- * `a1`, y la cifra es 255 en lugar de 235.
+ * La busqueda del modelo es un `while` sobre los campos del contexto (`sc->i40 < D_80069588`, con `sc->i40++` y
+ * `sc->tp3C++`), sin locales. El compilador lleva la prueba al final del cuerpo y deja una copia a la entrada
+ * (0x800357B8 a 0x800357D0), y el optimizador de bucles saca del recorrido las dos cargas que no cambian en el
+ * (volcado `-dL`: el recorrido tiene 20 instrucciones; regno 235, 232 y 230 "moved"): la del objeto `sc->cur`,
+ * que queda en `a2` (0x800357D8), y la del limite D_80069588, que queda como copia del registro de la prueba de
+ * entrada en el hueco de su `beqz` (`addu a1,v1,zero` en 0x800357D4). Volcados `-dl` y `-dg`: el indice leido en
+ * la prueba es un solo pseudo (233, 13 usos sobre 19 insns, en `a0`) que el incremento reutiliza (`lw a0,0x40(s1)`
+ * en 0x800357B8 y `addiu v0,a0,1` en 0x800357F0); el limite (230, 5 usos sobre 13 insns, 2 * 5 / 13 = 0,769) se
+ * reparte antes que el objeto (235, 5 sobre 14, 0,714) y toma `a1`, y el objeto `a2`, como el original.
+ * La prueba posterior al recorrido es la misma expresion que la de entrada, y por eso el fallo de la entrada no
+ * pasa por ella: el `beqz` de 0x800357D0 salta a la comparacion de indice no hallado (0x80035870), no a la prueba
+ * posterior (0x80035814). Con el indice en una local leida antes del
+ * recorrido (`idx = sc->i40; while (idx < D_80069588)`, con `sc->i40 = idx + 1;` e `idx = sc->i40;` en el cuerpo)
+ * las dos pruebas dejan de ser la misma expresion, ese salto va a la prueba posterior, el hueco queda con un `nop`
+ * y la cifra es 400. Con la entrada hallada se comprueba el bit 1 de la bandera y el bit 0x10000 de las banderas
+ * del objeto, y sin el bit 1 se cae a la misma comparacion de indice que la rama de no hallado (0x80035824 a
+ * 0x80035878).
  *
  * Par `pz--; pz++;` antes de la sentencia `GUARDAR_MAC3(pz);` del recorrido de proyeccion de los ocho puntos (el
  * segundo, con `sc->i40 < 8`): no genera codigo (el combinador anula el par y el ensamblador tiene las mismas
@@ -1407,18 +1419,6 @@ void func_80035244(void)
  * destruidos de `GEO_DISTANCIA_APROX_A` (insn 385, `.lreg`), y esa lista es correcta porque el cuerpo de la macro
  * escribe `$7` (`addu $7,$10,$0`).
  *
- * La busqueda del modelo guarda el limite en una local propia (`lim`) dentro del bloque. El compilador no vuelve a
- * leer `D_80069588` para esa asignacion: copia el registro de la comparacion, y el original rellena con esa copia el
- * hueco del `beqz` de la primera comparacion (`addu a1,v1,zero` en 0x800357D4). Sin `lim`, con la condicion del
- * bucle sobre el global, la cifra es 990.
- *
- * La prueba de la bandera del modelo (`sc->i40 < D_80069588`) va dentro del bloque que entra en la busqueda: el
- * `beqz` de la primera comparacion (0x800357D0) salta a la prueba de indice no hallado (0x80035870), no a la de la
- * bandera (0x80035814). Con ella fuera del bloque el salto iba a esa segunda prueba y el hueco quedaba con un `nop`
- * (400 en lugar de 235). Con la entrada hallada se comprueba el bit 1 de la bandera y el bit 0x10000 de las
- * banderas del objeto, y sin el bit 1 se cae a la misma comparacion de indice que la rama de no hallado
- * (0x80035824 a 0x80035878).
- *
  * El bucle final copia el objeto en curso a `o` una sola vez, tras las rutinas de logica y antes de avanzar a la
  * lista siguiente: el original tiene `move a0,s0` en los huecos de retardo de los saltos al final del cuerpo
  * (0x800360B8 y 0x800360D4), no una copia viva durante las llamadas; y la direccion de la camara se
@@ -1436,22 +1436,18 @@ void func_80035244(void)
  * espaciado de la directiva de la macro: si `maspsx` llegara a reconocer `.set noreorder` con espacio, se supone, sin
  * verificar, que el `sub` pasaria al hueco de la `bgez` y se invertiria el signo del valor absoluto.
  *
- * La busqueda del modelo guarda el indice leido en la condicion (`idx`) y lo reutiliza en el incremento, como el
- * original (`lw a0,0x40(s1)` en 0x800357B8 y `addiu v0,a0,1` en 0x800357F0 del original), en lugar de leer el
- * campo otra vez. La direccion del scratchpad se asigna despues de la llamada a la camara y no al
+ * La direccion del scratchpad se asigna despues de la llamada a la camara y no al
  * principio: con la asignacion inicial el compilador la calcula en el hueco de retardo del primer salto y
  * desplaza el resto del prologo; el original calcula `lui s1,0x1f80` mas tarde.
  *
- * El recorrido de los nodos de coordenadas y el de la busqueda del modelo se escriben con salto hacia atras en
- * lugar de un bucle. Con el recorrido de los nodos como `while (sc->n78 != NULL)` el optimizador de bucles saca de
- * el la direccion de v80 y la de c104 (volcado `-dL`: el recorrido tiene 42 instrucciones, regno 379 y 380 con
- * vida 1 "moved", y despues otra vez fuera del bucle principal con vida de 54 y 55 instrucciones), ocupan s5 y s6
- * y el marco sube de 0x28 a 0x30 (cifra 1388); el original calcula esas direcciones en el sitio. En el mismo
- * volcado el bucle principal, que tiene llamadas y 428 instrucciones, no saca asignaciones de vida 1 ni 2. Se
- * supone, por una copia minima de un bucle sin llamadas con una direccion invariante de vida 1 (con 58
- * instrucciones se saca y con 60 no), que esa asignacion solo se queda en el bucle si este tiene 59 instrucciones
- * o mas, y, sin verificar, que el original tampoco tenia notas de bucle en ese recorrido. Con la busqueda del
- * modelo como `do { } while (idx < lim)` y `break` la cifra es 1710. El
+ * El recorrido de los nodos de coordenadas se escribe con salto hacia atras en lugar de un bucle. Con ese
+ * recorrido como `while (sc->n78 != NULL)` el optimizador de bucles saca de el la direccion de v80 y la de c104
+ * (volcado `-dL`: el recorrido tiene 42 instrucciones, regno 376 y 377 con vida 1 "moved", y despues otra vez
+ * fuera del bucle principal con vida de 54 y 55 instrucciones), ocupan s5 y s6 y el marco sube de 0x28 a 0x30
+ * (cifra 1388); el original calcula esas direcciones en el sitio. Se supone, por una copia minima de un bucle sin
+ * llamadas con una direccion invariante de vida 1 (con 58 instrucciones se saca y con 60 no), que esa asignacion
+ * solo se queda en el bucle si este tiene 59 instrucciones o mas, y, sin verificar, que el original tampoco tenia
+ * notas de bucle en ese recorrido. El
  * resultado de la ultima comprobacion de proyeccion se lee de los campos (sc->sx, sc->sy) donde el original los
  * relee, no de locales.
  *
@@ -1469,9 +1465,6 @@ void func_800353B0(Objeto* a0)
     s16* psx;
     s32* pz;
     s32 m3;
-    s32 idx;
-    s32 lim;
-    Objeto* busca;
     EstadoCamara* cam;
 
     D_80069652 = 0;
@@ -1544,34 +1537,22 @@ void func_800353B0(Objeto* a0)
                 if ((sc->cur->w3C & 1) != 0 && (sc->cur->flags04 & 2) != 0) {
                     sc->i40 = 0;
                     sc->tp3C = D_8006A940;
-                    idx = sc->i40;
-                    if (idx < D_80069588) {
-                        busca = sc->cur;
-                        lim = D_80069588;
-buscar_modelo:
-                        if ((s16)busca->w26 != sc->tp3C->modelo) {
-                            sc->i40 = idx + 1;
-                            sc->tp3C++;
-                            idx = sc->i40;
-                            if (idx < lim) {
-                                goto buscar_modelo;
-                            }
+                    while (sc->i40 < D_80069588) {
+                        if ((s16)sc->cur->w26 == sc->tp3C->modelo) {
+                            break;
                         }
-                        if (sc->i40 < D_80069588) {
-                            if ((sc->tp3C->bandera & 1) != 0) {
-                                /* Sentencia replicada: es la misma que la de las otras ramas. */
-                                t = sc->cur;
-                                if ((t->flags08 & 0x10000) != 0) {
-                                    goto sigue2;
-                                }
-                                goto modelo_hallado;
-                            }
-                        }
+                        sc->i40++;
+                        sc->tp3C++;
                     }
-                    if (D_80069588 != sc->i40) {
+                    if (sc->i40 < D_80069588 && (sc->tp3C->bandera & 1) != 0) {
+                        /* Sentencia replicada: es la misma que la de las otras ramas. */
+                        t = sc->cur;
+                        if ((t->flags08 & 0x10000) != 0) {
+                            goto sigue2;
+                        }
+                    } else if (D_80069588 != sc->i40) {
                         goto sigue2;
                     }
-modelo_hallado:
                     /* Sentencia replicada: es la misma que la de las otras ramas. */
                     t = sc->cur;
                     if ((t->w3C & 0x40) == 0) {
