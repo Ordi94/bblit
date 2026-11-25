@@ -9,12 +9,12 @@ construcción normal) y de la tabla de símbolos.
 | Zona | Funciones | Bytes | En C (funciones) | En C (bytes) |
 |---|---:|---:|---:|---:|
 | Arranque | 2 | 180 | 0 | 0 |
-| Código del juego | 450 | 201416 | 428 | 169272 |
+| Código del juego | 450 | 201416 | 429 | 172780 |
 | Librerías Sony | 650 | 97488 | 0 | 0 |
 
-Bytes de código del juego descompilados: 169272 de 201416 (84.04 %).
-Funciones marcadas `NON_MATCHING`: 5.
-Coherencia con el ensamblador: correcta (674 `glabel` en `asm/` + 428 en C = 1102; la tabla declara 1102).
+Bytes de código del juego descompilados: 172780 de 201416 (85.78 %).
+Funciones marcadas `NON_MATCHING`: 4.
+Coherencia con el ensamblador: correcta (673 `glabel` en `asm/` + 429 en C = 1102; la tabla declara 1102).
 
 ## Por subsistema
 
@@ -22,7 +22,7 @@ Coherencia con el ensamblador: correcta (674 `glabel` en `asm/` + 428 en C = 110
 |---|---:|---:|---:|---:|---:|---:|
 | arranque_y_bucle_principal | 1 | 10 | 0 | 0 | 3404 | 3404 |
 | audio_xa_y_spu | 1 | 37 | 0 | 0 | 8220 | 8220 |
-| camara_y_bucle_logico | 1 | 10 | 1 | 0 | 11068 | 14576 |
+| camara_y_bucle_logico | 1 | 11 | 0 | 0 | 14576 | 14576 |
 | cargador_de_niveles_y_cd | 2 | 9 | 0 | 2 | 13592 | 14264 |
 | colision_y_terreno | 1 | 4 | 0 | 0 | 12480 | 12480 |
 | entrada_de_mando | 1 | 6 | 0 | 0 | 2784 | 2784 |
@@ -42,7 +42,7 @@ Coherencia con el ensamblador: correcta (674 `glabel` en `asm/` + 428 en C = 110
 |---|---:|---:|---:|---:|---:|
 | `src/arranque_y_bucle_principal_2.c` | 10 | 0 | 0 | 3404 | 3404 |
 | `src/audio_xa_y_spu.c` | 37 | 0 | 0 | 8220 | 8220 |
-| `src/camara_y_bucle_logico.c` | 10 | 1 | 0 | 11068 | 14576 |
+| `src/camara_y_bucle_logico.c` | 11 | 0 | 0 | 14576 | 14576 |
 | `src/cargador_de_niveles_y_cd.c` | 9 | 0 | 0 | 13592 | 13592 |
 | `src/cargador_de_niveles_y_cd_2.c` | 0 | 0 | 2 | 0 | 672 |
 | `src/colision_y_terreno.c` | 4 | 0 | 0 | 12480 | 12480 |
@@ -70,7 +70,6 @@ Coherencia con el ensamblador: correcta (674 `glabel` en `asm/` + 428 en C = 110
 
 - `SondearTarjeta`: Pendiente: puntuacion 525 con la configuracion versionada (g = 8 del archivo; ejes 76 de operando, 0 reordenadas, 188 insertadas o borradas). Flujo, orden de instrucciones y distribucion de bloques iguales al original; quedan el reparto de registros del recorrido del directorio y el orden de los dos operandos en las sumas de direccion del recorrido. Causa del residuo: el original recorre el bucle del directorio con el optimizador de bucles (base y base mas 0x24 izadas, desplazamiento de la ranura reducido a un registro que avanza 0x28 tras el contador, una copia suya en el preludio de cada buc
 - `func_80026FEC`: Pendiente: puntuacion 590 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas, 156 insertadas o borradas). Los registros guardados coinciden con el original. Aparte de las diferencias de operando de forma simbolica (`%gp_rel(D_...)`, `%lo(D_1F800030)`, `%hi(D_80010012)` y `%lo(D_8006AA70+0x1)` en los dos almacenes que el ensamblador del original nombra D_8006AA71, 0x80027134 y 0x8002A82C: mismo codigo maquina), el residuo son dos causas. (1) La constante 0x1000 de los tres bloques de escala sale en t4 y el original la tiene en t7, y en el almacen posterior d
-- `func_800353B0`: Pendiente: puntuacion 235 con la configuracion versionada (g = 8 del archivo): 93 diferencias de operando, 0 lineas reordenadas y 88 insertadas o borradas. El flujo coincide. Quedan diferencias de registros y de forma simbolica: (1) el registro de recarga de los punteros que las macros de la GTE leen de memoria o reciben como direccion constante, t7 aqui y a3 en el original (35 lineas); (2) 9 lineas de forma simbolica con los mismos bytes: el byte D_8006AA7C, que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc`, y las direcciones del scratchpad que el desensamblado del original
 - `func_80037FE8`: Pendiente: puntuacion 100 con la configuracion versionada (g = 8 del archivo; ejes 16 de operando, 0 reordenadas, 38 insertadas o borradas). Todos los grupos coinciden en instrucciones y en registros. Queda una sola instruccion distinta, la suma del indice con el puntero de estado del grupo 0xB8 (0x800383EC): el original la emite con el indice primero (`addu v0,v0,s4`) y el C con el puntero primero (`addu v0,s4,v0`); el resto son las marcas de operando por nombre de simbolo (el original lleva D_8001013C y D_80010047 donde el C genera 0x13c(v0) y 0x47(v0), y los desplazamientos D_800100F6 a D_8
 - `func_80039094`: Pendiente: puntuacion 260 con la configuracion versionada (g = 8 del archivo; ejes 75 de operando, 0 reordenadas, 104 insertadas o borradas). Todas las instrucciones coinciden en numero; quedan las marcas de operando por nombre de simbolo y una sola linea de registro, la comparacion `<` de la barra 0 antes de la llamada (0x80039144): el original compara el byte leido, que sigue en v1 (`sltu v0,v1,v0`), y el C compara la copia ancha que esta en a0 (`sltu v0,a0,v0`). En el volcado `.cse` la copia ancha es una copia de registro de la extension de la primera carga (insn 44, pseudo 80 a partir del 
 
