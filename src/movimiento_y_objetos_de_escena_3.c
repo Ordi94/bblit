@@ -128,34 +128,40 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * 7 y 8 de la pagina) desplaza las coordenadas horizontales (2 = 4 bits, 1 = 8 bits, 0 = 16
  * bits) y fija la anchura de la textura y el modo del sprite.
  */
-#ifdef NON_MATCHING
-/* Pendiente: puntuacion 55 con la configuracion versionada (g = 8 del archivo; ejes 4 de operando, 0 reordenadas,
- * 14 insertadas o borradas). Mismos accesos y almacenes que el original; quedan dos diferencias. (1) La carga de v
- * sale detras de la de u (el original lee `lbu 0x9` en 0x8001E644 y `lbu 0x8` en 0x8001E648). Nace en la primera
- * planificacion (`-dS`): la carga de v (insn 52) no tiene consumidor antes del limite que pone la envoltura y queda
- * pegada a el, detras de la de u (insn 71), que va junto a su desplazamiento. (2) v toma a1 y la anchura a2; en el
- * original, a2 y a1 (0x8001E644 y 0x8001E64C). Nace en la asignacion local (`-dl`): la cantidad de v y su suma
- * (pseudos 86 y 127, 6 usos) se reparte antes que la de la anchura y su desplazamiento (pseudos 87 y 130, 4 usos).
- * No se conoce una escritura que adelante la carga de v ni que invierta ese reparto.
- *
+/*
  * El puntero al fotograma se calcula en cada rama, cada una con su indice, como en func_8001E528: el salto cruzado
  * funde despues del reparto la lectura de +0x20, el desplazamiento y la suma (0x30 a 0x38 desde el inicio). Con el
- * indice en una local y la suma una sola vez tras la reunion la puntuacion es 690.
+ * indice en una local y la suma una sola vez tras la reunion la puntuacion es 675.
  *
- * La coordenada v tiene local propia: la suma de +2 escribe en su registro (`addu a2,a2,v1`, 0x8001E674). Con la
- * lectura dentro de esa suma la puntuacion es 270.
+ * La pagina, v, u y la anchura se leen en locales antes de operar, como el original (0x8001E640 a 0x8001E64C). La
+ * constante 2 tiene variable propia y se asigna antes de esas lecturas (`li` en 0x8001E63C, delante de la primera).
  *
- * La `do { } while (0);` no genera codigo: sus notas de bucle son un limite de la primera planificacion. Causa medida
- * con `-dS`: sin ella la carga del puntero crudo (pseudo 128, insn 99) y la del campo 0x0E (insn 104) suben por
- * delante de la suma de +0 (insn 79, pseudo 84), de la que no dependen; con ella las dos (insn 103 y 108) quedan
- * detras, y la carga del campo queda delante de la suma de +2 (insn 98, pseudo 127). En `-dl` y `-dg`, sin y con la
- * envoltura: el crudo pasa de 3 usos ponderados, en a3, a 6, en v0; el campo (pseudo 91), de t0 a
- * a3; la constante 2 (pseudo 113), de t1 a t0; y el puntero al sprite (pseudo 83), de a3 a v1; los cuatro como el
- * original. Tambien cambian los pseudos 81, de t4 a t3; 85, de t3 a t2; y 89, de t2 a t1. Sin la envoltura la
- * puntuacion es 870. El primer almacen va dentro de ella: con el detras la puntuacion es 270. El cuerpo es codigo
- * real de la funcion, sin `break` ni `continue`. Se supone, sin verificar, que lo que fija ese orden en el original
- * es otra construccion que el volcado no distingue. La forma del fuente original que producia este reparto se
- * desconoce. */
+ * Las tres `do { } while (0);` no generan codigo: sus notas de bucle limitan la primera planificacion y ponderan al
+ * doble los usos que encierran. Sus cuerpos son codigo real de la funcion, sin `break` ni `continue`.
+ *
+ * La de las lecturas, causa medida con `-dS`: sin ella la carga de u (insn 60, pseudo 93) queda detras del `andi`
+ * de la profundidad de color (insn 69), y las de v (insn 58, pseudo 86) y la anchura (insn 62, pseudo 87) detras
+ * del desplazamiento de la columna (insn 76), que no dependen de ellas; con ella las lecturas quedan seguidas
+ * (pagina, v, u y anchura: insn 60, 62, 64 y 66) delante del primer `srl` (insn 79), como en el original. En
+ * `.lreg` cambia ademas el reparto de v y la anchura: con ella v y su suma toman a2 y la anchura a1; sin ella, al
+ * reves. Sin la envoltura la puntuacion es 55.
+ *
+ * La del puntero al sprite, causa medida con `-dS`: sin ella las cargas del puntero crudo (insn 108, pseudo 124) y
+ * del campo 0x0E (insn 113, pseudo 91) suben por delante de la suma de +0 (insn 92, pseudo 84), de la que no
+ * dependen; con ella (insn 112 y 117) quedan detras. En `.lreg` y `.greg`, sin y con ella: el crudo pasa de a3 a
+ * v0, el campo de t0 a a3, la constante 2 (pseudo 94) de t1 a t0 y el puntero al sprite (pseudo 83) de a3 a v1,
+ * los cuatro como el original; tambien cambian los pseudos 81, de t4 a t3; 85, de t3 a t2; y 89, de t2 a t1. El
+ * primer almacen y la suma de +2 van dentro. Sin la envoltura la puntuacion es 485.
+ *
+ * La del almacen de `s10`, causa medida con `-dl`: en la asignacion local la prioridad es
+ * floor_log2(usos) * usos / vida, con la vida contada en instrucciones del listado de `-dS`. La cantidad de v y su
+ * suma (pseudos 86 y 123) tiene 7 usos y vida 17 (insn 62 a 133): 0,82. La de la anchura y su desplazamiento
+ * (pseudos 87 y 126) tiene, sin la envoltura, 5 usos y vida 20 (insn 66 al almacen): 0,50, y v se reparte antes y
+ * toma a1; con ella, 8 usos: 1,20, la anchura toma a1 y v a2, como el original (0x8001E644 y 0x8001E64C). La
+ * cantidad de u (pseudos 93, 114 y 84; 8 usos, vida 12: 2,00) sigue delante y toma a0. No cambia otro registro.
+ * Sin la envoltura la puntuacion es 40.
+ *
+ * La forma del fuente original que producia este reparto se desconoce. */
 void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     SpriteEscalado* p;
@@ -171,6 +177,9 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     /* El campo 0x0E del fotograma se lee antes del primer almacen, como el original (carga en 0x8001E67C,
      * almacen en 0x8001E6A4). */
     u16 campo_0e;
+    u16 pagina;
+    s32 u_cuadro;
+    s32 desplazamiento_maximo;
 
     /* El cuadro actual (h02, con signo en el cursor) se lee con lhu: lhu 0x2 en 0x8001E55C y 0x8001E610. */
     if (modo & 1) {
@@ -178,13 +187,17 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     } else {
         fotogramas = c->fotogramas + (c->duraciones + (u16)c->cuadro)->indice;
     }
-    coordenada_v = fotogramas->v;
-    ancho_cuadro = fotogramas->w0C;
-    desplazamiento_color = 2 - ((fotogramas->pagina >> 7) & 3);
-    /* El valor de +0 se calcula antes de la envoltura (ver la cabecera). */
-    coordenada_u = (fotogramas->u >> desplazamiento_color) + ((fotogramas->pagina & 0xF) << 6);
+    desplazamiento_maximo = 2;
     do {
-        v_pagina = coordenada_v + (0x100 & (fotogramas->pagina << 4));
+        pagina = fotogramas->pagina;
+        coordenada_v = fotogramas->v;
+        u_cuadro = fotogramas->u;
+        ancho_cuadro = fotogramas->w0C;
+    } while (0);
+    desplazamiento_color = desplazamiento_maximo - ((pagina >> 7) & 3);
+    coordenada_u = (u_cuadro >> desplazamiento_color) + ((pagina & 0xF) << 6);
+    do {
+        v_pagina = coordenada_v + (0x100 & (pagina << 4));
         p = (SpriteEscalado*)(0xC + (u8*)o->u78.p);
         campo_0e = fotogramas->w0E;
         p->s00 = coordenada_u;
@@ -192,7 +205,9 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     p->s02 = v_pagina;
     p->w08 = c->w2C;
     ancho_bloque = c->w2E;
-    p->s10 = ancho_cuadro >> desplazamiento_color;
+    do {
+        p->s10 = ancho_cuadro >> desplazamiento_color;
+    } while (0);
     p->w12 = campo_0e;
     p->w0A = ancho_bloque;
     p->s04 = (0x3F & fotogramas->h0A) * 0x10;
@@ -212,9 +227,6 @@ void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
     p->s14 = 0;
     p->s16 = 0;
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/movimiento_y_objetos_de_escena_3", func_8001E600);
-#endif
 
 /*
  * Avanza un cuadro la animacion de un objeto cuyo dibujo es un sprite. `modo` trae las ordenes:
