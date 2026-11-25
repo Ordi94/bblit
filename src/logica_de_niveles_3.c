@@ -398,11 +398,11 @@ fin:
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 610 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
- * 160 insertadas o borradas). Los registros guardados coinciden con el original. Aparte de las diferencias de
+ * Pendiente: puntuacion 590 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
+ * 156 insertadas o borradas). Los registros guardados coinciden con el original. Aparte de las diferencias de
  * operando de forma simbolica (`%gp_rel(D_...)`, `%lo(D_1F800030)`, `%hi(D_80010012)` y `%lo(D_8006AA70+0x1)` en
  * los dos almacenes que el ensamblador del original nombra D_8006AA71, 0x80027134 y 0x8002A82C: mismo codigo
- * maquina), el residuo son tres causas.
+ * maquina), el residuo son dos causas.
  * (1) La constante 0x1000 de los tres bloques de escala sale en t4 y el original la tiene en t7, y en el almacen
  * posterior de las tres escalas el original la reutiliza (`move v0,t7`) y aqui se recarga. El cuerpo de la macro
  * GEO_RELLENAR_1000 (include/geometria.h) escribe `$12` (t4) por nombre y lo declara destruido, de modo que el
@@ -412,11 +412,6 @@ fin:
  * (2) El operando de la macro de distancia (a2 en lugar de a1, 0x80028CCC). El cuerpo de la macro escribe `$5` para
  * la direccion del resultado y lo declara destruido, asi que el operando no puede tomarlo; el original calcula en a1
  * la direccion del vector (0x80028CCC) y la del resultado (0x80028D4C), cada una justo antes de su `move a0,a1`.
- * (3) El destino de la suma de la direccion de la secuencia (0x8002B870): v0 aqui y v1 en el original. Desde la
- * generacion del RTL (`-dr`) la suma tiene como primer operando el indice desplazado y como segundo el nodo, con el
- * desplazamiento de 6 octetos sumado aparte, y el reparto local ata el destino al primer operando que muere. Se
- * supone, sin verificar, que el original declaraba desde +6 del nodo un arreglo de cinco medias palabras (la
- * prueba del indice es contra 5).
  *
  * Razones de la escritura. Los temporales de 32 bits compartidos entre bloques son pseudos globales que el reparto
  * global asigna a a0 y a1, mientras que el original deja en v0 y v1 los valores de un solo bloque: medido en el
@@ -428,11 +423,7 @@ fin:
  * `hijo_soltado` antes de soltarlo, la resta de la X del portador en el barrido va directa y los giros del portado
  * se vacian con la asignacion encadenada `u.x = u.z = 0` (el original almacena 0xe0 antes que 0xdc). Se supone, sin
  * verificar, que cada una de estas escrituras acerca el codigo al original.
- * La local de 32 bits `sig_w17c`, asignada tras el incremento del contador 0x17c(s3) en cada uno de los dos caminos y
- * usada en el indice de la secuencia, reproduce la estructura del original: el recorte a 16 bits (`andi 0xffff`)
- * queda en el hueco del salto del primer camino y al final del segundo, y la prueba contra 5 relee la memoria. La
- * direccion se escribe como `((u16*)((u8*)t->sec + 6))[sig_w17c]`: el indice entra como desplazamiento en bytes del
- * compilador, sin la suma explicita de `sig_w17c << 1`. La local `producto_andadura` (el producto, calculado con la
+ * La local `producto_andadura` (el producto, calculado con la
  * suma leida con `(u16)` para que la carga sea `lhu`, antes del almacen del contador, y escrito despues de el en
  * `t->w118`) reproduce el bloque del contador de andadura (0x80029B94 a 0x80029BB0), donde el original deja la suma
  * en a0 y planifica el `sh` tras el `mult`. La altura de la sonda sobre el apoyo se calcula con la local
@@ -451,7 +442,7 @@ fin:
  * registro a0 esta libre mientras vive el puntero del portador, que lo recibe, como en 0x8002A658 a 0x8002A668.
  * Con `o->coord.param` escrito primero, en ese turno esta disponible tambien el `addiu` de la direccion de los
  * parametros, que se elige antes, el `addiu a0` sube junto a la primera lectura del portador, el puntero cae en a1
- * y la puntuacion es 680.
+ * y la puntuacion es 660.
  */
 /*
  * Las dos sentencias replicadas `D_800693B4 = t->w114;` son el cierre del bloque del contador de cuadros, escrito
@@ -465,7 +456,7 @@ fin:
  * conserva; el valor de la otra rama es el pseudo del contador (2788, tambien en a0), los dos almacenes finales son
  * identicos y el salto cruzado deja uno solo y borra la etiqueta (cinco referencias a D_800693B4 antes del pase y
  * cuatro despues). Con una sola copia tras la union la carga queda en la union, en v0 y con su `nop`, y la
- * puntuacion es 920 (610 con la sentencia en cada rama). La forma del fuente original que producia este reparto se
+ * puntuacion es 900 (590 con la sentencia en cada rama). La forma del fuente original que producia este reparto se
  * desconoce.
  *
  * Las dos sentencias replicadas `func_8001CFCC(&o->coord);` son la llamada de cierre de la composicion con el portador,
@@ -476,7 +467,7 @@ fin:
  * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
  * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
  * bloque de union y el planificador la deja en el hueco de retardo de la llamada (en el original ese hueco es un
- * `nop`). Con las dos llamadas la cifra es 610; con una sola llamada tras la etiqueta sube a 900.
+ * `nop`). Con las dos llamadas la cifra es 590; con una sola llamada tras la etiqueta sube a 880.
  * La forma del fuente original que producia este reparto se desconoce.
  *
  * La tercera llamada `func_8001CFCC(&o->coord);` de la cadena, la de la rama que suelta al portador inactivo y que
@@ -497,8 +488,24 @@ fin:
  * `efectos_tras_disparadores`) no generan codigo propio: el salto cruzado deja una sola copia. Medido en el volcado
  * del optimizador de bucles (`-dL`): con la replica el bucle tiene 727 instrucciones y la constante 1 (vida 5,
  * ahorro 5; 29 * 5 * 5 = 725) no se iza; con una sola copia y un salto a ella tiene 706, la constante se iza a s4 y
- * la puntuacion es 1590. El margen es de dos instrucciones. La forma del fuente original que producia este reparto
+ * la puntuacion es 1570. El margen es de dos instrucciones. La forma del fuente original que producia este reparto
  * se desconoce.
+ *
+ * Las doce sentencias replicadas del paso de la secuencia (seis en cada uno de los dos caminos que avanzan el
+ * contador 0x17c(s3): de `o->w17C += 1;` a la puesta a cero de `o->trabajo.ticks`) no generan codigo propio.
+ * El original reune los dos caminos en 0x8002B868, justo donde su codigo pasa a ser identico: cada camino
+ * incrementa y recorta el contador con sus propios registros (`addiu v0,v0,1`, `sh` y `andi v0,v0,0xffff` en el
+ * hueco del salto, 0x8002B7CC a 0x8002B7D8; `addiu v1,v1,1`, `sh` y `andi v0,v1,0xffff`, 0x8002B85C a
+ * 0x8002B864) y la cola compartida carga la secuencia en v1, dobla el indice en v0 y suma sobre v1
+ * (`lw v1,0xb8(s2)`, `sll v0,v0,0x1`, `addu v1,v1,v0`, `lhu v0,6(v1)`). Medido en el volcado de reparto de
+ * `cc1` (`-dl`): con la cola en cada camino el indice recortado, su doble, el puntero a la secuencia y la suma
+ * son pseudos locales del bloque de cada camino (2760 a 2763 en el bloque 633 y 2792 a 2795 en el 641); el
+ * reparto local ata el doble al indice (registro 2) y la suma al puntero (registro 3), y el salto cruzado
+ * funde las dos colas desde la carga de la secuencia (el ensamblador tiene las mismas instrucciones que con una
+ * sola copia). Con una sola copia tras la reunion el indice cruza de bloque en una variable, el reparto global
+ * le da v1 y la secuencia y la suma quedan en v0: 635 con la misma expresion y 610 con el indice aplicado a un
+ * puntero a +6 del nodo (590 con la cola en cada camino). La forma del fuente original que producia este
+ * reparto se desconoce.
  *
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
@@ -522,7 +529,6 @@ void func_80026FEC(Objeto* o)
     AcumuladorNodos pila_nodo;
     NodoDisparador* nd_azar;
     s32 choco;
-    s32 sig_w17c;
     s32 producto_andadura;
     s32 altura_apoyo;
     Objeto* aux_previo;
@@ -2303,11 +2309,21 @@ fin_de_disparadores:
         if (t->fot->w0C & 4) {
             goto marcar_portador_inactivo;
         }
+        /* Sentencia replicada: es la misma que la de las otras ramas. */
         o->w17C += 1;
-        sig_w17c = o->w17C;
-        goto siguiente_paso_de_secuencia;
-    }
-    if (t->w118 != 0 && (t->fot->w0C & 0x80) && (o->flags14 & 0x12)) {
+        /* Sentencia replicada: es la misma que la de las otras ramas. */
+        t->w_bc = *(u16*)((u8*)t->sec + (o->w17C << 1) + 6);
+        if (t->w_bc != 0xFFF0 && o->w17C < 5) {
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
+            o->registro184 = t->fot = (RegistroAnim*)(o->bloque + t->w_bc);
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
+            o->trabajo.i14 = 0;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
+            o->trabajo.cuadro = 0;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
+            o->trabajo.ticks = 0;
+        }
+    } else if (t->w118 != 0 && (t->fot->w0C & 0x80) && (o->flags14 & 0x12)) {
         f14 = o->flags14 & 0xF9FFFFFF;
         o->flags14 = f14;
         if (t->fot->w0C & 4) {
@@ -2315,16 +2331,18 @@ fin_de_disparadores:
             goto fin_de_funcion;
         }
         o->flags14 = f14 & ~0x1000;
+        /* Sentencia replicada: es la misma que la de las otras ramas. */
         o->w17C += 1;
-        sig_w17c = o->w17C;
-siguiente_paso_de_secuencia:
-        /* Equivale a indexar como u16 desde `t->sec->desplazamiento` (+6 del nodo): el nodo no declara ese
-         * campo como matriz, de modo que se direcciona por bytes desde el nodo, como el original. */
-        t->w_bc = ((u16*)((u8*)t->sec + 6))[sig_w17c];
+        /* Sentencia replicada: es la misma que la de las otras ramas. */
+        t->w_bc = *(u16*)((u8*)t->sec + (o->w17C << 1) + 6);
         if (t->w_bc != 0xFFF0 && o->w17C < 5) {
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             o->registro184 = t->fot = (RegistroAnim*)(o->bloque + t->w_bc);
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             o->trabajo.i14 = 0;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             o->trabajo.cuadro = 0;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
             o->trabajo.ticks = 0;
         }
     }
