@@ -423,24 +423,41 @@ void func_80037FB8(NodoLista* n)
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 185 con la configuracion versionada (g = 8 del archivo; ejes 16 de
- * operando, 0 reordenadas, 58 insertadas o borradas). Todos los grupos coinciden en instrucciones;
- * difiere el reparto de registros salvados de los grupos de los contadores 0xB6 (0x800382D8 a
- * 0x800383A0) y 0xBA (0x80038508 a 0x800385C4), y las marcas de operando por nombre de simbolo (el
- * original lleva D_8001013C y D_80010047 donde el C genera 0x13c(v0) y 0x47(v0), y los desplazamientos
- * D_800100F6 a D_800100FA sobre una base compartida con el puntero de estado). En esos dos grupos el
- * original guarda el puntero a 0x80010000 en s3, la direccion de la pila en s4 y la base de D_8006AB70 en
- * s5; el C los reparte en s4, s5 y s4 (la base de D_8006AB70 reutiliza el s4 del puntero, que ya murio).
- * El volcado de asignacion (`-dl`) muestra el pseudo de `e` (88) con 11 usos sobre 76 instrucciones y 3
- * llamadas cruzadas (prioridad floor_log2(R) * R / L de 3 * 11 / 76 = 0,43, por detras del puntero a la
- * pila del grupo 0xB8: 3 * 9 / 50 = 0,54, que toma s3 y deja s4 a `e`). Se supone, sin verificar, que el
- * original tiene un puntero para los grupos 0xB6 y 0xBA (s3) y otro para el 0xB8 (s4), y que el C, que
- * comparte un solo `e`, lo fuerza a un solo registro. El grupo 0xB8 exige ademas que la carga del byte 0xF9
- * hecha por su puntero quede detras del ultimo almacen de `ids`, como en el original (`sw v0,0x18(sp)` en
- * 0x80038440 y `lbu a0` en 0x80038444): en el volcado `-dS` la carga hecha por `e` depende de los tres
- * almacenes de `ids` en la pila. Se supone, sin verificar en el fuente del compilador, que la dependencia
- * existe porque `e` se asigna mas de una vez y su valor no se da por constante. La forma del fuente que daba
- * dos punteros con ese orden se desconoce.
+ * Pendiente: puntuacion 100 con la configuracion versionada (g = 8 del archivo; ejes 16 de
+ * operando, 0 reordenadas, 38 insertadas o borradas). Todos los grupos coinciden en instrucciones y en
+ * registros. Queda una sola instruccion distinta, la suma del indice con el puntero de estado del grupo
+ * 0xB8 (0x800383EC): el original la emite con el indice primero (`addu v0,v0,s4`) y el C con el puntero
+ * primero (`addu v0,s4,v0`); el resto son las marcas de operando por nombre de simbolo (el original lleva
+ * D_8001013C y D_80010047 donde el C genera 0x13c(v0) y 0x47(v0), y los desplazamientos D_800100F6 a
+ * D_800100FA sobre la base del puntero de estado). En los grupos 0xB6 y 0xBA, donde `e` se asigna en el
+ * mismo tramo que la suma, el volcado `.rtl` trae la suma con el puntero primero y el `.cse` ya con el
+ * indice primero: la primera pasada de subexpresiones comunes pasa al segundo lugar el operando cuyo valor
+ * constante conoce. En el grupo 0xB8 el puntero llega asignado desde los dos caminos anteriores, esa pasada
+ * no conoce su valor y la suma queda con el puntero primero en `.rtl` y en `.cse`. El original tiene, por
+ * tanto, un puntero del grupo 0xB8 cuya constante conoce esa pasada y que el planificador no da por
+ * constante; la forma del fuente que reune las dos cosas se desconoce.
+ *
+ * Sentencia replicada del puntero de estado del grupo 0xB8: `e_b8 = ESTADO_PRINCIPAL;` se escribe al final
+ * del camino del grupo 0xB6 y en la rama contraria, los dos caminos que llegan a la prueba de D_800100F9, y
+ * no genera codigo propio. El volcado posterior al reparto (`.sched2`) tiene las dos asignaciones (`lui s4`,
+ * una en el bloque de cada camino) y el de saltos final (`.jump2`) una sola tras la union, que el relleno de
+ * huecos deja en el hueco de retardo del `beqz` de 0x800383DC, como el original (0x800383E0). Causa medida
+ * en el volcado de la primera planificacion (`-dS`): con una sola asignacion antes de la prueba el pseudo
+ * del puntero (89) tiene un solo almacen con nota de constante, la carga del byte 0xF9 (insn 719, la de
+ * 0x80038444) solo depende de la llamada anterior y el planificador la sube por encima de la carga del
+ * digito (insn 715, 0x80038438) y de su almacen en `ids[2]` (insn 717, 0x80038440); la direccion de `ids`
+ * del bucle sube entonces sobre la primera llamada, el pseudo del puntero pasa a 4 usos sobre 50
+ * instrucciones y los registros s3 y s4 del grupo se intercambian (cifra 660). Con las dos asignaciones el
+ * pseudo tiene dos almacenes, el planificador no lo da por constante, la carga (insn 727) depende de los
+ * tres almacenes de `ids` de antes de la llamada (insns 691, 710 y 725) y queda detras del ultimo, como en
+ * el original. Reparto con la sentencia replicada (`-dl` y `-dg`, prioridad floor_log2(R) * R / L): el
+ * puntero a `ids` del bucle del grupo 0xB8 (pseudo 507, 9 usos sobre 50 instrucciones, 3 * 9 / 50 = 0,54)
+ * toma s3; `e_b8` (pseudo 89, 5 usos sobre 29, 2 * 5 / 29 = 0,34) toma s4, que despues reutiliza el
+ * recorrido de la tabla del grupo anterior (0x8003847C); y `e` (pseudo 88), que solo cubre los grupos 0xB6
+ * y 0xBA (7 usos sobre 51, 2 * 7 / 51 = 0,27), se asigna el ultimo de los tres y toma s3 (0x800382D8 y
+ * 0x80038508), con la direccion de `ids` en s4 y la base de D_8006AB70 en s5 en esos dos grupos, como el
+ * original. La forma del fuente original que producia este reparto se desconoce.
+ *
  * Forma vigente del C: `e = ESTADO_PRINCIPAL` se escribe antes del `if` de los grupos 0xB6 y 0xBA (dentro
  * del `if` el CSE sustituye `e` por su valor constante en las lecturas con desplazamiento y el compilador
  * rematerializa la base con un `lui` propio en cada una). Los tres bytes del contador de porcentaje se
@@ -455,8 +472,6 @@ void func_80037FB8(NodoLista* n)
  * directo a la llamada. Los elementos D_8005E836, D_8005E83E y D_8005E858 de D_8005E830 se leen por su
  * propio simbolo, declarado como arreglo incompleto (ver las tablas de arriba): el `lui` queda separado
  * de la carga y el operando lleva el nombre del ensamblador; las instrucciones del `diff` son las mismas.
- *
- * La funcion no lleva ninguna referencia sin codigo.
  *
  * Crea los objetos de los indicadores de la interfaz al entrar en un nivel: reinicia los
  * grupos de tres y cuatro digitos a partir de los contadores del estado principal (cada
@@ -474,6 +489,7 @@ void func_80037FE8(void* lista)
     s16 (*tpos)[2];
     s16 (*pos_b8)[2];
     EstadoPrincipal* e;
+    EstadoPrincipal* e_b8;
 
     func_80038C2C(0, D_80010043, 1);
     func_80038884(0xE, 1);
@@ -538,16 +554,20 @@ void func_80037FE8(void* lista)
             ((ReiniciarSinConversion)func_80037DB4)(o, ids[i], pos[i], 1);
             o->u78.ayudas->m94.t[2] = 0x5DC;
         }
+        /* Sentencia replicada: es la misma que la de las otras ramas. */
+        e_b8 = ESTADO_PRINCIPAL;
+    } else {
+        /* Sentencia replicada: es la misma que la de las otras ramas. */
+        e_b8 = ESTADO_PRINCIPAL;
     }
 
     if (D_800100F9 != 0) {
-        e = ESTADO_PRINCIPAL;
-        bcd = ((DigitosSinConversion)func_80037D3C)(e->r[e->r[0xB8]]);
+        bcd = ((DigitosSinConversion)func_80037D3C)(e_b8->r[e_b8->r[0xB8]]);
         ids[0] = D_8005E830[7];
         i = 0;
         ids[1] = D_8005E81C[(bcd & 0xF0) >> 4];
         ids[2] = D_8005E81C[bcd & 0xF];
-        bcd = ((DigitosSinConversion)func_80037D3C)(e->r[0xB9]);
+        bcd = ((DigitosSinConversion)func_80037D3C)(e_b8->r[0xB9]);
         ids[3] = D_8005E830[0x19];
         ids[4] = D_8005E81C[(bcd & 0xF0) >> 4];
         pos_b8 = D_8005E8F8;
