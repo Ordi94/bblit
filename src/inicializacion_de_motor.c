@@ -357,12 +357,12 @@ typedef struct CabeceraPrimitiva {
  * intensidad va en su propia local y el color se compone en una sola sentencia, con la base primero y la
  * intensidad al final (0x80045204 a 0x80045210).
  *
- * La cuenta de entradas se lee en `cantidad` antes de incrementar el contador, dentro de la envoltura de
- * `e++` e `i++`: el original llena el hueco de retardo de la carga de D_80069652 (`lh`, 0x80045324) con
- * `addiu s6,s6,1` (0x80045328). Con la comparacion escrita directamente contra el global, tras la
- * envoltura, el volcado de la segunda planificacion (`-dR`) muestra que la carga depende de los
- * incrementos a traves de la nota de fin de bucle y no puede quedar delante del contador; la puntuacion
- * sube entonces a 525.
+ * El bucle es un `for` con el avance de la entrada al final del cuerpo. La prueba de entrada (`i <
+ * D_80069652` con el contador a cero) es una referencia del contador fuera del bucle: esta en el volcado
+ * `-ds` y el combinador la reduce a la comparacion de la cuenta con cero (`blez`, 0x80045188) sin
+ * descontarla, de modo que el contador llega al reparto con 8 usos ponderados. La carga de D_80069652 de
+ * la prueba de salida queda delante del incremento del contador, que llena su hueco de retardo (`lh`,
+ * 0x80045324, y `addiu s6,s6,1`, 0x80045328).
  *
  * La primitiva se escribe por miembros de POLY_FT4: el compilador marca un acceso por miembro como
  * acceso a estructura y no lo trata como posible alias de los globales escalares (D_80076188,
@@ -378,28 +378,31 @@ typedef struct CabeceraPrimitiva {
  * almacen a la lista de cabezas: asi los miembros salen por un registro propio, como en el original, y
  * no por el de la cabeza.
  *
- * Reparto de registros guardados (coincide con el original: x s0, y s1, u s2, v s3, entrada `e` s5, contador s6,
- * anchura s7 y altura s8). Dos envolturas `do { } while (0)` no generan codigo y suben la prioridad
- * (R usos ponderados, L vida, prioridad floor_log2(R) * R / L) de los pseudos que se disputaban los registros.
- * Medido en el volcado de reparto del estado final (`-dl`, `-dg`): x 8/48 = 0,500, y 9/55 = 0,491, u 8/51 =
- * 0,471, v 8/52 = 0,462, entrada `e` 11/95 = 0,347, contador 9/94 = 0,287, anchura 6/46 = 0,261 y altura
- * 7/56 = 0,250. (1) La de `p->y3 = y + h;` sube y a 9 usos, por delante de u y v, y la altura de 6 a 7; sin
- * ella y tiene 8/55 = 0,436, se reparte despues de u y v y toma s4, y la puntuacion sube a 595. (2) La de
- * `e++;` e `i++;` sube el contador de 7 a 9 usos, por delante de la anchura y la altura, y `e` de 9 a 11,
- * por delante del contador; sin ella `e` tiene 9/95 = 0,284 y el contador 7/94 = 0,149, el orden de reparto
- * pasa a ser `e`, anchura, altura y contador (anchura s6, altura s7 y contador s8) y la puntuacion sube a
- * 586. Se supone, sin verificar, que el original tiene en cada uno de esos pseudos una referencia ponderada
- * mas que no deja instruccion.
- * La forma del fuente original que producia este reparto se desconoce.
+ * Reparto de registros guardados (coincide con el original: x s0, y s1, u s2, v s3, puntero derivado de la
+ * entrada s4, entrada `e` s5, contador s6, anchura s7 y altura s8). Lo decide la prioridad floor_log2(R) *
+ * R / L, con R usos ponderados y L vida en instrucciones tras la primera planificacion, leidos en el volcado
+ * de reparto (`-dl`, `-dg`): x 8/42 = 0,571, y 8/50 = 0,480, u 8/51 = 0,471, v 8/52 = 0,462, puntero
+ * derivado 11/88 = 0,375, `e` 9/95 = 0,284, contador 8/94 = 0,255, anchura 6/50 = 0,240 y altura 6/56 =
+ * 0,214. Los dieciseis almacenes de coordenadas son miembros distintos por la misma base y no dependen
+ * entre si: la segunda planificacion (`-dR`) les da la misma prioridad y los emite en el orden del original,
+ * con las cuatro sumas encadenadas por v0 delante (0x8004526C a 0x80045290) y el almacen de `v + h` al
+ * final (0x800452B4). El orden del fuente decide en cambio donde mueren x, y y la anchura. La extension
+ * de signo de y escribe por un SUBREG, la primera planificacion (`-dS`) no la retrasa como a las cargas de
+ * x, u y v, y por eso y nace antes que ellos; con los pares sin suma de x y de y por delante de las sumas,
+ * y muere antes que u y v, y la anchura, que muere en `u + w`, vive lo bastante para quedar detras del
+ * contador.
  *
  * Residuo: el original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el
  * enlace con `sll v0,v0,8` sobre el propio v0 y escribe el resto de la primitiva por v1 (el color y la
  * palabra de enlace salen por v0); el C relee D_80076188 (`lui` y `lw`, dos instrucciones en lugar de
  * la copia) porque el almacen a la lista de cabezas, que no es un acceso por miembro, impide reutilizar
- * el valor ya cargado, y en el volcado de planificacion la relectura depende de ese almacen y no sube sobre el.
- * Se supone, sin verificar, que el original obtiene la copia porque la segunda lectura se convierte en copia al
- * volver a pasar el optimizador tras la asignacion de registros y que para eso el almacen intermedio no debe
- * invalidar el registro.
+ * el valor ya cargado, y en el volcado de planificacion (`-dS`) la relectura depende de ese almacen y queda
+ * detras del `sll`, que ya ha pisado v0. La copia del original es una segunda lectura que la pasada posterior
+ * al reparto convierte en copia (la carga sigue en `-dg` y ya es copia en `-dR`): para eso la segunda
+ * lectura tiene que quedar delante del `sll` y sin un almacen entre las dos que pueda tocar el global, y
+ * detras del `or` (0x80045254), porque la copia comparte v1 con la constante 0x09000000. La forma del
+ * fuente original que deja la segunda lectura en ese sitio sin que la eliminacion de subexpresiones
+ * comunes la funda con la primera se desconoce.
  */
 void func_80045150(EntradaLista* e)
 {
@@ -414,61 +417,51 @@ void func_80045150(EntradaLista* e)
     s32 h;
     s32 color;
     s32 intensidad;
-    s32 cantidad;
     u32* cabeza;
 
-    i = 0;
-    if (D_80069652 > 0) {
-        do {
-            g = e->glifo;
-            x = e->x;
-            y = (s8)e->y;
-            u = g->u;
-            v = g->v;
-            w = g->w - 1;
-            h = g->h - 1;
-            func_80039CD0(D_80076188);
-            if (D_8006966A != 0) {
-                intensidad = 0x80 - ((s16)D_800694E2 >> 5);
-                color = 0x2C000000 + (intensidad << 16) + (intensidad << 8) + intensidad;
-            } else {
-                color = 0x2C808080;
-            }
-            cabeza = (u32*)(D_8006AE20 + D_8006967C)->org;
-            ((CabeceraPrimitiva*)D_80076188)->enlace = *cabeza | 0x09000000;
-            ((CabeceraPrimitiva*)D_80076188)->color = color;
-            *cabeza = ((s32)D_80076188 << 8) >> 8;
-            p = (POLY_FT4*)D_80076188;
-            p->x1 = x + w;
-            p->x3 = x + w;
-            do {
-                p->y3 = y + h;
-            } while (0);
-            p->y2 = y + h;
-            p->u3 = u + w;
-            p->u1 = u + w;
-            p->x2 = x;
-            p->x0 = x;
-            p->y1 = y;
-            p->y0 = y;
-            p->u2 = u;
-            p->u0 = u;
-            p->v1 = v;
-            p->v0 = v;
-            p->v3 = v + h;
-            p->v2 = v + h;
-            p->tpage = e->glifo->tpage;
-            p->clut = D_8006D018[e->idx];
-            D_80076188 = D_80076188 + 0x28;
-            if (D_8006958C < D_80076188) {
-                D_80076188 = D_80069680;
-            }
-            do {
-                e++;
-                cantidad = D_80069652;
-                i++;
-            } while (0);
-        } while (i < cantidad);
+    for (i = 0; i < D_80069652; i++) {
+        g = e->glifo;
+        x = e->x;
+        y = (s8)e->y;
+        u = g->u;
+        v = g->v;
+        w = g->w - 1;
+        h = g->h - 1;
+        func_80039CD0(D_80076188);
+        if (D_8006966A != 0) {
+            intensidad = 0x80 - ((s16)D_800694E2 >> 5);
+            color = 0x2C000000 + (intensidad << 16) + (intensidad << 8) + intensidad;
+        } else {
+            color = 0x2C808080;
+        }
+        cabeza = (u32*)(D_8006AE20 + D_8006967C)->org;
+        ((CabeceraPrimitiva*)D_80076188)->enlace = *cabeza | 0x09000000;
+        ((CabeceraPrimitiva*)D_80076188)->color = color;
+        *cabeza = ((s32)D_80076188 << 8) >> 8;
+        p = (POLY_FT4*)D_80076188;
+        p->x2 = x;
+        p->x0 = x;
+        p->y1 = y;
+        p->y0 = y;
+        p->x1 = x + w;
+        p->x3 = x + w;
+        p->y3 = y + h;
+        p->y2 = y + h;
+        p->u3 = u + w;
+        p->u1 = u + w;
+        p->u2 = u;
+        p->u0 = u;
+        p->v1 = v;
+        p->v0 = v;
+        p->v3 = v + h;
+        p->v2 = v + h;
+        p->tpage = e->glifo->tpage;
+        p->clut = D_8006D018[e->idx];
+        D_80076188 = D_80076188 + 0x28;
+        if (D_8006958C < D_80076188) {
+            D_80076188 = D_80069680;
+        }
+        e++;
     }
 }
 #else
