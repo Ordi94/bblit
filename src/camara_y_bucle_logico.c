@@ -1506,7 +1506,7 @@ void func_800353B0(Objeto* a0)
                 s0 = sc->cur->siguiente;
                 func_8003502C(sc->cur);
                 if (s0 == NULL) {
-                    goto fin;
+                    break;
                 }
                 sc->cur = s0;
             }
@@ -1671,7 +1671,6 @@ siguiente:
             sc->cur = sc->cur->siguiente;
         } while (sc->cur != NULL);
     }
-fin:
     if (D_80069698 != NULL) {
         cola = D_80069630;
         D_80069630 = D_80069698;
