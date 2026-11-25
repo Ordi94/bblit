@@ -1684,6 +1684,7 @@ s32 CargarContenedor(s16 archivo, u8* datos)
                         for (;;) {
                         }
                     }
+                    /* La bandera solo vale 0 o 1; la mascara reproduce la copia del original (ver la cabecera). */
                     if (es_jugador & 1) {
                         D_80069504 = (Objeto*)AppendListNode((NodoLista*)D_80069504, (NodoLista*)entidad);
                     } else {
