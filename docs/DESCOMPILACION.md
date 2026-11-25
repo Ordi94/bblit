@@ -821,7 +821,7 @@ escribe la cabecera).
 | `func_80020B90` | `src/logica_de_niveles.c` | envoltura | 1 | coincide | Planificador. Sin ella `-dR` emite `sw v1,0x20(s3)` (pseudo 1333) por encima de `sw v0,0x18(s3)` (pseudo 1330), sin dependencia entre los dos, y el `sw 0x18` queda tras el `lui` y el `addiu` de `D_80069D40`; con ella la nota de inicio de bucle tras el `sw 0x20` hace que ese `lui` tenga antidependencia con los dos almacenes, que salen en el orden del original. No genera instrucciones y `.greg` no cambia. Sin ella la cifra es 1055 y con ella, junto al molde `volatile` de la relectura de `desp.x`, la función coincide (0) |
 | `func_80020B90` | `src/logica_de_niveles.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x48 (`addiu sp` en 0x80020B90) y sin la local el marco es 0x40; la cifra medida sin la local es 969 y con ella 0. |
 | `func_8004048C` | `src/entrada_de_mando.c` | reserva de pila | 1 | coincide | Reserva de pila: el original reserva 0x28 (`addiu sp` en 0x80040494) y sin la local el marco es 0x20; la cifra medida sin la local es 619 y con ella 0. |
-| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 1 | NON_MATCHING 3605 | Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es 0x208; la cifra medida sin la local es 4895 y con ella 3605. La reserva es 1 arreglo de 8 bytes antes de `tamanos`. |
+| `CargarContenedor` | `src/cargador_de_niveles_y_cd.c` | reserva de pila | 1 | NON_MATCHING 3480 | Reserva de pila: el original reserva 0x210 (`addiu sp` en 0x800415A0) y sin la local el marco es 0x208; la cifra medida sin la local es 4770 y con ella 3480. La reserva es 1 arreglo de 8 bytes antes de `tamanos`. |
 
 ## Medir el progreso
 
