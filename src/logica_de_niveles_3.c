@@ -2296,8 +2296,7 @@ fin_de_disparadores:
         goto siguiente_paso_de_secuencia;
     }
     if (t->w118 != 0 && (t->fot->w0C & 0x80) && (o->flags14 & 0x12)) {
-        f14 = o->flags14;
-        f14 &= 0xF9FFFFFF;
+        f14 = o->flags14 & 0xF9FFFFFF;
         o->flags14 = f14;
         if (t->fot->w0C & 4) {
             o->flags14 = f14 | 0x100;
