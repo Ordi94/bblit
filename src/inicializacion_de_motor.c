@@ -346,16 +346,28 @@ typedef struct CabeceraPrimitiva {
     u32 color;
 } CabeceraPrimitiva;
 
-#ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 505 con la configuracion versionada (g = 8 del archivo; ejes 5 de operando, 0
- * reordenadas, 18 insertadas o borradas). Residuo: la copia del puntero a la primitiva (ver el ultimo
- * parrafo) y el bloque del color, donde la constante 0x80 y la intensidad salen las dos en a0 y el original
- * carga la constante en v1 y deja la intensidad en el mismo registro que el color, a2 (`subu a2,v1,v0`,
- * 0x800451F4, y `addu a2,a2,a0`, 0x80045210). En el volcado de reparto (`-dl`, `-dg`) la intensidad es un
- * pseudo local de la rama, atado al de la constante, y el color un pseudo global que toma a2. La
- * intensidad va en su propia local y el color se compone en una sola sentencia, con la base primero y la
- * intensidad al final (0x80045204 a 0x80045210).
+ * Dibuja una lista de glifos: por cada entrada encola en la lista de ordenacion activa un poligono texturado
+ * de cuatro vertices con la posicion, el tamano y la textura del glifo, y avanza el cursor del anillo de
+ * primitivas (D_80076188).
+ *
+ * Dos operaciones van escritas en dos sentencias sobre la misma variable, porque el original tiene el valor
+ * intermedio en el registro de la variable y con `-O2` la expansion a RTL (`-dr`) solo escribe en el pseudo
+ * de una variable el resultado de la operacion de nivel superior de una sentencia.
+ * (1) El color. El original calcula la intensidad en a2 (`subu a2,v1,v0`, 0x800451F4), el registro en el
+ * que despues compone el color (`addu a2,a2,a0`, 0x80045210), que la otra rama carga con la constante (`lui
+ * a2`, 0x80045214) y que se almacena tras la union de las ramas (`sw a2,4(v0)`, 0x80045250). Con las dos
+ * sentencias la resta es `(set (reg/v 90) (minus ...))` (insn 78), con 90 el pseudo de `color`. Escrita la
+ * composicion en una sola sentencia, la resta nace en el pseudo 112, distinto del 90, el reparto no los une
+ * y la puntuacion es 740.
+ * (2) El recorte de la direccion de la primitiva a 24 bits. El original lee la direccion en v0 (`lw v0`,
+ * 0x80045244), almacena por ella el color y el enlace (0x80045250 y 0x8004525C), la copia a v1 (`addu
+ * v1,v0,zero`, 0x80045258) y la desplaza sobre el propio v0 (`sll v0,v0,8`, 0x80045260, y `sra v0,v0,8`,
+ * 0x80045264). Con las dos sentencias los dos desplazamientos escriben el pseudo 91 de `direccion` (insns
+ * 135 y 137): la copia a `p` (insn 133) lee un pseudo que la instruccion siguiente reescribe y queda delante
+ * del `sll`, y el pseudo, con una sola muerte, es local del bloque y toma v0. Con `direccion = (direccion <<
+ * 8) >> 8;` el `sll` escribe el pseudo 131 y el `sra` el 91, que muere dos veces y pasa al reparto global:
+ * salen `sll v0,v1,8` y `sra a1,v0,8` y la puntuacion es 340.
  *
  * El bucle es un `for` con el avance de la entrada al final del cuerpo. La prueba de entrada (`i <
  * D_80069652` con el contador a cero) es una referencia del contador fuera del bucle: esta en el volcado
@@ -374,9 +386,9 @@ typedef struct CabeceraPrimitiva {
  * la primera planificacion (`-dS`) el almacen del color tiene una antidependencia sobre la lectura de la
  * cabeza (los dos van a direcciones variables), de modo que no puede quedar delante de ella. Las dos
  * primeras palabras (enlace y color) se escriben por miembros de
- * `CabeceraPrimitiva` y el puntero `p` a los miembros del poligono se lee de nuevo de D_80076188 tras el
- * almacen a la lista de cabezas: asi los miembros salen por un registro propio, como en el original, y
- * no por el de la cabeza.
+ * `CabeceraPrimitiva` sobre la direccion leida de D_80076188 y el puntero `p` a los miembros del poligono
+ * es la copia de esa direccion tomada antes del recorte: asi los miembros salen por un registro propio
+ * (v1), como en el original.
  *
  * Reparto de registros guardados (coincide con el original: x s0, y s1, u s2, v s3, puntero derivado de la
  * entrada s4, entrada `e` s5, contador s6, anchura s7 y altura s8). Lo decide la prioridad floor_log2(R) *
@@ -392,19 +404,11 @@ typedef struct CabeceraPrimitiva {
  * y muere antes que u y v, y la anchura, que muere en `u + w`, vive lo bastante para quedar detras del
  * contador.
  *
- * Residuo: el original copia el puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) antes de calcular el
- * enlace con `sll v0,v0,8` sobre el propio v0 y escribe el resto de la primitiva por v1 (el color y la
- * palabra de enlace salen por v0); el C relee D_80076188 (`lui` y `lw`, dos instrucciones en lugar de
- * la copia) porque el almacen a la lista de cabezas, que no es un acceso por miembro, impide reutilizar
- * el valor ya cargado, y en el volcado de planificacion (`-dS`) la relectura depende de ese almacen y queda
- * detras del `sll`, que ya ha pisado v0. En el original el desplazamiento escribe sobre el mismo pseudo
- * que lee la copia: la copia tiene entonces una antidependencia sobre el `sll` y la primera planificacion
- * la deja entre el almacen del enlace y el (la segunda la sube hasta detras del `or`, 0x80045254, donde v1
- * queda libre de la constante 0x09000000); el reparto local no puede sustituir el origen de la copia por
- * su destino, porque el origen se reescribe, y el pseudo de la direccion, con una sola muerte, sigue siendo
- * local del bloque y toma v0. En el C el primer paso de `(x << 8) >> 8` nace en un temporal y no en la
- * variable, de modo que nada ata una copia de la direccion delante del desplazamiento y la eliminacion de
- * subexpresiones comunes la funde con la lectura.
+ * La copia del puntero a la primitiva (`addu v1,v0,zero`, 0x80045258) queda delante del recorte porque el
+ * `sll` reescribe el pseudo que ella lee: en el volcado de la primera planificacion (`-dS`) la copia tiene
+ * una antidependencia sobre el `sll` y sale entre el almacen del enlace y el; la segunda planificacion la
+ * sube hasta detras del `or` (0x80045254), donde v1 queda libre de la constante 0x09000000. El reparto
+ * local no sustituye el origen de la copia por su destino, porque el origen se reescribe.
  */
 void func_80045150(EntradaLista* e)
 {
@@ -418,7 +422,7 @@ void func_80045150(EntradaLista* e)
     s32 i;
     s32 h;
     s32 color;
-    s32 intensidad;
+    s32 direccion;
     u32* cabeza;
 
     for (i = 0; i < D_80069652; i++) {
@@ -431,16 +435,21 @@ void func_80045150(EntradaLista* e)
         h = g->h - 1;
         func_80039CD0(D_80076188);
         if (D_8006966A != 0) {
-            intensidad = 0x80 - ((s16)D_800694E2 >> 5);
-            color = 0x2C000000 + (intensidad << 16) + (intensidad << 8) + intensidad;
+            /* Operacion en dos sentencias: la resta nace en el pseudo del color, como `subu a2,v1,v0` (0x800451F4). */
+            color = 0x80 - ((s16)D_800694E2 >> 5);
+            color = color + (0x2C000000 + (color << 16) + (color << 8));
         } else {
             color = 0x2C808080;
         }
         cabeza = (u32*)(D_8006AE20 + D_8006967C)->org;
-        ((CabeceraPrimitiva*)D_80076188)->enlace = *cabeza | 0x09000000;
-        ((CabeceraPrimitiva*)D_80076188)->color = color;
-        *cabeza = ((s32)D_80076188 << 8) >> 8;
-        p = (POLY_FT4*)D_80076188;
+        direccion = D_80076188;
+        ((CabeceraPrimitiva*)direccion)->enlace = *cabeza | 0x09000000;
+        ((CabeceraPrimitiva*)direccion)->color = color;
+        p = (POLY_FT4*)direccion;
+        /* Operacion en dos sentencias: el `sll` escribe el pseudo de la direccion, como `sll v0,v0,8` (0x80045260). */
+        direccion <<= 8;
+        direccion >>= 8;
+        *cabeza = direccion;
         p->x2 = x;
         p->x0 = x;
         p->y1 = y;
@@ -466,9 +475,6 @@ void func_80045150(EntradaLista* e)
         e++;
     }
 }
-#else
-INCLUDE_ASM("asm/nonmatchings/inicializacion_de_motor", func_80045150);
-#endif
 
 void func_80045368(s16 a0, s16 a1)
 {
