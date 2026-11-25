@@ -507,6 +507,10 @@ fin:
  * puntero a +6 del nodo (590 con la cola en cada camino). La forma del fuente original que producia este
  * reparto se desconoce.
  *
+ * La lectura `*(u16*)((u8*)t->sec + (o->w17C << 1) + 6)` equivale a indexar desde `desplazamiento` (+6 del
+ * nodo), que el nodo no declara como arreglo: por el miembro, `(&t->sec->desplazamiento)[o->w17C]`, la
+ * cifra es 610.
+ *
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
  * muerte si lo hirieron, la del paso siguiente si no), interpreta las banderas del fotograma
