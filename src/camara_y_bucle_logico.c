@@ -1347,11 +1347,8 @@ void func_80035244(void)
  * Llamada compartida. El original tiene una sola llamada a func_800351B4 (0x800358A4), en la busqueda del modelo:
  * la atenuacion por proyeccion recarga el objeto en `a0` y salta a ella (0x80035DCC y `j` de 0x80035DD0) y la
  * atenuacion por distancia salta a esa recarga (`j` de 0x80035754). Aqui la recarga es la etiqueta `recargar`
- * (`t = sc->cur; goto llamar;`) y la llamada la etiqueta `llamar`. Con la llamada escrita en cada camino
- * (`func_800351B4(sc->cur); goto siguiente;`) el compilador une la de la distancia con la de la atenuacion, que
- * comparten dos instrucciones (`lw a0` y `jal`), pero no la de la atenuacion con la del modelo, que solo comparten
- * la `jal`: quedan dos `jal` y el resto del ensamblador de la funcion no cambia (salida de `cc1` sobre una copia
- * con esa forma).
+ * (`t = sc->cur; goto llamar;`) y la llamada la etiqueta `llamar`. El compilador no une llamadas que solo
+ * comparten la `jal`, y el original tiene una sola: por eso la llamada se escribe una vez.
  *
  * Copias de `t`. El puntero al objeto en curso se copia en la local `t` con `t = sc->cur;` escrita tres veces:
  * antes de la prueba de la bandera 0x10000 de la busqueda del modelo, tras esa busqueda (delante de la prueba de
@@ -1440,16 +1437,11 @@ void func_80035244(void)
  * principio: con la asignacion inicial el compilador la calcula en el hueco de retardo del primer salto y
  * desplaza el resto del prologo; el original calcula `lui s1,0x1f80` mas tarde.
  *
- * El recorrido de los nodos de coordenadas se escribe con salto hacia atras en lugar de un bucle. Con ese
- * recorrido como `while (sc->n78 != NULL)` el optimizador de bucles saca de el la direccion de v80 y la de c104
- * (volcado `-dL`: el recorrido tiene 42 instrucciones, regno 376 y 377 con vida 1 "moved", y despues otra vez
- * fuera del bucle principal con vida de 54 y 55 instrucciones), ocupan s5 y s6 y el marco sube de 0x28 a 0x30
- * (cifra 1388); el original calcula esas direcciones en el sitio. Se supone, por una copia minima de un bucle sin
- * llamadas con una direccion invariante de vida 1 (con 58 instrucciones se saca y con 60 no), que esa asignacion
- * solo se queda en el bucle si este tiene 59 instrucciones o mas, y, sin verificar, que el original tampoco tenia
- * notas de bucle en ese recorrido. El
- * resultado de la ultima comprobacion de proyeccion se lee de los campos (sc->sx, sc->sy) donde el original los
- * relee, no de locales.
+ * El recorrido de los nodos de coordenadas se escribe con salto hacia atras: con notas de bucle el optimizador
+ * saca de el las direcciones de v80 y c104, que ocupan s5 y s6 y suben el marco de 0x28 a 0x30; el original las
+ * calcula en el sitio. Se supone, sin verificar, que el original tampoco tenia notas de bucle en ese recorrido.
+ * El resultado de la ultima comprobacion de proyeccion se lee de los campos (sc->sx, sc->sy) donde el original
+ * los relee, no de locales.
  *
  * Lista de comprobaciones del cuadro: recorre los objetos de escena, los clasifica en cuatro listas
  * (segun sus indicadores) con la memoria de trabajo del scratchpad en 0x1F800000, los vuelve a enlazar en

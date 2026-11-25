@@ -446,18 +446,14 @@ s32 func_800151FC(void)
  * 188 insertadas o borradas). Flujo, orden de instrucciones y distribucion de bloques iguales al original;
  * quedan el reparto de registros del recorrido del directorio y el orden de los dos operandos en las sumas de
  * direccion del recorrido.
- * Causa del residuo, medida con `cc1` sobre una copia del archivo (volcados `-dL`, `-dl` y `-dg`): el original recorre
- * el bucle del directorio con el optimizador de bucles. Escrito como bucle real, con los accesos por el simbolo
- * `D_800697B0` y `i * 0x28` en linea, el volcado `-dL` iza la base y la base mas 0x24, reduce `i * 0x28` a un registro
- * que avanza 0x28 tras el contador y deja una copia suya en el preludio de cada bucle interior, y las sumas salen con
- * la suma delante de la base: es el codigo del original en 0x80015CAC a 0x80015CB8, 0x80015CE0, 0x80015D14 y
- * 0x80015D7C. Ese mismo volcado iza las tres cadenas del desplazamiento (`moved to`) mientras `grupo` sea invariante
- * en el bucle y no las lista como movibles cuando `grupo` tiene una asignacion entre las notas del bucle: en el
- * original `grupo` contaba como asignado dentro del bucle. No se conoce la forma del fuente que lo producia sin dejar
- * instruccion, y por eso el bucle se escribe aqui con etiqueta. Al no llevar notas de bucle el cuerpo exterior, sus
- * referencias pesan un nivel menos que en el original y el asignador ordena las copias de la fila delante de la fila
- * y la base delante de `grupo` (cifras mas abajo); en la copia con el bucle real, el orden del original (contador,
- * fila, copias de la fila, `grupo`, base) sale con un nivel de bucle mas alrededor de los bucles segundo y tercero.
+ * Causa del residuo: el original recorre el bucle del directorio con el optimizador de bucles (base y base mas 0x24
+ * izadas, desplazamiento de la ranura reducido a un registro que avanza 0x28 tras el contador, una copia suya en el
+ * preludio de cada bucle interior y las sumas con la suma delante de la base: 0x80015CAC a 0x80015CB8, 0x80015CE0,
+ * 0x80015D14 y 0x80015D7C) y a la vez conserva en el cuerpo las tres cadenas del desplazamiento; se supone, sin
+ * verificar en la funcion, que para ello `grupo` contaba como asignado dentro del bucle. No se conoce la forma del
+ * fuente que lo producia sin dejar instruccion y el bucle se escribe con etiqueta: sus referencias pesan un nivel
+ * menos y el asignador ordena las copias de la fila delante de la fila y la base delante de `grupo` (cifras mas
+ * abajo).
  * Envoltura del caso 4 del resultado del sondeo: la `do { } while (0)` sobre `D_8006AA70[0x1B] = 5` no genera
  * codigo (el ensamblador de `cc1` solo cambia en cinco lineas, de v0 por v1). Volcado `-dl`, bloque de ese caso:
  * sin ella la parte alta de la direccion (pseudo 464, 2 referencias) y la direccion (463, 3) se unen en una
