@@ -134,7 +134,11 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * indice en una local y la suma una sola vez tras la reunion la puntuacion es 675.
  *
  * La pagina, v, u y la anchura se leen en locales antes de operar, como el original (0x8001E640 a 0x8001E64C). La
- * constante 2 tiene variable propia y se asigna antes de esas lecturas (`li` en 0x8001E63C, delante de la primera).
+ * constante 2 tiene variable propia y se asigna antes de esas lecturas (`li` en 0x8001E63C, delante de la primera):
+ * el original la carga una sola vez en un registro y la usa dos veces, en la resta que da el desplazamiento
+ * (0x8001E658) y en la comparacion del final (`bne t2,t0` en 0x8001E6E0). Con la constante escrita en la resta en
+ * lugar de `desplazamiento_maximo` la puntuacion es 60; sin la local `pagina`, con el campo en sus usos, 160; sin
+ * la local `u_cuadro`, con el campo en su uso, 180.
  *
  * Las tres `do { } while (0);` no generan codigo: sus notas de bucle limitan la primera planificacion y ponderan al
  * doble los usos que encierran. Sus cuerpos son codigo real de la funcion, sin `break` ni `continue`.
@@ -144,7 +148,10 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * del desplazamiento de la columna (insn 76), que no dependen de ellas; con ella las lecturas quedan seguidas
  * (pagina, v, u y anchura: insn 60, 62, 64 y 66) delante del primer `srl` (insn 79), como en el original. En
  * `.lreg` cambia ademas el reparto de v y la anchura: con ella v y su suma toman a2 y la anchura a1; sin ella, al
- * reves. Sin la envoltura la puntuacion es 55.
+ * reves. La prioridad de la asignacion local es floor_log2(usos) * usos / vida. La cantidad de v y su suma
+ * (pseudos 86 y 123) tiene sin la envoltura 6 usos y vida 10 (1,20), por delante de la anchura y su desplazamiento
+ * (pseudos 87 y 126: 7 usos, vida 14, 1,00), y toma a1; con ella tiene 7 usos y vida 17 (0,82), por detras de la
+ * anchura (8 usos, vida 20, 1,20), que toma a1. Sin la envoltura la puntuacion es 55.
  *
  * La del puntero al sprite, causa medida con `-dS`: sin ella las cargas del puntero crudo (insn 108, pseudo 124) y
  * del campo 0x0E (insn 113, pseudo 91) suben por delante de la suma de +0 (insn 92, pseudo 84), de la que no
