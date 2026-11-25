@@ -1369,19 +1369,20 @@ void func_80035244(void)
  *
  * En la busqueda del modelo `busca` se asigna antes que `lim`, y ese orden decide sus registros. Los dos pseudos
  * tienen 4 usos ponderados y gana el de vida mas corta, que es el asignado en segundo lugar (volcados `.lreg` y
- * `.greg`): `lim` (pseudo 91, 13 instrucciones, 2 * 4 / 13 = 0,615) toma `a1` y `busca` (pseudo 92, 14, 0,571)
+ * `.greg`): `lim` (pseudo 90, 13 instrucciones, 2 * 4 / 13 = 0,615) toma `a1` y `busca` (pseudo 91, 14, 0,571)
  * `a2`, como el original. Con la asignacion de `lim` primero las vidas se intercambian, `lim` toma `a2` y `busca`
  * `a1`, y la cifra es 255 en lugar de 235.
  *
  * Par `pz--; pz++;` antes de la sentencia `GUARDAR_MAC3(pz);` del recorrido de proyeccion de los ocho puntos (el
  * segundo, con `sc->i40 < 8`): no genera codigo (el combinador anula el par y el ensamblador tiene las mismas
  * instrucciones que sin el). Causa medida (volcado `-dl`, `-dg`, `-G8`): el par suma cuatro referencias ponderadas
- * por la profundidad del bucle, de modo que el puntero `pz` (pseudo 88, 393 instrucciones de vida y 394 con el par)
- * pasa de 6 a 18 usos y su prioridad de 2 * 6 / 393 = 0,031 a 4 * 18 / 394 = 0,183, por delante de la constante
- * -3 (pseudo 89, 3 * 11 / 792 = 0,042) y del puntero a `sx` (pseudo 87, 2 * 6 / 395 = 0,030); el orden de
+ * por la profundidad del bucle, de modo que el puntero `pz` (pseudo 87, 395 instrucciones de vida y 396 con el par)
+ * pasa de 6 a 18 usos y su prioridad de 2 * 6 / 395 = 0,030 a 4 * 18 / 396 = 0,182, por delante de la constante
+ * -3 (pseudo 88, 3 * 11 / 796 = 0,041 con el par) y del puntero a `sx` (pseudo 86, 2 * 6 / 397 = 0,030); el orden de
  * asignacion pasa a ser `pz` en s2, constante en s3 y `sx` en s4, que es el del original (`addiu s2` en
- * 0x80035540 y `addiu s4` en 0x8003553C, con -3 en s3). Sin el par la cifra es 280 y con el 235. La forma del
- * fuente original que producia este reparto se desconoce.
+ * 0x80035540 y `addiu s4` en 0x8003553C, con -3 en s3). Sin el par el orden es la constante en s2, `sx` en s3 y
+ * `pz` en s4, y la cifra es 295 en lugar de 235. La forma del fuente original que producia este reparto se
+ * desconoce.
  *
  * La diferencia de bytes que queda es el registro de recarga, en 35 lineas del `diff`: el original usa `a3` y aqui
  * sale `t7`. Los operandos de esas lineas no son pseudos: las cargas de `sc->p100` y `sc->p144` son accesos a
@@ -1430,8 +1431,8 @@ void func_80035244(void)
  *
  * Los dos recorridos de la rama de volumen (los nodos de coordenadas y la busqueda del modelo) se escriben con
  * salto hacia atras en lugar de `do { } while`: con el bucle natural el optimizador de bucles saca de ambos la
- * direccion de v80 y la de c104 (en el volcado de bucles, regno 369 y 370 "moved", y despues otra vez fuera del
- * recorrido principal con vida de 51 y 52 instrucciones), ocupan s5 y s6 y el marco sube de 0x28 a 0x30; el
+ * direccion de v80 y la de c104 (en el volcado de bucles, regno 372 y 373 "moved", y despues otra vez fuera del
+ * recorrido principal con vida de 53 y 54 instrucciones), ocupan s5 y s6 y el marco sube de 0x28 a 0x30; el
  * original calcula esas direcciones en el sitio. El volcado confirma el efecto; se supone, sin verificar, que el
  * original tampoco tenia notas de bucle en esos dos recorridos. El resultado de la ultima comprobacion de
  * proyeccion se lee de los campos (sc->sx, sc->sy) donde el original los relee, no de locales.
@@ -1447,7 +1448,6 @@ void func_800353B0(Objeto* a0)
     Objeto* s0;
     Objeto* t;
     Objeto* cola;
-    GsCOORDINATE2* n;
     s16* psx;
     s32* pz;
     s32 m3;
@@ -1597,11 +1597,10 @@ sigue2:
                         sc->n78 = &sc->cur->coord;
                         if (sc->n78 != NULL) {
 otro_nodo:
-                            n = sc->n78;
-                            gte_SetRotMatrix(&n->coord);
-                            sc->d0 = n->coord.t[0];
-                            sc->d4 = n->coord.t[1];
-                            sc->d8 = n->coord.t[2];
+                            gte_SetRotMatrix(&sc->n78->coord);
+                            sc->d0 = sc->n78->coord.t[0];
+                            sc->d4 = sc->n78->coord.t[1];
+                            sc->d8 = sc->n78->coord.t[2];
                             sc->i40 = 0;
                             sc->p100 = sc->v80;
                             sc->p144 = sc->c104;
