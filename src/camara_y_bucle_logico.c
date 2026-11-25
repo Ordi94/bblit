@@ -1344,26 +1344,37 @@ void func_80035244(void)
  * D_8006AA7C, que el original lee por el simbolo y aqui sale como `D_8006AA70+0xc`, y las direcciones del
  * scratchpad que el desensamblado del original nombra como simbolos.
  *
- * La atenuacion sigue el flujo del original: el original tiene una sola llamada a func_800351B4 (0x800358A4) y la
- * atenuacion por distancia y la de proyeccion saltan a ella tras recargar el objeto en `a0` (0x80035DCC), con la
- * `jal` en el sitio de la busqueda del modelo. Aqui las dos atenuaciones comparten la recarga (`recargar`, con la
- * asignacion de `t` desde `sc->cur` tras el almacen) y saltan a la llamada de la busqueda del modelo (`llamar`).
+ * Llamada compartida. El original tiene una sola llamada a func_800351B4 (0x800358A4), en la busqueda del modelo:
+ * la atenuacion por proyeccion recarga el objeto en `a0` y salta a ella (0x80035DCC y `j` de 0x80035DD0) y la
+ * atenuacion por distancia salta a esa recarga (`j` de 0x80035754). Aqui la recarga es la etiqueta `recargar`
+ * (`t = sc->cur; goto llamar;`) y la llamada la etiqueta `llamar`. Con la llamada escrita en cada camino
+ * (`func_800351B4(sc->cur); goto siguiente;`) el compilador une la de la distancia con la de la atenuacion, que
+ * comparten dos instrucciones (`lw a0` y `jal`), pero no la de la atenuacion con la del modelo, que solo comparten
+ * la `jal`: quedan dos `jal` y el resto del ensamblador de la funcion no cambia (salida de `cc1` sobre una copia
+ * con esa forma).
  *
- * Copias de `t`. El puntero al objeto en curso se copia en la local `t` con `t = sc->cur;` escrita cinco veces:
- * antes de las pruebas de la bandera 0x10000 de la busqueda del modelo, en `modelo_hallado`, tras la proyeccion de
- * un objeto simple, en `tras_proyeccion` (proyeccion de volumen) y en `recargar`. Es la sentencia duplicada en
- * caminos que se reunen (en `llamar` y en las pruebas de `atenuar`): una sola copia tras la union serviria
- * igual, pero el original carga `sc->cur` en `a0` en cada camino (0x8003584C y 0x80035888 en la busqueda del
- * modelo) y las copias no generan codigo mas alla de esa carga, que el original tambien tiene. Con una sola
- * asignacion en cada punto de reunion la cifra es 745 (una tras `atenuar` en lugar de las dos copias de las
- * proyecciones) y 500 (una tras `llamar` en lugar de las otras tres). La etiqueta `tras_proyeccion` va despues de
- * su copia: el salto desde la proyeccion simple llega con el objeto ya en `a0`, como el `j` de 0x80035A54, que
- * salta la carga y entra en 0x80035D8C (con la etiqueta antes de la copia la cifra es 240).
- * Volcado de `cc1` (`-dl` y `-dg`, `-G8`): `t` es un solo pseudo de usuario (84) con cinco asignaciones, las cinco
- * cargas de `sc->cur`, 30 usos sobre 32 insns, sin cruzar llamadas y con preferencia por `a0` (es el argumento de
- * `func_800351B4`): prioridad 3,750, quinto del orden del reparto global, y toma `a0`, como el original en
- * 0x8003584C, 0x80035888, 0x80035A24, 0x80035D88 y 0x80035DCC. La forma del fuente original que producia este
- * reparto se desconoce.
+ * Copias de `t`. El puntero al objeto en curso se copia en la local `t` con `t = sc->cur;` escrita tres veces:
+ * antes de la prueba de la bandera 0x10000 de la busqueda del modelo, en `modelo_hallado` y en `recargar`. Es la
+ * sentencia duplicada en caminos que se reunen en `llamar`: una sola copia tras la union serviria igual, pero el
+ * original carga `sc->cur` en `a0` en cada camino (0x8003584C, 0x80035888 y 0x80035DCC) y las copias no generan
+ * codigo mas alla de esa carga, que el original tambien tiene. Con una sola asignacion tras `llamar` en lugar de
+ * las tres la cifra es 500, y sin la copia de la prueba 0x10000 (leyendo `sc->cur->flags08`) 250.
+ * Volcado de `cc1` (`-dl` y `-dg`, `-G8`): `t` es un solo pseudo de usuario (84) con tres asignaciones, 16 usos
+ * sobre 12 insns y sin cruzar llamadas: prioridad 4 * 16 / 12 = 5,33, segundo del orden del reparto global, y toma
+ * `a0`, como el original. La forma del fuente original que producia este reparto se desconoce.
+ *
+ * Prueba de atenuacion de las proyecciones. La prueba `(sc->cur->flags04 & 2) == 0 && (sc->cur->w3C & 0xC0) == 0`
+ * con su almacen `sc->cur->w24 = (0x400 - sc->i40) >> 7;` esta escrita dos veces: al final de la proyeccion de un
+ * objeto simple y tras las dos proyecciones. El original tiene la prueba propia de la proyeccion simple
+ * (0x80035A24 a 0x80035A58) ademas de la comun (0x80035D88 a 0x80035DB4) y un solo almacen (0x80035DB8 a
+ * 0x80035DC8): el fallo de la primera prueba de la copia salta mas alla de la comun (`bnez` de 0x80035A38 a
+ * 0x80035DD8), el acierto de las dos salta al almacen comun (`beqz` de 0x80035A4C) y el fallo de la segunda entra
+ * en la prueba comun pasada la carga del objeto (`j` de 0x80035A54 a 0x80035D8C), una repeticion de la prueba que
+ * el original tambien ejecuta. La copia del almacen no genera codigo propio: el compilador la une con la comun y
+ * deja el salto. Volcado (`-dl` y `-dg`): el objeto de cada prueba es un pseudo propio de su camino (332 y 422,
+ * 8 usos sobre 12 insns cada uno), que choca con `v0` y `v1` y toma `a0`, como el original (`lw a0` en 0x80035A24
+ * y 0x80035D88). Con una sola prueba, escrita tras las dos proyecciones, la cifra es 2785. La forma del fuente
+ * original que producia este reparto se desconoce.
  *
  * La cola de la lista usa una local propia (`cola`) porque `t` vive en varios bloques y pasa por el reparto global.
  *
@@ -1376,12 +1387,14 @@ void func_80035244(void)
  * Par `pz--; pz++;` antes de la sentencia `GUARDAR_MAC3(pz);` del recorrido de proyeccion de los ocho puntos (el
  * segundo, con `sc->i40 < 8`): no genera codigo (el combinador anula el par y el ensamblador tiene las mismas
  * instrucciones que sin el). Causa medida (volcado `-dl`, `-dg`, `-G8`): el par suma cuatro referencias ponderadas
- * por la profundidad del bucle, de modo que el puntero `pz` (pseudo 87, 395 instrucciones de vida y 396 con el par)
- * pasa de 6 a 18 usos y su prioridad de 2 * 6 / 395 = 0,030 a 4 * 18 / 396 = 0,182, por delante de la constante
- * -3 (pseudo 88, 3 * 11 / 796 = 0,041 con el par) y del puntero a `sx` (pseudo 86, 2 * 6 / 397 = 0,030); el orden de
+ * por la profundidad del bucle, de modo que el puntero `pz` (pseudo 87, 400 instrucciones de vida y 401 con el par)
+ * pasa de 6 a 18 usos y su prioridad de 2 * 6 / 400 = 0,030 a 4 * 18 / 401 = 0,180, por delante de la constante
+ * -3 (pseudo 88, 3 * 11 / 806 = 0,041 con el par) y del puntero a `sx` (pseudo 86, 2 * 6 / 402 = 0,030); el orden de
  * asignacion pasa a ser `pz` en s2, constante en s3 y `sx` en s4, que es el del original (`addiu s2` en
- * 0x80035540 y `addiu s4` en 0x8003553C, con -3 en s3). Sin el par el orden es la constante en s2, `sx` en s3 y
- * `pz` en s4, y la cifra es 295 en lugar de 235. La forma del fuente original que producia este reparto se
+ * 0x80035540 y `addiu s4` en 0x8003553C, con -3 en s3). Sin el par el orden es la constante en s2, `pz` en s3 y
+ * `sx` en s4, y la cifra es 280 en lugar de 235. Los usos de los tres pseudos son simetricos (`pz` y `sx` tienen
+ * los mismos dos usos a las mismas profundidades de bucle), asi que con una mencion por sentencia `pz` no puede
+ * quedar por delante de la constante y `sx` por detras. La forma del fuente original que producia este reparto se
  * desconoce.
  *
  * La diferencia de bytes que queda es el registro de recarga, en 35 lineas del `diff`: el original usa `a3` y aqui
@@ -1429,13 +1442,17 @@ void func_80035244(void)
  * principio: con la asignacion inicial el compilador la calcula en el hueco de retardo del primer salto y
  * desplaza el resto del prologo; el original calcula `lui s1,0x1f80` mas tarde.
  *
- * Los dos recorridos de la rama de volumen (los nodos de coordenadas y la busqueda del modelo) se escriben con
- * salto hacia atras en lugar de `do { } while`: con el bucle natural el optimizador de bucles saca de ambos la
- * direccion de v80 y la de c104 (en el volcado de bucles, regno 372 y 373 "moved", y despues otra vez fuera del
- * recorrido principal con vida de 53 y 54 instrucciones), ocupan s5 y s6 y el marco sube de 0x28 a 0x30; el
- * original calcula esas direcciones en el sitio. El volcado confirma el efecto; se supone, sin verificar, que el
- * original tampoco tenia notas de bucle en esos dos recorridos. El resultado de la ultima comprobacion de
- * proyeccion se lee de los campos (sc->sx, sc->sy) donde el original los relee, no de locales.
+ * El recorrido de los nodos de coordenadas y el de la busqueda del modelo se escriben con salto hacia atras en
+ * lugar de un bucle. Con el recorrido de los nodos como `while (sc->n78 != NULL)` el optimizador de bucles saca de
+ * el la direccion de v80 y la de c104 (volcado `-dL`: el recorrido tiene 42 instrucciones, regno 379 y 380 con
+ * vida 1 "moved", y despues otra vez fuera del bucle principal con vida de 54 y 55 instrucciones), ocupan s5 y s6
+ * y el marco sube de 0x28 a 0x30 (cifra 1388); el original calcula esas direcciones en el sitio. En el mismo
+ * volcado el bucle principal, que tiene llamadas y 428 instrucciones, no saca asignaciones de vida 1 ni 2: se
+ * supone, sin verificar en el fuente del compilador, que una asignacion invariante de vida 1 solo se queda en un
+ * bucle sin llamadas si este pasa de unas 60 instrucciones, y que el original tampoco tenia notas de bucle en
+ * ese recorrido. Con la busqueda del modelo como `do { } while (idx < lim)` y `break` la cifra es 1710. El
+ * resultado de la ultima comprobacion de proyeccion se lee de los campos (sc->sx, sc->sy) donde el original los
+ * relee, no de locales.
  *
  * Lista de comprobaciones del cuadro: recorre los objetos de escena, los clasifica en cuatro listas
  * (segun sus indicadores) con la memoria de trabajo del scratchpad en 0x1F800000, los vuelve a enlazar en
@@ -1579,13 +1596,10 @@ sigue2:
                             sc->cur->flags04 &= m3;
                             sc->cur->flags18 |= 0x100;
                         }
-                        /* Sentencia replicada: es la misma que la de las otras ramas. */
-                        t = sc->cur;
-                        if ((t->flags04 & 2) == 0) {
-                            if ((t->w3C & 0xC0) == 0) {
-                                goto atenuar;
-                            }
-                            goto tras_proyeccion;
+                        if ((sc->cur->flags04 & 2) == 0 && (sc->cur->w3C & 0xC0) == 0) {
+                            /* Sentencia replicada: es la misma que la de las otras ramas. */
+                            sc->cur->w24 = (0x400 - sc->i40) >> 7;
+                            goto recargar;
                         }
                     } else {
                         sc->c104[0].vx = sc->c104[2].vx = sc->c104[4].vx = sc->c104[6].vx = sc->cur->min.vx;
@@ -1641,17 +1655,14 @@ otro_nodo:
                             sc->cur->flags04 &= m3;
                             sc->cur->flags18 |= 0x100;
                         }
+                    }
+                    if ((sc->cur->flags04 & 2) == 0 && (sc->cur->w3C & 0xC0) == 0) {
+                        /* Sentencia replicada: es la misma que la de las otras ramas. */
+                        sc->cur->w24 = (0x400 - sc->i40) >> 7;
+recargar:
                         /* Sentencia replicada: es la misma que la de las otras ramas. */
                         t = sc->cur;
-tras_proyeccion:
-                        if ((t->flags04 & 2) == 0 && (t->w3C & 0xC0) == 0) {
-atenuar:
-                            t->w24 = (0x400 - sc->i40) >> 7;
-recargar:
-                            /* Sentencia replicada: es la misma que la de las otras ramas. */
-                            t = sc->cur;
-                            goto llamar;
-                        }
+                        goto llamar;
                     }
                 }
             }
