@@ -397,12 +397,14 @@ typedef struct CabeceraPrimitiva {
  * palabra de enlace salen por v0); el C relee D_80076188 (`lui` y `lw`, dos instrucciones en lugar de
  * la copia) porque el almacen a la lista de cabezas, que no es un acceso por miembro, impide reutilizar
  * el valor ya cargado, y en el volcado de planificacion (`-dS`) la relectura depende de ese almacen y queda
- * detras del `sll`, que ya ha pisado v0. La copia del original es una segunda lectura que la pasada posterior
- * al reparto convierte en copia (la carga sigue en `-dg` y ya es copia en `-dR`): para eso la segunda
- * lectura tiene que quedar delante del `sll` y sin un almacen entre las dos que pueda tocar el global, y
- * detras del `or` (0x80045254), porque la copia comparte v1 con la constante 0x09000000. La forma del
- * fuente original que deja la segunda lectura en ese sitio sin que la eliminacion de subexpresiones
- * comunes la funda con la primera se desconoce.
+ * detras del `sll`, que ya ha pisado v0. En el original el desplazamiento escribe sobre el mismo pseudo
+ * que lee la copia: la copia tiene entonces una antidependencia sobre el `sll` y la primera planificacion
+ * la deja entre el almacen del enlace y el (la segunda la sube hasta detras del `or`, 0x80045254, donde v1
+ * queda libre de la constante 0x09000000); el reparto local no puede sustituir el origen de la copia por
+ * su destino, porque el origen se reescribe, y el pseudo de la direccion, con una sola muerte, sigue siendo
+ * local del bloque y toma v0. En el C el primer paso de `(x << 8) >> 8` nace en un temporal y no en la
+ * variable, de modo que nada ata una copia de la direccion delante del desplazamiento y la eliminacion de
+ * subexpresiones comunes la funde con la lectura.
  */
 void func_80045150(EntradaLista* e)
 {
