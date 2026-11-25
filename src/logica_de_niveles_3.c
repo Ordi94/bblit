@@ -408,18 +408,15 @@ fin:
  * GEO_RELLENAR_1000 (include/geometria.h) escribe `$12` (t4) por nombre y lo declara destruido, de modo que el
  * asignador nunca elige ese registro; la lista es correcta. En el original la carga de la constante va detras del
  * `move t0` de la direccion y en un registro que cambia de una funcion a otra (t7 aqui, t4 en LogicaZonaEventos):
- * es una recarga del compilador para un operando de registro. Medido en `cc1` con la direccion y el relleno en dos
- * sentencias de ensamblador y el valor como operando de la segunda: la recarga cae en t7 entre las dos, el almacen
- * posterior la reutiliza con `move v0,t7` y LogicaZonaEventos conserva t4.
+ * se supone, sin verificar, que es la recarga de un operando de registro de una macro de dos sentencias.
  * (2) El operando de la macro de distancia (a2 en lugar de a1, 0x80028CCC). El cuerpo de la macro escribe `$5` para
  * la direccion del resultado y lo declara destruido, asi que el operando no puede tomarlo; el original calcula en a1
  * la direccion del vector (0x80028CCC) y la del resultado (0x80028D4C), cada una justo antes de su `move a0,a1`.
  * (3) El destino de la suma de la direccion de la secuencia (0x8002B870): v0 aqui y v1 en el original. Desde la
  * generacion del RTL (`-dr`) la suma tiene como primer operando el indice desplazado y como segundo el nodo, con el
- * desplazamiento de 6 octetos sumado aparte, y el reparto local ata el destino al primer operando que muere. El
- * nodo declara desde +6 cinco medias palabras sueltas y la prueba del indice es contra 5: medido, con el indice
- * sobre un miembro arreglo de cinco elementos y la cola de la secuencia escrita en cada camino la suma sale
- * `addu v1,v1,v0`, como el original; ese tipo lo usan otros archivos fuente.
+ * desplazamiento de 6 octetos sumado aparte, y el reparto local ata el destino al primer operando que muere. Se
+ * supone, sin verificar, que el original declaraba desde +6 del nodo un arreglo de cinco medias palabras (la
+ * prueba del indice es contra 5).
  *
  * Razones de la escritura. Los temporales de 32 bits compartidos entre bloques son pseudos globales que el reparto
  * global asigna a a0 y a1, mientras que el original deja en v0 y v1 los valores de un solo bloque: medido en el
@@ -488,19 +485,20 @@ fin:
  * llamada compartida de 0x8002A6A0 y una sola copia tras la reunion de los caminos colocaria la llamada detras de ese
  * almacen.
  *
- * El recorrido de los disparadores del fotograma es un bucle `do`/`while` sobre `t->nodo`, y la colocacion del hijo
- * (las siete sentencias que van de `t->hijo->w26 = o->w26;` a la copia de la posicion acumulada) esta escrita al
- * final de cada uno de los dos bloques que crean o reutilizan el hijo; no es una forma regulada: los dos bloques no
- * se reunen en un punto donde quepa una sola copia sin saltar al interior del otro, y el salto cruzado deja una sola
- * copia. Causa medida en el volcado del optimizador de bucles (`-dL`) y en el de reparto: dentro
- * de un bucle cada referencia pesa el doble, y con ese peso la constante -1 de los bloques que marcan el hijo de
- * clase 1 (4 usos, prioridad 4,0) se asigna antes que el valor de D_80069608 (8 usos en dos registros, 3,0) y toma v0,
- * y el puntero al jugador de los bloques que cuelgan el hijo del jugador toma a0 y las relecturas de `t->hijo` v1,
- * como el original (0x8002AE5C a 0x8002AE9C y 0x8002B104 a 0x8002B144). El bucle tiene 727 instrucciones y el
- * optimizador no iza la constante 1 de sus cinco comparaciones y almacenes (umbral 29 por 5 de ahorro por 5 de
- * vida, 725, menor que 727: "not desirable"); con la colocacion del hijo escrita una sola vez y un salto a ella el
- * bucle tiene 706, la constante se iza a s4 y la puntuacion es 1590; y con el recorrido escrito con una etiqueta y
- * un salto atras, sin bucle, todo pesa uno, la constante -1 y el valor empatan y la puntuacion es 790.
+ * El recorrido de los disparadores del fotograma es un bucle `do`/`while` sobre `t->nodo`. Causa medida en el
+ * volcado de reparto: dentro de un bucle cada referencia pesa el doble, y con ese peso la constante -1 de los
+ * bloques que marcan el hijo de clase 1 (4 usos, prioridad 4,0) se asigna antes que el valor de D_80069608 (8 usos
+ * en dos registros, 3,0) y toma v0, y el puntero al jugador de los bloques que cuelgan el hijo del jugador toma a0 y
+ * las relecturas de `t->hijo` v1, como el original (0x8002AE5C a 0x8002AE9C y 0x8002B104 a 0x8002B144); sin notas
+ * de bucle las dos prioridades empatan.
+ *
+ * Las catorce sentencias replicadas de la colocacion del hijo (siete en cada uno de los dos bloques que crean o
+ * reutilizan el hijo, de `t->hijo->w26 = o->w26;` a la copia de la posicion acumulada; los dos saltan a
+ * `efectos_tras_disparadores`) no generan codigo propio: el salto cruzado deja una sola copia. Medido en el volcado
+ * del optimizador de bucles (`-dL`): con la replica el bucle tiene 727 instrucciones y la constante 1 (vida 5,
+ * ahorro 5; 29 * 5 * 5 = 725) no se iza; con una sola copia y un salto a ella tiene 706, la constante se iza a s4 y
+ * la puntuacion es 1590. El margen es de dos instrucciones. La forma del fuente original que producia este reparto
+ * se desconoce.
  *
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
  * vehiculo o animal que se controla. Cada cuadro elige la secuencia de animacion (la de golpe o
@@ -2064,12 +2062,19 @@ accion_del_disparador:
                         o->flags18 |= 0x800;
                     }
                     t->hijo->coord.param = (GsCOORD2PARAM*)&t->hijo->portado;
+                    /* Sentencia replicada: es la misma que la de las otras ramas. */
                     t->hijo->w26 = o->w26;
+                    /* Sentencia replicada: es la misma que la de las otras ramas. */
                     func_8001CFCC(&t->hijo->coord);
+                    /* Sentencia replicada: es la misma que la de las otras ramas. */
                     pila_nodo.nodo = &t->hijo->coord;
+                    /* Sentencia replicada: es la misma que la de las otras ramas. */
                     func_8001CE64(&pila_nodo);
+                    /* Sentencia replicada: es la misma que la de las otras ramas. */
                     t->hijo->param.trans.vx = pila_nodo.acc.vx;
+                    /* Sentencia replicada: es la misma que la de las otras ramas. */
                     t->hijo->param.trans.vy = pila_nodo.acc.vy;
+                    /* Sentencia replicada: es la misma que la de las otras ramas. */
                     t->hijo->param.trans.vz = pila_nodo.acc.vz;
                     goto efectos_tras_disparadores;
                 }
@@ -2134,12 +2139,19 @@ accion_del_disparador:
                 if (!(t->banderas & 0x80)) {
                     o->p6C = t->hijo;
                 }
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 t->hijo->w26 = o->w26;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 func_8001CFCC(&t->hijo->coord);
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 pila_nodo.nodo = &t->hijo->coord;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 func_8001CE64(&pila_nodo);
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 t->hijo->param.trans.vx = pila_nodo.acc.vx;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 t->hijo->param.trans.vy = pila_nodo.acc.vy;
+                /* Sentencia replicada: es la misma que la de las otras ramas. */
                 t->hijo->param.trans.vz = pila_nodo.acc.vz;
                 goto efectos_tras_disparadores;
             }
