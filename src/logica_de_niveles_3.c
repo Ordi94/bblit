@@ -398,31 +398,34 @@ fin:
 
 #ifdef NON_MATCHING
 /*
- * Pendiente: puntuacion 710 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
- * 161 insertadas o borradas). Los registros guardados coinciden con el original. Aparte de las diferencias de
+ * Pendiente: puntuacion 610 con la configuracion versionada (g = 8 del archivo; ejes 496 de operando, 6 reordenadas,
+ * 160 insertadas o borradas). Los registros guardados coinciden con el original. Aparte de las diferencias de
  * operando de forma simbolica (`%gp_rel(D_...)`, `%lo(D_1F800030)`, `%hi(D_80010012)` y `%lo(D_8006AA70+0x1)` en
  * los dos almacenes que el ensamblador del original nombra D_8006AA71, 0x80027134 y 0x8002A82C: mismo codigo
- * maquina), el residuo son cuatro causas.
+ * maquina), el residuo son tres causas.
  * (1) La constante 0x1000 de los tres bloques de escala sale en t4 y el original la tiene en t7, y en el almacen
  * posterior de las tres escalas el original la reutiliza (`move v0,t7`) y aqui se recarga. El cuerpo de la macro
  * GEO_RELLENAR_1000 (include/geometria.h) escribe `$12` (t4) por nombre y lo declara destruido, de modo que el
- * asignador nunca elige ese registro; la lista es correcta y la macro se conserva. Se supone, sin verificar, que el
- * original genera esa secuencia con otra forma de la macro.
- * (2) El operando de la macro de distancia (a2 en lugar de a1, 0x80028CCC). Se supone, sin verificar, que es porque
- * la lista de destruidos de la macro incluye `$5`.
+ * asignador nunca elige ese registro; la lista es correcta. En el original la carga de la constante va detras del
+ * `move t0` de la direccion y en un registro que cambia de una funcion a otra (t7 aqui, t4 en LogicaZonaEventos):
+ * es una recarga del compilador para un operando de registro. Medido en `cc1` con la direccion y el relleno en dos
+ * sentencias de ensamblador y el valor como operando de la segunda: la recarga cae en t7 entre las dos, el almacen
+ * posterior la reutiliza con `move v0,t7` y LogicaZonaEventos conserva t4.
+ * (2) El operando de la macro de distancia (a2 en lugar de a1, 0x80028CCC). El cuerpo de la macro escribe `$5` para
+ * la direccion del resultado y lo declara destruido, asi que el operando no puede tomarlo; el original calcula en a1
+ * la direccion del vector (0x80028CCC) y la del resultado (0x80028D4C), cada una justo antes de su `move a0,a1`.
  * (3) El destino de la suma de la direccion de la secuencia (0x8002B870): v0 aqui y v1 en el original. Desde la
  * generacion del RTL (`-dr`) la suma tiene como primer operando el indice desplazado y como segundo el nodo, con el
- * desplazamiento de 6 octetos sumado aparte; se supone, sin verificar, que el destino queda atado al registro del
- * primer operando.
- * (4) La relectura de `t->w114` en el bloque del contador de cuadros: el original almacena el campo en 0x8002B908 y
- * lo vuelve a cargar en 0x8002B928, sin almacen ni llamada entre ambas instrucciones, y aqui el compilador reutiliza
- * el registro. La forma del fuente original que producia esa carga se desconoce.
+ * desplazamiento de 6 octetos sumado aparte, y el reparto local ata el destino al primer operando que muere. El
+ * nodo declara desde +6 cinco medias palabras sueltas y la prueba del indice es contra 5: medido, con el indice
+ * sobre un miembro arreglo de cinco elementos y la cola de la secuencia escrita en cada camino la suma sale
+ * `addu v1,v1,v0`, como el original; ese tipo lo usan otros archivos fuente.
  *
  * Razones de la escritura. Los temporales de 32 bits compartidos entre bloques son pseudos globales que el reparto
  * global asigna a a0 y a1, mientras que el original deja en v0 y v1 los valores de un solo bloque: medido en el
  * volcado de reparto para las dos bandas de altura del vuelo; para el resto de tramos se supone, sin verificar. Por
- * eso llevan local propia las bandas de altura (`altura_jugador`, `suelo_bajo`, `banda_alta` y `banda_baja`, con los
- * almacenes en el orden alta y baja), el giro en reposo (`giro_reposo`), el giro directo (`giro_directo` y
+ * eso llevan local propia la altura de las bandas del vuelo (`altura_jugador` y `suelo_bajo`, cada una en su rama,
+ * con los almacenes en el orden alta y baja), el giro en reposo (`giro_reposo`), el giro directo (`giro_directo` y
  * `pr_directo`), la prueba del barrido (`f14_barrido`) y la prueba de desfase `d.vx | d.vy` (`desfase_xy`). La
  * altura del objeto se lee en una local antes de la histeresis, el hijo se copia en
  * `hijo_soltado` antes de soltarlo, la resta de la X del portador en el barrido va directa y los giros del portado
@@ -451,21 +454,22 @@ fin:
  * registro a0 esta libre mientras vive el puntero del portador, que lo recibe, como en 0x8002A658 a 0x8002A668.
  * Con `o->coord.param` escrito primero, en ese turno esta disponible tambien el `addiu` de la direccion de los
  * parametros, que se elige antes, el `addiu a0` sube junto a la primera lectura del portador, el puntero cae en a1
- * y la puntuacion es 780.
+ * y la puntuacion es 680.
  */
 /*
- * Las cuatro sentencias replicadas son `t->w114 = banda_alta;` y `t->w118 = banda_baja;` escritas en la rama del
- * jugador y en la rama final de la cadena de las bandas del vuelo (la rama intermedia escribe sus propias
- * expresiones y no las usa); no generan codigo propio. El original escribe los dos limites dentro de cada camino, con
- * los valores como temporales de ese camino (0x80027E40 y 0x80027E48 en la banda del jugador, 0x80027EA0 a 0x80027EC0
- * en la intermedia y 0x80027EE0 y 0x80027EE4 en la final) y todos los caminos saltan a la prueba de histeresis
- * (0x80027EE8). Causa medida en los volcados de `cc1` (`.lreg`, `.greg` y el ensamblador de salida) y con `diff`: con
- * la pareja en cada rama los valores son pseudos locales del bloque (2 usos sobre 2 insns cada uno) que toman v0 y
- * v1 y se almacenan al final de su camino, igual que el original (la puntuacion es 710); con una sola pareja tras la
- * union, asignando las mismas dos variables en las tres ramas, los valores pasan a ser pseudos globales (la banda
- * alta con 5 usos sobre 12 insns, prioridad 0,83, y la baja con 6 usos sobre 14 insns, 0,86) que reciben a1 y v1,
- * los dos almacenes suben tras la etiqueta de union y aparece un `move v0,a1` antes de la prueba de histeresis (la
- * cifra sube a 2590). La forma del fuente original que producia este reparto se desconoce.
+ * Las dos sentencias replicadas `D_800693B4 = t->w114;` son el cierre del bloque del contador de cuadros, escrito
+ * en la rama del primer cuadro y al final de la rama que acumula la diferencia; no generan codigo propio. El original
+ * almacena el contador en `t->w114` (0x8002B908), lo usa en la resta desde el registro (0x8002B924), lo vuelve a
+ * cargar dentro de la rama que acumula (`lw a0,0x114(s2)` en 0x8002B928) y comparte un solo almacen final
+ * (0x8002B934), al que la otra rama llega con el valor que ya tenia en a0. Medido en los volcados de `cc1` (`.lreg`,
+ * `.greg` y `-dJ`): con la sentencia en cada rama, la rama que acumula empieza en una etiqueta; la relectura de
+ * `t->w114` tras el almacen de D_800693C0 es un pseudo local de ese bloque (registro 2798, 2 usos sobre 8 insns, en
+ * a0) y, como el pase que borra cargas redundantes tras el reparto olvida lo que sabe en cada etiqueta, la carga se
+ * conserva; el valor de la otra rama es el pseudo del contador (2788, tambien en a0), los dos almacenes finales son
+ * identicos y el salto cruzado deja uno solo y borra la etiqueta (cinco referencias a D_800693B4 antes del pase y
+ * cuatro despues). Con una sola copia tras la union la carga queda en la union, en v0 y con su `nop`, y la
+ * puntuacion es 920 (610 con la sentencia en cada rama). La forma del fuente original que producia este reparto se
+ * desconoce.
  *
  * Las dos sentencias replicadas `func_8001CFCC(&o->coord);` son la llamada de cierre de la composicion con el portador,
  * escrita al final de la rama que copia el giro del portador y al final de la rama de la comprobacion de apoyo. El
@@ -475,7 +479,7 @@ fin:
  * referencias al simbolo antes del salto cruzado y 20 despues (las dos colas se fusionan y el ensamblador final tiene una
  * sola llamada, como el original); con una sola llamada tras la etiqueta de union la preparacion del argumento cae en el
  * bloque de union y el planificador la deja en el hueco de retardo de la llamada (en el original ese hueco es un
- * `nop`). Con las dos llamadas la cifra es 710; con una sola llamada tras la etiqueta sube a 1000.
+ * `nop`). Con las dos llamadas la cifra es 610; con una sola llamada tras la etiqueta sube a 900.
  * La forma del fuente original que producia este reparto se desconoce.
  *
  * La tercera llamada `func_8001CFCC(&o->coord);` de la cadena, la de la rama que suelta al portador inactivo y que
@@ -491,8 +495,8 @@ fin:
  * instrucciones, prioridad 0,44) se asigna antes que las relecturas de `t->hijo` (2 usos sobre 6 instrucciones, 0,33 la
  * primera y la segunda) y toma v1, y esas dos relecturas caen en a0; con la envoltura la primera relectura pasa a 4 usos ponderados sobre 6 (1,33) y se asigna
  * antes, el puntero a 6 usos sobre 18 (0,67) toma a0 y la primera y la segunda relectura v1, como el original
- * (0x8002AE5C a 0x8002AE9C y 0x8002B104 a 0x8002B144). La puntuacion es 710; sin una de estas dos, cualquiera de
- * ellas, 760; sin las dos, 810; y sin las cuatro envolturas de la funcion, 890. La forma del fuente original que
+ * (0x8002AE5C a 0x8002AE9C y 0x8002B104 a 0x8002B144). La puntuacion es 610; sin una de estas dos, cualquiera de
+ * ellas, 660; sin las dos, 710; y sin las cuatro envolturas de la funcion, 790. La forma del fuente original que
  * producia este reparto se desconoce.
  *
  * Los otros dos do/while (0) envuelven el par `D_800693B8 = -1; D_80069608 |= 1;` de cada uno de los dos bloques que
@@ -500,8 +504,8 @@ fin:
  * Medido en el volcado de reparto (`.lreg`): la constante -1 (pseudo de 2 bytes) pasa de 2 usos sobre 4 instrucciones
  * a 4 usos ponderados sobre 4, y las dos referencias al valor de D_80069608 de 2 sobre 8 y 2 sobre 2 a 4 sobre 8 y
  * 4 sobre 2: el ponderado por un nivel de bucle cambia el orden de asignacion de la constante y del valor, de modo
- * que la constante toma v0 y el valor v1, como el original. La puntuacion es 710 con las dos, 750 sin una de ellas,
- * cualquiera, y 790 sin las dos. La cuenta exacta de prioridad de local-alloc (con el tamano del
+ * que la constante toma v0 y el valor v1, como el original. La puntuacion es 610 con las dos, 650 sin una de ellas,
+ * cualquiera, y 690 sin las dos. La cuenta exacta de prioridad de local-alloc (con el tamano del
  * pseudo de 2 bytes) no se verifico. La forma del fuente original que producia este reparto se desconoce.
  *
  * Manejador de un personaje animado de la escena (clase 14 de D_8005E35C): enemigo, jefe, ayudante,
@@ -539,7 +543,6 @@ void func_80026FEC(Objeto* o)
     s32 jy;
     s32 portador;
     s32 rflags;
-    s32 giro;
     s32 giro_reposo;
     s32 desfase_xy;
     s32 giro_directo;
@@ -915,16 +918,10 @@ flotador_de_ave:
             func_8001C134((s32*)&t->p30, &t->res, area);
             if (t->res.flags & 8) {
                 s32 altura_jugador;
-                s32 banda_alta;
-                s32 banda_baja;
 
                 altura_jugador = D_80069698->param.trans.vy;
-                banda_alta = altura_jugador - 0xC8;
-                banda_baja = altura_jugador - 0x190;
-                /* Sentencia replicada: es la misma que la de las otras ramas. */
-                t->w114 = banda_alta;
-                /* Sentencia replicada: es la misma que la de las otras ramas. */
-                t->w118 = banda_baja;
+                t->w114 = altura_jugador - 0xC8;
+                t->w118 = altura_jugador - 0x190;
             } else if ((t->banderas & 0x810000) && ((s16)o->w26 == (s16)D_80069698->w26)) {
                 /* Acompana al jugador: el techo del vuelo es la menor altura entre el suelo y el jugador. */
                 suelo = t->p30.vy + (s16)t->res.pendiente;
@@ -938,16 +935,10 @@ flotador_de_ave:
                 }
             } else {
                 s32 suelo_bajo;
-                s32 banda_alta;
-                s32 banda_baja;
 
                 suelo_bajo = t->p30.vy + (s16)t->res.pendiente;
-                banda_alta = suelo_bajo - 0x190;
-                banda_baja = suelo_bajo - 0x258;
-                /* Sentencia replicada: es la misma que la de las otras ramas. */
-                t->w114 = banda_alta;
-                /* Sentencia replicada: es la misma que la de las otras ramas. */
-                t->w118 = banda_baja;
+                t->w114 = suelo_bajo - 0x190;
+                t->w118 = suelo_bajo - 0x258;
             }
             /* Histeresis: el sentido solo cambia al salir de la banda [w118, w114]. */
             /* La altura se lee una vez en una local de 32 bits para la comparacion de la banda superior. */
@@ -2338,12 +2329,15 @@ siguiente_paso_de_secuencia:
     }
     if (t->fot->w10 & 0x2000000) {
         /* Contador de cuadros propio de la animacion: se lleva la diferencia con el valor anterior. */
-        giro = *(s32*)(*(u8**)(*(u8**)(*(u8**)o->u78.p + 0x10) + 0x44) + 0x1C);
-        t->w114 = giro;
-        if ((u16)o->trabajo.cuadro != 1) {
-            D_800693C0 += giro - D_800693B4;
+        t->w114 = *(s32*)(*(u8**)(*(u8**)(*(u8**)o->u78.p + 0x10) + 0x44) + 0x1C);
+        if ((u16)o->trabajo.cuadro == 1) {
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
+            D_800693B4 = t->w114;
+        } else {
+            D_800693C0 += t->w114 - D_800693B4;
+            /* Sentencia replicada: es la misma que la de las otras ramas. */
+            D_800693B4 = t->w114;
         }
-        D_800693B4 = giro;
     }
     if ((o->flags0C & 0x14) || (t->fot->w10 & 0x40)) {
         if (o->flags0C & 0x10) {
