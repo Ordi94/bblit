@@ -926,7 +926,10 @@ void func_80038E84(s32 idx, s32 paso)
  * de despues de la llamada parten del byte (0x80039180 a 0x800391B0, `andi a0,v1,0xff`). El C lo
  * escribe con `leido` (`u8`, el byte de D_80069525 o de D_80069574) y `mostrado` (`u32`, su valor
  * para comparar). La copia anterior a la llamada solo sobrevive si `mostrado` se vuelve a usar fuera
- * de ese bloque: sin la copia de despues de la llamada la cifra es 500. La igualdad con la vida se
+ * de ese bloque: sin la copia de despues de la llamada la cifra es 500. La barra 3 emite tras la llamada el mismo
+ * par (`lbu v1` en 0x800392AC y `andi a0,v1,0xff` en 0x800392B4) y el C la escribe solo con `leido`: la copia de
+ * despues de la llamada en la barra 0 no hace falta para emitir su `andi` (0x80039190), sino para que sobreviva la
+ * copia anterior. La igualdad con la vida se
  * escribe entre los dos bytes (`leido == e->r[0x03]`), que conserva el `andi` de la vida
  * (0x80039128); sobre `mostrado` la cifra es 375. La rama que inicia la barra (valor mostrado 0xFF)
  * copia la vida al valor mostrado y toma de el `nuevo`, sin pasar por `valor`: con `valor` esa local
