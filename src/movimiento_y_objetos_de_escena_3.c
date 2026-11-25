@@ -151,10 +151,11 @@ void func_8001E528(Objeto* o, BloqueTrabajo* c, u32 modo)
  * detras, y la carga del campo queda delante de la suma de +2 (insn 98, pseudo 127). En `-dl` y `-dg`, sin y con la
  * envoltura: el crudo pasa de 3 usos ponderados, en a3, a 6, en v0; el campo (pseudo 91), de t0 a
  * a3; la constante 2 (pseudo 113), de t1 a t0; y el puntero al sprite (pseudo 83), de a3 a v1; los cuatro como el
- * original. Sin la envoltura la puntuacion es 870. El primer almacen va dentro de ella: con el detras la puntuacion
- * es 270. El cuerpo es codigo real de la funcion, sin `break` ni `continue`. Se supone, sin verificar, que lo que
- * fija ese orden en el original es otra construccion que el volcado no distingue. La forma del fuente original que
- * producia este reparto se desconoce. */
+ * original. Tambien cambian los pseudos 81, de t4 a t3; 85, de t3 a t2; y 89, de t2 a t1. Sin la envoltura la
+ * puntuacion es 870. El primer almacen va dentro de ella: con el detras la puntuacion es 270. El cuerpo es codigo
+ * real de la funcion, sin `break` ni `continue`. Se supone, sin verificar, que lo que fija ese orden en el original
+ * es otra construccion que el volcado no distingue. La forma del fuente original que producia este reparto se
+ * desconoce. */
 void func_8001E600(Objeto* o, BloqueTrabajo* c, u32 modo)
 {
     SpriteEscalado* p;
