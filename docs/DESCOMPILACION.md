@@ -644,7 +644,8 @@ admite sobre un dato que ninguna rutina asíncrona escribe. Hay un uso:
   función coincidente da 420, la puntuación bruta de asm-differ (instrucciones iguales con distinto texto de
   operando).
 
-Barreras vacías, sentencias partidas, `register __asm__("$N")` locales, `"+r"`, `volatile` fuera de la lectura
+Barreras vacías, sentencias partidas fuera de las cuatro condiciones de
+[Operación escrita en dos sentencias con causa en la expansión](#operación-escrita-en-dos-sentencias-con-causa-en-la-expansión), `register __asm__("$N")` locales, `"+r"`, `volatile` fuera de la lectura
 respaldada y de la declaración descritas arriba y registros destruidos de más no se admiten: la función queda `NON_MATCHING` o en `INCLUDE_ASM` con su comentario. Las únicas
 referencias sin código admitidas son las de [Referencias sin código](#referencias-sin-código).
 
@@ -676,6 +677,65 @@ que producia este reparto se desconoce.» No se admite ninguna otra asignación 
   la llamada, que el original pasa desde un registro (`move a1,s4` en `0x80043B98`) y que sin la sentencia sale como
   `addiu a1,sp,0x128`, la única línea que cambia en `diff` (620). Asignar antes de la llamada y pasarle `aux` también
   da 620. Con la sentencia la función coincide (`diff` informa la puntuación bruta 420).
+
+## Operación escrita en dos sentencias con causa en la expansión
+
+Partir una operación en dos sentencias sobre la misma variable (`x = A; x = x + B;`, `a <<= 8; a >>= 8;`,
+`a = a << 8; *p = a >> 8;`) no se admite en general: es una forma de mover el reparto sin razón conocida. Hay una
+excepción acotada, que tiene causa en el compilador. Con `-O2`, la expansión a RTL de GCC 2.8.1 solo escribe en el
+pseudo de una variable el resultado de la operación de nivel superior de una sentencia; cada valor intermedio nace
+en un pseudo propio. Ese pseudo solo acaba en el registro de la variable si la asignación local los une, y eso solo
+ocurre cuando los dos nacen y mueren dentro de un mismo bloque. Si la variable vive en varios bloques o tiene otros
+usos, la reparte la asignación global, ninguna pasada posterior une los dos pseudos y el intermedio toma otro
+registro. Cuando el original tiene el intermedio en el registro de la variable, la única escritura que lo reproduce
+es una asignación propia a la variable por cada instrucción que opera sobre ese registro. Se admite solo si se
+cumplen las cuatro condiciones a la vez:
+
+1. En el ensamblador original el valor intermedio de la operación está en el mismo registro que la variable de
+   destino, y esa variable vive en varios bloques o tiene otros usos; se citan las instrucciones con su dirección.
+2. El volcado de la expansión (`-dr`) de la escritura en una sentencia muestra que el intermedio nace en un pseudo
+   distinto del de la variable y el ensamblador generado los deja en registros distintos; con las dos sentencias el
+   intermedio es el pseudo de la variable. Se citan los pseudos.
+3. La escritura en una sola sentencia está medida y no coincide, y con las dos sentencias la función mejora; se dan
+   las dos cifras.
+4. Las dos sentencias son contiguas, operan sobre una variable real de la función con nombre descriptivo, no añaden
+   valores ni almacenes a memoria que el original no tenga, y la semántica es idéntica a la de la sentencia única.
+
+Junto a cada uso va un comentario de una línea que empieza por «Operacion en dos sentencias:» y cita la instrucción
+del original; la cabecera de la función da las instrucciones, los pseudos y las cifras. No se admite una operación
+partida cuyo efecto solo se conoce por la cifra, ni para mover el reparto de registros de otras variables, ni sobre
+una variable que reúne valores que el original guarda en registros distintos. Hay tres funciones con usos:
+
+| Función | Archivo | Variable y sentencias | Instrucciones del original | Cifra en una sentencia | Con las dos |
+|---|---|---|---|---:|---|
+| `func_8003AE08` | `src/menus_e_interfaz.c` | (1) `paquete <<= 8; paquete >>= 8;` (2) `paquete = siguiente << 8; paquete >>= 8;` | (1) `sll v1,v1,8` en `0x8003AE9C` y `sra v1,v1,8` en `0x8003AEA0` (2) `sll v1,a0,8` en `0x8003AF1C` y `sra v1,v1,8` en `0x8003AF28` | (1) 10 (2) 505 | coincide |
+| `func_8003AF8C` | `src/menus_e_interfaz.c` | (1) `color = 0x80 - ...; color = color + (...);` (2) `trabajo = lista; trabajo = trabajo + (...);` (3) `palabra = *(u32*)trabajo; palabra \|= 0x09000000;` (4) `p = p << 8; p = p >> 8;` | (1) `subu a3,v1,v0` en `0x8003AFF4` y `addu a3,a3,v0` en `0x8003B008` (2) `lw a0,4(v1)` en `0x8003B170` y `addu a0,a0,v0` en `0x8003B1E8` (3) `lw a2,0(a0)` en `0x8003B1EC` y `or a2,a2,v0` en `0x8003B1F4` (4) `sll a1,a1,8` en `0x8003B218` y `sra a1,a1,8` en `0x8003B21C` | (1) 330 (2) 600 (3) 475 (4) 315 | coincide |
+| `func_80045150` | `src/inicializacion_de_motor.c` | (1) `color = 0x80 - ...; color = color + (...);` (2) `direccion <<= 8; direccion >>= 8;` | (1) `subu a2,v1,v0` en `0x800451F4` y `addu a2,a2,a0` en `0x80045210` (2) `sll v0,v0,8` en `0x80045260` y `sra v0,v0,8` en `0x80045264` | (1) 740 (2) 340 | coincide |
+
+Cada cifra de la columna «en una sentencia» es la de la función con esa sola operación devuelta a una sentencia y
+las demás como están.
+
+- `func_8003AE08`: `paquete` es la dirección del primer paquete, su enlace de 24 bits, el enlace del segundo y la
+  relectura final del anillo, todos en `$v1` en el original (`lw v1` en `0x8003AE5C` y en `0x8003AF50`). (1) Con las
+  dos sentencias los dos desplazamientos escriben el pseudo 83 de la variable; en una, el `sll` escribe el pseudo 106
+  y salen `sll v0,v1,8` y `sra v1,v0,8`. (2) En una sentencia el `sll` escribe el pseudo 125, local de su bloque, y
+  salen `sll v0,a1,8` y `sra a0,v0,8`. Con las dos operaciones así escritas la función solo necesita la
+  envoltura del almacén del cursor (tabla de [Referencias sin código](#referencias-sin-código)).
+- `func_8003AF8C`: (1) el brillo se calcula en `$a3`, el registro del color, que la otra rama carga con una
+  constante (`lui a3` en `0x8003B00C`) y que se almacena al final (`0x8003B214`); en una sentencia la resta nace en
+  el pseudo 103 y toma `$v1`, con las dos escribe el 83 del color. (2) La lista elegida en cada rama y la ranura
+  están en `$a0`, que se usa hasta el almacén del enlace (`0x8003B220`); con la suma asignada a otra variable escribe
+  el pseudo 88, la lista toma `$v1` y la ranura `$a3`; con las dos escribe el 87. (3) La entrada de la ranura se
+  carga en `$a2`, el registro de la palabra, que se almacena tras la unión de las ramas de la bandera
+  (`0x8003B210`); en una sentencia la carga nace en el pseudo 186, con las dos en el 88. (4) El recorte se hace
+  sobre `$a1`, el puntero al primitivo; en una sentencia el `sll` escribe el pseudo 191 y salen `sll v0,a2,8` y
+  `sra a2,v0,8`, con las dos escribe el 84. Con las cuatro la función coincide sin ninguna envoltura.
+- `func_80045150`: (1) la intensidad se calcula en `$a2`, el registro del color, que la otra rama carga con una
+  constante (`lui a2` en `0x80045214`) y que se almacena tras la unión (`0x80045250`); en una sentencia la resta nace
+  en el pseudo 112, con las dos en el 90 del color. (2) La dirección de la primitiva está en `$v0`, por el que se
+  almacenan el color y el enlace y del que se copia el puntero a los miembros (`addu v1,v0,zero` en `0x80045258`);
+  en una sentencia el `sll` escribe el pseudo 131 y salen `sll v0,v1,8` y `sra a1,v0,8`, con las dos los dos
+  desplazamientos escriben el 91 y la copia queda delante del `sll`, que reescribe el pseudo que ella lee.
 
 ## Referencias sin código
 
@@ -781,7 +841,12 @@ propias condiciones.
 **Qué sigue sin admitirse.** Barreras `asm`, `register __asm__("$N")`, `volatile` sin el respaldo de una relectura
 del original (el apartado de la lectura con molde `volatile` de arriba; tampoco el `volatile` sin uso que reserva pila) ni
 calificar `volatile` una declaración fuera de las cuatro condiciones del dato compartido con una rutina asíncrona
-([Ensamblador en línea admitido](#ensamblador-en-línea-admitido)), partir una sentencia en varias, la sentencia duplicada que no es la misma
+([Ensamblador en línea admitido](#ensamblador-en-línea-admitido)), partir una sentencia en varias fuera de las cuatro condiciones de
+[Operación escrita en dos sentencias con causa en la expansión](#operación-escrita-en-dos-sentencias-con-causa-en-la-expansión)
+(tampoco la operación partida cuyo efecto solo se conoce por la cifra, ni la que mueve el reparto de otras
+variables), la cadena de varios nombres para un mismo dato, la variable compartida entre valores que el original
+tiene en registros distintos, la lectura por desplazamiento en bytes o por puntero de bytes en lugar del acceso
+que usa el original, la sentencia duplicada que no es la misma
 sentencia real de la función (la duplicada solo para sumar referencias o en una rama que no la ejecuta), el molde de
 puntero a función contra la fusión de colas, los almacenes muertos y las asignaciones sin lectura (salvo, únicamente, la
 del puntero de recorrido en las cuatro condiciones de
